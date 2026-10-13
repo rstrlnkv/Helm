@@ -15,14 +15,33 @@ set -euo pipefail
 # itself ORs a repeated `--filter`, so every occurrence is read here too, in
 # both the `--filter X` and `--filter=X` forms, and joined the same way.
 #
-# Reading a run: this script prints its own verdict last. The closing "Test
+# Reading a run: this script prints its own verdict last, one line of one
+# shape whichever exit printed it —
+#   ==> WORD (runner exit=N, swift test exit=N)  failure-lines=N  selected=N  skipped=N  log=PATH
+# — where WORD is PASS, FAIL or SKIPPED, `selected=` counts the cases that
+# ran and `skipped=` those of them that ended skipped (`unknown` where the
+# runner states no count: a log it could not read, a `--parallel` one).
+# SKIPPED is a run in which at least one case ran and every one of them was
+# skipped: it asserted nothing, so it is not a pass, and the runner exits 1
+# on it — the word for whoever reads the line, the status for whoever reads
+# the status. FAIL outranks it: a run that failed any other way says FAIL
+# and keeps that status. A run in which only some cases were skipped is
+# judged as if none were, with their number on the line. A run in which no
+# case ran fails, with or without a `--filter`. A run that ends with no such
+# line was stopped before it judged: its status is non-zero and is all it
+# said. The closing "Test
 # Suite 'All tests' passed" speaks for the last bundle and the very last
 # line, "✔ Test run with 0 tests in 0 suites passed", for Swift Testing's
 # empty run — neither speaks for the suite. A summary line that also carries
 # a skip count reads as zero failures under a shorter pattern, and a
 # `--filter` whose alternatives match nothing, or match only in part, still
 # exits 0; the runner counts each alternative against the cases that
-# actually ran and fails, naming the one that ran none. Where a bare `swift
+# actually ran and fails, naming the one that ran none. An alternative that
+# is a bare name — letters, digits and underscores, nothing else — is counted
+# only where a target, a class or a method name starts with it, because a
+# family's name found inside another family's is no evidence that the family
+# ran; one found only inside a name fails the run on a line of its own, and
+# spelled as a pattern, `.*Name`, it is counted anywhere. Where a bare `swift
 # test` log has to be read, take the status on its own line —
 #   swift test > log 2>&1; echo "EXIT=$?"
 # — and count
@@ -49,7 +68,9 @@ set -euo pipefail
 # whole group pass unrecorded.
 #
 # LIMIT: checking an alternative here means asking `grep -E`, BSD's POSIX
-# ERE, whether it matches one of the selected cases; `swift test --filter`
+# ERE, whether it matches one of the selected cases — as it was given, except
+# a bare name, which is asked with `(^|[./])` in front of it so it is found
+# only where a target, class or method name starts; `swift test --filter`
 # reads the same alternative in its own engine, measured as ICU on its
 # XCTest side (by the output — `(?i)`, `\w`, `\S`, `*?` and `\Q…\E` agree
 # between the two). A lookahead is a construct BSD grep has no notion of at
@@ -78,6 +99,16 @@ set -euo pipefail
 # count apart from a genuine typo or an unrelated `--skip`, so all three
 # land in the same "ran no test case" message below rather than one of them
 # being guessed at.
+#
+# LIMIT: a skip is counted from the line a sequential run closes a skipped
+# case with, `Test Case '-[Target.Class testMethod]' skipped`. Over a log
+# that carries a `--parallel` progress line the runner prints
+# `skipped=unknown` in place of a count and never says SKIPPED, whatever
+# else the log holds: whether a parallel run writes that line for a case
+# that skipped has not been measured here, and a zero counted from lines
+# that may not be written would say "nothing was skipped" on nobody's
+# evidence. Run a family without `--parallel` to have its skips counted and
+# an all-skipped run refused.
 
 # --filter can arrive as `--filter X` or `--filter=X`, and more than once;
 # swift test ORs every occurrence, so every one is read here too and joined
@@ -109,7 +140,7 @@ if [ "${#FILTER_VALUES[@]}" -gt 0 ]; then
     case "$ALT" in
       *$'\n'*)
         echo "!! --filter value contains a newline byte, refused before swift test runs: $(printf '%q' "$ALT")" >&2
-        echo "==> FAIL (runner exit=1, swift test exit=not run)  failure-lines=0  selected=0  log=not written"
+        echo "==> FAIL (runner exit=1, swift test exit=not run)  failure-lines=0  selected=0  skipped=0  log=not written"
         exit 1
         ;;
     esac
@@ -133,7 +164,7 @@ else
   # rename afterwards, once mktemp has reserved a unique name.
   if ! RAW="$(mktemp "${TMPDIR:-/tmp}/helm-test.XXXXXX")"; then
     echo "!! mktemp failed to reserve a log path under ${TMPDIR:-/tmp} — refusing before swift test runs" >&2
-    echo "==> FAIL (runner exit=1, swift test exit=not run)  failure-lines=0  selected=0  log=not written"
+    echo "==> FAIL (runner exit=1, swift test exit=not run)  failure-lines=0  selected=0  skipped=0  log=not written"
     exit 1
   fi
   LOG="${RAW}.log"
@@ -165,7 +196,7 @@ esac
 # was really the shell failing to open the redirect.
 if ! { : > "$LOG"; } 2>/dev/null; then
   echo "!! cannot write the log at $LOG — refusing before swift test runs" >&2
-  echo "==> FAIL (runner exit=1, swift test exit=not run)  failure-lines=0  selected=0  log=not written"
+  echo "==> FAIL (runner exit=1, swift test exit=not run)  failure-lines=0  selected=0  skipped=0  log=not written"
   exit 1
 fi
 
@@ -190,7 +221,7 @@ set -e
 # nothing on the ordinary path, where $LOG is the plain file written above.
 if [ ! -f "$LOG_SAFE" ]; then
   echo "!! the log at $LOG is not a plain file — refusing to read it after swift test ran (exit $STATUS) rather than risk a read that blocks or answers for the wrong descriptor" >&2
-  echo "==> FAIL (runner exit=1, swift test exit=$STATUS)  failure-lines=unknown  selected=unknown  log=$LOG (not a plain file)"
+  echo "==> FAIL (runner exit=1, swift test exit=$STATUS)  failure-lines=unknown  selected=unknown  skipped=unknown  log=$LOG (not a plain file)"
   exit 1
 fi
 
@@ -231,7 +262,7 @@ case "$NOMATCH_COUNT" in ''|*[!0-9]*) COUNTS_UNREADABLE=1 ;; esac
 case "$LOG_LINE_COUNT" in ''|*[!0-9]*) COUNTS_UNREADABLE=1 ;; esac
 if [ "$COUNTS_UNREADABLE" -eq 1 ]; then
   echo "!! cannot read the log at $LOG after swift test ran (a count's exit status was neither 0 nor 1, or its output was not a plain integer) — refusing to judge a run from a log this script cannot read" >&2
-  echo "==> FAIL (runner exit=1, swift test exit=$STATUS)  failure-lines=unknown  selected=unknown  log=$LOG (unreadable)"
+  echo "==> FAIL (runner exit=1, swift test exit=$STATUS)  failure-lines=unknown  selected=unknown  skipped=unknown  log=$LOG (unreadable)"
   exit 1
 fi
 
@@ -247,7 +278,7 @@ fi
 # read as "0 failures, 0 selected".
 if [ "$LOG_LINE_COUNT_STATUS" -eq 1 ]; then
   echo "!! the log at $LOG read back with no lines after swift test ran (exit $STATUS) — a clean run always leaves swift test's own output behind, so an empty read is never evidence of one" >&2
-  echo "==> FAIL (runner exit=1, swift test exit=$STATUS)  failure-lines=unknown  selected=unknown  log=$LOG (empty on read-back)"
+  echo "==> FAIL (runner exit=1, swift test exit=$STATUS)  failure-lines=unknown  selected=unknown  skipped=unknown  log=$LOG (empty on read-back)"
   exit 1
 fi
 
@@ -273,18 +304,29 @@ fi
 # know the file grep could not open. Read each grep on its own first, so its
 # $? is the one this script sees, and only hand what it found to sed once
 # that status is known to be 0 or 1 (a real answer) rather than 2.
+# A sequential run closes a skipped case with a line of its own, spelled
+# like the `started` one (read from a log of a two-case family that skipped
+# whole: each case left its `started` line, a `: Test skipped` note and
+# `Test Case '-[Target.Class testMethod]' skipped (N seconds).`). That line
+# is what a skip is counted from, read beside the other two and its status
+# kept the same way. The summary's `with 2 tests skipped and` is no count of
+# cases: the same log carried it three times, once for each suite that
+# closed over the two cases — their class, its bundle and the selection.
 set +e
 SEQ_MATCHES="$(command grep -oE "Test Case '-\[[A-Za-z0-9_.]+ [A-Za-z0-9_]+\]' started" "$LOG_SAFE")"
 SEQ_STATUS=$?
 PARALLEL_MATCHES="$(command grep -oE '^\[[0-9]+/[0-9]+\] Testing [A-Za-z0-9_.]+/[A-Za-z0-9_]+' "$LOG_SAFE")"
 PARALLEL_STATUS=$?
+SKIP_MATCHES="$(command grep -oE "Test Case '-\[[A-Za-z0-9_.]+ [A-Za-z0-9_]+\]' skipped" "$LOG_SAFE")"
+SKIP_STATUS=$?
 set -e
 SELECTION_UNREADABLE=0
 case "$SEQ_STATUS" in 0|1) ;; *) SELECTION_UNREADABLE=1 ;; esac
 case "$PARALLEL_STATUS" in 0|1) ;; *) SELECTION_UNREADABLE=1 ;; esac
+case "$SKIP_STATUS" in 0|1) ;; *) SELECTION_UNREADABLE=1 ;; esac
 if [ "$SELECTION_UNREADABLE" -eq 1 ]; then
-  echo "!! cannot read the log at $LOG to find which test cases swift test selected (a read's exit status was neither 0 nor 1) — refusing to judge a run from a log this script cannot read" >&2
-  echo "==> FAIL (runner exit=1, swift test exit=$STATUS)  failure-lines=unknown  selected=unknown  log=$LOG (unreadable)"
+  echo "!! cannot read the log at $LOG to find which test cases swift test selected and which of them were skipped (a read's exit status was neither 0 nor 1) — refusing to judge a run from a log this script cannot read" >&2
+  echo "==> FAIL (runner exit=1, swift test exit=$STATUS)  failure-lines=unknown  selected=unknown  skipped=unknown  log=$LOG (unreadable)"
   exit 1
 fi
 SELECTED="$( { \
@@ -294,79 +336,120 @@ SELECTED="$( { \
     | sed -E 's/^\[[0-9]+\/[0-9]+\] Testing //'; \
   true; \
 } | sort -u )"
+# Skipped cases are de-duplicated as the selected ones are, so that the two
+# counts compared further down are counts of the same thing.
+SKIPPED="$(printf '%s\n' "$SKIP_MATCHES" | sort -u)"
 # The same fold that hid a killed grep's status behind `FAILURE_COUNT_STATUS`
 # above was still sitting here as `|| true`: measured with the count's own
 # grep SIGKILLed on this path, `$?` was 137, `|| true` swallowed it back to
 # 0, SELECTED_COUNT came back empty, and the run reported PASS with
 # `selected=`. Read the real status and shape the same way as every other
 # count taken from this log, and fail closed with `unknown` rather than pass
-# a run this script could not actually count.
+# a run this script could not actually count. The count of skipped cases is
+# taken beside it and held to the same two gates, because the verdict
+# compares the two.
 set +e
 SELECTED_COUNT=$(printf '%s\n' "$SELECTED" | command grep -c .)
 SELECTED_COUNT_STATUS=$?
+SKIPPED_COUNT=$(printf '%s\n' "$SKIPPED" | command grep -c .)
+SKIPPED_COUNT_STATUS=$?
 set -e
 case "$SELECTED_COUNT_STATUS" in 0|1) ;; *) SELECTION_UNREADABLE=1 ;; esac
+case "$SKIPPED_COUNT_STATUS" in 0|1) ;; *) SELECTION_UNREADABLE=1 ;; esac
 case "$SELECTED_COUNT" in ''|*[!0-9]*) SELECTION_UNREADABLE=1 ;; esac
+case "$SKIPPED_COUNT" in ''|*[!0-9]*) SELECTION_UNREADABLE=1 ;; esac
 if [ "$SELECTION_UNREADABLE" -eq 1 ]; then
-  echo "!! cannot read how many test case(s) swift test selected from the log at $LOG (a count's exit status was neither 0 nor 1, or its output was not a plain integer) — refusing to judge a run from a log this script cannot read" >&2
-  echo "==> FAIL (runner exit=1, swift test exit=$STATUS)  failure-lines=unknown  selected=unknown  log=$LOG (unreadable)"
+  echo "!! cannot read how many test case(s) swift test selected, or how many of them were skipped, from the log at $LOG (a count's exit status was neither 0 nor 1, or its output was not a plain integer) — refusing to judge a run from a log this script cannot read" >&2
+  echo "==> FAIL (runner exit=1, swift test exit=$STATUS)  failure-lines=unknown  selected=unknown  skipped=unknown  log=$LOG (unreadable)"
   exit 1
 fi
 
+# A run whose every selected case was skipped asserted nothing. Whether this
+# is one is settled here, while the skip count is still a number: a log with
+# a `--parallel` progress line states no count (the header's LIMIT says
+# why), so from here on SKIPPED_COUNT may hold `unknown`, which is printed
+# and never compared.
+ALL_SKIPPED=0
+if [ -n "$PARALLEL_MATCHES" ]; then
+  SKIPPED_COUNT=unknown
+elif [ "$SELECTED_COUNT" -ge 1 ] && [ "$SKIPPED_COUNT" -eq "$SELECTED_COUNT" ]; then
+  ALL_SKIPPED=1
+fi
+
 UNMATCHED=()
+INSIDE_ONLY=()
 UNREADABLE=()
 ZERO_RAN=0
-if [ -n "$FILTER_VALUE" ]; then
-  if [ "$SELECTED_COUNT" -eq 0 ] && [ "$NOMATCH_COUNT" -eq 0 ]; then
-    # Zero cases ran and swift test never said it looked. That is not
-    # necessarily a filter mismatch — a usage error (an unrecognised
-    # argument, say) also ran no case and said no such thing — so naming
-    # the filter's alternatives here would blame a guessed cause; say only
-    # what is known: no case ran, swift test's own exit status, and where
-    # to read why.
-    echo "!! 0 test case(s) ran and swift test never reported a search — swift test exited $STATUS, read $LOG" >&2
-    ZERO_RAN=1
-  else
-    ZERO_RAN=0
-    echo "==> Per-alternative counts (of $SELECTED_COUNT selected test case(s)):"
-    # A --filter value cannot carry a newline byte here — it was refused
-    # above, before swift test ran — so splitting it on `|` is nothing more
-    # than a plain `read -ra` from a here-string, and a non-empty
-    # FILTER_VALUE (guaranteed by the check this block is nested in) always
-    # splits into at least one alternative, so the loop below needs no
-    # separate zero-element guard.
-    IFS='|' read -ra ALTERNATIVES <<< "$FILTER_VALUE"
-    for ALT in "${ALTERNATIVES[@]}"; do
-      set +e
-      COUNT="$(printf '%s\n' "$SELECTED" | command grep -cE -- "$ALT")"
-      GREP_STATUS=$?
-      set -e
-      if [ "$GREP_STATUS" -eq 2 ]; then
-        echo "    '$ALT' -> unreadable by grep -E, BSD's POSIX ERE (grep exited 2) — swift test's own filter may still have matched it" >&2
-        UNREADABLE+=("$ALT")
-        continue
-      fi
-      # Status 2 above is grep -E refusing to parse the alternative — its own
-      # meaning, handled and reported as such. Any other non-0/1 status (137
-      # for a killed grep, measured with $COUNT left empty and this gate
-      # absent: `[: : integer expression expected` on the `-eq 0` check
-      # below, waved through as a passing alternative) is this script
-      # failing to read its own count, and a shape that is not a plain
-      # integer is the same failure by another door.
-      COUNT_UNREADABLE=0
-      case "$GREP_STATUS" in 0|1) ;; *) COUNT_UNREADABLE=1 ;; esac
-      case "$COUNT" in ''|*[!0-9]*) COUNT_UNREADABLE=1 ;; esac
-      if [ "$COUNT_UNREADABLE" -eq 1 ]; then
-        echo "!! cannot read how many selected test case(s) matched '$ALT' from the log at $LOG (grep's exit status was neither 0, 1 nor 2, or its output was not a plain integer) — refusing to judge a run from a log this script cannot read" >&2
-        echo "==> FAIL (runner exit=1, swift test exit=$STATUS)  failure-lines=unknown  selected=unknown  log=$LOG (unreadable)"
-        exit 1
-      fi
-      echo "    '$ALT' -> $COUNT"
-      if [ "$COUNT" -eq 0 ]; then
+if [ "$SELECTED_COUNT" -eq 0 ] && [ "$NOMATCH_COUNT" -eq 0 ]; then
+  # Zero cases ran and swift test never said it looked. That is not
+  # necessarily a filter mismatch — a usage error (an unrecognised
+  # argument, say) also ran no case and said no such thing — so naming
+  # the filter's alternatives here would blame a guessed cause; say only
+  # what is known: no case ran, swift test's own exit status, and where
+  # to read why. It is asked before the filter is looked at, not under it:
+  # a run in which no case ran asserted nothing whether or not a --filter
+  # was given, and with none there is no per-alternative count below that
+  # could notice.
+  echo "!! 0 test case(s) ran and swift test never reported a search — swift test exited $STATUS, read $LOG" >&2
+  ZERO_RAN=1
+elif [ -n "$FILTER_VALUE" ]; then
+  echo "==> Per-alternative counts (of $SELECTED_COUNT selected test case(s)):"
+  # A --filter value cannot carry a newline byte here — it was refused
+  # above, before swift test ran — so splitting it on `|` is nothing more
+  # than a plain `read -ra` from a here-string, and a non-empty
+  # FILTER_VALUE (guaranteed by the check this block is nested in) always
+  # splits into at least one alternative, so the loop below needs no
+  # separate zero-element guard.
+  IFS='|' read -ra ALTERNATIVES <<< "$FILTER_VALUE"
+  for ALT in "${ALTERNATIVES[@]}"; do
+    # swift test reads a bare name as a pattern too, so it runs every
+    # family whose name merely contains it, and counted the same way a
+    # family that is not there is reported as run through the others. A
+    # bare name — non-empty, letters, digits and underscores only — is
+    # therefore asked from the start of a target (the line's start), of a
+    # class (behind the `.`) or of a method (behind the `/`), with nothing
+    # asked of its right end, so the start of a name is still enough.
+    # Anything else is a pattern and is asked as it was given.
+    case "$ALT" in ''|*[!A-Za-z0-9_]*) ASKED="$ALT" ;; *) ASKED="(^|[./])$ALT" ;; esac
+    set +e
+    COUNT="$(printf '%s\n' "$SELECTED" | command grep -cE -- "$ASKED")"
+    GREP_STATUS=$?
+    set -e
+    if [ "$GREP_STATUS" -eq 2 ]; then
+      echo "    '$ALT' -> unreadable by grep -E, BSD's POSIX ERE (grep exited 2) — swift test's own filter may still have matched it" >&2
+      UNREADABLE+=("$ALT")
+      continue
+    fi
+    # Status 2 above is grep -E refusing to parse the alternative — its own
+    # meaning, handled and reported as such. Any other non-0/1 status (137
+    # for a killed grep, measured with $COUNT left empty and this gate
+    # absent: `[: : integer expression expected` on the `-eq 0` check
+    # below, waved through as a passing alternative) is this script
+    # failing to read its own count, and a shape that is not a plain
+    # integer is the same failure by another door.
+    COUNT_UNREADABLE=0
+    case "$GREP_STATUS" in 0|1) ;; *) COUNT_UNREADABLE=1 ;; esac
+    case "$COUNT" in ''|*[!0-9]*) COUNT_UNREADABLE=1 ;; esac
+    if [ "$COUNT_UNREADABLE" -eq 1 ]; then
+      echo "!! cannot read how many selected test case(s) matched '$ALT' from the log at $LOG (grep's exit status was neither 0, 1 nor 2, or its output was not a plain integer) — refusing to judge a run from a log this script cannot read" >&2
+      echo "==> FAIL (runner exit=1, swift test exit=$STATUS)  failure-lines=unknown  selected=unknown  skipped=unknown  log=$LOG (unreadable)"
+      exit 1
+    fi
+    echo "    '$ALT' -> $COUNT"
+    if [ "$COUNT" -eq 0 ]; then
+      # A bare name that begins no name may still sit inside one, and then
+      # swift test ran those cases for it — which is not "ran no test
+      # case", so it is kept on a list of its own. A bare name holds no
+      # pattern character, so "inside a name" is a plain substring
+      # question, and the shell answers it itself: no second read whose
+      # status would have to be judged.
+      if [ "$ASKED" != "$ALT" ] && [[ "$SELECTED" == *"$ALT"* ]]; then
+        INSIDE_ONLY+=("$ALT")
+      else
         UNMATCHED+=("$ALT")
       fi
-    done
-  fi
+    fi
+  done
 fi
 
 FAIL=0
@@ -392,6 +475,14 @@ if [ "${#UNMATCHED[@]}" -gt 0 ]; then
   echo "!! filter alternative(s) ran no test case as grep -E reads it: ${UNMATCHED[*]}" >&2
   [ "$FAIL" -eq 0 ] && FAIL=1
 fi
+if [ "${#INSIDE_ONLY[@]}" -gt 0 ]; then
+  # swift test did run cases for these, so "ran no test case" would be
+  # false of them; what is known is that none of those cases belongs to a
+  # target, class or method the name begins, which is what a bare family
+  # name is taken to mean. Say that, and how to ask for the other reading.
+  echo "!! filter alternative(s) begin no target, class or method name and were found only inside one: ${INSIDE_ONLY[*]} — a bare name is counted from the start of a name; spell it as a pattern (.*Name) to count it anywhere" >&2
+  [ "$FAIL" -eq 0 ] && FAIL=1
+fi
 if [ "${#UNREADABLE[@]}" -gt 0 ]; then
   # This checker's own grep -E could not parse the alternative; swift test
   # reads --filter in a different engine and may have matched it anyway, so
@@ -408,11 +499,18 @@ fi
 # swift test's exit status — swift test can exit 0 while an unmatched
 # --filter alternative still fails the run (or exit non-zero itself), and a
 # reader taking only the tail (the header warns against it, but it happens)
-# must not read that as green.
-if [ "$FAIL" -eq 0 ]; then
-  VERDICT=PASS
-else
+# must not read that as green. Nor may a run that asserted nothing: when
+# nothing above failed and every selected case was skipped, the word is
+# SKIPPED and the status 1, so neither a reader of the word nor a reader of
+# the status takes it for a pass. A run that failed keeps FAIL and its own
+# status, which sends nobody to read a failure as a skip.
+VERDICT=PASS
+if [ "$FAIL" -ne 0 ]; then
   VERDICT=FAIL
+elif [ "$ALL_SKIPPED" -eq 1 ]; then
+  echo "!! all $SELECTED_COUNT selected test case(s) were skipped, so this run asserted nothing — the reasons are the \"Test skipped\" lines in $LOG, and a re-run skips again while they hold" >&2
+  VERDICT=SKIPPED
+  FAIL=1
 fi
-echo "==> $VERDICT (runner exit=$FAIL, swift test exit=$STATUS)  failure-lines=$FAILURE_COUNT  selected=$SELECTED_COUNT  log=$LOG"
+echo "==> $VERDICT (runner exit=$FAIL, swift test exit=$STATUS)  failure-lines=$FAILURE_COUNT  selected=$SELECTED_COUNT  skipped=$SKIPPED_COUNT  log=$LOG"
 exit $FAIL

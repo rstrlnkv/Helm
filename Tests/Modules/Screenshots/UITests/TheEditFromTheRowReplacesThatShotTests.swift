@@ -6,8 +6,8 @@ import XCTest
 import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
-/// **«Edit» on a shot of the row opens the editor on that shot, and «Done» replaces that shot's file and no other;
-/// the shots beside it are as they were.** Real files in a scratch folder written by the module's own writer, a Trash
+/// **«Edit» on a shot of the row opens the editor on that shot, and «Done» on a marked edit replaces that shot's file
+/// and no other; the shots beside it are as they were.** Real files in a scratch folder written by the module's own writer, a Trash
 /// that is a folder, the controller as the running app builds it, an overlay built and worked by hand. Three shots are
 /// taken, the row is opened and the middle one is edited; what is read afterwards is every file's bytes, every
 /// shot's reading, the Trash's own list and what the window holds.
@@ -133,9 +133,10 @@ final class TheEditFromTheRowReplacesThatShotTests: XCTestCase {
         XCTAssertEqual(try bytes(last), before.1)
     }
 
-    /// The person closes the shot that is being opened in the editor, between the press and the editor's coming up.
-    func testAShotClosedWhileTheEditorIsOpeningTakesNoOtherShotAndLeavesNoHold() async throws {
-        let s = try scene()
+    /// The person closes the shot that is being opened in the editor, between the press and the editor's coming up. The
+    /// editor opens on the picture it was pressed on all the same; the list no longer holds the shot by then, so nothing is
+    /// held aside for it and nothing can come back.
+    private func closedWhileOpening(_ s: PileScene) async throws -> [ShotToastModel.Shot] {
         let shots = try await three(s)
         let (first, last) = (try XCTUnwrap(shots[0].file), try XCTUnwrap(shots[2].file))
         s.capture.hold()
@@ -143,13 +144,46 @@ final class TheEditFromTheRowReplacesThatShotTests: XCTestCase {
         await waitUntil("the freeze is held open") { s.capture.isHeld }
         s.toast.model.focus = shots[1].id
         s.toast.close()
-        XCTAssertEqual(files(s), [first, last])
+        XCTAssertEqual(files(s), [first, last], "the control: the shot that was pressed is closed")
         s.capture.release()
         await waitUntil("the editor opened") { s.editors == 1 }
+        XCTAssertEqual(s.editors, 1, "the editor did not open on the shot that was closed")
         XCTAssertEqual(files(s), [first, last], "an unknown shot took another with it")
+        return shots
+    }
+
+    /// Return with no mark and the whole area is no change, and a shot the person closed does not come back from it
+    /// either: the count is the two that stayed, and no edit was written as a shot.
+    func testAShotClosedWhileTheEditorIsOpeningTakesNoOtherShotAndLeavesNoHold() async throws {
+        let s = try scene()
+        let shots = try await closedWhileOpening(s)
         try await finish(s, .confirm)
         XCTAssertFalse(s.toast.holds.contains(.editor), "an editor that took no shot left a hold behind")
-        XCTAssertEqual(s.toast.model.shots.count, 3, "the edit of the shot that was closed came back as a shot")
+        XCTAssertEqual(s.toast.model.shots.count, 2, "the shot that was closed came back, or its edit came back as a shot")
+        XCTAssertEqual(s.toast.model.shots.map(\.id), [shots[0].id, shots[2].id])
+        XCTAssertEqual(s.trash.asked, [], "an edit that changed nothing asked the Trash")
+    }
+
+    func testEscOnAShotClosedWhileTheEditorIsOpeningBringsNothingBack() async throws {
+        let s = try scene()
+        let shots = try await closedWhileOpening(s)
+        try XCTUnwrap(s.overlay).perform(.close)
+        await waitUntil("the editor was closed") { !s.controller.isBusy }
+        XCTAssertFalse(s.toast.holds.contains(.editor), "an editor that took no shot left a hold behind")
+        XCTAssertEqual(s.toast.model.shots.map(\.id), [shots[0].id, shots[2].id], "the shot that was closed came back")
+    }
+
+    /// The same shot with a mark on it: that edit does replace the file of the shot that was closed, and arrives as a
+    /// shot of its own, the newest.
+    func testTheMarkedEditOfAShotThatWasClosedWhileTheEditorWasOpeningStillArrivesAsAShot() async throws {
+        let s = try scene()
+        let shots = try await closedWhileOpening(s)
+        let (first, middle, last) = (try XCTUnwrap(shots[0].file), try XCTUnwrap(shots[1].file), try XCTUnwrap(shots[2].file))
+        draw(s)
+        try await finish(s, .confirm)
+        XCTAssertFalse(s.toast.holds.contains(.editor), "an editor that took no shot left a hold behind")
+        XCTAssertEqual(s.trash.moved, [middle], "the edit of the closed shot did not replace its file")
+        XCTAssertEqual(files(s), [first, last, middle], "the edit of the shot that was closed did not come as a shot")
     }
 
     // MARK: The edge of the row
@@ -168,22 +202,26 @@ final class TheEditFromTheRowReplacesThatShotTests: XCTestCase {
         XCTAssertTrue(s.toast.model.shown)
     }
 
-    func testACancelledEditLeavesEveryFileAsItWasTheShotOutOfTheWindowAndTheLifeRunning() async throws {
+    /// The shot that went into the editor leaves the window for as long as the editor is open, and a cancel brings that
+    /// same shot back to the place it stood at, with the group's life running from then.
+    func testACancelledEditLeavesEveryFileAsItWasAndTheShotBackInTheWindowAtItsPlaceWithTheLifeRunning() async throws {
         let s = try scene()
         let shots = try await three(s)
         let urls = try shots.map { try XCTUnwrap($0.file) }
         let before = try urls.map { try bytes($0) }
         try await edit(s, shots[1], opened: 1, drawing: false)
         XCTAssertTrue(s.toast.holds.contains(.editor))
+        XCTAssertEqual(files(s), [urls[0], urls[2]], "the control: the shot that went into the editor is still in the window")
         try XCTUnwrap(s.overlay).perform(.close)
         await waitUntil("the editor was closed") { !s.controller.isBusy }
         XCTAssertEqual(s.trash.asked, [], "a cancel replaced a file")
         XCTAssertEqual(try urls.map { try bytes($0) }, before, "a cancel changed a file")
         XCTAssertEqual(names(s.desktop).count, 3)
         XCTAssertFalse(s.toast.holds.contains(.editor), "the editor is closed and its hold stays")
-        XCTAssertEqual(files(s), [urls[0], urls[2]], "the shot that went into the editor is not in the window")
+        XCTAssertEqual(files(s), urls, "the shot that went into the editor is not back in the window at its place")
+        XCTAssertEqual(s.toast.model.shots.map(\.id), shots.map(\.id), "the shot that came back is not the same shot")
         XCTAssertFalse(s.toast.advance(by: 4.5))
-        XCTAssertTrue(s.toast.advance(by: 0.5), "the life of what is left did not run once the editor was closed")
+        XCTAssertTrue(s.toast.advance(by: 0.5), "the life of the group did not run once the editor was closed")
     }
 
     // MARK: A stranger under the name

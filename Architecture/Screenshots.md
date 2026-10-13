@@ -116,8 +116,11 @@ renamed or deleted before Done: the edit takes the first name of the ladder, the
 and is what the move then finds there (`.changed`). The after-shot window does not say which:
 the file gone or changed, in either of the gate's words for it, and the folder's refusal share
 one sentence («moved or changed … saved as a separate file»); the gate's other reasons
-and the Trash's have their own. A shot that had no file replaces nothing: it is saved as a new
-shot, or only copied under the clipboard target, as any shot is.
+and the Trash's have their own. A shot that had no file replaces nothing: when the edit changes
+something it is saved as a new shot, or only copied under the clipboard target, as any shot is. **Esc and a
+Return that changed nothing write nothing:** Esc, and Return with no layer and the area still the whole picture, give
+the shot back to the after-shot window as it was, at its place in the group (`ShotToast.editorClosed`), and so does
+⌘C of a shot that has a file, which copies the edit and replaces nothing.
 
 After a drag is released the overlay does not finish: it becomes the inline editor of
 that area, a second phase of the same panel, and the picture under the layers is never
@@ -351,7 +354,7 @@ the old one) or when another reading has begun since (`serial`). A reading that 
 
 The seam is split by what was picked. An area arrives as `OverlayResult.edited`, and
 `CaptureController.overlayFinished` in `Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`
-composes it and calls `CaptureController.handOff` with what the exit asked for: Return
+composes it and calls `CaptureController.handOff` with what the exit asked for, except for the exits of an Edit that leave its shot as it was (`ShotToast.editorClosed`): Return
 copies and saves by the save target as it always did, the copy key only copies, the
 save key only saves — to the macOS folder when the target is the clipboard — and Share…, from the ⋯ menu, does what
 Return does and then opens the system's sheet at the thumbnail (`thenShare`). A window or a
@@ -361,7 +364,8 @@ close at once, with layers the first press shows a plate and a second closes how
 late, and any other input withdraws the question; no clock is read.
 
 The after-shot window (`ShotToast` in `Sources/Modules/Screenshots/UI/ShotToast.swift`) holds a list of shots, oldest
-first and never more than `ShotShelf.limit`: the shot past the limit pushes the oldest out, with the full picture it held if it was
+first except that a shot the editor gives back stands at the index it left, whatever has left the list since, and never more than
+`ShotShelf.limit`: the shot past the limit pushes the oldest out, with the full picture it held if it was
 only copied. One shot is the bare picture; a shot taken while another is still up joins it, and the group is a pile in the corner
 with a counter, which a click unfolds into a row reaching leftward, `ShotShelf.visible` shots wide, scrolled past that and resting
 on whole shots, with «N more» on the farthest shot seen whole. Where each sheet of the pile and each slot of the row stands, what

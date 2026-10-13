@@ -15,9 +15,12 @@ import Module_Screenshots_Engine
 final class PileBoard: ShotPasteboard, @unchecked Sendable {
     private let lock = NSLock()
     private var _singles = 0
+    private var _pngs: [Data] = []
     private var _lists: [[Data]] = []
     private var _accepts = true
     var singles: Int { lock.withLock { _singles } }
+    /// What every single copy carried, in the order of the copies.
+    var pngs: [Data] { lock.withLock { _pngs } }
     var lists: [[Data]] { lock.withLock { _lists } }
     var accepts: Bool {
         get { lock.withLock { _accepts } }
@@ -27,6 +30,7 @@ final class PileBoard: ShotPasteboard, @unchecked Sendable {
         lock.withLock {
             guard _accepts else { return .refused }
             _singles += 1
+            _pngs.append(png)
             return .accepted
         }
     }
@@ -116,6 +120,8 @@ final class PileScene {
     let capture: PileFrames
     let desktop: URL
     let frames: [FrozenDisplay]
+    /// The module's settings, in memory: a test that needs another save target sets it here.
+    let store: NamespacedStore
     private final class Box { var overlay: CaptureOverlay?; var count = 0 }
     private let box = Box()
     var editors: Int { box.count }
@@ -142,6 +148,7 @@ final class PileScene {
         trash = AsideTrash(aside)
         capture = PileFrames(Freeze(displays: frames.map { .image($0) }, windows: []))
         let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore())
+        self.store = store
         store.set(true, for: ScreenshotsSettings.Key.thumbnail)
         store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let session = CaptureSession(capture: capture, writer: FileShotWriter(), trash: trash, pasteboard: board,

@@ -313,6 +313,30 @@ struct CapturedShot {
     struct ShotEdit {
         let shown: PictureOnScreen
         let original: WrittenShot?
+
+        /// What an exit of the editor does with the shot it was opened on. **`unchanged`**: Esc, and Return with no layer
+        /// and the area still the whole picture. Nothing is written, copied or trashed, and the shot goes back to the
+        /// window as it was (`ShotToast.editorClosed`). **`copied`**: ⌘C of a shot that has a file, which copies the edit and
+        /// replaces nothing (`CaptureSession.deliver`): the shot goes back as it was, and the copy is all that is done.
+        /// **`replaced`**: every other exit. The shot is let go, and what the exit makes of it arrives as a new shot, a pin
+        /// and a refused write making none.
+        enum End { case unchanged, copied, replaced }
+
+        func end(of result: OverlayResult) -> End {
+            switch result {
+            case .cancelled:
+                return .unchanged
+            case .edited(let display, let local, let layers, let exit):
+                // No `default:`: a new exit must say here what it does to the shot, or it would replace it.
+                switch exit {
+                case .confirm: return layers.isEmpty && display == shown.display && local == shown.rect ? .unchanged : .replaced
+                case .copy: return original == nil ? .replaced : .copied
+                case .save, .share, .pin: return .replaced
+                }
+            case .window, .wholeDisplay:
+                return .replaced
+            }
+        }
     }
 
     /// The thumbnail's click and the capsule's Edit: the palette round the finished picture. One capture at a time,
@@ -389,12 +413,14 @@ struct CapturedShot {
             bar.model.hasTarget = false
             bar.close()
         }
-        // The panels stay for the flash of a shot that is taken (and close at once for the rest); the delivery
-        // below does not wait for them, since its picture is the freeze's or the window's own.
-        overlay?.close(after: result)
+        let end = editing?.end(of: result)
+        // The panels stay for the flash of a shot that is taken, ⌘C of a saved shot among them; they close at once for
+        // the rest, a Return that changed nothing among them. The delivery below does not wait for them, since its
+        // picture is the freeze's or the window's own.
+        if end == .unchanged { overlay?.close() } else { overlay?.close(after: result) }
         flashing = overlay?.leaving == true ? overlay : nil
         overlay = nil
-        if editing != nil { toast.editorClosed() }
+        if let end { toast.editorClosed(givingBack: end != .replaced) }
         deliveryTask = Task {
             // Asked at the start and after every wait: a delivery cancelled by the
             // module's switch must reach neither the disk nor the clipboard.
@@ -403,6 +429,8 @@ struct CapturedShot {
             case .cancelled:
                 break
             case .edited(let display, let local, let layers, let exit):
+                // A Return that changed nothing has nothing to write, copy or trash, and its shot is back in the window.
+                guard end != .unchanged else { break }
                 let image: CGImage?
                 if let editing {
                     // The picture's own pixels, and an area on the display it was shown on: any other display's
@@ -417,6 +445,8 @@ struct CapturedShot {
                 if let image, !Task.isCancelled {
                     // No `default:`: a new exit must say here what it does, or it would be a save.
                     switch exit {
+                    case .copy where end == .copied:
+                        await copy(image)
                     case .confirm, .copy, .save, .share:
                         await handOff(CapturedShot(image: image, kind: .area),
                                       saves: exit != .copy, copies: exit != .save,
@@ -518,7 +548,8 @@ struct CapturedShot {
     /// and the order of that replacement is the session's (`CaptureSession.deliver(…replacing:)`), not this
     /// type's. No shutter, since no picture was taken, and the thumbnail comes back whatever the setting says,
     /// since it is where the edit was asked for. A shot that had no file replaces nothing: it is saved as a new one,
-    /// or only copied under the clipboard target, as any shot is.
+    /// or only copied under the clipboard target, as any shot is. **The exits that leave the shot as it was do not come
+    /// here** (`ShotEdit.End`): Esc and a Return that changed nothing deliver nothing, and ⌘C of a shot that has a file is `copy`.
     func handOff(_ shot: CapturedShot, saves: Bool = true, copies: Bool = true,
                  fileEvenFromClipboard: Bool = false, thenShare: Bool = false, editing: ShotEdit? = nil) async {
         guard !Task.isCancelled else { return }
@@ -537,10 +568,14 @@ struct CapturedShot {
     private func copyFromThumbnail() {
         guard let image = toast.fullPicture() else { toast.showRefusal(.encoding); return }
         copyTask?.cancel()
-        copyTask = Task {
-            let delivery = await session.deliver(image, saves: false, copies: true)
-            if !Task.isCancelled, let refusal = delivery.refusals.first { toast.showRefusal(refusal) }
-        }
+        copyTask = Task { await copy(image) }
+    }
+
+    /// A picture to the clipboard and nothing else: the only thing said is a refusal. The capsule's Copy, and the editor's
+    /// ⌘C of a shot that has a file, whose shot is back in the window by then.
+    private func copy(_ image: CGImage) async {
+        let delivery = await session.deliver(image, saves: false, copies: true)
+        if !Task.isCancelled, let refusal = delivery.refusals.first { toast.showRefusal(refusal) }
     }
 
     /// The pile's Copy All: every finished shot of the group to the clipboard in one write.
