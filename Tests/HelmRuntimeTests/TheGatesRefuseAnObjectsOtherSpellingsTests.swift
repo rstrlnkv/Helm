@@ -3,47 +3,46 @@ import HelmTestSupport
 @testable import HelmRuntime
 
 /// A removal gate is asked about a string, and the filesystem acts on an
-/// object. Two gates, `RemovableScope` and `UserFileScope`, judge the string
-/// by prefixes, depth and the `.app` suffix, so an object that is refused
-/// under one spelling is refused under another only if the gate reads the
-/// other spelling as the same object. Five spellings that a judge of names
-/// could pass, each held here as refused:
+/// object. Two gates, `RemovableScope` and `UserFileScope`, judge a name by
+/// prefixes, depth and the `.app` suffix, and both take the name from one
+/// reading of what the kernel says the string names
+/// (`PathCanonical.readingForRemoval`). Five spellings that a judge of the
+/// letters of a path could pass, each held here as refused:
 ///
-/// - **a relative path.** `PathCanonical.resolvingAncestors` hands one back
-///   untouched, and whatever acts on it resolves it against the process's
-///   working directory. `RemovableScope` refuses a path that does not start
-///   at `/` before it resolves anything, and `UserFileScope` one that is still
-///   relative once `standardizingPath` has been through it.
+/// - **a relative path.** It names an object only against the working
+///   directory, which no gate is told. The reading gives a string that does
+///   not start at `/` as typed no name, `~` included, both gates refuse it, and
+///   `PathCanonical.resolvingAncestors` hands one back untouched.
 /// - **the forbidden folder with its last component in another case.** The
-///   boot volume is case-insensitive, and `PathCanonical.resolvingAncestors`
-///   restores the case of the folders above the last component and never of
-///   the last, so the folder itself is the one spelling whose case nothing
-///   restores. Both gates compare component by component, without regard to
-///   case, through `PathCanonical.isAtOrBelow`: `RemovableScope` its
-///   `forbidden` list, `UserFileScope` its protected prefixes, the home
-///   directory and `/Volumes`. The fold is `.caseInsensitive`, not
-///   `lowercased()`: the volume reads a long s, U+017F, as `s`, which
-///   `lowercased()` leaves alone.
+///   boot volume is case-insensitive. The reading gives every level that is
+///   there the case the disk holds; a last component that is no directory, a
+///   tail that is not there and a place on a list that is not on this Mac keep
+///   the case that was typed. Both gates compare component by component,
+///   without regard to case, through `PathCanonical.isAtOrBelow`:
+///   `RemovableScope` its `forbidden` list, `UserFileScope` its protected
+///   prefixes, the home directory and `/Volumes`. The fold is
+///   `.caseInsensitive` (`PathCanonical.isAtOrBelow` says why not
+///   `lowercased()`). The rows below that ask a gate about a folder spelled
+///   with a long s do not hold that choice: the folder is there, the reading
+///   gives it the disk's spelling, and the comparison is handed no long s. The
+///   row that holds the choice asks `PathCanonical.isAtOrBelow` itself, with
+///   components that carry a long s
+///   (`testThePredicateFoldsALongSAsTheVolumeDoesAndOnlyThat`).
 /// - **a `/.vol/<device>/<inode>` path.** Under that prefix the kernel
 ///   answers for an object by its device and inode; nothing is mounted there,
-///   and the rows below call the prefix the mount.
-///   `PathCanonical.resolvingAncestors` resolves a folder named that way when
-///   a component follows it and never the last one, so the object itself is
-///   three components with no name in them. Both gates refuse a path whose
-///   first component left at the root is `.vol` in any case, the path read
-///   left to right with each `.` dropped and each `..` popping the name before
-///   it, asked of the spelling as given (`UserFileScope` hands it the path as
-///   it came in, not its standardized form) and of the one
-///   `resolvingAncestors` made of it (`PathCanonical.beginsWithAKernelPrefix`,
-///   which asks the same of the two prefixes below).
+///   and the rows below call the prefix the mount. Both gates refuse a path
+///   whose first component left at the root is `.vol` in any case, the path
+///   read left to right with each `.` dropped and each `..` popping the name
+///   before it, asked of the string as typed before the kernel is asked and,
+///   after, of the name the reading made of it less a `/private` in front
+///   (`PathCanonical.beginsWithAKernelPrefix`, which asks the same of the two
+///   prefixes below; `TheGatesTakeOneReadingOfTheObjectTests` holds the
+///   prefix behind `/private`).
 /// - **a `/.nofollow/<path>` or `/.resolve/<n>/<path>` path.** The kernel
-///   answers either with the object `/<path>` names, or with an error where
-///   the prefix forbids the way there (a link in `<path>` under `/.nofollow`;
-///   some numbers `n` whatever follows), and `PathCanonical.resolvingAncestors`
-///   leaves the prefix in the string unless `..` in `<path>` pop it by the
-///   letters. The first component is then the name of no place, and the prefix,
-///   depth and suffix tests of a judge of names read a path of another shape
-///   than the one the kernel acts on. Both gates refuse a path that begins so,
+///   answers either with the object `/<path>` names or with an error where the
+///   prefix forbids the way there (a link in `<path>` under `/.nofollow`; some
+///   numbers `n` whatever follows), and the path it returns for the object
+///   keeps the prefix in front. Both gates refuse a path that begins so,
 ///   whatever the case of the prefix, read as above (each `.` dropped, each
 ///   `..` popping the name before it), and whatever follows it: a protected
 ///   prefix, the home directory, a top-level folder of the volume, and the
@@ -52,25 +51,21 @@ import HelmTestSupport
 ///   `/.vol/<device>/<inode>` with the object and climbs that object's real
 ///   parents for each `..` after it, behind `/.nofollow` and `/.resolve/1` as
 ///   well; a number after `/.resolve` whose flags forbid `..` answers with an
-///   error instead. When the whole string names an object that resolves,
-///   Foundation puts the object's ordinary name where the mount and its `..`
-///   stood and leaves `/.nofollow` or `/.resolve/1` in front of it. When the
-///   last component is a link to nothing, or is not there, Foundation collapses
-///   the `..` by the letters: as many of them as the prefix, the device and the
-///   inode have components pop all of it, and what is left begins with an
-///   ordinary name that is not the object's. Both gates refuse the string in
-///   either case, because the prefix is read from the string as typed, before a
-///   `..` after it can pop it, and whatever follows it. Repeated slashes in it,
-///   and a `.` or a `..` in front of the prefix in a spelling that starts at
-///   `/`, change nothing.
+///   error instead. The letters of such a string fold otherwise. The reading
+///   folds nothing where the kernel answers: `PathCanonical.resolvingAncestors`
+///   puts the leaf in the folder the kernel climbs to. Both gates refuse the
+///   string because the prefix is read from the string as typed, before a `..`
+///   after it can pop it, and whatever follows it. Repeated slashes in it, and
+///   a `.` or a `..` in front of the prefix in a spelling that starts at `/`,
+///   change nothing.
 ///
-/// One more spelling is held as judged by what it names and not refused as a
-/// string. A file reference URL writes its object as
-/// `/.file/id=<volume>.<inode>`; the kernel does not answer for that string,
-/// because `/.file` is a file, and `URL(fileURLWithPath:)` turns it into the
-/// object's real path. So does `PathCanonical.resolvingAncestors`, and the
-/// gates judge the object by its name: one test holds that the protected
-/// objects stay refused when written so.
+/// One more spelling is refused as a string the kernel takes for no path. A
+/// file reference URL writes its object as `/.file/id=<volume>.<inode>`; the
+/// kernel does not answer for that string, because `/.file` is a file, so the
+/// reading gives it no name, `PathCanonical.resolvingAncestors` hands it back
+/// as typed, and both gates refuse it whatever it would name. One test here
+/// holds that the protected objects stay refused when written so, and
+/// `TheGatesTakeOneReadingOfTheObjectTests` holds the rest.
 ///
 /// **How the subject is made real.** A relative path names an object only
 /// against a working directory, and that is the process's, shared by every
@@ -544,29 +539,74 @@ final class TheGatesRefuseAnObjectsOtherSpellingsTests: XCTestCase {
         }
     }
 
-    /// The mount reached through `.` and `..`. `resolvingAncestors` collapses
-    /// them and turns the folder into its real path, so the resolved spelling
-    /// of the bundle is the bundle by its ordinary name — asserted below — and
-    /// the refusal rests on the spelling as given, read left to right with each
-    /// `.` dropped and each `..` popping the name before it. What `lstat` says
-    /// of the dotted spelling is printed.
+    /// `PathCanonical.isAtOrBelow` handed the components of two paths, one with a
+    /// long s (U+017F) in a name, which the volume reads as `s`: the list with the
+    /// long s is at or below the plain folder's, at the same length and longer,
+    /// because the fold is `.caseInsensitive`, and `lowercased()` leaves a long s
+    /// alone. A name that differs by more than case, and a list shorter than the
+    /// folder's, are not. No file system is asked, so no reading can give the
+    /// predicate a plain `s` first.
+    func testThePredicateFoldsALongSAsTheVolumeDoesAndOnlyThat() {
+        let longS = String(UnicodeScalar(0x017F as UInt32)!)
+        XCTAssertNotEqual(longS.lowercased(), "s", "a lowered long s is an s; the subject did not occur")
+        func parts(_ path: String) -> [Substring] { path.split(separator: "/") }
+        let folded = [("/cores", "/core\(longS)/x"), ("/cores", "/core\(longS)"), ("/cores", "/Core\(longS)"),
+                      ("/Applications/Utilities", "/Applications/utilitie\(longS)/Foo.app"),
+                      ("/Applications/Utilities", "/APPLICATION\(longS)/Utilitie\(longS)")]
+        for (folder, spelling) in folded {
+            XCTAssertTrue(PathCanonical.isAtOrBelow(parts(spelling), parts(folder)),
+                          "\(spelling.debugDescription) (bytes \(KernelsOwnName.hex(spelling))) reads as "
+                          + "\(folder) or a place below it on the volume and the predicate does not say it is at or below it")
+        }
+        let notFolded = [("/cores", "/core\(longS)z/x"), ("/cores", "/corez"), ("/cores", "/core"),
+                         ("/cores", "/core\(longS)\(longS)"), ("/cores/x", "/core\(longS)"),
+                         ("/cores", "/other/core\(longS)")]
+        for (folder, spelling) in notFolded {
+            XCTAssertFalse(PathCanonical.isAtOrBelow(parts(spelling), parts(folder)),
+                           "\(spelling.debugDescription) (bytes \(KernelsOwnName.hex(spelling))) differs from "
+                           + "\(folder) by more than case and the predicate says it is at or below it")
+        }
+    }
+
+    /// The mount reached through `.` and `..`, or a doubled separator, in front
+    /// of `.vol`. The kernel takes none of these strings for the mount: `lstat`
+    /// of each answers that nothing is there (printed, and asserted below
+    /// against the mount's own spelling, which reaches the bundle). So each
+    /// names nothing; the reading climbs to `/.vol`, a folder at the root that
+    /// the kernel answers for under each of these spellings and the deepest
+    /// level that answers, and is a path to nothing whose name is that folder
+    /// and the rest of the string by its letters, that is the mount's own
+    /// spelling. `resolvingAncestors`, its projection, gives that string. Both
+    /// gates refuse each one, because the string begins in the mount when read
+    /// left to right with each `.` dropped and each `..` popping the name before it.
     func testTheMountReachedThroughDotAndDotDotIsRefusedByBothGates() throws {
         let scratch = try scratchFolderWithABundle()
         let homeMount = try volfsSpelling(of: homePath)
-        for prefix in ["/.", "/Applications/..", "/System/../Applications/.."] {
+        XCTAssertNotNil(identity(of: scratch.mount + "/Foo.app").object,
+                        "the mount's own spelling does not reach the bundle; the subject did not occur")
+        for prefix in ["/.", "/Applications/..", "/System/../Applications/..", "/"] {
             let bundle = prefix + scratch.mount + "/Foo.app"
             let resolved = PathCanonical.resolvingAncestors(bundle)
             let app = RemovableScope.isRemovable(bundle, home: scratch.folder.path)
             print("[gates] mount dotted: \(bundle.debugDescription): lstat \(reach(bundle)); "
                   + "resolvingAncestors \(resolved.debugDescription); RemovableScope.isRemovable = \(app)")
-            XCTAssertEqual(resolved, PathCanonical.resolvingAncestors(scratch.bundle.path),
-                           "the dotted spelling does not resolve to the bundle's ordinary name")
+            XCTAssertNil(identity(of: bundle).object, "the kernel takes \(bundle) for the bundle; the subject did not occur")
+            let reading = PathCanonical.reading(of: bundle)
+            XCTAssertEqual(reading.standing, .nothingThere, "\(bundle) names nothing, so it is a path to nothing")
+            XCTAssertNil(reading.object, "\(bundle) names an object")
+            XCTAssertTrue(reading.name.utf8.elementsEqual((scratch.mount + "/Foo.app").utf8),
+                          "the reading names \(bundle) \(reading.name.debugDescription), not the mount's spelling")
+            XCTAssertTrue(resolved.utf8.elementsEqual((scratch.mount + "/Foo.app").utf8),
+                          "the projection of \(bundle) is \(resolved.debugDescription), not the mount's spelling")
+            XCTAssertNil(PathCanonical.readingForRemoval(bundle).judgedName, "the gates' entry names \(bundle)")
             XCTAssertFalse(app, "\(bundle) names a bundle by number through . and .. and is removable")
 
             let home = prefix + homeMount
             let user = UserFileScope.isRemovable(home)
             print("[gates] mount dotted: \(home.debugDescription): lstat \(reach(home)); "
                   + "UserFileScope.isRemovable = \(user)")
+            XCTAssertNil(identity(of: home).object, "the kernel takes \(home) for the home directory; the subject did not occur")
+            XCTAssertNil(PathCanonical.readingForRemoval(home).judgedName, "the gates' entry names \(home)")
             XCTAssertFalse(user, "\(home) names the home directory by number through . and .. and is removable")
         }
     }
@@ -723,10 +763,12 @@ final class TheGatesRefuseAnObjectsOtherSpellingsTests: XCTestCase {
     // MARK: - A spelling the volume folds onto the same name
 
     /// The forbidden folder's last component with a long s (U+017F), which the
-    /// volume may read as `s` where `lowercased()` and a compare of the exact
-    /// string do not and `compare(options: .caseInsensitive)`, which
-    /// `PathCanonical.isAtOrBelow` makes, does. When the volume does not, the
-    /// spelling names another object or none, and the test skips and says which.
+    /// volume may read as `s`. Where it does, the spelling names the folder,
+    /// the reading gives it the name the disk holds, and the gate refuses that
+    /// name; the comparison in `PathCanonical.isAtOrBelow` is handed no long s,
+    /// so this row passes whichever way that comparison folds. When the volume
+    /// does not read it so, the spelling names another object or none, and the
+    /// test skips and says which.
     func testTheForbiddenFolderSpelledWithALongSIsRefusedWhereTheVolumeReadsItAsTheFolder() throws {
         let folder = "/Applications/Utilities"
         guard let named = identity(of: folder).object else { throw XCTSkip("\(folder) is not on this Mac") }
@@ -751,12 +793,10 @@ final class TheGatesRefuseAnObjectsOtherSpellingsTests: XCTestCase {
     }
 
     /// The home directory with its name spelled with long s in place of `s`.
-    /// `UserFileScope` compares the home directory component by component
-    /// through `PathCanonical.isAtOrBelow`, which folds a long s as the volume
-    /// reads it; a compare of lowered strings would pass this spelling,
-    /// because `lowercased()` leaves a long s alone. `resolvingAncestors` restores the case of the
-    /// folders above the last component and never of the last, which is where
-    /// the home's name stands.
+    /// Where the volume reads that as the home, the reading gives it the name
+    /// the disk holds and `UserFileScope` refuses the home by that name; the
+    /// comparison in `PathCanonical.isAtOrBelow` is handed no long s, so this
+    /// row passes whichever way that comparison folds.
     func testTheHomeDirectorySpelledWithALongSIsRefusedByTheUserGateWhereTheVolumeReadsItAsTheHome() throws {
         let leaf = (homePath as NSString).lastPathComponent
         let parent = (homePath as NSString).deletingLastPathComponent
@@ -1151,9 +1191,12 @@ final class TheGatesRefuseAnObjectsOtherSpellingsTests: XCTestCase {
     /// there, nothing is named: `lstat` of the spelling must answer that it is
     /// not there, while the spelling cut short of the leaf must give the
     /// scratch `Sub`. A Mac whose kernel answers otherwise skips the test. In
-    /// both, the folder `resolvingAncestors` puts the leaf in is asserted not
-    /// to be that `Sub`, which is the case where a gate judges a name that is
-    /// not the object's.
+    /// both, the reading names the leaf as the kernel does, by bytes (the
+    /// kernel's name for the folder the spelling climbs to, `/`, the typed
+    /// leaf), its standing is the object's for a link and a path to nothing for
+    /// a leaf that is not there, and `resolvingAncestors`, its projection, puts
+    /// the leaf in that `Sub`: the folder the kernel climbs to, not the one the
+    /// letters of the spelling would fold to.
     private func proveTheClimb(_ climb: Climb, leaf: String, linkToNothing: Bool) throws -> String {
         let spelling = climb.spelling(leaf)
         let object = climb.object(leaf)
@@ -1179,8 +1222,15 @@ final class TheGatesRefuseAnObjectsOtherSpellingsTests: XCTestCase {
                               + "or \(leaf) is there")
             }
         }
-        XCTAssertNotEqual(identity(of: judgedFolder).object, sub,
-                          "\(spelling) resolves to the object's own folder, so no gate judges another name")
+        XCTAssertEqual(identity(of: judgedFolder).object, sub,
+                       "\(spelling) is judged in \(judgedFolder.debugDescription), not in the object's own folder")
+        let reading = PathCanonical.reading(of: spelling)
+        let standing: PathCanonical.Reading.Standing = linkToNothing ? .object : .nothingThere
+        XCTAssertEqual(reading.standing, standing, "\(spelling) is read as \(reading.standing)")
+        let kernelsName = KernelsOwnName.name(of: spelling)
+        XCTAssertNotNil(kernelsName, "the kernel gave \(spelling) no name")
+        XCTAssertTrue(kernelsName.map { reading.name.utf8.elementsEqual($0.utf8) } ?? false,
+                      "the reading names \(spelling) \(reading.name.debugDescription), the kernel \(kernelsName.debugDescription)")
         return spelling
     }
 
@@ -1418,7 +1468,7 @@ final class TheGatesRefuseAnObjectsOtherSpellingsTests: XCTestCase {
     /// The test proves that Foundation reaches the object, then asserts that
     /// both gates refuse the protected ones; the scratch bundle's answers are
     /// printed beside the answers for its name.
-    func testAFileReferencePathIsJudgedAsTheObjectItNames() throws {
+    func testAFileReferencePathOfAProtectedObjectIsRefusedByBothGates() throws {
         let folder = scratchHome()
         let bundle = folder.appendingPathComponent("Foo.app")
         try FileManager.default.createDirectory(at: bundle, withIntermediateDirectories: true)
@@ -1468,5 +1518,144 @@ final class TheGatesRefuseAnObjectsOtherSpellingsTests: XCTestCase {
             XCTAssertFalse(insideUser, "\(inside) names something inside \(subject.path) and UserFileScope accepts it")
         }
         XCTAssertGreaterThan(asked, 0, "Foundation reached no object through a file reference path")
+    }
+}
+
+// MARK: - One answer for one object
+
+/// For every spelling of an existing object, each gate answers as it does for
+/// the object's own name. The own name is what the kernel returns
+/// (`KernelsOwnName`), not what the letters of the string make of it. Two kinds
+/// of spelling are refused instead, whatever the own name's answer, and a row
+/// that has one names it: a string that begins with a kernel prefix (the
+/// mount), and a string the kernel takes for no object. Every other spelling
+/// is held to the own name's answer, and its reading is asserted to be an
+/// object first, so the answer is not excused by a reading that gave it no
+/// name.
+extension TheGatesRefuseAnObjectsOtherSpellingsTests {
+
+    private func assertTheOwnAnswerOrRefused(_ spellings: [String], ownName: String, home: URL,
+                                             _ tag: String, refused: Set<String> = []) {
+        for gate in [Gate.user, Gate.app] {
+            let own = asks(gate, ownName, home: home.path)
+            for spelling in spellings {
+                let answer = asks(gate, spelling, home: home.path)
+                print("[gates] one answer, \(tag): \(gate.rawValue) \(spelling.debugDescription) = \(answer); "
+                      + "by its own name \(ownName.debugDescription) = \(own)")
+                if refused.contains(spelling) {
+                    XCTAssertFalse(answer, "\(gate.rawValue) accepts \(spelling.debugDescription), which is refused "
+                                   + "whatever the object's own name \(ownName.debugDescription) answers (\(own))")
+                    continue
+                }
+                let entry = PathCanonical.readingForRemoval(spelling)
+                XCTAssertEqual(entry.standing, .object,
+                               "\(spelling.debugDescription) is not read as the object, so its answer is not "
+                               + "held to the own name's")
+                XCTAssertEqual(answer, own,
+                               "\(gate.rawValue) answers \(spelling.debugDescription) \(answer) and the object's "
+                               + "own name \(ownName.debugDescription) \(own)")
+            }
+        }
+    }
+
+    /// The spellings of a scratch folder: its name as typed, with the
+    /// `/private` the volume hides, in upper case, behind the Data volume's
+    /// firmlink, through `.`, `..`, doubled and trailing separators, through a
+    /// link to its parent and through the mount. Each is proved to name the
+    /// folder by the kernel before it is asked.
+    func testEverySpellingOfAFolderGetsThePlainNamesAnswerOrIsRefused() throws {
+        let home = scratchHome()
+        let caches = home.appendingPathComponent("Library/Caches")
+        let object = caches.appendingPathComponent("Cx/obj")
+        try FileManager.default.createDirectory(at: object, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: caches.appendingPathComponent("Cx/sub"),
+                                                withIntermediateDirectories: true)
+        XCTAssertEqual(symlink(caches.path + "/Cx", caches.path + "/toCx"), 0)
+        let ownName = try XCTUnwrap(KernelsOwnName.name(of: object.path), "the kernel gave the folder no name")
+        let plain = object.path
+        var spellings = [
+            plain, ownName, plain.uppercased(), "/System/Volumes/Data" + ownName,
+            "/PRIVATE" + (plain.hasPrefix("/var/") ? plain.uppercased() : plain),
+            caches.path + "/./Cx/obj", caches.path + "/Cx/sub/../obj", caches.path + "/Cx//obj",
+            plain + "/", plain + "//", caches.path + "/toCx/obj", caches.path + "/toCx/../Cx/obj",
+        ]
+        if let mount = try? volfsSpelling(of: plain) { spellings.append(mount) }
+        let named = identity(of: plain)
+        XCTAssertNotNil(named.object)
+        for spelling in spellings {
+            let through = identity(of: spelling, followingLinks: true)
+            XCTAssertEqual(through.object, named.object,
+                           "\(spelling.debugDescription) does not name the folder; the subject did not occur")
+        }
+        for gate in [Gate.user, Gate.app] {
+            XCTAssertTrue(asks(gate, ownName, home: home.path),
+                          "CONTROL: \(gate.rawValue) refuses the folder by its own name")
+        }
+        assertTheOwnAnswerOrRefused(spellings, ownName: ownName, home: home, "a folder",
+                                    refused: Set(spellings.filter { $0.hasPrefix("/.vol/") }))
+    }
+
+    /// `/PRIVATE/VAR`, `/PRIVATE/ETC` and `/PRIVATE/TMP` are the
+    /// objects `/private/var`, `/private/etc` and `/private/tmp`. Only asked,
+    /// never created.
+    func testPrivateVarEtcAndTmpInUpperCaseAreAnsweredAsTheirOwnNames() throws {
+        let home = scratchHome()
+        for name in ["VAR", "ETC", "TMP"] {
+            let spelling = "/PRIVATE/" + name
+            let ownName = try XCTUnwrap(KernelsOwnName.name(of: spelling), "the kernel gave \(spelling) no name")
+            let same = identity(of: spelling, followingLinks: true).object
+            XCTAssertNotNil(same)
+            XCTAssertEqual(same, identity(of: ownName, followingLinks: true).object)
+            assertTheOwnAnswerOrRefused([spelling], ownName: ownName, home: home, name)
+        }
+    }
+
+    /// `..` after a link in the middle. The kernel walks the real
+    /// parent of the link's target; the letters fold it away. A link to `/usr/bin`
+    /// puts `local/bin/<name>` under `/usr`, which `UserFileScope` refuses by its
+    /// name; a link to another folder puts `Library/Caches/app/x` outside the
+    /// folder `RemovableScope` accepts it in.
+    func testDotDotAfterALinkIsAnsweredWhereTheKernelWalks() throws {
+        let home = scratchHome()
+        XCTAssertEqual(symlink("/usr/bin", home.path + "/linkToUsr"), 0)
+        let dangling = home.appendingPathComponent("local/bin")
+        try FileManager.default.createDirectory(at: dangling, withIntermediateDirectories: true)
+        XCTAssertEqual(symlink("no-such-target", dangling.path + "/X"), 0)
+        let throughUsr = home.path + "/linkToUsr/../local/bin/X"
+        let byLetters = home.path + "/local/bin/X"
+        XCTAssertNil(identity(of: throughUsr).object, "the kernel reads \(throughUsr) as an object")
+        XCTAssertNotNil(identity(of: byLetters).object, "the folded spelling is not there; the subject did not occur")
+        let usrName = try XCTUnwrap(KernelsOwnName.name(of: "/usr/local/bin/X"), "/usr/local/bin is not there")
+        assertTheOwnAnswerOrRefused([throughUsr], ownName: usrName, home: home, "a link to /usr/bin",
+                                    refused: [throughUsr])
+
+        let elsewhere = home.appendingPathComponent("Elsewhere")
+        let landing = elsewhere.appendingPathComponent("Target")
+        let object = elsewhere.appendingPathComponent("Library/Caches/app/x")
+        try FileManager.default.createDirectory(at: landing, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: object.deletingLastPathComponent(),
+                                                withIntermediateDirectories: true)
+        XCTAssertTrue(FileManager.default.createFile(atPath: object.path, contents: Data("x".utf8)))
+        XCTAssertEqual(symlink(landing.path, home.path + "/linkToTarget"), 0)
+        let throughTarget = home.path + "/linkToTarget/../Library/Caches/app/x"
+        XCTAssertEqual(identity(of: throughTarget).object, identity(of: object.path).object,
+                       "the kernel does not walk \(throughTarget) to the file; the subject did not occur")
+        let ownName = try XCTUnwrap(KernelsOwnName.name(of: object.path))
+        assertTheOwnAnswerOrRefused([throughTarget], ownName: ownName, home: home, "a link to another folder")
+    }
+
+    /// a string that does not start with `/` as typed is not a
+    /// path either gate can place. `UserFileScope` expanded `~` first and judged
+    /// what it became.
+    func testAStringThatDoesNotStartWithASlashAsTypedIsRefused() {
+        let home = scratchHome()
+        for string in ["~/Documents/x", "~/Library/Caches/com.example.app/x", "~", "Documents/x",
+                       "./x/y", "~root/x"] {
+            for gate in [Gate.user, Gate.app] {
+                let answer = asks(gate, string, home: home.path)
+                print("[gates] not absolute as typed: \(gate.rawValue) \(string.debugDescription) = \(answer)")
+                XCTAssertFalse(answer, "\(gate.rawValue) accepts \(string.debugDescription), which does not start at /")
+            }
+        }
     }
 }

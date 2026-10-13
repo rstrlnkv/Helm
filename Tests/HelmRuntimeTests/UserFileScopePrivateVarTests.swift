@@ -4,15 +4,17 @@ import XCTest
 /// The disk module's last word on deletion, against the one directory on the
 /// list that has two spellings.
 ///
-/// `isRemovable` standardizes before it tests, and `NSString.standardizingPath`
-/// does not only remove `.` and `..`: for a path that **exists on disk** it also
-/// rewrites `/private/var/...` to `/var/...`. `protectedPrefixes` names
-/// `/private/var/db`, so the rewrite lands the path outside every prefix on the
-/// list and the gate lets it through.
+/// `isRemovable` used to standardize before it tested, and
+/// `NSString.standardizingPath` does not only remove `.` and `..`: for a path
+/// that **exists on disk** it also rewrites `/private/var/...` to `/var/...`.
+/// `protectedPrefixes` names `/private/var/db`, so the rewrite landed the path
+/// outside every prefix on the list and the gate let it through. The gate
+/// judges the kernel's name now, which begins with `/private` for what is
+/// under `/var`, and tests it in both spellings.
 ///
-/// The existing coverage tests `/private/var/db/x`, which does not exist — so it
-/// is never rewritten, and the assertion passes on the one spelling nobody can
-/// reach. Every real path there takes the other branch.
+/// The coverage of the time tested `/private/var/db/x`, which does not exist —
+/// so it was never rewritten, and the assertion passed on the one spelling
+/// nobody could reach. Every real path there took the other branch.
 final class UserFileScopePrivateVarTests: XCTestCase {
 
     /// The two names of one directory must get one answer. `/var` *is*

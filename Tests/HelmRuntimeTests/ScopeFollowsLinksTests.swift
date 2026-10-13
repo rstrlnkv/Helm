@@ -5,9 +5,10 @@ import HelmTestSupport
 /// The gate must judge the path the filesystem will act on, not the path as
 /// it was spelled.
 ///
-/// `RemovableScope` and `UserFileScope` standardize (`..` and `.` collapse) and
-/// stop there — but `standardizedFileURL` and `standardizingPath` do **not**
-/// resolve symlinks, while `HelmTrash.trashItem` follows them. So a link
+/// `RemovableScope` and `UserFileScope` used to standardize (`..` and `.`
+/// collapsed) and stop there — but `standardizedFileURL` and
+/// `standardizingPath` do **not** resolve symlinks, while `trashItem` follows
+/// them. So a link
 /// planted inside an allowed root pointed the gate at a path it approved and
 /// the Trash at a file somewhere else entirely: the gate says
 /// `~/Library/Caches/com.evil.app/taxes.pdf`, the filesystem moves

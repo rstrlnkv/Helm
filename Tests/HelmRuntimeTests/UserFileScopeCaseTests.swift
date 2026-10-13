@@ -3,11 +3,13 @@ import XCTest
 
 /// The protected list against a filesystem that does not care about case.
 ///
-/// `standardizingPath` resolves `..`, `~` and `/private`, and never case — so
-/// `/system/Library/CoreServices` is the same directory as `/System/…` to the
-/// filesystem and a different string to a prefix test. Nothing reaches this
-/// gate spelled that way today, because every caller passes a path it
-/// enumerated from disk, and it stays true only for as long as that holds.
+/// A prefix test reads `/system/Library/CoreServices` as another string than
+/// `/System/…`, and the filesystem reads it as the same directory. The reading
+/// gives a level that is there the case the disk holds; a tail that is not
+/// there and a place on the list that is not on this Mac keep the case that
+/// was typed, so the list is compared without regard to case. No caller spells
+/// a path that way, because each passes a path it enumerated from disk, and
+/// that holds only for as long as they do.
 /// This file calls itself the last word on deletion for Disk, Duplicates and
 /// Autopilot; the last word does not get to rely on its callers.
 final class UserFileScopeCaseTests: XCTestCase {

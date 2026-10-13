@@ -39,10 +39,10 @@ too, because they read or write what the path points at rather than remove the n
 whole path, leaf included, as far as it exists. `PathCanonical.ancestryIdentity(of:)` returns the device-and-inode chain that
 `Sources/HelmRuntime/HelmTrash.swift` re-reads immediately before each move.
 
-`UserFileScope` compares a path against its protected prefixes in **both** spellings,
-because `NSString.standardizingPath` rewrites `/private/var/…` to `/var/…` for a path
-that exists on disk and leaves it alone for one that does not, resolves no symlinks and
-folds no case; `PathCanonical.withoutPrivate` is the shared spelling of the same fact.
+`UserFileScope` compares a name against its protected prefixes in **both** spellings,
+because the kernel names what is under `/var/…` as `/private/var/…` and the list holds
+an entry in that spelling beside entries without `/private`;
+`PathCanonical.withoutPrivate` is the shared spelling of the same fact.
 Which gate is asked decides what the symptom looks like. Pointing the duplicate finder at
 `~/Downloads` under `RemovableScope` disabled every checkbox in its own result, which
 reads as a permissions problem and is a question put to the wrong gate.
