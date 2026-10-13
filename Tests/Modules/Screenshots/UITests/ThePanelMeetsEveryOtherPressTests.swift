@@ -230,4 +230,32 @@ final class ThePanelMeetsEveryOtherPressTests: XCTestCase {
         XCTAssertEqual(box.disk.written, 0, "a shot was delivered after the module went off")
         XCTAssertFalse(box.controller.isBusy)
     }
+
+    // MARK: - The rig's toast
+
+    /// The toast the rig hands the controller owns no window and will make none: it is built not to put a panel on a
+    /// screen (`windowed` false) and holds none. Both are read through the mirror, the controller's `toast` and then
+    /// the toast's two stored fields, before anything is shown and with no refusal provoked, so the row stands on
+    /// the rig's construction and nothing else. A field that is renamed, or is no longer a flag or an optional panel,
+    /// fails by name: a reader that finds nothing is red.
+    func testTheToastTheRigHandsTheControllerOwnsNoWindowAndWillMakeNone() throws {
+        let box = try rig()
+        let held = Mirror(reflecting: box.controller).children.filter { $0.label == "toast" }
+        XCTAssertEqual(held.count, 1, "the controller has no stored `toast` (renamed?): the row reads nothing")
+        let toast = try XCTUnwrap(held.first?.value as? ShotToast, "the controller's `toast` is no ShotToast")
+
+        let fields = Mirror(reflecting: toast).children
+        let windowed = fields.filter { $0.label == "windowed" }.map(\.value)
+        let panels = fields.filter { $0.label == "panel" }.map(\.value)
+        XCTAssertEqual(windowed.count, 1, "ShotToast has no stored `windowed` (renamed?): the row reads nothing")
+        XCTAssertEqual(panels.count, 1, "ShotToast has no stored `panel` (renamed?): the row reads nothing")
+
+        XCTAssertEqual(windowed.first as? Bool, false,
+                       "the rig's toast is windowed: its first refusal makes a panel and orders it in front")
+        if let panel = panels.first {
+            XCTAssertTrue(type(of: panel) == Optional<ShotPanel>.self,
+                          "`panel` is no longer an optional ShotPanel but \(type(of: panel))")
+            XCTAssertTrue(Mirror(reflecting: panel).children.isEmpty, "the rig's toast already owns a panel")
+        }
+    }
 }

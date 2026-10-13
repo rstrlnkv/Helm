@@ -990,11 +990,21 @@ final class TheRunnerFailsClosedTests: XCTestCase {
         "order" + "Front", "order" + "Back", "make" + "Key", "make" + "Main", "NSApp" + #"\."# + "activate",
     ].joined(separator: "|")
 
-    /// The four spellings through which a test puts a window of the product on
+    /// The three spellings through which a test puts a window of the product on
     /// the screen. They mark a class, and make no rig.
     private static let productWindowWords = [
-        #"\."# + "show" + #"\(\)"#, #"\."# + "openMenu" + #"\(\)"#, "windowed" + ": " + "true", "PanelRig" + #"\."# + "rig",
+        #"\."# + "show" + #"\(\)"#, #"\."# + "openMenu" + #"\(\)"#, "windowed" + ": " + "true",
     ].joined(separator: "|")
+
+    /// How a file calls the panel rig's builder, the one the Screenshots
+    /// families stand on. It is no window word and the runner does not read
+    /// it: the rig hands the controller a toast that owns no window. It is
+    /// spelled in pieces because the census reads this file's raw text too,
+    /// and spelled whole it would count this class among the classes on the
+    /// rig. The rows that hold the runner to that are
+    /// `testTheClassesOnThePanelRigAloneLieInTheirModulesTierAndNotInWindows` and
+    /// `testTheRigStandsUnmarkedOnlyWhileItsToastHasNoWindow`.
+    private static let thePanelRigCall = "PanelRig" + #"\."# + "rig"
 
     /// What a file says when it reads the standing documents, spelled in two
     /// pieces for the reason above.
@@ -1014,11 +1024,13 @@ final class TheRunnerFailsClosedTests: XCTestCase {
         let name: String
         /// The tier the file's place names: its directory of `Tests/`, or the module's.
         let place: String
-        /// The file holds one of the nine window words.
+        /// The file holds one of the eight window words.
         let hasWindowWord: Bool
         /// The file names something a window rig declares.
         let usesWindowRig: Bool
-        /// The file names a member of a class that the nine words or a rig
+        /// The file calls the panel rig's builder.
+        let namesThePanelRig: Bool
+        /// The file names a member of a class that the eight words or a rig
         /// found, one step deep.
         let namesAWindowMember: Bool
         /// The file names the standing documents.
@@ -1040,7 +1052,7 @@ final class TheRunnerFailsClosedTests: XCTestCase {
     /// A class is `final class X: XCTestCase` with any attributes before it,
     /// read off the file with comments and string bodies blanked. A window
     /// word and the standing documents are read off the raw text: a window
-    /// word is any of the nine, the five calls and the four spellings. A rig
+    /// word is any of the eight, the five calls and the three spellings. A rig
     /// is a file with one of the five and no test class, and a class names it
     /// when it uses, as a whole word, anything the rig declares at column one.
     /// A class found by a window word or a rig is a seed, and a file that names
@@ -1055,6 +1067,7 @@ final class TheRunnerFailsClosedTests: XCTestCase {
             options: [.anchorsMatchLines])
         let orderingWord = try NSRegularExpression(pattern: windowWords)
         let windowWord = try NSRegularExpression(pattern: windowWords + "|" + productWindowWords)
+        let panelRigCall = try NSRegularExpression(pattern: thePanelRigCall)
         let declaration = try NSRegularExpression(
             pattern: #"^(?:(?:public|private|fileprivate|internal|final|nonisolated|@[A-Za-z]+)[ \t]+)*(?:func|let|var|struct|enum|class|actor|protocol|typealias)[ \t]+([A-Za-z_][A-Za-z0-9_]*)"#,
             options: [.anchorsMatchLines])
@@ -1071,9 +1084,11 @@ final class TheRunnerFailsClosedTests: XCTestCase {
             let classes: [String]
             /// One of the five calls: what makes a file with no class a rig.
             let hasOrderingWord: Bool
-            /// One of the nine: a mark of its own, beside naming a rig and
+            /// One of the eight: a mark of its own, beside naming a rig and
             /// naming a member of a class so marked.
             let hasWindowWord: Bool
+            /// The file calls the panel rig's builder, a mark of no kind.
+            let namesThePanelRig: Bool
         }
         var readings: [Reading] = []
         for file in try SwiftSource.code(under: "Tests") {
@@ -1081,7 +1096,8 @@ final class TheRunnerFailsClosedTests: XCTestCase {
             let raw = try RepoSource.text(of: file.path)
             readings.append(Reading(path: file.path, raw: raw, classes: classes,
                                     hasOrderingWord: !matches(orderingWord, in: raw).isEmpty,
-                                    hasWindowWord: !matches(windowWord, in: raw).isEmpty))
+                                    hasWindowWord: !matches(windowWord, in: raw).isEmpty,
+                                    namesThePanelRig: !matches(panelRigCall, in: raw).isEmpty))
         }
 
         var rigNames: Set<String> = []
@@ -1123,6 +1139,7 @@ final class TheRunnerFailsClosedTests: XCTestCase {
             for name in reading.classes {
                 let family = Family(target: target, name: name, place: place,
                                     hasWindowWord: reading.hasWindowWord, usesWindowRig: usesRig(reading),
+                                    namesThePanelRig: reading.namesThePanelRig,
                                     namesAWindowMember: namesAMember,
                                     readsTheDocuments: reading.raw.contains(documentsWord))
                 families[family.address] = family
@@ -1465,7 +1482,7 @@ final class TheRunnerFailsClosedTests: XCTestCase {
 
     /// The owner's row: every test class lies in the tier of its directory,
     /// or in `windows` when it orders a window, and nowhere else. A class is a
-    /// window class here when its file holds one of the nine window words, or
+    /// window class here when its file holds one of the eight window words, or
     /// names what a rig declares, or names a member of a class so found (the
     /// class's name as a whole word, a dot, then a letter or an underscore),
     /// one step deep. The runner may hold more in `windows`, and asked is
@@ -1501,7 +1518,7 @@ final class TheRunnerFailsClosedTests: XCTestCase {
 
         let byWord = census.families.values.filter { $0.hasWindowWord && !windows.contains($0.address) }
         XCTAssertEqual(byWord.map(\.address), [],
-                       "\(byWord.count) classes whose file holds one of the nine window words are not in windows: "
+                       "\(byWord.count) classes whose file holds one of the eight window words are not in windows: "
                        + Self.listed(byWord.map(\.address)))
         let byRig = census.families.values.filter { $0.usesWindowRig && !windows.contains($0.address) }
         XCTAssertEqual(byRig.map(\.address), [],
@@ -1540,6 +1557,230 @@ final class TheRunnerFailsClosedTests: XCTestCase {
                        "\(own) is a window class by its own file, or is not in the census: window words belong spelled in pieces, and no seed class is named with a dot behind it")
         XCTAssertTrue(tiers[census.families[own]?.place ?? ""]?.contains(own) == true,
                       "\(own) is not in the tier of its directory")
+    }
+
+    // MARK: - The classes on the panel rig
+
+    /// Fewer classes than this on the rig with no mark means the reader found none.
+    private static let panelRigAloneFloor = 6
+
+    /// Fewer classes than this on the rig with a mark means the same.
+    private static let panelRigAndAnotherMarkFloor = 1
+
+    /// What the tree says of the classes whose file calls the panel rig's
+    /// builder, and what the runner made of them.
+    private struct OnThePanelRig {
+        /// The classes with no mark: they lie in their module's tier.
+        let alone: [Family]
+        /// The classes with a mark: they lie in `windows`.
+        let withAnotherMark: [Family]
+        /// The classes of `alone` that a tier hands `swift` and `windows` does not.
+        let unmarked: [String]
+        let tiers: [String: Set<String>]
+        let windows: Set<String>
+    }
+
+    /// The census's classes that call the rig's builder, split by whether
+    /// their file carries a mark, with the runner's tiers for their
+    /// places and for `windows`. Nil where a tier could not be read: the
+    /// failure is already said.
+    private func readThePanelRig() throws -> OnThePanelRig? {
+        guard let census = try censusOrFail() else { return nil }
+        let onTheRig = census.families.values.filter(\.namesThePanelRig)
+        let alone = onTheRig.filter { !$0.ordersAWindow }.sorted { $0.address < $1.address }
+        let withAnotherMark = onTheRig.filter(\.ordersAWindow).sorted { $0.address < $1.address }
+        XCTAssertGreaterThanOrEqual(alone.count, Self.panelRigAloneFloor,
+                                    "only \(alone.count) classes call the panel rig's builder and carry no mark: the reader found none")
+        XCTAssertGreaterThanOrEqual(withAnotherMark.count, Self.panelRigAndAnotherMarkFloor,
+                                    "only \(withAnotherMark.count) classes call the panel rig's builder and carry a mark: the reader found none")
+        var tiers: [String: Set<String>] = [:]
+        for tier in Set((alone + withAnotherMark).map(\.place)).sorted() + ["windows"] {
+            guard let found = try expand(tier) else { return nil }
+            tiers[tier] = Set(found.addresses)
+        }
+        let windows = tiers["windows"] ?? []
+        let unmarked = alone.filter { !windows.contains($0.address) && tiers[$0.place]?.contains($0.address) == true }
+        return OnThePanelRig(alone: alone, withAnotherMark: withAnotherMark, unmarked: unmarked.map(\.address),
+                             tiers: tiers, windows: windows)
+    }
+
+    /// Every class whose file calls the rig's builder and carries no mark lies
+    /// in its module's tier and not in `windows`, and every one that carries a
+    /// mark, as the classes that hand the rig a bar seam ordering the real bar
+    /// in front do, stays in `windows` and out of the module's tier. The
+    /// classes are found by what their files say, never by a list of names.
+    func testTheClassesOnThePanelRigAloneLieInTheirModulesTierAndNotInWindows() throws {
+        guard let rig = try readThePanelRig() else { return }
+        let held = rig.alone.filter { rig.windows.contains($0.address) }
+        XCTAssertEqual(held.map(\.address), [],
+                       "\(held.count) classes on the panel rig alone are in windows: " + Self.listed(held.map(\.address)))
+        let outside = rig.alone.filter { rig.tiers[$0.place]?.contains($0.address) != true }
+        XCTAssertEqual(outside.map(\.address), [],
+                       "\(outside.count) classes on the panel rig alone are not in their module's tier: "
+                       + Self.listed(outside.map(\.address)))
+
+        let left = rig.withAnotherMark.filter { !rig.windows.contains($0.address) }
+        XCTAssertEqual(left.map(\.address), [],
+                       "\(left.count) classes on the panel rig with a mark are not in windows: "
+                       + Self.listed(left.map(\.address)))
+        let strayed = rig.withAnotherMark.filter { rig.tiers[$0.place]?.contains($0.address) == true }
+        XCTAssertEqual(strayed.map(\.address), [],
+                       "\(strayed.count) classes on the panel rig with a mark are in their module's tier: "
+                       + Self.listed(strayed.map(\.address)))
+    }
+
+    /// What the rig's file hands the controller as its toast.
+    private enum RigToast: Equatable {
+        case windowFree
+        /// The controller gets a toast that will make a window, and why.
+        case windowed(String)
+        /// The reader found nothing it could judge, and what.
+        case readNothing(String)
+    }
+
+    /// Reads the file that holds the rig's builder as text: every construction
+    /// of the capture controller must pass a `toast:` that is a `ShotToast`
+    /// built with the window off, or a name bound to one. A construction
+    /// that passes no toast gets the controller's default, which is windowed.
+    /// Anything the reader cannot place is `readNothing`, never window-free.
+    private static func theRigsToast(in text: String) -> RigToast {
+        let code = SwiftSource.code(text)
+        let controllers = SwiftSource.callSites(of: "CaptureController", in: code)
+        guard !controllers.isEmpty else { return .readNothing("no CaptureController( call in the rig's file") }
+        func off(_ call: SwiftSource.Call) -> Bool {
+            call.arguments.contains { $0.filter { !$0.isWhitespace } == "windowed" + ":false" }
+        }
+        let windowedReason = "hands a controller a ShotToast not built with the window off"
+        for controller in controllers {
+            guard let argument = controller.arguments.first(where: {
+                $0.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("toast:")
+            }) else { return .windowed("builds a controller with no `toast:`, so with its default, which is windowed") }
+            let given = String(argument.drop(while: { $0 != ":" }).dropFirst())
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if let direct = SwiftSource.callSites(of: "ShotToast", in: given).first {
+                if !off(direct) { return .windowed(windowedReason) }
+            } else if !given.isEmpty, given.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" }) {
+                let bound = SwiftSource.callSites(of: "ShotToast", in: code).filter {
+                    String(code.prefix($0.characterOffset)).range(
+                        of: #"(let|var)\s+"# + given + #"\b[^=\n]*=\s*$"#, options: .regularExpression) != nil
+                }
+                guard let call = bound.first else {
+                    return .readNothing("`toast: \(given)` is bound to no ShotToast( the reader can find")
+                }
+                if !off(call) { return .windowed(windowedReason) }
+            } else {
+                return .readNothing("`toast: \(given)` is an expression the reader does not know")
+            }
+        }
+        return .windowFree
+    }
+
+    /// What is wrong with the pair: the classes the runner leaves unmarked,
+    /// and what the rig's file hands the controller. The runner may leave the
+    /// rig unmarked only while the toast has no window.
+    private static func theTieIsBroken(unmarked: [String], toast: RigToast) -> [String] {
+        switch toast {
+        case .readNothing(let why):
+            return ["the reader of the rig's file read nothing: \(why)"]
+        case .windowed(let why):
+            return unmarked.isEmpty ? [] : [
+                "\(unmarked.count) classes on the panel rig lie in their module's tier and out of windows (\(listed(unmarked))) "
+                + "while the rig \(why)"]
+        case .windowFree:
+            return []
+        }
+    }
+
+    /// The text of the file that declares the panel rig, when exactly one does.
+    private static func thePanelRigText() throws -> String? {
+        let declaring = try NSRegularExpression(
+            pattern: #"^(?:@[A-Za-z]+[ \t]+)*(?:public[ \t]+)?(?:enum|struct|final class|class)[ \t]+PanelRig\b"#,
+            options: [.anchorsMatchLines])
+        let files = try SwiftSource.code(under: "Tests").filter {
+            declaring.firstMatch(in: $0.text, range: NSRange($0.text.startIndex..., in: $0.text)) != nil
+        }
+        guard files.count == 1, let file = files.first else { return nil }
+        return try RepoSource.text(of: file.path)
+    }
+
+    /// The tie: the runner leaves the classes on the panel rig out of `windows`
+    /// ONLY while the rig's file hands the controller a toast built with the
+    /// window off. A rig that builds its controller with no `toast:`, so with
+    /// the controller's default, which is windowed, turns this row red while
+    /// the runner has no mark for the rig. A rig file the reader cannot find
+    /// or judge is red whatever the runner does.
+    func testTheRigStandsUnmarkedOnlyWhileItsToastHasNoWindow() throws {
+        guard let rig = try readThePanelRig() else { return }
+        guard let text = try Self.thePanelRigText() else {
+            XCTFail("no single file under Tests/ declares PanelRig: the reader found no rig file")
+            return
+        }
+        XCTAssertEqual(Self.theTieIsBroken(unmarked: rig.unmarked, toast: Self.theRigsToast(in: text)), [])
+    }
+
+    /// The reader of the rig's file, over files of its own making. A
+    /// construction that passes no toast, the default one, or one built with
+    /// the window on is windowed; a toast built with the window off, directly
+    /// or through a name, is window-free; text with no construction in code,
+    /// or a `toast:` the reader cannot place, is read as nothing.
+    func testTheReaderOfTheRigsToastTellsAWindowedOneFromAWindowFreeOneFromNone() {
+        func controller(_ toast: String?) -> String {
+            "let c = CaptureController(owner: o, store: s" + (toast.map { ", toast: \($0)" } ?? "") + ", tick: t)\n"
+        }
+        let windowedOn = "windowed" + ": \(true)", windowedOff = "windowed" + ": \(false)"
+        let windowed: [String: String] = [
+            "no toast at all": controller(nil),
+            "the default toast": controller("ShotToast()"),
+            "a toast with a tick only": controller("ShotToast(tick: t)"),
+            "a toast with the window on": controller("ShotToast(\(windowedOn))"),
+            "a name bound to a windowed toast": "let quiet = ShotToast(\(windowedOn))\n" + controller("quiet"),
+            "a name bound to the default toast": "var quiet = ShotToast()\n" + controller("quiet"),
+            "one construction in two with no toast": controller("ShotToast(\(windowedOff))") + controller(nil),
+            "the window-free toast named in a comment only": "// ShotToast(\(windowedOff))\n" + controller(nil),
+        ]
+        for (what, text) in windowed.sorted(by: { $0.key < $1.key }) {
+            if case .windowed = Self.theRigsToast(in: text) { continue }
+            XCTFail("\(what) is read as \(Self.theRigsToast(in: text)), not as windowed")
+        }
+        let windowFree: [String: String] = [
+            "the toast built in place": controller("ShotToast(\(windowedOff))"),
+            "the toast with a tick and the window off": controller("ShotToast(tick: t, \(windowedOff))"),
+            "the toast over several lines": controller("ShotToast(\n    tick: t,\n    \(windowedOff)\n)"),
+            "a name bound to a window-free toast": "let quiet = ShotToast(\(windowedOff))\n" + controller("quiet"),
+            "a typed name bound to a window-free toast":
+                "let quiet: ShotToast = ShotToast(\(windowedOff))\n" + controller("quiet"),
+            "two constructions, both window-free":
+                controller("ShotToast(\(windowedOff))") + controller("ShotToast(\(windowedOff))"),
+        ]
+        for (what, text) in windowFree.sorted(by: { $0.key < $1.key }) {
+            XCTAssertEqual(Self.theRigsToast(in: text), .windowFree, what)
+        }
+        let nothing: [String: String] = [
+            "an empty file": "",
+            "a file with no construction": "enum PanelRig {}\n",
+            "a construction in a comment only": "// " + controller("ShotToast(\(windowedOff))"),
+            "a name bound to nothing the reader can find": controller("quiet"),
+            "an expression the reader does not know": controller("makeToast()"),
+        ]
+        for (what, text) in nothing.sorted(by: { $0.key < $1.key }) {
+            if case .readNothing = Self.theRigsToast(in: text) { continue }
+            XCTFail("\(what) is read as \(Self.theRigsToast(in: text)), not as nothing")
+        }
+    }
+
+    /// The tie over states of its own making: a rig left unmarked over a
+    /// windowed toast is broken, whatever the number of classes; the same
+    /// state over a window-free toast, or a windowed one with the classes
+    /// still marked, is not; a rig file read as nothing is broken in every state.
+    func testTheTieSeesARigLeftUnmarkedOverAWindowedToast() {
+        let unmarked = ["Module_Screenshots_UITests.AClass"]
+        XCTAssertEqual(Self.theTieIsBroken(unmarked: unmarked, toast: .windowed("builds it windowed")).count, 1)
+        XCTAssertEqual(Self.theTieIsBroken(unmarked: unmarked + unmarked, toast: .windowed("builds it windowed")).count, 1)
+        XCTAssertEqual(Self.theTieIsBroken(unmarked: [], toast: .windowed("builds it windowed")), [])
+        XCTAssertEqual(Self.theTieIsBroken(unmarked: unmarked, toast: .windowFree), [])
+        XCTAssertEqual(Self.theTieIsBroken(unmarked: [], toast: .windowFree), [])
+        XCTAssertEqual(Self.theTieIsBroken(unmarked: [], toast: .readNothing("nothing")).count, 1)
+        XCTAssertEqual(Self.theTieIsBroken(unmarked: unmarked, toast: .readNothing("nothing")).count, 1)
     }
 
     // MARK: - Controls

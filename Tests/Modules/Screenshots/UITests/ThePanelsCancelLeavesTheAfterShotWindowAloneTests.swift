@@ -1,10 +1,8 @@
 import AppKit
 import CoreGraphics
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
-import HelmUI
 import XCTest
 import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
@@ -15,13 +13,13 @@ import Module_Screenshots_Engine
 /// act on it; an Esc meant for a panel they opened to take the next shot is neither of them being asked to go. Only
 /// the module's switch takes the window and the Copy with it (`teardown`).
 ///
-/// The window and Copy rows build the app's own controller, toast and session over a board that counts writes, a disk
-/// that keeps no file and a freeze nobody takes: the bar seam counts the panel's presentation and shows nothing, the
-/// toast is built with no window (`windowed: false`) and is never ordered in, the store is in memory and the files'
-/// folder a scratch directory. The flash row needs a freeze and an overlay, so it stands on `PanelRig.rig`: the overlay
-/// is built and never ordered in, and the thumbnail setting is off there, so its toast shows nothing. In both the Esc
-/// is delivered by calling the bar panel's `keyDown` on a panel that is built and never ordered in, as
-/// `ThePanelMeetsEveryOtherPressTests` does.
+/// The window and Copy rows build a `PileScene`: the app's own controller, toast and session over a board that counts
+/// writes, a Trash that is a folder and a freeze nobody takes: the bar seam counts the panel's presentation and shows
+/// nothing, the toast is built with no window (`windowed: false`) and is never ordered in, the store is in memory and
+/// the files' folder a scratch directory. The flash row needs a freeze and an overlay, so it stands on
+/// `PanelRig.rig`: the overlay is built and never ordered in, and the thumbnail setting is off there, so its toast
+/// shows nothing. In both the Esc is delivered by calling the bar panel's `keyDown` on a panel that is built and never
+/// ordered in, as `ThePanelMeetsEveryOtherPressTests` does.
 ///
 /// Doors driven: the close control's action (`bar.model.cancel`, which the xmark's cell calls and which the controller
 /// wires to `cancel`) and Esc (`BarPanel.keyDown` with key code 53, which calls the same). Doors only read: the picking
@@ -66,21 +64,10 @@ final class ThePanelsCancelLeavesTheAfterShotWindowAloneTests: XCTestCase {
     }
 
     private func scene(_ target: SaveTarget) throws -> Scene {
-        let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore())
-        store.set(true, for: ScreenshotsSettings.Key.thumbnail)
-        store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
-        let board = PileBoard()
-        let home = scratchDirectory("cancel-doors")
-        let session = CaptureSession(capture: PileFrames(Freeze(displays: [], windows: [])), writer: PanelRig.Disk(), trash: NoTrash(),
-                                     pasteboard: board, preferences: PanelRig.NoPreferences(), shutter: PanelRig.NoShutter(),
-                                     textReader: NoTextReader(), settings: { ScreenshotsSettings.read(store) },
-                                     naming: { .english }, locations: ScreenshotsLocations(home: home, desktop: home))
-        let toast = ShotToast(tick: { _ in try await Task.sleep(for: .seconds(1_000_000)) }, windowed: false)
         let presented = Presented()
-        let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store, session: session,
-                                           presentOverlay: { $0.build() }, presentBar: { _ in presented.bars += 1 },
-                                           pins: PinBoard(present: { _ in }, screens: { [] }), toast: toast)
-        let made = Scene(controller: controller, toast: toast, board: board, presented: presented)
+        let pile = try PileScene(self, name: "cancel-doors", presentBar: { _ in presented.bars += 1 })
+        pile.store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
+        let made = Scene(controller: pile.controller, toast: pile.toast, board: pile.board, presented: presented)
         scenes.append(made)
         return made
     }

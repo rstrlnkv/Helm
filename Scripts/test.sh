@@ -71,25 +71,23 @@ set -euo pipefail
 #     two lists, or names a rig, or names a member of a class so found. The
 #     first list is the five calls that order a window or make it key or
 #     main: `orderFront`, `orderBack`, `makeKey`, `makeMain`,
-#     `NSApp.activate`. The second is the four spellings through which a
+#     `NSApp.activate`. The second is the three spellings through which a
 #     test puts a window of the product on the screen: `.show()` (the
 #     capture bar's and the overlay's `show()` order their panels in front),
 #     `.openMenu()` (the editor palette's `openMenu` pops the overlay's
-#     menu), `windowed: true` (a `ShotToast` built so orders its panel in
-#     front when it shows) and `PanelRig.rig` (the rig builds a capture
-#     controller with the default toast, which is windowed, and a refusal
-#     shows it). A rig is a file that holds a word of the first list and
-#     declares no test class; a class that names, as a whole word, something
-#     a rig declares at the head of a line is a window class too. The third
-#     mark is one step deep: once the classes of the files found by the two
-#     lists and the rig are known, a file that names a member of one of them,
-#     the class declared in another file, is a window file, and its test
-#     classes are window classes. A member is named by the class's name as a
-#     whole word, a dot, then a letter or an underscore. The step is taken
-#     once, so a class found by it marks no further file. It reads one line
-#     at a time and the class's own name: a member named on the line after
-#     the name, through an alias of the class, or on an instance of it
-#     (`Class().member`) is not found, and such a class stays in its
+#     menu) and `windowed: true` (a `ShotToast` built so orders its panel in
+#     front when it shows). A rig is a file that holds a word of the first
+#     list and declares no test class; a class that names, as a whole word,
+#     something a rig declares at the head of a line is a window class too.
+#     The third mark is one step deep: once the classes of the files found
+#     by the two lists and the rig are known, a file that names a member of
+#     one of them, the class declared in another file, is a window file, and
+#     its test classes are window classes. A member is named by the class's
+#     name as a whole word, a dot, then a letter or an underscore. The step
+#     is taken once, so a class found by it marks no further file. It reads
+#     one line at a time and the class's own name: a member named on the
+#     line after the name, through an alias of the class, or on an instance
+#     of it (`Class().member`) is not found, and such a class stays in its
 #     directory's tier. It is what finds
 #     TheLogHoldsAReaderThroughWhatNobodyTriedTests, which borrows the
 #     `Window` that TheLogKeepsAReaderWhereTheyWereTests orders in front.
@@ -97,11 +95,13 @@ set -euo pipefail
 #     TheBarsTabsFoldByTheLayoutsVerdictTests, whose `rig.show()` is its own
 #     `Rig` and orders nothing, and the third mark in
 #     HostsTabsUnfoldWithoutABlinkTests, whose doc comment names another
-#     class's test method: both lie in `windows` all the same. Whether a
-#     class that takes the rig and asks for no refusal shows the toast is
-#     not measured: `PanelRig.rig` marks it all the same. A class that
-#     reaches a window through the product by none of these words is not
-#     found, and lies in its directory's tier.
+#     class's test method: both lie in `windows` all the same.
+#     `PanelRig.rig` is no word of either list and no mark: it builds its
+#     capture controller with a toast made `windowed: false`, which makes no
+#     panel, so a class that calls it lies where its marks put it, and in
+#     its directory's tier when it has none. A class that reaches a window
+#     through the product by none of these words is not found, and lies in
+#     its directory's tier.
 # A tier is refused, before `swift test` starts and with the one last line
 # every refusal here prints, when its name is not one of these, when a name
 # listed by hand is no class under Tests/, when it is left with no family, or
@@ -297,7 +297,7 @@ if [ "${#TIER_NAMES[@]}" -gt 0 ]; then
   # word anywhere in a file's raw text, the standing documents, and the
   # classes. A rig is a file with a word of the first list and no class.
   ORDERING='orderFront|orderBack|makeKey|makeMain|NSApp\.activate'
-  tier_grep -rlE --include='*.swift' -e "$ORDERING"'|\.show\(\)|\.openMenu\(\)|windowed: true|PanelRig\.rig' "$TESTS"
+  tier_grep -rlE --include='*.swift' -e "$ORDERING"'|\.show\(\)|\.openMenu\(\)|windowed: true' "$TESTS"
   WORD_FILES="$TIER_OUT"
   tier_grep -rlE --include='*.swift' -e "$ORDERING" "$TESTS"
   ORDERING_FILES="$TIER_OUT"
