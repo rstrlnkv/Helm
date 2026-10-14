@@ -17,6 +17,10 @@ public enum UserFileScope {
     private static let homeFolder = PathCanonical.components(of: homePath)
 
     public static func isRemovable(_ rawPath: String) -> Bool {
+        allows(PathCanonical.readingForRemoval(rawPath))
+    }
+
+    private static func allows(_ reading: PathCanonical.Reading) -> Bool {
         // Judge the one name the kernel gives what the string names, not the
         // spelling: a protected place is that place however it is written,
         // every check below is a string test, and this gate is the last word
@@ -32,7 +36,7 @@ public enum UserFileScope {
         // itself is not followed — trashing a stale alias must still be allowed
         // to remove the alias (`PathCanonical.Reading` says what is asked, and
         // `readingForRemoval` in what order).
-        guard let path = PathCanonical.readingForRemoval(rawPath).judgedName else { return false }
+        guard let path = reading.judgedName else { return false }
         // **The bucket is a flag, never a name.** This used to refuse any path
         // ending in `/…`, because that was once the only way to recognise the
         // disk module's folded aggregate — and `…` is a name a person can type
@@ -96,5 +100,13 @@ public enum UserFileScope {
             if isRemovable(path) { allowed.append(path) } else { refused.append(path) }
         }
         return (allowed, refused)
+    }
+
+    /// The same split, answering what the gate read: for each path that may go,
+    /// the `GatedPath` that `HelmTrash.remove(gated:)` moves, and for each that
+    /// may not, the string asked with the reason (`GatedPath.gate`).
+    static func gate(_ paths: [String])
+    -> (allowed: [GatedPath], refused: [HelmTrash.Refusal]) {
+        GatedPath.gate(paths, allowing: allows)
     }
 }

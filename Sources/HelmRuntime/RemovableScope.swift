@@ -68,13 +68,23 @@ public enum RemovableScope {
     /// - **A path whose way cannot be read, or that ends in `.` or `..`**,
     ///   `PathCanonical.Reading.Standing`: a folder on the way that may not be
     ///   searched, a link to nothing in the middle, a descriptor's entry.
+    ///
+    /// `anyAppBundle` is the `.app` clause below: with it, a bundle is removable
+    /// wherever it stands once the forbidden places and the positional refusals
+    /// have been passed; without it the roots decide for a bundle as for anything else.
     public static func isRemovable(_ path: String,
-                                   home: String = NSHomeDirectory()) -> Bool {
+                                   home: String = NSHomeDirectory(),
+                                   anyAppBundle: Bool = true) -> Bool {
+        allows(PathCanonical.readingForRemoval(path), home: home, anyAppBundle: anyAppBundle)
+    }
+
+    private static func allows(_ reading: PathCanonical.Reading, home: String,
+                               anyAppBundle: Bool) -> Bool {
         // The kernel reads the string before any test below: `..` is invisible
         // to a prefix test but not to the filesystem, which is what actually
         // performs the removal — and neither is a symlinked ancestor, which
         // `trashItem` follows (PathCanonical says what that cost).
-        guard let resolved = PathCanonical.readingForRemoval(path).judgedName else { return false }
+        guard let resolved = reading.judgedName else { return false }
         // The home is named the same way, so the two are one spelling: the
         // kernel's name for a home under `/var` begins with `/private`.
         let home = PathCanonical.reading(of: home).name
@@ -112,7 +122,7 @@ public enum RemovableScope {
         // this line plus "it is a bundle", not a fixed location. It carried its
         // own copy of the depth test until the positional refusals moved above
         // it; one rule spelled twice is two rules waiting to disagree.
-        if resolved.hasSuffix(".app") { return true }
+        if anyAppBundle, resolved.hasSuffix(".app") { return true }
         // `~/Library`'s own children are the shared folders — `Caches`,
         // `Application Support`, `Containers` — and an app owns something
         // *inside* one of them, never one of them. So that root needs two
@@ -129,12 +139,27 @@ public enum RemovableScope {
     /// Splits a batch into what may be removed and what may not, so a caller can
     /// report the refusals rather than silently dropping them.
     public static func partition(_ paths: [String],
-                                 home: String = NSHomeDirectory())
+                                 home: String = NSHomeDirectory(),
+                                 anyAppBundle: Bool = true)
     -> (allowed: [String], refused: [String]) {
         var allowed: [String] = [], refused: [String] = []
         for path in paths {
-            if isRemovable(path, home: home) { allowed.append(path) } else { refused.append(path) }
+            if isRemovable(path, home: home, anyAppBundle: anyAppBundle) {
+                allowed.append(path)
+            } else {
+                refused.append(path)
+            }
         }
         return (allowed, refused)
+    }
+
+    /// The same split, answering what the gate read: for each path that may go,
+    /// the `GatedPath` that `HelmTrash.remove(gated:)` moves, and for each that
+    /// may not, the string asked with the reason (`GatedPath.gate`).
+    static func gate(_ paths: [String],
+                     home: String = NSHomeDirectory(),
+                     anyAppBundle: Bool = true)
+    -> (allowed: [GatedPath], refused: [HelmTrash.Refusal]) {
+        GatedPath.gate(paths) { allows($0, home: home, anyAppBundle: anyAppBundle) }
     }
 }

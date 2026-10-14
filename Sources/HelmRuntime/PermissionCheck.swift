@@ -192,16 +192,16 @@ public enum TrashFailure {
         /// It is not there. Read again at the moment of the move, the path names
         /// nothing — deleted since the list was drawn, or renamed away.
         case missing
-        /// Helm itself refused, again, and for the other reason it ever does:
-        /// the file is no longer what the scan said it was. Read again just
-        /// before the move, the pair no longer matches — edited since, or a
-        /// hard link, or one of them gone. Nothing was attempted.
+        /// Helm itself refused, again: the file is no longer what the scan or the
+        /// gate read. Read again just before the move, the pair no longer matches —
+        /// edited since, or a hard link, or one of them gone. Nothing was attempted.
         case changedSinceScan
         /// Helm could not read the file — or, in Duplicates, the surviving
-        /// copy it had to be compared against — at the moment of the move. A
-        /// permission withdrawn, a volume gone, a file busy. **Not
-        /// `changedSinceScan`:** that one says «it is not where Helm found it»
-        /// about a file that may be exactly there, and the two are acted on
+        /// copy it had to be compared against — at the moment of the move, or a
+        /// removal gate could not search a folder on the way to it (`GatedPath.gate`).
+        /// A permission withdrawn, a volume gone, a file busy, a folder without the
+        /// search bit. **Not `changedSinceScan`:** that one says «it is not where Helm
+        /// found it» about a file that may be exactly there, and the two are acted on
         /// differently — a person told «it moved» looks for the file, a person
         /// told «it could not be read» checks the access. Nothing was attempted.
         case unreadable

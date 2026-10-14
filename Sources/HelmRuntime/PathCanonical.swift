@@ -26,7 +26,7 @@ import Foundation
 /// a path leads but which of several strings names the same place.
 public enum PathCanonical {
 
-    private static let separator = UInt8(ascii: "/")
+    static let separator = UInt8(ascii: "/")
 
     /// One folder, one spelling. `…/Ghost`, `…/Ghost/` and `…/Ghost//` are one
     /// place and three strings, and a batch that treats them as three answers
@@ -106,9 +106,12 @@ public enum PathCanonical {
 
     /// The identity of the directory `path`'s resolved parent chain leads to.
     ///
-    /// Read once at the gate and once immediately before the move: if the two
-    /// disagree, a symlinked ancestor was swapped in between (`HelmTrash.remove`
-    /// says what that narrows and what it does not).
+    /// Read once for reference and once immediately before the move: if the two
+    /// disagree, a symlinked ancestor was swapped in between. The reference is
+    /// the answer as `HelmTrash.remove(allowed:)`'s batch begins, which is after
+    /// the gate; for a path a gate made a `GatedPath` of it is the reading
+    /// taken at the gate (`HelmTrash.remove(gated:)`). Each says what that
+    /// narrows and what it does not.
     ///
     /// It is the reading's parent: the level directly above the last component,
     /// links followed, when the kernel answers for it as a directory, and
@@ -550,5 +553,42 @@ public enum PathCanonical {
             answer.path = String(decoding: raw[start..<end], as: UTF8.self)
             return (answer, 0)
         }
+    }
+}
+
+/// A path a removal gate has judged, with the reading it judged from.
+///
+/// Only a gate makes one (`RemovableScope.gate`, `UserFileScope.gate`): the
+/// initialiser is in this file, so `HelmTrash.remove(gated:)` can take it that
+/// the name was judged and that the object and the parent were read when it was.
+/// The Trash moves `name`, compares the identities of the reading with what is
+/// there at the move, and reports `asked`.
+struct GatedPath: Sendable {
+    let reading: PathCanonical.Reading
+
+    init(_ reading: PathCanonical.Reading) { self.reading = reading }
+
+    /// The string the caller handed the gate, which is what it finds its rows by.
+    var asked: String { reading.asked }
+    /// The one name the gate judged, and the name the Trash moves.
+    var name: String { reading.name }
+
+    /// Every path in `paths` into `allowed` or `refused`, never neither. A
+    /// refusal is `unreadable` where a folder on the way could not be searched
+    /// (below it the kernel answers the same for a child that is there and for
+    /// one that is not), and `outOfScope` otherwise.
+    static func gate(_ paths: [String], allowing: (PathCanonical.Reading) -> Bool)
+        -> (allowed: [GatedPath], refused: [HelmTrash.Refusal]) {
+        var allowed: [GatedPath] = [], refused: [HelmTrash.Refusal] = []
+        for path in paths {
+            let reading = PathCanonical.readingForRemoval(path)
+            if allowing(reading) {
+                allowed.append(GatedPath(reading))
+            } else {
+                refused.append(HelmTrash.Refusal(
+                    path: path, reason: reading.standing == .noAccess ? .unreadable : .outOfScope))
+            }
+        }
+        return (allowed, refused)
     }
 }

@@ -92,9 +92,10 @@ final class EveryRemovalAndSpawnVerbIsListedTests: XCTestCase {
         Entry(path: "Sources/HelmRuntime/HelmTrash.swift",
               spells: ["trashItem("],
               passes: """
-              The door for removals: `trashItem(` is the default `trashing` of `remove`, which \
-              takes the paths its caller hands it as `allowed` and reads each one's `ancestry` \
-              again before the move.
+              The door for removals: `trashItem(` is the default `trashing` of both entries of \
+              `remove`. The one that takes the paths its caller hands it as `allowed` reads \
+              each one's `ancestry` again before the move; the one that takes the `gated` \
+              paths a gate made reads their identities again.
               """),
         Entry(path: "Sources/HelmRuntime/PrivateFile.swift",
               spells: ["removeItem("],

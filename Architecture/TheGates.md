@@ -36,8 +36,17 @@ the leaf alone, so a stale alias is trashed rather than chased. `ScanRoot` and t
 deciding check of `SSHFileScope` use its `resolvingWholePath`, which resolves the leaf
 too, because they read or write what the path points at rather than remove the name
 (`PathCanonical.swift` says why for reading, `SSHFileScope`'s doc comment for writing). `WatchScope` canonicalises on its own, resolving the
-whole path, leaf included, as far as it exists. `PathCanonical.ancestryIdentity(of:)` returns the device-and-inode chain that
-`Sources/HelmRuntime/HelmTrash.swift` re-reads immediately before each move.
+whole path, leaf included, as far as it exists.
+
+Both removal gates also answer what they read, beside `partition`: `gate` gives each
+path that may go as a `GatedPath` (a value only a gate makes) carrying the string
+asked, the name judged and the identities of the object and of its parent as the
+gate read them, and each path that may not as the string asked with a reason,
+`unreadable` where a folder on the way cannot be searched and `outOfScope` otherwise.
+`HelmTrash.remove(gated:)` moves the judged name and, immediately before each move,
+compares those identities with what is there now (`PathCanonical.ancestryIdentity(of:)`
+for the parent, `identity(of:)` for the object); `remove(allowed:)`, which takes
+strings, reads the parent as its batch begins instead.
 
 `UserFileScope` compares a name against its protected prefixes in **both** spellings,
 because the kernel names what is under `/var/…` as `/private/var/…` and the list holds

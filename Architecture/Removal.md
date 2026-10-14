@@ -1,11 +1,16 @@
 # Removal
 
 `HelmTrash.remove` owns the batch itself, whichever module handed it the paths: the
-order, one outcome per path, one set of file ids so a hard link counts once, and the
+order, one set of file ids so a hard link counts once, and the
 reading of a path's size before it moves. A module keeps its gate and whatever it
 knows that macOS's error does not say. The phase a removal runs under is composed
 rather than literal — `HelmTrash.remove` builds `"\(module).trash"` from the caller's
 id — so the shared removal path carries the name of whichever module is deleting.
+`HelmTrash.remove(gated:)` takes what a gate judged, hands each judged name to the move
+at most once, and answers each distinct string that was asked, `p` and `p/` for one
+file included, under that string (ARCHITECTURE.md § The gates); `remove(allowed:)`
+takes strings, makes `p` and `p/` one entry answered under `p`, and turns away one
+that does not start at `/` or whose file URL has no path.
 
 Refusals are values rather than silences: `TrashFailure.Reason`
 (`Sources/HelmRuntime/PermissionCheck.swift`) names each reason, and `outOfScope` is

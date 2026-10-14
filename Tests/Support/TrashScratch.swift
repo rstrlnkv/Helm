@@ -70,13 +70,15 @@ public extension XCTestCase {
     /// fact, so a failure between the move and the end of the test still gets
     /// cleaned up.
     func reclaimFromTrash(_ name: String) {
-        addTeardownBlock {
-            let fm = FileManager.default
-            let home = URL(fileURLWithPath: NSHomeDirectory())
-            let trash = (try? fm.url(for: .trashDirectory, in: .userDomainMask,
-                                     appropriateFor: home, create: false))
-                ?? home.appendingPathComponent(".Trash")
-            try? fm.removeItem(at: trash.appendingPathComponent(name))
-        }
+        let entry = userTrashDirectory().appendingPathComponent(name)
+        addTeardownBlock { try? FileManager.default.removeItem(at: entry) }
+    }
+
+    /// The person's Trash folder, as `trashItem` fills it.
+    func userTrashDirectory() -> URL {
+        let home = URL(fileURLWithPath: NSHomeDirectory())
+        return (try? FileManager.default.url(for: .trashDirectory, in: .userDomainMask,
+                                             appropriateFor: home, create: false))
+            ?? home.appendingPathComponent(".Trash")
     }
 }
