@@ -11,9 +11,20 @@ are on the doc comments of `HelmLaunchTask`, `HelmLaunchExceptionNameKey` and `H
 `Sources/HelmRuntime/HelmProcess.swift` is the one way to run a tool, and its doc
 comments hold the rules: output is read to the end before the wait; stderr is the null
 device where nobody parses it, never an undrained `Pipe`; `launchCeiling` bounds how many
-tools are out at once, and a caller that asks for more gets a queue. The ceiling
-exists because Homebrew's search once put every press of Return on its own
-unbounded `Task`; the doc comment of `launchCeiling` tells it.
+tools `run` and `runData` have out at once, and a caller that asks for more gets a queue,
+which a bounded run leaves at its deadline with `timedOutStatus`, its tool unstarted.
+The ceiling exists because Homebrew's search once put every press of Return on its own
+unbounded `Task`; the doc comment of `launchCeiling` tells it. A bounded run's deadline
+counts from the call; past it the tool's process group gets TERM and, after a grace,
+KILL if its output is still held or the tool unreaped, and the run's slot comes back
+when the tool and whatever else holds its pipe are gone, or as the run returns if the
+tool is then reaped and its group empty — the doc comments of the bounded `run` and of
+`signalTree` say when and why. `start` takes no slot and no deadline, for the reason on
+its doc comment; its callers are the updater in `Sources/HelmApp/Installer.swift`, and
+`stream` and `runCapturingDiagnostics` in
+`Sources/Modules/Homebrew/Engine/SystemPorts.swift`. The Hosts module's terminal child
+(`Sources/Modules/Hosts/Engine/PTYProcess.swift`) is spawned outside `HelmProcess`
+altogether, in a session of its own.
 
 Output that gets *streamed* is a different port and keeps stderr on purpose, merged
 onto the one pipe (`stream` in `Sources/Modules/Homebrew/Engine/SystemPorts.swift`) — a
