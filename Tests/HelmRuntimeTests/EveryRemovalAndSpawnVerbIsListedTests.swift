@@ -169,13 +169,6 @@ final class EveryRemovalAndSpawnVerbIsListedTests: XCTestCase {
               the arguments its caller hands it, outside the tool door and its ceiling. A \
               spawn that fails is an answer, `couldNotStartStatus`.
               """),
-        Entry(path: "Sources/Modules/Hosts/Engine/SystemPorts.swift",
-              spells: ["PrivilegedRun.run(", "removeItem("],
-              passes: """
-              `PrivilegedRun.run(` is the module's privileged port, the door to root, with the \
-              command the engine composed. `removeItem(` passes no gate: `BackupName.isOurs` \
-              judges the name, and the path is that name under the backups' own `directory`.
-              """),
         Entry(path: "Sources/Modules/KeepAwake/Engine/SystemPorts.swift",
               spells: ["osascript"],
               passes: """

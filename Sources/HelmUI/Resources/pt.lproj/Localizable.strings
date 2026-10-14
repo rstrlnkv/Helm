@@ -38,7 +38,6 @@
 "A metric strip no longer occasionally reads the wrong appearance and darkens dark mode’s own colours to match." = "A faixa não lê mais ocasionalmente a aparência errada e escurece as próprias cores do modo escuro.";
 "A module Helm has not seen before, such as Screenshots, joins the sidebar section that already holds most modules of its kind when the section Helm made for that kind is gone, instead of starting a section of its own at the bottom of a sidebar you have arranged." = "Um módulo que o Helm ainda não conhecia, como Capturas de Tela, entra na seção da barra lateral que já reúne a maioria dos módulos do seu tipo quando a seção que o Helm criou para esse tipo não existe mais, em vez de abrir uma seção própria no fim de uma barra lateral que você organizou.";
 "A module’s name says whether it is running." = "Ao lado do nome de um módulo aparece se ele está em execução.";
-"A name cannot contain spaces, # or a line break" = "Um nome não pode conter espaços, # nem quebra de linha";
 "A new duplicates search no longer shows the last one’s report, and a stopped search says it was stopped instead of pretending no folder was chosen." = "Uma nova busca de duplicatas não mostra mais o relatório da anterior, e uma busca parada diz que foi parada em vez de fingir que nenhuma pasta foi escolhida.";
 "A new look across the app: every screen leads with its icon and the numbers that matter there, on one consistent layout." = "Novo visual em todo o app: cada tela começa com seu ícone e os números que importam, em um layout consistente.";
 "A package says what it takes up on this Mac — brew will not say, so Helm measures the folder itself." = "Um pacote informa quanto ocupa neste Mac: o brew não diz, então o Helm mede a pasta por conta própria.";
@@ -87,12 +86,10 @@
 "Add another in System Settings and Helm picks it up." = "Adicione outra nos Ajustes do Sistema e o Helm a detecta.";
 "Add app…" = "Adicionar app…";
 "Add condition" = "Adicionar condição";
-"Add entry" = "Adicionar entrada";
 "Add folder…" = "Adicionar pasta…";
 "Add tag" = "Adicionar etiqueta";
 "Add to the agent" = "Adicionar ao agente";
 "Add widget" = "Adicionar widget";
-"Address" = "Endereço";
 "Administrator authorization was cancelled, so Homebrew was not installed." = "A autorização de administrador foi cancelada, então o Homebrew não foi instalado.";
 "After an update Helm tells you which permissions stopped working and takes you straight to the right pane. An update always revokes them — the checkbox stays ticked while nothing works." = "Depois de uma atualização, o Helm diz quais permissões pararam de funcionar e leva direto ao painel certo. Uma atualização sempre as revoga: a caixa continua marcada e nada funciona.";
 "After you drag an area, draw on it before it is saved: “Pencil”, “Line”, “Arrow”, “Rectangle”, “Oval” and “Highlight”, in eight colours, three thicknesses and “Filled” for the boxes, with “Undo” and “Redo”. Click a drawing to move it, resize it, recolour it or delete it." = "Depois de arrastar uma área, desenhe nela antes de salvar: “Lápis”, “Linha”, “Seta”, “Retângulo”, “Oval” e “Destacar”, em oito cores, três espessuras e “Preenchido” para as formas, com “Desfazer” e “Refazer”. Clique em um desenho para movê-lo, redimensioná-lo, mudar a cor ou apagá-lo.";
@@ -109,7 +106,6 @@
 "An app can no longer claim other apps' files as its own leftovers by naming itself unusually." = "Um app não pode mais reivindicar arquivos de outros como restos próprios usando um nome incomum.";
 "An app list the Uninstaller never received no longer reads as a Mac with no apps on it, and a system extension macOS refuses to remove states its reason again, with the “Open Extensions…” button beside it." = "Uma lista de apps que o Desinstalador nunca recebeu já não se lê como um Mac sem apps, e uma extensão do sistema que o macOS se recusa a remover volta a dizer seu motivo — com o botão “Abrir Extensões…” ao lado.";
 "An app that keeps the Mac awake can now be narrowed to the situation you mean: only with an external display, only on power, or both." = "Um app que mantém o Mac ativo agora pode ser limitado: só com tela externa, só na tomada, ou ambos.";
-"An entry needs at least one name" = "Uma entrada precisa de pelo menos um nome";
 "An extra copy is" = "Uma cópia a mais é";
 "An update does not start unless Helm can first write down that one is in flight. That note is what reports an update that fails, and without it a failed update used to come back looking as though nothing had been tried." = "Uma atualização só começa quando o Helm consegue anotar que há uma em curso. É essa nota que relata uma atualização falhada; sem ela, uma atualização que falhava voltava como se nada tivesse sido tentado.";
 "Another app already uses this combination, so it does nothing here." = "Outro app já usa esta combinação, então aqui ela não faz nada.";
@@ -127,7 +123,6 @@
 "Applies to this connection only" = "Aplica-se apenas a esta ligação";
 "Apply" = "Aplicar";
 "Apply in Hosts & Keys no longer waits for ever: if the SSH config does not answer within half a minute, the page says it could not be saved and gives you the buttons back." = "Aplicar em Hosts e chaves não espera mais para sempre: se a configuração SSH não responder em meio minuto, a página informa que não foi possível salvar e devolve os botões.";
-"Applying asks for your password" = "Ao aplicar, sua senha será solicitada";
 "Apps" = "Apps";
 "Archive" = "Arquivo compactado";
 "Arrow" = "Seta";
@@ -308,9 +303,9 @@
 "Earlier launch" = "Inicialização anterior";
 "Early builds with new features — expect rough edges." = "Builds iniciais com novidades — pode haver arestas.";
 "Edit" = "Editar";
+"Edit SSH hosts and keys" = "Edite os hosts SSH e as chaves";
 "Edit panel" = "Editar o painel";
 "Edit the hosts file from Helm, with a copy kept before every change. Hosts & Keys shows it as a table you can switch entries on and off in, or as plain text — the same file either way. Applying asks for your password once, and the last ten copies are there under “Restore…” if you want one back." = "Edite o ficheiro hosts a partir do Helm, com uma cópia guardada antes de cada alteração. “Hosts e chaves” mostra-o como uma tabela onde pode ligar e desligar entradas, ou como texto simples — o mesmo ficheiro nos dois casos. Aplicar pede a sua palavra-passe uma vez, e as últimas dez cópias estão em “Restaurar…” caso queira recuperar alguma.";
-"Edit the hosts file, SSH hosts and keys" = "Edite o arquivo hosts, os hosts SSH e as chaves";
 "Editing the panel" = "Edição do painel";
 "Editor" = "Editor";
 "Emoji" = "Emoji";
@@ -378,7 +373,6 @@
 "Held down, or pressed together with anything else, it stays an ordinary modifier — everything you already use it for keeps working." = "Mantida pressionada, ou junto com outra tecla, continua sendo um modificador comum: tudo o que você já faz com ela segue funcionando.";
 "Helm Settings" = "Ajustes do Helm";
 "Helm can be used with VoiceOver. Every control now says what it is — the rule editor was built from pop-up buttons and fields that announced nothing, so a rule could not be written at all without sight." = "O Helm pode ser usado com o VoiceOver: cada controle diz o que é. O editor de regras não anunciava nada e não podia ser usado sem ver a tela.";
-"Helm can show it, but saving needs another editor" = "O Helm pode exibi-lo, mas salvar exige outro editor";
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "O Helm não consegue ler a chave que sela as suas regras, por isso nenhuma está a ser executada.";
 "Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "O Helm não consegue ler as regras de apps salvas, então nenhum app mantém o Mac acordado. Adicione os apps de novo";
 "Helm cannot read the screen" = "O Helm não consegue ler a tela";
@@ -470,7 +464,6 @@
 "Hosts & Keys lists the hosts your Mac has already trusted, with a Forget button on each. That is the fix for the wall of text ssh prints when a server changes its key and refuses to connect. A file that hides its host names — which is how macOS keeps it — still lists every entry, and forgetting still works." = "“Hosts e chaves” lista os hosts em que seu Mac já confiou, cada um com um botão Esquecer. É o remédio para a parede de texto que o ssh imprime quando um servidor troca de chave e recusa a conexão. Um arquivo que esconde os nomes dos hosts — é assim que o macOS o mantém — continua listado por inteiro, e esquecer continua funcionando.";
 "Hosts & Keys: in Plain text, the SSH config box sits inside a margin on every side, the way the Homebrew console does, and the Table stands on the same edge; the note above them opens instead of jumping in." = "Hosts e chaves: em “Texto simples”, a caixa da configuração SSH fica dentro de uma margem em todos os lados, como o console do Homebrew, e a “Tabela” fica na mesma borda; o aviso acima delas se abre em vez de aparecer de repente.";
 "Hosts & Keys’ Table and Plain-text switch shows glyphs, and its selection slides like the tabs’." = "O alternador Tabela e Texto simples de “Hosts e chaves” mostra ícones, e sua seleção desliza como a das abas.";
-"Hosts file" = "Ficheiro hosts";
 "How it got here" = "Como chegou aqui";
 "How it works" = "Como funciona";
 "How long the panel's switch and the keyboard shortcut keep the Mac awake" = "Por quanto tempo o interruptor do painel e o atalho de teclado mantêm o Mac acordado";
@@ -641,7 +634,6 @@
 "Name pattern" = "Padrão do nome";
 "Name without extension" = "Nome sem extensão";
 "Named under a Match — used when its condition holds" = "Nomeada em um Match — usada quando a condição vale";
-"Names" = "Nomes";
 "Names and icons" = "Nomes e ícones";
 "Names only" = "Apenas nomes";
 "Nature" = "Natureza";
@@ -689,8 +681,6 @@
 "No words yet" = "Ainda sem palavras";
 "Nobody maintains it upstream any more." = "Já não é mantido pelos autores.";
 "None" = "Nenhum";
-"Not an address Helm can write" = "O Helm não pode gravar esse endereço";
-"Not applied — the password dialog was cancelled" = "Não aplicado — a caixa de diálogo de senha foi cancelada";
 "Not applying right now" = "Não se aplica agora";
 "Not checked" = "Não verificado";
 "Not checked yet" = "Ainda não verificado";
@@ -716,7 +706,6 @@
 "Nothing to fix." = "Não há nada para corrigir.";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "Nada era realmente “liberado” ao mandar algo para o Lixo — ele só se movia para lá, no mesmo volume. Disco, Duplicatas, Itens de início e extensões, e o Desinstalador agora dizem isso claramente (“Movido para o Lixo — 4 KB”), e o Disco parou de contar isso como espaço recuperado até o Lixo ser esvaziado.";
 "Nothing was blurred. Check the picture yourself." = "Nada foi desfocado. Confira você mesmo a imagem.";
-"Nothing was written: a backup could not be saved first" = "Nada foi gravado: não foi possível salvar uma cópia antes";
 "Nothing yet. A file that arrives is checked as it lands, and every watched folder is swept once an hour." = "Nada ainda. Um arquivo que chega é verificado na hora, e cada pasta observada é percorrida uma vez por hora.";
 "Notification" = "Notificação";
 "Number of days" = "Número de dias";
@@ -838,7 +827,6 @@
 "Removal, sweep and “Put back” reports are announced to VoiceOver as they appear, and the welcome tour moves VoiceOver’s focus along with each step." = "Relatórios de remoção, varredura e “Devolver” são anunciados ao VoiceOver assim que aparecem, e o tour de boas-vindas move o foco do VoiceOver a cada etapa.";
 "Remove" = "Remover";
 "Remove an app with all of its files" = "Remover um app com todos os seus arquivos";
-"Remove entry" = "Remover entrada";
 "Remove rule" = "Remover a regra";
 "Remove section" = "Remover secção";
 "Remove widget" = "Remover o widget";
@@ -858,7 +846,6 @@
 "Reset and Restart" = "Redefinir e reiniciar";
 "Restore defaults" = "Restaurar predefinições";
 "Restore the recommendation" = "Voltar à recomendação";
-"Restore…" = "Restaurar…";
 "Resume" = "Retomar";
 "Revert" = "Reverter";
 "Review" = "Revisar";
@@ -1018,7 +1005,6 @@
 "Text Only" = "Somente Texto";
 "Text copied" = "Texto copiado";
 "That did not work" = "Não funcionou";
-"That entry is no longer there" = "Essa entrada não existe mais";
 "That folder cannot be used, so Helm saves to the Desktop." = "Essa pasta não pode ser usada, então o Helm salva na Mesa.";
 "That key is no longer there" = "Essa chave já não existe";
 "That passphrase was not accepted" = "Essa frase-senha não foi aceita";
@@ -1080,8 +1066,6 @@
 "The file is locked, or you are not its owner. Open Get Info in the Finder to unlock it or change its permissions." = "O arquivo está bloqueado ou não pertence a você. Abra “Obter Informações” no Finder para desbloqueá-lo ou mudar as permissões.";
 "The folder macOS names cannot be used, so Helm saves to the Desktop." = "A pasta indicada pelo macOS não pode ser usada, então o Helm salva na Mesa.";
 "The gap between the toolbar’s buttons and its search stays fixed as you drag the window’s edge." = "O espaço entre os botões da barra de ferramentas e a busca permanece fixo ao arrastar a borda da janela.";
-"The hosts file could not be read" = "Não foi possível ler o arquivo hosts";
-"The hosts file could not be written" = "Não foi possível gravar o arquivo hosts";
 "The hosts file editor is off the screen for now while we work out whether it belongs in Helm at all. Nothing was done to your hosts file, and no copy Helm took of it has been removed." = "O editor do arquivo hosts está fora da tela por enquanto, enquanto decidimos se ele cabe no Helm. Nada foi feito ao seu arquivo hosts, e nenhuma cópia que o Helm tirou dele foi removida.";
 "The icon is white when idle and takes on the colour of whichever module is active." = "O ícone é branco em repouso e assume a cor do módulo que estiver ativo.";
 "The icon shape, icon size and both colours can be chosen from the keyboard, and Escape leaves the shortcut recorder." = "A forma e o tamanho do ícone e as duas cores podem ser escolhidos pelo teclado, e Esc sai do gravador de atalho.";
@@ -1151,7 +1135,6 @@
 "The warning under the VPN notice options names the options the picker itself offers: Nothing, Menu bar, and Notification." = "O aviso abaixo das opções de aviso da VPN as nomeia como o próprio seletor: Nada, Barra de menus e Notificação.";
 "The welcome tour lets you pick what you want. Each module’s screen carries a switch, so you can keep or drop it while you are being introduced to it — and the opening screen asks whether Helm should start with your Mac. The switch starts where the module already stood, so skipping the tour changes nothing." = "O tour de boas-vindas deixa você escolher. A tela de cada módulo tem um interruptor, e a primeira pergunta se o Helm deve iniciar com o Mac. Ele começa onde o módulo já estava, então pular o tour não muda nada.";
 "The words Keyboard must never touch and the per-app rules have a window of their own. The page keeps a row for each with its count, so you can still see where a word went." = "As palavras que o Teclado nunca deve mexer e as regras por app têm uma janela própria. A página mantém uma linha para cada uma com a contagem, para continuar a ver onde foi parar uma palavra.";
-"The write reported success, but the file on disk differs" = "A gravação informou sucesso, mas o arquivo no disco está diferente";
 "Then" = "Então";
 "There is already a key with that name" = "Já existe uma chave com esse nome";
 "These are left exactly as you typed them, whatever the dictionary thinks." = "Estas ficam exatamente como você as digitou, pense o dicionário o que pensar.";
@@ -1163,7 +1146,6 @@
 "This app is not signed — this rule never fires" = "Este app não está assinado — a regra nunca dispara";
 "This copy of Helm is not the one a release replaces. Helm opened its download page instead." = "Esta cópia do Helm não é a que uma versão publicada substitui. O Helm abriu a página de download.";
 "This folder is no longer there" = "Esta pasta não existe mais";
-"This hosts file is too large for Helm to save" = "Este arquivo hosts é grande demais para o Helm salvar";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "Esta é uma tecla que você usa para digitar. Segurada ou combinada funciona normalmente, mas um toque solto por acidente vai corrigir a última palavra.";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "Isto já não existe, então nada foi movido. Escaneie de novo para ver o que restou.";
 "This is not there any more, so nothing was moved. Search again to see what is left." = "Isto já não existe, então nada foi movido. Busque de novo para ver o que restou.";
@@ -1216,7 +1198,6 @@
 "Unknown" = "Desconhecido";
 "Unlock and add" = "Desbloquear e adicionar";
 "Unreadable" = "Ilegível";
-"Unsaved changes" = "Alterações não salvas";
 "Until you pick one, the same as the active colour" = "Enquanto você não escolher, a mesma da cor ativa";
 "Until you stop it" = "Até você parar";
 "Untitled rule" = "Regra sem título";
@@ -1237,7 +1218,6 @@
 "Upstream has deprecated it." = "Os próprios autores já o marcaram como obsoleto.";
 "Upstream has discontinued it." = "Os autores encerraram o desenvolvimento.";
 "Use the default name" = "Usar o nome predefinido";
-"Use this entry" = "Usar esta entrada";
 "Use this module" = "Usar este módulo";
 "Use ⇧⌘3 and ⇧⌘4" = "Usar ⇧⌘3 e ⇧⌘4";
 "Use ⇧⌘3, ⇧⌘4 and ⇧⌘5" = "Usar ⇧⌘3, ⇧⌘4 e ⇧⌘5";
@@ -1339,7 +1319,6 @@
 "free" = "livre";
 "guess" = "suposição";
 "h" = "h";
-"hosts file" = "arquivo hosts";
 "is" = "é";
 "it has already been put back" = "já foi devolvido";
 "it is no longer in the Trash" = "não está mais no Lixo";

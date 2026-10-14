@@ -5,26 +5,26 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Hosts_Engine
 
-/// **`activate()` is called on the thread that draws, and this one reads
-/// `~/.ssh` and spawns a child per key before it returns.**
+/// **`activate()` is called on the thread that draws, and this engine's first
+/// reading reads `~/.ssh` and spawns a child per key — so `activate()` hands
+/// that reading to a queue of its own and returns before it.**
 ///
-/// `ModuleHost` is `@MainActor` (`Sources/HelmApp/ModuleHost.swift`, line 8) and
-/// calls `engine.activate()` from `enable(_:)` (line 104), which runs at
-/// bootstrap for every enabled module and again whenever somebody flips a
-/// module's switch. Every other engine's `activate()` is empty or a store read.
-/// This one is `emitState()`, and `emitState()` is:
+/// `ModuleHost` is `@MainActor` (`Sources/HelmApp/ModuleHost.swift`) and calls
+/// `engine.activate()` from `enable(_:)`, which runs at bootstrap for every
+/// enabled module and again whenever somebody switches a module on. The
+/// reading is `emitState()`, and `emitState()` is:
 ///
-/// - `/etc/hosts` and `~/.ssh/config` read;
+/// - `~/.ssh/config` read;
 /// - `ssh-add -l` — a round trip to a socket, through `HelmProcess`, bounded at
 ///   **5 seconds**;
 /// - `ssh-keygen -l` **per key**, each bounded at 5 seconds;
 /// - `~/.ssh/known_hosts` read, and two `stat`-and-resolve passes for the gate.
 ///
-/// A Mac whose `SSH_AUTH_SOCK` points at a socket nobody is answering, or whose
-/// `~/.ssh` is on a stalled network mount, therefore holds the main thread for
-/// as long as those deadlines allow — with the menu bar not yet drawn. The
-/// deadlines are the *proof* that these calls can sit: they were chosen
-/// («both tools can sit», `SystemSSHKeys`) because they can.
+/// Run in place, on a Mac whose `SSH_AUTH_SOCK` points at a socket nobody is
+/// answering, or whose `~/.ssh` is on a stalled network mount, that reading
+/// would hold the main thread for as long as those deadlines allow — with the
+/// menu bar not yet drawn. The deadlines are the *proof* that these calls can
+/// sit: they were chosen («both tools can sit», `SystemSSHKeys`) because they can.
 ///
 /// The reading below cannot be satisfied by luck. The port sits until it is
 /// released, so a synchronous `activate()` cannot return before it — no load on
@@ -78,10 +78,7 @@ final class ActivateDoesNotWaitForTheWorldTests: XCTestCase {
 
     func testActivateReturnsBeforeTheAgentHasAnswered() {
         let agent = SittingAgent()
-        let hosts = FakeHostsFile()
-        let engine = HostsEngine(file: hosts, privileged: FakePrivileged(writingTo: hosts),
-                                 backups: FakeBackups(),
-                                 sshConfig: FakeSSHConfig(url: URL(fileURLWithPath: "/nowhere/c"),
+        let engine = HostsEngine(sshConfig: FakeSSHConfig(url: URL(fileURLWithPath: "/nowhere/c"),
                                                           text: "Host a\n"),
                                  knownHosts: FakeKnownHosts(), keys: FakeSSHKeys(),
                                  agent: agent, generator: FakeGenerator(),
@@ -121,11 +118,8 @@ final class ActivateDoesNotWaitForTheWorldTests: XCTestCase {
     /// A subscriber that never receives one is a page stuck on its defaults.
     func testTheStateStillArrives() async {
         let agent = SittingAgent()
-        let hosts = FakeHostsFile("127.0.0.1\tlocalhost\n")
         let transport = LocalTransport()
-        let engine = HostsEngine(file: hosts, privileged: FakePrivileged(writingTo: hosts),
-                                 backups: FakeBackups(),
-                                 sshConfig: FakeSSHConfig(url: URL(fileURLWithPath: "/nowhere/c"),
+        let engine = HostsEngine(sshConfig: FakeSSHConfig(url: URL(fileURLWithPath: "/nowhere/c"),
                                                           text: "Host a\n"),
                                  knownHosts: FakeKnownHosts(), keys: FakeSSHKeys(),
                                  agent: agent, generator: FakeGenerator(),

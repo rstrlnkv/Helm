@@ -50,14 +50,10 @@ final class AnApplyInFlightIsNotRevertedTests: XCTestCase {
         let url = ssh.appendingPathComponent("config")
         try "Host a\n    HostName a.example\n".write(to: url, atomically: true, encoding: .utf8)
         let config = GatedConfig(url, writes: writes)
-        let engine = HostsEngine(file: FixedFile("127.0.0.1\tlocalhost\n"),
-                                 privileged: FixedPrivileged(.declined),
-                                 backups: MemoryBackups(),
-                                 sshConfig: config, knownHosts: WireKnownHosts(),
+        let engine = HostsEngine(sshConfig: config, knownHosts: WireKnownHosts(),
                                  keys: WireKeys(), agent: WireAgent(),
                                  generator: WireKeyGenerator(),
                                  home: home,
-                                 now: { Date(timeIntervalSince1970: 0) },
                                  transport: LocalTransport())
         engines.append(engine)
         let hvm = HostsViewModel.shared(vm: ModuleViewModel(transport: engine.transport))

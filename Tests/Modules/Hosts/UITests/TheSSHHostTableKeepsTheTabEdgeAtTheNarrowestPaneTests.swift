@@ -60,8 +60,7 @@ final class TheSSHHostTableKeepsTheTabEdgeAtTheNarrowestPaneTests: XCTestCase {
         let known = "a.example ssh-ed25519 \(Self.key) me@mac\n"
             + "@revoked old.example ssh-ed25519 \(Self.key) x\n"
             + "|1|c2FsdHNhbHRzYWx0c2FsdHNhbHQ=|aGFzaGhhc2hoYXNoaGFzaGhhc2g= ssh-ed25519 \(Self.key)\n"
-        return HostsState(
-            hostsText: "127.0.0.1\tlocalhost\n", sshText: config,
+        return HostsState(sshText: config,
             keys: [KeyRow(name: "id_ed25519_work_laptop", hasPublicHalf: true,
                           described: KeyInventory.described(
                             "256 SHA256:5Xb9pQ2mK7vN8zR1tY4wA6cE0jH3sL5uD7fG9iO2kM8 me@mac (ED25519)"),

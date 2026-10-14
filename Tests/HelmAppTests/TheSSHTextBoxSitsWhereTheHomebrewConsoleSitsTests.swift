@@ -59,14 +59,6 @@ final class TheSSHTextBoxSitsWhereTheHomebrewConsoleSitsTests: XCTestCase {
     // MARK: Hosts — every port named; the config is a real file in a scratch
     // home, so the page may write it and draws no refusal banner over the box.
 
-    private struct File: HostsFilePort { func read() -> String? { "127.0.0.1\tlocalhost\n" } }
-    private struct Root: PrivilegedPort { func run(_ command: String) -> PrivilegedOutcome { .declined } }
-    private struct NoBackups: BackupPort {
-        func save(_ text: String, name: String) -> Bool { false }
-        func list() -> [String] { [] }
-        func read(_ name: String) -> String? { nil }
-        func delete(_ names: [String]) {}
-    }
     private final class Config: SSHConfigPort, @unchecked Sendable {
         let url: URL
         init(_ url: URL) { self.url = url }
@@ -154,11 +146,10 @@ final class TheSSHTextBoxSitsWhereTheHomebrewConsoleSitsTests: XCTestCase {
         try FileManager.default.createDirectory(at: ssh, withIntermediateDirectories: true)
         let config = ssh.appendingPathComponent("config")
         try "Host a\n    HostName a.example\n".write(to: config, atomically: true, encoding: .utf8)
-        let engine = HostsEngine(file: File(), privileged: Root(), backups: NoBackups(),
-                                 sshConfig: Config(config),
+        let engine = HostsEngine(sshConfig: Config(config),
                                  knownHosts: Known(url: ssh.appendingPathComponent("known_hosts")),
                                  keys: Keys(directory: ssh), agent: Agent(), generator: Generator(),
-                                 home: home, now: { Date(timeIntervalSince1970: 0) },
+                                 home: home,
                                  transport: LocalTransport())
         engines.append(engine)
         let vm = ModuleViewModel(transport: engine.transport)

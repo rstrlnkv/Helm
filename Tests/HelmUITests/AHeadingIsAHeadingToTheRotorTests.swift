@@ -66,8 +66,6 @@ final class AHeadingIsAHeadingToTheRotorTests: XCTestCase {
                  why: "a key's name in its own row, beside the badges that describe it"),
         RowTitle(file: "Sources/Modules/Hosts/UI/NewKeySheet.swift", subject: "HostsStr.newKeyTitle",
                  why: "a sheet's single title: a rotor has nowhere else in the sheet to go"),
-        RowTitle(file: "Sources/Modules/Hosts/UI/HostsSettingsPage.swift", subject: "HostsStr.unsaved",
-                 why: "a row's title with its own note under it, not a heading over rows"),
         RowTitle(file: "Sources/Modules/Autopilot/UI/AutopilotSettingsPage.swift", subject: "Redact.path(folder.path)",
                  why: "the watched folder in its row, between the switch that names it and the buttons"),
         RowTitle(file: "Sources/Modules/Autopilot/UI/RuleEditor.swift", subject: "folderName",

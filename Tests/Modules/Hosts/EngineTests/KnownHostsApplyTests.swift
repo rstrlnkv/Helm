@@ -25,10 +25,7 @@ final class KnownHostsApplyTests: XCTestCase {
         try? (text ?? "").write(to: url, atomically: true, encoding: .utf8)
         let port = FakeKnownHosts(url: url, text: text, behaviour: behaviour)
         let transport = LocalTransport()
-        let hosts = FakeHostsFile()
-        let engine = HostsEngine(file: hosts, privileged: FakePrivileged(writingTo: hosts),
-                                 backups: FakeBackups(),
-                                 sshConfig: FakeSSHConfig(
+        let engine = HostsEngine(sshConfig: FakeSSHConfig(
                                     url: URL(fileURLWithPath: "/nowhere/.ssh/config"),
                                     text: "Host a\n"),
                                  knownHosts: port, keys: FakeSSHKeys(), agent: FakeSSHAgent(),
@@ -103,10 +100,7 @@ final class KnownHostsApplyTests: XCTestCase {
         try? "".write(to: outside, atomically: true, encoding: .utf8)
         let port = FakeKnownHosts(url: outside, text: "")
         let transport = LocalTransport()
-        let hosts = FakeHostsFile()
-        let engine = HostsEngine(file: hosts, privileged: FakePrivileged(writingTo: hosts),
-                                 backups: FakeBackups(),
-                                 sshConfig: FakeSSHConfig(
+        let engine = HostsEngine(sshConfig: FakeSSHConfig(
                                     url: URL(fileURLWithPath: "/nowhere/.ssh/config"),
                                     text: "Host a\n"),
                                  knownHosts: port, keys: FakeSSHKeys(), agent: FakeSSHAgent(),

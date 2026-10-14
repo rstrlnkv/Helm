@@ -37,7 +37,7 @@ public struct KeyFacts: Sendable, Equatable {
     }
 }
 
-/// One key, as tab 3 draws it.
+/// One key, as the keys tab draws it.
 public struct KeyRow: Codable, Sendable, Equatable, Identifiable {
 
     /// What a key's mode came to — **three answers, not two.**

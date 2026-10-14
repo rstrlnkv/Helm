@@ -65,9 +65,7 @@ final class ASecondPressDoesNotEatThePassphraseTests: XCTestCase {
 
     private func model(_ agent: SSHAgentPort) async -> HostsViewModel {
         let transport = LocalTransport()
-        let engine = HostsEngine(file: FixedFile("127.0.0.1\tlocalhost\n"),
-                                 privileged: FixedPrivileged(.declined),
-                                 backups: MemoryBackups(), sshConfig: WireSSHConfig(),
+        let engine = HostsEngine(sshConfig: WireSSHConfig(),
                                  knownHosts: WireKnownHosts(), keys: WireKeys(),
                                  agent: agent, generator: WireKeyGenerator(),
                                  home: URL(fileURLWithPath: "/nowhere"),

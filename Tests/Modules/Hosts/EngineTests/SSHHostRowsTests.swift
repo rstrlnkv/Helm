@@ -1,7 +1,7 @@
 import XCTest
 @testable import Module_Hosts_Engine
 
-/// The rows tab 2 draws, assembled once for the whole tab.
+/// The rows the SSH tab draws, assembled once for the whole tab.
 ///
 /// Three files meet here — the config's blocks, the keys in `~/.ssh` and the
 /// fingerprints in `known_hosts` — and the meeting is arithmetic, not drawing.

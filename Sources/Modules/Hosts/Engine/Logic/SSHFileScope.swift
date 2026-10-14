@@ -6,7 +6,7 @@ import HelmRuntime
 /// `RemovableScope` answers what may be trashed, `UserFileScope` what may be
 /// read, `WatchScope` what may be watched and `ScanRoot` where a scan may
 /// start. This answers the question those four do not, for the one directory
-/// this module writes into by name rather than by constant: `~/.ssh`.
+/// this module writes into: `~/.ssh`.
 ///
 /// The gate cannot be a name check, because the ordinary case and the dangerous
 /// case have the same shape. `~/.ssh/config` is very often a symlink into a
@@ -21,9 +21,6 @@ import HelmRuntime
 ///   home directory. That is what lets the dotfiles link through and stops the
 ///   escape, and it is the check that has to follow the leaf rather than only
 ///   the ancestors.
-///
-/// `/etc/hosts` is not gated here at all: it is a constant, never composed from
-/// anything, which is a different guarantee and a stronger one.
 enum SSHFileScope {
 
     static func mayWrite(_ url: URL, home: URL, under directory: URL? = nil) -> Bool {

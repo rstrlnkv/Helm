@@ -29,7 +29,7 @@ final class HostsDescriptorTests: XCTestCase {
     /// page. Asserted on the contribution rather than on the drawer, because
     /// the drawer is `HelmPanel`'s reading of this value and this is the value.
     func testTheModuleIsAUtilityAndOffersNoTile() {
-        let wire = HostsUIWire.make(file: "127.0.0.1\tlocalhost\n", privileged: .declined)
+        let wire = HostsUIWire.make()
         guard let contribution = HostsDescriptor().menuBar(wire.vm) else {
             return XCTFail("the module contributes nothing to the panel at all, "
                            + "which hides it from the drawer as well as from the grid")
@@ -47,7 +47,7 @@ final class HostsDescriptorTests: XCTestCase {
     /// descriptor rather than restated, so this fails if a size is added
     /// without a decision.
     func testTheModuleOffersNoWidgetAtAnySize() {
-        let wire = HostsUIWire.make(file: "127.0.0.1\tlocalhost\n", privileged: .declined)
+        let wire = HostsUIWire.make()
         let descriptor = HostsDescriptor()
         XCTAssertTrue(descriptor.panelWidgetSizes(wire.vm).isEmpty,
                       "the module offers a widget size, so the composer lists it in the grid")

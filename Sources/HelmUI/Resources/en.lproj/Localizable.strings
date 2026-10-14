@@ -38,7 +38,6 @@
 "A metric strip no longer occasionally reads the wrong appearance and darkens dark mode’s own colours to match." = "A metric strip no longer occasionally reads the wrong appearance and darkens dark mode’s own colours to match.";
 "A module Helm has not seen before, such as Screenshots, joins the sidebar section that already holds most modules of its kind when the section Helm made for that kind is gone, instead of starting a section of its own at the bottom of a sidebar you have arranged." = "A module Helm has not seen before, such as Screenshots, joins the sidebar section that already holds most modules of its kind when the section Helm made for that kind is gone, instead of starting a section of its own at the bottom of a sidebar you have arranged.";
 "A module’s name says whether it is running." = "A module’s name says whether it is running.";
-"A name cannot contain spaces, # or a line break" = "A name cannot contain spaces, # or a line break";
 "A new duplicates search no longer shows the last one’s report, and a stopped search says it was stopped instead of pretending no folder was chosen." = "A new duplicates search no longer shows the last one’s report, and a stopped search says it was stopped instead of pretending no folder was chosen.";
 "A new look across the app: every screen leads with its icon and the numbers that matter there, on one consistent layout." = "A new look across the app: every screen leads with its icon and the numbers that matter there, on one consistent layout.";
 "A package says what it takes up on this Mac — brew will not say, so Helm measures the folder itself." = "A package says what it takes up on this Mac — brew will not say, so Helm measures the folder itself.";
@@ -87,12 +86,10 @@
 "Add another in System Settings and Helm picks it up." = "Add another in System Settings and Helm picks it up.";
 "Add app…" = "Add app…";
 "Add condition" = "Add condition";
-"Add entry" = "Add entry";
 "Add folder…" = "Add folder…";
 "Add tag" = "Add tag";
 "Add to the agent" = "Add to the agent";
 "Add widget" = "Add widget";
-"Address" = "Address";
 "Administrator authorization was cancelled, so Homebrew was not installed." = "Administrator authorization was cancelled, so Homebrew was not installed.";
 "After an update Helm tells you which permissions stopped working and takes you straight to the right pane. An update always revokes them — the checkbox stays ticked while nothing works." = "After an update Helm tells you which permissions stopped working and takes you straight to the right pane. An update always revokes them — the checkbox stays ticked while nothing works.";
 "After you drag an area, draw on it before it is saved: “Pencil”, “Line”, “Arrow”, “Rectangle”, “Oval” and “Highlight”, in eight colours, three thicknesses and “Filled” for the boxes, with “Undo” and “Redo”. Click a drawing to move it, resize it, recolour it or delete it." = "After you drag an area, draw on it before it is saved: “Pencil”, “Line”, “Arrow”, “Rectangle”, “Oval” and “Highlight”, in eight colours, three thicknesses and “Filled” for the boxes, with “Undo” and “Redo”. Click a drawing to move it, resize it, recolour it or delete it.";
@@ -109,7 +106,6 @@
 "An app can no longer claim other apps' files as its own leftovers by naming itself unusually." = "An app can no longer claim other apps' files as its own leftovers by naming itself unusually.";
 "An app list the Uninstaller never received no longer reads as a Mac with no apps on it, and a system extension macOS refuses to remove states its reason again, with the “Open Extensions…” button beside it." = "An app list the Uninstaller never received no longer reads as a Mac with no apps on it, and a system extension macOS refuses to remove states its reason again, with the “Open Extensions…” button beside it.";
 "An app that keeps the Mac awake can now be narrowed to the situation you mean: only with an external display, only on power, or both." = "An app that keeps the Mac awake can now be narrowed to the situation you mean: only with an external display, only on power, or both.";
-"An entry needs at least one name" = "An entry needs at least one name";
 "An extra copy is" = "An extra copy is";
 "An update does not start unless Helm can first write down that one is in flight. That note is what reports an update that fails, and without it a failed update used to come back looking as though nothing had been tried." = "An update does not start unless Helm can first write down that one is in flight. That note is what reports an update that fails, and without it a failed update used to come back looking as though nothing had been tried.";
 "Another app already uses this combination, so it does nothing here." = "Another app already uses this combination, so it does nothing here.";
@@ -127,7 +123,6 @@
 "Applies to this connection only" = "Applies to this connection only";
 "Apply" = "Apply";
 "Apply in Hosts & Keys no longer waits for ever: if the SSH config does not answer within half a minute, the page says it could not be saved and gives you the buttons back." = "Apply in Hosts & Keys no longer waits for ever: if the SSH config does not answer within half a minute, the page says it could not be saved and gives you the buttons back.";
-"Applying asks for your password" = "Applying asks for your password";
 "Apps" = "Apps";
 "Archive" = "Archive";
 "Arrow" = "Arrow";
@@ -308,9 +303,9 @@
 "Earlier launch" = "Earlier launch";
 "Early builds with new features — expect rough edges." = "Early builds with new features — expect rough edges.";
 "Edit" = "Edit";
+"Edit SSH hosts and keys" = "Edit SSH hosts and keys";
 "Edit panel" = "Edit panel";
 "Edit the hosts file from Helm, with a copy kept before every change. Hosts & Keys shows it as a table you can switch entries on and off in, or as plain text — the same file either way. Applying asks for your password once, and the last ten copies are there under “Restore…” if you want one back." = "Edit the hosts file from Helm, with a copy kept before every change. Hosts & Keys shows it as a table you can switch entries on and off in, or as plain text — the same file either way. Applying asks for your password once, and the last ten copies are there under “Restore…” if you want one back.";
-"Edit the hosts file, SSH hosts and keys" = "Edit the hosts file, SSH hosts and keys";
 "Editing the panel" = "Editing the panel";
 "Editor" = "Editor";
 "Emoji" = "Emoji";
@@ -378,7 +373,6 @@
 "Held down, or pressed together with anything else, it stays an ordinary modifier — everything you already use it for keeps working." = "Held down, or pressed together with anything else, it stays an ordinary modifier — everything you already use it for keeps working.";
 "Helm Settings" = "Helm Settings";
 "Helm can be used with VoiceOver. Every control now says what it is — the rule editor was built from pop-up buttons and fields that announced nothing, so a rule could not be written at all without sight." = "Helm can be used with VoiceOver. Every control now says what it is — the rule editor was built from pop-up buttons and fields that announced nothing, so a rule could not be written at all without sight.";
-"Helm can show it, but saving needs another editor" = "Helm can show it, but saving needs another editor";
 "Helm cannot read the key its rules are sealed with, so none of them are running." = "Helm cannot read the key its rules are sealed with, so none of them are running.";
 "Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again" = "Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again";
 "Helm cannot read the screen" = "Helm cannot read the screen";
@@ -470,7 +464,6 @@
 "Hosts & Keys lists the hosts your Mac has already trusted, with a Forget button on each. That is the fix for the wall of text ssh prints when a server changes its key and refuses to connect. A file that hides its host names — which is how macOS keeps it — still lists every entry, and forgetting still works." = "Hosts & Keys lists the hosts your Mac has already trusted, with a Forget button on each. That is the fix for the wall of text ssh prints when a server changes its key and refuses to connect. A file that hides its host names — which is how macOS keeps it — still lists every entry, and forgetting still works.";
 "Hosts & Keys: in Plain text, the SSH config box sits inside a margin on every side, the way the Homebrew console does, and the Table stands on the same edge; the note above them opens instead of jumping in." = "Hosts & Keys: in Plain text, the SSH config box sits inside a margin on every side, the way the Homebrew console does, and the Table stands on the same edge; the note above them opens instead of jumping in.";
 "Hosts & Keys’ Table and Plain-text switch shows glyphs, and its selection slides like the tabs’." = "Hosts & Keys’ Table and Plain-text switch shows glyphs, and its selection slides like the tabs’.";
-"Hosts file" = "Hosts file";
 "How it got here" = "How it got here";
 "How it works" = "How it works";
 "How long the panel's switch and the keyboard shortcut keep the Mac awake" = "How long the panel's switch and the keyboard shortcut keep the Mac awake";
@@ -641,7 +634,6 @@
 "Name pattern" = "Name pattern";
 "Name without extension" = "Name without extension";
 "Named under a Match — used when its condition holds" = "Named under a Match — used when its condition holds";
-"Names" = "Names";
 "Names and icons" = "Names and icons";
 "Names only" = "Names only";
 "Nature" = "Nature";
@@ -689,8 +681,6 @@
 "No words yet" = "No words yet";
 "Nobody maintains it upstream any more." = "Nobody maintains it upstream any more.";
 "None" = "None";
-"Not an address Helm can write" = "Not an address Helm can write";
-"Not applied — the password dialog was cancelled" = "Not applied — the password dialog was cancelled";
 "Not applying right now" = "Not applying right now";
 "Not checked" = "Not checked";
 "Not checked yet" = "Not checked yet";
@@ -716,7 +706,6 @@
 "Nothing to fix." = "Nothing to fix.";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied.";
 "Nothing was blurred. Check the picture yourself." = "Nothing was blurred. Check the picture yourself.";
-"Nothing was written: a backup could not be saved first" = "Nothing was written: a backup could not be saved first";
 "Nothing yet. A file that arrives is checked as it lands, and every watched folder is swept once an hour." = "Nothing yet. A file that arrives is checked as it lands, and every watched folder is swept once an hour.";
 "Notification" = "Notification";
 "Number of days" = "Number of days";
@@ -838,7 +827,6 @@
 "Removal, sweep and “Put back” reports are announced to VoiceOver as they appear, and the welcome tour moves VoiceOver’s focus along with each step." = "Removal, sweep and “Put back” reports are announced to VoiceOver as they appear, and the welcome tour moves VoiceOver’s focus along with each step.";
 "Remove" = "Remove";
 "Remove an app with all of its files" = "Remove an app with all of its files";
-"Remove entry" = "Remove entry";
 "Remove rule" = "Remove rule";
 "Remove section" = "Remove section";
 "Remove widget" = "Remove widget";
@@ -858,7 +846,6 @@
 "Reset and Restart" = "Reset and Restart";
 "Restore defaults" = "Restore defaults";
 "Restore the recommendation" = "Restore the recommendation";
-"Restore…" = "Restore…";
 "Resume" = "Resume";
 "Revert" = "Revert";
 "Review" = "Review";
@@ -1018,7 +1005,6 @@
 "Text Only" = "Text Only";
 "Text copied" = "Text copied";
 "That did not work" = "That did not work";
-"That entry is no longer there" = "That entry is no longer there";
 "That folder cannot be used, so Helm saves to the Desktop." = "That folder cannot be used, so Helm saves to the Desktop.";
 "That key is no longer there" = "That key is no longer there";
 "That passphrase was not accepted" = "That passphrase was not accepted";
@@ -1080,8 +1066,6 @@
 "The file is locked, or you are not its owner. Open Get Info in the Finder to unlock it or change its permissions." = "The file is locked, or you are not its owner. Open Get Info in the Finder to unlock it or change its permissions.";
 "The folder macOS names cannot be used, so Helm saves to the Desktop." = "The folder macOS names cannot be used, so Helm saves to the Desktop.";
 "The gap between the toolbar’s buttons and its search stays fixed as you drag the window’s edge." = "The gap between the toolbar’s buttons and its search stays fixed as you drag the window’s edge.";
-"The hosts file could not be read" = "The hosts file could not be read";
-"The hosts file could not be written" = "The hosts file could not be written";
 "The hosts file editor is off the screen for now while we work out whether it belongs in Helm at all. Nothing was done to your hosts file, and no copy Helm took of it has been removed." = "The hosts file editor is off the screen for now while we work out whether it belongs in Helm at all. Nothing was done to your hosts file, and no copy Helm took of it has been removed.";
 "The icon is white when idle and takes on the colour of whichever module is active." = "The icon is white when idle and takes on the colour of whichever module is active.";
 "The icon shape, icon size and both colours can be chosen from the keyboard, and Escape leaves the shortcut recorder." = "The icon shape, icon size and both colours can be chosen from the keyboard, and Escape leaves the shortcut recorder.";
@@ -1151,7 +1135,6 @@
 "The warning under the VPN notice options names the options the picker itself offers: Nothing, Menu bar, and Notification." = "The warning under the VPN notice options names the options the picker itself offers: Nothing, Menu bar, and Notification.";
 "The welcome tour lets you pick what you want. Each module’s screen carries a switch, so you can keep or drop it while you are being introduced to it — and the opening screen asks whether Helm should start with your Mac. The switch starts where the module already stood, so skipping the tour changes nothing." = "The welcome tour lets you pick what you want. Each module’s screen carries a switch, so you can keep or drop it while you are being introduced to it — and the opening screen asks whether Helm should start with your Mac. The switch starts where the module already stood, so skipping the tour changes nothing.";
 "The words Keyboard must never touch and the per-app rules have a window of their own. The page keeps a row for each with its count, so you can still see where a word went." = "The words Keyboard must never touch and the per-app rules have a window of their own. The page keeps a row for each with its count, so you can still see where a word went.";
-"The write reported success, but the file on disk differs" = "The write reported success, but the file on disk differs";
 "Then" = "Then";
 "There is already a key with that name" = "There is already a key with that name";
 "These are left exactly as you typed them, whatever the dictionary thinks." = "These are left exactly as you typed them, whatever the dictionary thinks.";
@@ -1163,7 +1146,6 @@
 "This app is not signed — this rule never fires" = "This app is not signed — this rule never fires";
 "This copy of Helm is not the one a release replaces. Helm opened its download page instead." = "This copy of Helm is not the one a release replaces. Helm opened its download page instead.";
 "This folder is no longer there" = "This folder is no longer there";
-"This hosts file is too large for Helm to save" = "This hosts file is too large for Helm to save";
 "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word." = "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word.";
 "This is not there any more, so nothing was moved. Scan again to see what is left." = "This is not there any more, so nothing was moved. Scan again to see what is left.";
 "This is not there any more, so nothing was moved. Search again to see what is left." = "This is not there any more, so nothing was moved. Search again to see what is left.";
@@ -1216,7 +1198,6 @@
 "Unknown" = "Unknown";
 "Unlock and add" = "Unlock and add";
 "Unreadable" = "Unreadable";
-"Unsaved changes" = "Unsaved changes";
 "Until you pick one, the same as the active colour" = "Until you pick one, the same as the active colour";
 "Until you stop it" = "Until you stop it";
 "Untitled rule" = "Untitled rule";
@@ -1237,7 +1218,6 @@
 "Upstream has deprecated it." = "Upstream has deprecated it.";
 "Upstream has discontinued it." = "Upstream has discontinued it.";
 "Use the default name" = "Use the default name";
-"Use this entry" = "Use this entry";
 "Use this module" = "Use this module";
 "Use ⇧⌘3 and ⇧⌘4" = "Use ⇧⌘3 and ⇧⌘4";
 "Use ⇧⌘3, ⇧⌘4 and ⇧⌘5" = "Use ⇧⌘3, ⇧⌘4 and ⇧⌘5";
@@ -1339,7 +1319,6 @@
 "free" = "free";
 "guess" = "guess";
 "h" = "h";
-"hosts file" = "hosts file";
 "is" = "is";
 "it has already been put back" = "it has already been put back";
 "it is no longer in the Trash" = "it is no longer in the Trash";

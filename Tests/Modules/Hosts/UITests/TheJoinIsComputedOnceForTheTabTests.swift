@@ -79,7 +79,7 @@ final class TheJoinIsComputedOnceForTheTabTests: XCTestCase {
         XCTAssertEqual(hvm.usage(of: "work_rsa"), .everyHost)
     }
 
-    /// The rows tab 2 draws, from the same reading: the address, the key, and
+    /// The rows the SSH tab draws, from the same reading: the address, the key, and
     /// the fingerprint already trusted for that host.
     func testTheHostRowsCarryTheAddressTheKeyAndTheTrust() {
         let hvm = loaded()

@@ -2,11 +2,11 @@ import Foundation
 
 /// Splitting a text file into lines **without throwing the endings away.**
 ///
-/// Every file this module edits is somebody else's — `/etc/hosts`,
-/// `~/.ssh/config`, `~/.ssh/known_hosts` — and each is read, changed in one
-/// place and written back whole. `components(separatedBy:)` returns bodies
-/// only, so a file that arrived with CRLF endings comes back as LF and every
-/// line in it reads as changed by an app that was asked to edit one.
+/// Every file this module edits is somebody else's — `~/.ssh/config` and
+/// `~/.ssh/known_hosts` — and each is read, changed in one place and written
+/// back whole. `components(separatedBy:)` returns bodies only, so a file that
+/// arrived with CRLF endings comes back as LF and every line in it reads as
+/// changed by an app that was asked to edit one.
 ///
 /// **CRLF is one `Character` in Swift** — a grapheme cluster — so it is matched
 /// as itself. A reader that looks for `"\r"` and peeks ahead for `"\n"` matches
@@ -14,8 +14,10 @@ import Foundation
 /// and swallows the whole file as a single line, which is how forgetting one
 /// trusted host emptied a `known_hosts`.
 ///
-/// The three parsers each had their own copy of this before the third one was
-/// written without it.
+/// The parsers of the files this module writes back read their lines through
+/// this one splitter. A tool's output that is only read, never written back —
+/// `ssh-add -l`'s, in `AgentList.read` — has no ending to keep and is split
+/// without it.
 enum LineEndings {
 
     /// One entry per line: what the line said, and how it ended.

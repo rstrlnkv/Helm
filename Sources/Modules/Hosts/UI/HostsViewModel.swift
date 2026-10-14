@@ -5,41 +5,26 @@ import HelmRuntime
 import HelmUI
 import Module_Hosts_Engine
 
-/// The parsed document, the edits, and the apply.
+/// The config, the known hosts and the keys, as the page holds them.
 ///
-/// **The text is canonical.** `entries` is derived from it on every read and
-/// never held beside it, so a table edit and a keystroke in the raw view are
-/// the same edit to the same file. Two views of one file cannot disagree when
-/// only one of them is the file.
+/// **The config's text is canonical.** The table is derived from it on every
+/// read and never held beside it, so a row edit and a keystroke in the raw view
+/// are the same edit to the same file. Two views of one file cannot disagree
+/// when only one of them is the file.
 ///
 /// **Cached per underlying `ModuleViewModel`.** Leaving a module's page tears
 /// down the type-erased subtree and every `@StateObject` in it; coming back
-/// builds a new one. Re-reading the file on every sidebar click is the cost
+/// builds a new one. Re-reading the files on every sidebar click is the cost
 /// Uninstaller measured at four seconds.
 @MainActor final class HostsViewModel: ObservableObject {
 
-    /// The file as the person means it to be. **Canonical.**
-    @Published private(set) var text: String = ""
-    /// The file as disk says it is, which is what «revert» means.
-    @Published private(set) var onDisk: String = ""
-    /// False when the file could not be read at all — which is not an empty
-    /// file, and the page says a different sentence for each.
-    @Published private(set) var readable = true
-    @Published private(set) var backups: [String] = []
-    @Published private(set) var applying = false
-    @Published private(set) var lastOutcome: HostsOutcome?
-    /// Why the last edit was declined, or nil. The page switches over it
-    /// exhaustively — no `default`, so a refusal added to the engine is a build
-    /// error rather than a field that snaps back in silence.
-    @Published private(set) var lastRefusal: HostsFile.Refusal?
+    // MARK: - The config, `~/.ssh/config`
 
-    // MARK: - Tab 2, `~/.ssh/config`
-
-    /// The config as the person means it to be. Canonical, exactly as `text`
-    /// is for the file above — the table is derived from it on every read, so a
-    /// row edit and a keystroke in the raw view are one edit to one file.
+    /// The config as the person means it to be. Canonical — the table is
+    /// derived from it on every read, so a row edit and a keystroke in the raw
+    /// view are one edit to one file.
     @Published private(set) var sshText: String = ""
-    /// What disk says, which is what «revert» means here too.
+    /// What disk says, which is what «revert» means.
     @Published private(set) var sshOnDisk: String = ""
     /// False when the config could not be read at all: missing, or not UTF-8.
     /// An empty config is a thing a person may mean, and this is not it.
@@ -49,9 +34,9 @@ import Module_Hosts_Engine
     /// the last moment is a button that lied while it was being pressed.
     @Published private(set) var sshWritable = true
     @Published private(set) var sshOutcome: SSHConfigOutcome?
-    /// Whether a write of the config is in flight. Hosts has `applying`, which
-    /// the engine publishes; this one is this model's own, set around the call,
-    /// because the config's write is a request with an answer and no event.
+    /// Whether a write of the config is in flight. This model's own, set around
+    /// the call, because the config's write is a request with an answer and no
+    /// event.
     @Published private(set) var sshApplying = false
     /// How long an Apply waits for the engine before this model stops waiting.
     /// The write is a request with no deadline of its own (a home folder on a
@@ -92,11 +77,11 @@ import Module_Hosts_Engine
     /// which is the same answer the join gives a key nothing mentions.
     func usage(of key: String) -> KeyUsage.OfKey { keyUsage[key] ?? .unused }
 
-    // MARK: - Tab 2, `~/.ssh/known_hosts`
+    // MARK: - The known hosts, `~/.ssh/known_hosts`
 
     /// The file as disk says it is. **Canonical and not editable**: the only
     /// change this tab makes is dropping a line, so there is no draft to hold
-    /// beside it the way tab 1 and the config do.
+    /// beside it the way the config has one.
     @Published private(set) var knownHostsText: String = ""
     @Published private(set) var knownHostsReadable = true
     @Published private(set) var knownHostsWritable = true
@@ -104,11 +89,11 @@ import Module_Hosts_Engine
     /// The line being forgotten right now, so its own row goes quiet.
     @Published private(set) var forgetting: Int?
 
-    // MARK: - Tab 3, the keys
+    // MARK: - The keys
 
-    /// The keys as the engine last read them. **Not canonical the way the two
-    /// documents above are**: there is nothing here for a person to edit, so
-    /// there is no «as they mean it to be» to hold beside «as disk says».
+    /// The keys as the engine last read them. **Not canonical the way the
+    /// config above is**: there is nothing here for a person to edit, so there
+    /// is no «as they mean it to be» to hold beside «as disk says».
     @Published private(set) var keys: [KeyRow] = []
     /// False when `~/.ssh` could not be read at all. Not «no keys» — the page
     /// says a different sentence for each, and the difference is whether Helm
@@ -143,11 +128,8 @@ import Module_Hosts_Engine
     /// same string, and a name only one side changes is an error nowhere.
     static let directoryRow = "."
 
-    var entries: [HostsFile.Entry] { HostsFile.parse(text).entries }
-    var hasUnsavedChanges: Bool { text != onDisk }
-
-    /// The blocks the SSH table draws, derived on every read for the reason the
-    /// text above is canonical.
+    /// The blocks the SSH table draws, derived on every read for the reason
+    /// `sshText` is canonical.
     var sshDocument: SSHConfigFile.Document { SSHConfigFile.parse(sshText) }
     var sshHasUnsavedChanges: Bool { sshText != sshOnDisk }
 
@@ -225,11 +207,6 @@ import Module_Hosts_Engine
             guard let state = try? JSONDecoder().decode(HostsState.self, from: event.payload)
             else { return }
             adopt(state)
-        case .operation:
-            guard let op = try? JSONDecoder().decode(HostsOperation.self, from: event.payload)
-            else { return }
-            applying = op.running
-            lastOutcome = op.lastOutcome
         case nil:
             return
         }
@@ -240,19 +217,10 @@ import Module_Hosts_Engine
     }
 
     /// A snapshot from the engine. **It updates what «revert» means; it does
-    /// not take the person's typing away.** `/etc/hosts` is a file any admin
-    /// program may rewrite, so a snapshot can land while somebody is halfway
-    /// through a change.
+    /// not take the person's typing away.** `~/.ssh/config` is a file the person
+    /// edits in their own editor, so a snapshot can land while somebody is
+    /// halfway through a change here.
     func adopt(_ state: HostsState) {
-        let wasClean = text == onDisk
-        onDisk = state.hostsText
-        readable = state.hostsReadable
-        backups = state.backups
-        if wasClean { text = state.hostsText }
-
-        // The same rule for the config, and it is needed for the same reason:
-        // `~/.ssh/config` is a file the person edits in their own editor, so a
-        // snapshot can land while somebody is halfway through a change here.
         let sshWasClean = sshText == sshOnDisk
         sshOnDisk = state.sshText
         sshReadable = state.sshReadable
@@ -294,10 +262,6 @@ import Module_Hosts_Engine
 
     // MARK: - Editing
 
-    func setText(_ new: String) { text = new }
-
-    func revert() { text = onDisk }
-
     func setSSHText(_ new: String) {
         sshText = new
         refreshJoin()
@@ -324,9 +288,7 @@ import Module_Hosts_Engine
     /// Refusals here are the three `SSHConfigFile.set` names — a line break, a
     /// `#`, an empty value — and the page shows nothing for them: the field
     /// simply keeps what it had, which is what a control that refuses a
-    /// keystroke looks like. That is the difference from the hosts table, whose
-    /// refusals carry a sentence because they are about the *grammar of an
-    /// address* and a person cannot see why by looking.
+    /// keystroke looks like.
     @discardableResult
     func setSSHField(_ value: String, of name: SSHConfigFile.FieldName, ofHost host: Int) -> Bool {
         var document = SSHConfigFile.parse(sshText)
@@ -334,7 +296,7 @@ import Module_Hosts_Engine
         let rendered = SSHConfigFile.render(document)
         // Only a change that happened is published: a body pass writes every
         // binding on the page back into its control, under a caret that is
-        // mid-word (see `edit` above, which learned this the hard way).
+        // mid-word.
         if rendered != sshText {
             sshText = rendered
             refreshJoin()
@@ -342,9 +304,9 @@ import Module_Hosts_Engine
         return true
     }
 
-    /// Writes the config. No password dialog — it is the person's own file —
-    /// and no backup: the two things standing where those stand on tab 1 are
-    /// the engine's gate and its read-back.
+    /// Writes the config. No password dialog and no backup — it is the person's
+    /// own file; what stands between the text and the disk is the engine's gate
+    /// and its read-back.
     ///
     /// **The answer is about the text that was sent.** Typing is not blocked
     /// during the write, so when the text has moved since, a refusal is not
@@ -387,83 +349,6 @@ import Module_Hosts_Engine
     private func sshLateAnswer(_ outcome: SSHConfigOutcome, sent: String, attempt: Int) {
         guard sshAttempt.isLatest(attempt) else { return }
         sshOutcome = sshText == sent ? outcome : nil
-    }
-
-    /// **The refusal has to survive the hop.** Every editor answers
-    /// `HostsFile.Edit`, and a single-expression closure would discard it —
-    /// which reaches the person as a field that snapped back with no reason
-    /// given. So this returns it, and `lastRefusal` is what the page draws.
-    ///
-    /// Only a change that happened is published, and *published* is the word:
-    /// what a spurious write to a `@Published` property costs is a body pass,
-    /// and a body pass writes every binding on the page back into the control
-    /// it is bound to — under a caret that is mid-word.
-    ///
-    /// **Which is why «applied» is not the same question as «changed».** A
-    /// names field is bound to `names.joined(separator: " ")`, so the space
-    /// between two names is typed through this editor: «localhost » splits back
-    /// to the one name already there, the edit applies, and the re-render is
-    /// byte-for-byte the document on screen. Publishing it takes the space away
-    /// as fast as it is typed, and a second name cannot be entered at all. So
-    /// the render is compared before it is assigned — and `lastRefusal` is too,
-    /// because clearing a reason that is already nil is just as much a body
-    /// pass as rewriting the text (`HostsFuzzRoundTripTests` proves the render
-    /// is stable, so neither can be caught by looking at the values).
-    @discardableResult
-    private func edit(_ change: (inout HostsFile.Document) -> HostsFile.Edit) -> HostsFile.Edit {
-        var document = HostsFile.parse(text)
-        let outcome = change(&document)
-        switch outcome {
-        case .applied:
-            let rendered = HostsFile.render(document)
-            if rendered != text { text = rendered }
-            if lastRefusal != nil { lastRefusal = nil }
-        case .refused(let why):
-            if lastRefusal != why { lastRefusal = why }
-        }
-        return outcome
-    }
-
-    @discardableResult
-    func setEnabled(_ enabled: Bool, entry: Int) -> HostsFile.Edit {
-        edit { HostsFile.setEnabled(enabled, at: entry, in: &$0) }
-    }
-
-    /// The field binds to the **strict** predicate, not the generous one.
-    /// `isAddress` decides whether a line somebody else wrote is a row, and is
-    /// deliberately generous — a mapping Helm will not show is a mapping nobody
-    /// can switch off. `isWritableAddress`, which this reaches through
-    /// `HostsFile.setAddress`, decides what Helm itself may put in the file and
-    /// refuses the ambiguous forms: Apple's own `inet_pton` and `inet_aton`
-    /// read `0177.0.0.1` as two different addresses.
-    @discardableResult
-    func setAddress(_ address: String, entry: Int) -> HostsFile.Edit {
-        edit { HostsFile.setAddress(address, at: entry, in: &$0) }
-    }
-
-    @discardableResult
-    func setNames(_ names: [String], entry: Int) -> HostsFile.Edit {
-        edit { HostsFile.setNames(names, at: entry, in: &$0) }
-    }
-
-    @discardableResult
-    func remove(entry: Int) -> HostsFile.Edit {
-        edit { HostsFile.remove(at: entry, in: &$0) }
-    }
-
-    @discardableResult
-    func append(address: String, names: [String]) -> HostsFile.Edit {
-        edit { HostsFile.append(address: address, names: names, in: &$0) }
-    }
-
-    // MARK: - Applying
-
-    func apply() async {
-        await client.send(HostsCommand.applyHosts, encoding: HostsApply(text: text))
-    }
-
-    func restore(_ backupID: String) async {
-        await client.send(HostsCommand.restoreHosts, encoding: HostsRestore(backupID: backupID))
     }
 
     // MARK: - The acts on a key

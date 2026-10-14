@@ -86,9 +86,7 @@ final class EveryTabSwitchIsACutTests: XCTestCase {
         var wire = ModulePageRender.answering(id)
         switch id {
         case HostsEngine.moduleID:
-            wire.says(HostsEvent.state, HostsState(
-                hostsText: "127.0.0.1 localhost\n::1 localhost\n",
-                sshText: "Host alpha\n  HostName alpha.example\n  User one\n\nHost beta\n  HostName beta.example\n",
+            wire.says(HostsEvent.state, HostsState(sshText: "Host alpha\n  HostName alpha.example\n  User one\n\nHost beta\n  HostName beta.example\n",
                 keys: [KeyRow(name: "id_fixture", hasPublicHalf: true, described: nil, modified: nil,
                               permission: .ok, publicText: nil, inAgent: false),
                        KeyRow(name: "id_open", hasPublicHalf: false, described: nil, modified: nil,

@@ -4,7 +4,7 @@ import HelmRuntime
 import HelmTestSupport
 @testable import Module_Hosts_Engine
 
-/// Writing `~/.ssh/config` — the half of tab 2 that touches the disk.
+/// Writing `~/.ssh/config` — the half of the SSH tab that touches the disk.
 ///
 /// The file is the person's own, so there is no dialog and no backup, and the
 /// two things standing in their place are the gate and the read-back. Both are
@@ -35,9 +35,7 @@ final class SSHConfigApplyTests: XCTestCase {
         try? text.write(to: url, atomically: true, encoding: .utf8)
         let port = FakeSSHConfig(url: url, text: text, behaviour: behaviour)
         let transport = LocalTransport()
-        let hosts = FakeHostsFile()
-        let engine = HostsEngine(file: hosts, privileged: FakePrivileged(writingTo: hosts),
-                                 backups: FakeBackups(), sshConfig: port,
+        let engine = HostsEngine(sshConfig: port,
                                  knownHosts: FakeKnownHosts(), keys: FakeSSHKeys(),
                                  agent: FakeSSHAgent(), generator: FakeGenerator(), home: home,
                                  transport: transport)
@@ -87,9 +85,7 @@ final class SSHConfigApplyTests: XCTestCase {
         try "Host a\n".write(to: outside, atomically: true, encoding: .utf8)
         let port = FakeSSHConfig(url: outside, text: "Host a\n", behaviour: .ordinary)
         let transport = LocalTransport()
-        let hosts = FakeHostsFile()
-        let engine = HostsEngine(file: hosts, privileged: FakePrivileged(writingTo: hosts),
-                                 backups: FakeBackups(), sshConfig: port,
+        let engine = HostsEngine(sshConfig: port,
                                  knownHosts: FakeKnownHosts(), keys: FakeSSHKeys(),
                                  agent: FakeSSHAgent(), generator: FakeGenerator(), home: home,
                                  transport: transport)
@@ -115,9 +111,9 @@ final class SSHConfigApplyTests: XCTestCase {
         XCTAssertEqual(seen?.sshWritable, true)
     }
 
-    /// A config that is not there is not an empty config — the same distinction
-    /// `hostsReadable` carries, and the page needs it to tell «you have no SSH
-    /// config» from «your SSH config is empty».
+    /// A config that is not there is not an empty config: the page needs the
+    /// difference to tell «you have no SSH config» from «your SSH config is
+    /// empty».
     func testAMissingConfigReadsAsUnreadableRatherThanEmpty() async throws {
         let b = bench()
         b.port.changeUnderTheApp(to: nil)

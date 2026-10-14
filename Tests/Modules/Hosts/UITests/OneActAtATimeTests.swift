@@ -95,9 +95,7 @@ final class OneActAtATimeTests: XCTestCase {
         let agent = SittingAgent()
         let keys = RecordingKeys()
         let transport = LocalTransport()
-        let engine = HostsEngine(file: FixedFile("127.0.0.1\tlocalhost\n"),
-                                 privileged: FixedPrivileged(.declined),
-                                 backups: MemoryBackups(), sshConfig: WireSSHConfig(),
+        let engine = HostsEngine(sshConfig: WireSSHConfig(),
                                  knownHosts: WireKnownHosts(), keys: keys, agent: agent,
                                  generator: RefusingGenerator(), home: home, transport: transport)
         engines.append(engine)

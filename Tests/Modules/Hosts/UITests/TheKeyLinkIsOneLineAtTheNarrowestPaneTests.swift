@@ -26,9 +26,7 @@ final class TheKeyLinkIsOneLineAtTheNarrowestPaneTests: XCTestCase {
     }
 
     private static func state(key: String) -> HostsState {
-        HostsState(
-            hostsText: "127.0.0.1\tlocalhost\n",
-            sshText: "Host build-runner-eu-west-1\n    HostName build-runner-eu-west-1.internal.corp.example.com\n    User deploy\n    IdentityFile ~/.ssh/\(key)\n",
+        HostsState(sshText: "Host build-runner-eu-west-1\n    HostName build-runner-eu-west-1.internal.corp.example.com\n    User deploy\n    IdentityFile ~/.ssh/\(key)\n",
             keys: [KeyRow(name: key, hasPublicHalf: true,
                           described: KeyInventory.described("256 SHA256:5Xb9pQ2mK7vN8zR1tY4wA6cE0jH3sL5uD7fG9iO2kM8 me@mac (ED25519)"),
                           modified: Date(timeIntervalSince1970: 1_700_000_000), permission: .ok,

@@ -2,7 +2,7 @@ import XCTest
 @testable import Module_Hosts_Engine
 
 /// What in `~/.ssh` is a key, what `ssh-keygen -l` said about it, and what the
-/// agent is doing — the three readings tab 3 is built out of, none of which
+/// agent is doing — the three readings the keys tab is built out of, none of which
 /// touches a private key.
 final class KeyInventoryTests: XCTestCase {
 

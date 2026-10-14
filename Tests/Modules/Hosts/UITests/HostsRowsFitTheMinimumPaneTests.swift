@@ -10,8 +10,8 @@ import XCTest
 
 /// **Nothing in this module may impose a width in points.**
 ///
-/// It did: the hosts table pinned its address column at 220 pt, the keys table
-/// pinned a field at 240 and the config table pinned a label column at 96. The
+/// It did: the keys table pinned a field at 240 and the config table pinned a
+/// label column at 96. The
 /// settings window's minimum is 860 pt, which leaves the pane about **490** —
 /// and no number can be chosen that survives both a 47-character fingerprint
 /// and whatever somebody's employer calls a build machine.
@@ -110,8 +110,7 @@ final class HostsRowsFitTheMinimumPaneTests: XCTestCase {
     }
 
     private func state() -> HostsState {
-        HostsState(hostsText: "127.0.0.1\tlocalhost example.local\n",
-                   sshText: config,
+        HostsState(sshText: config,
                    keys: [KeyRow(name: "id_ed25519_work_laptop", hasPublicHalf: true,
                                  described: KeyInventory.described(
                                     "256 \(fingerprint) \(comment) (ED25519)"),
@@ -197,7 +196,7 @@ final class HostsRowsFitTheMinimumPaneTests: XCTestCase {
     ///
     /// The third one is why the count moved. A plain `Text` leaves no AppKit
     /// view, so this scan found nothing to measure on the usage line and a fixed
-    /// width **there** left all three cases in this file green — the line the
+    /// width **there** left every case in this file green — the line the
     /// whole tab was rebuilt around was the one line its width guard could not
     /// see. It is `.textSelection(.enabled)` now, which both makes it measurable
     /// and lets somebody copy the host names it lists.
@@ -212,46 +211,6 @@ final class HostsRowsFitTheMinimumPaneTests: XCTestCase {
         judge("the host row", atLeast: 2, inset: HostsSettingsPage.textBoxMargin) {
             SSHHostsTable(hvm: $0, select: { _ in })
         }
-    }
-
-    /// The `/etc/hosts` editor is off the screen and still in the tree, and its
-    /// address column was one of the three widths the complaint named. It has no
-    /// selectable text — it is two fields and a switch — so it is judged on the
-    /// two readings that do not need any.
-    func testTheHostsFileRowFitsTheNarrowestPane() {
-        let narrow = draw(HostsTable(hvm: model()), at: narrowest)
-        let wide = draw(HostsTable(hvm: model()), at: widest)
-        assertTheRowKeepsItsGutter("the hosts file row", narrow: narrow, wide: wide)
-
-        // Both fields grow with the pane. The address field was pinned at
-        // 220 pt, which at this pane is half the row — so the check is that
-        // neither field is the same width at 490 as at 744.
-        let narrowFields = fieldWidths(HostsTable(hvm: model()), at: narrowest)
-        let wideFields = fieldWidths(HostsTable(hvm: model()), at: widest)
-        XCTAssertEqual(narrowFields.count, wideFields.count)
-        XCTAssertGreaterThanOrEqual(narrowFields.count, 2,
-                                    "no text fields were found in the hosts row, so the widths "
-                                    + "below are read off nothing")
-        for (narrowWidth, wideWidth) in zip(narrowFields, wideFields) {
-            XCTAssertGreaterThan(wideWidth, narrowWidth + 1, """
-                a field in the hosts row is \(narrowWidth) pt at a \(narrowest) pt pane and \
-                \(wideWidth) pt at \(widest) — it is pinned to a number, so at the narrowest \
-                window it takes a share of the row that nothing gave it back
-                """)
-        }
-    }
-
-    /// In the order the tree draws them, **never sorted.** Sorting was the
-    /// first spelling and it made this check unable to fail: with the address
-    /// field pinned back at 220 pt the two panes read `[163, 220]` and
-    /// `[220, 417]`, and sorted lists pair 163 with 220 and 220 with 417 — both
-    /// «grew», with the pinned field's own reading handed to its neighbour.
-    /// Proved by putting the 220 back, which is how the fault was found.
-    private func fieldWidths(_ view: some View, at width: CGFloat) -> [CGFloat] {
-        let render = MountedRender(view, width: width, height: 1200, appearance: .aqua)
-        renders.append(render)
-        render.settle(20)
-        return render.host.everyView(named: "AppKitTextField").map(\.bounds.width)
     }
 
     /// The four readings, on one subject.
@@ -304,14 +263,14 @@ final class HostsRowsFitTheMinimumPaneTests: XCTestCase {
         // **Every long line, not only the longest one.** Taking the maximum
         // guards exactly one line: with the fingerprint growing, a width pinned
         // on any *other* line is invisible, and the usage sentence — the line
-        // this whole tab was rebuilt around — was pinnable at 300 pt with all
-        // three cases in this file green. Measured, 2026-08-20.
+        // this whole tab was rebuilt around — was pinnable at 300 pt with every
+        // case in this file green. Measured, 2026-08-20.
         //
-        // Paired by index and never sorted, for the reason `fieldWidths` gives:
-        // a sorted pair hands a pinned reading to its neighbour and both
-        // «grew». A line may legitimately not grow — `chmod 600` is its own
-        // width at any pane — so what is counted is how many *do*, against the
-        // number this row has that are long enough for the pane to press on.
+        // Paired by index and never sorted: a sorted pair hands a pinned
+        // reading to its neighbour and both «grew». A line may legitimately
+        // not grow — `chmod 600` is its own width at any pane — so what is
+        // counted is how many *do*, against the number this row has that are
+        // long enough for the pane to press on.
         let grew = zip(narrow.selectable, wide.selectable)
             .filter { $1.width > $0.width + 1 }
             .count

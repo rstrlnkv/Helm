@@ -74,16 +74,12 @@ final class TheSSHHeaderComesAndGoesWithWhatItSaysTests: XCTestCase {
         try FileManager.default.createDirectory(at: ssh, withIntermediateDirectories: true)
         let config = ssh.appendingPathComponent("config")
         try "Host a\n    HostName a.example\n".write(to: config, atomically: true, encoding: .utf8)
-        let engine = HostsEngine(file: FixedFile("127.0.0.1\tlocalhost\n"),
-                                 privileged: FixedPrivileged(.declined),
-                                 backups: MemoryBackups(),
-                                 sshConfig: ScratchSSHConfig(config),
+        let engine = HostsEngine(sshConfig: ScratchSSHConfig(config),
                                  knownHosts: ScratchKnownHosts(url: ssh.appendingPathComponent("known_hosts"),
                                                                text: known, writes: knownWrites),
                                  keys: WireKeys(), agent: WireAgent(),
                                  generator: WireKeyGenerator(),
                                  home: home,
-                                 now: { Date(timeIntervalSince1970: 0) },
                                  transport: LocalTransport())
         engines.append(engine)
         let vm = ModuleViewModel(transport: engine.transport)

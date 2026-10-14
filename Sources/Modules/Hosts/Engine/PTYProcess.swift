@@ -4,8 +4,7 @@ import Foundation
 /// A child on a pseudo-terminal, and the one secret this app holds in memory.
 ///
 /// **Why a pty at all.** `ssh-keygen -N '<passphrase>'` puts the passphrase in
-/// `ps auxww` for every process on the machine to read — the same defect as a
-/// staged path in a privileged sentence, one argument over. `ssh-add` on an
+/// `ps auxww` for every process on the machine to read. `ssh-add` on an
 /// encrypted key has the identical problem. So the passphrase is never an
 /// argument: the child is given a terminal, it asks the way it asks a person,
 /// and the answer is written to the master end.

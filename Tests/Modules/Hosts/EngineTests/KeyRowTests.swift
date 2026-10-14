@@ -1,7 +1,7 @@
 import XCTest
 @testable import Module_Hosts_Engine
 
-/// One row of tab 3, assembled from the four readings that make it.
+/// One row of the keys tab, assembled from the four readings that make it.
 ///
 /// The assembly is pure and lives apart from the port that gathers the parts,
 /// because every interesting case here is a **missing** part — a key `stat`

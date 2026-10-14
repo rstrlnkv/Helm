@@ -87,12 +87,9 @@ final class AForgetBehindAHeldConfigWriteTests: XCTestCase {
         let ceiling: TimeInterval = 20
         let config = Held(configURL, ceiling: ceiling)
         let known = StoredKnownHosts(url: knownURL, text: trusts)
-        let engine = HostsEngine(file: FixedFile("127.0.0.1\tlocalhost\n"),
-                                 privileged: FixedPrivileged(.declined),
-                                 backups: MemoryBackups(), sshConfig: config,
+        let engine = HostsEngine(sshConfig: config,
                                  knownHosts: known, keys: WireKeys(), agent: WireAgent(),
-                                 generator: WireKeyGenerator(), home: home,
-                                 now: { Date(timeIntervalSince1970: 0) }, transport: LocalTransport())
+                                 generator: WireKeyGenerator(), home: home, transport: LocalTransport())
         keep.append(engine)
         let hvm = HostsViewModel(vm: ModuleViewModel(transport: engine.transport))
         keep.append(hvm)

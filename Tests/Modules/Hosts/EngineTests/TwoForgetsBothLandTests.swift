@@ -55,10 +55,7 @@ final class TwoForgetsBothLandTests: XCTestCase {
         try text.write(to: url, atomically: true, encoding: .utf8)
         let port = SlowKnownHosts(url: url, text: text)
         let transport = LocalTransport()
-        let hosts = FakeHostsFile()
-        let engine = HostsEngine(file: hosts, privileged: FakePrivileged(writingTo: hosts),
-                                 backups: FakeBackups(),
-                                 sshConfig: FakeSSHConfig(
+        let engine = HostsEngine(sshConfig: FakeSSHConfig(
                                     url: URL(fileURLWithPath: "/nowhere/.ssh/config"),
                                     text: "Host a\n"),
                                  knownHosts: port, keys: FakeSSHKeys(), agent: FakeSSHAgent(),

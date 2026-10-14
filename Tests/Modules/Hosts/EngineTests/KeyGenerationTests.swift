@@ -67,12 +67,9 @@ final class KeyGenerationTests: XCTestCase {
     private func bench(names: KeyInventory.Listing? = ["id_ed25519", "id_ed25519.pub"],
                        status: Int32 = 0) -> Bench {
         let transport = LocalTransport()
-        let hosts = FakeHostsFile()
         let generator = FakeGenerator(status: status)
         let home = scratchDirectory("key-generation")
-        let engine = HostsEngine(file: hosts, privileged: FakePrivileged(writingTo: hosts),
-                                 backups: FakeBackups(),
-                                 sshConfig: FakeSSHConfig(
+        let engine = HostsEngine(sshConfig: FakeSSHConfig(
                                     url: home.appendingPathComponent(".ssh/config"),
                                     text: "Host a\n"),
                                  knownHosts: FakeKnownHosts(), keys: FakeSSHKeys(names: names), agent: FakeSSHAgent(),

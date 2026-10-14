@@ -4,11 +4,10 @@ import XCTest
 /// Editing one field of one block, and leaving every other byte of the file
 /// alone.
 ///
-/// The hazard this exists for is the one `HostsEntryEditingHazardsTests` records
-/// next door, arriving through a different door: a value is a **line fragment**,
-/// and a fragment that carries a newline is two directives — the second typed by
-/// nobody, in somebody's `~/.ssh/config`, with `IdentityFile` pointing wherever
-/// the text says. `ssh` reads the first match of a directive per block, so an
+/// The hazard this exists for: a value is a **line fragment**, and a fragment
+/// that carries a newline is two directives — the second typed by nobody, in
+/// somebody's `~/.ssh/config`, with `IdentityFile` pointing wherever the text
+/// says. `ssh` reads the first match of a directive per block, so an
 /// injected line does not even have to argue with the one above it to win.
 final class SSHConfigEditingTests: XCTestCase {
 

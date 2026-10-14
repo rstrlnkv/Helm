@@ -74,7 +74,7 @@ final class TheToolbarDeclarationMatchesWhatThePageOffersTests: XCTestCase {
     /// **Keys first** — the page's own reason, restated: what brings somebody
     /// here is «what are my keys and which of them still do anything».
     func testTheTwoTabsCarryTheirOwnIdsAndKeysIsSelectedFirst() async throws {
-        let hosted = HostsUIWire.make(file: "127.0.0.1\tlocalhost\n", privileged: .declined)
+        let hosted = HostsUIWire.make()
         let channel = HelmWindowToolbarChannel()
         _ = await mountPage(hosted, channel: channel)
 
@@ -87,8 +87,7 @@ final class TheToolbarDeclarationMatchesWhatThePageOffersTests: XCTestCase {
     // MARK: - New key
 
     func testNewKeyIsVisibleOnlyOnKeysAndDimmedWhenTheDirectoryCannotBeRead() async throws {
-        let hosted = HostsUIWire.make(file: "127.0.0.1\tlocalhost\n", privileged: .declined,
-                                      keys: WireKeys(names: nil))
+        let hosted = HostsUIWire.make(keys: WireKeys(names: nil))
         let channel = HelmWindowToolbarChannel()
         let mounted = await mountPage(hosted, channel: channel)
 
@@ -107,7 +106,7 @@ final class TheToolbarDeclarationMatchesWhatThePageOffersTests: XCTestCase {
     }
 
     func testNewKeyIsEnabledWhenKeysAreReadable() async throws {
-        let hosted = HostsUIWire.make(file: "127.0.0.1\tlocalhost\n", privileged: .declined)
+        let hosted = HostsUIWire.make()
         let channel = HelmWindowToolbarChannel()
         _ = await mountPage(hosted, channel: channel)
 
@@ -123,7 +122,7 @@ final class TheToolbarDeclarationMatchesWhatThePageOffersTests: XCTestCase {
     /// (`HostsSettingsPage.toolbarContent`'s own doc names why: the owner
     /// asked for it on 2026-09-25).
     func testTheViewSwitcherShowsOnlyOnSSHAndPickingTextTurnsItOnAndDrawsTheEditor() async throws {
-        let hosted = HostsUIWire.make(file: "127.0.0.1\tlocalhost\n", privileged: .declined)
+        let hosted = HostsUIWire.make()
         let channel = HelmWindowToolbarChannel()
         let mounted = await mountPage(hosted, channel: channel)
 
@@ -157,8 +156,7 @@ final class TheToolbarDeclarationMatchesWhatThePageOffersTests: XCTestCase {
     }
 
     func testTheViewSwitcherIsDimmedWhenTheSSHConfigCannotBeRead() async throws {
-        let hosted = HostsUIWire.make(file: "127.0.0.1\tlocalhost\n", privileged: .declined,
-                                      sshConfig: UnreadableSSHConfig())
+        let hosted = HostsUIWire.make(sshConfig: UnreadableSSHConfig())
         let channel = HelmWindowToolbarChannel()
         let mounted = await mountPage(hosted, channel: channel)
 

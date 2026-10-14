@@ -2,13 +2,11 @@ import XCTest
 @testable import Module_Hosts_Engine
 
 /// `render(parse(x)) == x`, byte for byte, over what an `~/.ssh/config` turns
-/// out to be in the wild — and it is a wilder file than `/etc/hosts`. It is
-/// hand-maintained by people who care about it, it is very often a symlink into
-/// a dotfiles repository, and half of what is in it is directives this module
-/// has no opinion about.
+/// out to be in the wild. It is hand-maintained by people who care about it,
+/// it is very often a symlink into a dotfiles repository, and half of what is
+/// in it is directives this module has no opinion about.
 ///
-/// **Byte equality alone cannot fail here**, which is the lesson
-/// `HostsRoundTripTests` records one file over: a parser that reads nothing and
+/// **Byte equality alone cannot fail here**: a parser that reads nothing and
 /// keeps every line verbatim reproduces every case below exactly. So each case
 /// also says how many hosts and how many known fields it holds, and a parser
 /// that stopped reading fails on the counts before the bytes.
@@ -69,8 +67,7 @@ final class SSHConfigRoundTripTests: XCTestCase {
     /// **Compares the bytes, because `XCTAssertEqual` on two `String`s does
     /// not**: Swift's `==` is canonical equivalence, so a parser that
     /// re-normalised what it read would pass while rewriting every decomposed
-    /// name in somebody's file. The same reader `HostsRoundTripTests` uses, for
-    /// the same reason.
+    /// name in somebody's file.
     private func assertRoundTrips(_ text: String, _ what: String,
                                   hosts expectedHosts: Int, fields expectedFields: Int,
                                   editable expectedEditable: Int? = nil,

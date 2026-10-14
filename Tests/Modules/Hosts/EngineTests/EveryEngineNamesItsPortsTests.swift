@@ -3,21 +3,20 @@ import HelmTestSupport
 @testable import Module_Hosts_Engine
 
 /// **A construction that forgets a port is an integration test nobody meant to
-/// write**, and this module has five ports that reach real files: `/etc/hosts`,
-/// the support folder, `~/.ssh/config`, `~/.ssh` itself and `~/.ssh/known_hosts`.
+/// write**, and this module has ports that reach real files: `~/.ssh/config`,
+/// `~/.ssh` itself and `~/.ssh/known_hosts`.
 ///
 /// The lesson is Autopilot's: eleven of its tests took a default argument
 /// naming the Mac's own keychain and rolled the owner's real rules back. Here
 /// the same slip would have every engine test read the owner's `known_hosts`,
-/// and `applyKnownHosts` would write it.
+/// and `forgetKnownHost` would write it.
 ///
 /// Derived from the source rather than from a list beside a list: every
 /// `HostsEngine(` under this module's tests is a subject, so a construction
 /// added later cannot quietly take a default.
 ///
-/// **`generator:` and `home:` are on the list, and were not.** The engine takes
-/// ten things and the check asked for seven, so the two that were left out are
-/// the two nobody was reminded of — and they are not decoration:
+/// **`generator:` and `home:` are on the list, and were not.** They were the two
+/// nobody was reminded of — and they are not decoration:
 ///
 /// - `generator:` defaults to `SystemKeyGenerator`, which is the real
 ///   `/usr/bin/ssh-keygen` on a real pty. A test that gets past the engine's
@@ -29,8 +28,8 @@ import HelmTestSupport
 ///   about neither.
 final class EveryEngineNamesItsPortsTests: XCTestCase {
 
-    private static let required = ["file:", "privileged:", "backups:", "sshConfig:",
-                                   "knownHosts:", "keys:", "agent:", "generator:", "home:"]
+    private static let required = ["sshConfig:", "knownHosts:", "keys:", "agent:",
+                                   "generator:", "home:"]
 
     func testEveryConstructionInTheseTestsNamesEveryPort() throws {
         let root = RepoSource.root.appendingPathComponent("Tests/Modules/Hosts")
@@ -62,8 +61,7 @@ final class EveryEngineNamesItsPortsTests: XCTestCase {
             """)
         XCTAssertEqual(offenders.sorted(), [], """
             these constructions take a default argument for a port, which reaches the real file \
-            on this Mac — `/etc/hosts`, the support folder, `~/.ssh/config`, `~/.ssh` or \
-            `~/.ssh/known_hosts`:
+            on this Mac — `~/.ssh/config`, `~/.ssh` or `~/.ssh/known_hosts`:
             \(offenders.sorted().joined(separator: "\n"))
             """)
     }

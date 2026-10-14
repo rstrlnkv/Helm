@@ -27,8 +27,7 @@ struct SSHHostsTable: View {
     var body: some View {
         // **The parse is asked for once.** `sshDocument` re-parses the file on
         // every read, so a body that asked it per block would parse the config
-        // as many times as it has hosts — the rule `HostsTable` states next
-        // door about its own document.
+        // as many times as it has hosts.
         let document = hvm.sshDocument
         return VStack(alignment: .leading, spacing: HelmSpace.s5) {
             ForEach(hvm.hostRows) { row in

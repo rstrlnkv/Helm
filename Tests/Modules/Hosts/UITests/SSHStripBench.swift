@@ -69,14 +69,10 @@ final class SSHStripBench {
         let configURL = (configDirectory ?? ssh).appendingPathComponent("config")
         try "Host a\n    HostName a.example\n".write(to: configURL, atomically: true, encoding: .utf8)
         let knownPort = Known(url: ssh.appendingPathComponent("known_hosts"), text: known, writes: knownWrites)
-        engine = HostsEngine(file: FixedFile("127.0.0.1\tlocalhost\n"),
-                             privileged: FixedPrivileged(.declined),
-                             backups: MemoryBackups(),
-                             sshConfig: Config(configURL), knownHosts: knownPort,
+        engine = HostsEngine(sshConfig: Config(configURL), knownHosts: knownPort,
                              keys: WireKeys(), agent: WireAgent(),
                              generator: WireKeyGenerator(),
                              home: directory,
-                             now: { Date(timeIntervalSince1970: 0) },
                              transport: LocalTransport())
         self.known = knownPort
         let vm = ModuleViewModel(transport: engine.transport)

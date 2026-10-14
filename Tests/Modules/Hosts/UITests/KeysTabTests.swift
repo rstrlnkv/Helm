@@ -6,7 +6,7 @@ import HelmUI
 import Module_Hosts_Engine
 @testable import Module_Hosts_UI
 
-/// Tab 3 from the page's side: what the model is told, and what pressing
+/// The keys tab from the page's side: what the model is told, and what pressing
 /// something does to it.
 @MainActor
 final class KeysTabTests: XCTestCase {
@@ -21,8 +21,7 @@ final class KeysTabTests: XCTestCase {
     /// a test that read `keys` straight away would be racing it.
     private func loaded(keys: WireKeys = WireKeys(),
                         agent: WireAgent = WireAgent()) async -> Wire {
-        let hosted = HostsUIWire.make(file: "127.0.0.1\tlocalhost\n", privileged: .declined,
-                                      keys: keys, agent: agent)
+        let hosted = HostsUIWire.make(keys: keys, agent: agent)
         let model = HostsViewModel(vm: hosted.vm)
         addTeardownBlock { await MainActor.run { model.stop() } }
         await model.firstLoad?.value
@@ -96,8 +95,7 @@ final class KeysTabTests: XCTestCase {
     /// draws a different thing for each — so the two fields have to arrive
     /// separately rather than one being inferred from the other.
     func testAnUnreadableFolderIsNotAnEmptyOne() async {
-        let hosted = HostsUIWire.make(file: "127.0.0.1\tlocalhost\n", privileged: .declined,
-                                      keys: WireKeys(names: nil))
+        let hosted = HostsUIWire.make(keys: WireKeys(names: nil))
         let model = HostsViewModel(vm: hosted.vm)
         addTeardownBlock { await MainActor.run { model.stop() } }
         await model.firstLoad?.value

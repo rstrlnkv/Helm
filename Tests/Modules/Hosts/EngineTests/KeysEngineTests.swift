@@ -4,7 +4,7 @@ import HelmRuntime
 import HelmTestSupport
 @testable import Module_Hosts_Engine
 
-/// Tab 3's acts: the reading, the `chmod`, and the two the agent answers.
+/// The keys tab's acts: the reading, the `chmod`, and the two the agent answers.
 ///
 /// Every port is named at every construction. A default here reaches the
 /// owner's own `~/.ssh` — and `agentUnload` against it would take their key out
@@ -22,11 +22,8 @@ final class KeysEngineTests: XCTestCase {
     private func bench(keys: FakeSSHKeys = FakeSSHKeys(),
                        agent: FakeSSHAgent = FakeSSHAgent()) -> Bench {
         let transport = LocalTransport()
-        let hosts = FakeHostsFile()
         let home = scratchDirectory("keys-engine")
-        let engine = HostsEngine(file: hosts, privileged: FakePrivileged(writingTo: hosts),
-                                 backups: FakeBackups(),
-                                 sshConfig: FakeSSHConfig(
+        let engine = HostsEngine(sshConfig: FakeSSHConfig(
                                     url: home.appendingPathComponent(".ssh/config"),
                                     text: "Host a\n"),
                                  knownHosts: FakeKnownHosts(),

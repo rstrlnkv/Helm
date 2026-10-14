@@ -15,8 +15,8 @@ import Module_Hosts_Engine
     public static let glyph: ShellGlyph = .hosts
 
     /// **The page draws across the whole pane, so its header must not centre
-    /// itself.** Two tab strips, a table and an unsaved bar, each at
-    /// `HelmLayout.formInset` — not a grouped `Form` anywhere on it. Without
+    /// itself.** Its strips and tables stand on the pane's own margins — not a
+    /// grouped `Form` anywhere on it. Without
     /// this the header sat on the 744 pt column while the controls sat at the
     /// pane's leading edge: measured at an 845 pt pane the plate was at x 70
     /// with the first control at x 20, and at 1400 the gap was 328 pt.
@@ -33,14 +33,9 @@ import Module_Hosts_Engine
     /// It had a tile of three counts and no control, and a tile with nothing to
     /// press is exactly what `MenuBarContribution.isUtility` describes: the
     /// panel is for what can be acted on from the menu bar, and everything this
-    /// module can do — editing the hosts file, fixing a key's mode, reading a
+    /// module can do — editing the SSH config, fixing a key's mode, reading a
     /// fingerprint — is a page. Counting on the panel was the module asking for
     /// a widget's worth of somebody's glass to say «go and open Settings».
-    ///
-    /// The reason the tile carried no control in the first place stands and is
-    /// why no tile is coming back: a hosts toggle in the panel is a macOS
-    /// password dialog raised from the menu bar, and a password dialog needs a
-    /// gesture that asked for it.
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
 
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {

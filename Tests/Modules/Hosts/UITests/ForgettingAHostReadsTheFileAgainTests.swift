@@ -81,9 +81,7 @@ final class ForgettingAHostReadsTheFileAgainTests: XCTestCase {
 
         let known = GrowingKnownHosts(url: url, text: first + second)
         let transport = LocalTransport()
-        let engine = HostsEngine(file: FixedFile("127.0.0.1\tlocalhost\n"),
-                                 privileged: FixedPrivileged(.declined),
-                                 backups: MemoryBackups(), sshConfig: WireSSHConfig(),
+        let engine = HostsEngine(sshConfig: WireSSHConfig(),
                                  knownHosts: known, keys: WireKeys(), agent: WireAgent(),
                                  generator: WireKeyGenerator(), home: home, transport: transport)
         engines.append(engine)

@@ -7,17 +7,13 @@ import Foundation
 public enum HostsCommand: String, CaseIterable, Sendable {
     /// Read the files and emit the state. Sent when the page appears.
     case load
-    /// Write `/etc/hosts`. One password dialog, one batch of edits.
-    case applyHosts
-    /// Put a backup back, through the same privileged path.
-    case restoreHosts
     /// Write `~/.ssh/config`. No dialog: it is the person's own file.
     case applySSHConfig
     /// Drop one line from `~/.ssh/known_hosts`. Payload: the line's own bytes.
     ///
     /// **Not the whole file, and that is the difference between this file and
-    /// the two beside it.** `/etc/hosts` and `~/.ssh/config` are documents a
-    /// person edits and saves, so sending back what they now say is the act.
+    /// the one beside it.** `~/.ssh/config` is a document a person edits and
+    /// saves, so sending back what it now says is the act.
     /// `known_hosts` is a file `ssh` **appends to**, from any terminal, while
     /// this page is open — so a whole-file payload rendered from the page's
     /// last snapshot takes out every trust that arrived in between, silently,
@@ -58,8 +54,7 @@ public enum HostsCommand: String, CaseIterable, Sendable {
 /// What an act on one key carries: **which key, by bare name.**
 ///
 /// Never a path. The name is matched against the list the engine has just read,
-/// so a payload can only ever *select* a key that is there — the shape
-/// `HostsRestore` uses for backups, and for the same reason.
+/// so a payload can only ever *select* a key that is there.
 public struct KeyName: Codable, Sendable {
     public let name: String
     public init(name: String) { self.name = name }
@@ -109,41 +104,16 @@ public enum KeyOutcome: String, Codable, Sendable {
 }
 
 /// Everything the engine says about itself.
-///
-/// **Two names, not one.** The transport replays the last event *per name*: a
-/// page reopened mid-write must receive both the snapshot and «a write is in
-/// flight», and a single slot hands it whichever arrived last. Homebrew learned
-/// this with `opLog` against `opState`.
 public enum HostsEvent: String, Sendable {
     case state
-    case operation
 }
 
-/// What `applyHosts` carries: the whole file, as the person means it to be.
+/// What `applySSHConfig` carries: the whole file, as the person means it to be.
 ///
 /// Declared once, here, in the engine's `Logic/`. The UI target imports the
 /// engine and reads this type; a matching struct restated on the view-model
 /// side would be a wire contract with no compiler between its halves, which
 /// already cost this app a `force: Bool?` against a `force: Bool`.
-public struct HostsApply: Codable, Sendable {
-    public let text: String
-    public init(text: String) { self.text = text }
-}
-
-/// What `restoreHosts` carries: which backup.
-public struct HostsRestore: Codable, Sendable {
-    public let backupID: String
-    public init(backupID: String) { self.backupID = backupID }
-}
-
-/// What `applySSHConfig` carries: the whole file, as the person means it to be.
-///
-/// Its own type rather than `HostsApply` reused. The two payloads have the same
-/// shape today and mean different things — one is bound for a file owned by
-/// root through a privileged sentence, the other for a file in the person's own
-/// home — and a type that means two things is the shape this house splits on
-/// sight. It also stops a command's payload being decoded by the wrong arm and
-/// looking plausible.
 public struct SSHConfigApply: Codable, Sendable {
     public let text: String
     public init(text: String) { self.text = text }

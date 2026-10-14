@@ -34,7 +34,7 @@ final class ThePlainTextBoxIsInsetAtTheTopAndTheLeftTests: XCTestCase {
     }
 
     private func mount(_ appearance: NSAppearance.Name) -> MountedRender {
-        let hosted = HostsUIWire.make(file: "127.0.0.1\tlocalhost\n", privileged: .declined)
+        let hosted = HostsUIWire.make()
         wire = hosted
         let mounted = MountedRender(HostsSettingsPage(vm: hosted.vm, opensOnSSHText: true),
                                     width: 900, height: 500, appearance: appearance)

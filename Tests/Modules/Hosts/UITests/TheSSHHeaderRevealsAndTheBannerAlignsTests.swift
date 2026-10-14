@@ -52,14 +52,10 @@ final class TheSSHHeaderRevealsAndTheBannerAlignsTests: XCTestCase {
         let configURL = (outsideHome ? scratchDirectory("hosts-sshreveal-elsewhere") : ssh)
             .appendingPathComponent("config")
         try "Host a\n    HostName a.example\n".write(to: configURL, atomically: true, encoding: .utf8)
-        let engine = HostsEngine(file: FixedFile("127.0.0.1\tlocalhost\n"),
-                                 privileged: FixedPrivileged(.declined),
-                                 backups: MemoryBackups(),
-                                 sshConfig: Config(configURL), knownHosts: WireKnownHosts(),
+        let engine = HostsEngine(sshConfig: Config(configURL), knownHosts: WireKnownHosts(),
                                  keys: WireKeys(), agent: WireAgent(),
                                  generator: WireKeyGenerator(),
                                  home: home,
-                                 now: { Date(timeIntervalSince1970: 0) },
                                  transport: LocalTransport())
         engines.append(engine)
         let vm = ModuleViewModel(transport: engine.transport)

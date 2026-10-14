@@ -284,9 +284,7 @@ final class TabSwitchesNobodyFedTests: XCTestCase {
     private static let hostsWiring: ModulePageRender.Wiring = { id in
         var wire = ModulePageRender.answering(id)
         if id == HostsEngine.moduleID {
-            wire.says(HostsEvent.state, HostsState(
-                hostsText: "127.0.0.1 localhost\n",
-                sshText: "Host alpha\n  HostName alpha.example\n",
+            wire.says(HostsEvent.state, HostsState(sshText: "Host alpha\n  HostName alpha.example\n",
                 keys: [KeyRow(name: "id_fixture", hasPublicHalf: true, described: nil, modified: nil,
                               permission: .ok, publicText: nil, inAgent: false)],
                 directoryPermission: .ok, agent: .empty,

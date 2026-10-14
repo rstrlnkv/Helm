@@ -2,13 +2,12 @@ import Foundation
 
 /// `~/.ssh/config` as a document that can be edited without being reformatted.
 ///
-/// **The text is canonical**, exactly as it is for `/etc/hosts` next door: the
-/// table on screen is derived from it and an edit re-renders it, so the raw
-/// view shows byte-for-byte what will be written.
+/// **The text is canonical**: the table on screen is derived from it and an
+/// edit re-renders it, so the raw view shows byte-for-byte what will be
+/// written.
 ///
-/// This file is a harder guest than the hosts file, and the difference decides
-/// the shape here. A hosts file is a list of like lines; a config is **blocks**,
-/// and most of what is in a block belongs to `ssh`, not to Helm: `ProxyJump`,
+/// This file is a harder guest than a list of like lines: a config is
+/// **blocks**, and most of what is in a block belongs to `ssh`, not to Helm: `ProxyJump`,
 /// `ServerAliveInterval`, `Match` with a shell condition, an `Include` of a
 /// whole directory. Helm reads four directives and copies everything else — so
 /// `.verbatim` here is not the rare case for junk, it is the ordinary case, and
@@ -349,8 +348,8 @@ public enum SSHConfigFile {
     /// - **A line break** makes it two directives. `IdentityFile ~/.ssh/id` and
     ///   a second line reading `ProxyCommand nc somewhere 22` is a command
     ///   `ssh` runs on the person's behalf, written by whoever typed into a
-    ///   text field. This is the `/etc/hosts` hazard one file over, arriving
-    ///   through the door marked «it is only your own file».
+    ///   text field. It arrives through the door marked «it is only your own
+    ///   file».
     /// - **A `#`** opens a comment, so everything after it on that line —
     ///   including the comment the person had already written there — stops
     ///   being read.

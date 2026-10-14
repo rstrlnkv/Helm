@@ -121,10 +121,7 @@ final class TheSecretIsHandedOverUniquelyTests: XCTestCase {
     private func bench(generator: KeyGeneratorPort = SilentGenerator(),
                        agent: SSHAgentPort = FakeSSHAgent(),
                        transport: LocalTransport) -> HostsEngine {
-        let hosts = FakeHostsFile()
-        return HostsEngine(file: hosts, privileged: FakePrivileged(writingTo: hosts),
-                           backups: FakeBackups(),
-                           sshConfig: FakeSSHConfig(url: URL(fileURLWithPath: "/nowhere/config"),
+        return HostsEngine(sshConfig: FakeSSHConfig(url: URL(fileURLWithPath: "/nowhere/config"),
                                                     text: "Host a\n"),
                            knownHosts: FakeKnownHosts(), keys: FakeSSHKeys(),
                            agent: agent, generator: generator, home: home, transport: transport)

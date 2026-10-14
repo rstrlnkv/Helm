@@ -15,10 +15,11 @@ import Module_Hosts_Engine
 @MainActor
 final class SharedViewModelTests: XCTestCase {
 
-    private let localhost = "127.0.0.1\tlocalhost\n"
+    /// What `WireSSHConfig` reads.
+    private let config = "Host a\n    HostName a.example\n"
 
     private func hosted() -> HostsUIWire {
-        HostsUIWire.make(file: localhost, privileged: .declined)
+        HostsUIWire.make()
     }
 
     func testTheSameHostViewModelAlwaysGetsTheSameInstance() {
@@ -59,8 +60,8 @@ final class SharedViewModelTests: XCTestCase {
         addTeardownBlock { await MainActor.run { second.stop() } }
         XCTAssertFalse(first === second, "the next page was handed the stopped model")
         await second.firstLoad?.value
-        await waitUntil("the replacement is listening") { second.onDisk == localhost }
-        XCTAssertEqual(second.text, localhost)
+        await waitUntil("the replacement is listening") { second.sshOnDisk == config }
+        XCTAssertEqual(second.sshText, config)
     }
 
     /// The module being switched off is a fact that stops being true on its
@@ -71,7 +72,7 @@ final class SharedViewModelTests: XCTestCase {
         let wire = hosted()
         let first = HostsViewModel.shared(vm: wire.vm)
         await first.firstLoad?.value
-        await waitUntil("the first snapshot arrived") { first.onDisk == localhost }
+        await waitUntil("the first snapshot arrived") { first.sshOnDisk == config }
 
         NotificationCenter.default.post(name: .helmModuleDisabled,
                                         object: HostsDescriptor.id.rawValue)

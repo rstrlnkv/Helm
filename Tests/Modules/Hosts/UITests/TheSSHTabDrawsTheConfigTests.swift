@@ -8,7 +8,7 @@ import HelmTestSupport
 @testable import Module_Hosts_Engine
 @testable import Module_Hosts_UI
 
-/// Tab 2 as the page draws it, and as the model answers for it.
+/// The SSH tab as the page draws it, and as the model answers for it.
 ///
 /// The assertions are on the **model** rather than on pixels, for the reason
 /// the VPN strip's tests record: there is no way to read a string back out of an
@@ -69,8 +69,8 @@ final class TheSSHTabDrawsTheConfigTests: XCTestCase {
     }
 
     /// A snapshot landing while somebody is mid-edit updates what «revert»
-    /// means and does not take their typing away — the rule tab 1 already
-    /// lives by, and this file is edited in other editors just as often.
+    /// means and does not take their typing away — this file is edited in other
+    /// editors just as often as in this one.
     func testASnapshotDoesNotTakeUnsavedTypingAway() {
         let hvm = model(HostsState(sshText: config))
         hvm.setSSHText("Host mine\n")
@@ -93,7 +93,7 @@ final class TheSSHTabDrawsTheConfigTests: XCTestCase {
     /// The page mounts with a config in it. A render, because a page that traps
     /// on a document is a defect no model-level test can see.
     func testThePageMountsWithAConfigWithoutTrapping() {
-        let hvm = model(HostsState(hostsText: "127.0.0.1\tlocalhost\n", sshText: config))
+        let hvm = model(HostsState(sshText: config))
         let render = MountedRender(SSHHostsTable(hvm: hvm, select: { _ in }),
                                    width: 720, height: 400,
                                    appearance: .darkAqua)
