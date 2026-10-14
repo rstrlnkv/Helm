@@ -11,8 +11,12 @@ on-disk scan cache is untouched by this: the copy in memory goes, the answer sta
 Dropping the cache is only one of two owners. A subscriber task started as
 `Task { [weak self] in await self?.observeEvents() }` resolves its weak capture once, and
 the method then holds `self` for as long as it runs — which, over a transport whose
-stream does not finish, is the life of the app. The tasks are therefore held and
-cancelled from the class's own teardown rather than from `deinit`.
+stream does not finish, is the life of the app. The loop is therefore a `for await` over a
+stream taken before the task, with `self` taken again for each event, and the task is
+cancelled by whoever holds it. `EventSubscription` (`Sources/HelmUI/EventSubscription.swift`)
+is that loop as an object: it cancels the task from `cancel()` and from its own `deinit`, and
+`ModuleUICache.shared` calls `cancel()` on the subscription a model named to it when it
+drops or replaces that model.
 `LocalTransport.subscriberCount` makes the guard a count that stays put rather than a
 memory figure: `Tests/HelmContractTests/SubscriberPruningTests.swift` and
 `Tests/HelmAppTests/ASwitchedOffModuleLetsItsSubscriberGoTests.swift`.

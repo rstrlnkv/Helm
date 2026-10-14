@@ -46,6 +46,12 @@ import HelmRuntime
     /// one fact. Both default to nothing: a module with no presence of its own
     /// says so by not overriding them.
     func attachMenuBarPresence()
+    /// The presence again, for one built from the module's view model — its
+    /// transport or its store. The default calls the argument-less one, so a
+    /// descriptor that overrides only that one is attached by either call; a
+    /// descriptor that overrides this one is attached only by a caller that
+    /// passes the view model. A descriptor overrides one of the two, not both.
+    func attachMenuBarPresence(_ vm: ModuleViewModel)
     func detachMenuBarPresence()
     func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution?
     func settingsPage(_ vm: ModuleViewModel) -> AnyView
@@ -102,6 +108,7 @@ public extension ModuleDescriptor {
     var pageBleeds: Bool { false }
     func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance { .inactive }
     func attachMenuBarPresence() {}
+    func attachMenuBarPresence(_ vm: ModuleViewModel) { attachMenuBarPresence() }
     func detachMenuBarPresence() {}
     func activity(_ vm: ModuleViewModel) -> ModuleActivity? { nil }
     func currentPermissions() -> [ModulePermission] {
