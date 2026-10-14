@@ -140,8 +140,9 @@ struct EditorTextTools {
     var editedLayers: [Annotation] { edit?.layers.layers ?? [] }
     /// The area the editor holds now, a crop still pending included, for a test that reads it without leaving.
     var editedArea: CGRect? { edit?.rect }
-    /// What an exit would deliver of the editor this instant, the editor left open: an input still open has placed its text,
-    /// and a stroke still under the pointer is a layer, as `perform(.exit)` makes them. Nil where no area is being edited.
+    /// The editor as an exit would deliver it if it left this instant, the editor left open: an input still open has placed its text
+    /// (`endTyping`, as `perform` does before any action but a colour, a step or an opacity), and a stroke still under the pointer is a
+    /// layer, as `leave` makes it; a Blur reading still running is not waited for. Nil where no area is being edited.
     func heldForExit() -> (display: DisplayID, local: CGRect, layers: [Annotation])? {
         endTyping()
         guard var current = edit else { return nil }
@@ -184,11 +185,26 @@ struct EditorTextTools {
     private var pinRefused = false { didSet { if !pinRefused { textPlate = nil } } }
     private let textTools: EditorTextTools
     /// A reading of the area's text that has not answered: what was asked of it, the task that waits, and the display and area it was
-    /// asked for. One at a time. It ends with its answer, with the editor's close, and with any change of the area under it
-    /// (`render`): its boxes were for the old area, so an answer for it is dropped. `serial` tells it from a later one.
+    /// asked for. One at a time. It ends with its answer, with the editor's close, with any change of the area under it (`render`: its
+    /// boxes were for the old area, so an answer for it is dropped), and with the deadline of an exit held for it (`exitWaitedTooLong`).
+    /// `serial` tells it from a later one.
     private var reading: (serial: Int, ask: TextAsk, task: Task<Void, Never>, display: DisplayID, rect: CGRect)?
     private var readingsBegun = 0
     private enum TextAsk { case copy, blur }
+    /// How long an exit waits for a Blur reading before it is dropped. Not measured: nothing in the tree records how long a reading of
+    /// an area takes (`ScreenshotsTextReadingBenchmark` prints it on request, and the first read of a process loads the system's models
+    /// and takes longer than the next). Ten seconds is a guess that is long for one area, and short enough that a reader that never
+    /// answers does not hold the person for longer than a wait they would give up on.
+    static let defaultExitDeadline: Duration = .seconds(10)
+    private let exitDeadline: Duration
+    /// The way out the person pressed while a Blur reading was running (Return or Done with no crop pending, Done, ⌘C, ⌘S or Share): it waits
+    /// for the reading's answer rather than leave with a picture the finds are not yet in. The first press stands; a later exit starts
+    /// nothing but a Return or Done that takes a pending crop (its own arm in `perform`), the held exit standing. It ends with the answer (a
+    /// reading delivers it with the blurs `insert(blurs:)` put in, a stroke or a move under the pointer having been ended first so that the
+    /// blurs can go in, and an input still open placed after them; a failure or a cancellation drops it with the plate), with the deadline
+    /// (dropped with the plate, the reading cancelled), with Crop turned on (dropped, no plate, the reading going on), and with the reading's
+    /// end by the area's change or `close` (dropped, no plate); `deadline` is the task that waits for the time, cancelled with it.
+    private var heldExit: (how: EditorExit, deadline: Task<Void, Never>)?
     /// What the last finished reading says, on the plate by the palette; until the next input. The plates' order, first that applies: the
     /// refused pin, the Esc question that is still asked, this. An answer that comes while the pin's refusal is up takes the refusal down (it is
     /// the later thing to say, and Pin can be pressed again); one that comes while the question is asked waits behind it.
@@ -210,13 +226,14 @@ struct EditorTextTools {
 
     init(freeze: Freeze, mode: Mode = .area, preselection: (display: DisplayID, rect: CGRect)? = nil,
          picture: (display: DisplayID, rect: CGRect)? = nil, store: NamespacedStore? = nil, pinRoom: @escaping () -> Bool = { true },
-         textTools: EditorTextTools = .none, selectionOnly: Bool = false,
+         textTools: EditorTextTools = .none, exitDeadline: Duration = CaptureOverlay.defaultExitDeadline, selectionOnly: Bool = false,
          colourPanel: ColourPanelOpening = EditorColourPanel(),
          onFinish: @escaping (OverlayResult) -> Void) {
         self.freeze = freeze
         self.selectionOnly = selectionOnly
         self.pinRoom = pinRoom
         self.textTools = textTools
+        self.exitDeadline = exitDeadline
         self.store = store
         self.colourPanel = colourPanel
         self.mode = mode
@@ -292,6 +309,7 @@ struct EditorTextTools {
         openedMenu = nil
         reading?.task.cancel()
         reading = nil
+        dropHeldExit()
         onFinish = nil
         edit = nil
         popover = nil
@@ -791,6 +809,8 @@ struct EditorTextTools {
             // it did), and the pop-over of a tool with them. Choosing it again is Esc's: the area back.
             guard !isRepeat else { return }
             if !dropCrop(&current) {
+                // A held Return would take the crop's area by `.confirm` when the answer came, and Return is the crop's now.
+                dropHeldExit()
                 crop = current.rect
                 current.tool = nil
                 erasing = false
@@ -854,19 +874,56 @@ struct EditorTextTools {
             crop = nil
             ruler?.keep(within: current.rect)
         case .exit(let how)?:
-            guard !isRepeat else { return }
+            guard !isRepeat, heldExit == nil else { return }
             popover = nil
+            // A running Blur reading holds every exit but Pin until it answers (`heldExit`), so that the picture does not leave before the
+            // finds can go into it. A Copy Text reading is no part of the picture and is cancelled by the close this exit ends in; Pin
+            // leaves with the layers as they are.
+            if how != .pin, reading?.ask == .blur { holdExit(how); return }
             // No room for a pin: the editor stays, with the picture in it, a pending crop still pending, and says why on the plate
             // (the toast lies below the overlay and could not be seen).
             if how == .pin, !pinRoom() { pinRefused = true; return }
-            // An exit that is no Return delivers the area as the screen shows it, a pending crop included.
-            crop = nil
-            // What the screen shows is what is delivered: a stroke still under the
-            // pointer becomes a layer now, and an unusable one is dropped by `end`.
-            current.layers.end()
-            finish(.edited(display: current.display, local: current.rect, layers: current.layers.layers, exit: how))
+            leave(by: how, from: &current)
         case .nudge?, .close?, nil: break
         }
+    }
+
+    /// Delivers the editor by `how` as the screen shows it, a pending crop's area included: the `.exit` arm calls it for an exit that is
+    /// neither held for a Blur reading nor a Pin refused for want of room (a Return that takes a crop has its own arm), and `answered`
+    /// for a held one.
+    private func leave(by how: EditorExit, from current: inout (display: DisplayID, rect: CGRect, layers: AnnotationEditing, tool: AnnotationTool?)) {
+        crop = nil
+        // What the screen shows is what is delivered: a stroke still under the
+        // pointer becomes a layer now, and an unusable one is dropped by `end`.
+        current.layers.end()
+        finish(.edited(display: current.display, local: current.rect, layers: current.layers.layers, exit: how))
+    }
+
+    /// Holds `how` until the running Blur reading answers (`answered` delivers it on a reading and drops it on a failure or a cancellation)
+    /// or `exitDeadline` passes (`exitWaitedTooLong`); Crop turned on, a change of the area and `close` drop it sooner (`heldExit`).
+    private func holdExit(_ how: EditorExit) {
+        let wait = exitDeadline
+        heldExit = (how, Task { [weak self] in
+            try? await Task.sleep(for: wait)
+            guard !Task.isCancelled else { return }
+            self?.exitWaitedTooLong()
+        })
+    }
+
+    private func dropHeldExit() {
+        heldExit?.deadline.cancel()
+        heldExit = nil
+    }
+
+    /// The reader did not answer in time: the exit is dropped with the reading, the editor stays, and the plate says the text could not be
+    /// read. The next press leaves at once, there being no reading.
+    private func exitWaitedTooLong() {
+        guard heldExit != nil else { return }
+        dropHeldExit()
+        reading?.task.cancel()
+        reading = nil
+        textPlate = ScStr.textUnreadable
+        render()
     }
 
     /// Crop is put down with the area as the mode found it: true when it was on. Not a step, and the layers are told the bounds as a
@@ -906,7 +963,8 @@ struct EditorTextTools {
     }
 
     /// A reading of the area as the screen shows it (a pending crop's area, the picture without the layers), held by this overlay: the task is
-    /// cancelled by `close` and an answer that finds the editor closed, the area changed or another reading begun is dropped.
+    /// cancelled by `close`, by a change of the area (`render`) and by a held exit's deadline (`exitWaitedTooLong`), and an answer that finds
+    /// the editor closed, the area changed, the reading ended or another reading begun is dropped.
     private func beginReading(_ ask: TextAsk, display: DisplayID, rect: CGRect) {
         readingsBegun += 1
         let serial = readingsBegun
@@ -938,10 +996,25 @@ struct EditorTextTools {
                 case .refused: textPlate = ScStr.textUnreadable
                 }
             case .blur:
+                // The person may have gone on drawing or moving while the reading ran, and `insert(blurs:)` puts nothing into an edit under
+                // the pointer: an exit held for this answer takes the picture as `leave` will make it, so the edit ends first.
+                if heldExit != nil { current.layers.end() }
                 let finds = PersonalFinds.finds(in: lines, source: source, under: current.layers.layers)
                 let added = current.layers.insert(blurs: finds)
                 edit = current
                 textPlate = added == 0 ? ScStr.nothingBlurred : ScStr.blurred(added)
+            }
+        }
+        // A held exit leaves on a reading, whatever it found, with the blurs `insert(blurs:)` put in (a stroke or a move under the pointer
+        // was ended before it, so that the blurs went in) and an input still open placed after them; a failure or a cancellation drops it
+        // with the plate.
+        if let exit = heldExit {
+            dropHeldExit()
+            if case .read = answer {
+                endTyping()
+                if var now = edit { leave(by: exit.how, from: &now) }
+            } else {
+                textPlate = ScStr.textUnreadable
             }
         }
         render()
@@ -1032,6 +1105,7 @@ struct EditorTextTools {
         if let held = reading, edit?.display != held.display || edit?.rect != held.rect {
             held.task.cancel()
             reading = nil
+            dropHeldExit()
         }
         if let edit {
             let held = edit.layers.selected

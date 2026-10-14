@@ -379,13 +379,15 @@ the text. Reversing the default is that one function.
 **The reading is the overlay's.** `CaptureOverlay` is handed `EditorTextTools`, a pair of closures over the session (`CaptureController` binds the freeze and the session), and holds the one task: while it
 runs both items are disabled (`EditorBarModel.reading`) and a second choice starts nothing. Typing ends first, as before any action; a pending crop is read as the area the screen shows. The answer is
 dropped, with no layer, no copy and no plate, when the editor was closed (`close` cancels the task), when the area has changed under it (any change of the area ends the reading in `render`, since its boxes were for
-the old one) or when another reading has begun since (`serial`). A reading that fails, or a clipboard that refuses the text, says `The text could not be read`.
+the old one), when an exit held for it has waited out its deadline (which cancels the task and puts up its own plate) or when another reading has begun since (`serial`). A reading that fails, or a clipboard that refuses the text, says `The text could not be read`.
+
+**An exit waits for the Blur reading.** Return or Done with no crop pending, Done, ⌘C, ⌘S and Share pressed while Blur Emails and Phone Numbers reads are held (`CaptureOverlay.heldExit`): a later press of any exit starts nothing but a Return or Done that takes a pending crop, and the first leaves once, with the exit that was pressed, when the reading answers, with what `AnnotationEditing.insert(blurs:)` put into the layers; a stroke or a move still under the pointer is ended first, so that the blurs go in and the picture leaves with both, and an input still open is placed after them. A Copy Text reading holds nothing and is cancelled by the exit, Pin is not held, and Esc is never held: it keeps its own rule, given in the next section. A failed or cancelled answer drops the exit and says `The text could not be read`; `exitDeadline` (`CaptureOverlay.defaultExitDeadline`) from the press does the same and cancels the reading; the editor stays either way. A change of the area or `close` drops it with no plate, and the reading with it; turning Crop on drops it with no plate too, the reading going on, and Return is then the crop's. The next press after a drop that ended the reading leaves at once.
 
 ## The editor's exits and the hand-off
 
 The seam is split by what was picked. An area arrives as `OverlayResult.edited`, and
 `CaptureController.overlayFinished` in `Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`
-composes it and calls `CaptureController.handOff` with what the exit asked for, except for the exits of an Edit that leave its shot as it was (`ShotToast.editorClosed`): Return
+composes it and calls `CaptureController.handOff` with what the exit asked for (an exit waits for a running Blur reading, as the section above says), except for the exits of an Edit that leave its shot as it was (`ShotToast.editorClosed`): Return
 copies and saves by the save target as it always did, the copy key only copies, the
 save key only saves — to the macOS folder when the target is the clipboard — and Share…, from the ⋯ menu, does what
 Return does and then opens the system's sheet at the thumbnail (`thenShare`). A window or a

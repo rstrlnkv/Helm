@@ -11,8 +11,10 @@ import Module_Screenshots_Engine
 
 /// **The two reading items against everything a person can do while the reader is still working, and against every answer it can give.**
 /// The tie-breaking ones (close, a moved area, a second choice) are in `ARecognitionThatOutlivesTheEditorIsDroppedTests`; these are the
-/// others: each way out of the editor, a tool or an undo or a text field taken up in the meantime, the question Esc asks, the plate of a
-/// refused pin, a reader that never answers, and the plate each (item, answer) pair puts up.
+/// others: each way out of the editor (held for a Blur reading, not held for a Copy Text one, Esc never held), Crop turned on while an
+/// exit is held, the deadline and the failed or cancelled answer that drop a held exit, a tool or an undo or a text field taken up in
+/// the meantime, a stroke or a move still open when a held exit's answer comes, the question Esc asks, the plate of a refused pin, a
+/// Copy Text reader that never answers, and the plate each (item, answer) pair puts up.
 @MainActor
 final class TheTextReadingMeetsEveryInputWhileItRunsTests: XCTestCase {
 
@@ -63,11 +65,14 @@ final class TheTextReadingMeetsEveryInputWhileItRunsTests: XCTestCase {
         super.tearDown()
     }
 
-    private func build(pinRoom: Bool = true) throws -> (overlay: CaptureOverlay, display: DisplayID, view: OverlayView) {
+    /// `exitDeadline` is how long an exit may wait for a Blur reading before it is dropped.
+    private func build(pinRoom: Bool = true, exitDeadline: Duration = CaptureOverlay.defaultExitDeadline) throws
+        -> (overlay: CaptureOverlay, display: DisplayID, view: OverlayView) {
         reader = Reader()
         let tools = EditorTextTools(read: { [reader] in await reader.read($0, $1) }, copy: { [reader] in reader.copy($0) })
         // The controller closes the overlay inside the very call that delivers the result (`overlayFinished`); so does this.
-        let built = try OverlayRig.overlay(scale: 1, area: area, pinRoom: { pinRoom }, textTools: tools) { [weak self] in
+        let built = try OverlayRig.overlay(scale: 1, area: area, pinRoom: { pinRoom }, textTools: tools,
+                                       exitDeadline: exitDeadline) { [weak self] in
             self?.results.append($0)
             self?.rigged?.overlay.close()
         }
@@ -89,6 +94,13 @@ final class TheTextReadingMeetsEveryInputWhileItRunsTests: XCTestCase {
 
     private func plates(_ view: OverlayView) -> [String] { view.visiblePlates.compactMap(\.string) }
 
+    /// Waits on the clock, not in yields: a deadline is a time, and a loop of yields can pass before it.
+    private func waitSeconds(_ what: String, _ limit: TimeInterval = 5, _ condition: () -> Bool) async {
+        let end = Date().addingTimeInterval(limit)
+        while !condition(), Date() < end { await grace(0.02) }
+        XCTAssertTrue(condition(), "never reached: \(what)")
+    }
+
     private func menuItem(_ overlay: CaptureOverlay, _ title: String) -> Bool? {
         for case .reading(let name, _, _, let enabled, _) in EditorMenu.items(for: overlay.palette) where name == title { return enabled }
         return nil
@@ -96,9 +108,10 @@ final class TheTextReadingMeetsEveryInputWhileItRunsTests: XCTestCase {
 
     // MARK: Every way out
 
-    /// Return, ⌘C, ⌘S: the picture goes out as the person saw it, and an answer that comes after changes nothing in it.
-    func testEveryWayOutWithAReadingInFlightDeliversWhatWasOnTheScreen() async throws {
-        for how in [EditorExit.confirm, .copy, .save] {
+    /// Return, ⌘C, ⌘S and Share while Blur Emails and Phone Numbers reads: nothing leaves at the press. The answer lets the exit go, once, with the
+    /// finds blurred in the picture and the exit that was pressed.
+    func testAnExitWhileABlurReadingRunsLeavesWhenItAnswersWithTheBlursInIt() async throws {
+        for how in [EditorExit.confirm, .copy, .save, .share] {
             results = []
             let (overlay, display, _) = try build()
             OverlayRig.drawAndSelect(in: overlay, on: display)
@@ -107,38 +120,276 @@ final class TheTextReadingMeetsEveryInputWhileItRunsTests: XCTestCase {
             overlay.perform(.blurPersonalText)
             await waitUntil("\(how): asked") { reader.calls == 1 }
             overlay.perform(.exit(how))
+            await grace()
+            XCTAssertTrue(results.isEmpty, "\(how): the exit left at the press with the reading still running: \(results)")
             reader.answer(0, finds())
+            await waitUntil("\(how): the exit was delivered") { !results.isEmpty }
             await grace()
             XCTAssertEqual(results.count, 1, "\(how): the exit delivered \(results.count) results")
             guard case .edited(_, _, let layers, let exit)? = results.first else { return XCTFail("\(how): \(results)") }
-            XCTAssertEqual(exit, how)
-            XCTAssertEqual(layers, before, "\(how): the picture delivered is not the one on the screen at the press")
-            XCTAssertFalse(overlay.editedLayers.contains { $0.tool == .blur }, "\(how): a blur went into the editor after it had delivered")
-            XCTAssertEqual(reader.cancelled, 1, "\(how): the reading was not cancelled")
+            XCTAssertEqual(exit, how, "\(how): the exit delivered is not the one pressed")
+            XCTAssertEqual(layers.map(\.tool), [.rectangle, .blur], "\(how): the picture delivered does not hold the blurs")
+            XCTAssertEqual(Array(layers.prefix(1)), before, "\(how): what was drawn changed on the way out")
             rigged?.overlay.close(); rigged = nil
         }
     }
 
-    /// Esc with nothing drawn and ✕: the editor closes at once, with a reading running.
-    func testEscWithNothingDrawnClosesWhileAReadingRuns() async throws {
-        let (overlay, _, _) = try build()
-        overlay.perform(.copyText)
+    /// The same exit pressed twice while the reading runs (Return and then Done) is one exit.
+    func testTheSameExitPressedTwiceWhileABlurReadingRunsLeavesOnce() async throws {
+        let (overlay, display, _) = try build()
+        OverlayRig.drawAndSelect(in: overlay, on: display)
+        overlay.perform(.blurPersonalText)
         await waitUntil("asked") { reader.calls == 1 }
-        overlay.perform(.close)
-        XCTAssertEqual(results.count, 1)
-        if case .cancelled? = results.first {} else { XCTFail("\(results)") }
-        reader.answer(0, words)
+        overlay.perform(.exit(.confirm))
+        overlay.perform(.exit(.confirm))
         await grace()
-        XCTAssertTrue(reader.copied.isEmpty, "text was copied after the editor closed")
-        XCTAssertEqual(reader.cancelled, 1)
-        rigged?.overlay.close(); rigged = nil
+        XCTAssertTrue(results.isEmpty, "the exit left at a press with the reading still running: \(results)")
+        reader.answer(0, finds())
+        await waitUntil("the exit was delivered") { !results.isEmpty }
+        await grace()
+        XCTAssertEqual(results.count, 1, "two presses delivered \(results.count) results")
+        guard case .edited(_, _, let layers, let exit)? = results.first else { return XCTFail("\(results)") }
+        XCTAssertEqual(exit, .confirm)
+        XCTAssertEqual(layers.map(\.tool), [.rectangle, .blur])
     }
 
-    /// A reader that never answers: both items stay off, and nothing else does — the person can still leave with the picture.
-    func testAReaderThatNeverAnswersHoldsNothingButTheTwoItems() async throws {
+    /// A second, different exit pressed while one is held starts nothing: the first one stands and is the one delivered.
+    func testADifferentExitPressedWhileOneIsHeldIsNotTheOneDelivered() async throws {
+        let (overlay, display, _) = try build()
+        OverlayRig.drawAndSelect(in: overlay, on: display)
+        overlay.perform(.blurPersonalText)
+        await waitUntil("asked") { reader.calls == 1 }
+        overlay.perform(.exit(.confirm))
+        overlay.perform(.exit(.save))
+        overlay.perform(.exit(.pin))
+        await grace()
+        XCTAssertTrue(results.isEmpty, "an exit left at a press with the reading still running: \(results)")
+        reader.answer(0, finds())
+        await waitUntil("the exit was delivered") { !results.isEmpty }
+        await grace()
+        XCTAssertEqual(results.count, 1, "three presses delivered \(results.count) results")
+        guard case .edited(_, _, _, let exit)? = results.first else { return XCTFail("\(results)") }
+        XCTAssertEqual(exit, .confirm, "the exit delivered is not the first one pressed")
+    }
+
+    /// Crop turned on while an exit is held: the exit is dropped, as for a change of the area, and the answer puts the blurs in and leaves nothing.
+    /// Return then takes the crop, as it does with no reading.
+    func testCropTurnedOnWhileAnExitIsHeldDropsTheExitAndTheAnswerLeavesNothing() async throws {
+        for how in [EditorExit.confirm, .save] {
+            results = []
+            let (overlay, display, view) = try build()
+            OverlayRig.drawAndSelect(in: overlay, on: display)
+            overlay.perform(.blurPersonalText)
+            await waitUntil("\(how): asked") { reader.calls == 1 }
+            overlay.perform(.exit(how))
+            overlay.perform(.crop)
+            XCTAssertTrue(overlay.isCropping, "\(how): the subject: Crop is on")
+            reader.answer(0, finds())
+            await waitUntil("\(how): the answer was acted on") { !plates(view).isEmpty }
+            await grace()
+            XCTAssertTrue(results.isEmpty, "\(how): the held exit left after Crop was turned on: \(results)")
+            XCTAssertEqual(overlay.editedLayers.map(\.tool), [.rectangle, .blur], "\(how): the answer did not put the blurs in")
+            XCTAssertTrue(overlay.isCropping, "\(how): the answer ended Crop")
+            overlay.perform(.exit(.confirm))
+            XCTAssertFalse(overlay.isCropping, "\(how): Return did not take the crop")
+            XCTAssertTrue(results.isEmpty, "\(how): Return left instead of taking the crop: \(results)")
+            rigged?.overlay.close(); rigged = nil
+        }
+    }
+
+    /// An answer that finds nothing to blur lets the exit go with the picture as it was.
+    func testAnExitHeldForABlurReadingThatFindsNothingLeavesWithThePictureAsItWas() async throws {
+        for how in [EditorExit.confirm, .save] {
+            results = []
+            let (overlay, display, _) = try build()
+            OverlayRig.drawAndSelect(in: overlay, on: display)
+            let before = overlay.editedLayers
+            overlay.perform(.blurPersonalText)
+            await waitUntil("\(how): asked") { reader.calls == 1 }
+            overlay.perform(.exit(how))
+            await grace()
+            XCTAssertTrue(results.isEmpty, "\(how): the exit left at the press with the reading still running: \(results)")
+            reader.answer(0, .read([], source()))
+            await waitUntil("\(how): the exit was delivered") { !results.isEmpty }
+            await grace()
+            XCTAssertEqual(results.count, 1, "\(how): the exit delivered \(results.count) results")
+            guard case .edited(_, _, let layers, let exit)? = results.first else { return XCTFail("\(how): \(results)") }
+            XCTAssertEqual(exit, how)
+            XCTAssertEqual(layers, before, "\(how): the picture differs from the one on the screen")
+            rigged?.overlay.close(); rigged = nil
+        }
+    }
+
+    /// The control for the hold: once the Blur reading has answered, the exit leaves at once, with the blurs in the picture.
+    func testAnExitAfterTheBlurReadingAnsweredLeavesAtOnce() async throws {
         let (overlay, display, view) = try build()
         OverlayRig.drawAndSelect(in: overlay, on: display)
         overlay.perform(.blurPersonalText)
+        await waitUntil("asked") { reader.calls == 1 }
+        reader.answer(0, finds())
+        await waitUntil("the answer was acted on") { !plates(view).isEmpty }
+        overlay.perform(.exit(.save))
+        XCTAssertEqual(results.count, 1, "an exit after the answer was held")
+        guard case .edited(_, _, let layers, let exit)? = results.first else { return XCTFail("\(results)") }
+        XCTAssertEqual(exit, .save)
+        XCTAssertEqual(layers.map(\.tool), [.rectangle, .blur])
+    }
+
+    /// Copy Text holds nothing: Return, ⌘C, ⌘S and Share leave at once, with the picture as it is, and the reading is cancelled.
+    func testEveryWayOutWithACopyReadingInFlightLeavesAtOnceAndCancelsIt() async throws {
+        for how in [EditorExit.confirm, .copy, .save, .share] {
+            results = []
+            let (overlay, display, _) = try build()
+            OverlayRig.drawAndSelect(in: overlay, on: display)
+            let before = overlay.editedLayers
+            XCTAssertEqual(before.count, 1, "the subject: one rectangle drawn")
+            overlay.perform(.copyText)
+            await waitUntil("\(how): asked") { reader.calls == 1 }
+            overlay.perform(.exit(how))
+            XCTAssertEqual(results.count, 1, "\(how): the exit was held for a reading that copies text")
+            guard case .edited(_, _, let layers, let exit)? = results.first else { return XCTFail("\(how): \(results)") }
+            XCTAssertEqual(exit, how)
+            XCTAssertEqual(layers, before, "\(how): the picture delivered is not the one on the screen at the press")
+            XCTAssertEqual(reader.cancelled, 1, "\(how): the reading was not cancelled")
+            reader.answer(0, words)
+            await grace()
+            XCTAssertTrue(reader.copied.isEmpty, "\(how): text was copied after the editor closed")
+            XCTAssertEqual(results.count, 1, "\(how): the answer delivered something more")
+            rigged?.overlay.close(); rigged = nil
+        }
+    }
+
+    // MARK: The way out that never waits
+
+    /// Esc with nothing drawn and ✕: the editor closes at once, with a Copy Text reading or a Blur reading running.
+    func testEscWithNothingDrawnClosesWhileAReadingRuns() async throws {
+        for ask in [EditorAction.copyText, .blurPersonalText] {
+            results = []
+            let (overlay, _, _) = try build()
+            overlay.perform(ask)
+            await waitUntil("\(ask): asked") { reader.calls == 1 }
+            overlay.perform(.close)
+            XCTAssertEqual(results.count, 1, "\(ask)")
+            if case .cancelled? = results.first {} else { XCTFail("\(ask): \(results)") }
+            reader.answer(0, ask == .copyText ? words : finds())
+            await grace()
+            XCTAssertTrue(reader.copied.isEmpty, "\(ask): text was copied after the editor closed")
+            XCTAssertEqual(reader.cancelled, 1, "\(ask)")
+            XCTAssertEqual(results.count, 1, "\(ask): the answer delivered something more")
+            rigged?.overlay.close(); rigged = nil
+        }
+    }
+
+    /// Esc with layers asks first, and the press that answers its question leaves at once with a Blur reading running.
+    func testEscWithLayersLeavesAtItsThirdPressWhileABlurReadingRuns() async throws {
+        let (overlay, display, view) = try build()
+        OverlayRig.drawAndSelect(in: overlay, on: display)
+        overlay.perform(.blurPersonalText)
+        await waitUntil("asked") { reader.calls == 1 }
+        overlay.perform(.close)   // lets go of the selected rectangle
+        overlay.perform(.close)   // asks
+        XCTAssertEqual(plates(view), [ScStr.confirmClose], "the subject: the question is up")
+        XCTAssertTrue(results.isEmpty, "the question closed the editor")
+        overlay.perform(.close)
+        XCTAssertEqual(results.count, 1)
+        if case .cancelled? = results.first {} else { XCTFail("\(results)") }
+        reader.answer(0, finds())
+        await grace()
+        XCTAssertEqual(results.count, 1, "the answer delivered something more")
+    }
+
+    /// Esc after an exit that waits for the Blur reading: the editor closes without delivering the picture, and the answer that comes after delivers nothing.
+    func testEscAfterAnExitThatWaitsForTheBlurReadingDeliversNothingElse() async throws {
+        let (overlay, _, _) = try build()
+        overlay.perform(.blurPersonalText)
+        await waitUntil("asked") { reader.calls == 1 }
+        overlay.perform(.exit(.save))
+        XCTAssertTrue(results.isEmpty, "the exit left at the press with the reading still running: \(results)")
+        overlay.perform(.close)
+        XCTAssertEqual(results.count, 1, "Esc did not leave at once")
+        if case .cancelled? = results.first {} else { XCTFail("Esc after a held exit delivered \(results)") }
+        reader.answer(0, finds())
+        await grace()
+        XCTAssertEqual(results.count, 1, "the answer delivered the held exit after Esc: \(results)")
+    }
+
+    // MARK: A reading that does not come back
+
+    /// A Blur reading that never answers does not trap the person: at the deadline the held exit is dropped, the editor stays open and the plate says
+    /// the text could not be read; the same exit pressed again leaves at once, with the picture as it was.
+    func testAHeldExitIsDroppedAtTheDeadlineAndTheNextPressLeavesAtOnce() async throws {
+        let (overlay, display, view) = try build(exitDeadline: .milliseconds(300))
+        OverlayRig.drawAndSelect(in: overlay, on: display)
+        let before = overlay.editedLayers
+        overlay.perform(.blurPersonalText)
+        await waitUntil("asked") { reader.calls == 1 }
+        overlay.perform(.exit(.save))
+        XCTAssertTrue(results.isEmpty, "the exit left at the press with the reading still running: \(results)")
+        await waitSeconds("the plate said the text could not be read") { plates(view) == [ScStr.textUnreadable] }
+        XCTAssertTrue(results.isEmpty, "the exit was delivered at the deadline: \(results)")
+        XCTAssertNotNil(overlay.view(for: display), "the editor closed at the deadline")
+        XCTAssertEqual(overlay.editedLayers, before, "the picture changed at the deadline")
+        overlay.perform(.exit(.save))
+        XCTAssertEqual(results.count, 1, "the press after the deadline was held again")
+        guard case .edited(_, _, let layers, let exit)? = results.first else { return XCTFail("\(results)") }
+        XCTAssertEqual(exit, .save)
+        XCTAssertEqual(layers, before)
+        reader.answer(0, finds())
+        await grace()
+        XCTAssertEqual(results.count, 1, "the late answer delivered something more")
+    }
+
+    /// A reading the port itself ends with `.cancelled` (the overlay did not cancel it) gives the held exit no picture to wait for: it is dropped
+    /// with the same plate, and the next press leaves at once.
+    func testACancelledBlurReadingDropsTheHeldExitAndTheNextPressLeavesAtOnce() async throws {
+        let (overlay, display, view) = try build()
+        OverlayRig.drawAndSelect(in: overlay, on: display)
+        let before = overlay.editedLayers
+        overlay.perform(.blurPersonalText)
+        await waitUntil("asked") { reader.calls == 1 }
+        overlay.perform(.exit(.save))
+        reader.answer(0, .cancelled)
+        await waitUntil("the plate") { !plates(view).isEmpty }
+        XCTAssertEqual(plates(view), [ScStr.textUnreadable])
+        XCTAssertTrue(results.isEmpty, "the exit was delivered after a cancelled reading: \(results)")
+        overlay.perform(.exit(.save))
+        XCTAssertEqual(results.count, 1, "the press after the cancelled reading was held again")
+        guard case .edited(_, _, let layers, _)? = results.first else { return XCTFail("\(results)") }
+        XCTAssertEqual(layers, before)
+    }
+
+    /// A Blur reading that fails: the held exit is not delivered, the editor stays with the plate that says so, and the same exit pressed again leaves at once.
+    func testAFailedBlurReadingDropsTheHeldExitAndTheNextPressLeavesAtOnce() async throws {
+        for how in [EditorExit.confirm, .copy, .save, .share] {
+            results = []
+            let (overlay, display, view) = try build()
+            OverlayRig.drawAndSelect(in: overlay, on: display)
+            let before = overlay.editedLayers
+            overlay.perform(.blurPersonalText)
+            await waitUntil("\(how): asked") { reader.calls == 1 }
+            overlay.perform(.exit(how))
+            XCTAssertTrue(results.isEmpty, "\(how): the exit left at the press with the reading still running: \(results)")
+            reader.answer(0, .failed)
+            await waitUntil("\(how): the plate") { !plates(view).isEmpty }
+            await grace()
+            XCTAssertEqual(plates(view), [ScStr.textUnreadable], "\(how)")
+            XCTAssertTrue(results.isEmpty, "\(how): the exit was delivered after a failed reading: \(results)")
+            XCTAssertNotNil(overlay.view(for: display), "\(how): the editor closed")
+            XCTAssertEqual(overlay.editedLayers, before, "\(how)")
+            overlay.perform(.exit(how))
+            XCTAssertEqual(results.count, 1, "\(how): the press after the failure was held again")
+            guard case .edited(_, _, let layers, let exit)? = results.first else { return XCTFail("\(how): \(results)") }
+            XCTAssertEqual(exit, how)
+            XCTAssertEqual(layers, before, "\(how)")
+            rigged?.overlay.close(); rigged = nil
+        }
+    }
+
+    /// A Copy Text reader that never answers: both items stay off, and nothing else does — the person can still leave with the picture.
+    func testACopyReaderThatNeverAnswersHoldsNothingButTheTwoItems() async throws {
+        let (overlay, display, view) = try build()
+        OverlayRig.drawAndSelect(in: overlay, on: display)
+        overlay.perform(.copyText)
         await waitUntil("asked") { reader.calls == 1 }
         await grace(0.5)
         XCTAssertEqual(menuItem(overlay, ScStr.blurPersonalText), false, "the control: off while it runs")
@@ -214,6 +465,50 @@ final class TheTextReadingMeetsEveryInputWhileItRunsTests: XCTestCase {
         reader.answer(1, finds())
         await waitUntil("the second answer") { overlay.editedLayers.count == 2 }
         XCTAssertEqual(overlay.editedLayers.map(\.tool), [.arrow, .blur])
+    }
+
+    /// A held exit whose answer comes in the middle of a stroke: the stroke becomes a layer, as it does at an exit, and the blurs go in after
+    /// it; the picture does not leave without them.
+    func testAHeldExitAnsweredInTheMiddleOfAStrokeLeavesWithTheStrokeAndTheBlurs() async throws {
+        for how in [EditorExit.confirm, .save] {
+            results = []
+            let (overlay, display, _) = try build()
+            OverlayRig.drawAndSelect(in: overlay, on: display)
+            overlay.perform(.blurPersonalText)
+            await waitUntil("\(how): asked") { reader.calls == 1 }
+            overlay.perform(.exit(how))
+            overlay.perform(.tool(.arrow))
+            overlay.mouseDown(on: display, at: CGPoint(x: 150, y: 150), flags: [])
+            overlay.mouseDragged(on: display, at: CGPoint(x: 220, y: 190), flags: [])
+            reader.answer(0, finds())
+            await waitUntil("\(how): the exit was delivered") { !results.isEmpty }
+            await grace()
+            XCTAssertEqual(results.count, 1, "\(how): the exit delivered \(results.count) results")
+            guard case .edited(_, _, let layers, let exit)? = results.first else { return XCTFail("\(how): \(results)") }
+            XCTAssertEqual(exit, how)
+            XCTAssertEqual(layers.map(\.tool), [.rectangle, .arrow, .blur], "\(how): the picture left without the stroke or without the blurs")
+            rigged?.overlay.close(); rigged = nil
+        }
+    }
+
+    /// The same for a move of the selected layer still under the pointer: the move is closed, and the blurs go in over the layer where it now is.
+    func testAHeldExitAnsweredInTheMiddleOfAMoveLeavesWithTheMoveAndTheBlurs() async throws {
+        let (overlay, display, _) = try build()
+        OverlayRig.drawAndSelect(in: overlay, on: display)
+        let before = try XCTUnwrap(overlay.editedLayers.first)
+        overlay.perform(.blurPersonalText)
+        await waitUntil("asked") { reader.calls == 1 }
+        overlay.perform(.exit(.save))
+        overlay.mouseDown(on: display, at: CGPoint(x: 200, y: 230), flags: [])
+        overlay.mouseDragged(on: display, at: CGPoint(x: 240, y: 270), flags: [])
+        XCTAssertNotEqual(overlay.editedLayers.first, before, "the subject: the layer is being moved")
+        reader.answer(0, finds())
+        await waitUntil("the exit was delivered") { !results.isEmpty }
+        await grace()
+        XCTAssertEqual(results.count, 1, "the exit delivered \(results.count) results")
+        guard case .edited(_, _, let layers, _)? = results.first else { return XCTFail("\(results)") }
+        XCTAssertEqual(layers.map(\.tool), [.rectangle, .blur], "the picture left without the blurs")
+        XCTAssertNotEqual(layers.first, before, "the move was lost on the way out")
     }
 
     // MARK: The plate

@@ -50,12 +50,12 @@ enum OverlayRig {
     }
 
     /// An overlay over every real screen, each 1000×800 points at `scale`, an `area` released on the first.
-    /// `pinRoom` is the answer the overlay is given to "may another pin open" (task 12).
+    /// `pinRoom` is the answer the overlay is given to "may another pin open"; `exitDeadline` is how long an exit may wait for a Blur reading.
     static func overlay(scale: CGFloat, area: CGRect, pinRoom: @escaping () -> Bool = { true }, textTools: EditorTextTools = .none,
-                        onResult: @escaping (OverlayResult) -> Void) throws
+                        exitDeadline: Duration = CaptureOverlay.defaultExitDeadline, onResult: @escaping (OverlayResult) -> Void) throws
         -> (overlay: CaptureOverlay, display: DisplayID, view: OverlayView) {
         let frames = try frames(scale: scale)
-        let built = CaptureOverlay(freeze: Freeze(displays: frames.map { .image($0) }, windows: []), store: nil, pinRoom: pinRoom, textTools: textTools, onFinish: onResult)
+        let built = CaptureOverlay(freeze: Freeze(displays: frames.map { .image($0) }, windows: []), store: nil, pinRoom: pinRoom, textTools: textTools, exitDeadline: exitDeadline, onFinish: onResult)
         XCTAssertTrue(built.build())
         let display = try XCTUnwrap(frames.first?.id)
         built.mouseDown(on: display, at: area.origin, flags: [])

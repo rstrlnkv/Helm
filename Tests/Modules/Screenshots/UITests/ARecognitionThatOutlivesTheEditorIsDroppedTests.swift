@@ -12,7 +12,7 @@ import Module_Screenshots_Engine
 /// dropped:** nothing is inserted, nothing is copied, no plate is put up.
 ///
 /// The overlay holds the task (`CaptureOverlay.beginReading`); `close` cancels it, and a change of the area under it ends it, since its boxes
-/// were for the old area. The reader here is the overlay's own seam (`EditorTextTools`) answering when the test says, so each test has a
+/// were for the old area. An exit held for a Blur reading goes with the editor that was pressed and with the area that was read. The reader here is the overlay's own seam (`EditorTextTools`) answering when the test says, so each test has a
 /// reading in flight at the moment it breaks the tie.
 ///
 /// A dropped answer is asserted by what did not happen, so each such test ends with an answer of the same path that does act (the control):
@@ -124,6 +124,22 @@ final class ARecognitionThatOutlivesTheEditorIsDroppedTests: XCTestCase {
         }
     }
 
+    /// An exit that waits for the Blur reading belongs to the editor that was pressed: the editor closing drops it, and the answer delivers nothing.
+    func testAnExitHeldForTheBlurReadingIsDroppedWhenTheEditorCloses() async throws {
+        let (overlay, _, _) = try build()
+        overlay.perform(.blurPersonalText)
+        await waitUntil("the reader was asked") { reader.calls == 1 }
+        overlay.perform(.exit(.save))
+        XCTAssertTrue(results.isEmpty, "the subject: the exit left at the press with the reading still running: \(results)")
+        overlay.close()
+        XCTAssertEqual(reader.cancelled, 1, "the close did not cancel the task that waits")
+        reader.answer(0, reading)
+        await grace()
+        XCTAssertTrue(results.isEmpty, "the answer delivered an exit to an editor that was closed: \(results)")
+        XCTAssertEqual(overlay.editedLayers, [], "a layer went in after the editor closed")
+        rigged = nil
+    }
+
     // MARK: The area changed
 
     func testAnAnswerAfterTheAreaMovedIsDroppedAndTheItemsComeBack() async throws {
@@ -147,6 +163,27 @@ final class ARecognitionThatOutlivesTheEditorIsDroppedTests: XCTestCase {
         XCTAssertEqual(reader.copied.count, 1, "one copy: the second reading's, not the old one's")
         XCTAssertEqual(reader.copied.first?.first?.string, "words")
         XCTAssertEqual(plates(view), [ScStr.textCopied])
+    }
+
+    /// An exit that waits for the Blur reading is for the area that was read: when the area moves the reading ends and the exit with it, nothing
+    /// is delivered for either, and the next press leaves at once.
+    func testAnExitHeldForTheBlurReadingIsDroppedWhenTheAreaMoves() async throws {
+        let (overlay, _, _) = try build()
+        overlay.perform(.blurPersonalText)
+        await waitUntil("the reader was asked") { reader.calls == 1 }
+        overlay.perform(.exit(.save))
+        XCTAssertTrue(results.isEmpty, "the subject: the exit left at the press with the reading still running: \(results)")
+        overlay.perform(.nudge(dx: 1, dy: 0, pixels: 10))
+        XCTAssertNotEqual(overlay.editedArea, area, "the subject: the area moved under the reading")
+        XCTAssertEqual(reader.cancelled, 1, "the reading of the old area was not cancelled")
+        reader.answer(0, reading)
+        await grace()
+        XCTAssertTrue(results.isEmpty, "the exit was delivered for an area that is no longer the one read: \(results)")
+        XCTAssertEqual(overlay.editedLayers, [], "the answer for the old area inserted a layer")
+        overlay.perform(.exit(.confirm))
+        XCTAssertEqual(results.count, 1, "the press after the area moved was held, with no reading to wait for")
+        guard case .edited(_, _, _, let exit)? = results.first else { return XCTFail("\(results)") }
+        XCTAssertEqual(exit, .confirm)
     }
 
     func testAnAnswerAfterACropTookANewAreaIsDropped() async throws {
