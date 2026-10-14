@@ -82,13 +82,16 @@ enum KernelsOwnName {
 ///
 /// The gates used to cut, fold and compare the typed string, so a string the
 /// kernel reads as one object and the letters read as another got the letters'
-/// answer, and a string no component of which the letters can read (a file
-/// reference path, a combining mark after a separator) either hung the
-/// resolver or merged two names. The rows here ask the reading itself
-/// (`PathCanonical.reading(of:)`), what is read from it (`resolvingAncestors`,
-/// `ancestryIdentity`) and the gates' entry (`readingForRemoval`) where each
-/// is the subject, and the gates' Bool answers, in a scratch folder; a real
-/// place is only ever asked about, as a string.
+/// answer, and a string no component of which the letters can read (a
+/// `/.file/id=…` string Foundation cannot resolve, a combining mark after a
+/// separator) either hung the resolver or merged two names. The rows here ask
+/// the reading itself (`PathCanonical.reading(of:)`), which the two removal
+/// gates (`readingForRemoval`) and `ancestryIdentity` take, and
+/// `resolvingAncestors`, Foundation's resolver, a second way a typed string
+/// enters `PathCanonical`, kept for its callers `SSHFileScope` and
+/// `followingEveryLink`, where each is the subject, and the gates' Bool
+/// answers, in a scratch folder; a real place is only ever asked about, as a
+/// string.
 ///
 /// **A string the resolver once never returned for is asked in a child
 /// process first.** `/.file/id=<device>.<inode>` is asked in a child process,
@@ -206,16 +209,18 @@ final class TheGatesTakeOneReadingOfTheObjectTests: XCTestCase {
         return "/.file/id=\(UInt32(bitPattern: info.st_dev)).\(info.st_ino)"
     }
 
-    /// A scratch folder with a folder and a file in it, the references to both,
-    /// and the proof that the kernel itself takes none of them for a path.
+    /// A scratch folder with a folder and a file in it, `/.file/id=…` strings
+    /// (one made up, the others made of the device and inode of the two), and
+    /// the proof that the kernel itself takes none of them for a path.
     private func fileReferences() throws -> (home: URL, strings: [String]) {
         let home = scratchDirectory("one-reading")
         let folder = home.appendingPathComponent("Library/Caches/Folder")
         let file = folder.appendingPathComponent("file.txt")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         XCTAssertTrue(FileManager.default.createFile(atPath: file.path, contents: Data("x".utf8)))
-        // The reference of a folder with a separator and with a child after it
-        // is how Foundation hands such a path out and how it reaches the object.
+        // Foundation hands the file reference path of a folder out with a
+        // separator after it and reaches a child by the name after that; the
+        // same two shapes are asked here.
         let reference = try fileReference(of: folder.path)
         let strings = ["/.file/id=1.2", reference, try fileReference(of: file.path),
                        reference + "/", reference + "/file.txt"]
@@ -229,9 +234,12 @@ final class TheGatesTakeOneReadingOfTheObjectTests: XCTestCase {
 
     // MARK: - The hang
 
-    /// The two readings of a path that return an answer for a file reference
-    /// path. The resolver used to read the URL made of it, which has an empty
-    /// path, and neither exit of its loop was reachable from there.
+    /// The two calls that return an answer for each string of
+    /// `fileReferences()`: the resolver and `ancestryIdentity`, which takes the
+    /// reading. Of a `/.file/id=…` string it cannot resolve, Foundation makes a
+    /// URL with an empty path, and the level above an empty path is the empty
+    /// path, so neither exit of the resolver's loop was reachable from there
+    /// until it was given a guard.
     func testAResolverAskedForAFileReferenceReturns() throws {
         let (home, strings) = try fileReferences()
         let control = inChildren([("resolve", home.path)], home: home.path, folder: home)
@@ -246,10 +254,10 @@ final class TheGatesTakeOneReadingOfTheObjectTests: XCTestCase {
         }
     }
 
-    /// Both gates answer `false` for a file reference path, whether it names a
-    /// folder, a file or nothing. The answer of a bound on the old loop was
-    /// the same `false`, reached because the string it handed back was empty,
-    /// which is why the next test compares the string itself.
+    /// Both gates answer `false` for each string of `fileReferences()`. They
+    /// take the reading and not the resolver, so the row is green whatever
+    /// string the resolver hands back; the next test compares that string
+    /// itself.
     func testBothGatesRefuseAFileReferenceOfAScratchFolder() throws {
         let (home, strings) = try fileReferences()
         let control = inChildren([("app", home.path + "/Library/Caches/Folder/file.txt")],
@@ -264,14 +272,14 @@ final class TheGatesTakeOneReadingOfTheObjectTests: XCTestCase {
         }
     }
 
-    /// The value of the projection for a file reference path: the deepest level
-    /// the kernel answered as a directory is `/`, and the rest of the typed
-    /// string follows it by its letters, so the typed string comes back, by
-    /// bytes. A bound on the old loop let the call return an empty string, and
-    /// this is the row that failed for it.
+    /// The value of the resolver for a `/.file/id=…` string Foundation cannot
+    /// resolve: Foundation makes a URL with an empty path of it, the level
+    /// above an empty path is the empty path, and the resolver's guard hands
+    /// the typed string back, by bytes. A loop bounded to give up with an empty
+    /// string let the call return, and this is the row that fails for it.
     func testTheResolverGivesAFileReferencePathBackAsTyped() throws {
         let (home, strings) = try fileReferences()
-        let typed = strings.filter { !$0.hasSuffix("/") }
+        let typed = strings
         let outcomes = inChildren(typed.map { (call: "resolve", string: $0) }, home: home.path, folder: home)
         XCTAssertEqual(outcomes.count, typed.count)
         for outcome in outcomes {
@@ -282,12 +290,13 @@ final class TheGatesTakeOneReadingOfTheObjectTests: XCTestCase {
     }
 
     /// The reading itself, in this process, once the children have shown that
-    /// it returns: a file reference path names no object and no place.
+    /// it returns (`ancestryIdentity` takes the reading): a file reference path
+    /// names no object and no place.
     func testAFileReferencePathHasNoNameInTheReading() throws {
         let (home, strings) = try fileReferences()
-        let control = inChildren([("resolve", home.path)], home: home.path, folder: home)
+        let control = inChildren([("ancestry", home.path)], home: home.path, folder: home)
         try XCTSkipUnless(control[0].returned, "the child mechanism did not start: \(control[0])")
-        let hung = inChildren(strings.map { (call: "resolve", string: $0) }, home: home.path, folder: home)
+        let hung = inChildren(strings.map { (call: "ancestry", string: $0) }, home: home.path, folder: home)
             .filter { !$0.returned }
         XCTAssertTrue(hung.isEmpty, "the reading does not return for \(hung); not asked in this process")
         guard hung.isEmpty else { return }
@@ -818,8 +827,6 @@ final class TheGatesTakeOneReadingOfTheObjectTests: XCTestCase {
             XCTAssertTrue(sameBytes(reading.name, expected),
                           "the reading's name for \(askedAs)/child.txt is not the created spelling by bytes: got "
                           + "\(KernelsOwnName.hex(reading.name)); the kernel's \(KernelsOwnName.hex(expected))")
-            XCTAssertTrue(sameBytes(PathCanonical.withoutPrivate(PathCanonical.resolvingAncestors(askedChild)), PathCanonical.withoutPrivate(expected)),
-                          "resolvingAncestors(\(askedAs)/child.txt) is not the created spelling by bytes")
             let byName = asked(createdChild, home: home, "created spelling")
             let byOther = asked(askedChild, home: home, "other spelling")
             for gate in Gate.allCases {
@@ -881,8 +888,6 @@ extension TheGatesTakeOneReadingOfTheObjectTests {
             XCTAssertNil(reading.object)
             XCTAssertNil(reading.parent)
             XCTAssertTrue(sameBytes(reading.name, string), "the name of a string with a NUL byte is not the string")
-            XCTAssertTrue(sameBytes(PathCanonical.resolvingAncestors(string), string),
-                          "the projection of a string with a NUL byte is not the string")
             XCTAssertNil(PathCanonical.ancestryIdentity(of: string))
             let answers = asked(string, home: home, "a NUL byte")
             for gate in Gate.allCases {
@@ -960,39 +965,31 @@ extension TheGatesTakeOneReadingOfTheObjectTests {
         }
     }
 
-    /// The projection and the reading do not spell one name alike: the kernel
-    /// names what is under `/var`, `/tmp` and `/etc` with `/private` in front,
-    /// and `resolvingAncestors` leaves it out, as Foundation does, which is what
-    /// its callers compare it with. Both by bytes, for a scratch folder, for a
-    /// string typed with the `/private`, and for places that are not made here.
-    func testTheProjectionKeepsTheSpellingFoundationUsesWhileTheReadingKeepsTheKernels() throws {
+    /// The kernel names what is under `/var`, `/tmp` and `/etc` with `/private`
+    /// in front, and the reading keeps it: by bytes, for a scratch folder, for
+    /// a string typed with the `/private`, and for places that are not made
+    /// here.
+    func testTheReadingNamesWhatIsUnderVarTmpAndEtcWithPrivateInFront() throws {
         let scratch = scratchDirectory("one-reading")
         let kernel = try XCTUnwrap(KernelsOwnName.name(of: scratch.path))
         try XCTSkipUnless(kernel.hasPrefix("/private/var/"), "the scratch folder is not under /private/var here: \(kernel)")
-        let foundation = String(kernel.dropFirst("/private".count))
         for suffix in ["", "/missing", "/missing/deeper"] {
             for typed in [scratch.path + suffix, kernel + suffix] {
                 let reading = PathCanonical.reading(of: typed)
                 XCTAssertTrue(sameBytes(reading.name, kernel + suffix),
                               "the reading's name for \(typed) is \(KernelsOwnName.hex(reading.name)), not the kernel's")
-                let projected = PathCanonical.resolvingAncestors(typed)
-                XCTAssertTrue(sameBytes(projected, foundation + suffix),
-                              "the projection of \(typed) is \(KernelsOwnName.hex(projected)), not the Foundation spelling "
-                              + KernelsOwnName.hex(foundation + suffix))
             }
         }
-        for (typed, name, projection) in [
-            ("/tmp/helm-no-such-x/y", "/private/tmp/helm-no-such-x/y", "/tmp/helm-no-such-x/y"),
-            ("/etc/helm-no-such-x", "/private/etc/helm-no-such-x", "/etc/helm-no-such-x"),
-            ("/private/etc/helm-no-such-x", "/private/etc/helm-no-such-x", "/etc/helm-no-such-x"),
-            ("/private/tmpx/y", "/private/tmpx/y", "/private/tmpx/y"),
-            ("/private/varx", "/private/varx", "/private/varx"),
-            ("/private/var", "/private/var", "/var"),
+        for (typed, name) in [
+            ("/tmp/helm-no-such-x/y", "/private/tmp/helm-no-such-x/y"),
+            ("/etc/helm-no-such-x", "/private/etc/helm-no-such-x"),
+            ("/private/etc/helm-no-such-x", "/private/etc/helm-no-such-x"),
+            ("/private/tmpx/y", "/private/tmpx/y"),
+            ("/private/varx", "/private/varx"),
+            ("/private/var", "/private/var"),
         ] {
             let reading = PathCanonical.reading(of: typed)
             XCTAssertTrue(sameBytes(reading.name, name), "the reading's name for \(typed) is \(reading.name.debugDescription)")
-            XCTAssertTrue(sameBytes(PathCanonical.resolvingAncestors(typed), projection),
-                          "the projection of \(typed) is \(PathCanonical.resolvingAncestors(typed).debugDescription)")
         }
     }
 
@@ -1056,7 +1053,7 @@ extension TheGatesTakeOneReadingOfTheObjectTests {
     }
 }
 
-// MARK: - The prefix behind /private, the projection's fold, what was asked
+// MARK: - The prefix behind /private, the rest of a string, what was asked
 
 extension TheGatesTakeOneReadingOfTheObjectTests {
 
@@ -1115,12 +1112,14 @@ extension TheGatesTakeOneReadingOfTheObjectTests {
         }
     }
 
-    /// In the part of a string the kernel did not answer for, `resolvingAncestors`
-    /// folds `.` and `..` by their letters, under the path the kernel gave the
-    /// deepest folder that answered; the reading keeps that part as typed and
-    /// gives it no name. Where the kernel answers for a link to a folder before a
-    /// `..`, the path stands as the kernel climbs it and the letters fold nothing.
-    func testTheProjectionFoldsOnlyWhatTheKernelDidNotAnswerFor() throws {
+    /// In the part of a string the kernel did not answer for, the reading keeps
+    /// `.` and `..` as typed under the path the kernel gave the deepest folder
+    /// that answered, and gives the string no name, so both gates refuse it.
+    /// The letters' fold of each string is an object `UserFileScope` accepts,
+    /// and for the one that folds to a `.app` `RemovableScope` accepts it too.
+    /// Where the kernel answers for a link to a folder before a `..`, the name
+    /// stands as the kernel climbs it and the letters fold nothing.
+    func testTheReadingKeepsTheRestAsTypedWhereTheKernelStoppedAndClimbsWhereItAnswers() throws {
         let home = scratchDirectory("after-repair")
         struct Case {
             let label: String, root: URL, typed: String, top: String, rest: String, folded: String
@@ -1150,14 +1149,7 @@ extension TheGatesTakeOneReadingOfTheObjectTests {
             XCTAssertEqual(errnoOf(item.typed), item.premise, "\(item.label): the kernel does not answer "
                            + "\(item.premise) for \(item.typed); the subject did not occur")
             XCTAssertNotNil(ownIdentity(item.root.path + item.folded), "\(item.label): the letters' fold is not there")
-            let ownRoot = try XCTUnwrap(KernelsOwnName.name(of: item.root.path))
             let ownTop = try XCTUnwrap(KernelsOwnName.name(of: item.top))
-            let expectedProjection = PathCanonical.withoutPrivate(ownRoot + item.folded)
-            let projection = PathCanonical.resolvingAncestors(item.typed)
-            print("[reading] \(item.label): \(item.typed.debugDescription) -> projection \(projection.debugDescription)")
-            XCTAssertTrue(sameBytes(projection, expectedProjection),
-                          "\(item.label): the projection is \(projection.debugDescription), not the rest folded under "
-                          + "the kernel's folder: \(expectedProjection.debugDescription)")
             let reading = read(item.typed, .noName, "holds a `..` in the part the kernel did not answer for")
             XCTAssertTrue(sameBytes(reading.name, ownTop + "/" + item.rest),
                           "\(item.label): the reading's name is \(reading.name.debugDescription); the rest is not as typed")
@@ -1171,7 +1163,7 @@ extension TheGatesTakeOneReadingOfTheObjectTests {
         }
 
         // The other half: a link to a folder before the `..` is answered by the
-        // kernel, so the projection is where the kernel climbs.
+        // kernel, so the name is where the kernel climbs.
         let elsewhere = home.appendingPathComponent("Elsewhere")
         try makeFolder(elsewhere.appendingPathComponent("Target"))
         XCTAssertEqual(symlink(elsewhere.path + "/Target", home.path + "/linkToTarget"), 0)
@@ -1182,23 +1174,9 @@ extension TheGatesTakeOneReadingOfTheObjectTests {
                        "the kernel climbs to another folder than the link's target's parent; the subject did not occur")
         let ownElsewhere = try XCTUnwrap(KernelsOwnName.name(of: elsewhere.path))
         let ownHome = try XCTUnwrap(KernelsOwnName.name(of: home.path))
-        let projection = PathCanonical.resolvingAncestors(typed)
-        print("[reading] link before ..: \(typed.debugDescription) -> projection \(projection.debugDescription)")
-        XCTAssertTrue(sameBytes(projection, PathCanonical.withoutPrivate(ownElsewhere + "/new.txt")),
-                      "the projection is \(projection.debugDescription), not where the kernel climbs")
-        XCTAssertFalse(sameBytes(projection, PathCanonical.withoutPrivate(ownHome + "/new.txt")),
-                       "the projection is the letters' fold")
         let climbed = read(typed, .nothingThere, "is a place below the folder the kernel climbs to")
         XCTAssertTrue(sameBytes(climbed.name, ownElsewhere + "/new.txt"), "the name is \(climbed.name.debugDescription)")
-
-        // Printed, not pinned: a doubled separator in a rest with a dot and
-        // in one without.
-        for string in [home.path + "/missing//x", home.path + "/missing//../x", home.path + "/missing/x"] {
-            let bare = PathCanonical.reading(of: string)
-            print("[reading] doubled separator: \(string.debugDescription) -> projection "
-                  + "\(PathCanonical.resolvingAncestors(string).debugDescription); the reading: \(bare.standing), "
-                  + "name \(bare.name.debugDescription)")
-        }
+        XCTAssertFalse(sameBytes(climbed.name, ownHome + "/new.txt"), "the name is the letters' fold")
     }
 
     /// `Reading.asked` is the string as it came in, by bytes, trailing

@@ -1,5 +1,6 @@
 import Foundation
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Leftovers_Engine
 
@@ -37,6 +38,13 @@ import XCTest
 /// this file is about, and it is the stronger reading of the two: **nothing from
 /// behind the link is in the list**, and what is there says the folder went
 /// unread rather than standing in for a file.
+///
+/// The last group is the same question put to the real port over a real folder,
+/// about a spelling and not a link: `isItsOwnPlace` takes a source as its own place
+/// when resolving it leaves the string as it was, so a string that is not the
+/// spelling of the place it names — a doubled separator, a name in another case
+/// below a regular file — has to come back changed, whether or not the kernel can
+/// open it.
 final class ADirectoryThatIsNotTheOneItNamesTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 
@@ -135,5 +143,104 @@ final class ADirectoryThatIsNotTheOneItNamesTests: XCTestCase {
         // that was not went quiet».
         XCTAssertEqual(items.filter { $0.status.isSource }.map(\.path),
                        ["/Users/x/Library/QuickLook"])
+    }
+
+    // MARK: - The spelling, not the link
+
+    /// A scratch folder put through `URL.resolvingSymlinksInPath()` first, as
+    /// `PathCanonical.followingEveryLink` puts what it resolves, so that no
+    /// answer differs from a typed string by a `/private` in front of `/var`.
+    private func canonicalScratch() -> URL {
+        scratchDirectory("leftovers-spelling").resolvingSymlinksInPath()
+    }
+
+    private func lstatError(_ path: String) -> Int32 {
+        var info = stat()
+        return lstat(path, &info) == 0 ? 0 : errno
+    }
+
+    /// What the shipping port answers for `typed`, compared with it by bytes.
+    private func portKeepsTheSpelling(_ typed: String) -> (kept: Bool, answer: String) {
+        let url = URL(fileURLWithPath: typed)
+        XCTAssertTrue(url.path.utf8.elementsEqual(typed.utf8),
+                      "premise: the URL changed the spelling before the port saw it: \(url.path)")
+        let answer = FileSystemLeftovers().resolvingSymlinks(url).path
+        return (answer.utf8.elementsEqual(typed.utf8), answer)
+    }
+
+    /// **A doubled separator in front of a plug-in folder that is not there.**
+    /// `Library//QuickLook` is not how the place `Library/QuickLook` is spelled,
+    /// and a source typed that way is not the directory it names.
+    func testADoubledSeparatorBeforeAnAbsentFolderIsNotItsOwnPlace() throws {
+        let scratch = canonicalScratch()
+        try FileManager.default.createDirectory(at: scratch.appendingPathComponent("Library"),
+                                                withIntermediateDirectories: true)
+        let typed = scratch.path + "/Library//QuickLook"
+        XCTAssertEqual(lstatError(typed), ENOENT, "premise: the folder is absent")
+
+        let (kept, answer) = portKeepsTheSpelling(typed)
+
+        XCTAssertFalse(kept, """
+            the port handed `\(typed)` back letter for letter. A doubled separator is not \
+            the spelling of the place, and a source typed that way is not its own place.
+            """)
+        XCTAssertNotEqual(answer, "", "premise: the port answered something")
+    }
+
+    /// **A doubled separator inside the part of the path that is not there.**
+    /// The same spelling one level further down: `Library` is a folder, `Nope`
+    /// and `QuickLook` are absent, and the string has two separators between
+    /// them.
+    func testADoubledSeparatorInsideAnAbsentTailIsNotItsOwnPlace() throws {
+        let scratch = canonicalScratch()
+        try FileManager.default.createDirectory(at: scratch.appendingPathComponent("Library"),
+                                                withIntermediateDirectories: true)
+        let typed = scratch.path + "/Library/Nope//QuickLook"
+        XCTAssertEqual(lstatError(typed), ENOENT, "premise: neither folder is there")
+
+        let (kept, answer) = portKeepsTheSpelling(typed)
+
+        XCTAssertFalse(kept, """
+            the port handed `\(typed)` back letter for letter. A doubled separator is not \
+            the spelling of the place, whether or not the folders after it are there.
+            """)
+        XCTAssertNotEqual(answer, "", "premise: the port answered something")
+    }
+
+    /// **A name in another case below a regular file.** The volume reads
+    /// `FILE` as `file`, so `FILE/missing` is a name below a file and the kernel
+    /// answers `ENOTDIR`; the place that spelling is a variant of is
+    /// `file/missing`, and a string that differs from it is not its own place.
+    func testANameInAnotherCaseBelowARegularFileIsNotItsOwnPlace() throws {
+        let scratch = canonicalScratch()
+        try Data("x".utf8).write(to: scratch.appendingPathComponent("file"))
+        let typed = scratch.path + "/FILE/missing"
+        try XCTSkipUnless(lstatError(scratch.path + "/FILE") == 0,
+                          "this volume tells FILE from file, and the string is then another place")
+        XCTAssertEqual(lstatError(typed), ENOTDIR, "premise: a name below a regular file")
+
+        let (kept, answer) = portKeepsTheSpelling(typed)
+
+        XCTAssertFalse(kept, """
+            the port handed `\(typed)` back letter for letter, though `FILE` is the file \
+            called `file` and the string is not the spelling of the place it names.
+            """)
+        XCTAssertNotEqual(answer, "", "premise: the port answered something")
+    }
+
+    /// **The control: a source that is its own place stays so.** The same folder
+    /// as the first row, spelled with one separator and absent: nothing in the
+    /// string differs from the place, so the port hands it back. Without this the
+    /// rows above hold for a port that changes every string it is given.
+    func testAnAbsentFolderSpelledAsItIsIsItsOwnPlace() throws {
+        let scratch = canonicalScratch()
+        try FileManager.default.createDirectory(at: scratch.appendingPathComponent("Library"),
+                                                withIntermediateDirectories: true)
+        let typed = scratch.path + "/Library/QuickLook"
+        XCTAssertEqual(lstatError(typed), ENOENT, "premise: the folder is absent")
+
+        let (kept, answer) = portKeepsTheSpelling(typed)
+
+        XCTAssertTrue(kept, "the port changed `\(typed)` into `\(answer)`")
     }
 }

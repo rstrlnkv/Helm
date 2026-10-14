@@ -12,7 +12,9 @@ import XCTest
 /// directory; and a `..` that needs no link at all. It also asks the question
 /// no path resolution can answer — a hard link — and pins the reason the answer
 /// does not matter today, because that reason is one edit away from stopping
-/// being true.
+/// being true. The last group asks it about a string that names nothing to the
+/// kernel — a `..` after a name it cannot walk through, or after a link — and
+/// whose `..` folded by letters leads to a file outside `~/.ssh`.
 ///
 /// Every path is inside a `scratchDirectory`, which drains its own teardown.
 /// Nothing here reads or writes the owner's `~/.ssh`.
@@ -137,5 +139,131 @@ final class SSHFileScopeHarderPathsTests: XCTestCase {
             approved the path — it cannot do otherwise, both names are the same inode — so the \
             atomic write was the whole defence, and it is not there any more.
             """)
+    }
+
+    // MARK: - A spelling the kernel cannot walk, and a `..` that climbs out of a link
+
+    /// The folder every row below is typed against. A scratch folder put
+    /// through `URL.resolvingSymlinksInPath()` first, as
+    /// `PathCanonical.resolvingAncestors` and `resolvingWholePath` put what
+    /// they resolve, so no answer differs from a typed string by a `/private`
+    /// in front of `/var`.
+    ///
+    /// ```
+    /// H/.zshrc                  a file outside `.ssh`
+    /// H/other/target/x          a file outside `.ssh`
+    /// H/.ssh/config             a file
+    /// H/.ssh/lnk                a link, absolute, to H/other/target
+    /// H/.ssh/a/b                a folder
+    /// H/.ssh/deep               a link, relative, to a/b
+    /// H/.ssh/dead               a link to nothing
+    /// H/.ssh/{missing,x,.zshrc,.ssh}   absent
+    /// ```
+    private func layout() throws -> (home: URL, ssh: URL) {
+        let root = scratchDirectory("ssh-scope-layout").resolvingSymlinksInPath()
+        let home = root.appendingPathComponent("H")
+        let ssh = home.appendingPathComponent(".ssh")
+        try makeDirectory(ssh.appendingPathComponent("a/b"))
+        try makeDirectory(home.appendingPathComponent("other/target"))
+        try write("Host a\n", to: ssh.appendingPathComponent("config"))
+        try write("export PATH\n", to: home.appendingPathComponent(".zshrc"))
+        try write("somebody's file\n", to: home.appendingPathComponent("other/target/x"))
+        try FileManager.default.createSymbolicLink(
+            atPath: ssh.appendingPathComponent("lnk").path,
+            withDestinationPath: home.appendingPathComponent("other/target").path)
+        try FileManager.default.createSymbolicLink(
+            atPath: ssh.appendingPathComponent("deep").path, withDestinationPath: "a/b")
+        try FileManager.default.createSymbolicLink(
+            atPath: ssh.appendingPathComponent("dead").path,
+            withDestinationPath: home.appendingPathComponent("nowhere").path)
+        return (home, ssh)
+    }
+
+    /// What `lstat` answers for `path`: 0, or the errno.
+    private func lstatError(_ path: String) -> Int32 {
+        var info = stat()
+        return lstat(path, &info) == 0 ? 0 : errno
+    }
+
+    /// One string, typed under `~/.ssh` as `relative`: it names nothing to the
+    /// kernel (`ENOENT` or `ENOTDIR`) while its `.` and `..` folded by their
+    /// letters lead to `landing`, an existing regular file in the home
+    /// directory and outside `~/.ssh`. The gate is asked about the string as
+    /// typed and has to answer no: a write is the rewrite of a file that was
+    /// read, and this spelling names no file the kernel can find.
+    ///
+    /// The premises come first, each its own assertion, so that an answer of
+    /// no is about the string and not about a fixture that was never laid.
+    private func assertRefused(_ relative: String, landing: String,
+                               file: StaticString = #filePath, line: UInt = #line) throws {
+        let (home, ssh) = try layout()
+        let typed = ssh.path + "/" + relative
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: home.path + "/" + landing),
+                      "premise: H/\(landing) is the file the letters of `.ssh/\(relative)` lead to",
+                      file: file, line: line)
+        let error = lstatError(typed)
+        XCTAssertTrue(error == ENOENT || error == ENOTDIR,
+                      "premise: `.ssh/\(relative)` answers errno \(error) to lstat, not ENOENT or ENOTDIR",
+                      file: file, line: line)
+        // The control, so that a refusal below is about the string: the same
+        // gate over the same layout says yes to the file `~/.ssh` really holds.
+        XCTAssertTrue(SSHFileScope.mayWrite(ssh.appendingPathComponent("config"),
+                                            home: home, under: ssh),
+                      "control: `.ssh/config` is an ordinary file in `.ssh` and was refused",
+                      file: file, line: line)
+
+        XCTAssertFalse(SSHFileScope.mayWrite(URL(fileURLWithPath: typed), home: home, under: ssh), """
+            `.ssh/\(relative)` names nothing to the kernel, and the gate approved it as a file in \
+            `.ssh` — the letters of its `..` lead to H/\(landing), outside `.ssh`.
+            """, file: file, line: line)
+    }
+
+    /// **A name the kernel cannot walk through, then `..`, then a link.** Folded
+    /// by letters, `missing/..` cancels and `lnk/x` is a file in the link's
+    /// target; the kernel never gets past `missing`.
+    func testADotDotAfterAMissingNameIsRefused() throws {
+        try assertRefused("missing/../lnk/x", landing: "other/target/x")
+    }
+
+    /// The same after a link to nothing: `dead` is a name the kernel answers
+    /// `ENOENT` to when it is walked through.
+    func testADotDotAfterADanglingLinkIsRefused() throws {
+        try assertRefused("dead/../lnk/x", landing: "other/target/x")
+    }
+
+    /// The same after a plain absent name.
+    func testADotDotAfterAnAbsentNameIsRefused() throws {
+        try assertRefused("x/../lnk/x", landing: "other/target/x")
+    }
+
+    /// The same after a regular file, which the kernel answers `ENOTDIR` to.
+    func testADotDotAfterARegularFileIsRefused() throws {
+        try assertRefused("config/../lnk/x", landing: "other/target/x")
+    }
+
+    /// The same after an absent name that is spelled like a file outside `.ssh`.
+    func testADotDotAfterAnAbsentDotfileNameIsRefused() throws {
+        try assertRefused(".zshrc/../lnk/x", landing: "other/target/x")
+    }
+
+    /// The same after an absent name that is spelled like `.ssh` itself.
+    func testADotDotAfterAnAbsentNameOfTheSameFolderIsRefused() throws {
+        try assertRefused(".ssh/../lnk/x", landing: "other/target/x")
+    }
+
+    /// **A `..` after a link climbs out of the link's target, not out of the
+    /// folder the link is in.** `deep` leads to `.ssh/a/b`, so the kernel's
+    /// `deep/..` is `.ssh/a` and there is no `lnk` there; folded by letters it
+    /// is `.ssh`, and `lnk/x` is a file outside it.
+    func testADotDotAfterALinkThatClimbsFromItsTargetIsRefused() throws {
+        try assertRefused("deep/../lnk/x", landing: "other/target/x")
+    }
+
+    /// Two of them: for the kernel `deep/../..` climbs from `.ssh/a/b` to `.ssh/a`
+    /// to `.ssh`, and `.zshrc` is then absent there; folded by letters the two
+    /// leave `.ssh` and name `H/.zshrc`, a file that runs.
+    func testTwoDotDotsAfterALinkReachingTheHomeDirectoryAreRefused() throws {
+        try assertRefused("deep/../../.zshrc", landing: ".zshrc")
     }
 }

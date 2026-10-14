@@ -273,6 +273,41 @@ public enum PathCanonical {
     /// `.resolve`.
     private static let kernelPrefixes = [".vol", ".nofollow", ".resolve"]
 
+    /// The path with every symlink in its parent chain resolved, and its last
+    /// component put back untouched.
+    ///
+    /// A path that does not exist yet is still answered — the scan and the
+    /// click are separated by however long the user takes — by resolving the
+    /// deepest ancestor that does exist and re-appending the missing tail.
+    public static func resolvingAncestors(_ path: String) -> String {
+        // A relative path is handed back untouched. `URL(fileURLWithPath:)`
+        // resolves one against the process's working directory, so resolving
+        // first and validating afterwards silently promotes `""` and
+        // `relative/path` to absolute paths a gate then approves — which is
+        // exactly what happened the first time this was wired in. "Where does
+        // it lead" is not a question a relative path has an answer to.
+        guard path.hasPrefix("/") else { return path }
+        let standardized = URL(fileURLWithPath: path).standardizedFileURL
+        guard standardized.path != "/" else { return standardized.path }
+
+        let leaf = standardized.lastPathComponent
+        var parent = standardized.deletingLastPathComponent()
+        var missing: [String] = []
+        while parent.path != "/", !FileManager.default.fileExists(atPath: parent.path) {
+            let above = parent.deletingLastPathComponent()
+            // Of a `/.file/id=…` string it cannot resolve, Foundation makes a
+            // URL with an empty path, and the level above an empty path is the
+            // empty path: the loop had no way out.
+            guard above.path.utf8.count < parent.path.utf8.count else { return path }
+            missing.append(parent.lastPathComponent)
+            parent = above
+        }
+        var resolved = parent.resolvingSymlinksInPath().standardizedFileURL
+        for component in missing.reversed() { resolved.appendPathComponent(component) }
+        resolved.appendPathComponent(leaf)
+        return resolved.path
+    }
+
     // MARK: - The reading
 
     /// What the kernel says a typed string names, read once: the string as it
@@ -375,18 +410,13 @@ public enum PathCanonical {
                        object: read.object, parent: read.parent)
     }
 
-    /// The one reading of what `typed` names (`Reading` says what is asked).
+    /// The reading of what `typed` names (`Reading` says what is asked).
     ///
     /// Each string the kernel is handed has had its trailing separators taken
     /// off, each level of the climb included: told not to follow a last link,
     /// the kernel follows it all the same when a separator comes after it.
-    static func reading(of typed: String) -> Reading { lookup(typed).reading }
-
-    /// `reading(of:)`, and where the kernel answered for no more than a part of
-    /// the string, the path it returned for that part and the rest of the
-    /// string as typed.
-    private static func lookup(_ typed: String) -> (reading: Reading, rest: (answered: String, tail: String)?) {
-        guard typed.utf8.first == separator, !typed.utf8.contains(0) else { return (.unnamed(typed), nil) }
+    static func reading(of typed: String) -> Reading {
+        guard typed.utf8.first == separator, !typed.utf8.contains(0) else { return .unnamed(typed) }
         let path = withoutTrailingSeparators(typed)
         let parts = components(of: path)
         // The typed string up to its first `count` components.
@@ -405,9 +435,9 @@ public enum PathCanonical {
                 : above.flatMap { folder in parts.last.map { ScanPath.child(of: folder.path, name: String($0)) } }
             let named = name != nil && object.type != UInt32(VNON.rawValue)
                 && !(parts.last.map(isDot) ?? false)
-            return (Reading(asked: typed, name: name ?? path, standing: named ? .object : .noName,
-                            object: FileIdentity(device: object.deviceID, inode: object.fileID),
-                            parent: above.map { AncestryIdentity(device: $0.deviceID, inode: $0.fileID) }), nil)
+            return Reading(asked: typed, name: name ?? path, standing: named ? .object : .noName,
+                           object: FileIdentity(device: object.deviceID, inode: object.fileID),
+                           parent: above.map { AncestryIdentity(device: $0.deviceID, inode: $0.fileID) })
         }
 
         // Nothing answered as typed: up the string until a directory does. A
@@ -426,7 +456,7 @@ public enum PathCanonical {
             errors.append(above.answer == nil ? above.error : ENOTDIR)
             depth -= 1
         }
-        guard let top = top else { return (.unnamed(typed), nil) }
+        guard let top = top else { return .unnamed(typed) }
         // The first missing level is asked as itself: a link to nothing answers
         // there, and the string then names a place under the link's target, not
         // under the directory above.
@@ -443,29 +473,10 @@ public enum PathCanonical {
             standing = .noName
         }
         let tail = String(Substring(path.utf8[parts[depth].startIndex...]))
-        let read = Reading(asked: typed, name: ScanPath.child(of: top.path, name: tail), standing: standing,
-                           object: nil,
-                           parent: depth == parts.count - 1
-                               ? AncestryIdentity(device: top.deviceID, inode: top.fileID) : nil)
-        return (read, (top.path, tail))
-    }
-
-    /// `tail` put under `directory`, with its `.` and `..` folded by their
-    /// letters: a `.` is dropped, a `..` pops the component before it and, past
-    /// the start of `tail`, the last component of `directory`. The path the
-    /// kernel returns for a directory holds no link, so the letters of its
-    /// components are its real parents, except behind a prefix the kernel
-    /// keeps in front (`/.nofollow`, `/.resolve/<n>`): the parent of the
-    /// component after the prefix is `/`, and a `..` that pops it leaves the
-    /// prefix standing. A `tail` without `.` or `..` is put under `directory`
-    /// as it is.
-    private static func folded(_ tail: String, under directory: String) -> String {
-        guard components(of: tail).contains(where: isDot) else { return ScanPath.child(of: directory, name: tail) }
-        var parts = components(of: directory)
-        for part in components(of: tail) where part != "." {
-            if part == ".." { _ = parts.popLast() } else { parts.append(part) }
-        }
-        return "/" + parts.joined(separator: "/")
+        return Reading(asked: typed, name: ScanPath.child(of: top.path, name: tail), standing: standing,
+                       object: nil,
+                       parent: depth == parts.count - 1
+                           ? AncestryIdentity(device: top.deviceID, inode: top.fileID) : nil)
     }
 
     private static func isDot(_ part: Substring) -> Bool { part == "." || part == ".." }
@@ -537,47 +548,5 @@ public enum PathCanonical {
             answer.path = String(decoding: raw[start..<end], as: UTF8.self)
             return (answer, 0)
         }
-    }
-
-    /// What `/var`, `/tmp` and `/etc` lead to: those three are links into
-    /// `/private`, so the kernel's name for each and for anything under them
-    /// begins with it.
-    private static let hiddenPrivate = ["/private/var/", "/private/tmp/", "/private/etc/"]
-
-    /// The reading's name for a path, whatever its standing, respelled in the
-    /// two ways the paragraphs below say: every link in its parent chain
-    /// resolved by the kernel, and a last component that is not a directory
-    /// put back as typed.
-    ///
-    /// A path that does not exist yet is still answered — the scan and the
-    /// click are separated by however long the user takes — by resolving the
-    /// deepest ancestor that does exist and re-appending the missing tail.
-    ///
-    /// Below the deepest directory that answered, and only there, `.` and `..`
-    /// are folded by their letters (`folded` says how), whether that part is
-    /// missing or begins at something that is there and is no directory (a
-    /// file, a link to nothing): a caller that holds the answer against a path
-    /// Foundation folded must not find the same string unfolded. Where the
-    /// kernel answers for a level, its path stands as it is, so a `..` after a
-    /// link climbs where the kernel climbs. `Reading.name`, which the gates
-    /// judge, keeps that part as typed and is no name when it holds a `.` or
-    /// `..`.
-    ///
-    /// A relative path is handed back untouched. "Where does it lead" is not a
-    /// question a relative path has an answer to, and a resolver that answered
-    /// it from the process's working directory promoted `""` and
-    /// `relative/path` to absolute paths a gate then approved.
-    ///
-    /// Spelled without the `/private` in front of `/var`, `/tmp` and `/etc`,
-    /// which the reading's name has: the callers of this compare its answer
-    /// with paths Foundation resolved, and Foundation leaves that `/private`
-    /// out (`SSHFileScope` holds it against `resolvingWholePath`'s). The gates
-    /// judge the reading's name itself.
-    public static func resolvingAncestors(_ path: String) -> String {
-        let (read, rest) = lookup(path)
-        let name = rest.map { folded($0.tail, under: $0.answered) } ?? read.name
-        return hiddenPrivate.contains(where: { (name + "/").utf8.starts(with: $0.utf8) })
-            ? String(Substring(name.utf8.dropFirst("/private".utf8.count)))
-            : name
     }
 }

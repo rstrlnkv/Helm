@@ -51,21 +51,24 @@ import HelmTestSupport
 ///   `/.vol/<device>/<inode>` with the object and climbs that object's real
 ///   parents for each `..` after it, behind `/.nofollow` and `/.resolve/1` as
 ///   well; a number after `/.resolve` whose flags forbid `..` answers with an
-///   error instead. The letters of such a string fold otherwise. The reading
-///   folds nothing where the kernel answers: `PathCanonical.resolvingAncestors`
-///   puts the leaf in the folder the kernel climbs to. Both gates refuse the
-///   string because the prefix is read from the string as typed, before a `..`
-///   after it can pop it, and whatever follows it. Repeated slashes in it, and
-///   a `.` or a `..` in front of the prefix in a spelling that starts at `/`,
-///   change nothing.
+///   error instead. When the whole string names an object that resolves,
+///   Foundation puts the object's ordinary name where the mount and its `..`
+///   stood and leaves `/.nofollow` or `/.resolve/1` in front of it. When the
+///   last component is a link to nothing, or is not there, Foundation collapses
+///   the `..` by the letters: as many of them as the prefix, the device and the
+///   inode have components pop all of it, and what is left begins with an
+///   ordinary name that is not the object's. Both gates refuse the string in
+///   either case, because the prefix is read from the string as typed, before a
+///   `..` after it can pop it, and whatever follows it. Repeated slashes in it,
+///   and a `.` or a `..` in front of the prefix in a spelling that starts at
+///   `/`, change nothing.
 ///
 /// One more spelling is refused as a string the kernel takes for no path. A
 /// file reference URL writes its object as `/.file/id=<volume>.<inode>`; the
 /// kernel does not answer for that string, because `/.file` is a file, so the
-/// reading gives it no name, `PathCanonical.resolvingAncestors` hands it back
-/// as typed, and both gates refuse it whatever it would name. One test here
-/// holds that the protected objects stay refused when written so, and
-/// `TheGatesTakeOneReadingOfTheObjectTests` holds the rest.
+/// reading gives it no name and both gates refuse it whatever it would name.
+/// One test here holds that the protected objects stay refused when written
+/// so, and `TheGatesTakeOneReadingOfTheObjectTests` holds the rest.
 ///
 /// **How the subject is made real.** A relative path names an object only
 /// against a working directory, and that is the process's, shared by every
@@ -576,9 +579,11 @@ final class TheGatesRefuseAnObjectsOtherSpellingsTests: XCTestCase {
     /// the kernel answers for under each of these spellings and the deepest
     /// level that answers, and is a path to nothing whose name is that folder
     /// and the rest of the string by its letters, that is the mount's own
-    /// spelling. `resolvingAncestors`, its projection, gives that string. Both
-    /// gates refuse each one, because the string begins in the mount when read
-    /// left to right with each `.` dropped and each `..` popping the name before it.
+    /// spelling. `resolvingAncestors` collapses them and turns the folder into
+    /// its real path, so the resolved spelling of the bundle is the bundle by its
+    /// ordinary name — asserted below. Both gates refuse each one, because the
+    /// string begins in the mount when read left to right with each `.` dropped
+    /// and each `..` popping the name before it.
     func testTheMountReachedThroughDotAndDotDotIsRefusedByBothGates() throws {
         let scratch = try scratchFolderWithABundle()
         let homeMount = try volfsSpelling(of: homePath)
@@ -596,8 +601,8 @@ final class TheGatesRefuseAnObjectsOtherSpellingsTests: XCTestCase {
             XCTAssertNil(reading.object, "\(bundle) names an object")
             XCTAssertTrue(reading.name.utf8.elementsEqual((scratch.mount + "/Foo.app").utf8),
                           "the reading names \(bundle) \(reading.name.debugDescription), not the mount's spelling")
-            XCTAssertTrue(resolved.utf8.elementsEqual((scratch.mount + "/Foo.app").utf8),
-                          "the projection of \(bundle) is \(resolved.debugDescription), not the mount's spelling")
+            XCTAssertEqual(resolved, PathCanonical.resolvingAncestors(scratch.bundle.path),
+                           "the dotted spelling does not resolve to the bundle's ordinary name")
             XCTAssertNil(PathCanonical.readingForRemoval(bundle).judgedName, "the gates' entry names \(bundle)")
             XCTAssertFalse(app, "\(bundle) names a bundle by number through . and .. and is removable")
 
@@ -1194,9 +1199,9 @@ final class TheGatesRefuseAnObjectsOtherSpellingsTests: XCTestCase {
     /// both, the reading names the leaf as the kernel does, by bytes (the
     /// kernel's name for the folder the spelling climbs to, `/`, the typed
     /// leaf), its standing is the object's for a link and a path to nothing for
-    /// a leaf that is not there, and `resolvingAncestors`, its projection, puts
-    /// the leaf in that `Sub`: the folder the kernel climbs to, not the one the
-    /// letters of the spelling would fold to.
+    /// a leaf that is not there, and the folder `resolvingAncestors` puts the
+    /// leaf in is asserted not to be that `Sub`, which is the case where a gate
+    /// that judged the letters would judge a name that is not the object's.
     private func proveTheClimb(_ climb: Climb, leaf: String, linkToNothing: Bool) throws -> String {
         let spelling = climb.spelling(leaf)
         let object = climb.object(leaf)
@@ -1222,8 +1227,8 @@ final class TheGatesRefuseAnObjectsOtherSpellingsTests: XCTestCase {
                               + "or \(leaf) is there")
             }
         }
-        XCTAssertEqual(identity(of: judgedFolder).object, sub,
-                       "\(spelling) is judged in \(judgedFolder.debugDescription), not in the object's own folder")
+        XCTAssertNotEqual(identity(of: judgedFolder).object, sub,
+                          "\(spelling) resolves to the object's own folder; the subject did not occur")
         let reading = PathCanonical.reading(of: spelling)
         let standing: PathCanonical.Reading.Standing = linkToNothing ? .object : .nothingThere
         XCTAssertEqual(reading.standing, standing, "\(spelling) is read as \(reading.standing)")
