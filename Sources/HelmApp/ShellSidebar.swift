@@ -153,7 +153,7 @@ struct ShellSidebar: View {
                     Button(action: toggleCollapsed) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(HelmText.quiet)
                             .frame(width: Self.chevronColumn, height: Self.rowHeight)
                             .contentShape(Rectangle())
                     }
