@@ -142,10 +142,12 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
             module not switched off, activated. The host is the subject — the second call must \
             keep the engines the first one built.
             """),
-        "Tests/HelmAppTests/TheHostPutsAModulesOwnItemInTheMenuBarTests.swift": (3, """
-            `setEnabled`, on and off, on a `host` bound to `ModuleHost.shared`, with a descriptor \
-            the file declares whose `makeEngine` returns a stub: no module's engine is built. The \
-            host is the subject — that it attaches and detaches a module's menu-bar presence.
+        "Tests/HelmAppTests/TheHostPutsAModulesOwnItemInTheMenuBarTests.swift": (4, """
+            `setEnabled`, on and off, on a `host` bound to `ModuleHost.shared` and on \
+            `ModuleHost.shared` itself, with descriptors the file declares whose `makeEngine` \
+            returns a stub: no module's engine is built. The host is the subject — that it \
+            attaches and detaches a module's menu-bar presence, and what it builds the module's \
+            view model over.
             """),
     ]
 

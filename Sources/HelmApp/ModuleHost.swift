@@ -103,13 +103,13 @@ import HelmUI
         let s = store(for: d)
         let engine = d.makeEngine(store: s)
         engine.activate()
+        let vm = ModuleViewModel(transport: engine.transport, store: s)
         // After the engine is running, and from here rather than from
         // `makeEngine`: a module's own menu-bar item is part of it running, not
         // part of it being constructed. Keyboard's indicator was built inside
         // `makeEngine`, so every process that asked a descriptor for an engine —
         // the offscreen render harness included — got a status item on its Mac.
-        d.attachMenuBarPresence()
-        let vm = ModuleViewModel(transport: engine.transport)
+        d.attachMenuBarPresence(vm)
         live[key] = Live(descriptor: d, engine: engine, vm: vm, store: s)
         if let before, let after = MemoryFootprint.current() {
             HelmLog.shared.memory("module.\(key).enable", grewBy: after - before)
