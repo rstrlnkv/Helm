@@ -1,7 +1,7 @@
 # Giving everything back
 
-A reset is not a deletion first. Helm can change four things outside its own two
-folders, each only if the person switches it on, and three of them are given back:
+A reset is not a deletion first. Helm can change four things outside its own folders,
+each only if the person switches it on, and three of them are given back:
 
 - the passwordless `pmset` rule Keep Awake's closed-lid option writes under
   `/etc/sudoers.d` — taken back by the module that put it there
@@ -36,5 +36,10 @@ The steps are `ResetPlan.Step` — `handBackWhatIsOutsideHelm`, `giveBackTheLogi
 `trashHelmsOwnFolders`, `forgetPreferences`, `relaunch` — and `ResetPlan.order` is that
 order as a value; the doc comments on the first two steps say why they sit where they do,
 and `Sources/HelmApp/ResetEverything.swift` carries them out. `ResetPlan.roots` names the
-two folders: Helm's Application Support directory (`HelmSupport.path`) and
-`~/Library/Logs/Helm`.
+four folders: Helm's Application Support directory (`HelmSupport.path`),
+`~/Library/Logs/Helm`, and the two the system keeps for the running app under its
+bundle identifier, `~/Library/Caches/<id>` and `~/Library/HTTPStorages/<id>`. The
+identifier is the running app's, so Helm Dev never names the real Helm's `Caches` and
+`HTTPStorages` folders; Helm's own two folders are not named by the identifier and are
+the same folders for every build. An identifier that is not one name in a folder adds
+none.

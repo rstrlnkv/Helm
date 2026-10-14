@@ -10,11 +10,21 @@ import Foundation
 /// and a test asserts they agree: a plan that named something its own gate
 /// would refuse is the failure this pair exists to prevent.
 ///
-/// **Only Helm's own two directories.** Not `~/Library/Application Support`,
-/// not `~/Library/Logs`, not a sibling whose name merely starts the same way —
-/// `mayRemove` requires the path to be one of the two roots or to sit beneath
-/// one, compared against a standardized path so `Helm/../../Documents` cannot
-/// walk out.
+/// **Only Helm's own two folders, and the two the system keeps for it.** Its
+/// Application Support directory and its `~/Library/Logs/Helm`, and the two
+/// folders the system keeps for the running app under its bundle identifier:
+/// `~/Library/Caches/<id>` and `~/Library/HTTPStorages/<id>`. Not
+/// `~/Library/Application Support`, not `~/Library/Caches`, not a sibling whose
+/// name merely starts the same way, and not the `Caches` or `HTTPStorages`
+/// folder of another build: the identifier is the running app's, so Helm Dev
+/// never names the real Helm's two. Helm's own two folders are not named by the
+/// identifier and are the same folders for every build.
+///
+/// `mayRemove` judges the name the kernel gives what the path names
+/// (`PathCanonical.readingForRemoval`) and requires it to be one of the four or
+/// to sit beneath one, so `Helm/../../Documents` cannot walk out and a link on
+/// the way is read where it leads. `gate` is the same judgement for
+/// `HelmTrash.remove(gated:)`, which moves the name that was judged.
 ///
 /// Preferences are not here: they live in `UserDefaults` and are removed by
 /// domain, which is exact and has no path to get wrong.
@@ -63,19 +73,74 @@ public enum ResetPlan {
         .relaunch,
     ]
 
-    public static func roots(home: String) -> [String] {
-        [HelmSupport.path(home: home),
-         "\(home)/Library/Logs/Helm"]
+    /// The folders a reset takes: Helm's two, and the two the system keeps for
+    /// the app named by `bundleIdentifier`, which defaults to the running one.
+    ///
+    /// An identifier is one whole path component or it names nothing. A `nil`
+    /// (a process with no bundle), an empty one, `.` and `..`, and one with a
+    /// `/` byte or a byte below 0x20 or the byte 0x7f in it (NUL, a newline and
+    /// DEL included) add no root: the plan is then Helm's two folders, and never
+    /// `Caches` or `HTTPStorages` themselves, nor a folder that is not the one
+    /// named.
+    public static func roots(home: String,
+                             bundleIdentifier: String? = Bundle.main.bundleIdentifier) -> [String] {
+        var roots = [HelmSupport.path(home: home),
+                     "\(home)/Library/Logs/Helm"]
+        if let id = bundleIdentifier, isOneComponent(id) {
+            roots += ["\(home)/Library/Caches/\(id)",
+                      "\(home)/Library/HTTPStorages/\(id)"]
+        }
+        return roots
     }
 
-    /// What a reset removes, in the order it removes them.
-    public static func removablePaths(home: String) -> [String] { roots(home: home) }
+    /// What a reset hands the Trash: `roots`, with the same meaning of
+    /// `bundleIdentifier`. The Trash moves a batch shortest name first, so this
+    /// is not the order of the moves.
+    public static func removablePaths(home: String,
+                                      bundleIdentifier: String? = Bundle.main.bundleIdentifier) -> [String] {
+        roots(home: home, bundleIdentifier: bundleIdentifier)
+    }
 
-    /// Whether a reset may touch this path at all.
-    public static func mayRemove(_ path: String, home: String) -> Bool {
-        let standardized = (path as NSString).standardizingPath
-        return roots(home: home).contains {
-            standardized == $0 || standardized.hasPrefix($0 + "/")
-        }
+    /// Whether a reset may touch this path at all: whether the name the kernel
+    /// gives it is one of `roots`, or below one. An identifier that names no
+    /// folder (`roots` says which) leaves the answer to Helm's two.
+    public static func mayRemove(_ path: String, home: String,
+                                 bundleIdentifier: String? = Bundle.main.bundleIdentifier) -> Bool {
+        allows(PathCanonical.readingForRemoval(path),
+               within: folders(home: home, bundleIdentifier: bundleIdentifier))
+    }
+
+    /// The same split `mayRemove` makes, answering what the gate read: for each
+    /// path that may go, the `GatedPath` that `HelmTrash.remove(gated:)` moves,
+    /// and for each that may not, the string asked with the reason
+    /// (`GatedPath.gate`).
+    static func gate(_ paths: [String], home: String,
+                     bundleIdentifier: String? = Bundle.main.bundleIdentifier)
+    -> (allowed: [GatedPath], refused: [HelmTrash.Refusal]) {
+        let folders = folders(home: home, bundleIdentifier: bundleIdentifier)
+        return GatedPath.gate(paths) { allows($0, within: folders) }
+    }
+
+    /// An identifier that is a single name in a folder: not empty, not `.` or
+    /// `..`, no `/` byte, no byte below 0x20 and not the byte 0x7f, compared by
+    /// bytes as the kernel reads a path (`PathCanonical.components` says why).
+    private static func isOneComponent(_ id: String) -> Bool {
+        !id.isEmpty && id != "." && id != ".."
+            && !id.utf8.contains { $0 == PathCanonical.separator || $0 < 0x20 || $0 == 0x7f }
+    }
+
+    /// The roots as the kernel names them, once per question. A name the
+    /// reading gives is the kernel's (`/private/var/…` for a home under `/var`),
+    /// so the roots are named the same way and the two spellings of `/private`
+    /// meet in one.
+    private static func folders(home: String, bundleIdentifier: String?) -> [[Substring]] {
+        roots(home: home, bundleIdentifier: bundleIdentifier)
+            .map { PathCanonical.components(of: PathCanonical.reading(of: $0).name) }
+    }
+
+    private static func allows(_ reading: PathCanonical.Reading, within folders: [[Substring]]) -> Bool {
+        guard let name = reading.judgedName else { return false }
+        let parts = PathCanonical.components(of: name)
+        return folders.contains { parts.starts(with: $0) }
     }
 }

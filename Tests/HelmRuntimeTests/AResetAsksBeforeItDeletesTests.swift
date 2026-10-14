@@ -5,9 +5,9 @@ import XCTest
 @testable import HelmRuntime
 
 /// **«Helm returns to how it was just after installing» is a promise about the
-/// machine, not about two folders.**
+/// machine, not about Helm's own folders.**
 ///
-/// A reset trashed Helm's own two directories and forgot its preferences, and
+/// A reset trashed Helm's own folders and forgot its preferences, and
 /// that was all it did — so the one thing Helm changes *outside* those folders
 /// stayed: `/etc/sudoers.d/helm-keepawake`, a passwordless `pmset` rule for a
 /// feature the reset had just made the app forget it ever had. Nothing in the

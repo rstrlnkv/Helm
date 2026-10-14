@@ -18,29 +18,36 @@ import HelmTestSupport
 ///
 /// Everywhere else a test that trashes gives its files unownable names, so the
 /// cleanup can reconstruct `~/.Trash/<name>` and be sure the item is its own
-/// (`TrashScratch`). Here the name comes from `ResetPlan.roots` and it is
-/// `Helm`. The UUID in the temporary home above it does not survive the move —
-/// only the moved item's own name does — so **four folders called `Helm` went
-/// into the real Trash on every run**, which is litter that also lies: somebody
-/// looking at their Trash saw Helm's data folder in it, again and again.
+/// (`TrashScratch`). Here the names come from `ResetPlan.roots`: two are `Helm`,
+/// and two are the running bundle's identifier, which under a test is the test
+/// tool's own (`com.apple.dt.xctest.tool`) and also the name of a folder a person
+/// may have trashed. The UUID in the temporary home above them does not survive
+/// the move — only the moved item's own name does — so **four folders called
+/// `Helm` went into the real Trash on every run**, which is litter that also
+/// lies: somebody looking at their Trash saw Helm's data folder in it, again and
+/// again.
 ///
-/// Worse, the plan names *two* directories both called `Helm`, so the second
-/// arrives as `Helm 20-48-09-452` — macOS's collision spelling, which nothing
-/// can predict and nothing can find without listing the Trash, and listing it
-/// needs Full Disk Access that a test process does not have (257).
+/// Worse, the plan names two folders called `Helm` and two named by the
+/// identifier, so the second of each would arrive as `Helm 20-48-09-452` or
+/// `com.apple.dt.xctest.tool 20-48-09-452` — macOS's collision spelling, which
+/// nothing can predict and nothing can find without listing the Trash, and
+/// listing it needs Full Disk Access that a test process does not have (257).
 ///
-/// So exactly one directory is moved for real, and it is reclaimed by
-/// **content**: each run writes a UUID into its scan file and the cleanup
-/// removes `~/.Trash/Helm` only when that exact UUID reads back out of it.
-/// Neither the name nor "it was not there when I started" is enough — either
+/// So exactly one directory is moved for real, Application Support's `Helm`, and
+/// it is reclaimed by **content**: each run writes a UUID into its scan file and
+/// the cleanup removes `~/.Trash/Helm` only when that exact UUID reads back out of
+/// it. Neither the name nor "it was not there when I started" is enough — either
 /// would eventually delete a folder somebody had trashed themselves, which is
 /// the one mistake a cleanup must not be able to make.
 ///
-/// What that costs is coverage of the *second* path in the same batch, and
-/// `ResetPlanTests` is where the pair is checked; what `HelmTrash` does with a
-/// batch of two has its own tests, on files that can be cleaned up.
+/// What that costs is coverage of the *other three* paths in the same batch, and
+/// `ResetPlanTests` is where the four are checked against their gate; what
+/// `HelmTrash` does with a batch of several has its own tests, on files that can
+/// be cleaned up.
 final class ResetRemovesOnlyItsOwnTests: XCTestCase {
     private var home: String!
+    /// The identifier the plan names the system's two folders by.
+    private var bundleIdentifier: String!
     /// Written into the scan file, and read back before anything is removed
     /// from the Trash.
     private var sentinel: String!
@@ -48,21 +55,30 @@ final class ResetRemovesOnlyItsOwnTests: XCTestCase {
     override func setUpWithError() throws {
         home = scratchDirectory("reset-test").path
         sentinel = "helm-reset-test-" + UUID().uuidString
-        // The two directories a reset is allowed to take…
+        bundleIdentifier = try XCTUnwrap(Bundle.main.bundleIdentifier)
+        // The four directories a reset is allowed to take…
         for path in ResetPlan.removablePaths(home: home) {
             try FileManager.default.createDirectory(atPath: path + "/Disk",
                                                     withIntermediateDirectories: true)
             try sentinel.write(toFile: path + "/Disk/last-scan.json", atomically: true,
                                encoding: .utf8)
         }
-        // …and three neighbours it is not. The last one is the trap: a sibling
-        // whose name starts the same way.
-        for path in ["\(home!)/Library/Application Support/Sketch",
-                     "\(home!)/Library/Logs/DiagnosticReports",
-                     "\(home!)/Library/Application Support/Helmet"] {
+        // …and neighbours it is not. The traps are the siblings whose names start
+        // the same way, and another application's folder in each container.
+        for path in neighbours {
             try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
             try "keep me".write(toFile: path + "/file.txt", atomically: true, encoding: .utf8)
         }
+    }
+
+    private var neighbours: [String] {
+        ["\(home!)/Library/Application Support/Sketch",
+         "\(home!)/Library/Logs/DiagnosticReports",
+         "\(home!)/Library/Application Support/Helmet",
+         "\(home!)/Library/Caches/com.apple.Safari",
+         "\(home!)/Library/Caches/\(bundleIdentifier!).other",
+         "\(home!)/Library/HTTPStorages/com.apple.Safari",
+         "\(home!)/Library/HTTPStorages/\(bundleIdentifier!).other"]
     }
 
     override func tearDownWithError() throws {
@@ -87,13 +103,18 @@ final class ResetRemovesOnlyItsOwnTests: XCTestCase {
 
     /// The plan, its gate and the removal, on a tree that really exists.
     ///
-    /// The gate is asked about both paths — that half is free — and one of them
-    /// is then really moved, which is what proves `HelmTrash` was given a path
+    /// The gate is asked about all four paths — that half is free — and one of
+    /// them is then really moved, which is what proves `HelmTrash` was given a path
     /// it could act on rather than one it would have refused.
     func testItTakesHelmsOwnDirectoryAndLeavesTheNeighbours() throws {
         let paths = ResetPlan.removablePaths(home: home)
             .filter { ResetPlan.mayRemove($0, home: home) }
-        XCTAssertEqual(paths.count, 2, "the plan and its own gate disagree")
+        XCTAssertEqual(Set(paths), ["\(home!)/Library/Application Support/Helm",
+                                    "\(home!)/Library/Logs/Helm",
+                                    "\(home!)/Library/Caches/\(bundleIdentifier!)",
+                                    "\(home!)/Library/HTTPStorages/\(bundleIdentifier!)"],
+                       "the plan and its own gate disagree")
+        XCTAssertEqual(paths.count, 4, "the plan lists a path twice")
 
         let taken = try XCTUnwrap(paths.first { $0.contains("Application Support") })
         let result = HelmTrash.remove(allowed: [taken], module: "reset-test")
@@ -108,15 +129,14 @@ final class ResetRemovesOnlyItsOwnTests: XCTestCase {
         XCTAssertGreaterThan(result.freedBytes, 0,
                              "nothing was measured as freed, so nothing moved")
 
-        // The neighbours, including the one whose name merely starts alike.
-        for path in ["\(home!)/Library/Application Support/Sketch/file.txt",
-                     "\(home!)/Library/Logs/DiagnosticReports/file.txt",
-                     "\(home!)/Library/Application Support/Helmet/file.txt"] {
+        // The neighbours, including the ones whose names merely start alike.
+        for path in neighbours.map({ $0 + "/file.txt" }) {
             XCTAssertTrue(FileManager.default.fileExists(atPath: path),
                           "a reset destroyed \(path), which is not Helm's")
         }
         // And the containers themselves, which a careless plan would have named.
         for path in ["\(home!)/Library/Application Support", "\(home!)/Library/Logs",
+                     "\(home!)/Library/Caches", "\(home!)/Library/HTTPStorages",
                      "\(home!)/Library", home!] {
             XCTAssertTrue(FileManager.default.fileExists(atPath: path),
                           "\(path) is not Helm's to remove")
