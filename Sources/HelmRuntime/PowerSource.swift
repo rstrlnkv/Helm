@@ -37,15 +37,19 @@ public enum PowerSource {
     /// scan treats it as mains, because never scanning on a Mac whose hardware
     /// stays quiet is the worse of its two failures.
     ///
+    /// The source read is the first whose type reads as the Mac's own battery,
+    /// else the first source. Every source's type is read to choose; only the
+    /// chosen one's figures are: when its description is unreadable, or it has
+    /// no current or no positive maximum capacity, the answer is nil, never
+    /// another source's figure.
+    ///
     /// **"I don't know" must not arrive as 0%.** Keep Awake's battery guard
     /// reads a low figure as a critical battery and ends the session, so an
     /// incomplete dictionary used to stop it for no reason at all.
     public static func current() -> Reading? {
-        guard let blob = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
-              let sources = IOPSCopyPowerSourcesList(blob)?.takeRetainedValue() as? [CFTypeRef],
-              let first = sources.first,
-              let description = IOPSGetPowerSourceDescription(blob, first)?
-                  .takeUnretainedValue() as? [String: Any]
+        guard let listed = listed(),
+              let chosen = readableSourceIndex(types: listed.types),
+              let description = listed.description(of: listed.sources[chosen])
         else { return nil }
 
         let onBattery = description[kIOPSPowerSourceStateKey] as? String == kIOPSBatteryPowerValue
@@ -54,6 +58,42 @@ public enum PowerSource {
         else { return nil }
 
         return Reading(onBattery: onBattery, percent: Int((Double(now) / Double(max)) * 100.0))
+    }
+
+    /// One look at the power source list: the snapshot and its sources. A
+    /// source's description, and so its type, is read through `description(of:)`
+    /// against the snapshot it came from. `sources` is empty when IOKit listed
+    /// nothing.
+    struct Listed {
+        let blob: CFTypeRef
+        let sources: [CFTypeRef]
+
+        func description(of source: CFTypeRef) -> [String: Any]? {
+            IOPSGetPowerSourceDescription(blob, source)?.takeUnretainedValue() as? [String: Any]
+        }
+
+        /// Each source's `kIOPSTypeKey`, in the list's order; `nil` for a source
+        /// whose description or type could not be read.
+        var types: [String?] { sources.map { description(of: $0)?[kIOPSTypeKey] as? String } }
+    }
+
+    /// Nil when IOKit gave no snapshot, or no list for it.
+    static func listed() -> Listed? {
+        guard let blob = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
+              let sources = IOPSCopyPowerSourcesList(blob)?.takeRetainedValue() as? [CFTypeRef]
+        else { return nil }
+        return Listed(blob: blob, sources: sources)
+    }
+
+    /// The Mac's own battery, by a source's type compared whole.
+    static func isInternalBattery(_ type: String?) -> Bool { type == kIOPSInternalBatteryType }
+
+    /// Which source `current()` reads, by the `kIOPSTypeKey` of each (`nil` for a
+    /// source whose type could not be read): the first internal battery, else
+    /// the first source; nil for an empty list.
+    static func readableSourceIndex(types: [String?]) -> Int? {
+        if let battery = types.firstIndex(where: isInternalBattery) { return battery }
+        return types.isEmpty ? nil : 0
     }
 
     /// Which supply is running the Mac, in the two words this app reasons about.
