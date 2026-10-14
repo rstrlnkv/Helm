@@ -31,10 +31,11 @@ public enum StatusPlan {
     /// **The countdown tier is first, and `spins` depends on it being first.**
     /// A countdown is continuous state and a spin is a moment; the moment must
     /// not interrupt the state, or the arc jumps backwards and reads as a bug.
-    /// `spins` enforces that by refusing to move an appearance that carries a
-    /// `timerProgress` — but it can only see the appearance this function
-    /// returns, and no descriptor produces one holding both fields: Keep Awake
-    /// counts down on its appearance, VPN asks for the spin on another. So
+    /// `spins` enforces that by refusing to move an appearance that counts down
+    /// (`countsDown`: a `timerProgress`, or a `countdownUntil` still ahead of
+    /// `now`) — but it can only see the appearance this function returns, and
+    /// no descriptor produces one holding a countdown and a `spinUntil`: Keep
+    /// Awake counts down on its appearance, VPN asks for the spin on another. So
     /// while the spin tier ranked first, `spins` was handed VPN's appearance,
     /// found no countdown on it, and the rule never fired once. Ranking the
     /// countdown above the spin is what makes that guard reachable, and on
@@ -63,7 +64,7 @@ public enum StatusPlan {
     /// while another module owns the icon is simply not shown — the spin that
     /// went with it still happened, and that is the half that carries the news.
     public static func choose(_ appearances: [StatusAppearance], now: Date) -> StatusAppearance {
-        if let counting = appearances.first(where: { $0.timerProgress != nil }) { return counting }
+        if let counting = appearances.first(where: { countsDown($0, now: now) }) { return counting }
         let spinEnd = { (a: StatusAppearance) in a.spinUntil ?? .distantPast }
         if let newest = appearances.filter({ spinEnd($0) > now }).max(by: { spinEnd($0) < spinEnd($1) }) {
             return newest
@@ -71,6 +72,14 @@ public enum StatusPlan {
         return appearances.first { $0.tintToken != nil }
             ?? appearances.first { $0.title != nil }
             ?? .inactive
+    }
+
+    /// Whether the appearance is counting down at `now`: it carries a
+    /// `timerProgress`, which the host draws as a countdown arc, or its
+    /// `countdownUntil` is still ahead. A countdown drawn as text alone
+    /// carries no `timerProgress`, so the arc cannot be the only witness.
+    static func countsDown(_ a: StatusAppearance, now: Date) -> Bool {
+        a.timerProgress != nil || (a.countdownUntil ?? .distantPast) > now
     }
 
     /// Which still of a spin belongs to `now`, or nil when nothing is spinning.
@@ -176,7 +185,7 @@ public enum StatusPlan {
         // A countdown owns this ring while it runs. Reachable only because
         // `choose` ranks a countdown above a spin: this is the second half of
         // that rule, and for one release it was the whole of it and inert.
-        guard appearance.timerProgress == nil else { return false }
+        guard !countsDown(appearance, now: now) else { return false }
         return (appearance.spinUntil ?? .distantPast) > now
     }
 }

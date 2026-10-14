@@ -106,6 +106,48 @@ final class StatusPlanTests: XCTestCase {
                        "the connection's name displaced the countdown's remaining time")
     }
 
+    // MARK: - A countdown that is only text
+
+    /// A countdown drawn as text alone, the way Keep Awake draws one with the
+    /// ring switched off and the remaining time switched on: a tint and a
+    /// "m:ss" title, and no `timerProgress` at all. What makes it a countdown
+    /// to `choose` is `countdownUntil`, the moment it ends, 862 s ahead, which
+    /// is the "14:22" it shows.
+    private var textCountdown: StatusAppearance {
+        StatusAppearance(tintToken: "orange", countdownUntil: now.addingTimeInterval(862),
+                         title: "14:22")
+    }
+
+    /// The same rule as above, on the countdown that has no ring. A spin is a
+    /// moment and a countdown is state, whether or not the state is drawn as
+    /// an arc.
+    func testATextOnlyCountdownOutranksASpinForTheIcon() {
+        XCTAssertEqual(StatusPlan.choose([textCountdown, firing], now: now), textCountdown)
+        XCTAssertEqual(StatusPlan.choose([firing, textCountdown], now: now), textCountdown,
+                       "the answer must not depend on the order the modules arrive in")
+    }
+
+    /// What the user loses when it does not: the remaining time leaves the bar
+    /// for the length of the spin and a connection's name stands in its place.
+    func testATextOnlyCountdownKeepsItsRemainingTimeOnTheBarDuringASpin() {
+        XCTAssertEqual(StatusPlan.choose([textCountdown, firing], now: now).title, "14:22",
+                       "the connection's name displaced the countdown's remaining time")
+        XCTAssertEqual(StatusPlan.choose([firing, textCountdown], now: now).title, "14:22",
+                       "the answer must not depend on the order the modules arrive in")
+    }
+
+    /// The icon of the chosen appearance holds still, in both orders, as it
+    /// does for a countdown that carries a ring.
+    func testTheChosenAppearanceOfATextOnlyCountdownDoesNotSpin() {
+        for appearances in [[textCountdown, firing], [firing, textCountdown]] {
+            let chosen = StatusPlan.choose(appearances, now: now)
+            XCTAssertFalse(StatusPlan.spins(chosen, now: now, reduceMotion: false),
+                           "the menu bar would spin over a running countdown")
+            XCTAssertNil(StatusPlan.frame(spinUntil: chosen.spinUntil, now: now, frameCount: 36),
+                         "the host would still have had a frame to draw")
+        }
+    }
+
     /// The shape no descriptor produces, kept because `spins` is public and the
     /// two fields are independent: one appearance carrying both must still
     /// refuse to move. On its own this proved nothing about the app — it was
@@ -114,6 +156,39 @@ final class StatusPlanTests: XCTestCase {
         let counting = StatusAppearance(tintToken: "green", timerProgress: 0.5,
                                         spinUntil: now.addingTimeInterval(1))
         XCTAssertFalse(StatusPlan.spins(counting, now: now, reduceMotion: false))
+    }
+
+    /// The same single appearance, with a text-only countdown in place of the
+    /// ring: a deadline ahead and a spin ahead, no `timerProgress`. It must
+    /// refuse to move just as the ring-carrying one does.
+    func testADeadlineAloneSuppressesTheSpinWithinOneAppearance() {
+        let counting = StatusAppearance(tintToken: "green",
+                                        countdownUntil: now.addingTimeInterval(60),
+                                        spinUntil: now.addingTimeInterval(1))
+        XCTAssertNil(counting.timerProgress)
+        XCTAssertFalse(StatusPlan.spins(counting, now: now, reduceMotion: false))
+    }
+
+    /// A deadline that has already passed counts nothing down: the tinted
+    /// module that carries it is an ordinary tint again and loses the icon to
+    /// a live spin, in both orders.
+    func testACountdownDeadlineAlreadyPastDoesNotOutrankASpin() {
+        let over = StatusAppearance(tintToken: "orange",
+                                    countdownUntil: now.addingTimeInterval(-1), title: "0:00")
+        XCTAssertEqual(StatusPlan.choose([over, firing], now: now), firing)
+        XCTAssertEqual(StatusPlan.choose([firing, over], now: now), firing,
+                       "the answer must not depend on the order the modules arrive in")
+    }
+
+    /// A deadline that is not a number is not ahead of anything: it counts
+    /// nothing down, and the live spin takes the icon, in both orders.
+    func testACountdownDeadlineThatIsNotANumberDoesNotOutrankASpin() {
+        let broken = StatusAppearance(tintToken: "orange",
+                                      countdownUntil: Date(timeIntervalSinceReferenceDate: .nan),
+                                      title: "--:--")
+        XCTAssertEqual(StatusPlan.choose([broken, firing], now: now), firing)
+        XCTAssertEqual(StatusPlan.choose([firing, broken], now: now), firing,
+                       "the answer must not depend on the order the modules arrive in")
     }
 
     /// A countdown outranks a spin, not every tint: an ordinary tinted module
