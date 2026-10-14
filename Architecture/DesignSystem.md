@@ -36,7 +36,8 @@ command grep -cE '^\s+public static let' Sources/HelmUI/DesignSystem/HelmLadders
 counts the steps. A number off the ladder is a number somebody has to argue for.
 `Tests/HelmUITests/LaddersAreTheStepsTheyClaimTests.swift` holds both halves of the
 ladders' shape, and `Tests/HelmUITests/SpaceLadderRatchetTests.swift` counts what the tree
-still spells by hand and only ever goes down — landing a ladder is not adopting it.
+still spells by hand and holds the count at or under a recorded number — landing a ladder
+is not adopting it.
 
 ## Type
 

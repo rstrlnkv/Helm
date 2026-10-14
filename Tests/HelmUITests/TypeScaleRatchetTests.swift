@@ -9,7 +9,9 @@ import XCTest
 /// is not a decision anybody took; it is two people, or one person twice.
 ///
 /// A ratchet like the space ladder beside it: the number is what the tree
-/// measured on the day it landed, and only the commit that lowers it lowers it.
+/// measured on the day it was last counted, the commit that lowers it lowers
+/// it, and a rise is written at the number with its day and the sites that
+/// arrived.
 ///
 /// **Two units, because a size can be typed or it can be named.** The first
 /// ratchet counts a number written by hand — `.system(size: 15)` and the
@@ -57,7 +59,13 @@ final class TypeScaleRatchetTests: XCTestCase {
     /// now, so the same excused size is spelled once. Nothing was resized — the
     /// count fell because a duplicate went away, which is the only kind of
     /// lowering this ratchet ever wanted.
-    private static let recorded = 3
+    ///
+    /// **5 on 2026-10-14.** The row had stood skipped as a known gap, and a
+    /// skipped ratchet catches no growth, so the number was raised from 3 to
+    /// what the tree measures and the row counts again. The three above stand;
+    /// what arrived is the capture panel's two glyph fonts, 24 and 21
+    /// (`glyph` and `smallGlyph` in `CapturePanelView`).
+    private static let recorded = 5
     private static let ladder: Set<Double> = [10, 11, 13, 16, 22, 40]
 
     private static let patterns = [
@@ -68,8 +76,12 @@ final class TypeScaleRatchetTests: XCTestCase {
     ]
 
     /// Every hand-typed size in a file that draws, **minus the ones sizing a
-    /// symbol rather than a word** (`UISources.sizingType`, which carries that
-    /// distinction and the reason for it).
+    /// symbol rather than a word, where the scan can tell**
+    /// (`UISources.sizingType`, which carries that distinction and the reason
+    /// for it). It tells by an `Image(systemName:` or a `systemImage:` on the
+    /// size's own line or the two above it, so a font held in a constant and
+    /// set on a symbol elsewhere is counted as type: the capture panel's
+    /// `glyph` and `smallGlyph` are, and the recorded number says so.
     ///
     /// This scan read `UISources.files()` — `HelmUI` and the module pages —
     /// until 2026-08-20, and not `Sources/HelmApp`. Twelve hand-typed sizes
@@ -79,23 +91,23 @@ final class TypeScaleRatchetTests: XCTestCase {
     /// twelve were `Image(systemName:)`** — which is what the filter is for.
     ///
     /// So the file set widens and the subject narrows, in the same commit. What
-    /// governs a glyph's size is a separate question and is not answered here;
-    /// nothing measures it yet, and that is written down rather than implied.
+    /// governs a glyph's size is a separate question and is not answered here:
+    /// the two glyph fonts in the recorded number are there because the filter
+    /// does not see them, not because the scale is theirs.
     private func hits() throws -> [UISources.Hit] {
         try UISources.sizingType(
             UISources.hits(matching: Self.patterns, in: UISources.everyDrawnFile()))
     }
 
-    /// **A documented gap (DES-B1), skipped unless `HELM_KNOWN_GAPS=1`**, with
-    /// the reproduction below the skip untouched.
+    /// **Hand-typed font sizes off the scale stay at or under the recorded number.**
+    /// The failure names the values, the worst files and the first five sites.
     func testTypeOffTheScaleDoesNotGrow() throws {
-        try SkipUnlessAsked.knownGap("DES-B1", "hand-typed font sizes are off the type scale past the recorded number")
         let off = UISources.offLadder(try hits(), ladder: Self.ladder)
         XCTAssertLessThanOrEqual(off.count, Self.recorded, """
             \(off.count) hand-typed font sizes are off the scale \
             \(Self.ladder.sorted().map { String(Int($0)) }.joined(separator: "·")); \
             the recorded number is \(Self.recorded).
-            This number is only ever lowered, by the commit that lowers it.
+            This number is lowered by the commit that lowers it; a rise is written at the number, with its day and what arrived.
             \(UISources.summary(off))
             """)
     }
@@ -146,7 +158,13 @@ final class TypeScaleRatchetTests: XCTestCase {
     /// that file — and the menu-bar panel deliberately does not follow the
     /// settings language (ARCHITECTURE.md § Design system). The reason is at
     /// the line as well as here.
-    private static let recordedOffScaleStyles = 1
+    ///
+    /// **3 on 2026-10-14.** The row had stood skipped as a known gap, and a
+    /// skipped ratchet catches no growth, so the number was raised from 1 to
+    /// what the tree measures and the row counts again. `PanelChrome`'s
+    /// stays; what arrived is `.callout.weight(.semibold)`, twice, in the
+    /// capture toast (`ShotToast`).
+    private static let recordedOffScaleStyles = 3
 
     /// A style that resolves to 10 where the step a note uses is 11.
     ///
@@ -191,17 +209,16 @@ final class TypeScaleRatchetTests: XCTestCase {
         offScaleStyles.merging(tenPointStyles) { first, _ in first }
     }
 
-    /// **A documented gap (DES-B1), skipped unless `HELM_KNOWN_GAPS=1`**, with
-    /// the reproduction below the skip untouched.
+    /// **Font styles that resolve to a size on no step of the scale stay at or under the recorded number.**
+    /// The failure names the values, the worst files and the first five sites.
     func testASemanticStyleOffTheScaleDoesNotGrow() throws {
-        try SkipUnlessAsked.knownGap("DES-B1", "font styles resolve to a size on no step of the type scale past the recorded number")
         let sites = try UISources.sites(matching: Self.offScaleStyles,
                                         in: UISources.everyDrawnFile())
         XCTAssertLessThanOrEqual(sites.count, Self.recordedOffScaleStyles, """
             \(sites.count) font styles resolve to a size on no step of \
             \(Self.ladder.sorted().map { String(Int($0)) }.joined(separator: "·")); \
             the recorded number is \(Self.recordedOffScaleStyles).
-            This number is only ever lowered, by the commit that lowers it.
+            This number is lowered by the commit that lowers it; a rise is written at the number, with its day and what arrived.
             \(UISources.summary(sites))
             """)
     }

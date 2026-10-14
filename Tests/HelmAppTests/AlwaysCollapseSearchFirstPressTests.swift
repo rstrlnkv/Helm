@@ -623,10 +623,10 @@ final class AlwaysCollapseSearchFirstPressTests: XCTestCase {
     /// ru 840) wide enough to keep on any reading near this one, so the
     /// absence asserted below has a subject.
     ///
-    /// **A documented gap (BKL-B14), skipped unless `HELM_KNOWN_GAPS=1`**, with
+    /// **A known gap (`tab-fold-disagrees-with-room`), skipped unless `HELM_KNOWN_GAPS=1`**, with
     /// the reproduction below the skip untouched.
     func testAcrossTheTitleFloorBandAKeptPressEvictsNothing() throws {
-        try SkipUnlessAsked.knownGap("BKL-B14", "no pane in the band kept the tabs")
+        try SkipUnlessAsked.knownGap("tab-fold-disagrees-with-room", "no pane in the band kept the tabs")
         AppSettings.pageBarStyle = .windowTitle
         for (language, panes): (AppLanguage, [CGFloat]) in [(.en, [704, 708, 712, 713, 716, 720, 740]),
                                                             (.ru, [804, 808, 812, 813, 816, 822, 840])] {
@@ -744,10 +744,10 @@ final class AlwaysCollapseSearchFirstPressTests: XCTestCase {
     /// on the first growth frame. `.moduleName`, the panes where the fold is
     /// a real need in both languages.
     ///
-    /// **A documented gap (BKL-B14), skipped unless `HELM_KNOWN_GAPS=1`**, with
+    /// **A known gap (`tab-fold-disagrees-with-room`), skipped unless `HELM_KNOWN_GAPS=1`**, with
     /// the reproduction below the skip untouched.
     func testTheNarrowPanesFoldAtThePressAndEvictNothing() throws {
-        try SkipUnlessAsked.knownGap("BKL-B14", "AppKit evicted across the cycle")
+        try SkipUnlessAsked.knownGap("tab-fold-disagrees-with-room", "AppKit evicted across the cycle")
         for (language, pane): (AppLanguage, CGFloat) in [(.en, 646), (.ru, 646), (.ru, 700)] {
             AppLanguage.only(language) {
                 for wayIn in ["press", "interaction"] {
@@ -868,10 +868,10 @@ final class AlwaysCollapseSearchFirstPressTests: XCTestCase {
     /// keyboard and VoiceOver call; at 646 the open field leaves the full
     /// tabs no room in Russian.
     ///
-    /// **A documented gap (BKL-B14), skipped unless `HELM_KNOWN_GAPS=1`**, with
+    /// **A known gap (`tab-fold-disagrees-with-room`), skipped unless `HELM_KNOWN_GAPS=1`**, with
     /// the reproduction below the skip untouched.
     func testTheKeyboardsWayInRightAfterAResizeFolds() throws {
-        try SkipUnlessAsked.knownGap("BKL-B14", "opened by the keyboard right after a resize, AppKit evicted")
+        try SkipUnlessAsked.knownGap("tab-fold-disagrees-with-room", "opened by the keyboard right after a resize, AppKit evicted")
         AppLanguage.only(.ru) {
             let rig = mount(pane: 1060)
             defer { close(rig) }
@@ -916,10 +916,10 @@ final class AlwaysCollapseSearchFirstPressTests: XCTestCase {
     /// can neither fail the control nor carry the pane out of what the
     /// re-arm protects — ru 824, two points above the lower end, moved to 846.
     ///
-    /// **A documented gap (BKL-B14), skipped unless `HELM_KNOWN_GAPS=1`**, with
+    /// **A known gap (`tab-fold-disagrees-with-room`), skipped unless `HELM_KNOWN_GAPS=1`**, with
     /// the reproduction below the skip untouched.
     func testAPressAfterTheWindowWasNarrowedAndWidenedKeepsTheTabsWhereTheyFit() throws {
-        try SkipUnlessAsked.knownGap("BKL-B14", "a fresh mount's first press does not keep the tabs here")
+        try SkipUnlessAsked.knownGap("tab-fold-disagrees-with-room", "a fresh mount's first press does not keep the tabs here")
         AppSettings.pageBarStyle = .windowTitle
         for (language, pane): (AppLanguage, CGFloat) in [(.ru, 836), (.ru, 846), (.ru, 860), (.en, 736)] {
             AppLanguage.only(language) {
@@ -981,10 +981,10 @@ final class AlwaysCollapseSearchFirstPressTests: XCTestCase {
     /// assumption. The settle interval is stretched to 0.3 s so the change
     /// lands well inside the gap before a re-armed pass could fire.
     ///
-    /// **A documented gap (BKL-B14), skipped unless `HELM_KNOWN_GAPS=1`**, with
+    /// **A known gap (`option-off-unfold-arms-a-settle`), skipped unless `HELM_KNOWN_GAPS=1`**, with
     /// the reproduction below the skip untouched.
     func testWithTheOptionOffAnUnfoldUnderAGrownTitleArmsNoFurtherSettle() throws {
-        try SkipUnlessAsked.knownGap("BKL-B14", "the unfold under a grown title armed another settle pass with the option off")
+        try SkipUnlessAsked.knownGap("option-off-unfold-arms-a-settle", "the unfold under a grown title armed another settle pass with the option off")
         AppSettings.pageBarStyle = .windowTitle
         AppSettings.alwaysCollapseSearch = false
         let savedInterval = SettingsToolbar.settleInterval

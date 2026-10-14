@@ -65,7 +65,7 @@ import XCTest
 /// reference title that is not drawn fails the name-zone rows with "AppKit's own title is not
 /// drawn in the reference window — nothing to compare the zone with".
 ///
-/// **Three documented gaps (BKL-B13), each skipped unless `HELM_KNOWN_GAPS=1`** with the reproduction below the
+/// **Known gaps (`bar-ink-differs-from-appkit`), each skipped unless `HELM_KNOWN_GAPS=1`** with the reproduction below the
 /// skip untouched, each a difference between the bar and AppKit that this file states and does not bend:
 /// - `testASheetOnAnActiveWindowDimsThePlusAndTheTabsAsAppKitsDisabledToolbarItems`: AppKit disables
 ///   its toolbar items under a sheet; the `+` and the tabs stay at full ink. It goes green
@@ -853,7 +853,7 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
 
     // MARK: - Where the bar differs from AppKit's toolbar: known gaps
 
-    /// **A documented gap (BKL-B13), skipped unless `HELM_KNOWN_GAPS=1`**, with the reproduction below the
+    /// **A known gap (`bar-ink-differs-from-appkit`), skipped unless `HELM_KNOWN_GAPS=1`**, with the reproduction below the
     /// skip untouched. A sheet on a window the app is active in (the window main, key
     /// gone to the sheet): AppKit's platter stays lit, as the rows above hold, and AppKit draws
     /// its toolbar items disabled, at the share of their ink an inactive window gives them.
@@ -861,7 +861,7 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
     /// sheet, and the `+` and the tabs stay at full ink. Whether the bar should follow is the owner's; this
     /// row states what differs and goes green when the bar's controls draw as the reference's.
     func testASheetOnAnActiveWindowDimsThePlusAndTheTabsAsAppKitsDisabledToolbarItems() throws {
-        try SkipUnlessAsked.knownGap("BKL-B13", "AppKit disables its toolbar items under a sheet; the + and the tabs stay at full ink")
+        try SkipUnlessAsked.knownGap("bar-ink-differs-from-appkit", "AppKit disables its toolbar items under a sheet; the + and the tabs stay at full ink")
         for appearance in Self.appearances {
             let name = Self.named(appearance)
             let rig = try rig(appearance)
@@ -895,7 +895,7 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
         }
     }
 
-    /// **A documented gap (BKL-B13), skipped unless `HELM_KNOWN_GAPS=1`**, with the reproduction below the
+    /// **A known gap (`bar-ink-differs-from-appkit`), skipped unless `HELM_KNOWN_GAPS=1`**, with the reproduction below the
     /// skip untouched. Under Liquid Glass the view-mode switcher does not follow an
     /// inactive window as the `+` beside it does: the `+` reads the reference's share, the
     /// switcher keeps its S1 ink (the row's message prints both shares). Against AppKit's own
@@ -905,7 +905,7 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
     /// `glyph(_:symbol:)`, which `entryControl(_:)` draws, and in the Flat branch of
     /// `backing(_:for:)`; a `.segmented` entry is `entryContent(_:)`'s other branch.
     func testTheCapsulesSwitcherDimsInAnInactiveWindowAsAppKitsOwnControlDoes() throws {
-        try SkipUnlessAsked.knownGap("BKL-B13", "the + dims as AppKit's control does and the switcher does not")
+        try SkipUnlessAsked.knownGap("bar-ink-differs-from-appkit", "the + dims as AppKit's control does and the switcher does not")
         for appearance in Self.appearances {
             let name = Self.named(appearance)
             let rig = try rig(appearance)
@@ -1193,7 +1193,7 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
         }
     }
 
-    /// **A documented gap (BKL-B13), skipped unless `HELM_KNOWN_GAPS=1`, with the reproduction below the skip
+    /// **A known gap (`bar-ink-differs-from-appkit`), skipped unless `HELM_KNOWN_GAPS=1`, with the reproduction below the skip
     /// untouched: under the opaque title bar the zone's name does not
     /// read the ink of the title AppKit draws in a window with a toolbar.** In S1 the
     /// reference title keeps 0.698 Light and 0.898 Dark of full alpha where the
@@ -1204,7 +1204,7 @@ final class TheCapsuleDrawsWhatAppKitsPlatterDrawsTests: XCTestCase {
     /// itself, which those constants do not claim, so whether the zone should match it
     /// is the owner's to say.
     func testTheNameZoneDrawsAppKitsTitleInkUnderTheOpaqueTitleBar() throws {
-        try SkipUnlessAsked.knownGap("BKL-B13", "under the opaque title bar the zone's name and the reference title read different ink in S1")
+        try SkipUnlessAsked.knownGap("bar-ink-differs-from-appkit", "under the opaque title bar the zone's name and the reference title read different ink in S1")
         for (system, appearance) in Self.systemsByAppearance where !system.band.titlebarAppearsTransparent {
             let name = "\(system.name), \(Self.named(appearance))"
             let rig = try nameRig(appearance, page: "probe.nameZoneInk", band: system.band)
