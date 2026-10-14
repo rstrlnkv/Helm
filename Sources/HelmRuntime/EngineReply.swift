@@ -3,42 +3,51 @@ import HelmContract
 
 /// The engine side of the transport's JSON: payloads in, replies out.
 ///
-/// `TransportClient` is the same thing for the caller's side of the wire, and it
-/// exists because every view model was re-implementing the plumbing. The engines
-/// never got the mirror: nine `wireTransport` handlers spelled
-/// `(try? JSONEncoder().encode(x)) ?? Data()` and
+/// `TransportClient` is the same thing for the caller's side of the wire. An
+/// engine handler that spells `(try? JSONEncoder().encode(x)) ?? Data()` or
 /// `guard let y = try? JSONDecoder().decode(T.self, from: cmd.payload) else { return Data() }`
-/// by hand, dozens of times, and one of them had grown a local `json(_:)` of its
-/// own.
+/// by hand writes nothing down when it fails.
 ///
 /// **A failure is written down, and that is the whole difference.** An empty
 /// reply is how this codebase says "the module could not answer", so a payload
 /// that would not decode, a reply that would not encode and an arm that
-/// deliberately answers nothing all left the same zero bytes and no trace —
-/// `TransportClient`'s own doc comment names the consequence: a typo is
-/// indistinguishable from a refusal, and the only symptom is a feature that
-/// quietly does nothing. The two untyped calls here still answer the same bytes
-/// they always did; they also log, at `error`, in one place, identically for all
-/// nine engines. `#fileID` and `#line` default in from the call site, so the line
-/// names the engine and the arm — a bare command name would not, since
-/// `scan` and `trash` are spelled the same in three modules each.
+/// deliberately answers nothing all leave the same zero bytes. Spelled by hand
+/// the first two leave no trace either: a typo is indistinguishable from a
+/// refusal, and the only symptom is a feature that quietly does nothing. The two
+/// untyped calls here answer empty `Data` or `nil` for a failure, and also log
+/// it, at `error`, in one place for every engine. `#fileID` and `#line` default
+/// in from the call site, so the line names the file and the line of the arm
+/// that asked.
 ///
-/// **The line carries the command and the type it wanted, never the payload.**
-/// A payload names somebody's files; the log carries no names.
+/// **A typed call names a case, and the command that arrived must be that
+/// case.** The two typed overloads take an `EngineCall`, whose `command` is the
+/// case the arm serves. When the name of the `EngineCommand` is not that case's
+/// raw value, `decode(from:as:)` decodes nothing and answers `nil`, and
+/// `encode(_:for:as:)` still hands the bytes; each writes the same one `error`
+/// line under `engine`, naming both names. A command that is the call's own case
+/// writes no such line.
+///
+/// **No line carries the payload or the error's own words.** A payload names
+/// somebody's files; the log carries no names. The line of a coding failure
+/// carries the command, the type the call site asked for and the kind of
+/// failure; the mismatch line carries the two names. `kind(of:)` spells the case
+/// of a `DecodingError` or an `EncodingError` itself, and for any other error the
+/// name of its type, because a payload type's own `init(from:)` or a reply
+/// type's own `encode(to:)` may throw an error that carries what it was handed.
 ///
 /// Here rather than in `HelmContract`, which is where `EngineCommand` lives, for
-/// one reason: this logs, `HelmLog` is in `HelmRuntime`, and pointing the
-/// contract at the runtime would forbid the edge that runs the other way — the
-/// one `ScanRunner.scannableModules` is waiting for the day it takes `ModuleID`
-/// instead of strings. `HelmRuntime` is what every engine target shares, exactly
-/// as `HelmUI` is what every UI target shares, so the mirror sits at the
-/// matching altitude.
+/// one reason: this logs, `HelmLog` is in `HelmRuntime`, and `HelmRuntime`
+/// depends on `HelmContract`, so pointing the contract at the runtime would close
+/// a cycle. `HelmRuntime` is what every engine target shares, exactly as
+/// `HelmUI` is what every UI target shares, so the mirror sits at the matching
+/// altitude.
+///
 /// A handler's own `return Data()` stays as it is, deliberately. It is the reply
 /// of an arm that has nothing to answer, and a constant named for it would be
 /// longer to write while still claiming a distinction the wire cannot carry —
 /// zero bytes are zero bytes whether the engine acknowledged, declined or could
-/// not encode. The log is the only place those three can differ, which is why
-/// every call below writes one.
+/// not encode. The log is the only place those three can differ, which is why a
+/// failure in any of these calls writes a line.
 public enum EngineReply {
 
     /// A value as JSON, or empty `Data` with the reason logged.
@@ -51,49 +60,96 @@ public enum EngineReply {
             // Reachable, not theoretical: `JSONEncoder` refuses a
             // non-conforming float, and a reply carrying a `TimeInterval` is one
             // division away from `nan`.
-            HelmLog.shared.error("engine", "\(command.name): reply of \(T.self) not encoded — "
-                                 + HelmFailure.describe(error),
+            HelmLog.shared.error("engine", "\(command.name): reply of \(T.self) not encoded — \(kind(of: error))",
                                  fileID: fileID, line: line, function: function)
             return Data()
         }
     }
 
     /// A command's payload as the type the arm needs, or `nil` with the reason
-    /// logged. The caller still decides what to answer — every arm today answers
-    /// an empty reply.
+    /// logged. The caller decides what to answer.
     public static func decode<T: Decodable>(_ type: T.Type, from command: EngineCommand,
                                             fileID: String = #fileID, line: Int = #line,
                                             function: String = #function) -> T? {
         do {
             return try JSONDecoder().decode(type, from: command.payload)
         } catch {
-            HelmLog.shared.error("engine", "\(command.name): payload not read as \(T.self) — "
-                                 + HelmFailure.describe(error),
+            HelmLog.shared.error("engine", "\(command.name): payload not read as \(T.self) — \(kind(of: error))",
                                  fileID: fileID, line: line, function: function)
             return nil
         }
     }
 
-    /// A reply of the call's own `Reply` — the same bytes and the same logged
-    /// failure as `encode(_:for:)`, which this calls. What it adds is the type: a
-    /// reply Swift cannot convert to the type the call declares does not compile,
-    /// where the untyped overload takes whatever the arm hands it.
+    /// A reply of the call's own `Reply`: `encode(_:for:)`, which this calls, with
+    /// the type fixed by the call, so a reply Swift cannot convert to the type the
+    /// call declares does not compile, where the untyped overload takes whatever
+    /// the arm hands it. A command that is not the call's own case writes the
+    /// mismatch line first, and the bytes are still handed.
     public static func encode<Command, Payload, Reply>(
         _ reply: Reply, for command: EngineCommand,
         as call: EngineCall<Command, Payload, Reply>,
         fileID: String = #fileID, line: Int = #line, function: String = #function
     ) -> Data {
-        encode(reply, for: command, fileID: fileID, line: line, function: function)
+        _ = matches(command, caseNamed: call.command.rawValue,
+                    fileID: fileID, line: line, function: function)
+        return encode(reply, for: command, fileID: fileID, line: line, function: function)
     }
 
     /// A command's payload as the call's own `Payload`, or `nil` with the reason
     /// logged — `decode(_:from:)` with the type taken from the call, so the arm
-    /// names no type of its own.
+    /// names no type of its own. A command that is not the call's own case is
+    /// `nil` too, with the mismatch line, and nothing is decoded.
     public static func decode<Command, Payload, Reply>(
         from command: EngineCommand, as call: EngineCall<Command, Payload, Reply>,
         fileID: String = #fileID, line: Int = #line, function: String = #function
     ) -> Payload? {
-        decode(Payload.self, from: command, fileID: fileID, line: line, function: function)
+        guard matches(command, caseNamed: call.command.rawValue,
+                      fileID: fileID, line: line, function: function)
+        else { return nil }
+        return decode(Payload.self, from: command, fileID: fileID, line: line, function: function)
+    }
+
+    /// The only place a command that arrived under another case's name is written
+    /// down: one `error` line under `engine` naming the name that arrived and the
+    /// name the call is for, each as Swift spells a string literal, so an empty
+    /// name reads as `""` and one with a line break cannot pass for two lines. No
+    /// byte of the payload is read for it. `true`, with nothing written, when the
+    /// command is the call's own case.
+    private static func matches(_ command: EngineCommand, caseNamed expected: String,
+                                fileID: String, line: Int, function: String) -> Bool {
+        guard command.name != expected else { return true }
+        HelmLog.shared.error("engine", "command \(command.name.debugDescription) does not match the call of "
+                             + expected.debugDescription,
+                             fileID: fileID, line: line, function: function)
+        return false
+    }
+
+    /// What a line may say about a failure: for a `DecodingError` or an
+    /// `EncodingError` the case and the type it names, spelled here, and for any
+    /// other error its type's name alone. Nothing of the error's `context` is read,
+    /// neither its `debugDescription`, nor its `codingPath`, whose keys on a
+    /// payload are the sender's, nor its underlying error. `HelmFailure.describe`
+    /// is not asked: it prints an underlying error's description, failure reason
+    /// and path, and an error it does not know with `String(describing:)`, and a
+    /// payload type's own `init(from:)` or a reply's or an event's own
+    /// `encode(to:)` may throw one carrying what it was handed.
+    fileprivate static func kind(of error: Error) -> String {
+        switch error {
+        case let error as DecodingError:
+            switch error {
+            case .typeMismatch(let asked, _): return "DecodingError.typeMismatch \(asked)"
+            case .valueNotFound(let asked, _): return "DecodingError.valueNotFound \(asked)"
+            case .keyNotFound: return "DecodingError.keyNotFound"
+            case .dataCorrupted: return "DecodingError.dataCorrupted"
+            @unknown default: return "DecodingError"
+            }
+        case let error as EncodingError:
+            switch error {
+            case .invalidValue(let value, _): return "EncodingError.invalidValue \(type(of: value))"
+            @unknown default: return "EncodingError"
+            }
+        default: return "\(type(of: error))"
+        }
     }
 }
 
@@ -127,8 +183,7 @@ public extension LocalTransport {
         do {
             emit(EngineEvent(name: name, payload: try JSONEncoder().encode(value)))
         } catch {
-            HelmLog.shared.error("engine", "\(name): event of \(T.self) not encoded — "
-                                 + HelmFailure.describe(error),
+            HelmLog.shared.error("engine", "\(name): event of \(T.self) not encoded — \(EngineReply.kind(of: error))",
                                  fileID: fileID, line: line, function: function)
         }
     }

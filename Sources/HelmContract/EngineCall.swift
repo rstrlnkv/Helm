@@ -15,12 +15,19 @@
 ///
 /// **`Payload` and `Reply` appear in no stored property.** They are there for
 /// the compiler: the `EngineReply` overloads that take the call take the reply
-/// as `Reply` and return the payload as `Payload?`, so a reply Swift cannot
-/// convert to `Reply` does not compile. Both must be `Codable` because one end
-/// encodes what the other end decodes.
+/// as `Reply` and return the payload as `Payload?`, and `TransportClient`'s take
+/// the payload as `Payload` and return the reply as `Reply?`, so a value Swift
+/// cannot convert to the declared type does not compile. Both must be `Codable`
+/// because one end encodes what the other end decodes.
+///
+/// **The command is checked where the engine meets it.** The `EngineReply`
+/// overloads that take the call compare its `command` with the name of the
+/// `EngineCommand` that arrived, and a name that is not the call's case is one
+/// `error` line under `engine` naming both names.
 ///
 /// A struct in this target, not in `HelmRuntime`: it describes the wire and
-/// holds nothing that logs; the overloads that log are `EngineReply`'s.
+/// holds nothing that logs. The overloads that take it and log are
+/// `EngineReply`'s, under `engine`, and `TransportClient`'s, under `client`.
 public struct EngineCall<Command: RawRepresentable & Sendable, Payload: Codable, Reply: Codable>: Sendable
 where Command.RawValue == String {
 
