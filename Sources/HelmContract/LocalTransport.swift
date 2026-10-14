@@ -43,7 +43,8 @@ public final class LocalTransport: EngineTransport, @unchecked Sendable {
     ///
     /// Yielding while holding the lock is safe here and is the point: an
     /// `emit` during the replay blocks until it is done and is delivered
-    /// after it, in order. `yield` appends to an unbounded buffer and
+    /// after it, in order; `emit` yields under the same lock for the same
+    /// reason. `yield` appends to an unbounded buffer and
     /// resumes the consumer on its own executor — it runs no consumer
     /// code inline, and `onTermination` is not called from it, so there
     /// is nothing to re-enter this lock.
@@ -80,13 +81,19 @@ public final class LocalTransport: EngineTransport, @unchecked Sendable {
         lock.lock(); handler = h; lock.unlock()
     }
 
+    /// **The event is stored and handed to every subscriber under the one
+    /// lock**, so the order a live subscriber receives equals the order
+    /// `lastEvents` was written. Yielding after the unlock let two emits of one
+    /// name from two threads store A then B, while the yields ran B's before
+    /// A's: a subscriber then ended on the older value, and a page opened
+    /// later replayed the newer one, so the same engine showed two different
+    /// "last" values. `ReplayOrderTests` watched it fail before the fix.
+    /// The yield is safe under the lock for the reason given at `events`.
     public func emit(_ e: EngineEvent) {
-        lock.lock()
+        lock.lock(); defer { lock.unlock() }
         if lastEvents[e.name] == nil { eventOrder.append(e.name) }
         lastEvents[e.name] = e
-        let conts = Array(subscribers.values)
-        lock.unlock()
-        for c in conts { c.yield(e) }
+        for c in subscribers.values { c.yield(e) }
     }
 
     /// The handler, read under the lock.
