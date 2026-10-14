@@ -58,6 +58,57 @@ final class TheBlurByReadingLandsWhereTheTextIsTests: XCTestCase {
         try XCTUnwrap(RecognizedBoxes.place(line.matches[0].box, in: source), "the engine placed nothing").rect
     }
 
+    /// A find 45 points high on an area 300 points high (at 1×): higher than the thickest block (24 points) the slider has.
+    private let tallLine: RecognizedLine = {
+        let box = CGRect(x: 0.1, y: 0.4, width: 0.5, height: 0.15)
+        return RecognizedLine(string: "me@example.com", box: box, matches: [PrivateMatch(kind: .emailAddress, box: box)])
+    }()
+
+    private func tallTools(source seen: @escaping (RecognizedBoxes.Source) -> Void) -> EditorTextTools {
+        let line = tallLine
+        return EditorTextTools(read: { _, rect in
+            let source = RecognizedBoxes.Source(pixels: rect, scale: 1)
+            seen(source)
+            return .read([line], source)
+        }, copy: { _ in .copied })
+    }
+
+    func testTheLayerOfATallFindHasABlockAsHighAsTheFindOnAnAreaOfTheScreen() throws {
+        var source: RecognizedBoxes.Source?
+        let rig = try OverlayRig.overlay(scale: 1, area: CGRect(x: 100, y: 100, width: 400, height: 300), textTools: tallTools { source = $0 }) { _ in }
+        defer { rig.overlay.close() }
+        rig.overlay.perform(.blurPersonalText)
+        awaitLayers(rig.overlay)
+        let layers = rig.overlay.editedLayers
+        XCTAssertEqual(layers.count, 1, "the control: the reading made one blur")
+        let seen = try XCTUnwrap(source, "the reader was never asked")
+        let ink = try XCTUnwrap(RecognizedBoxes.ink(of: tallLine.matches[0].box, in: seen))
+        XCTAssertEqual(ink.height, 45, accuracy: 1e-6, "the control: the find is 45 pt high")
+        let block = try XCTUnwrap(layers.first).blockPoints
+        XCTAssertGreaterThanOrEqual(block, ink.height - 1e-6, "the find is \(ink.height) pt high and its layer's block is \(block) pt")
+    }
+
+    func testTheLayerOfATallFindHasABlockAsHighAsTheFindOnThePictureBeingEdited() throws {
+        let frames = try OverlayRig.frames(scale: 1)
+        let shown = try XCTUnwrap(PictureOnScreen.place(try ShotToastRig.picture(width: 400, height: 300),
+                                                        over: Freeze(displays: frames.map { .image($0) }, windows: []),
+                                                        on: try XCTUnwrap(frames.first).id))
+        var source: RecognizedBoxes.Source?
+        let overlay = CaptureOverlay(freeze: shown.freeze, picture: (shown.display, shown.rect), store: nil,
+                                     textTools: tallTools { source = $0 }) { _ in }
+        XCTAssertTrue(overlay.build())
+        defer { overlay.close() }
+        overlay.perform(.blurPersonalText)
+        awaitLayers(overlay)
+        let layers = overlay.editedLayers
+        XCTAssertEqual(layers.count, 1, "the control: the reading made one blur")
+        let seen = try XCTUnwrap(source, "the reader was never asked")
+        let ink = try XCTUnwrap(RecognizedBoxes.ink(of: tallLine.matches[0].box, in: seen))
+        XCTAssertEqual(ink.height, 45, accuracy: 1e-6, "the control: the find is 45 pt high")
+        let block = try XCTUnwrap(layers.first).blockPoints
+        XCTAssertGreaterThanOrEqual(block, ink.height - 1e-6, "the find is \(ink.height) pt high and its layer's block is \(block) pt")
+    }
+
     func testTheBoxLandsWhereTheEngineSaysOnAnAreaOfTheScreen() throws {
         var source: RecognizedBoxes.Source?
         let rig = try OverlayRig.overlay(scale: 1, area: CGRect(x: 100, y: 100, width: 400, height: 300), textTools: tools { source = $0 }) { _ in }

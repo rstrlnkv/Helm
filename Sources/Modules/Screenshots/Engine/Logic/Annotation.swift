@@ -27,7 +27,7 @@ public enum AnnotationTool: String, CaseIterable, Sendable, Equatable {
     case highlighter
     /// A box of the picture drawn as a mosaic (`Pixelate`), from the pixels under it and from nothing else: the
     /// box is held by its four corners like a rectangle and has no ink, so its colour and opacity are not read.
-    /// The step is the mosaic's block, in points.
+    /// The step is the mosaic's block, in points, unless the layer's floor is higher (`AnnotationStyle.blockFloor`).
     case blur
     /// One line of text (`AnnotationText`) whose top-left is where it was placed: no handles, taken by its area. The
     /// step is the font's size in points, the ink the colour and opacity like any other tool's.
@@ -96,7 +96,8 @@ public enum AnnotationThickness: Int, CaseIterable, Sendable, Equatable {
     case thin = 0, medium, thick
 
     /// The step's width in points under a tool: the stroke's width, and for the arrow the
-    /// shaft at its thickest, of which the head is three, and for the blur the block's side, for the text the font's size,
+    /// shaft at its thickest, of which the head is three, and for the blur the block's side unless the layer's floor is higher
+    /// (`AnnotationStyle.blockPoints`), for the text the font's size,
     /// for a step the circle's diameter, for the magnifier the ring's width, for the emoji the font's size. The spotlight has no steps and reads 0 in each. The one table the screen and the export read.
     public func points(for tool: AnnotationTool) -> CGFloat {
         let steps: [CGFloat]
@@ -127,18 +128,29 @@ public struct AnnotationStyle: Sendable, Equatable {
     public var filled: Bool
     /// How much of the ink shows, 0.1…1 once read from the store; the marker's own 0.6 is multiplied by it.
     public var opacity: Double
+    /// The least block of a blur, in points, whatever the step says: set only on a blur made to hide found text, as the text's
+    /// own height, so a step picked later can thicken the block but not take it below the text (`blockPoints`). 0 for the rest.
+    public var blockFloor: CGFloat
 
     /// The default step is the middle one, which is what a tool nobody picked a step for reads
     /// from the store (`EditorMemory`), so `standard` is that tool's style and not a second default.
     public init(color: AnnotationInk? = nil, thickness: AnnotationThickness = .medium, filled: Bool = false,
-                opacity: Double = 1) {
+                opacity: Double = 1, blockFloor: CGFloat = 0) {
         self.color = color
         self.thickness = thickness
         self.filled = filled
         self.opacity = opacity
+        self.blockFloor = blockFloor
     }
 
     public static let standard = AnnotationStyle()
+
+    /// A blur's block in points: the step's, or `blockFloor` when that is higher (a floor that is not a number counts for none).
+    /// The one value the screen and the export both read, and `RecognizedBoxes.place` lays its grid by.
+    public var blockPoints: CGFloat {
+        let step = thickness.points(for: .blur)
+        return blockFloor.isFinite && blockFloor > step ? blockFloor : step
+    }
 
     /// The ink a tool is drawn in under this style.
     public func ink(for tool: AnnotationTool) -> AnnotationInk {
@@ -316,8 +328,8 @@ public struct Annotation: Sendable, Equatable {
         tool == .arrow || tool == .step || (style.filled && (tool == .rectangle || tool == .ellipse))
     }
 
-    /// The mosaic's block, in points: the thickness step read for the blur.
-    public var blockPoints: CGFloat { style.thickness.points(for: .blur) }
+    /// The mosaic's block, in points: the thickness step read for the blur, raised to the style's floor (`AnnotationStyle.blockPoints`).
+    public var blockPoints: CGFloat { style.blockPoints }
 
     /// The colour a filled shape is painted in; for a stroked one see `stroke`.
     public var fillColor: CGColor { inked(style.opacity) }

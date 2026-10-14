@@ -44,6 +44,40 @@ final class TheFindsUnderABlurAreSkippedTests: XCTestCase {
         XCTAssertEqual(PersonalFinds.finds(in: reading(email), source: source, under: [short]).count, 1, "the lower part shows")
     }
 
+    /// A find's need is the height of its text, so a blur of the thickest step (24 points) covers a find up to 24 points high and
+    /// no taller one: the text of a taller find can be read back out of blocks lower than itself, and it is blurred again.
+    private func tall(_ points: CGFloat) -> PrivateMatch {
+        // Source is 200 × 100 points: a box `points` high, 30 points from the top.
+        PrivateMatch(kind: .emailAddress, box: CGRect(x: 0.1, y: 0.7 - points / 100, width: 0.4, height: points / 100))
+    }
+
+    private func thick(_ rect: CGRect) -> Annotation {
+        Annotation(tool: .blur, start: rect.origin, end: CGPoint(x: rect.maxX, y: rect.maxY),
+                   style: AnnotationStyle(thickness: .thick), id: 77)
+    }
+
+    func testAFindTallerThanTheThickestBlockIsNotSkippedUnderABlurOfTheThickestStep() throws {
+        for points in [CGFloat(25), 30, 40] {
+            let match = tall(points)
+            let ink = try XCTUnwrap(RecognizedBoxes.ink(of: match.box, in: source))
+            XCTAssertEqual(ink.height, points, accuracy: 1e-9, "the control: the find is \(points) pt high")
+            let under = thick(ink.insetBy(dx: -10, dy: -10))
+            XCTAssertEqual(under.blockPoints, 24, "the control: the blur is at the thickest step")
+            let finds = PersonalFinds.finds(in: reading(match), source: source, under: [under])
+            XCTAssertEqual(finds.count, 1, "a find \(points) pt high under a blur of \(under.blockPoints) pt blocks was skipped")
+        }
+    }
+
+    /// What the rule above must not undo: a find the thickest block covers, and one a lower block does not.
+    func testAFindTheBlockCoversIsSkippedAndOneItDoesNotIsMade() throws {
+        let covered = tall(20), ink = try XCTUnwrap(RecognizedBoxes.ink(of: covered.box, in: source))
+        XCTAssertEqual(PersonalFinds.finds(in: reading(covered), source: source, under: [thick(ink.insetBy(dx: -10, dy: -10))]), [])
+        let medium = Annotation(tool: .blur, start: CGPoint(x: ink.minX - 10, y: ink.minY - 10), end: CGPoint(x: ink.maxX + 10, y: ink.maxY + 10),
+                                style: AnnotationStyle(thickness: .medium), id: 77)
+        XCTAssertEqual(medium.blockPoints, 16, "the control: the blur is at the middle step")
+        XCTAssertEqual(PersonalFinds.finds(in: reading(covered), source: source, under: [medium]).count, 1, "a find 20 pt high under 16 pt blocks")
+    }
+
     /// Only a blur hides what is under it: a rectangle or a highlight is drawn over it and leaves it readable.
     func testALayerThatIsNotABlurHidesNothing() {
         for tool in [AnnotationTool.rectangle, .ellipse, .highlighter, .pen, .spotlight] {

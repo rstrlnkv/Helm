@@ -155,7 +155,7 @@ annotation is no longer equal to the one it was built from, and for a step only 
 ## The blur and text tools
 
 The blur (`AnnotationTool.blur`) is the one tool with no ink: a box held like a rectangle (four corners, ⇧ a square) and taken by its
-area (`AnnotationHit.takesByArea`), whose step is the size of its block in points and whose colour is not one of its edits.
+area (`AnnotationHit.takesByArea`), whose block in points is its step's, or the height of the found text it was made over when that is more (`AnnotationStyle.blockPoints`), and whose colour is not one of its edits.
 It is drawn by `Pixelate` (`Sources/Modules/Screenshots/Engine/Logic/Pixelate.swift`), a mosaic whose every pixel is replaced by the mean of
 its block's bytes, and no block is drawn from fewer than two pixels; the grid starts at the display's own pixel (0, 0), so the cut of the
 file and the display on the screen share their blocks, a block the box's edge cuts takes the mean of its pixels inside the box, an end strip
@@ -361,8 +361,8 @@ is not on it: the measure found them on smaller pictures in English and Russian 
 `CardNumbers`: thirteen to nineteen digits in whole groups divided by one or two spaces (the no-break, narrow, thin, figure and ideographic ones too) or a single hyphen, non-breaking hyphen or en dash, that pass the Luhn check, one line at a time, so a number wrapped over two lines is not found and a number glued
 to other digits is not taken for one. **A find that wraps is blurred only on its first line,** a link, an e-mail address or a phone number as much as a card: the detector runs on one line at a time, and a rule that
 carried a match on to the next line by where that line starts would blur the first word after every link that ends a line, so it was not built. A find is a box padded and rounded outward to the mosaic's grid (`RecognizedBoxes`), made to hide a string and not to outline it, with the step its text's height calls for
-(the smallest whose block is at least that high; text taller than 24 points gets the thickest, which is lower than the text, and no fourth step exists; a box the mosaic cannot make, one pixel, grows inward to two or the find is dropped);
-a find lying wholly under a blur already placed whose block is at least the step it would get, or inside another find, is not made again, so a blur of the person's own with lower blocks than the text is no cover. One reading makes at most 500 boxes
+(the smallest whose block is at least that high; text taller than 24 points gets the thickest step and a block as high as the text, and the slider has no fourth step: every found layer keeps its text's height as the floor of its block, and no step picked later takes the block below it; a box the mosaic cannot make, one pixel, grows inward to two or the find is dropped);
+a find lying wholly under a blur already placed whose block is at least as high as the text, or inside another find, is not made again, so a blur of the person's own with lower blocks than the text is no cover. One reading makes at most 500 boxes
 (`PersonalFinds.limit`), and the plate says `Blurred: 500` at the cap as it does for exactly 500 finds: at that number the rest may not have been blurred. **Nothing runs by itself:** the finds go in as ordinary blur layers (`AnnotationEditing.insert(blurs:)`), all of
 them one undo step, which the person sees before Done and can delete or add to, and no setting and no save does it for them.
 

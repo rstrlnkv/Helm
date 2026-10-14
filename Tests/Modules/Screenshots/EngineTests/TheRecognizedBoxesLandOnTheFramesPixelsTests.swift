@@ -97,7 +97,8 @@ final class TheRecognizedBoxesLandOnTheFramesPixelsTests: XCTestCase {
     }
 
     /// The step an automatic blur takes comes from the height of the text, not from the one the editor remembers:
-    /// the smallest of 10, 16 and 24 points that is at least as high as the text, the thickest when none is.
+    /// the smallest of 10, 16 and 24 points that is at least as high as the text, the thickest when none is
+    /// (the block of a text above 24 points is the layer's own: the test after the next).
     func testTheStepIsTheSmallestBlockAsHighAsTheText() {
         XCTAssertEqual(RecognizedBoxes.step(forTextHeight: 5), .thin)
         XCTAssertEqual(RecognizedBoxes.step(forTextHeight: 10), .thin, "a block of exactly the height is enough")
@@ -106,7 +107,7 @@ final class TheRecognizedBoxesLandOnTheFramesPixelsTests: XCTestCase {
         XCTAssertEqual(RecognizedBoxes.step(forTextHeight: 16), .medium)
         XCTAssertEqual(RecognizedBoxes.step(forTextHeight: 17), .thick)
         XCTAssertEqual(RecognizedBoxes.step(forTextHeight: 24), .thick)
-        XCTAssertEqual(RecognizedBoxes.step(forTextHeight: 60), .thick, "no block is high enough: the thickest")
+        XCTAssertEqual(RecognizedBoxes.step(forTextHeight: 60), .thick, "no step is high enough: the thickest")
         XCTAssertEqual(RecognizedBoxes.step(forTextHeight: .nan), .thick)
         XCTAssertEqual(RecognizedBoxes.step(forTextHeight: .infinity), .thick)
     }
@@ -117,7 +118,20 @@ final class TheRecognizedBoxesLandOnTheFramesPixelsTests: XCTestCase {
         let tall = CGRect(x: 0.3, y: 0.4, width: 0.3, height: 0.12)
         let placed = try XCTUnwrap(RecognizedBoxes.place(tall, in: source))
         XCTAssertEqual(placed.step, .medium)
+        XCTAssertEqual(placed.textHeight, 12, accuracy: 1e-9)
         XCTAssertEqual((placed.rect.minX * 2).truncatingRemainder(dividingBy: 32), 0)
         XCTAssertEqual((placed.rect.maxY * 2).truncatingRemainder(dividingBy: 32), 0)
+    }
+
+    /// A text above the thickest step: the thickest step, and a box on a grid of the text's own height. 80 px of text at 2× is 40
+    /// points: a block of 80 px, and the box's edges lie on multiples of 80 px.
+    func testATextAboveTheThickestStepGetsABoxOnAGridAsHighAsTheText() throws {
+        let tall = CGRect(x: 0.5, y: 0.3, width: 0.2, height: 0.4)
+        let placed = try XCTUnwrap(RecognizedBoxes.place(tall, in: source))
+        XCTAssertEqual(placed.step, .thick)
+        XCTAssertEqual(placed.textHeight, 40, accuracy: 1e-9)
+        for edge in [placed.rect.minX, placed.rect.maxX, placed.rect.minY, placed.rect.maxY] {
+            XCTAssertEqual((edge * 2).truncatingRemainder(dividingBy: 80), 0, "an edge at \(edge) pt is off the 80 px grid")
+        }
     }
 }

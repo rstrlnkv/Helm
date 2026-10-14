@@ -63,8 +63,11 @@ final class TheBlurOfAFindCoversTheFindsPixelsInTheFileTests: XCTestCase {
     }
 
     /// What a find may leave of itself: nothing. Returns the pixels of the find that are the same in the file.
+    /// `measuringBlock` also reads the mosaic's block off the file (`blockSide`), which walks every column of the find: off for the
+    /// rows that only count survivors.
     private func survivors(scale: CGFloat, local: CGRect, boxes: [CGRect], kinds: [PrivateKind]? = nil, secondDisplay: Bool = false,
-                           file: StaticString = #filePath, line: UInt = #line) async throws -> (left: Int, of: Int, blurs: Int, steps: [AnnotationThickness]) {
+                           measuringBlock: Bool = false, file: StaticString = #filePath, line: UInt = #line)
+        async throws -> (left: Int, of: Int, blurs: Int, layerBlocks: [CGFloat], fileBlock: Int) {
         let rig = try makeRig()
         let widthPoints: CGFloat = 400, heightPoints: CGFloat = 300
         let image = noise(width: Int(widthPoints * scale), height: Int(heightPoints * scale))
@@ -81,7 +84,7 @@ final class TheBlurOfAFindCoversTheFindsPixelsInTheFileTests: XCTestCase {
         })
         guard case .read(let lines, let source) = await rig.session.readText(freeze, display: id, local: local) else {
             XCTFail("the reading did not come back", file: file, line: line)
-            return (0, 0, 0, [])
+            return (0, 0, 0, [], 0)
         }
         let finds = PersonalFinds.finds(in: lines, source: source, under: [])
         var editing = AnnotationEditing(bounds: local)
@@ -91,7 +94,7 @@ final class TheBlurOfAFindCoversTheFindsPixelsInTheFileTests: XCTestCase {
         let result = try XCTUnwrap(blurred, "the file was refused for \(boxes)", file: file, line: line)
         XCTAssertEqual(result.width, cut.width, file: file, line: line)
         let before = rgba(cut), after = rgba(result)
-        var left = 0, total = 0
+        var left = 0, total = 0, side = 0
         for box in boxes {
             guard let found = pixelsOfTheFind(box, cutWidth: cut.width, cutHeight: cut.height) else { continue }
             for y in found.ys {
@@ -101,8 +104,26 @@ final class TheBlurOfAFindCoversTheFindsPixelsInTheFileTests: XCTestCase {
                     if before[at..<at + 4] == after[at..<at + 4] { left += 1 }
                 }
             }
+            if measuringBlock { side = blockSide(after, width: cut.width, height: cut.height, columns: found.xs) }
         }
-        return (left, total, added, finds.map(\.step))
+        return (left, total, added, editing.layers.map(\.blockPoints), side)
+    }
+
+    /// The mosaic's block height in pixels, read off the file alone: in a picture where no two neighbours are alike, a run of identical
+    /// pixels down a column is a block of the mosaic, so the longest run of a column is the block's height. The least of those over
+    /// `columns` is returned, which one run that happens to be long by chance cannot raise.
+    private func blockSide(_ bytes: [UInt8], width: Int, height: Int, columns: Range<Int>) -> Int {
+        var least = Int.max
+        for x in columns {
+            var longest = 1, run = 1
+            for y in 1..<height {
+                let at = (y * width + x) * 4, above = ((y - 1) * width + x) * 4
+                run = bytes[at..<at + 4] == bytes[above..<above + 4] ? run + 1 : 1
+                longest = max(longest, run)
+            }
+            least = min(least, longest)
+        }
+        return least == Int.max ? 0 : least
     }
 
     /// The control for the picture: a blur drawn by hand over a box leaves no pixel of it, so a survivor below is the find's and not the noise's.
@@ -159,7 +180,7 @@ final class TheBlurOfAFindCoversTheFindsPixelsInTheFileTests: XCTestCase {
         XCTAssertGreaterThan(checked, 100_000, "the walk saw too few pixels for a pass to mean anything")
     }
 
-    /// Heights across the three steps and one beyond them: the text's own pixels go, and the step has a block as high as the text.
+    /// Heights across the three steps and two beyond them: the text's own pixels go, and the layer has a block as high as the text.
     func testEveryTextHeightIsCoveredAndItsBlockIsAsHighAsTheText() async throws {
         for scale in [CGFloat(1), 1.5, 2] {
             for heightPoints in [CGFloat(6), 10, 11, 16, 17, 24, 25, 40] {
@@ -168,15 +189,33 @@ final class TheBlurOfAFindCoversTheFindsPixelsInTheFileTests: XCTestCase {
                 let box = CGRect(x: 0.25, y: 0.40, width: 0.4, height: normalisedHeight)
                 let out = try await survivors(scale: scale, local: local, boxes: [box])
                 XCTAssertEqual(out.left, 0, "scale \(scale), text \(heightPoints) pt: \(out.left) of \(out.of) pixels survive")
-                let step = try XCTUnwrap(out.steps.first)
-                let block = CGFloat(Pixelate.block(points: step.points(for: .blur), scale: scale)) / scale
-                // The text is as high as the box says, to the pixel; a thickest block that is lower than it is the
-                // one case where no block is high enough, and 40 pt is that case.
-                if heightPoints <= 24 {
-                    XCTAssertGreaterThanOrEqual(block, heightPoints - 1 / scale, "scale \(scale), text \(heightPoints) pt: the block is \(block) pt")
-                }
+                let layerBlock = try XCTUnwrap(out.layerBlocks.first)
+                let block = CGFloat(Pixelate.block(points: layerBlock, scale: scale)) / scale
+                // The text is as high as the box says, to the pixel.
+                XCTAssertGreaterThanOrEqual(block, heightPoints - 1 / scale, "scale \(scale), text \(heightPoints) pt: the block is \(block) pt")
             }
         }
+    }
+
+    /// A find taller than the thickest step of the slider (24 points) gets a block as high as itself, in the layer it becomes and in
+    /// the file: the layer's block is read from the layer, the file's from the bytes. Heights from just over the thickest step to well past it.
+    func testATextTallerThanTheThickestStepGetsABlockAsHighAsTheText() async throws {
+        // Every row's shortfall is gathered and reported by one assertion: a run reports the numbers of all rows, not of the first.
+        var shortfalls: [String] = []
+        for scale in [CGFloat(1), 2] {
+            for heightPoints in [CGFloat(25), 30, 40, 60] {
+                let local = CGRect(x: 13.3, y: 9.7, width: 300.4, height: 200.1)
+                let box = CGRect(x: 0.25, y: 0.30, width: 0.4, height: heightPoints / local.height)
+                let out = try await survivors(scale: scale, local: local, boxes: [box], measuringBlock: true)
+                let layerBlock = try XCTUnwrap(out.layerBlocks.first, "scale \(scale), find \(heightPoints) pt: no layer")
+                let needPixels = Int((heightPoints * scale).rounded())
+                let summary = "scale \(scale): find \(heightPoints) pt (\(needPixels) px) high, layer's block \(layerBlock) pt, file's block \(out.fileBlock) px"
+                XCTAssertEqual(out.left, 0, "scale \(scale), find \(heightPoints) pt: \(out.left) of \(out.of) pixels survive")
+                if layerBlock < heightPoints - 1e-6 { shortfalls.append("LAYER lower than the find: \(summary)") }
+                if out.fileBlock < needPixels { shortfalls.append("FILE lower than the find: \(summary)") }
+            }
+        }
+        XCTAssertEqual(shortfalls, [], "a block lower than the text it covers")
     }
 
     /// Two finds in one line, side by side and overlapping their padding, and a find of every kind in one box: each is covered, once.

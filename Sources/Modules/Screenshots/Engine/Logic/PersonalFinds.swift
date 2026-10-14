@@ -10,10 +10,10 @@ import Foundation
 /// which puts each in as an ordinary blur layer the person can see, move and delete. Two kinds of find are not
 /// made:
 /// - **One wholly under a blur already placed that is coarse enough.** The text's own box lies inside a blur layer
-///   of the picture whose block is at least the block this find would get (`RecognizedBoxes.step(forTextHeight:)`),
-///   so a second pass over the same picture adds nothing and a find already covered is not covered twice. A blur
-///   whose blocks are lower than the text is no cover: the text can be read back out of it, and the find is
-///   blurred again at the step it needs.
+///   of the picture whose block is at least as high as the text (`RecognizedBoxes.Placed.textHeight`), so a second
+///   pass over the same picture adds nothing and a find already covered is not covered twice. A blur whose blocks
+///   are lower than the text is no cover: the text can be read back out of it, and the find is blurred again with a
+///   block as high as the text.
 /// - **One lying wholly inside another find of the same reading.** A card number that the system also reads as a
 ///   phone number is one place, not two; of two equal places the first stays.
 ///
@@ -34,7 +34,7 @@ public enum PersonalFinds {
             guard let ink = RecognizedBoxes.ink(of: match.box, in: source),
                   let placed = RecognizedBoxes.place(match.box, in: source)
             else { continue }
-            let need = placed.step.points(for: .blur)
+            let need = placed.textHeight
             if covering.contains(where: { $0.frame.contains(ink) && $0.block >= need }) { continue }
             candidates.append((ink, placed))
         }

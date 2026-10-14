@@ -230,7 +230,8 @@ public struct AnnotationEditing: Sendable {
             guard !rect.isNull else { continue }
             let layer = Annotation(tool: .blur, start: CGPoint(x: rect.minX, y: rect.minY),
                                    end: CGPoint(x: rect.maxX, y: rect.maxY),
-                                   style: AnnotationStyle(thickness: box.step), id: nextID + added.count)
+                                   style: AnnotationStyle(thickness: box.step, blockFloor: box.textHeight),
+                                   id: nextID + added.count)
             if layer.isUsable { added.append(layer) }
         }
         guard !added.isEmpty else { return 0 }

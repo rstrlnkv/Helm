@@ -28,10 +28,18 @@ public enum RecognizedBoxes {
         }
     }
 
-    /// A box to blur: where, in points, and how coarse.
+    /// A box to blur: where, in points, and how coarse: the step the slider shows, and the height of the text, which the layer
+    /// keeps as the floor of its block (`AnnotationStyle.blockFloor`) so the block is never lower than the text. 0 is no text height.
     public struct Placed: Sendable, Equatable {
         public let rect: CGRect
         public let step: AnnotationThickness
+        public let textHeight: CGFloat
+
+        public init(rect: CGRect, step: AnnotationThickness, textHeight: CGFloat = 0) {
+            self.rect = rect
+            self.step = step
+            self.textHeight = textHeight
+        }
     }
 
     /// Of the padding: across, in lines' heights, each side.
@@ -46,12 +54,12 @@ public enum RecognizedBoxes {
         return points(pixels, scale: source.scale)
     }
 
-    /// The box that hides `normalised`: padded, grid-aligned and kept to the area, with the step its height
-    /// calls for (`step(forTextHeight:)`); nil when `ink` is.
+    /// The box that hides `normalised`: padded, grid-aligned to the block its layer will have (the step its height calls for,
+    /// `step(forTextHeight:)`, or the height itself when that is more) and kept to the area; nil when `ink` is.
     public static func place(_ normalised: CGRect, in source: Source) -> Placed? {
         guard let text = framePixels(of: normalised, in: source) else { return nil }
-        let step = step(forTextHeight: text.height / source.scale)
-        let side = Pixelate.block(points: step.points(for: .blur), scale: source.scale)
+        let height = text.height / source.scale, step = step(forTextHeight: height)
+        let side = Pixelate.block(points: AnnotationStyle(thickness: step, blockFloor: height).blockPoints, scale: source.scale)
         let padded = text.insetBy(dx: -text.height * paddingAcross, dy: -text.height * paddingDown)
         let grid = CGFloat(side)
         let left = (padded.minX / grid).rounded(.down) * grid, top = (padded.minY / grid).rounded(.down) * grid
@@ -65,15 +73,14 @@ public enum RecognizedBoxes {
             box.size.width = 2
             if box.maxX > source.pixels.maxX { box.origin.x = source.pixels.maxX - 2 }
         }
-        return Placed(rect: points(box, scale: source.scale), step: step)
+        return Placed(rect: points(box, scale: source.scale), step: step, textHeight: height)
     }
 
     /// **The blur's step for an automatic blur comes from the height of the text found,** not from the step the
     /// editor remembers: the smallest of the three whose block is at least that high, the thickest when none is.
-    /// Text taller than the thickest block (24 points) therefore gets a block lower than itself, the thickest the
-    /// tool has, and what that leaves readable of such large text is not measured here; no fourth step was added.
-    /// A block lower than the text it covers can leave digits that are read back out of the mosaic. A height that
-    /// is not a number takes the thickest.
+    /// It is the step the slider shows, not the block: text taller than the thickest block (24 points) gets the
+    /// thickest step and a layer whose block is as high as the text (`Placed.textHeight`), so the slider keeps its
+    /// three steps. A height that is not a number takes the thickest.
     public static func step(forTextHeight points: CGFloat) -> AnnotationThickness {
         guard points.isFinite else { return .thick }
         return AnnotationThickness.allCases.first { $0.points(for: .blur) >= points } ?? .thick

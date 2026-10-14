@@ -116,6 +116,29 @@ final class BlurringEmailsAndPhonesAddsOnlyBlurLayersInOneStepTests: XCTestCase 
         XCTAssertEqual(moving.layers.count, count)
     }
 
+    /// The height of the text stays the floor of the layer's block: a step picked later thickens the block but never takes it
+    /// below the text. A text of 40 points is above the thickest step (24): every step leaves the block at 40.
+    func testAStepPickedLaterNeverTakesTheBlockBelowTheText() {
+        var editing = AnnotationEditing(bounds: bounds)
+        let find = RecognizedBoxes.Placed(rect: CGRect(x: 10, y: 10, width: 100, height: 60), step: .thick, textHeight: 40)
+        XCTAssertEqual(editing.insert(blurs: [find]), 1)
+        XCTAssertTrue(editing.press(at: CGPoint(x: 60, y: 40), tool: nil))
+        editing.end()
+        XCTAssertNotNil(editing.selected)
+        for step in [AnnotationThickness.thin, .medium, .thick] {
+            editing.setThickness(step)
+            XCTAssertEqual(editing.selected?.style.thickness, step)
+            XCTAssertEqual(editing.selected?.blockPoints, 40, "the \(step) step leaves the block at the text's height")
+        }
+        let small = RecognizedBoxes.Placed(rect: CGRect(x: 10, y: 10, width: 100, height: 30), step: .thick, textHeight: 20)
+        var other = AnnotationEditing(bounds: bounds)
+        XCTAssertEqual(other.insert(blurs: [small]), 1)
+        XCTAssertTrue(other.press(at: CGPoint(x: 60, y: 25), tool: nil))
+        other.end()
+        other.setThickness(.thin)
+        XCTAssertEqual(other.selected?.blockPoints, 20, "a text lower than the thickest step: the floor is its height, not the step's")
+    }
+
     /// A reading of nothing the list names finds nothing: a line of words and no match is no place to blur.
     func testALineWithNoMatchIsNoPlace() {
         let words = [RecognizedLine(string: "Hello there", box: CGRect(x: 0.1, y: 0.1, width: 0.5, height: 0.1))]
