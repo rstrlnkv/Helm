@@ -51,7 +51,8 @@ final class AnOperationNamesItselfWhileItRunsTests: XCTestCase {
     /// this test's engine and not about who ran first.
     override func setUp() {
         super.setUp()
-        HelmActivity.end("homebrew.operation")
+        // Every phase of the module, because one end closes only the newest and other suites leave several open.
+        HelmActivity.sweep(module: HomebrewEngine.moduleID)
     }
 
     func testALongOperationIsARunningPhaseUntilItExits() {
