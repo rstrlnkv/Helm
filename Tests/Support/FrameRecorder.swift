@@ -25,11 +25,18 @@ import XCTest
 /// turn and shows in the picture. Each frame therefore also carries the opacities
 /// the layer tree under the view is presenting.
 ///
-/// **Only a layer a person could see counts.** AppKit keeps layers of its own
-/// under a scroll view (the scroll pocket's mask and blur among them) that are
-/// hidden or under a hidden layer, have no area, and change opacity from turn
-/// to turn; counted, they make turns differ that have one picture. See
-/// `Frame.presented` for the rule.
+/// **Only a layer of the page's drawing that a person could see counts.**
+/// AppKit keeps layers of its own under a scroll view. The scroll pocket's mask
+/// and blur are hidden or under a hidden layer, have no area, and change
+/// opacity from turn to turn; counted, they make turns differ that have one
+/// picture. The overlay scroller's knob is in sight while it flashes: after a
+/// switch of the Log page's level tabs it showed its knob and then stepped it
+/// down to nothing, on a clock of AppKit's own (the model value moved with the
+/// presented one, and neither the knob's layer nor any layer above it had an
+/// animation), and `cacheDisplay` does not draw it. The scroll bar belongs to
+/// the system's chrome, not to the page's drawing, and its flash is not a
+/// transition between tabs, so a layer whose delegate is an `NSScroller` is not
+/// counted and nothing under it is walked. See `Frame.presented` for the rule.
 @MainActor
 public enum FrameRecorder {
 
@@ -44,9 +51,14 @@ public enum FrameRecorder {
         /// sublayers arriving or leaving at a whole opacity does not make a turn
         /// differ; one on its way does.
         ///
-        /// Only a layer a person could see is counted, and its sublayers are
-        /// walked only when it lets them show:
+        /// Only a layer of the page's drawing that a person could see is
+        /// counted, and its sublayers are walked only when it lets them show:
         /// - a hidden layer is not counted and neither are its sublayers;
+        /// - a layer whose delegate is an `NSScroller` (AppKit's scroll bar, the
+        ///   overlay knob's layer among its sublayers) is not counted and
+        ///   neither are its sublayers: the scroll bar is the system's chrome,
+        ///   whose knob the picture does not draw either, and its flash is not a
+        ///   transition between tabs;
         /// - a layer presenting opacity 0 is not counted and neither are its
         ///   sublayers, which are invisible under it whatever they present;
         /// - a layer whose bounds, converted into the view's layer, do not
@@ -95,7 +107,7 @@ public enum FrameRecorder {
         guard let root = view.layer else { return [] }
         var out: [Float] = []
         func walk(_ layer: CALayer) {
-            if layer.isHidden { return }
+            if layer.isHidden || layer.delegate is NSScroller { return }
             let opacity = layer.presentation()?.opacity ?? layer.opacity
             if opacity == 0 { return }
             let shown = root.convert(layer.bounds, from: layer).intersection(root.bounds)
@@ -136,12 +148,13 @@ public enum FrameRecorder {
     }
 
     /// Frames after the grace turns that differ from the last one, in their
-    /// picture or in their presented opacities (the layers a person could see,
-    /// as `Frame.presented` counts them). The failure says how many of those
-    /// frames had the settled picture and differed in the layers alone, so a
-    /// red row says whether to look at pixels or at layers. The subject is
-    /// asserted first: the drawing before and after the change must differ, or
-    /// «nothing moved» is about a change that never happened.
+    /// picture or in their presented opacities (the layers of the page's
+    /// drawing that a person could see, as `Frame.presented` counts them). The
+    /// failure says how many of those frames had the settled picture and
+    /// differed in the layers alone, so a red row says whether to look at
+    /// pixels or at layers. The subject is asserted first: the drawing before
+    /// and after the change must differ, or «nothing moved» is about a change
+    /// that never happened.
     public static func judge(_ shots: [Frame], before: Data, _ label: String,
                              file: StaticString = #filePath, line: UInt = #line) throws {
         let settled = try XCTUnwrap(shots.last)
