@@ -57,8 +57,14 @@ public enum PrivateFile {
         /// The name is the file. A symlink there is replaced by this write.
         case theName
         /// The name may only point at the file, and then the file is the
-        /// target. Every symlink in the path is resolved first, so the link
-        /// survives the write and what it points at receives it.
+        /// target. The folders above the name are read as the kernel reads them,
+        /// and the name is then followed link by link to its end, a link whose
+        /// target is not there yet too, so the link survives the write and what
+        /// it points at receives it. A loop of links, a chain too long to
+        /// follow, a folder that is not there (a link in the middle of the path
+        /// that points at nothing too) and a link whose text ends in `.`, `..` or a
+        /// slash lead to no file to write: the write is refused and the link
+        /// stays as it was.
         case whatItLeadsTo
     }
 
@@ -103,12 +109,21 @@ public enum PrivateFile {
 
     /// The same for bytes that are not JSON — the log's redaction salt, and the
     /// two files in `~/.ssh` that may be links into somebody's dotfiles.
+    ///
+    /// With `.whatItLeadsTo` the scratch inode is born beside the file the link
+    /// leads to, not beside the link, and that file's folder has to exist: a
+    /// refusal there leaves the link alone, which a rename onto the link's own
+    /// name would not. The bytes land in the file the kernel reaches through the
+    /// link, or the write is refused — except for a chain the kernel refuses as
+    /// too long, which `linkHops` can still follow (its own comment says why).
     public static func write(_ data: Data, to url: URL,
                              destination: Destination = .theName) -> Bool {
         let path: String
         switch destination {
         case .theName: path = url.path
-        case .whatItLeadsTo: path = PathCanonical.resolvingWholePath(url.path)
+        case .whatItLeadsTo:
+            guard let leads = whereTheKernelFollows(url.path) else { return false }
+            path = leads
         }
         guard let scratch = bornPrivate(beside: path) else { return false }
         do {
@@ -125,6 +140,56 @@ public enum PrivateFile {
             return false
         }
         return true
+    }
+
+    /// How many links at the name `whereTheKernelFollows` follows before it
+    /// takes the chain for a loop. `getconf SYMLOOP_MAX` answers 32 on this
+    /// system; no header of the SDK defines `SYMLOOP_MAX`, and the SDK's
+    /// sys/param.h has the kernel's own `MAXSYMLINKS`, 32 as well. The kernel
+    /// counts every link of the path against its limit, the links in the
+    /// folders above the name too; this counts only the links at the name, so
+    /// a chain under a folder that is itself a link can be followed here and
+    /// refused by the kernel.
+    private static let linkHops = 32
+
+    /// The file a name leads to, followed one link at a time: the folder above
+    /// the name, then the name in it, then the text of the link if it is one.
+    ///
+    /// **The folder comes from the kernel, never from the letters of a path.**
+    /// The kernel follows a link before a `..` that comes after it, so in `d/../t`
+    /// with `d` a link to `p/q` the file is `p/t`, while folding the `..` by its
+    /// letters gives `t` beside `d` — a place no gate that asked the kernel judged.
+    /// `realpath` is the kernel's reading of a folder that is there; a folder that
+    /// is not there, or that a link in the middle of its path leads nowhere, has
+    /// no such reading and the answer is `nil`. A name with nothing at it yet ends
+    /// the walk, spelled in the folder the kernel reads, whether it was handed in
+    /// or reached through a link, and the bytes are written there.
+    ///
+    /// `nil` also for a name that is still a link after `linkHops` hops (a loop
+    /// looks like that), and for a name that ends in nothing, `.` or `..` — there
+    /// is no file to put bytes in.
+    ///
+    /// Private, and not a resolver for anybody else: it answers what a write needs
+    /// and nothing a gate could judge by.
+    private static func whereTheKernelFollows(_ start: String) -> String? {
+        var name = start
+        for _ in 0...linkHops {
+            let slash = name.lastIndex(of: "/")
+            let leaf = slash.map { String(name[name.index(after: $0)...]) } ?? name
+            guard !leaf.isEmpty, leaf != ".", leaf != ".." else { return nil }
+            var folder = slash.map { String(name[..<$0]) } ?? "."
+            if folder.isEmpty { folder = "/" }
+            guard let real = realpath(folder, nil) else { return nil }
+            defer { free(real) }
+            let there = String(cString: real)
+            name = there == "/" ? "/" + leaf : there + "/" + leaf
+            var info = stat()
+            guard lstat(name, &info) == 0, info.st_mode & S_IFMT == S_IFLNK else { return name }
+            guard let link = try? FileManager.default.destinationOfSymbolicLink(atPath: name),
+                  !link.isEmpty else { return nil }
+            name = link.hasPrefix("/") ? link : (there == "/" ? "/" : there + "/") + link
+        }
+        return nil
     }
 
     /// The inode the bytes go into: 0600 from the `open` that makes it, beside
