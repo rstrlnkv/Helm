@@ -173,6 +173,76 @@ final class TheMainThreadNeverWaitsForTheKeychainTests: XCTestCase {
         XCTAssertEqual(source.reads, 1, "the warm ask went back to a keychain that had refused")
     }
 
+    // MARK: - The pool the warm-up must not take
+
+    /// Twice as many warm-ups as the pool runs threads at one priority, each over
+    /// its own cache on one port that sits on a gate, the way an unanswered
+    /// authorization dialog sits. The warm-ups are started from tasks at
+    /// `.userInitiated`. Once all of them are inside the port, or five seconds
+    /// have passed, a task that has nothing to do with the keychain is started
+    /// on the pool at `.userInitiated`, and then another at the default priority;
+    /// the row asks whether each runs within three seconds. Two probes because
+    /// the pool keeps its threads per priority and a probe only shows the
+    /// threads of its own priority held: the first catches a warm-up that blocks
+    /// on the thread it was called from or in a task at `.userInitiated`, the
+    /// second one that blocks in a task at the default priority.
+    ///
+    /// Everything is waited for from this synchronous method with semaphores and
+    /// a dispatch group, never from an `async` body that would itself need the
+    /// pool, so a starved pool fails the row with the sentence below rather than
+    /// hanging it. The gate is opened on every exit, and the warm-ups are waited
+    /// for, so no blocked thread outlives the row.
+    func testWarmingTheKeyOverAPortThatBlocksLeavesThePoolAbleToRunATask() {
+        let poolWidth = ProcessInfo.processInfo.activeProcessorCount
+        let calls = poolWidth * 2
+        let gate = DispatchSemaphore(value: 0)
+        let port = SealKeyProbe(gate: gate)
+        let finished = DispatchGroup()
+        defer {
+            for _ in 0..<calls { gate.signal() }
+            XCTAssertEqual(finished.wait(timeout: .now() + 10), .success, """
+                the warm-ups did not come back after the gate was opened, so a blocked thread \
+                outlives this row
+                """)
+        }
+
+        for _ in 0..<calls {
+            let guarded = SettingGuard(keys: SealKeyCache(port))
+            finished.enter()
+            Task.detached(priority: .userInitiated) {
+                await guarded.warmKey()
+                finished.leave()
+            }
+        }
+
+        var inside = 0
+        let deadline = Date().addingTimeInterval(5)
+        while inside < calls,
+              port.waitUntilAsked(seconds: max(0, deadline.timeIntervalSinceNow)) {
+            inside += 1
+        }
+        XCTAssertGreaterThan(inside, 0, """
+            no warm-up reached the port in 5 s, so nothing below is about a pool whose \
+            threads are held by the keychain
+            """)
+
+        let ran = DispatchSemaphore(value: 0)
+        Task.detached(priority: .userInitiated) { ran.signal() }
+        XCTAssertEqual(ran.wait(timeout: .now() + 3), .success, """
+            with \(inside) of \(calls) warm-ups inside a port that blocks (pool width \
+            \(poolWidth)), a fresh task did not run in 3 s: warmKey() holds the threads of the \
+            cooperative pool for as long as the keychain holds the answer
+            """)
+
+        let ranAtDefault = DispatchSemaphore(value: 0)
+        Task.detached { ranAtDefault.signal() }
+        XCTAssertEqual(ranAtDefault.wait(timeout: .now() + 3), .success, """
+            with \(inside) of \(calls) warm-ups inside a port that blocks (pool width \
+            \(poolWidth)), a fresh task at the default priority did not run in 3 s: warmKey() \
+            holds the threads of the cooperative pool for as long as the keychain holds the answer
+            """)
+    }
+
     /// What a background caller answered, across a queue boundary.
     private final class KeyBox: @unchecked Sendable {
         private let lock = NSLock()

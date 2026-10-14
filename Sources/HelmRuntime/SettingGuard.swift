@@ -79,9 +79,14 @@ public struct SettingGuard: Sendable {
     /// in it. Awaiting this suspends rather than blocks, so the window lays out
     /// and draws while the keychain is still deciding; with `SealKeyCache` in
     /// front of the port, the read that follows is then memory.
+    ///
+    /// The wait runs on a dispatch thread and not on the cooperative pool, which
+    /// runs at most one thread per core at any one priority: a dialog nobody has
+    /// answered parks one of them per call, and enough calls leave no other task
+    /// at that priority a thread to run on.
     public func warmKey() async {
         let keys = self.keys
-        await Task.detached(priority: .userInitiated) { _ = keys.key() }.value
+        await offTheCooperativePool(qos: .userInitiated) { _ = keys.key() }
     }
 
     /// The key a MAC is stored under, beside the value's own.

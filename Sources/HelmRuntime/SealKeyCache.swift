@@ -31,9 +31,10 @@ import Foundation
 /// spending first use exactly once and refusing to remember a refusal are the
 /// two things worth a test, and neither could have one if they lived behind the
 /// real login keychain. The cost of that choice is that it has to be *put* in
-/// front of a port: `AppSettings.scanGuard` has it, and the two seal keys that
-/// do not — `RuleKeychain` and the one `DuplicatesSettings` builds — still pay a
-/// round trip per verdict.
+/// front of a port: `AppSettings.scanGuard` and `DuplicatesSettings.guardOfScanSettings`
+/// both have it, being one `SettingsSealKey.overScanSettings`. Autopilot's
+/// `KeychainRuleKey`, a bare `KeychainSealKey`, does not, and `SealedRules`
+/// holds that key itself once `resolvedKey()` has fetched it.
 ///
 /// ## Two locks, because one lock had two jobs
 ///
