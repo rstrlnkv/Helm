@@ -11,7 +11,7 @@ import XCTest
 /// `NSSearchField` has a history of its own, and it is a *persisted* one: give
 /// the control a `recentsAutosaveName` and AppKit writes the words that were
 /// searched for into the user defaults domain under exactly that key, where any
-/// process running as this user can read them. The two search bars this app has
+/// process running as this user can read them. The search bars this app has
 /// are fed the worst possible material for that — the Uninstaller's filter is
 /// typed against **the names of the applications on somebody's Mac**, and
 /// Homebrew's is **the packages they went looking for**. Both are the class of
@@ -26,12 +26,12 @@ import XCTest
 /// path and `recentSearches` stayed `[]` through everything this fixture could
 /// do to the field, Return included. `SettingsToolbar.makeSearchItem` wires a
 /// real `target`/`action` (`searchSubmitted(_:)`), so a Return now *is* a
-/// commit AppKit's own control recognises — and measured on this field,
-/// `recentSearches` reads `["wget"]` after one, in memory, whatever
-/// `recentsAutosaveName` is set to. `testTheFieldCarriesNoAutosaveNameAndRecordsNoRecents`
-/// reads that in full: empty at mount, still empty after typing without a
-/// commit, and holding the committed word only after one — the in-memory
-/// list this control keeps regardless of persistence.
+/// commit AppKit's own control recognises — and measured on this field with
+/// `recentsAutosaveName` nil, `recentSearches` holds the committed word after
+/// one, in memory. `testTheFieldCarriesNoAutosaveNameAndRecordsNoRecents`
+/// reads that: still empty after typing without a commit, and holding the
+/// committed word after one — the in-memory list this control keeps
+/// regardless of persistence.
 ///
 /// **`recentsAutosaveName` is the load-bearing reading, and the in-memory list
 /// is not.** `field.recentsAutosaveName = nil` (`makeSearchItem`) is what
@@ -43,6 +43,16 @@ import XCTest
 /// is the canary that shows the other half of the mechanism working end to
 /// end on this very control, so the guard above it is standing in front of
 /// something measured rather than something quoted from documentation.
+///
+/// **The domain is every test process's, so the sweep judges only a word of
+/// this run's own.** The defaults domain a test process reads is shared by
+/// every test process on the Mac, and a key left in it by another run, an
+/// older build or a tool can carry any word, a typical search term included. A
+/// sweep for such a word cannot tell that leftover from a write of this
+/// fixture's, so each row draws its word fresh (`word`), a string no earlier
+/// run and no other process had a reason to store: a key that carries it was
+/// written while this row ran. A key left from before this run is never read
+/// as this row's write, and nothing here removes it.
 ///
 /// **The bar.** Every row reads a real `SettingsToolbar` that
 /// `LivePageInTheToolbarFixture` attaches to the mount's window, built with the
@@ -84,10 +94,11 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
     }
 
     /// What gets typed. Not a visible string and not looked up: it stands for a
-    /// word off somebody's own Mac, and it is searched for by name in the
-    /// defaults domain below, so it has to be a word this fixture is the only
-    /// plausible source of.
-    private static let word = "wget"
+    /// word off somebody's own Mac, and it is searched for by value in the
+    /// defaults domain below. It is drawn fresh for each row of each run, with a
+    /// prefix (`helmprobe`) that names the fixture in a listing of the domain, so
+    /// whatever carries it was put there by this row's field and by nothing else.
+    private let word = "helmprobe" + UUID().uuidString.lowercased().replacingOccurrences(of: "-", with: "")
 
     /// **The guard.** Nothing about the field this toolbar builds carries a
     /// history.
@@ -114,19 +125,19 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
             the field arrived already carrying the autosave name \
             «\(field.recentsAutosaveName ?? "")» — before anything here touched it. AppKit \
             writes the searched-for words into the user defaults domain under that key, and \
-            this app's two search bars are typed with the names of somebody's applications and \
-            the packages they looked for
+            this app's search bars are typed with, among other things, the names of somebody's \
+            applications and the packages they looked for
             """)
 
         // And the word has to actually land, or "no history" is a reading of a
         // field nobody typed into.
-        XCTAssertTrue(fixture.mount.type(Self.word),
-                      "the field went away before «\(Self.word)» was typed")
-        XCTAssertEqual(field.stringValue, Self.word, """
-            precondition: «\(Self.word)» never reached the control — it reads «\
+        XCTAssertTrue(fixture.mount.type(word),
+                      "the field went away before «\(word)» was typed")
+        XCTAssertEqual(field.stringValue, word, """
+            precondition: «\(word)» never reached the control — it reads «\
             \(field.stringValue)» — so nothing below is a reading about a field with a word in it
             """)
-        XCTAssertEqual(page.text, Self.word, """
+        XCTAssertEqual(page.text, word, """
             precondition: the keystrokes never reached the binding, so this is not the control \
             the page is wired to and its history is not the one at stake
             """)
@@ -159,18 +170,19 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
         // what has been committed regardless of `recentsAutosaveName` — that
         // flag governs persistence, not the in-memory list. The word landing
         // here is not the leak this file guards against; the next assertion,
-        // against the defaults domain itself, is.
-        XCTAssertEqual(field.recentSearches, [Self.word], """
-            \(field.recentSearches) — committing "wget" no longer lands in the field's own \
+        // against the defaults domain itself, is, and it looks for this row's
+        // own word only.
+        XCTAssertEqual(field.recentSearches, [word], """
+            \(field.recentSearches) — committing «\(word)» no longer lands in the field's own \
             in-memory recent-search list, which is a real change in how this control commits \
             and worth noticing on its own even though it is not the leak this file exists to \
             catch
             """)
 
         // And the domain itself, which is the file the whole question is about.
-        let carrying = Self.keysCarrying(Self.word)
+        let carrying = Self.keysCarrying(word)
         XCTAssertEqual(carrying, [], """
-            «\(Self.word)» was typed into the search bar and came out in the user defaults \
+            «\(word)» was typed into the search bar and came out in the user defaults \
             domain under \(carrying). That is a word off somebody's Mac in a file every \
             process running as this user can read
             """)
@@ -202,52 +214,54 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
 
         // Registered before the key can exist, and as a teardown block rather
         // than a `defer`, so it outlives a failure anywhere below.
-        addTeardownBlock { UserDefaults.standard.removeObject(forKey: Self.plantedName) }
-        XCTAssertNil(UserDefaults.standard.object(forKey: Self.plantedName), """
-            precondition: «\(Self.plantedName)» is already in the defaults domain, so the \
+        let plantedKey = plantedName
+        addTeardownBlock { UserDefaults.standard.removeObject(forKey: plantedKey) }
+        XCTAssertNil(UserDefaults.standard.object(forKey: plantedName), """
+            precondition: «\(plantedName)» is already in the defaults domain, so the \
             reading below would be of somebody else's leftovers
             """)
 
-        field.recentsAutosaveName = Self.plantedName
-        XCTAssertEqual(field.recentsAutosaveName, Self.plantedName, """
+        field.recentsAutosaveName = plantedName
+        XCTAssertEqual(field.recentsAutosaveName, plantedName, """
             the field would not take an autosave name at all, which means the guard beside \
             this one is reading a property that does nothing on this system and proves nothing
             """)
 
-        XCTAssertTrue(fixture.mount.type(Self.word), "the field went away before the word was typed")
-        XCTAssertEqual(page.text, Self.word, "precondition: the word never reached the binding")
+        XCTAssertTrue(fixture.mount.type(word), "the field went away before the word was typed")
+        XCTAssertEqual(page.text, word, "precondition: the word never reached the binding")
         XCTAssertTrue(fixture.mount.pressReturn(), "Return never reached the field")
 
-        // A Return here would exercise the same real commit path the guard
-        // above already measured, landing the same word in `recentSearches` —
-        // this canary is not about the commit at all, only about what a
-        // *named* field then does with a recent it already holds, so the
-        // recent is handed over directly, deterministically, rather than
-        // typed and committed a second time for a fact this file already
-        // established.
-        field.recentSearches = [Self.word]
+        // The word is typed and committed with Return, as the guard above
+        // does, and then the recent is also handed over directly, so the list
+        // the named field holds is the word whatever the commit put in it.
+        // This canary is not about the commit, only about what a *named* field
+        // does with a recent it holds: the reading below cannot tell whether
+        // the commit or the hand-over put the word in the domain.
+        field.recentSearches = [word]
         fixture.settle(10)
 
-        XCTAssertEqual(field.recentSearches, [Self.word], """
+        XCTAssertEqual(field.recentSearches, [word], """
             the field did not keep the recent it was handed, so `recentSearches` is not a live \
             property of this control and the guard beside this one reads nothing
             """)
-        XCTAssertTrue(Self.keysCarrying(Self.word).contains(Self.plantedName), """
+        XCTAssertTrue(Self.keysCarrying(word).contains(plantedName), """
             a recent on a named field did not reach the defaults domain under \
-            «\(Self.plantedName)» — it holds \
-            \(String(describing: UserDefaults.standard.object(forKey: Self.plantedName))). \
+            «\(plantedName)» — it holds \
+            \(String(describing: UserDefaults.standard.object(forKey: plantedName))). \
             Either AppKit stopped persisting recents or it moved the key, and the guard beside \
             this one is then watching for a cost that is paid somewhere else
             """)
 
-        UserDefaults.standard.removeObject(forKey: Self.plantedName)
-        XCTAssertNil(UserDefaults.standard.object(forKey: Self.plantedName),
-                     "this fixture left «\(Self.plantedName)» behind in the defaults domain")
+        UserDefaults.standard.removeObject(forKey: plantedName)
+        XCTAssertNil(UserDefaults.standard.object(forKey: plantedName),
+                     "this fixture left «\(plantedName)» behind in the defaults domain")
     }
 
-    /// A name no part of the app uses, so what is found under it below was put
-    /// there by this fixture and by nothing else.
-    private static let plantedName = "com.helm.tests.ASearchKeepsNoHistoryOfWhatWasTyped"
+    /// A key no part of the app uses, different for each row of each run, so
+    /// what is found under it below was put there by this fixture and by nothing
+    /// else, and removing it by its exact name takes back only this run's own
+    /// write.
+    private let plantedName = "com.helm.tests.ASearchKeepsNoHistoryOfWhatWasTyped." + UUID().uuidString
 
     /// Every key in this process's defaults domain whose value carries `word`.
     ///
