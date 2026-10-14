@@ -20,6 +20,9 @@ import os
 /// direct call and does not enter this registry, which is phase-level only.
 public enum HelmActivity {
 
+    /// One open phase. Two phases may carry the same label — two scans running at
+    /// once both say `disk.scan` — and each is its own `Running` with its own
+    /// start.
     public struct Running: Sendable, Equatable {
         public let label: String
         public let started: Date
@@ -30,12 +33,18 @@ public enum HelmActivity {
     }
 
     /// A leaked interval must not grow without bound: this is the mechanism for
-    /// finding memory bugs and must not become one. Past the limit a phase runs
-    /// unregistered rather than failing — the work matters more than the record.
+    /// finding memory bugs and must not become one. The limit counts open phases,
+    /// not labels. Past it a phase runs unregistered rather than failing — the
+    /// work matters more than the record.
     public static let liveLimit = 64
 
     private static let lock = NSLock()
-    nonisolated(unsafe) private static var live: [String: Running] = [:]
+    /// Every registered phase, in the order it began.
+    nonisolated(unsafe) private static var live: [Running] = []
+    /// Phases that began past the limit, counted by label, so that an end can be
+    /// spent on them rather than on a registered phase; which end is spent on
+    /// which is `end`'s to say.
+    nonisolated(unsafe) private static var unregistered: [String: Int] = [:]
     private static let signposts = OSLog(subsystem: "com.helm.app", category: .pointsOfInterest)
 
     /// Runs `body` as a named phase. The `defer` closes the interval on every way
@@ -69,34 +78,55 @@ public enum HelmActivity {
 
     public static func begin(_ label: String) {
         lock.lock(); defer { lock.unlock() }
-        guard live.count < liveLimit else { return }
-        live[label] = Running(label: label, started: Date())
+        guard live.count < liveLimit else {
+            unregistered[label, default: 0] += 1
+            return
+        }
+        live.append(Running(label: label, started: Date()))
     }
 
+    /// Closes one phase of this label. An end carries nothing but the label, so
+    /// which phase it closes is decided here, not known. Past the limit the
+    /// unregistered phases of the label are spent first: the first ends of the
+    /// label to arrive go to them, whosever ends they are, so a registered phase
+    /// begun after an unregistered one can stay listed past its own end, until
+    /// the label's next end or the module's sweep takes it. Otherwise the newest
+    /// registered phase of the label goes: phases under one label that nest end
+    /// newest first, so the entry left is the one still running. Two that overlap
+    /// without nesting — two scans that end in the order they began —
+    /// leave the label listed as often as it is open, but with the start of the
+    /// one that ended. With nothing open under the label this does nothing.
     public static func end(_ label: String) {
         lock.lock(); defer { lock.unlock() }
-        live[label] = nil
-    }
-
-    /// Everything a module had open, dropped with the module. `ModuleHost` owns
-    /// the lifecycle, so it is the only place with standing to do this: a scan
-    /// task can outlive the engine that started it.
-    public static func sweep(module: String) {
-        lock.lock(); defer { lock.unlock() }
-        for key in live.keys where key == module || key.hasPrefix(module + ".") {
-            live[key] = nil
+        if let spilled = unregistered[label] {
+            unregistered[label] = spilled > 1 ? spilled - 1 : nil
+        } else if let index = live.lastIndex(where: { $0.label == label }) {
+            live.remove(at: index)
         }
     }
 
+    /// Everything a module had open, dropped with the module, every phase of
+    /// each of its labels. `ModuleHost` owns the lifecycle, so it is the only
+    /// place with standing to do this: a scan task can outlive the engine that
+    /// started it.
+    public static func sweep(module: String) {
+        lock.lock(); defer { lock.unlock() }
+        func owned(_ key: String) -> Bool { key == module || key.hasPrefix(module + ".") }
+        live.removeAll { owned($0.label) }
+        unregistered = unregistered.filter { !owned($0.key) }
+    }
+
+    /// One entry per open phase, so two phases under one label are two entries.
     public static var running: [Running] {
         lock.lock(); defer { lock.unlock() }
-        return Array(live.values)
+        return live
     }
 
     /// For tests, which must not inherit another test's phases.
     static func reset() {
         lock.lock(); defer { lock.unlock() }
         live.removeAll()
+        unregistered.removeAll()
     }
 
     /// The phrase that goes after a memory reading.
@@ -106,8 +136,12 @@ public enum HelmActivity {
     /// would hide the one class of defect this exists to surface.
     /// `excluding` is the phase asking. A phase's own line reports what it cost,
     /// and it knows its own name — what it cannot know is what else was running
-    /// beside it, which is the only thing worth appending. Without this the line
-    /// read `uninstaller.appSizes: 59 MB — nothing running`, which denies the
+    /// beside it, which is the only thing worth appending. It drops one phase,
+    /// the newest of that label, so a second phase under the same label is still
+    /// named. Nothing tells it which phase is asking: when the older of two asks,
+    /// the entry it drops is the newer one's and the age on the line is the
+    /// asker's own. Without this the line read
+    /// `uninstaller.appSizes: 59 MB — nothing running`, which denies the
     /// operation named at the start of the same sentence.
     ///
     /// «No phases running», not «nothing running»: an empty registry means no
@@ -117,7 +151,11 @@ public enum HelmActivity {
     /// reading of an idle app, and the line must not say it is.
     public static func describe(_ running: [Running], now: Date = Date(),
                                 excluding label: String? = nil) -> String {
-        let running = running.filter { $0.label != label }
+        var running = running
+        if let asking = running.indices.filter({ running[$0].label == label })
+            .max(by: { running[$0].started < running[$1].started }) {
+            running.remove(at: asking)
+        }
         guard !running.isEmpty else { return label == nil ? "no phases running" : "" }
         return running
             .sorted { $0.started < $1.started }
