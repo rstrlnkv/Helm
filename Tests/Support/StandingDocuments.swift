@@ -1,4 +1,5 @@
 import Foundation
+import XCTest
 
 /// The standing documents, named once.
 ///
@@ -14,9 +15,21 @@ public enum StandingDocuments {
     /// `.claude/agents` link, a symlink rather than a repo-relative path.
     private static let core = ["ARCHITECTURE.md", "CLAUDE.md", "README.md", "CHANGELOG.md"]
 
-    /// `core` and the pages `ARCHITECTURE.md` links.
-    public static func all() -> [String] {
-        core + ((try? RepoSource.text(of: "ARCHITECTURE.md")).map(linkedPages(in:)) ?? [])
+    /// `core` and the pages `hub` links, the hub being `ARCHITECTURE.md`.
+    ///
+    /// A hub that cannot be read records a failure at `file` and `line`, the
+    /// caller's own, and answers the four core documents: the pages it would have
+    /// linked are not known, and a list that ended there without a word would let
+    /// every check over the documents pass over fewer of them.
+    public static func all(hub: String = "ARCHITECTURE.md",
+                           file: StaticString = #filePath, line: UInt = #line) -> [String] {
+        do {
+            return core + linkedPages(in: try RepoSource.text(of: hub))
+        } catch {
+            XCTFail("the hub \(hub) could not be read, so the pages it links are not in the list: \(error)",
+                    file: file, line: line)
+            return core
+        }
     }
 
     /// The repo-relative pages a hub links, in link order — what the hub

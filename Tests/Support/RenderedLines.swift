@@ -63,8 +63,9 @@ public enum RenderedLines {
     ///
     /// `nil` for anything that would make the reading a guess — no bounds, no
     /// bitmap, a format this arithmetic does not understand, or a band running
-    /// off the end of the image. An empty array is a real answer: a band
-    /// holding nothing at all.
+    /// off the end of the image, or a band with no rows in it (both ends the
+    /// same point, which reads no pixel). An empty array is a real answer: a band that was read and
+    /// held nothing at all.
     public static func read(_ view: NSView, points band: ClosedRange<Int>? = nil,
                             margin: Int = 0, tolerance: Int = 12,
                             joining: CGFloat = 6) -> [Line]? {
@@ -81,7 +82,7 @@ public enum RenderedLines {
         } else {
             rows = 0..<rep.pixelsHigh
         }
-        guard !rows.isEmpty else { return [] }
+        guard !rows.isEmpty else { return nil }
         let columns = (margin * scale)..<(rep.pixelsWide - margin * scale)
         guard !columns.isEmpty else { return nil }
         let ground = Ground(pixel: background(data, rep, rows, columns), tolerance: tolerance)

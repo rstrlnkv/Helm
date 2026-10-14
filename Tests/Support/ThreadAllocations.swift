@@ -26,10 +26,13 @@ import Foundation
 ///
 /// The hook is libmalloc's `malloc_logger`, the slot MallocStackLogging
 /// installs into. It is not a declared interface, so `during` throws rather
-/// than answering zero when the slot cannot be found, and throws again rather
-/// than measure two calls at once through one set of counters: a benchmark
-/// reading "nothing was allocated" over a call nobody measured is a guard that
-/// cannot fail.
+/// than answering zero when the slot cannot be found, throws again rather
+/// than measure two calls at once through one set of counters, and throws a
+/// third time when a request it makes itself at the end of the call is not
+/// heard by the hook: a body can take the hook out, and counters left at zero
+/// by a call the hook did not hear are the same counters as a call that
+/// allocated nothing. A benchmark reading "nothing was allocated" over a call
+/// nobody measured is a guard that cannot fail.
 public enum ThreadAllocations {
 
     /// One call's requests, in bytes.
@@ -61,6 +64,12 @@ public enum ThreadAllocations {
         /// A measurement was already running: one set of counters cannot
         /// answer for two calls, and the second would silently take the first's.
         case alreadyMeasuring
+        /// The request `during` makes itself at the end of the call, before it
+        /// puts the slot back, was not heard by the hook, so nothing shows the
+        /// counters heard the rest of the call either. A body that takes the
+        /// hook out of the slot and leaves it out ends this way; the slot is
+        /// not read to decide it.
+        case hookWentDeaf
 
         public var description: String {
             switch self {
@@ -70,6 +79,9 @@ public enum ThreadAllocations {
             case .alreadyMeasuring:
                 return "a ThreadAllocations measurement is already running; these "
                      + "counters answer for one call at a time"
+            case .hookWentDeaf:
+                return "the hook did not hear a request made at the end of the call, so "
+                     + "the counters cannot be taken for a reading of the call"
             }
         }
     }
@@ -78,7 +90,9 @@ public enum ThreadAllocations {
     ///
     /// Synchronous by construction: the count belongs to the thread that calls
     /// this, so work the body hands to a queue or another thread is not in the
-    /// reading.
+    /// reading. Throws `Unmeasurable.hookWentDeaf` when the request `during`
+    /// makes itself at the end of the call is not heard by the hook; the slot
+    /// is put back as it was found on every exit.
     public static func during<T>(countingBlocksOfAtLeast blockFloor: Int,
                                  _ body: () -> T) throws -> (result: T, reading: Reading) {
         guard let slot = loggerSlot() else { throw Unmeasurable.noHook }
@@ -94,14 +108,25 @@ public enum ThreadAllocations {
         target = pthread_self()
         slot.pointee = record
         let result = body()
+        let reading = Reading(requested: requested,
+                              requests: requests,
+                              largestRequest: largest,
+                              requestedInBlocks: blockBytes,
+                              blocks: blockCount,
+                              blockFloor: blockFloor)
+        // One request of this function's own, made after the reading is taken
+        // and so in no reading: a body that allocates nothing leaves the
+        // counters at zero, and only a hook that is still in the slot hears
+        // this.
+        let heard = requests
+        // Through the zone's own entry point: one request of 16 bytes, freed at once.
+        let probe = malloc_zone_malloc(malloc_default_zone(), 16)
+        malloc_zone_free(malloc_default_zone(), probe)
+        let deaf = requests == heard
         slot.pointee = previous
         target = nil
-        return (result, Reading(requested: requested,
-                                requests: requests,
-                                largestRequest: largest,
-                                requestedInBlocks: blockBytes,
-                                blocks: blockCount,
-                                blockFloor: blockFloor))
+        if deaf { throw Unmeasurable.hookWentDeaf }
+        return (result, reading)
     }
 
     // MARK: - The hook

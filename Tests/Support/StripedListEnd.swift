@@ -8,14 +8,20 @@ import AppKit
 /// content insets, the table's own padding and whatever SwiftUI put in the
 /// document all count exactly as scrolling counts them. The list is then
 /// left at that offset for a number of run-loop turns — rows realised on the
-/// way down may change the document — and asked again until two readings
-/// agree, at most 8 tries; if none agree, the last reading is returned.
+/// way down may change the document — and asked again until two readings in a
+/// row agree, at most `tries` times; if no reading agrees with the one before
+/// it, `read` throws `NeverSettled` carrying the last two, since a reading
+/// nothing confirmed is not one to judge a list by.
 ///
 /// `overscroll` is what a person sees at the bottom of the list: the distance
 /// from the last row's bottom edge to the bottom of the visible area, a
 /// bottom content inset included. A list whose rows fill less than the clip view
 /// cannot scroll at all and reads `scrollable == false`.
 public enum StripedListEnd {
+
+    /// How many readings `read` takes before it gives up; at least 2, since the
+    /// first has nothing to agree with.
+    private static let tries = 8
 
     public struct Reading: CustomStringConvertible {
         public let rows: Int
@@ -34,6 +40,19 @@ public enum StripedListEnd {
                    + "insets=%.1f/%.1f maxOffset=%.1f overscroll=%.1f",
                    rows, rowHeight, documentHeight, lastRowMaxY, documentHeight - lastRowMaxY,
                    clipHeight, insetTop, insetBottom, maxOffset, overscroll)
+        }
+    }
+
+    /// The list was still moving after every try: no reading agreed with the
+    /// one before it.
+    public struct NeverSettled: Error, CustomStringConvertible {
+        /// The last two readings, as `Reading.description` spells them.
+        let lastTwo: [String]
+
+        public var description: String {
+            "the list never settled: no reading agreed with the one before it in "
+                + "\(StripedListEnd.tries) tries; the last two were "
+                + lastTwo.map { "[\($0)]" }.joined(separator: " and ")
         }
     }
 
@@ -61,13 +80,16 @@ public enum StripedListEnd {
     }
 
     /// Scrolls `table` to the furthest offset its clip view allows, lets the
-    /// page settle there, and reads.
+    /// page settle there, and reads. A reading that comes back agreed with the
+    /// reading before it; nil is a table with no scroll view or no document;
+    /// a list that is still moving after the last try throws `NeverSettled`.
     @MainActor
-    public static func read(_ table: NSTableView, host: NSView, settleTurns: Int = 20) -> Reading? {
+    public static func read(_ table: NSTableView, host: NSView, settleTurns: Int = 20) throws -> Reading? {
         guard let scroll = table.enclosingScrollView, let document = scroll.documentView else { return nil }
         let clip = scroll.contentView
-        var last: Reading?
-        for _ in 0..<8 {
+        var previous: Reading?
+        var tried = 0
+        while true {
             let far = NSRect(origin: NSPoint(x: clip.bounds.minX, y: 1_000_000), size: clip.bounds.size)
             let end = clip.constrainBoundsRect(far).origin
             clip.scroll(to: end)
@@ -77,13 +99,16 @@ public enum StripedListEnd {
                 RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
             }
             let reading = measure(table, scroll: scroll, document: document)
-            if let previous = last, abs(previous.maxOffset - reading.maxOffset) < 0.5,
-               abs(previous.documentHeight - reading.documentHeight) < 0.5 {
-                return reading
+            tried += 1
+            if let previous {
+                if abs(previous.maxOffset - reading.maxOffset) < 0.5,
+                   abs(previous.documentHeight - reading.documentHeight) < 0.5 {
+                    return reading
+                }
+                if tried == tries { throw NeverSettled(lastTwo: ["\(previous)", "\(reading)"]) }
             }
-            last = reading
+            previous = reading
         }
-        return last
     }
 
     /// **Where the list rests now, without scrolling it.** The same reading as

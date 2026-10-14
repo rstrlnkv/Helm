@@ -28,18 +28,31 @@ public enum RepoSource {
     /// The directory holding `Package.swift`, found by walking up from this
     /// file — which is in the repository by construction.
     ///
-    /// A wrong answer is not silent: every reader below throws when the file it
-    /// was asked for is not there, and the tests that use them assert what they
-    /// read before asserting anything about it.
+    /// When there is none above this file the process stops with the failure's
+    /// text rather than answer `/`: a static has no caller's line to fail at,
+    /// and every reader below would go on reading from a directory that is not
+    /// the repository, each failing on the file it could not find without
+    /// saying why.
     public static let root: URL = {
-        var url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        do {
+            return try RepoSource.root(above: URL(fileURLWithPath: #filePath).deletingLastPathComponent())
+        } catch {
+            fatalError("\(error)")
+        }
+    }()
+
+    /// The nearest directory at or above `start` that holds `Package.swift`,
+    /// the top of the disk itself not asked. Throws when there is none, naming
+    /// where it started.
+    public static func root(above start: URL) throws -> URL {
+        var url = start
         while url.pathComponents.count > 1 {
             if FileManager.default.fileExists(atPath:
                 url.appendingPathComponent("Package.swift").path) { return url }
             url = url.deletingLastPathComponent()
         }
-        return url
-    }()
+        throw UISources.Failure("no Package.swift at or above \(start.path)")
+    }
 
     /// A file of the repository, by its path from the root.
     ///
@@ -70,11 +83,9 @@ public enum RepoSource {
     /// relative because that is what `text(of:)` and `lines(of:)` take, and
     /// because a finding has to name a file somebody can open.
     ///
-    /// The enumerator carries its own error handler now: with none, Foundation
+    /// The enumerator carries its own error handler: with none, Foundation
     /// drops a subdirectory it could not read and moves on without a word, so
-    /// a mode-000 directory read as "empty" rather than "refused" — the same
-    /// failure this file's own promise, "fails on a file it cannot read", is
-    /// supposed to rule out.
+    /// a mode-000 directory read as "empty" rather than "refused".
     public static func swiftFiles(under relative: String) throws -> [String] {
         let base = root.appendingPathComponent(relative)
         var refusal: (any Error)?

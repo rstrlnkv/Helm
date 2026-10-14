@@ -1,4 +1,5 @@
 import AppKit
+import XCTest
 
 /// The rendered view tree, walked once instead of eleven times.
 ///
@@ -84,14 +85,27 @@ public extension NSRect {
     ///
     /// A frame read off a subview means nothing without the space it was read in,
     /// and a grouped form's section cards sit several containers down from the
-    /// host. Written three times in the VPN suite before it moved here — and one
-    /// of the three had the bug the comment below records.
+    /// host.
     ///
-    /// **The last match, not the first.** That is what the hand-written walk this
-    /// replaces answered: it overwrote its answer on every hit rather than
-    /// stopping, and the two are different views whenever a container has the
-    /// same frame as the thing inside it — which a card and its row do.
-    func superview(in root: NSView) -> NSView {
-        root.everyViewWithAncestry.last { $0.view.frame == self }?.ancestry.last ?? root
+    /// **The last match, not the first.** The two are different views whenever a
+    /// container has the same frame as the thing inside it — which a card and its
+    /// row do: the walk is outermost first, so the last match is the inner view,
+    /// and its superview is the answer.
+    ///
+    /// **A frame with no superview in the tree is a failure at the caller's
+    /// line.** When no view under `root` has the frame, or only `root` itself
+    /// has it, there is no superview in the tree to answer: the call records a
+    /// failure at `file` and `line` and returns `root`, so it stays usable from
+    /// a test method that does not throw.
+    func superview(in root: NSView, file: StaticString = #filePath, line: UInt = #line) -> NSView {
+        let match = root.everyViewWithAncestry.last { $0.view.frame == self }
+        guard let parent = match?.ancestry.last else {
+            XCTFail(match == nil
+                    ? "no view under the root has the frame \(self), so it has no superview in the tree"
+                    : "only the root has the frame \(self), so the space it was read in is no view under the root",
+                    file: file, line: line)
+            return root
+        }
+        return parent
     }
 }
