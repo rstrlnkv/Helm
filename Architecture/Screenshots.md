@@ -121,10 +121,13 @@ and is what the move then finds there (`.changed`). The after-shot window does n
 the file gone or changed, in either of the gate's words for it, and the folder's refusal share
 one sentence («moved or changed … saved as a separate file»); the gate's other reasons
 and the Trash's have their own. A shot that had no file replaces nothing: when the edit changes
-something it is saved as a new shot, or only copied under the clipboard target, as any shot is. **Esc and a
-Return that changed nothing write nothing:** Esc, and Return with no layer and the area still the whole picture, give
-the shot back to the after-shot window as it was, at its place in the group (`ShotToast.editorClosed`), and so does
-⌘C of a shot that has a file, which copies the edit and replaces nothing.
+something it is saved as a new shot, or only copied under the clipboard target, as any shot is. **Esc writes nothing, nor
+does a Return that changed nothing, nor a ⌘S or Share that changed nothing of a shot that has a file** — a change is a layer,
+another display or an area that is not the whole picture (`CaptureController.ShotEdit.changes`, the one predicate): each
+gives the shot back to the after-shot window as it was, at its place in the group (`ShotToast.editorClosed`), a Share at the
+newest place and asking for its sheet on the file that is there (none opens while another sheet is open, nor over a file
+that is gone); and so does ⌘C of a shot that has a file, which copies the edit and replaces nothing. ⌘S and Share of a shot
+with no file are delivered, changed or not: there is no file to leave as it was.
 
 ## The editor's layers and stroked tools
 
@@ -389,12 +392,18 @@ Return does and then opens the system's sheet at the thumbnail (`thenShare`). A 
 whole display still arrives at `handOff` directly and does both, and the full-screen
 shortcut never comes through it. Esc and a right click are one door, except that in an Edit a right click beside the picture or on another display does nothing (the ways out of an Edit are Done, ✕ and Esc): with no layers they
 close at once, with layers the first press shows a plate and a second closes however
-late, and any other input withdraws the question; no clock is read.
+late, and any other input withdraws the question; no clock is read. ⌘C of a shot that has a file, when the edit changed
+something, leaves the clipboard the only place the changed picture lives, so once the clipboard has taken it the after-shot
+window says so on a note (`ShotToast.showNote`, «Copied to the clipboard») and its life starts over: a capsule over the room
+above the shots, which leaves with the window and is taken by a refusal, by the pointer's coming over a shot, by a new shot or
+by any shot leaving the list. It is not drawn when a refusal is up, nor said while the pointer is over a shot, nor said when the window
+went while the editor was open, and a copy the clipboard refuses is the refusal alone.
 
 ## The after-shot window
 
 The after-shot window (`ShotToast` in `Sources/Modules/Screenshots/UI/ShotToast.swift`) holds a list of shots, oldest
-first except that a shot the editor gives back stands at the index it left, whatever has left the list since, and never more than
+first except that a shot the editor gives back stands at the index it left, whatever has left the list since, unless a Share
+gave it back, which stands it as the newest; and never more than
 `ShotShelf.limit`: the shot past the limit pushes the oldest out, with the full picture it held if it had
 no file. One shot is the bare picture; a shot taken while another is still up joins it, and the group is a pile in the corner
 with a counter, which a click unfolds into a row reaching leftward, `ShotShelf.visible` shots wide, scrolled past that and resting
@@ -412,7 +421,7 @@ out of its group, and what is left of a group does not spend its life under the 
 in a white ring, its size `ShotThumbnail.fitted` (`Sources/Modules/Screenshots/Engine/Logic/ShotThumbnail.swift`) from the
 reduced copy's pixels, so the view that takes the hover, the click and the drag, and the drag's frame
 are one size while the capsule is down; a picture narrower than the capsule gets a window as wide as the capsule needs (`ShotCapsule.widest`),
-the ring unchanged and at the window's trailing edge, which is the edge `ShotToast.place` stands from the screen's. While the pointer is over a shot whose result is in, a capsule comes up over its lower edge:
+the ring unchanged and at the window's trailing edge, which is the edge `ShotToast.place` stands from the screen's. The note of a copy from the editor, centred on the window, has the same: while it is up the window is at least as wide as its capsule and `ShotToast.pictureFromTheScreen` on each side, so that the capsule stands whole on the part of the window the screen keeps, the window's right `ShotToast.shadowRoom` less that distance lying past the screen's edge. The window goes back to its width when the note is gone: at once when a shot or a refusal comes or a shot leaves, and once the note has faded when the pointer takes it. While the pointer is over a shot whose result is in, a capsule comes up over its lower edge:
 Edit (only where there is a file with its reading, or a held picture, to open on), Copy, Show in Finder (only for a shot with a file), Pin while `PinEntry.isOffered`, and ✕ after a divider;
 while it is up, the view that reports the hover is the picture and the capsule together, and on a picture narrower than the capsule both stand against the picture's trailing edge.
 A click on the picture is Edit (on a folded pile it unfolds the row): `CaptureSession.openEdit` lays the shot over a fresh freeze of the display under the pointer (`PictureOnScreen` in
@@ -426,7 +435,7 @@ the time is up, because an exit is not trusted. `dismiss` closes an open sheet a
 a panel that is never key, the hover tracking and the first click on it, how the pointer's events go while the Share
 sheet is up, whether AppKit sends an exit or an enter when the hover's view changes size under a still pointer, and of the
 group everything a real panel would show: the keys taken at the unfolding click and given back at the fold, a scroll over the
-row, a drag of several shots, the glass of the counter and of «N more», and whether a press in the empty room of the row's panel
+row, a drag of several shots, the glass of the counter and of «N more», and whether a press in the empty room of the row's panel, or in the room the note's width adds on the picture's left,
 falls through to what lies under it.
 
 ## Pins

@@ -403,29 +403,49 @@ struct CapturedShot {
     // MARK: - «Edit» on the thumbnail
 
     /// What an editor opened from the thumbnail was opened on: the picture over its freeze, and the shot whose file
-    /// a save replaces. `original` is nil for a shot that has no file, which has nothing to replace.
+    /// a save that changes something replaces. `original` is nil for a shot that has no file, which has nothing to replace.
     struct ShotEdit {
         let shown: PictureOnScreen
         let original: WrittenShot?
 
         /// What an exit of the editor does with the shot it was opened on. **`unchanged`**: Esc, and Return with no layer
-        /// and the area still the whole picture. Nothing is written, copied or trashed, and the shot goes back to the
-        /// window as it was (`ShotToast.editorClosed`). **`copied`**: ⌘C of a shot that has a file, which copies the edit and
-        /// replaces nothing (`CaptureSession.deliver`): the shot goes back as it was, and the copy is all that is done.
-        /// **`replaced`**: every other exit. The shot is let go, and what the exit makes of it arrives as a new shot, a pin
-        /// making none, a refused write one that has no file and a picture that could not be composed none.
+        /// and the area still the whole picture, of any shot; and ⌘S and Share the same way, of a shot that has a file.
+        /// Nothing is written, copied or trashed, and the shot goes back to the window as it was (`ShotToast.editorClosed`),
+        /// a Share asking for its sheet on the file that is there. **`copied`**: ⌘C of a shot that has a file, which copies
+        /// the edit and replaces nothing (`CaptureSession.deliver`): the shot goes back as it was, nothing is written or
+        /// trashed, and a copy of a changed picture is said on a note (`ShotToast.showNote`). **`replaced`**: every other exit.
+        /// The shot is let go, and what the exit makes of it arrives as a new shot, a pin making none, a refused write one
+        /// that has no file and a picture that could not be composed none. ⌘S and Share of a shot that has no file are
+        /// `replaced` whatever changed: there is no file to leave as it was, and they are delivered as any shot's are.
         enum End { case unchanged, copied, replaced }
+
+        /// Whether an exit leaves the picture other than the one the editor was opened on: a layer, another display, or an
+        /// area that is not the whole picture. The one predicate of what "nothing changed" is: `end(of:)` reads it for Return
+        /// (a display change's end included), ⌘S and Share, and `overlayFinished` reads it for whether ⌘C's copy is said; Esc
+        /// does not reach it, and the ends of ⌘C and Pin do not depend on it.
+        func changes(display: DisplayID, local: CGRect, layers: [Annotation]) -> Bool {
+            !layers.isEmpty || display != shown.display || local != shown.rect
+        }
+
+        /// Whether the result is the editor's Share. With an end that is `unchanged` the sheet is asked for on the shot that
+        /// came back (`ShotToast.editorClosed`); any other Share opens it on the shot its delivery makes (`handOff`'s `thenShare`).
+        func shares(_ result: OverlayResult) -> Bool {
+            if case .edited(_, _, _, .share) = result { return true }
+            return false
+        }
 
         func end(of result: OverlayResult) -> End {
             switch result {
             case .cancelled:
                 return .unchanged
             case .edited(let display, let local, let layers, let exit):
+                let untouched = !changes(display: display, local: local, layers: layers)
                 // No `default:`: a new exit must say here what it does to the shot, or it would replace it.
                 switch exit {
-                case .confirm: return layers.isEmpty && display == shown.display && local == shown.rect ? .unchanged : .replaced
+                case .confirm: return untouched ? .unchanged : .replaced
                 case .copy: return original == nil ? .replaced : .copied
-                case .save, .share, .pin: return .replaced
+                case .save, .share: return untouched && original != nil ? .unchanged : .replaced
+                case .pin: return .replaced
                 }
             case .window, .wholeDisplay:
                 return .replaced
@@ -514,12 +534,12 @@ struct CapturedShot {
         }
         let end = editing?.end(of: result)
         // The panels stay for the flash of a shot that is taken, ⌘C of a saved shot among them; they close at once for
-        // the rest, a Return that changed nothing among them. The delivery below does not wait for them, since its
+        // the rest, an end that is `unchanged` among them. The delivery below does not wait for them, since its
         // picture is the freeze's or the window's own.
         if end == .unchanged { overlay?.close() } else { overlay?.close(after: result) }
         flashing = overlay?.leaving == true ? overlay : nil
         overlay = nil
-        if let end { toast.editorClosed(givingBack: end != .replaced) }
+        if let end { toast.editorClosed(givingBack: end != .replaced, sharing: end == .unchanged && editing?.shares(result) == true) }
         delivering = true
         deliveryTask = Task {
             // Asked at the start and after every wait: a delivery cancelled by the
@@ -529,7 +549,7 @@ struct CapturedShot {
             case .cancelled:
                 break
             case .edited(let display, let local, let layers, let exit):
-                // A Return that changed nothing has nothing to write, copy or trash, and its shot is back in the window.
+                // An end that is `unchanged` has nothing to write, copy or trash: what becomes of its shot is `ShotToast.editorClosed`'s.
                 guard end != .unchanged else { break }
                 let image: CGImage?
                 if let editing {
@@ -546,7 +566,8 @@ struct CapturedShot {
                     // No `default:`: a new exit must say here what it does, or it would be a save.
                     switch exit {
                     case .copy where end == .copied:
-                        await copy(image)
+                        // A copy of a changed picture is the only place that picture lives: the window says so.
+                        await copy(image, saying: editing?.changes(display: display, local: local, layers: layers) == true)
                     case .confirm, .copy, .save, .share:
                         await handOff(CapturedShot(image: image, kind: .area),
                                       saves: exit != .copy, copies: exit != .save,
@@ -661,7 +682,8 @@ struct CapturedShot {
     /// type's. No shutter, since no picture was taken, and the thumbnail comes back whatever the setting says,
     /// since it is where the edit was asked for. A shot that had no file replaces nothing: it is saved as a new one,
     /// or only copied under the clipboard target, as any shot is. **The exits that leave the shot as it was do not come
-    /// here** (`ShotEdit.End`): Esc and a Return that changed nothing deliver nothing, and ⌘C of a shot that has a file is `copy`.
+    /// here** (`ShotEdit.End`): Esc and a Return that changed nothing, of any shot, and a ⌘S or Share that changed nothing,
+    /// of a shot that has a file, deliver nothing, and ⌘C of a shot that has a file is `copy`.
     func handOff(_ shot: CapturedShot, saves: Bool = true, copies: Bool = true,
                  fileEvenFromClipboard: Bool = false, thenShare: Bool = false, editing: ShotEdit? = nil) async {
         guard !Task.isCancelled else { return }
@@ -683,11 +705,19 @@ struct CapturedShot {
         copyTask = Task { await copy(image) }
     }
 
-    /// A picture to the clipboard and nothing else: the only thing said is a refusal. The capsule's Copy, and the editor's
-    /// ⌘C of a shot that has a file, whose shot is back in the window by then.
-    private func copy(_ image: CGImage) async {
+    /// A picture to the clipboard and nothing else: a refusal is said on the plaque, and with `saying` a copy the clipboard
+    /// took is said on a note beside the shot (`ShotToast.showNote`), which says nothing while a refusal is up, no shot is
+    /// in the window or the pointer is over a shot. The capsule's Copy, and the editor's ⌘C of a shot that has a file, whose
+    /// shot has been given back by then unless the window went while the editor was open; `saying` is for the edit's
+    /// picture, which no file holds.
+    private func copy(_ image: CGImage, saying: Bool = false) async {
         let delivery = await session.deliver(image, saves: false, copies: true)
-        if !Task.isCancelled, let refusal = delivery.refusals.first { toast.showRefusal(refusal) }
+        guard !Task.isCancelled else { return }
+        if let refusal = delivery.refusals.first {
+            toast.showRefusal(refusal)
+        } else if saying, delivery.copied {
+            toast.showNote(ScStr.copied)
+        }
     }
 
     /// The pile's Copy All: every finished shot of the group to the clipboard in one write.

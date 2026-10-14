@@ -720,6 +720,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         let s = try scene()
         let original = try await take(s, width: 400, height: 300)
         let overlay = try await openEditor(s)
+        draw(overlay, on: s.display(of: overlay))
         s.trash.after = { url in try? Data("squatter".utf8).write(to: url) }
         await finish(s, overlay, .save)
         guard case .picture(_, let caption, _)? = s.toast.model.content else { return XCTFail("\(String(describing: s.toast.model.content))") }

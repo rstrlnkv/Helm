@@ -9,10 +9,12 @@ import Module_Screenshots_Engine
 ///
 /// **A list of shots, bounded by `ShotShelf.limit`.** One shot is the bare picture; more are a pile in the corner,
 /// which a click unfolds into a row. The list is changed through `add`, `restore`, `update` and `remove`, and emptied
-/// whole by the `content` setter. `add` keeps it oldest first; `restore` puts a shot back at the index it left, which
-/// is not its place by age once an older shot has left the list, pushed out by the restore itself included. A shot gets
-/// onto it only by `add` or `restore`, and both go through `ShotShelf.add`, so the bound is its. A refusal is drawn in
-/// the list's place and does not end it: the shots are still what they were when the plaque goes.
+/// whole by the `content` setter. `add` keeps it oldest first; `restore` puts a shot back at the index it is given, the
+/// one it left or, for a Share, past the end (`ShotToast.editorClosed`), which is not its place by age once an older shot
+/// has left the list, pushed out by the restore itself included. A shot gets onto it only by `add` or `restore`, and both
+/// go through `ShotShelf.add`, so the bound is its. A refusal is drawn in the list's place and does not end it: the shots
+/// are still what they were when the plaque goes. A note is a sentence beside the shots and not in their place: the
+/// shots stay what is drawn, and a refusal takes the note.
 @MainActor final class ShotToastModel: ObservableObject {
     enum Content {
         case picture(CGImage, caption: String?, file: URL?)
@@ -40,6 +42,10 @@ import Module_Screenshots_Engine
     @Published private(set) var shots: [Shot] = []
     /// Only ever a `.refusal`.
     @Published private(set) var refusal: Content?
+    /// A sentence drawn over the room above the shots, about a copy made from the editor: never with a refusal, which
+    /// takes it (`say`), not said while the pointer is over a shot and taken by its coming (`pointer(over:)`), and gone
+    /// when a shot comes (`say(nil)`), when any shot leaves (`remove`) and with the window (`content`).
+    @Published private(set) var note: String?
     @Published var shown = false
     /// The pointer is over the single picture, or over the pile: the capsule is up.
     @Published var hovering = false
@@ -65,6 +71,8 @@ import Module_Screenshots_Engine
     var showOldest: () -> Void = {}
     var scroll: (CGFloat, Bool) -> Void = { _, _ in }
     var hoverChanged: (Bool) -> Void = { _ in }
+    /// What the toast does when the pointer takes the note, whose room may have made the window wider than what is left asks.
+    var noteTaken: () -> Void = {}
     /// The newest shot's own view, which the Share sheet is shown relative to and the pointer is asked against; set
     /// by that view once it is on a window.
     weak var anchor: NSView? { didSet { if anchor != nil { anchorAttached() } } }
@@ -84,6 +92,7 @@ import Module_Screenshots_Engine
             focus = nil
             offset = 0
             barShown = false
+            note = nil
             switch newValue {
             case .picture(let image, let caption, let file)?:
                 refusal = nil
@@ -129,8 +138,9 @@ import Module_Screenshots_Engine
         return nextID
     }
 
-    /// A shot that was taken off the list comes back as it was, with its own id, to the place it stood at: an index
-    /// past the end is the newest. It goes through the same bound as a new shot, so a full list pushes the oldest out.
+    /// A shot that was taken off the list comes back as it was, with its own id, at `index`: the place it stood at, or an
+    /// index past the end, which makes it the newest. It goes through the same bound as a new shot, so a full list pushes
+    /// the oldest out.
     func restore(_ shot: Shot, at index: Int) {
         append(shot)
         let newest = shots.removeLast()
@@ -153,11 +163,19 @@ import Module_Screenshots_Engine
     func remove(_ id: Shot.ID) {
         shots.removeAll { $0.id == id }
         if focus == id { focus = nil }
+        note = nil
     }
 
+    /// The refusal, or nil for none. Any new content of the window, a refusal included, takes the note.
     func say(_ refusal: Content?) {
         if case .picture? = refusal { return }
         self.refusal = refusal
+        note = nil
+    }
+
+    /// The note; its one caller (`ShotToast.showNote`) says it only over shots that are drawn.
+    func sayNote(_ text: String) {
+        note = text
     }
 
     // MARK: - What a shot offers
@@ -197,10 +215,18 @@ import Module_Screenshots_Engine
 
     // MARK: - From the views
 
-    /// The pointer's coming and going over the single shot or the pile.
+    /// The pointer's coming and going over the single shot or the pile. Its coming takes the note, which does not come
+    /// back when it goes: the capsule wins, though only on a short shot do the two stand in the same place.
     func pointer(over: Bool) {
         hovering = over
+        if over { takeNote() }
         hoverChanged(over)
+    }
+
+    private func takeNote() {
+        guard note != nil else { return }
+        withAnimation(HelmMotion.interface) { note = nil }
+        noteTaken()
     }
 
     /// The pointer's coming and going over one shot's view. In the row it moves the capsule to that shot. Folded, only
@@ -211,6 +237,7 @@ import Module_Screenshots_Engine
             if over {
                 focus = id
                 focused = view
+                takeNote()
             } else if focus == id {
                 focus = nil
             }
@@ -365,7 +392,8 @@ final class ShotPanel: NSPanel {
     private(set) var away: Double = 0
     /// Seconds since the row was last scrolled, nil once the scroll has come to rest and its bar is gone.
     private var sinceScroll: Double?
-    /// Seconds until the panel takes the folded pile's size: the fold is drawn inside the row's.
+    /// Seconds until the panel takes the size of what it shows: the fold is drawn inside the row's, and the note that
+    /// the pointer took fades inside the width it asked for.
     private var shrinkIn: Double?
     /// The shot whose write is not done: its result fills it, and so does the refusal of its own write (`showRefusal`).
     private var pending: ShotToastModel.Shot.ID?
@@ -399,6 +427,8 @@ final class ShotPanel: NSPanel {
         }
         model.dismiss = { [weak self] in self?.close() }
         model.hoverChanged = { [weak self] over in self?.setHover(over) }
+        // After the note has faded, as after a fold: the window keeps its width under it until then.
+        model.noteTaken = { [weak self] in self?.shrinkIn = HelmMotion.interfaceDuration }
         model.edit = { [weak self] in self?.onEdit() }
         model.copy = { [weak self] in self?.onCopy() }
         model.copyAll = { [weak self] in self?.onCopyAll() }
@@ -644,13 +674,28 @@ final class ShotPanel: NSPanel {
     /// The editor is closed, and its hold with it. **With `givingBack` the shot it was opened on returns: the same
     /// shot, with its picture, caption, file and reading, at the place it stood at in its group,** and the window
     /// shows it for a group's life, as it does a new shot. Without, the shot is let go, and whatever the exit made of
-    /// it comes as a new shot of its own.
-    func editorClosed(givingBack: Bool) {
+    /// it comes as a new shot of its own. A window that went while the editor was open holds nothing to give back.
+    ///
+    /// **With `sharing` it stands as the newest**, as the new shot of a Share does, and the Share sheet is asked for on
+    /// it (`requestShare`): none opens while another sheet is open, nor over a file that is gone.
+    func editorClosed(givingBack: Bool, sharing: Bool = false) {
         holds.remove(.editor)
         guard let kept = aside else { return }
         aside = nil
         guard givingBack else { return }
-        show(lasting: Self.life) { model.restore(kept.shot, at: kept.index) }
+        show(lasting: Self.life) { model.restore(kept.shot, at: sharing ? model.shots.count : kept.index) }
+        if sharing { requestShare() }
+    }
+
+    /// A sentence over the shots for the window's life, which saying it starts over: it goes with the window, and a
+    /// pointer over the picture holds the window, not the note. **It never takes a refusal's place, nor a refusal's time,
+    /// nor the capsule's:** while a refusal is up, no shot is drawn or the pointer is over a shot nothing is said and the
+    /// window's life is left as it was, and a refusal that comes, or a pointer that comes over a shot, takes the note
+    /// (`ShotToastModel.say`, `pointer(over:)`). Said for a copy that happened, so the caller asks after the clipboard has
+    /// taken it.
+    func showNote(_ text: String) {
+        guard model.showsShots, !model.hovering, model.focus == nil else { return }
+        show(lasting: Self.life) { model.sayNote(text) }
     }
 
     /// One step of the clock: true when the window's time is up. **The pointer's events are not trusted either way.** A
@@ -867,7 +912,8 @@ final class ShotPanel: NSPanel {
     }
 
     /// The panel takes the size of what it shows now and keeps its lower trailing corner: the row unfolding, a shot
-    /// leaving it, the fold once it is drawn. The screen is not chosen again, as `place` would by the pointer.
+    /// leaving it, the fold and the note's going once they are drawn. The screen is not chosen again, as `place` would
+    /// by the pointer.
     private func refit() {
         guard let panel, let host else { return }
         let size = host.fittingSize, frame = panel.frame
@@ -877,6 +923,9 @@ final class ShotPanel: NSPanel {
 
     /// The refusal's width.
     static let width: CGFloat = 252
+    /// How far from the screen's edges `place` stands a picture, the room round it not counted. `place`'s `inset` begins at
+    /// the same number, spelled there once more: a test reads that text for it.
+    static let pictureFromTheScreen: CGFloat = 20
     /// Clear round the picture for its shadow: the panel's own is off, and the picture's is drawn in this room. The
     /// shadow's blur and its offset down, both of the mockup's, fit in it.
     static let shadowRoom = HelmSpace.s8
@@ -912,6 +961,12 @@ struct ShotToastView: View {
                     .glassEffect(.regular, in: .rect(cornerRadius: HelmRadius.frame))
             } else if !model.shots.isEmpty {
                 shelf(model.shots)
+                    .overlay(alignment: .top) { if let note = model.note { noteLabel(note) } }
+                    // Said aloud once: nothing moves focus to a note that comes up beside the shot.
+                    .helmAnnounces(model.note)
+                    // In a window wider than the shots, as one is while the note asks for room, they stand against the
+                    // trailing edge, where the panel's own constraints keep them (`ShotToast.makePanel`).
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             } else {
                 Color.clear.frame(width: 1, height: 1)
             }
@@ -971,9 +1026,11 @@ struct ShotToastView: View {
                     .allowsHitTesting(row || age < ShotShelf.visible)
                     .accessibilityHidden(!row && age > 0)
             }
+            if let note = model.note { noteRoom(note) }
         }
-        // Room for the capsule where the picture is narrower than it; the ring stays round the picture, at the
-        // trailing edge, which is the one `ShotToast.place` stands 20 pt from the screen's.
+        // Room for the capsule where the picture is narrower than it, and for the note while one is up; the ring stays
+        // round the picture, at the trailing edge, which is the one `ShotToast.place` stands
+        // `ShotToast.pictureFromTheScreen` from the screen's.
         .frame(minWidth: row ? max(ShotShelf.width(count: count), ShotCapsule.widest) : ShotCapsule.widest,
                alignment: .bottomTrailing)
         .overlay(alignment: .bottomTrailing) {
@@ -1061,6 +1118,43 @@ struct ShotToastView: View {
         .buttonStyle(.plain)
         .glassEffect(.regular, in: .capsule)
         .transition(.opacity)
+    }
+
+    /// The note: the counter's and «N more»'s glass capsule at the scale's `rowDetail` size, its sentence on one line at
+    /// its own width, centred on the window, in the room above the shot that its shadow is drawn in. It takes no press,
+    /// and lets the pointer through to the shot.
+    private func noteLabel(_ text: String) -> some View {
+        noteCapsule(text)
+            .glassEffect(.regular, in: .capsule)
+            .padding(.top, HelmSpace.s1)
+            .allowsHitTesting(false)
+            .transition(.opacity)
+    }
+
+    /// The note's sentence with the capsule's side and top room round it, which is what the glass is drawn over.
+    private func noteCapsule(_ text: String) -> some View {
+        Text(text)
+            .font(HelmText.rowDetail.weight(.semibold))
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, HelmSpace.s3)
+            .padding(.vertical, HelmSpace.s2)
+            .frame(minHeight: Self.labelHeight)
+    }
+
+    /// What the note asks of the window's width, so that its whole capsule stands on the part of the window the screen
+    /// keeps: the note is centred, and the window's right `ShotToast.shadowRoom - ShotToast.pictureFromTheScreen` lies
+    /// past the screen's edge, so the window is at least the capsule and that much on each side. The room round the
+    /// picture, `ShotToast.shadowRoom`, is added to what is laid out here, so this is the capsule less
+    /// `pictureFromTheScreen` on each side. The capsule is laid out without height and drawn nowhere: it takes the room
+    /// and nothing else, is not read, and takes no press.
+    private func noteRoom(_ text: String) -> some View {
+        noteCapsule(text)
+            .hidden()
+            .frame(height: 0)
+            .padding(.horizontal, -ShotToast.pictureFromTheScreen)
+            .accessibilityHidden(true)
+            .allowsHitTesting(false)
     }
 
     /// The mockup's 22 pt, on no step of `HelmSpace`.
