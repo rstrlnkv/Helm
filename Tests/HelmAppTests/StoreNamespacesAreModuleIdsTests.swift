@@ -4,33 +4,42 @@ import HelmContract
 
 /// A store namespace is a module's id, and the id has one spelling.
 ///
-/// `NamespacedStore(namespace:)` decides which `module.<id>.*` keys a module
-/// reads and writes, so a namespace that disagrees with its descriptor's `id`
-/// does not fail — it reads a **different store**, which answers with defaults.
-/// The person sees their settings gone, and nothing anywhere is an error.
+/// `NamespacedStore(namespace:)` decides which `module.<id>.*` keys a module reads and writes, so
+/// a namespace that disagrees with its descriptor's `id` does not fail — it reads a **different
+/// store**, which answers with defaults. The person sees their settings gone, and nothing anywhere
+/// is an error.
 ///
-/// Eight sites spelled a namespace as a literal when this was written, and all
-/// eight happened to agree with their descriptor. That is the state this check
-/// exists to keep: agreement by construction rather than by coincidence, and
-/// the literal was never protecting anything — changing a descriptor id is
-/// already a breaking change for stored settings, and a second spelling only
-/// hides half of the breakage.
+/// The modules' namespaces were once literals, and they agreed with their descriptors by
+/// coincidence. This check exists to keep that agreement by construction: the literal was never
+/// protecting anything — changing a descriptor id is already a breaking change for stored
+/// settings, and a second spelling only hides half of the breakage.
 ///
-/// Six of the eight now read `<Module>Descriptor.id.rawValue` directly, which
-/// cannot drift. `UninstallerEngine`'s default store was the seventh and was
-/// argued to be unfixable — engine-side, where the descriptor is out of reach on
-/// purpose, since an engine importing a UI target would be a door past the
-/// transport. The door was the wrong way round: the engine declares `moduleID`
-/// and the descriptor reads *it*, so nothing has to import upward. The eighth,
-/// `"app"`, stays a literal because it belongs to the host and names no module,
-/// and that is what this first test is for.
+/// A module's namespace is now read from its id. `UninstallerEngine`'s default store was argued to
+/// be unfixable — engine-side, where the descriptor is out of reach on purpose, since an engine
+/// importing a UI target would be a door past the transport. The door was the wrong way round: the
+/// engine declares `moduleID` and the descriptor reads *it*, so nothing has to import upward.
+///
+/// The first test reads every line under `Sources/` that writes `NamespacedStore(namespace: "`
+/// and fails on a literal that is neither a registered module's id nor a key of
+/// `namespacesOfNoModule`, where a namespace that names no module is written down with its reason.
+/// A namespace spelled any other way, through a constant, a local or an expression, is not read
+/// here: `command grep -rnE 'NamespacedStore\(namespace: [^"]' Sources` lists those sites.
 @MainActor
 final class StoreNamespacesAreModuleIdsTests: XCTestCase {
 
-    /// The host's own namespace. Not a module, and deliberately named here
-    /// rather than pattern-matched, so adding a second non-module store is a
-    /// decision somebody writes down.
-    private static let hostNamespace = "app"
+    /// The namespaces a literal may spell without being a module's id, each with
+    /// its reason. They are named here rather than pattern-matched, so a store
+    /// that names no module is a decision somebody writes down, as an entry here.
+    /// A literal the first test reads that is neither a module's id nor a key of
+    /// this dictionary fails it.
+    private static let namespacesOfNoModule: [String: String] = [
+        "app": "The host's own settings (`AppSettings.store`), over "
+            + "`UserDefaults.standard`. It belongs to the host and names no module.",
+        "unhosted": "The in-memory store `ModuleViewModel.init(transport:)` builds. The host "
+            + "builds a live module's view model through it (`ModuleHost`, `enable`), and tests "
+            + "build theirs. Each such view model has a backing of its own, and every one of "
+            + "them shares this one namespace.",
+    ]
 
     private func code(_ line: String) -> String {
         guard let range = line.range(of: "//") else { return line }
@@ -63,10 +72,10 @@ final class StoreNamespacesAreModuleIdsTests: XCTestCase {
     }
 
     func testEveryNamespaceLiteralNamesARegisteredModule() throws {
-        let known = Set(ModuleRegistry.all.map { type(of: $0).id.rawValue })
-            .union([Self.hostNamespace])
-        XCTAssertGreaterThan(known.count, 5,
+        let registered = Set(ModuleRegistry.all.map { type(of: $0).id.rawValue })
+        XCTAssertGreaterThan(registered.count, 5,
                              "the registry answered with almost nothing, so this proves nothing")
+        let known = registered.union(Self.namespacesOfNoModule.keys)
 
         var offenders: [String] = []
         var found = 0

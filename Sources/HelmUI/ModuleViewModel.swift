@@ -14,10 +14,14 @@ import HelmRuntime
 /// own, as `VPNDescriptor` and `KeepAwakeDescriptor` do.
 @MainActor public final class ModuleViewModel: ObservableObject {
     public let transport: EngineTransport
-    /// The store this view model was built with. `init(transport:store:)` is how
-    /// a page and its engine come to read the same keys: it takes the store
-    /// `ModuleDescriptor.makeEngine(store:)` was handed. `init(transport:)` passes
-    /// none, and the store is then the empty one that initialiser builds.
+    /// The store this view model was built with. `init(transport:store:)` takes
+    /// it from the caller, and a caller that hands it the store
+    /// `ModuleDescriptor.makeEngine(store:)` was handed gives a page and its
+    /// engine the same keys. The host does not: `ModuleHost` hands its store to
+    /// `makeEngine(store:)` and builds the view model through `init(transport:)`,
+    /// so a live module's view model holds the empty store that initialiser
+    /// builds, and a page that read this property would find none of its
+    /// module's keys.
     public let store: NamespacedStore
 
     public init(transport: EngineTransport, store: NamespacedStore) {
@@ -31,11 +35,9 @@ import HelmRuntime
     /// is no module's id, so nothing written here lands under a module's keys.
     public convenience init(transport: EngineTransport) {
         self.init(transport: transport,
-                  store: NamespacedStore(namespace: Self.unhostedNamespace,
+                  store: NamespacedStore(namespace: "unhosted",
                                          backing: InMemoryKeyValueStore()))
     }
-
-    private static let unhostedNamespace = "unhosted"
 
     /// Fire-and-forget command to the engine.
     public func send(_ name: String, payload: Data = Data()) {
