@@ -41,6 +41,17 @@ import XCTest
 /// system, every module's UI, and the app shell, which is where two of the five
 /// sheets live.
 ///
+/// **What the scan takes for a sheet.** A line holding `.sheet(` whose first
+/// argument label, read after the paren on the same line or on the first
+/// non-blank line below it, is `isPresented` or `item` — the labels of SwiftUI's
+/// two overloads. Any other label marks a call of a function that happens to be
+/// named `sheet` (`ShotShelf.sheet(age:)` builds a value and presents nothing),
+/// which is no modal. A `.sheet(` whose label cannot be found is taken for a
+/// sheet: where the scan is unsure it reports. The price is the other direction:
+/// a presentation through a wrapper whose first label is some other word is not
+/// seen until that word joins `presentingLabels`. Dialogs are matched by their
+/// opener alone.
+///
 /// **One level deep, deliberately.** A sheet's source is the presentation
 /// closure plus the declaration of any view it constructs there; it does not
 /// recurse. A cancel button buried two views down would be a false report, and
@@ -96,10 +107,63 @@ final class EveryModalAnswersEscapeTests: XCTestCase {
 
     // MARK: - The scan
 
-    private static let sheetOpeners = [".sheet("]
+    private static let sheetOpener = ".sheet("
     private static let dialogOpeners = [".confirmationDialog(", ".alert("]
 
-    /// Every modal presented anywhere in the drawn tree.
+    /// The first argument labels of SwiftUI's two `sheet` overloads, which are the
+    /// labels of a call that presents. A label outside the set marks a call of a
+    /// function named `sheet`.
+    ///
+    /// Left out of the set, `item` turns red the `item` row, the row that follows
+    /// `RuleEditor` to its declaration and the floor on the sheets found;
+    /// `isPresented` turns red the rows of the last section that present through it,
+    /// the row of the shape `NewKeySheet` had and the floor on the sheets found. The
+    /// row that judges a fix by `item` and `isPresented` stays green either way.
+    private static let presentingLabels: Set<String> = ["isPresented", "item"]
+
+    /// Whether the line at `index` holds a `.sheet(` that presents, or one the scan
+    /// cannot tell from a presentation. One such `.sheet(` on the line is enough.
+    ///
+    /// The first argument label is read after the paren: on the same line, or, when
+    /// the paren ends the line, on the first non-blank line below it (comments are
+    /// blanked before the scan, so a comment line between is blank). The receiver is
+    /// never read — `self.`, `form.` and `X.` before `.sheet(` say nothing that the
+    /// label does not say better.
+    ///
+    /// - `isPresented` or `item` followed by a colon is a sheet.
+    /// - Another label followed by a colon is a call of a function named `sheet`.
+    /// - No label, no colon after the word (`.sheet(makeArguments())`), or nothing
+    ///   after the paren to the end of the file is taken for a sheet. The colon is
+    ///   looked for on the line the word stands on: a word whose colon stands on
+    ///   the next line has none.
+    ///
+    /// What turns it red: reading the bare text — any line with `.sheet(` is a sheet —
+    /// brings back the tree row and the rows of calls named `sheet`, all but the bare
+    /// call; reading the same line only brings back the call whose label is below the
+    /// paren; taking a `.sheet(` it cannot classify for no sheet turns the
+    /// cannot-classify row red.
+    private static func opensSheet(at index: Int, in lines: [String]) -> Bool {
+        let line = lines[index]
+        var from = line.startIndex
+        while let found = line.range(of: sheetOpener, range: from..<line.endIndex) {
+            from = found.upperBound
+            var tail = line[found.upperBound...].drop(while: \.isWhitespace)
+            var next = index + 1
+            while tail.isEmpty, next < lines.count {
+                tail = lines[next].drop(while: \.isWhitespace)
+                next += 1
+            }
+            let label = tail.prefix(while: { $0.isLetter || $0.isNumber || $0 == "_" })
+            let colon = tail.dropFirst(label.count).drop(while: \.isWhitespace).first == ":"
+            if label.isEmpty || !colon || presentingLabels.contains(String(label)) { return true }
+        }
+        return false
+    }
+
+    /// Every modal presented anywhere in the drawn tree: a line that `opensSheet`
+    /// takes for a sheet, or, failing that, one that holds a dialog opener. A line
+    /// is at most one modal, a sheet before a dialog, and a call of a function
+    /// named `sheet` is none.
     ///
     /// The view map is passed in rather than built here: `offenders` needs the
     /// same one, and reading every declaration in every drawn file twice for one
@@ -111,7 +175,7 @@ final class EveryModalAnswersEscapeTests: XCTestCase {
             for (index, raw) in lines.enumerated() {
                 let code = raw
                 let kind: Kind
-                if sheetOpeners.contains(where: code.contains) {
+                if opensSheet(at: index, in: lines) {
                     kind = .sheet
                 } else if dialogOpeners.contains(where: code.contains) {
                     kind = .dialog
@@ -206,6 +270,17 @@ final class EveryModalAnswersEscapeTests: XCTestCase {
 
     // MARK: - The rule
 
+    /// The rule over the tree: no modal without a way out for the keyboard.
+    ///
+    /// It is the row that notices a scan taking too much. The bare-text reading of
+    /// `.sheet(` turns it red on the line that calls a function named `sheet`. It
+    /// does not notice a scan taking too little: with `item`, with `isPresented`, or
+    /// with a `.sheet(` it cannot classify left out of the sheets, it stays green,
+    /// because a sheet the scan does not see is not an offender. For the two labels
+    /// that direction is held by the floors in the next section; the tree holds no
+    /// `.sheet(` the scan cannot classify, so for those the guard is a fixture: the
+    /// cannot-classify row of the last section is red when such a `.sheet(` is taken
+    /// for no sheet.
     func testEveryModalCanBeLeftFromTheKeyboard() throws {
         let found = try offenders().map(\.described).sorted()
 
@@ -226,6 +301,14 @@ final class EveryModalAnswersEscapeTests: XCTestCase {
     /// on a scan that reads nothing at all, so this is the leg that says the
     /// modals of this app reached the matcher — by name, because a count alone
     /// cannot tell «all found and clean» from «found none».
+    ///
+    /// A run prints one `MODAL-SCAN` line per modal found, sorted by file and line,
+    /// then `MODAL-SCAN total sheets=… dialogs=… all=…`. The row asserts the file
+    /// names and the floors below and compares the printed lines with nothing: they
+    /// are how a change to the opener rule is read, the list before and the list
+    /// after, line by line. A `.sheet(` the rule drops, or a call it adds, shows
+    /// there. Without `item` or without `isPresented` among the presenting labels
+    /// this row is red.
     func testTheScanFindsTheModalsThisAppDraws() throws {
         let found = try modals()
         let where_ = Set(found.map { URL(fileURLWithPath: $0.file).lastPathComponent })
@@ -240,6 +323,14 @@ final class EveryModalAnswersEscapeTests: XCTestCase {
 
         let sheets = found.filter { $0.kind == .sheet }
         let dialogs = found.filter { $0.kind == .dialog }
+
+        // Read from a run's log and compared with nothing here: one line per modal,
+        // then the line of totals.
+        for modal in found.sorted(by: { ($0.file, $0.line) < ($1.file, $1.line) }) {
+            print("MODAL-SCAN\(modal.described)")
+        }
+        print("MODAL-SCAN total sheets=\(sheets.count) dialogs=\(dialogs.count) all=\(found.count)")
+
         XCTAssertGreaterThanOrEqual(sheets.count, 5, "sheets found: \(sheets.map(\.described))")
         XCTAssertGreaterThanOrEqual(dialogs.count, 9, "dialogs found: \(dialogs.map(\.described))")
     }
@@ -248,6 +339,9 @@ final class EveryModalAnswersEscapeTests: XCTestCase {
     /// resolves `NewKeySheet(hvm:)` to the file that declares it, or every sheet
     /// whose content is a named view is judged on a two-line closure that could
     /// never contain a shortcut, and the rule reports all of them for ever.
+    ///
+    /// `RuleEditor` is presented by `.sheet(item:`, so this row is also red when
+    /// `item` is not among the presenting labels.
     func testASheetIsJudgedOnTheViewItPresents() throws {
         let presenting = try modals().filter { $0.named.contains("RuleEditor") }
 
@@ -259,7 +353,9 @@ final class EveryModalAnswersEscapeTests: XCTestCase {
 
     // MARK: - The rule can still fail
 
-    /// The shape `NewKeySheet` had, past the same matcher.
+    /// The shape `NewKeySheet` had, past the same matcher. It presents through
+    /// `.sheet(isPresented:`, so it is red when that label is not among the
+    /// presenting labels.
     func testTheRuleRecognisesASheetWithNoWayOut() {
         let source = """
             struct NewKeySheet: View {
@@ -284,6 +380,11 @@ final class EveryModalAnswersEscapeTests: XCTestCase {
 
     /// And the two fixes are not findings — the shortcut, and the exit command
     /// for a sheet whose only button is «Done».
+    ///
+    /// Both counts are zero for a scan that sees no sheet at all, so this row says
+    /// that a fix is accepted and not that the sheet beside it is seen: it is green
+    /// with `item` or with `isPresented` left out of the presenting labels. The rows
+    /// that follow the scan to its sheets are the ones that go red there.
     func testNeitherFixIsReported() {
         let bound = """
             struct RuleEditor: View {
@@ -365,10 +466,203 @@ final class EveryModalAnswersEscapeTests: XCTestCase {
                        "the scan is reading comments, so it reports its own explanation")
     }
 
+    // MARK: - What the comments of the scan say about the opener
+
+    /// The sentences the comments above make about the opener, each asserted once
+    /// with a message of its own: the class header (a wrapper under another first
+    /// label is not seen; dialogs are matched by their opener alone),
+    /// `opensSheet(at:in:)` (a comment line between the paren and the label is
+    /// blank; one presenting `.sheet(` on a line is enough; nothing after the paren
+    /// to the end of the file is a sheet; a colon on the next line is no colon) and
+    /// `modals(in:views:)` (a line is at most one modal, a sheet before a dialog).
+    func testTheOpenerIsReadAsItsCommentsSayIt() {
+        XCTAssertEqual(modalsIn("form.sheet(isShowing: $open) { Text(\"x\") }").map(\.line), [],
+                       "a `.sheet(` under the first label `isShowing:` was taken for a modal")
+        XCTAssertEqual(modalsIn("let a = X.alert(age: 1)").map(\.kind), [.dialog],
+                       "a dialog opener was not enough to make a dialog")
+
+        let commented = """
+            let a = X.sheet(
+                // a note between the paren and the label
+                age: 1
+            )
+            """
+        XCTAssertEqual(modalsIn(commented).map(\.line), [],
+                       "a comment line between the paren and the label hid the label")
+        XCTAssertEqual(modalsIn("let a = X.sheet(age: 1); form.sheet(isPresented: $o) { Text(\"x\") }").map(\.kind),
+                       [.sheet],
+                       "a call before a presentation on one line hid the presentation")
+        XCTAssertEqual(modalsIn("form.sheet(\n\n").map(\.kind), [.sheet],
+                       "a `.sheet(` with nothing after the paren to the end of the file was not taken for a sheet")
+        XCTAssertEqual(modalsIn("form.sheet(isPresented: $a) { Text(\"x\") }.alert(\"t\", isPresented: $b) {}").map(\.kind),
+                       [.sheet],
+                       "a line holding a sheet and a dialog was not exactly one modal, the sheet")
+        XCTAssertEqual(modalsIn("let a = X.sheet(age\n    : 1)").map(\.kind), [.sheet],
+                       "a label whose colon stands on the next line was read as a label")
+    }
+
+    // MARK: - A call of a function named `sheet` is no sheet
+
+    // Each row below holds one direction: a call of a function named `sheet`,
+    // whose first label is not a presenting one, is no modal.
+
+    /// A static member called `sheet`, with a label that presents nothing, is no modal.
+    /// Red under the bare-text reading of the opener.
+    func testAStaticMemberCallNamedSheetIsNoModal() {
+        XCTAssertEqual(modalsIn("let a = X.sheet(age: 1)").map(\.line), [],
+                       "a static member named `sheet` was taken for a modal")
+    }
+
+    /// A method called through `self` and named `sheet` is no modal; the receiver
+    /// is not what tells a call from a presentation.
+    /// Red under the bare-text reading of the opener.
+    func testASelfMethodCallNamedSheetIsNoModal() {
+        XCTAssertEqual(modalsIn("let a = self.sheet(for: x)").map(\.line), [],
+                       "a method named `sheet`, called through `self`, was taken for a modal")
+    }
+
+    /// A call whose label stands below the paren is no modal either: the label is
+    /// read from the next line, or the empty tail after the paren would be taken for
+    /// a sheet. Both assertions are red under the bare-text reading and under a
+    /// reading of the paren's own line only.
+    func testAStaticMemberCallWithItsLabelOnTheNextLineIsNoModal() {
+        let source = """
+            let a = X.sheet(
+                age: 1
+            )
+            """
+        XCTAssertEqual(modalsIn(source).map(\.line), [],
+                       "a call with its label on the next line was taken for a modal")
+        XCTAssertEqual(scanned(source).count, 0,
+                       "a call with its label on the next line was reported as a sheet with no way out")
+    }
+
+    /// A bare call of a function named `sheet` is no modal. It is red when the opener
+    /// is the text `sheet(` without its dot and no label is read: a line holding it is
+    /// then a sheet. It is green under each reading named above `presentingLabels`
+    /// and `opensSheet(at:in:)`, the bare-text one included, because the opener
+    /// starts with the dot and this line has none. It does not hold the label rule.
+    func testABareFunctionCallNamedSheetIsNoModal() {
+        XCTAssertEqual(modalsIn("let s = sheet(of: y)").map(\.line), [],
+                       "a bare call of a function named `sheet` was taken for a modal")
+    }
+
+    /// The shape the tree holds, `let sheet = ShotShelf.sheet(age: age)` in
+    /// `ShotToast.swift`, is no modal and so no offender. Both assertions are red
+    /// under the bare-text reading of the opener, the reading under which the tree row
+    /// reports that line.
+    func testTheTreesOwnShotShelfSheetCallIsNoModal() {
+        XCTAssertEqual(modalsIn("let sheet = ShotShelf.sheet(age: age)").map(\.line), [],
+                       "the tree's static call `ShotShelf.sheet(age:)` was taken for a modal")
+        XCTAssertEqual(scanned("let sheet = ShotShelf.sheet(age: age)").count, 0,
+                       "the tree's static call `ShotShelf.sheet(age:)` was reported as a sheet with no way out")
+    }
+
+    // MARK: - A presentation is still a modal
+
+    // Each row below holds the other direction: a presentation, or a `.sheet(` the
+    // scan cannot classify, is one modal of kind sheet and, with no way out in its
+    // closure, an offender.
+
+    /// `.sheet(isPresented:` is a modal and, with no way out, an offender.
+    /// Red when `isPresented` is not a presenting label.
+    func testSheetIsPresentedIsStillAModalWithNoWayOut() {
+        let source = "form.sheet(isPresented: $open) { Text(\"x\") }"
+        XCTAssertEqual(modalsIn(source).map(\.kind), [.sheet],
+                       "`.sheet(isPresented:` was not taken for a sheet")
+        XCTAssertEqual(scanned(source).map(\.line), [1],
+                       "a `.sheet(isPresented:` with no way out was not reported")
+    }
+
+    /// `self.sheet(isPresented:` inside an extension of `View` is a modal and, with
+    /// no way out, an offender; a `self.` receiver does not make it a call.
+    /// Red when `isPresented` is not a presenting label.
+    func testSelfSheetIsPresentedIsStillAModalWithNoWayOut() {
+        let source = """
+            extension View {
+                func shown(_ open: Binding<Bool>) -> some View {
+                    self.sheet(isPresented: open) { Text("x") }
+                }
+            }
+            """
+        XCTAssertEqual(modalsIn(source).map(\.kind), [.sheet],
+                       "`self.sheet(isPresented:` was not taken for a sheet")
+        XCTAssertEqual(scanned(source).map(\.line), [3],
+                       "a `self.sheet(isPresented:` with no way out was not reported")
+    }
+
+    /// `.sheet(item:` is a modal and, with no way out, an offender.
+    /// Red when `item` is not a presenting label, the only row of this section that is.
+    func testSheetItemIsStillAModalWithNoWayOut() {
+        let source = "form.sheet(item: $editing) { context in Text(context.name) }"
+        XCTAssertEqual(modalsIn(source).map(\.kind), [.sheet],
+                       "`.sheet(item:` was not taken for a sheet")
+        XCTAssertEqual(scanned(source).map(\.line), [1],
+                       "a `.sheet(item:` with no way out was not reported")
+    }
+
+    /// A `.sheet(` whose presenting label stands on the next line is a modal and an
+    /// offender. Red when `isPresented` is not a presenting label. It is green with
+    /// the next-line read removed: an empty tail is taken for a sheet anyway, so
+    /// this row does not hold that read; the call with its label below the paren
+    /// in the section above does.
+    func testSheetWithItsLabelOnTheNextLineIsStillAModalWithNoWayOut() {
+        let source = """
+            form.sheet(
+                isPresented: $open
+            ) { Text("x") }
+            """
+        XCTAssertEqual(modalsIn(source).map(\.kind), [.sheet],
+                       "a `.sheet(` with `isPresented:` on the next line was not taken for a sheet")
+        XCTAssertEqual(scanned(source).map(\.line), [1],
+                       "a `.sheet(` with `isPresented:` on the next line and no way out was not reported")
+    }
+
+    /// A `.sheet(isPresented: Binding(get: …` over several lines is one modal, named
+    /// by the line of its opener, and an offender. Red when `isPresented` is not a
+    /// presenting label.
+    func testSheetWithAMultiLineBindingIsStillOneModalWithNoWayOut() {
+        let source = """
+            form.sheet(isPresented: Binding(
+                get: { open },
+                set: { open = $0 }
+            )) { Text("x") }
+            """
+        XCTAssertEqual(modalsIn(source).map(\.kind), [.sheet],
+                       "a `.sheet(isPresented: Binding(get:…` over four lines was not one sheet")
+        XCTAssertEqual(scanned(source).map(\.line), [1],
+                       "a `.sheet(isPresented: Binding(get:…` with no way out was not reported on its first line")
+    }
+
+    /// A `.sheet(` the scan cannot classify (`makeArguments())` is a call, not a
+    /// label) is a modal and an offender: the guard leans toward reporting.
+    /// Red when such a `.sheet(` is taken for no sheet; both assertions go red.
+    func testASheetTheScanCannotClassifyIsStillAModalWithNoWayOut() {
+        let source = "form.sheet(makeArguments())"
+        XCTAssertEqual(modalsIn(source).map(\.kind), [.sheet],
+                       "a `.sheet(` with no readable label was not taken for a sheet")
+        XCTAssertEqual(scanned(source).map(\.line), [1],
+                       "a `.sheet(` with no readable label and no way out was not reported")
+    }
+
     /// A fixture read exactly as the tree is read, blanking and all — a fixture
-    /// taking a different path would be proving a scan nothing runs.
+    /// taking a different path would be proving a scan nothing runs. The one
+    /// place a fixture becomes a file; `scanned(_:)` and `modalsIn(_:)` both
+    /// read it from here.
+    private func fixture(_ text: String) -> [(String, [String])] {
+        [("fixture.swift", SwiftSource.code(text).components(separatedBy: "\n"))]
+    }
+
+    /// The offenders of a fixture, read through `fixture(_:)`.
     private func scanned(_ text: String) -> [Modal] {
-        Self.offenders(in: [("fixture.swift",
-                             SwiftSource.code(text).components(separatedBy: "\n"))])
+        Self.offenders(in: fixture(text))
+    }
+
+    /// The modals a fixture holds, before any judgement of their way out: the same
+    /// `modals(in:views:)` the tree goes through, over `fixture(_:)`.
+    /// `scanned(_:)` adds the judgement.
+    private func modalsIn(_ text: String) -> [Modal] {
+        let files = fixture(text)
+        return Self.modals(in: files, views: Self.declarations(in: files))
     }
 }
