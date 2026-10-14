@@ -86,4 +86,18 @@ final class ScanComparisonTests: XCTestCase {
             current: [item("/z", 1), item("/a", 2), item("/m", 3)])
         XCTAssertEqual(change.appeared.map(\.path), ["/z", "/a", "/m"])
     }
+
+    /// A folder that grew a little keeps both of its sizes in the change: the
+    /// old one in `went`, the new one in `appeared`, whole. What a banner makes
+    /// of it is `ScanNews`'s question; the journal's lists do not move.
+    func testAFolderThatGrewAMegabyteKeepsBothSizesWhole() {
+        let gigabyte = 1_000_000_000
+        let change = ScanComparison.between(
+            previous: [item("/Users/me/Downloads", 6 * gigabyte)],
+            current: [item("/Users/me/Downloads", 6 * gigabyte + 1_000_000)])
+        XCTAssertEqual(change.appeared.map(\.bytes), [6 * gigabyte + 1_000_000])
+        XCTAssertEqual(change.went.map(\.bytes), [6 * gigabyte])
+        XCTAssertTrue(change.stayed.isEmpty)
+        XCTAssertEqual(change.appearedBytes, 6 * gigabyte + 1_000_000)
+    }
 }

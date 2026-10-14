@@ -32,7 +32,8 @@ decision rather than beside the kill.
 
 `ScanComparison` is the arithmetic on those two lists and carries whether there was a
 previous one at all; `ScanNews` turns that into something worth saying, measured on
-appeared bytes alone, and reaches macOS through the one notification conversation in
-`NoticeChannel`. An attempt and a completion are two facts: a completion holds a module
-for the interval, an attempt for the shorter retry interval, and the attempt is written
-before the work so a crash mid-walk costs the gap rather than nothing.
+what appeared and on what grew, never on what went, and reaches macOS through the one
+notification conversation in `NoticeChannel`. An attempt and a completion are two
+facts: a completion holds a module for the interval, an attempt for the shorter retry
+interval, and the attempt is written before the work so a crash mid-walk costs the gap
+rather than nothing.

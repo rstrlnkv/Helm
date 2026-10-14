@@ -26,9 +26,9 @@ public enum ScanNews {
     /// import and which this target sits below; the sentence is written by
     /// whoever draws it, from these.
     public struct Finding: Equatable, Sendable {
-        /// How many items appeared since the previous scan.
+        /// How many items appeared or grew since the previous scan.
         public let count: Int
-        /// What they weigh together — the appeared list's own total.
+        /// What they add together: a new item whole, a grown one by its growth.
         public let bytes: Int
 
         public init(count: Int, bytes: Int) {
@@ -45,9 +45,21 @@ public enum ScanNews {
     /// ever ran.
     ///
     /// **Space that *went* is silent too.** The floor is asked of what appeared
-    /// alone, so somebody who emptied their Downloads folder is not congratulated
-    /// for it by an app that had nothing to do with it — a rule written against
-    /// `ScanChange.isSomething` gets that case wrong.
+    /// and of what grew, never of what went, so somebody who emptied their
+    /// Downloads folder is not congratulated for it by an app that had nothing
+    /// to do with it — a rule written against `ScanChange.isSomething` gets that
+    /// case wrong.
+    ///
+    /// **A path on both sides is measured by its difference.** The journal's
+    /// identity is path and size, so a folder that grew a megabyte sits in both
+    /// `appeared` and `went`, and its whole new size in `appearedBytes` would
+    /// announce six gigabytes of a folder that gained one. Here such a path
+    /// counts once, by what it grew, and a path that shrank counts nothing and
+    /// takes nothing off what else appeared. A path with no earlier size, in
+    /// `went` or `stayed`, is new and counts whole. The pairing is by path
+    /// here rather than a property of `ScanChange` because only the banner asks
+    /// the question; the journal keeps both sizes whole. A path repeated with
+    /// two sizes in one list is one item at its largest size on each side.
     ///
     /// There is deliberately no `startedByHand` parameter. The journal has one
     /// writer, `ScanCoordinator`, and it is the unattended path — so anything
@@ -56,8 +68,25 @@ public enum ScanNews {
     /// this codebase keeps paying for.
     public static func finding(in change: ScanChange, floor: Int = floorBytes) -> Finding? {
         guard change.hadPrevious else { return nil }
-        let bytes = change.appearedBytes
-        guard bytes >= floor else { return nil }
-        return Finding(count: change.appeared.count, bytes: bytes)
+        let news = measured(change)
+        guard news.bytes >= floor else { return nil }
+        return news
+    }
+
+    /// What appeared, with each path that was already there counted by its growth.
+    private static func measured(_ change: ScanChange) -> Finding {
+        func largest(_ items: [ScanItem]) -> [String: Int] {
+            items.reduce(into: [:]) { $0[$1.path] = max($0[$1.path] ?? 0, $1.bytes) }
+        }
+        let before = largest(change.went + change.stayed)
+        var count = 0
+        var bytes = 0
+        for (path, now) in largest(change.appeared) {
+            let grew = now - (before[path] ?? 0)
+            guard grew > 0 || before[path] == nil else { continue }
+            count += 1
+            bytes += grew
+        }
+        return Finding(count: count, bytes: bytes)
     }
 }

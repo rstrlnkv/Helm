@@ -69,9 +69,17 @@ public enum ScanRunner {
     /// accumulates across ticks, and a reset only clears it when the reset was
     /// somebody's hand rather than ours.
     ///
-    /// - Parameter tolerance: the notification and the counter are not read at
-    ///   the same instant, so the moment of the reset is compared against the
-    ///   nudge with a couple of seconds of slack.
+    /// A reset is a counter that reads less than before, or that gained less
+    /// than the time between the two readings. The second is an event a few
+    /// seconds into the tick, after which the counter reads more than at the
+    /// last tick and still less than it should; whether that event was our
+    /// nudge or a hand is asked of it exactly as of the first.
+    ///
+    /// - Parameter tolerance: the slack of both comparisons. The nudge
+    ///   notification and the counter are not read at the same instant, nor
+    ///   are the counter and the clock, so the moment of the reset is compared
+    ///   against the nudge, and the counter's gain against the elapsed time,
+    ///   with a couple of seconds of slack.
     public static func advance(_ previous: Idle?,
                                systemIdle: TimeInterval,
                                lastOwnNudge: Date?,
@@ -83,7 +91,12 @@ public enum ScanRunner {
         // A clock corrected backwards must not hand out idleness nobody earned;
         // negative elapsed time is discarded rather than trusted.
         let elapsed = max(0, now.timeIntervalSince(previous.readAt))
+        // A counter that is not climbing was reset between the readings, even
+        // when it still reads more than it did: it should have gained `elapsed`.
+        // The tolerance is the same slack the nudge comparison allows, since the
+        // counter and the clock are not read at one instant.
         let counterWasReset = systemIdle < previous.systemSeconds
+            || systemIdle + tolerance < previous.systemSeconds + elapsed
         let resetWasOurs: Bool = {
             guard counterWasReset, let nudge = lastOwnNudge else { return false }
             // When the counter was reset, in wall-clock terms.
