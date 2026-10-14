@@ -67,9 +67,14 @@ set -euo pipefail
 #     and NoOrphanTranslationsTests.
 #   - `windows`: the classes that put a window on the screen of whoever runs
 #     them, which every other tier leaves out before its filter is built. A
-#     class is one when its file's text, comments included, holds a word of
-#     two lists, or names a rig, or names a member of a class so found. The
-#     first list is the five calls that order a window or make it key or
+#     class is one when its file's text holds a word of two lists, or names
+#     a rig, or names a member of a class so found. The two lists read the
+#     raw text, comments and strings included: a word of them spelled in a
+#     string can still order a window (a selector string). The two marks
+#     that look for a name, the rig's and the member's, read what they found
+#     once more with the strings and the comments emptied, and a file whose
+#     name stands only in a string or a comment is no window file by them.
+#     The first list is the five calls that order a window or make it key or
 #     main: `orderFront`, `orderBack`, `makeKey`, `makeMain`,
 #     `NSApp.activate`. The second is the three spellings through which a
 #     test puts a window of the product on the screen: `.show()` (the
@@ -78,24 +83,45 @@ set -euo pipefail
 #     menu) and `windowed: true` (a `ShotToast` built so orders its panel in
 #     front when it shows). A rig is a file that holds a word of the first
 #     list and declares no test class; a class that names, as a whole word,
-#     something a rig declares at the head of a line is a window class too.
+#     something a rig declares at the head of a line is a window class too,
+#     when it names it in code.
 #     The third mark is one step deep: once the classes of the files found
 #     by the two lists and the rig are known, a file that names a member of
 #     one of them, the class declared in another file, is a window file, and
 #     its test classes are window classes. A member is named by the class's
-#     name as a whole word, a dot, then a letter or an underscore. The step
-#     is taken once, so a class found by it marks no further file. It reads
-#     one line at a time and the class's own name: a member named on the
-#     line after the name, through an alias of the class, or on an instance
-#     of it (`Class().member`) is not found, and such a class stays in its
-#     directory's tier. It is what finds
+#     name as a whole word, a dot, then a letter or an underscore, in code.
+#     The step is taken once, so a class found by it marks no further file.
+#     It reads one line at a time and the class's own name: a member named
+#     on the line after the name, through an alias of the class, or on an
+#     instance of it (`Class().member`) is not found, and such a class stays
+#     in its directory's tier. It is what finds
 #     TheLogHoldsAReaderThroughWhatNobodyTriedTests, which borrows the
 #     `Window` that TheLogKeepsAReaderWhereTheyWereTests orders in front.
-#     The two known false marks are `.show()` in
+#     The code of a file is what a walk of the text leaves, the one of
+#     `Tests/Support/SwiftSource.swift` written as an awk program in this
+#     script; it is no parser. Where it cannot tell it leans toward
+#     `windows`. An interpolation keeps its text, to the end of the line in
+#     a one-line string and to the close of a multi-line one. The file's raw
+#     text is given back, and the mark reads it as it read it before, when a
+#     one-line string is left open at the end of its line, when a string or
+#     a block comment is left open at the end of the file, when the text an
+#     interpolation keeps to the end of a line holds `"""` or `/*`, when
+#     `##"` or `#"""#` stands in code, or when a carriage return stands
+#     before the end of a line. A closed block comment leaves one space, so
+#     the names on its two sides are not one. A name in code that a marked
+#     file spells through an alias declared in another file, a rig two steps
+#     away, or a helper in an extension is not found, as before. The walk has
+#     one known hole: a bare regex literal that holds `//` or `/*` opens a
+#     comment there.
+#     After `//` the rest of its line is dropped; after `/*` everything up
+#     to the next `*/` in the file is dropped, over as many lines as that
+#     takes, and a name in what is dropped does not mark. With no `*/` after
+#     it the comment is open at the end of the file, and the raw text is
+#     read. Other shapes of Swift text that it reads wrongly may exist,
+#     unseen.
+#     The one known false mark is `.show()` in
 #     TheBarsTabsFoldByTheLayoutsVerdictTests, whose `rig.show()` is its own
-#     `Rig` and orders nothing, and the third mark in
-#     HostsTabsUnfoldWithoutABlinkTests, whose doc comment names another
-#     class's test method: both lie in `windows` all the same.
+#     `Rig` and orders nothing: it lies in `windows` all the same.
 #     `PanelRig.rig` is no word of either list and no mark: it builds its
 #     capture controller with a toast made `windowed: false`, which makes no
 #     panel, so a class that calls it lies where its marks put it, and in
@@ -295,7 +321,143 @@ if [ "${#TIER_NAMES[@]}" -gt 0 ]; then
 
   # What the files say, each read once over the whole of Tests/: a window
   # word anywhere in a file's raw text, the standing documents, and the
-  # classes. A rig is a file with a word of the first list and no class.
+  # classes. A rig is a file with a word of the first list and no class. The
+  # two lists of words stay raw on purpose: a word of them spelled in a
+  # string can still order a window (a selector), and the header says they
+  # read comments. A name is another matter, and the two marks that look for
+  # one, the rig's and the member's, ask a file that the raw reading found
+  # once more of its text read as code (`code_matches`): a rig's name or a
+  # class's in a string or a comment orders nothing. The censuses of the
+  # classes and of the rigs' declarations stay raw.
+  #
+  # The code of a file is the walk of `Tests/Support/SwiftSource.swift`,
+  # a line at a time with the state carried across lines, written as the one
+  # awk program below; it is no parser. In code, in this order: `//` drops
+  # the rest of the line, `/*` drops through the first `*/` (no nesting),
+  # then `#"""`, `#"`, `"""`, `"` open a string. Comments are looked for in
+  # code only, so a `//` in a string is no comment and a quote in a comment
+  # opens nothing. A string keeps its delimiters and loses its inside; a
+  # backslash in an ordinary string takes the next character with it, and a
+  # raw string has no escapes and closes on `"#` or `"""#`. Newlines stay,
+  # so the same grep is asked line by line. It differs from `SwiftSource`
+  # where it keeps a string's delimiters, which `SwiftSource.code` drops with
+  # the inside; where a closed block comment leaves one space, so the names
+  # on its two sides are not one; where an interpolation (`\(`, or `\#(` in a
+  # raw string) keeps the text verbatim from there, to the end of the line
+  # for a one-line string, where code resumes on the next line, and to the
+  # closing delimiter for a multi-line one, which leans toward `windows`; and
+  # where the walk cannot tell, the file is printed as it stands, so the mark
+  # falls back to the raw reading. It cannot tell when a one-line string is
+  # still open at the end of its line, when a string or a block comment is
+  # still open at the end of the file, when the text kept after an
+  # interpolation to the end of a line holds `"""` or `/*`, when `##"` or
+  # `#"""#` stands in code, and when a carriage return stands before the end
+  # of a line (a file with CR-only line ends is one record for awk). A reader
+  # that exits non-zero is refused, as `sed` is below.
+  # KNOWN HOLE: a bare regex literal that holds `//` or `/*` opens a
+  # comment, as it does in `SwiftSource`: `//` drops the rest of its line,
+  # `/*` everything up to the next `*/` in the file, over as many lines as
+  # that takes, and a name in what is dropped does not mark. With no `*/`
+  # after it the comment is open at the end of the file, and the file is
+  # printed as it stands.
+  CODE_READER='
+function nearer(s, a, b,   x, y) {
+  x = index(s, a); y = index(s, b)
+  if (x == 0) return y
+  if (y == 0) return x
+  return (x < y) ? x : y
+}
+{
+  raw[NR] = $0
+  if (bad) next
+  p = index($0, "\r")
+  if (p > 0 && p < length($0)) { bad = 1; next }
+  line = $0
+  res = ""
+  while (line != "") {
+    if (st == 0) {
+      p = match(line, "[/\"#]")
+      if (p == 0) { res = res line; line = ""; break }
+      res = res substr(line, 1, p - 1)
+      line = substr(line, p)
+      two = substr(line, 1, 2)
+      if (two == "//") { line = ""; break }
+      if (two == "/*") { st = 1; line = substr(line, 3); continue }
+      if (substr(line, 1, 3) == "##\"" || substr(line, 1, 5) == "#\"\"\"#") { bad = 1; break }
+      if (substr(line, 1, 4) == "#\"\"\"") { res = res "#\"\"\""; st = 5; line = substr(line, 5); continue }
+      if (two == "#\"") { res = res two; st = 4; line = substr(line, 3); continue }
+      if (substr(line, 1, 3) == "\"\"\"") { res = res "\"\"\""; st = 3; line = substr(line, 4); continue }
+      if (substr(line, 1, 1) == "\"") { res = res "\""; st = 2; line = substr(line, 2); continue }
+      res = res substr(line, 1, 1); line = substr(line, 2)
+    } else if (st == 1) {
+      p = index(line, "*/")
+      if (p == 0) { line = ""; break }
+      res = res " "; st = 0; line = substr(line, p + 2)
+    } else if (st == 2) {
+      p = nearer(line, "\\", "\"")
+      if (p == 0) { line = ""; break }
+      if (substr(line, p, 1) == "\"") { res = res "\""; st = 0; line = substr(line, p + 1); continue }
+      if (substr(line, p + 1, 1) == "(") {
+        tail = substr(line, p + 2)
+        if (index(tail, "\"\"\"") || index(tail, "/*")) bad = 1
+        res = res "\\(" tail; st = 0; line = ""; break
+      }
+      line = substr(line, p + 2)
+    } else if (st == 3) {
+      p = nearer(line, "\\", "\"\"\"")
+      if (p == 0) { line = ""; break }
+      if (substr(line, p, 1) == "\"") { res = res "\"\"\""; st = 0; line = substr(line, p + 3); continue }
+      if (substr(line, p + 1, 1) == "(") { res = res "\\("; st = 7; line = substr(line, p + 2); continue }
+      line = substr(line, p + 2)
+    } else if (st == 4) {
+      p = nearer(line, "\"#", "\\#(")
+      if (p == 0) { line = ""; break }
+      if (substr(line, p, 1) == "\"") { res = res "\"#"; st = 0; line = substr(line, p + 2); continue }
+      tail = substr(line, p)
+      if (index(tail, "\"\"\"") || index(tail, "/*")) bad = 1
+      res = res tail; st = 0; line = ""; break
+    } else if (st == 5) {
+      p = nearer(line, "\"\"\"#", "\\#(")
+      if (p == 0) { line = ""; break }
+      if (substr(line, p, 1) == "\"") { res = res "\"\"\"#"; st = 0; line = substr(line, p + 4); continue }
+      res = res "\\#("; st = 8; line = substr(line, p + 3)
+    } else {
+      close_at = (st == 7) ? "\"\"\"" : "\"\"\"#"
+      p = index(line, close_at)
+      if (p == 0) { res = res line; line = ""; break }
+      res = res substr(line, 1, p + length(close_at) - 1); st = 0; line = substr(line, p + length(close_at))
+    }
+  }
+  if (st == 2 || st == 4) bad = 1
+  out[NR] = res
+}
+END {
+  if (st != 0) bad = 1
+  for (k = 1; k <= NR; k++) print (bad ? raw[k] : out[k])
+}'
+  # The code of file $1 in CODE_OUT. The walk cannot tell for a file it
+  # cannot follow and prints the file as it stands; any other failure of the
+  # reader is a reading this script could not make.
+  code_of() {
+    local status
+    set +e
+    CODE_OUT="$(LC_ALL=C awk "$CODE_READER" "$1")"
+    status=$?
+    set -e
+    [ "$status" -eq 0 ] || refuse "cannot read $1 as code (awk exited $status) — refusing to expand a tier from a reading this script cannot make"
+  }
+  # Whether the text of file $2, read as code, holds a match of pattern $1 as
+  # grep reads it under the flags $3 (`E`, or `wE` for whole words). The count
+  # is cleared first, so that a call which does not run leaves it empty and not
+  # the one of an earlier call; an empty count is not `0`, so it reads as a
+  # match and the file stays marked.
+  code_matches() {
+    code_of "$2"
+    TIER_OUT=
+    tier_grep -c"$3" -e "$1" <<< "$CODE_OUT"
+    [ "$TIER_OUT" != 0 ]
+  }
+
   ORDERING='orderFront|orderBack|makeKey|makeMain|NSApp\.activate'
   tier_grep -rlE --include='*.swift' -e "$ORDERING"'|\.show\(\)|\.openMenu\(\)|windowed: true' "$TESTS"
   WORD_FILES="$TIER_OUT"
@@ -319,7 +481,16 @@ if [ "${#TIER_NAMES[@]}" -gt 0 ]; then
   RIG_USERS=""
   if [ -n "$RIG_ALTERNATIVES" ]; then
     tier_grep -rlwE --include='*.swift' -e "$RIG_ALTERNATIVES" "$TESTS"
-    RIG_USERS="$TIER_OUT"
+    RIG_CANDIDATES="$TIER_OUT"
+    while IFS= read -r CANDIDATE; do
+      [ -n "$CANDIDATE" ] || continue
+      case "$NL$WORD_FILES$NL" in
+        *"$NL$CANDIDATE$NL"*) continue ;;
+      esac
+      if code_matches "$RIG_ALTERNATIVES" "$CANDIDATE" wE; then
+        RIG_USERS="$RIG_USERS$CANDIDATE$NL"
+      fi
+    done <<< "$RIG_CANDIDATES"
   fi
   WINDOW_FILES="$WORD_FILES$NL$RIG_USERS"
 
@@ -330,14 +501,15 @@ if [ "${#TIER_NAMES[@]}" -gt 0 ]; then
   [ "$CLASS_ROWS_STATUS" -eq 0 ] || refuse "cannot read the test classes under $TESTS (sed exited $CLASS_ROWS_STATUS)"
 
   # The third mark, once: a file that names a member of a class of the files
-  # found so far (`Class.member`, the name a whole word) is a window file. A
-  # class named there is declared in a file already found, so a file the
-  # step adds is another than the one that declares it — a found file that
-  # names its own class matches too and was a window file already; classes
-  # found here are not asked about again. The names are first read as fixed
-  # strings with their dot, which finds a few files in two seconds where the
-  # one pattern over every name took twenty-two (measured on this tree with
-  # BSD grep); the pattern is then asked of those files alone.
+  # found so far (`Class.member`, the name a whole word, in the file's code)
+  # is a window file. A class named there is declared in a file already
+  # found, so a file the step adds is another than the one that declares it
+  # — a found file that names its own class matches too and was a window
+  # file already; classes found here are not asked about again. The names
+  # are first read as fixed strings with their dot, which finds a few files
+  # in two seconds where the one pattern over every name took twenty-two
+  # (measured on this tree with BSD grep); the pattern is then asked of those
+  # files alone, and of the code of those that are no window file yet.
   WINDOW_CLASSES=""
   NAMED=()
   while IFS=$'\t' read -r FILE CLASS; do
@@ -357,8 +529,20 @@ if [ "${#TIER_NAMES[@]}" -gt 0 ]; then
       NAMING+=("$NAMING_FILE")
     done <<< "$TIER_OUT"
     if [ "${#NAMING[@]}" -gt 0 ]; then
-      tier_grep -lE -e "(^|[^A-Za-z0-9_])($WINDOW_CLASSES)\\.[A-Za-z_]" "${NAMING[@]}"
-      WINDOW_FILES="$WINDOW_FILES$NL$TIER_OUT"
+      MEMBER_PATTERN="(^|[^A-Za-z0-9_])($WINDOW_CLASSES)\\.[A-Za-z_]"
+      tier_grep -lE -e "$MEMBER_PATTERN" "${NAMING[@]}"
+      MEMBER_CANDIDATES="$TIER_OUT"
+      MEMBER_FILES=""
+      while IFS= read -r CANDIDATE; do
+        [ -n "$CANDIDATE" ] || continue
+        case "$NL$WINDOW_FILES$NL" in
+          *"$NL$CANDIDATE$NL"*) continue ;;
+        esac
+        if code_matches "$MEMBER_PATTERN" "$CANDIDATE" E; then
+          MEMBER_FILES="$MEMBER_FILES$CANDIDATE$NL"
+        fi
+      done <<< "$MEMBER_CANDIDATES"
+      WINDOW_FILES="$WINDOW_FILES$NL$MEMBER_FILES"
     fi
   fi
 

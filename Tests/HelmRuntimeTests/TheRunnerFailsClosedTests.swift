@@ -388,7 +388,7 @@ final class TheRunnerFailsClosedTests: XCTestCase {
     /// Every program the runner starts besides `swift`. These, linked, and
     /// the stub are all the child's `PATH` holds, so a program the runner
     /// starts calling is added here or every row says `command not found`.
-    private static let tools = ["grep", "sed", "sort", "mktemp", "mv"]
+    private static let tools = ["grep", "sed", "sort", "mktemp", "mv", "awk"]
 
     private static func systemPath(of tool: String) throws -> String {
         for folder in ["/usr/bin", "/bin"] {
@@ -968,21 +968,26 @@ final class TheRunnerFailsClosedTests: XCTestCase {
     /// `--tier <name>` asks for a set of families by where they lie, and the
     /// runner turns it into one `--filter` of `Target\.Class/` addresses for
     /// `swift test`. The rows below hold it, and none of them keeps a list of
-    /// a directory's classes: `testEveryNameATierHandsSwiftIsATestClassUnderTests`
-    /// and `testEveryTestClassIsInExactlyTheTiersItsPlaceSays` read the tree
-    /// itself, through `SwiftSource`, and hold what the runner handed the stub
-    /// against that reading; the others hold the runner to the families it
-    /// handed over, to its refusals, and to a `Tests/` of the row's own making
-    /// for the tiers the tree has none of.
+    /// a directory's classes: some read the tree itself, through `SwiftSource`,
+    /// and hold what the runner handed the stub against that reading; others
+    /// hold the runner to the families it handed over and to its refusals,
+    /// over the tree or over a `Tests/` of the row's own making.
     ///
     /// **The window words are spelled in pieces.** A family whose file holds
     /// one of the words that order a window is left out of every tier but
     /// `windows`, and the runner reads the raw text of the file, comments
     /// included. This file computes the same rule, so a word spelled whole here
-    /// would take this class into `windows` and out of `HelmRuntimeTests`; so
-    /// would the name of a class that orders a window, written with a dot and a
-    /// letter behind it. `testEveryTestClassIsInExactlyTheTiersItsPlaceSays`
-    /// says where this class lies.
+    /// would take this class into `windows` and out of `HelmRuntimeTests`. The
+    /// name of a class that orders a window, written with a dot and a letter
+    /// behind it, and the name of what a rig declares, do the same in code. In
+    /// a comment, or in a string the runner can follow, it does not read them;
+    /// it does read the text that follows an interpolation in a string, to the
+    /// end of the line or to the close of a multi-line string, and the whole of
+    /// a file in which a one-line string is open at the end of its line or a
+    /// string or a block comment at the end of the file (the header of
+    /// `Scripts/test.sh`, on `windows`).
+    /// `testEveryTestClassIsInExactlyTheTiersItsPlaceSays` says where this
+    /// class lies.
     ///
     /// The five calls that order a window or make it key or main. A file
     /// holding one of them and no test class is a window rig.
@@ -1026,18 +1031,25 @@ final class TheRunnerFailsClosedTests: XCTestCase {
         let place: String
         /// The file holds one of the eight window words.
         let hasWindowWord: Bool
-        /// The file names something a window rig declares.
+        /// The file names, in code, something a window rig declares.
         let usesWindowRig: Bool
+        /// The same, read off the raw text: strings and comments included.
+        let usesWindowRigRaw: Bool
         /// The file calls the panel rig's builder.
         let namesThePanelRig: Bool
-        /// The file names a member of a class that the eight words or a rig
-        /// found, one step deep.
+        /// The file names, in code, a member of a class that the eight words
+        /// or a rig found, one step deep.
         let namesAWindowMember: Bool
+        /// The same, read off the raw text, the seeds read so too.
+        let namesAWindowMemberRaw: Bool
         /// The file names the standing documents.
         let readsTheDocuments: Bool
 
         var address: String { "\(target).\(name)" }
+        /// What the runner must hold in `windows`.
         var ordersAWindow: Bool { hasWindowWord || usesWindowRig || namesAWindowMember }
+        /// What the runner may hold in `windows` at most.
+        var markedByTheRawText: Bool { hasWindowWord || usesWindowRigRaw || namesAWindowMemberRaw }
     }
 
     /// Every test class under `Tests/`, by its address.
@@ -1053,12 +1065,14 @@ final class TheRunnerFailsClosedTests: XCTestCase {
     /// read off the file with comments and string bodies blanked. A window
     /// word and the standing documents are read off the raw text: a window
     /// word is any of the eight, the five calls and the three spellings. A rig
-    /// is a file with one of the five and no test class, and a class names it
-    /// when it uses, as a whole word, anything the rig declares at column one.
-    /// A class found by a window word or a rig is a seed, and a file that names
-    /// a member of a seed (the seed's name as a whole word, a dot, a letter or
-    /// an underscore) marks its classes too. The step is taken once: a class it
-    /// marks is no seed.
+    /// is a file with one of the five and no test class, its declarations read
+    /// off the raw text, and a class names it when it uses, in code and as a
+    /// whole word, anything the rig declares at column one. A class found by
+    /// a window word or a rig is a seed, and a file that names in code a member
+    /// of a seed (the seed's name as a whole word, a dot, a letter or an
+    /// underscore) marks its classes too. The step is taken once: a class it
+    /// marks is no seed. The two name marks are read off the raw text as well,
+    /// beside the code reading, and bound what the runner may hold in `windows`.
     private static let census = Result { try readCensus() }
 
     private static func readCensus() throws -> Census {
@@ -1081,6 +1095,8 @@ final class TheRunnerFailsClosedTests: XCTestCase {
         struct Reading {
             let path: String
             let raw: String
+            /// The file read as code: strings and comments emptied.
+            let code: String
             let classes: [String]
             /// One of the five calls: what makes a file with no class a rig.
             let hasOrderingWord: Bool
@@ -1094,7 +1110,7 @@ final class TheRunnerFailsClosedTests: XCTestCase {
         for file in try SwiftSource.code(under: "Tests") {
             let classes = matches(classLine, in: file.text).compactMap { group(3, of: $0, in: file.text) }
             let raw = try RepoSource.text(of: file.path)
-            readings.append(Reading(path: file.path, raw: raw, classes: classes,
+            readings.append(Reading(path: file.path, raw: raw, code: file.text, classes: classes,
                                     hasOrderingWord: !matches(orderingWord, in: raw).isEmpty,
                                     hasWindowWord: !matches(windowWord, in: raw).isEmpty,
                                     namesThePanelRig: !matches(panelRigCall, in: raw).isEmpty))
@@ -1110,17 +1126,23 @@ final class TheRunnerFailsClosedTests: XCTestCase {
             pattern: #"\b(?:"# + rigNames.sorted().map(NSRegularExpression.escapedPattern(for:))
                 .joined(separator: "|") + #")\b"#)
 
-        func usesRig(_ reading: Reading) -> Bool {
-            rigUse.map { !matches($0, in: reading.raw).isEmpty } ?? false
+        func usesRig(_ reading: Reading, raw: Bool = false) -> Bool {
+            rigUse.map { !matches($0, in: raw ? reading.raw : reading.code).isEmpty } ?? false
         }
-        var seeds: [String] = []
-        for reading in readings where reading.hasWindowWord || usesRig(reading) {
-            seeds += reading.classes
+        /// The step is taken twice, once on each reading, and the seeds of
+        /// each are the classes that reading found.
+        func memberPattern(raw: Bool) throws -> NSRegularExpression? {
+            var seeds: [String] = []
+            for reading in readings where reading.hasWindowWord || usesRig(reading, raw: raw) {
+                seeds += reading.classes
+            }
+            return seeds.isEmpty ? nil : try NSRegularExpression(
+                pattern: #"(^|[^A-Za-z0-9_])("# + Set(seeds).sorted().map(NSRegularExpression.escapedPattern(for:))
+                    .joined(separator: "|") + #")\.[A-Za-z_]"#,
+                options: [.anchorsMatchLines])
         }
-        let memberOfASeed = seeds.isEmpty ? nil : try NSRegularExpression(
-            pattern: #"(^|[^A-Za-z0-9_])("# + Set(seeds).sorted().map(NSRegularExpression.escapedPattern(for:))
-                .joined(separator: "|") + #")\.[A-Za-z_]"#,
-            options: [.anchorsMatchLines])
+        let memberOfASeed = try memberPattern(raw: false)
+        let memberOfARawSeed = try memberPattern(raw: true)
 
         var families: [String: Family] = [:]
         for reading in readings where !reading.classes.isEmpty {
@@ -1135,12 +1157,15 @@ final class TheRunnerFailsClosedTests: XCTestCase {
             } else {
                 throw SetupFailure(description: "\(reading.path) holds a test class and lies in no target's directory")
             }
-            let namesAMember = memberOfASeed.map { !matches($0, in: reading.raw).isEmpty } ?? false
+            let namesAMember = memberOfASeed.map { !matches($0, in: reading.code).isEmpty } ?? false
+            let namesAMemberRaw = memberOfARawSeed.map { !matches($0, in: reading.raw).isEmpty } ?? false
             for name in reading.classes {
                 let family = Family(target: target, name: name, place: place,
                                     hasWindowWord: reading.hasWindowWord, usesWindowRig: usesRig(reading),
+                                    usesWindowRigRaw: usesRig(reading, raw: true),
                                     namesThePanelRig: reading.namesThePanelRig,
                                     namesAWindowMember: namesAMember,
+                                    namesAWindowMemberRaw: namesAMemberRaw,
                                     readsTheDocuments: reading.raw.contains(documentsWord))
                 families[family.address] = family
             }
@@ -1208,8 +1233,11 @@ final class TheRunnerFailsClosedTests: XCTestCase {
     /// in words of its own: `swift` never ran, it was handed `--tier`, no
     /// `--filter` reached it, the tier handed it nothing, the tier did not say
     /// how many families it holds.
-    private func expand(_ tier: String, file: StaticString = #filePath, line: UInt = #line) throws -> Expansion? {
-        let run = try runner(Setup(arguments: ["--tier", tier], swiftPrints: Self.sequentialLog([Self.removable[0]])))
+    private func expand(_ tier: String, over tree: [String: String]? = nil,
+                        file: StaticString = #filePath, line: UInt = #line) throws -> Expansion? {
+        var setup = Setup(arguments: ["--tier", tier], swiftPrints: Self.sequentialLog([Self.removable[0]]))
+        setup.tree = tree
+        let run = try runner(setup)
         guard let started = run.swiftArguments else {
             XCTFail("swift never ran for --tier \(tier); \(run.said)", file: file, line: line)
             return nil
@@ -1483,10 +1511,11 @@ final class TheRunnerFailsClosedTests: XCTestCase {
     /// The owner's row: every test class lies in the tier of its directory,
     /// or in `windows` when it orders a window, and nowhere else. A class is a
     /// window class here when its file holds one of the eight window words, or
-    /// names what a rig declares, or names a member of a class so found (the
-    /// class's name as a whole word, a dot, then a letter or an underscore),
-    /// one step deep. The runner may hold more in `windows`, and asked is
-    /// only that none of them is also a class of its directory's tier.
+    /// names in code what a rig declares, or names in code a member of a class
+    /// so found (the class's name as a whole word, a dot, then a letter or an
+    /// underscore), one step deep. The runner may hold more in `windows`, up to
+    /// what the same marks find in the raw text of the files, and asked is
+    /// that none of them is also a class of its directory's tier.
     func testEveryTestClassIsInExactlyTheTiersItsPlaceSays() throws {
         guard let census = try censusOrFail() else { return }
         var tiers: [String: Set<String>] = [:]
@@ -1528,6 +1557,10 @@ final class TheRunnerFailsClosedTests: XCTestCase {
         XCTAssertEqual(byMember.map(\.address), [],
                        "\(byMember.count) classes whose file names a member of a window class are not in windows: "
                        + Self.listed(byMember.map(\.address)))
+        let beyondTheRawText = windows.filter { census.families[$0]?.markedByTheRawText != true }
+        XCTAssertEqual(beyondTheRawText.sorted(), [],
+                       "\(beyondTheRawText.count) classes lie in windows that no mark finds in the raw text of their files: "
+                       + Self.listed(Array(beyondTheRawText)))
 
         for (tier, addresses) in tiers.sorted(by: { $0.key < $1.key }) where tier != "windows" {
             let shared = addresses.intersection(windows)
@@ -1554,9 +1587,196 @@ final class TheRunnerFailsClosedTests: XCTestCase {
         // This class is read by the rule it holds, so it is asked about by name.
         let own = String(reflecting: type(of: self))
         XCTAssertEqual(census.families[own]?.ordersAWindow, false,
-                       "\(own) is a window class by its own file, or is not in the census: window words belong spelled in pieces, and no seed class is named with a dot behind it")
+                       "\(own) is a window class by its own file, or is not in the census: window words belong spelled in pieces, and in code no seed class is named with a dot behind it and no declaration of a rig is named")
         XCTAssertTrue(tiers[census.families[own]?.place ?? ""]?.contains(own) == true,
                       "\(own) is not in the tier of its directory")
+    }
+
+    // MARK: - A name that is only quoted
+
+    /// The ordering call, in two pieces for the reason given above.
+    private static let frontCall = "order" + "Front"
+
+    /// One class of a `Tests/` of the child's own, with the given lines in its
+    /// one method, as the file of that class.
+    private static func shaped(_ name: String, saying lines: [String]) -> [String: String] {
+        let text = ["import XCTest", "final class \(name): XCTestCase {", "    func testOne() {"]
+            + lines.map { "        " + $0 } + ["    }", "}", ""]
+        return ["HelmRuntimeTests/\(name).swift": text.joined(separator: "\n")]
+    }
+
+    /// A shape a class can take, named by what it does with a name.
+    private typealias NamingShape = (name: String, lines: [String])
+
+    /// A rig that orders a window and a class that does, in the directory
+    /// the shapes do not lie in, so that neither is a shape's own file.
+    private static var aRigAndAWindowClass: [String: String] {
+        [
+            "HelmAppTests/AWindowRig.swift": "import AppKit\nfunc openARigWindow() { window.\(frontCall)(nil) }\n",
+            "HelmAppTests/AWindowTests.swift":
+                "import XCTest\nfinal class AWindowTests: XCTestCase {\n    func tail() {}\n"
+                + "    func testOne() { window.\(frontCall)(nil) }\n}\n",
+        ]
+    }
+
+    /// The tree a shape is read in: the rig, the window class, a class that
+    /// names nothing, and the shapes.
+    private static func treeOf(_ shapes: [NamingShape]) -> [String: String] {
+        var tree = aRigAndAWindowClass
+        tree.merge(shaped(control, saying: ["XCTAssertTrue(true)"])) { $1 }
+        for shape in shapes {
+            if withCarriageReturnLineEnds.contains(shape.name) {
+                let lines = ["final class \(shape.name): XCTestCase {", "func testOne() {"] + shape.lines + ["}", "}", ""]
+                tree["HelmRuntimeTests/\(shape.name).swift"] = lines.joined(separator: "\r")
+            } else {
+                tree.merge(shaped(shape.name, saying: shape.lines)) { $1 }
+            }
+        }
+        return tree
+    }
+
+    private static let control = "APlainTests"
+
+    /// Classes that name the rig or a member of the window class only in a
+    /// string or in a comment.
+    private static let namedInTextOnly: [NamingShape] = [
+        ("QuotesARigsPathAndCall", ["let line = \"Tests/HelmAppTests/AWindowRig.swift: openARigWindow()\""]),
+        ("NamesARigInALineComment", ["// openARigWindow()"]),
+        ("NamesARigInADocComment", ["/// openARigWindow()"]),
+        ("NamesARigInABlockComment", ["/* openARigWindow() */"]),
+        ("NamesARigInATripleQuotedBlock", ["let text = \"\"\"", "openARigWindow()", "\"\"\""]),
+        ("NamesAMemberInATripleQuotedBlock", ["let text = \"\"\"", "AWindowTests.tail()", "\"\"\""]),
+        ("NamesARigAfterSlashesInAString", ["let url = \"http://x/openARigWindow\""]),
+        ("NamesARigInARawStringWithQuotes", ["let text = #\"say \"openARigWindow\" now\"#"]),
+        ("QuotesTheWindowClassesPath", ["let path = \"Tests/HelmAppTests/AWindowTests.swift\""]),
+        ("NamesAMemberInADocComment", ["/// Reads what AWindowTests.testOne leaves."]),
+    ]
+
+    /// Classes that name the rig or a member of the window class in code, or
+    /// in a file the runner cannot tell the code of.
+    private static let namedInCode: [NamingShape] = [
+        ("CallsARigPlainly", ["openARigWindow()"]),
+        ("CallsARigAfterAUrlOnTheSameLine", ["let url = \"http://x\"; openARigWindow()"]),
+        ("CallsARigInAnInterpolation", ["let text = \"opened \\(openARigWindow())\""]),
+        ("CallsARigAfterAClosedBlock", ["let text = \"\"\"", "quoted", "\"\"\"", "openARigWindow()"]),
+        ("NamesARigOnOneLineAndCallsItOnTheNext", ["let go = openARigWindow", "go()"]),
+        ("CallsAMemberOfTheWindowClass", ["AWindowTests.tail()"]),
+        ("OpensAStringItNeverCloses", ["let text = \"openARigWindow"]),
+        // A closed block comment between two words leaves a space, not nothing.
+        ("ReturnsARigGluedByABlockComment", ["return/* c */openARigWindow()"]),
+        ("CallsAMemberGluedByABlockComment", ["let x = 1", "x/* c */AWindowTests.tail()"]),
+        // Files the walk cannot follow: a carriage return before the end of
+        // a line, a raw string with two hashes, `#"""#` on one line, and an
+        // interpolation whose kept tail opens a triple quote. Of each pair
+        // the second is the one that hides the call if the check is taken
+        // away; the first stays in `windows` without the check.
+        ("CallsARigAfterALineCommentInACarriageReturnFile", ["// a note", "openARigWindow()"]),
+        ("CallsARigAfterATwoHashRawString", ["let a = ##\"x\"## ; openARigWindow()"]),
+        ("CallsARigAfterATwoHashRawStringHoldingAQuoteAndHash",
+         ["let a = ##\"a\"# // b\"## ; openARigWindow()"]),
+        ("CallsARigNextToARawTripleQuoteOnOneLine", ["let a = #\"\"\"#", "openARigWindow()"]),
+        ("CallsARigBetweenTwoRawTripleQuotesOnOneLine",
+         ["let a = #\"\"\"#", "openARigWindow()", "let b = #\"\"\"#"]),
+        ("CallsARigInsideATripleQuoteOpenedAfterAnInterpolation",
+         ["let a = \"\\(x)\" + \"\"\"", "openARigWindow()", "\"\"\""]),
+        ("CallsARigAfterATripleQuoteOpenedAfterAnInterpolation",
+         ["let a = \"\\(x)\" + \"\"\"", "quoted", "\"\"\"", "openARigWindow()", "// \"\"\""]),
+        ("CallsARigInsideATripleQuoteOpenedAfterARawInterpolation",
+         ["let a = #\"\\#(x)\"# + \"\"\"", "openARigWindow()", "\"\"\""]),
+        ("CallsARigAfterATripleQuoteOpenedAfterARawInterpolation",
+         ["let a = #\"\\#(x)\"# + \"\"\"", "quoted", "\"\"\"", "openARigWindow()", "// \"\"\""]),
+    ]
+
+    /// The shapes whose file ends every line with a carriage return and no
+    /// line feed, which `awk` reads as one record.
+    private static let withCarriageReturnLineEnds: Set<String> = ["CallsARigAfterALineCommentInACarriageReturnFile"]
+
+    /// The directory's tier and `windows`, read over a tree of the row's own.
+    /// Nil where a tier could not be read: the failure is already said.
+    private func tiersOver(_ shapes: [NamingShape]) throws -> (place: Set<String>, windows: Set<String>)? {
+        let tree = Self.treeOf(shapes)
+        guard let place = try expand("HelmRuntimeTests", over: tree),
+              let windows = try expand("windows", over: tree) else { return nil }
+        return (Set(place.addresses), Set(windows.addresses))
+    }
+
+    private static func address(_ shape: String) -> String { "HelmRuntimeTests.\(shape)" }
+
+    /// A class that names a rig, or a member of a class that orders a window,
+    /// only in a string or a comment orders nothing, and lies in its
+    /// directory's tier.
+    func testAClassThatOnlyQuotesOrCommentsAWindowNameLiesInItsTierAndNotInWindows() throws {
+        guard let tiers = try tiersOver(Self.namedInTextOnly) else { return }
+        let control = Self.address(Self.control)
+        XCTAssertTrue(tiers.place.contains(control) && !tiers.windows.contains(control),
+                      "the class that names nothing is not in its tier alone: the tree of the row is not read")
+        let held = Self.namedInTextOnly.map(\.name).filter { tiers.windows.contains(Self.address($0)) }
+        XCTAssertEqual(held, [], "\(held.count) shapes that name a rig or a window class only in a string or a comment lie in windows: "
+                       + Self.listed(held, limit: 12))
+        let outside = Self.namedInTextOnly.map(\.name).filter { !tiers.place.contains(Self.address($0)) }
+        XCTAssertEqual(outside, [], "\(outside.count) shapes that name a rig or a window class only in a string or a comment are not in their directory's tier: "
+                       + Self.listed(outside, limit: 12))
+    }
+
+    /// A class that names a rig, or a member of a class that orders a window,
+    /// in code stays in `windows`, and so does one the runner cannot read as
+    /// code. A repair of the code reader is held by the shapes that go red
+    /// when its line is taken back: the space of a closed block comment by the
+    /// `Glued…` shapes, a carriage return before a line end by the
+    /// `…CarriageReturnFile` shape, `##"` and `#"""#` in code by the
+    /// `…HoldingAQuoteAndHash` and `…BetweenTwoRawTripleQuotes…` shapes, and
+    /// a `"""` in the tail an interpolation keeps in a one-line string or raw
+    /// string by the `…AfterATripleQuoteOpenedAfter…` shapes. The other shapes
+    /// of those families stay green without the repair; they hold the lean,
+    /// not the repair.
+    func testAClassThatNamesAWindowNameInCodeStaysInWindowsAndOutOfItsTier() throws {
+        guard let tiers = try tiersOver(Self.namedInCode) else { return }
+        let control = Self.address(Self.control)
+        XCTAssertTrue(tiers.place.contains(control) && !tiers.windows.contains(control),
+                      "the class that names nothing is not in its tier alone: the tree of the row is not read")
+        let left = Self.namedInCode.map(\.name).filter { !tiers.windows.contains(Self.address($0)) }
+        XCTAssertEqual(left, [], "\(left.count) shapes that name a rig or a window class in code are not in windows: "
+                       + Self.listed(left, limit: 12))
+        let strayed = Self.namedInCode.map(\.name).filter { tiers.place.contains(Self.address($0)) }
+        XCTAssertEqual(strayed, [], "\(strayed.count) shapes that name a rig or a window class in code lie in their directory's tier: "
+                       + Self.listed(strayed, limit: 12))
+    }
+
+    /// What the runner says of every tier in `tiers`, read from one start with
+    /// all of them, one line each.
+    private func announcements(of tiers: [String]) throws -> [String] {
+        var arguments: [String] = []
+        for tier in tiers { arguments += ["--tier", tier] }
+        let run = try runner(Setup(arguments: arguments, swiftPrints: Self.sequentialLog([Self.removable[0]])))
+        let said = run.stdout.filter { $0.hasPrefix("==> tier '") }
+        XCTAssertEqual(said.count, tiers.count, "the runner announced \(said.count) of \(tiers.count) tiers; \(run.said)")
+        return said
+    }
+
+    /// The class that names the ports an engine is built over lies in its
+    /// directory's tier and not in `windows`, and that tier's line leaves no
+    /// class of its directory to `windows`. Once the census is read and the
+    /// runner has run, and before it asserts, the row prints the classes
+    /// `windows` holds and the runner's line for each place. The print is how
+    /// `windows` is counted without running its families.
+    func testTheKeychainPortsGuardLiesInItsDirectorysTierAndNotInWindows() throws {
+        guard let census = try censusOrFail() else { return }
+        let ports = "HelmRuntimeTests.ATestNamesTheKeychainPortsItBuildsOverTests"
+        let place = try expand("HelmRuntimeTests")
+        let windows = try expand("windows")
+        let said = try announcements(of: census.places)
+
+        let held = Set(windows?.addresses ?? []).sorted()
+        print("[windows] \(windows == nil ? "unread" : String(held.count)) classes")
+        for address in held { print(address) }
+        for line in said.sorted() { print(line) }
+        fflush(stdout)
+
+        XCTAssertNotNil(census.families[ports], "\(ports) is no class of the tree")
+        XCTAssertTrue(place?.addresses.contains(ports) == true, "\(ports) is not in tier HelmRuntimeTests")
+        XCTAssertFalse(windows?.addresses.contains(ports) == true, "\(ports) lies in windows")
+        XCTAssertFalse(place?.announcement?.contains("left to --tier windows") == true,
+                       "tier HelmRuntimeTests leaves classes to windows: \(place?.announcement ?? "no line")")
     }
 
     // MARK: - The classes on the panel rig
