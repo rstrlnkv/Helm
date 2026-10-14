@@ -50,6 +50,38 @@ public struct HelmPermissionNote: View {
     }
 }
 
+/// The note a page puts above its content when a grant is withheld, with the room
+/// and the rule the pages draw it with: the form's inset on the sides, a
+/// `HelmSpace.s5` above and below, and a `Divider` under it.
+///
+/// It draws only for `.denied`. A granted grant has nothing to say, and nil —
+/// the state of a holder no tracker has answered yet — draws as that does, so a
+/// state not read yet puts up no banner the answer may have to take back. The
+/// state is an argument, not something the strip tracks: it holds no `@State`
+/// and calls none of the trackers below.
+///
+/// Meant for a `VStack(spacing: 0)`: its note and its rule are two rows of the
+/// stack, as they are in the pages that write them by hand.
+public struct HelmPermissionStrip: View {
+    private let need: PermissionNeed
+    private let state: PermissionState?
+    private let text: String
+
+    public init(need: PermissionNeed, state: PermissionState?, text: String) {
+        self.need = need
+        self.state = state
+        self.text = text
+    }
+
+    public var body: some View {
+        if state == .denied {
+            HelmPermissionNote(need: need, text: text)
+                .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+            Divider()
+        }
+    }
+}
+
 public extension View {
     /// Runs when Helm comes back to the front — the moment to re-read anything
     /// the user may have changed in System Settings while away.
@@ -82,7 +114,15 @@ public extension View {
     /// it is of, rather than inheriting whatever this Mac happens to be.
     func helmTracksAccessibility(_ state: Binding<PermissionState>,
                                  alsoOn extra: Notification.Name? = nil) -> some View {
-        modifier(HelmAccessibilityTracker(state: state, extra: extra))
+        modifier(HelmAccessibilityTracker(write: { state.wrappedValue = $0 }, extra: extra))
+    }
+
+    /// The same tracker for a holder that can say «not read»: a holder declared
+    /// nil stays nil until the tracker's first answer, and the tracker never puts
+    /// nil back, because it writes a `PermissionState` and nothing else.
+    func helmTracksAccessibility(_ state: Binding<PermissionState?>,
+                                 alsoOn extra: Notification.Name? = nil) -> some View {
+        modifier(HelmAccessibilityTracker(write: { state.wrappedValue = $0 }, extra: extra))
     }
 
     /// Keeps `state` on whether Full Disk Access has been granted: once as the
@@ -104,7 +144,15 @@ public extension View {
     /// the grants of whichever process drew it.
     func helmTracksFullDiskAccess(_ state: Binding<PermissionState>,
                                   alsoOn extra: Notification.Name? = nil) -> some View {
-        modifier(HelmFullDiskTracker(state: state, extra: extra))
+        modifier(HelmFullDiskTracker(write: { state.wrappedValue = $0 }, extra: extra))
+    }
+
+    /// The same tracker for a holder that can say «not read»: a holder declared
+    /// nil stays nil until the tracker's first answer, and the tracker never puts
+    /// nil back, because it writes a `PermissionState` and nothing else.
+    func helmTracksFullDiskAccess(_ state: Binding<PermissionState?>,
+                                  alsoOn extra: Notification.Name? = nil) -> some View {
+        modifier(HelmFullDiskTracker(write: { state.wrappedValue = $0 }, extra: extra))
     }
 
     /// Keeps `state` on whether Screen Recording has been granted: once as the
@@ -119,7 +167,15 @@ public extension View {
     /// can be measured without the measuring process's own grant deciding.
     func helmTracksScreenRecording(_ state: Binding<PermissionState>,
                                    alsoOn extra: Notification.Name? = nil) -> some View {
-        modifier(HelmScreenRecordingTracker(state: state, extra: extra))
+        modifier(HelmScreenRecordingTracker(write: { state.wrappedValue = $0 }, extra: extra))
+    }
+
+    /// The same tracker for a holder that can say «not read»: a holder declared
+    /// nil stays nil until the tracker's first answer, and the tracker never puts
+    /// nil back, because it writes a `PermissionState` and nothing else.
+    func helmTracksScreenRecording(_ state: Binding<PermissionState?>,
+                                   alsoOn extra: Notification.Name? = nil) -> some View {
+        modifier(HelmScreenRecordingTracker(write: { state.wrappedValue = $0 }, extra: extra))
     }
 }
 
@@ -154,16 +210,19 @@ public extension EnvironmentValues {
 ///
 /// A `ViewModifier` rather than the two modifiers inline: the override lives in
 /// the environment, and a `View` extension function cannot read it.
+///
+/// It is handed a write, not a binding: the holder it fills may be a
+/// `PermissionState` or a `PermissionState?`, and the tracker only ever writes.
 private struct HelmAccessibilityTracker: ViewModifier {
     @Environment(\.helmGrants) private var grants
-    let state: Binding<PermissionState>
+    let write: (PermissionState) -> Void
     let extra: Notification.Name?
 
     func body(content: Content) -> some View {
         content
-            .task { state.wrappedValue = answer }
-            .helmOnAppActive { state.wrappedValue = answer }
-            .onReceive(HelmGrantRefresh.publisher(extra)) { _ in state.wrappedValue = answer }
+            .task { write(answer) }
+            .helmOnAppActive { write(answer) }
+            .onReceive(HelmGrantRefresh.publisher(extra)) { _ in write(answer) }
     }
 
     private var answer: PermissionState {
@@ -173,14 +232,14 @@ private struct HelmAccessibilityTracker: ViewModifier {
 
 private struct HelmScreenRecordingTracker: ViewModifier {
     @Environment(\.helmGrants) private var grants
-    let state: Binding<PermissionState>
+    let write: (PermissionState) -> Void
     let extra: Notification.Name?
 
     func body(content: Content) -> some View {
         content
-            .task { state.wrappedValue = answer }
-            .helmOnAppActive { state.wrappedValue = answer }
-            .onReceive(HelmGrantRefresh.publisher(extra)) { _ in state.wrappedValue = answer }
+            .task { write(answer) }
+            .helmOnAppActive { write(answer) }
+            .onReceive(HelmGrantRefresh.publisher(extra)) { _ in write(answer) }
     }
 
     private var answer: PermissionState {
@@ -197,21 +256,21 @@ private struct HelmScreenRecordingTracker: ViewModifier {
 /// belong off the cooperative pool, and a reading skips them altogether.
 private struct HelmFullDiskTracker: ViewModifier {
     @Environment(\.helmGrants) private var grants
-    let state: Binding<PermissionState>
+    let write: (PermissionState) -> Void
     let extra: Notification.Name?
 
     func body(content: Content) -> some View {
         content
-            .task { state.wrappedValue = await answer() }
+            .task { write(await answer()) }
             // A `Task` rather than the synchronous read this replaced: the answer
             // lands a hop later than it used to, and the note with it. Measured
             // offscreen against the old wiring — the page settles at the same
             // height, and only the first frame differs.
             .helmOnAppActive {
-                Task { @MainActor in state.wrappedValue = await answer() }
+                Task { @MainActor in write(await answer()) }
             }
             .onReceive(HelmGrantRefresh.publisher(extra)) { _ in
-                Task { @MainActor in state.wrappedValue = await answer() }
+                Task { @MainActor in write(await answer()) }
             }
     }
 
