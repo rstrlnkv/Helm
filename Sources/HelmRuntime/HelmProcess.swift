@@ -18,7 +18,13 @@ import HelmLaunch
 /// the termination handler supplies the status without the poll.
 public enum HelmProcess {
     public struct Result: Sendable {
+        /// The tool's own status, or `timedOutStatus` or -1 when it never
+        /// answered. A tool that exits 0 stays 0 whatever it wrote.
         public let status: Int32
+        /// What the tool wrote to stdout. Bytes that are not UTF-8 arrive as
+        /// U+FFFD and the rest of the text is kept: the output is never replaced
+        /// by `""` because of one bad byte, and the status never says the bytes
+        /// were unreadable.
         public let output: String
         public init(status: Int32, output: String) {
             self.status = status
@@ -57,15 +63,10 @@ public enum HelmProcess {
 
     /// The slots, and the count for a test to read.
     ///
-    /// A semaphore rather than a queue of work: `runData` already blocks its own
-    /// thread until the child answers, or until its deadline, the grace and,
-    /// after a KILL, `settleAfterKill` have passed — every caller is on a queue
-    /// of its own that expects to wait — so waiting for a slot is the same kind
-    /// of wait it was already doing. A bounded run waits for its slot only until
-    /// its own deadline. Nothing here can deadlock on itself: a thread holding a
-    /// slot is reading a tool's output, waiting for that read, signalling the
-    /// tool's group or waiting for the tool to be reaped, not running code that
-    /// could ask for a second one.
+    /// A bounded run waits for its slot only until its own deadline. Nothing
+    /// here can deadlock on itself: a thread holding a slot is reading a tool's
+    /// output, waiting for that read, signalling the tool's group or waiting for
+    /// the tool to be reaped, not running code that could ask for a second one.
     private static let slots = DispatchSemaphore(value: launchCeiling)
     private static let live = LiveLaunches()
     private static let sent = SignalLog()
@@ -100,18 +101,33 @@ public enum HelmProcess {
                            _ arguments: [String],
                            env: [String: String]? = nil) -> Result {
         let r = runData(path, arguments, env: env, deadline: nil)
-        return Result(status: r.status, output: String(data: r.output, encoding: .utf8) ?? "")
+        return Result(status: r.status, output: text(r.output))
+    }
+
+    /// The bytes as text, with U+FFFD where they are not UTF-8.
+    ///
+    /// The failable `String(data:encoding:)` answers nil for the whole of the
+    /// output because of one bad byte, and the `?? ""` it needed made a tool
+    /// that said something read as a tool that said nothing — which a caller
+    /// turns into "no packages" or "no extensions". The decoding initializer
+    /// never fails, so the rule that warns about it is switched off here.
+    private static func text(_ data: Data) -> String {
+        // swiftlint:disable:next optional_data_string_conversion
+        String(decoding: data, as: UTF8.self)
     }
 
     /// The same run, bounded. The `timeout` counts from the call, the wait for
     /// a slot included: a run that has no slot by then answers `timedOutStatus`
     /// without starting the tool, and one that does start gets what is left. A
-    /// tool that has not closed its output by then is terminated with its
-    /// process group — TERM to the group, then KILL to it after a two-second
+    /// tool that has not closed its output and exited by then is terminated with
+    /// its process group — TERM to the group, then KILL to it after a two-second
     /// grace if the output is still held or the tool not yet reaped — and the
-    /// result is `timedOutStatus` with no output: a hung `brew` waiting on
-    /// another brew's lock otherwise parks the calling thread for the life of
-    /// the process, and everything behind it queues. A process the tool started
+    /// result is `timedOutStatus` with no output, even when the tool had
+    /// already closed its output: it has no status of its own to report until it
+    /// exits, and what it wrote is the answer of a tool that did not finish. A
+    /// hung `brew` waiting on another brew's lock otherwise parks the calling
+    /// thread for the life of the process, and everything behind it queues. A
+    /// process the tool started
     /// in a group of its own is not reached; `signalTree` says what that leaves.
     /// The caller is back within the timeout and the grace, and within
     /// `settleAfterKill` more when a KILL was sent; the slot comes back when the
@@ -123,7 +139,7 @@ public enum HelmProcess {
                            env: [String: String]? = nil,
                            timeout: TimeInterval) -> Result {
         let r = runData(path, arguments, env: env, deadline: timeout)
-        return Result(status: r.status, output: String(data: r.output, encoding: .utf8) ?? "")
+        return Result(status: r.status, output: text(r.output))
     }
 
     /// The bytes themselves, for a caller whose parser wants `Data` — a JSON
@@ -211,7 +227,8 @@ public enum HelmProcess {
 
         // Bounded: the read happens on a helper thread so this one can stop
         // waiting for it. The same read-then-wait order as above — EOF first,
-        // immediate wait after. The helper is also who gives the slot back
+        // the wait for the reap after, which has the deadline too: a tool can
+        // close its output and keep running. The helper is also who gives the slot back
         // after a timeout, once the pipe is closed and the child is reaped:
         // until then a tool of the tree is still out. What holds the pipe
         // outside the group is not a tool Helm can end, so the run itself gives
@@ -225,16 +242,18 @@ public enum HelmProcess {
             reaped.wait()
             slot.give()
         }
-        if readDone.wait(timeout: cutoff) == .timedOut {
+        let read = readDone.wait(timeout: cutoff) == .success
+        if !(read && reaped.wait(timeout: cutoff) == .success) {
             slotIsTheHelpers = true
-            // The pipe is still held, so something of the tree is alive. TERM
-            // goes to the whole group; a tool that traps it to clean up gets
-            // its grace, and one that ignores it, or leaves a child that does,
-            // does not get to keep the machine.
+            // Something of the tree is alive: the pipe is still held, or the
+            // tool closed it and has not exited. TERM goes to the whole group;
+            // a tool that traps it to clean up gets its grace, and one that
+            // ignores it, or leaves a child that does, does not get to keep the
+            // machine.
             let group = process.processIdentifier
             signalTree(group, SIGTERM, reaped: reaped.isDone)
             let graceEnd = DispatchTime.now() + 2
-            let pipeClosed = readDone.wait(timeout: graceEnd) == .success
+            let pipeClosed = read || readDone.wait(timeout: graceEnd) == .success
             var childGone = reaped.wait(timeout: graceEnd) == .success
             if !(pipeClosed && childGone) {
                 signalTree(group, SIGKILL, reaped: childGone)
@@ -243,7 +262,6 @@ public enum HelmProcess {
             if childGone && groupIsEmpty(group) { slot.give() }
             return (timedOutStatus, Data())
         }
-        reaped.wait()
         return (process.terminationStatus, box.take())
     }
 
@@ -346,10 +364,8 @@ public enum HelmProcess {
         return false
     }
 
-    /// How many slots are held, and the most held at once since the last
-    /// reading. A slot is held from the moment a run takes it until it is
-    /// given back, which for a run that timed out may be after the run
-    /// returned.
+    /// A slot is held from the moment a run takes it until it is given back,
+    /// which for a run that timed out may be after the run returned.
     ///
     /// Its own object rather than two `static var`s because it is touched from
     /// every thread that runs a tool: an unguarded pair would be the race this

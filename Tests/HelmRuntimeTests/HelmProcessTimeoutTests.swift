@@ -231,6 +231,92 @@ final class HelmProcessTimeoutTests: XCTestCase {
         XCTAssertEqual(result.output, "hi")
     }
 
+    // MARK: - A tool's bytes are not "nothing"
+
+    /// A tool that wrote a byte no UTF-8 text holds and exited 0. Whatever a
+    /// caller is told, it is not "status 0 and nothing": every parser reads that
+    /// as a tool that had nothing to say.
+    func testAToolThatWroteOneUndecodableByteIsNotReadAsSayingNothing() {
+        let unbounded = HelmProcess.run("/bin/sh", ["-c", "printf '\\377'"])
+        XCTAssertFalse(saidNothing(unbounded), """
+            a tool wrote one byte and exited 0; run answered status \(unbounded.status) \
+            with output \(unbounded.output.debugDescription), which a caller reads as \
+            a tool that had nothing to say
+            """)
+        let bounded = HelmProcess.run("/bin/sh", ["-c", "printf '\\377'"], timeout: 5)
+        XCTAssertFalse(saidNothing(bounded), """
+            the same tool through the bounded run answered status \(bounded.status) \
+            with output \(bounded.output.debugDescription), which a caller reads as \
+            a tool that had nothing to say
+            """)
+    }
+
+    /// One bad byte in the middle of an otherwise readable line: the readable
+    /// words are either handed on, or the run says by a status that it could not
+    /// read the output. The line does not vanish whole behind a status 0.
+    func testOneBadByteInTheMiddleOfAReadableLineDoesNotTakeTheWholeLine() {
+        let line = "printf 'alpha \\377 beta\\n'"
+        for (name, result) in [("run", HelmProcess.run("/bin/sh", ["-c", line])),
+                               ("bounded run", HelmProcess.run("/bin/sh", ["-c", line], timeout: 5))] {
+            let kept = result.output.contains("alpha") && result.output.contains("beta")
+            XCTAssertTrue(result.status != 0 || kept, """
+                \(name): a line of readable words with one bad byte between them \
+                answered status \(result.status) with output \
+                \(result.output.debugDescription)
+                """)
+        }
+    }
+
+    private func saidNothing(_ result: HelmProcess.Result) -> Bool {
+        result.status == 0 && result.output.isEmpty
+    }
+
+    // MARK: - A tool that closes its output and keeps running
+
+    /// The tool closes its standard output and goes on running: the read ends
+    /// at once, and the tool is still out. The bounded run's deadline covers the
+    /// tool, not only the read, so the caller is back within the timeout, the
+    /// grace and the settle after a KILL, with slack for a loaded machine.
+    ///
+    /// The script records its own pid and whether descriptor 1 was open before
+    /// and after it closed it, so the row can tell a closed pipe from a pipe
+    /// that was merely held. It then becomes a `sleep` of the same pid, which
+    /// the row removes at teardown by that pid. The `sleep` is 20 s, so a run
+    /// that waits for it is seen as a long wait and ends by itself.
+    func testAToolThatClosesItsOutputAndKeepsRunningIsStillCutOff() throws {
+        let dir = scratchDirectory("process-timeout-closed-output")
+        let tool = ScratchTool.script("""
+            echo $$ > "$1/tool"
+            if [ -e /dev/fd/1 ]; then echo open > "$1/before"; else echo closed > "$1/before"; fi
+            exec >&-
+            if [ -e /dev/fd/1 ]; then echo open > "$1/after"; else echo closed > "$1/after"; fi
+            exec /bin/sleep 20
+            """, named: "closes-its-output-and-sleeps", in: dir)
+        ScratchTool.removeAtTeardown(self, dir: dir)
+
+        let started = Date()
+        let result = HelmProcess.run("/bin/sh", [tool, dir.path], timeout: 1)
+        let elapsed = Date().timeIntervalSince(started)
+
+        let before = try? String(contentsOf: dir.appendingPathComponent("before"), encoding: .utf8)
+        let after = try? String(contentsOf: dir.appendingPathComponent("after"), encoding: .utf8)
+        XCTAssertEqual(before?.trimmingCharacters(in: .whitespacesAndNewlines), "open",
+                       "the pipe was not the tool's standard output to begin with")
+        XCTAssertEqual(after?.trimmingCharacters(in: .whitespacesAndNewlines), "closed",
+                       "the tool was meant to have closed its standard output; nothing below means anything otherwise")
+        let pid = try XCTUnwrap(ScratchTool.pid(dir.appendingPathComponent("tool")),
+                                "the script never recorded its own pid")
+        XCTAssertLessThan(elapsed, 5, """
+            the tool closed its output and kept running (pid \(pid)); the deadline was \
+            1 s, the grace 2 s, and run returned only after \(elapsed) s with status \
+            \(result.status)
+            """)
+        XCTAssertEqual(result.status, HelmProcess.timedOutStatus,
+                       "a tool that closed its output and was cut off answered with its own status")
+        XCTAssertEqual(result.output, "",
+                       "a tool that closed its output and was cut off still gave output")
+    }
+
     /// `launchCeiling` bounded runs of `tool` (which is given the directory and
     /// the run's number, and writes `e<n>` with the pid of a helper that holds
     /// the pipe from outside the tool's group), every one timing out at one
