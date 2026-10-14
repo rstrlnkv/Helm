@@ -189,6 +189,9 @@ final class HelmTrashAdversarialTests: XCTestCase {
     /// somebody they got back 400 KB that never left the disk, and walking the
     /// link would also mean a link pointing outside the scope was measured
     /// through a gate it never passed.
+    ///
+    /// The move here is `moveItem`, which takes a link leaf itself; what the real
+    /// `trashItem` does with one is held by `RealTrashLeafTests`.
     func testTrashingASymlinkFreesTheLinkAndNotWhatItPointsAt() throws {
         try write("Real/big.bin", in: root, bytes: 400_000)
         let target = root.appendingPathComponent("Real")

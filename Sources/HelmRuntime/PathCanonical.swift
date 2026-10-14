@@ -6,16 +6,18 @@ import Foundation
 ///
 /// `URL.standardizedFileURL` and `NSString.standardizingPath` collapse `.` and
 /// `..` and stop there — they do not resolve symbolic links. `FileManager`'s
-/// `trashItem` does follow them. That gap let a path be approved as
+/// `trashItem` follows a link among the ancestors and moves the object the path
+/// reaches through it. That gap let a path be approved as
 /// `~/Library/Caches/com.evil.app/taxes.pdf` and executed as
 /// `~/Documents/taxes.pdf`: any process running as the user can create one of
 /// the plug-in directories the leftovers scan enumerates — none of them exist
 /// on a stock install — as a link to somewhere protected, and wait.
 ///
-/// The **leaf is deliberately not resolved.** Trashing a symlink removes the
-/// link and leaves its target alone, which is exactly what a person clearing a
-/// stale alias asks for. It is an *ancestor* that redirects that makes the
-/// spelling a lie, so only the parent chain is resolved.
+/// The **leaf is deliberately not resolved.** `trashItem` moves a symbolic-link
+/// leaf itself and leaves what it points at — a file, a directory or a bundle
+/// (`RealTrashLeafTests`) — which is exactly what a person clearing a stale
+/// alias asks for. It is an *ancestor* that redirects that makes the spelling a
+/// lie, so only the parent chain is resolved.
 ///
 /// This is the rule `WatchScope.canonical` already applies inside Autopilot,
 /// written once here now that a second and third gate need it.
