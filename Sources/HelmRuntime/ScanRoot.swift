@@ -103,13 +103,19 @@ public enum ScanRoot {
             return nil
         }
 
-        // Asked of the descent gate rather than spelled out again here. The two
-        // questions differ only in *when* they are put — where a walk may begin,
-        // where it may go — and a rule written twice is two rules waiting to
-        // disagree about the same list. The home itself is not refused by it,
-        // which is right: this gate's whole reason for existing is that the home
-        // is a legitimate root.
-        guard !refusesDescentInHome(into: path) else { return nil }
+        // Asked of the descent gate rather than spelled out again here, both of
+        // its rules. The two questions differ only in *when* they are put —
+        // where a walk may begin, where it may go — and a rule written twice is
+        // two rules waiting to disagree about the same list. The home itself is
+        // not refused by the home rule, which is right: this gate's whole reason
+        // for existing is that the home is a legitimate root. The library rule
+        // is put to every component of the resolved path, by name, so a root
+        // that is an application library or lies inside one is refused here:
+        // the walk puts its descent question only to what a listing finds and
+        // lists its root unasked. A link to one is judged by where it leads.
+        guard !refusesDescentInHome(into: path),
+              !(path as NSString).pathComponents.contains(where: { refusesDescent(into: $0) })
+        else { return nil }
 
         // Existence and directory-ness are part of the answer: a root that is
         // not there produces an empty walk, and an empty walk reported as a
@@ -134,8 +140,9 @@ public enum ScanRoot {
 
     /// Whether a walk that nobody is watching must stop at this directory.
     ///
-    /// **The root gate cannot answer this, and that is the whole reason it
-    /// exists.** `resolve` judges where a scan *begins*; on 2026-08-03 a
+    /// **The root gate cannot answer this alone, and that is the reason it
+    /// exists.** `resolve` judges where a scan *begins* and asks this of its
+    /// root too, but a walk meets libraries far below the root; on 2026-08-03 a
     /// background scan of a legitimate root met
     /// `~/Pictures/Photos Library.photoslibrary` several levels down, macOS
     /// raised a Photos consent dialog, and it stood there until somebody came

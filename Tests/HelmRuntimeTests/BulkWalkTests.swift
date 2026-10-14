@@ -118,6 +118,65 @@ final class BulkWalkTests: XCTestCase {
         XCTAssertNil(BulkWalk.children(of: closed.path))
     }
 
+    /// **A listing that failed part way is a directory denied, not the entries
+    /// read before it failed.** The directory opened, the first batch was good,
+    /// and the next read answered −1 with `EIO` — a disk failing, a share gone
+    /// stale. Handing back the first batch as the whole directory draws a
+    /// folder that is half there as a genuine total, which `Batch.denied` exists
+    /// to prevent. The kernel will not fail on demand, so the bulk read is the
+    /// seam: the real call for the first batch, a failure for the second.
+    func testAListingThatFailedAfterAGoodBatchAnswersNothingRatherThanTheBatch() throws {
+        for index in 0..<5 { try write("f\(index).bin", in: root, bytes: 1000) }
+
+        var calls = 0
+        let answer = BulkWalk.children(of: root.path, bulkRead: { fd, request, buffer, size, options in
+            calls += 1
+            if calls == 1 { return getattrlistbulk(fd, request, buffer, size, options) }
+            errno = EIO
+            return -1
+        })
+
+        XCTAssertGreaterThanOrEqual(calls, 2, "the failing read was never reached")
+        XCTAssertNil(answer, "a listing that failed after a good batch answered "
+                     + "\(answer.map { "\($0.count) entries" } ?? "nil")")
+    }
+
+    /// The same failure with nothing read yet: the directory opened and the very
+    /// first read failed. An empty list here would be a genuine "nothing in it".
+    func testAListingThatFailedOnItsFirstReadAnswersNothingRatherThanNoEntries() throws {
+        try write("inside.bin", in: root, bytes: 1000)
+
+        var calls = 0
+        let answer = BulkWalk.children(of: root.path, bulkRead: { _, _, _, _, _ in
+            calls += 1
+            errno = EIO
+            return -1
+        })
+
+        XCTAssertEqual(calls, 1, "the stand-in read was not the one asked")
+        XCTAssertNil(answer, "a listing that failed on its first read answered "
+                     + "\(answer.map { "\($0.count) entries" } ?? "nil")")
+    }
+
+    /// **Held.** A normal end is a read that answers 0, after as many good
+    /// batches as there are, and nil on a failed read must not turn it into a
+    /// refusal. Through the same seam every batch is the real call, but asked
+    /// for a small buffer, so thirty entries arrive in more than one batch and
+    /// the directory ends on the kernel's own 0.
+    func testAListingThatEndsNormallyStillAnswersEveryEntry() throws {
+        for index in 0..<30 { try write("f\(index).bin", in: root, bytes: 1000) }
+
+        var calls = 0
+        let answer = BulkWalk.children(of: root.path, bulkRead: { fd, request, buffer, size, options in
+            calls += 1
+            return getattrlistbulk(fd, request, buffer, min(size, 2048), options)
+        })
+
+        XCTAssertGreaterThanOrEqual(calls, 3, "the listing came in fewer than two batches and an end")
+        XCTAssertEqual(answer?.count, 30, "a normal end answered "
+                       + "\(answer.map { "\($0.count) entries" } ?? "nil")")
+    }
+
     // MARK: - The walk
 
     func testTheWalkReachesEveryFileBelowTheRoot() throws {

@@ -57,9 +57,11 @@ Which gate is asked decides what the symptom looks like. Pointing the duplicate 
 reads as a permissions problem and is a question put to the wrong gate.
 
 A walk asks a directory's *name* and never its contents: reading a directory to decide
-whether to read it is itself the Photos consent prompt (`ScanRoot.refusesDescent`). The
-gate is asked of every directory a walk meets and not of the root alone
-(`Sources/Modules/Duplicates/Engine/DuplicateScanner.swift`). A walk's paths are compared
+whether to read it is itself the Photos consent prompt (`ScanRoot.refusesDescent`). A walk
+nobody is watching asks it of every directory below its root before going in
+(`Sources/Modules/Duplicates/Engine/DuplicateScanner.swift`,
+`Sources/Modules/Disk/Engine/DiskScanner.swift`), and `ScanRoot.resolve` asks it of every
+component of a stored root before the walk lists it. A walk's paths are compared
 against a root with `/private` stripped from both sides, because the enumerator resolves
 the root's own symlinks on the way out; a gate comparing raw strings matches nothing and
 fails open, silently, so such a gate is tested with paths that exist on disk. A scan that

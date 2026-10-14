@@ -58,7 +58,8 @@ public struct BulkEntry: Sendable {
 /// tests.
 public enum BulkWalk {
 
-    /// One directory's files and the directories that would not open.
+    /// One directory's files and the directories that could not be listed —
+    /// those that would not open and those whose listing failed part-way.
     ///
     /// Two lists rather than a result per entry, because the caller's loop runs
     /// once per batch and a per-entry callback would put the throttling, the
@@ -119,18 +120,30 @@ public enum BulkWalk {
 
     // MARK: - One directory
 
-    /// Everything in one directory, or nil when it would not open.
+    /// Everything in one directory, or nil when it would not open or its
+    /// listing failed part-way.
     ///
     /// Nil rather than an empty list, and the distinction is the whole of
     /// `Batch.denied`: `EACCES` and `EPERM` carry every TCC refusal, and `EIO`,
     /// `ETIMEDOUT` and `ENOTDIR` carry a disk that is failing, has been
-    /// unplugged, or was replaced under the walk.
+    /// unplugged, or was replaced under the walk. A bulk read that answers -1
+    /// after good batches is the same refusal, so the entries read so far are
+    /// dropped with it: a half-listed directory summed as the whole one would
+    /// be a total that is quietly short. Only the kernel's 0 ends a listing.
     ///
     /// Symlinks are not yielded: they are neither descended nor sized, because
     /// the target belongs to whoever owns it. Measured against `FileManager`,
     /// which does yield them and answers 0 allocated bytes for each — so every
     /// total that used to be summed the slow way is unchanged to the byte.
-    static func children(of directory: String) -> [BulkEntry]? {
+    ///
+    /// - Parameter bulkRead: the one call that fills the buffer — the kernel's
+    ///   `getattrlistbulk` unless a test stands in for it, to hand back a good
+    ///   batch and then a failure with an errno, which no real filesystem gives
+    ///   on demand.
+    static func children(of directory: String,
+                         bulkRead: (Int32, UnsafeMutablePointer<attrlist>,
+                                    UnsafeMutableRawPointer, Int, UInt64) -> Int32
+                             = { getattrlistbulk($0, $1, $2, $3, $4) }) -> [BulkEntry]? {
         let fd = open(directory, O_RDONLY | O_DIRECTORY)
         guard fd >= 0 else { return nil }
         defer { close(fd) }
@@ -142,8 +155,9 @@ public enum BulkWalk {
 
         var out: [BulkEntry] = []
         while true {
-            let count = getattrlistbulk(fd, &request, buffer, bufferSize, 0)
-            if count <= 0 { break }
+            let count = bulkRead(fd, &request, buffer, bufferSize, 0)
+            if count < 0 { return nil }
+            if count == 0 { break }
             var cursor = UnsafeRawPointer(buffer)
             for _ in 0..<count {
                 let length = Int(cursor.loadUnaligned(as: UInt32.self))
