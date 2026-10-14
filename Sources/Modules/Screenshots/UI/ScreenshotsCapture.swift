@@ -65,8 +65,39 @@ struct CapturedShot {
     /// they are the last press's, which was delivered.
     private var flashing: CaptureOverlay?
     /// One flag for the bar, its countdown and the overlay: they are one
-    /// capture in three stages, and a second press at any of them is dropped.
-    private var busy = false
+    /// capture in three stages, and a second press at any of them is dropped. **The listener for a display that comes or
+    /// goes lives exactly as long as it is true** (`displayChanged`): outside a capture the notification finds no one.
+    private var busy = false {
+        didSet {
+            guard busy != oldValue else { return }
+            delivering = false
+            editPressed = false
+            if busy {
+                displayObserver = NotificationCenter.default.addObserver(
+                    forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
+                ) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.displayChanged() }
+                }
+            } else {
+                stopListening()
+            }
+        }
+    }
+    private var displayObserver: NSObjectProtocol?
+    /// The picture is being taken or delivered: the countdown has run out, or the person has chosen and the file, the clipboard
+    /// and the after-shot window are the rest. A display change no longer ends that press: it is left to finish, from the
+    /// freeze it holds where it holds one, and a timed shot that finds its display gone says so itself (`timedShot`). False
+    /// whenever `busy` turns.
+    private var delivering = false
+    /// The press began as an Edit of a shot of the after-shot window, whether or not the editor has opened yet: what tells
+    /// `displayChanged` that the shot was taken while `editing` is still nil. False whenever `busy` turns.
+    private var editPressed = false
+    /// The editor now open on a shot of the after-shot window, nil while none is: what `displayChanged` needs to know of it
+    /// after the overlay is closed.
+    private var editing: ShotEdit?
+    /// The picture an editor's marks make when a display change closes it, held so the module's end (`teardown`) can reach
+    /// it. `cancel` leaves it be: the press it belongs to is over, and its picture is the person's.
+    private var keepTask: Task<Void, Never>?
     /// The press in flight, held so `cancel` can reach it: the screen's countdown and its freeze, the one long wait. The
     /// module's switch can be turned inside either, the panel's door inside the countdown only: the bar goes before the freeze.
     private var pressTask: Task<Void, Never>?
@@ -114,6 +145,13 @@ struct CapturedShot {
         toast.onCopy = { [weak self] in self?.copyFromThumbnail() }
         toast.onCopyAll = { [weak self] in self?.copyAllFromPile() }
         toast.onPin = { [weak self] image, frame in self?.pins.open(image, frame: frame) }
+    }
+
+    isolated deinit { stopListening() }
+
+    private func stopListening() {
+        if let displayObserver { NotificationCenter.default.removeObserver(displayObserver) }
+        displayObserver = nil
     }
 
     /// Whether a press is in progress at any stage. A test waits on it.
@@ -214,7 +252,8 @@ struct CapturedShot {
     /// task that was waiting on the freeze resumes regardless, and what it
     /// resumes into is a file, the clipboard or panels on every screen. **Nothing that was delivered is touched**: the
     /// after-shot window and a Copy in flight in it are the person's shots, not this press's: the door leaves them, and
-    /// the module's end takes them.
+    /// the module's end takes them. A display that comes or goes ends the press through this call as well
+    /// (`displayChanged`).
     func cancel() {
         pressTask?.cancel()
         pressTask = nil
@@ -224,6 +263,7 @@ struct CapturedShot {
         selectionTask = nil
         freezing = false
         picking = false
+        editing = nil
         bar.close()
         // A ring that ran out leaves its length for the shot's close; one cut short has no next turn to clear it.
         bar.model.countdownLength = 0
@@ -235,24 +275,72 @@ struct CapturedShot {
     /// The module is going: everything `cancel` ends, and what it leaves — the flash's panels, the Copy in flight, the
     /// after-shot window with the shots in it — and the pins too. A pin is a window the person asked to keep, and the
     /// window's shots may exist nowhere else (a clipboard-only shot has no file), so only the module's own end takes
-    /// them, never an Esc on the bar.
+    /// them, never an Esc on the bar. The picture an editor's marks were being made into when a display changed goes too
+    /// (`keepTask`).
     func teardown() {
         cancel()
         copyTask?.cancel()
         copyTask = nil
+        keepTask?.cancel()
+        keepTask = nil
         flashing?.close()
         flashing = nil
         toast.dismiss()
         pins.closeAll()
     }
 
+    /// A display came or went while a press was under way: the frames the capture holds are of a desk that no longer
+    /// exists, so the press ends (`cancel`, which leaves the after-shot window and the pins) and the window says so, once.
+    /// Not once the picture is being taken or delivered (`delivering`). Before that, whatever the stage: a pick, the panel in
+    /// Screen mode, a countdown, the freeze for a pick or for an Edit still out. **An editor opened on a shot** closes with its
+    /// shot kept. With nothing drawn the shot comes back as after Esc, and the plaque is titled for a shot that was taken. With
+    /// marks (or a crop) the picture they make is kept as a finished shot of its own, as a refused delivery keeps its picture,
+    /// and the shot the editor was opened on is let go: its file is as it was and nothing goes to the Trash. Marks whose
+    /// picture cannot be composed keep nothing in the window: the plaque and one log line say so (`editorPictureLost`).
+    /// When the change comes while the freeze for an Edit is still out (`editPressed`), the shot stays in the window and the
+    /// plaque is titled for a shot too.
+    private func displayChanged() {
+        guard busy, !delivering else { return }
+        let editor = editing
+        let held = editor == nil ? nil : overlay?.heldForExit()
+        let ofAShot = editPressed
+        cancel()
+        guard let editor else {
+            toast.showRefusal(.displayChanged, aboutAShot: ofAShot)
+            return
+        }
+        let end = held.map { editor.end(of: .edited(display: $0.display, local: $0.local, layers: $0.layers, exit: .confirm)) }
+        toast.editorClosed(givingBack: end != .replaced)
+        guard let held, end == .replaced else {
+            toast.showRefusal(.displayChanged, aboutAShot: true)
+            return
+        }
+        // Composed off the main thread, and held apart from `cancel`: the press is over, the picture is not.
+        keepTask = Task {
+            let image = held.display == editor.shown.display
+                ? await session.annotated(editor.shown, local: held.local, layers: held.layers) : nil
+            guard !Task.isCancelled else { return }
+            if let image {
+                toast.showRefusal(.displayChanged, keeping: ShotToast.Kept(image: image, caption: ScStr.refusal(.displayChanged),
+                                                                           file: nil, reading: nil))
+            } else {
+                editorPictureLost(.displayChanged, editing: true)
+            }
+        }
+    }
+
     // MARK: - The full-screen shortcut
 
+    /// The whole screen, by the shortcut or by the panel's Capture once its countdown, where there is one, has run out: the
+    /// picture is being taken from the first line (`delivering`). **Both writes ask whether the task was cancelled**: a task
+    /// cancelled before its body began still runs it, after the turn that cancelled it, and a press begun in that turn is not
+    /// this one's to mark or to release.
     private func fullScreen() async {
+        if !Task.isCancelled { delivering = true }
         let delivery = await session.captureScreens()
         // The session itself stops before it writes; this keeps the toast back.
         if !Task.isCancelled { present(delivery, showing: nil) }
-        busy = false
+        if !Task.isCancelled { busy = false }
     }
 
     // MARK: - The area shortcut
@@ -352,6 +440,7 @@ struct CapturedShot {
     func editFromThumbnail() {
         guard !busy, let source = toast.model.editSource, let taken = toast.model.current?.id else { return }
         busy = true
+        editPressed = true
         pressTask = Task { await self.edit(source.shot, held: source.held, taking: taken) }
     }
 
@@ -365,6 +454,7 @@ struct CapturedShot {
             busy = false
         case .ready(let shown):
             let editing = ShotEdit(shown: shown, original: shot)
+            self.editing = editing
             let overlay = CaptureOverlay(freeze: shown.freeze, picture: (shown.display, shown.rect), store: store,
                                          pinRoom: { [weak self] in self?.pins.hasRoom ?? false },
                                          // The freeze here has the picture in it, so the text read and the boxes blurred are the picture's.
@@ -378,6 +468,7 @@ struct CapturedShot {
                 toast.takeForEditing(taken)
             } else {
                 self.overlay = nil
+                self.editing = nil
                 busy = false
             }
         }
@@ -395,6 +486,7 @@ struct CapturedShot {
     /// the last second, when it closes and the shot is taken from the screen as it is then (`timedShot`).
     private func overlayFinished(_ result: OverlayResult, freeze: Freeze, picked: Bool = false,
                                  editing: ShotEdit? = nil) {
+        self.editing = nil
         if picked {
             picking = false
             bar.selecting = false
@@ -411,6 +503,7 @@ struct CapturedShot {
                     do { try await countdown(seconds) } catch { return }
                     guard !Task.isCancelled else { return }
                     bar.close()
+                    delivering = true
                     await wait()
                     if !Task.isCancelled { busy = false }
                 }
@@ -427,6 +520,7 @@ struct CapturedShot {
         flashing = overlay?.leaving == true ? overlay : nil
         overlay = nil
         if let end { toast.editorClosed(givingBack: end != .replaced) }
+        delivering = true
         deliveryTask = Task {
             // Asked at the start and after every wait: a delivery cancelled by the
             // module's switch must reach neither the disk nor the clipboard.
@@ -464,8 +558,7 @@ struct CapturedShot {
                     // An exit that asked for a picture and got none says so. «The picture could not be made» is true of a fresh
                     // area and of an edit of a shot alike, and the line names no path; the title is «not taken» for the area
                     // only, since an edit was opened on a shot that was taken.
-                    HelmLog.shared.warn(ScreenshotsEngine.moduleID, "the editor's picture could not be composed")
-                    toast.showRefusal(.encoding, aboutAShot: editing != nil)
+                    editorPictureLost(.encoding, editing: editing != nil)
                 }
             case .wholeDisplay(let display):
                 if let frame = freeze.frames.first(where: { $0.id == display }),
@@ -485,6 +578,13 @@ struct CapturedShot {
             // a press begun since is not this one's to release.
             if !Task.isCancelled { busy = false }
         }
+    }
+
+    /// A picture of the editor's was asked for and none came, at an exit or when a display change closed the editor: the
+    /// plaque says the refusal it is given, titled for a shot when the editor was opened on one, and the log has one line.
+    private func editorPictureLost(_ refusal: CaptureRefusal, editing: Bool) {
+        HelmLog.shared.warn(ScreenshotsEngine.moduleID, "the editor's picture could not be composed")
+        toast.showRefusal(refusal, aboutAShot: editing)
     }
 
     /// What takes a picked target from the screen as it is **after** the countdown, or nil for a result that is no target.

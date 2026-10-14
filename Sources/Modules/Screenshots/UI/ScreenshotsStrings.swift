@@ -338,6 +338,7 @@ enum ScStr {
         case .noPermission: noPermissionBody
         case .captureFailed: L("The screen could not be captured.")
         case .displayGone: L("A display went away before it could be captured.")
+        case .displayChanged: L("The display configuration changed.")
         case .windowGone: L("That window is gone.")
         case .write(.noFolder), .write(.notAFolder): L("The save folder is missing.")
         case .write(.noPermission): L("Helm may not write to the save folder.")

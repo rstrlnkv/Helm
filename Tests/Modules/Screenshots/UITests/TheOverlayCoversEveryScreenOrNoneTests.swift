@@ -5,14 +5,15 @@ import Module_Screenshots_Engine
 
 /// **The overlay covers every screen there is, or it is not built.**
 ///
-/// `CaptureOverlay.build` asks one direction only: that every display in the
-/// freeze still has a screen. The other direction — that every screen has a
-/// display in the freeze — is what a display plugged in during the freeze
-/// breaks, and so does a display the freeze lists as `.gone` while it is still
-/// there (`SCKCapture` files every capture error that is not a refused grant as
-/// `.gone`). Either way the overlay dims some screens and leaves the rest live,
-/// and the screen-change observer that would cancel it is registered only after
-/// the change it needed to see.
+/// `CaptureOverlay.build` asks both directions: that every display in the
+/// freeze still has a screen, and that every screen has a display in the
+/// freeze. The second is what a display plugged in during the freeze breaks,
+/// and so does a display the freeze lists as `.gone` while it is still there
+/// (`SCKCapture` files every capture error that is not a refused grant as
+/// `.gone`). Without it the overlay would dim some screens and leave the rest
+/// live, and nothing of the overlay's own would end it: it does not listen for
+/// a display that comes or goes, its owner does
+/// (`TheCaptureEndsWhenADisplayComesOrGoesTests`).
 ///
 /// Built and never ordered in, as in `TheOverlayDecidesWhatTheDragMeansTests`:
 /// nothing appears on the screens of whoever runs this. It needs a Mac with two

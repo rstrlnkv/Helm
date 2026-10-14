@@ -11,8 +11,8 @@ import Module_Screenshots_Engine
 /// and with the desk, and says its percent the way the language writes it.**
 ///
 /// The inputs of the plan's list that nobody fed: a second open request while open, each of the actions that end the
-/// tool (`.tool` of another tool, `.tool` of the same one, `.select`, a save), the overlay closed or ended by a display
-/// change while the pop-over is up, and the sign of the percent, which a fixed "en" locale gets right for ja, pt and zh as well, and not for de, es, fr and ru.
+/// tool (`.tool` of another tool, `.tool` of the same one, `.select`, a save), the overlay closed, a display
+/// change while the pop-over is up (the overlay does not end by itself; its owner's close takes the pop-over), and the sign of the percent, which a fixed "en" locale gets right for ja, pt and zh as well, and not for de, es, fr and ru.
 @MainActor
 final class ThePopoverSurvivesTheInputsNobodyPlannedTests: XCTestCase {
 
@@ -118,13 +118,18 @@ final class ThePopoverSurvivesTheInputsNobodyPlannedTests: XCTestCase {
         XCTAssertEqual(with.view, without.view, "the pop-over's host holds the view (control without: \(without))")
     }
 
-    func testADisplayChangeWithItOpenEndsTheCaptureAndTheNextOneStartsClosed() throws {
+    /// The overlay alone does not end on a display change, so its pop-over stays up until its owner closes it; the owner that
+    /// ends the press (`TheEditorMeetsADisplayThatComesOrGoesTests`, a pop-over open) closes the overlay, and that close takes
+    /// the pop-over.
+    func testADisplayChangeLeavesItToTheOwnerWhoseCloseTakesThePopOver() throws {
         let (_, _, overlay) = try build()
         opened(overlay)
-        NotificationCenter.default.post(name: NSApplication.didChangeScreenParametersNotification, object: nil)
-        XCTAssertEqual(results.count, 1, "the capture did not end")
-        if case .cancelled? = results.first {} else { XCTFail("ended with \(String(describing: results.first))") }
-        // `finish` only reports; the owner closes on the result (`ScreenshotsCapture.overlayFinished`), and that close takes the pop-over.
+        NotificationCenter.default.post(name: NSApplication.didChangeScreenParametersNotification, object: NSApplication.shared)
+        let done = expectation(description: "the main queue drained")
+        DispatchQueue.main.async { done.fulfill() }
+        wait(for: [done], timeout: 2)
+        XCTAssertEqual(results.count, 0, "the overlay ended by itself on a display change: \(results)")
+        XCTAssertTrue(overlay.popoverIsOpen, "the pop-over closed without its owner")
         overlay.close()
         XCTAssertFalse(overlay.popoverIsOpen, "the owner closed the overlay and the pop-over is still there")
     }

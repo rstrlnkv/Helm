@@ -254,8 +254,8 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
 
     // MARK: Exactly once
 
-    /// Every way out pressed after the first one, and the screen-change notification
-    /// that ends a capture: the overlay finishes once, with the first.
+    /// Every way out pressed after the first one: the overlay finishes once, with the first. A display change is not one of
+    /// them: the capture's controller ends the press by closing the overlay, which has no listener of its own.
     func testEveryExitAfterTheFirstFindsNothingToFinish() throws {
         let id = try build()
         edited(id)
@@ -265,7 +265,6 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
         overlay?.keyDown(key(kEsc))
         overlay?.keyDown(key(kEsc))
         overlay?.rightMouseDown()
-        NotificationCenter.default.post(name: NSApplication.didChangeScreenParametersNotification, object: nil)
         XCTAssertEqual(results.count, 1, "the overlay finished more than once: \(results)")
         guard case .edited(_, _, _, .copy)? = results.first else { return XCTFail("the first exit did not win: \(results)") }
     }

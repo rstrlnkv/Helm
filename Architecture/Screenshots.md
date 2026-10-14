@@ -74,8 +74,8 @@ has closed meanwhile is saved from the freeze of the pick), the area by freezing
 from the same display by its UUID; a display that is gone, or no longer holds the whole rectangle, is refused as a
 display that is gone is, and no smaller picture is saved. The whole screen's countdown runs in the press's own task
 (`pressTask`) and its freeze comes after it; a window's and an area's runs in `deliveryTask` with the shot after it.
-Each counts one `tick` at a time and asks after every tick whether it was cancelled, so Esc, the close control and the
-module being switched off end it with nothing taken. The last confirmed area is kept by
+Each counts one `tick` at a time and asks after every tick whether it was cancelled, so Esc, the close control, the
+module being switched off and a display that comes or goes end it with nothing taken. The last confirmed area is kept by
 `Sources/Modules/Screenshots/Engine/Logic/RememberedSelection.swift` as a display's UUID and a rectangle in that
 display's points, read back through the same ceiling (`StoredNumber`), where a value that is not finite makes the whole
 record no record, and only the panel's Area mode opens the overlay on it.
@@ -445,7 +445,7 @@ there is none). A pin is key only once clicked, so Esc closes exactly the pin la
 window's; it is moved by dragging, scaled about the pointer by the scroll and made more or less opaque by
 ⌥ and the scroll, both bounded. `PinBoard` holds them with one observer of the displays, installed
 with the first pin and removed with the last, which brings a pin wholly onto one screen when a display
-goes (`PinGeometry.rehome`). `CaptureController.cancel` — Esc or the close control on the capture bar —
+goes (`PinGeometry.rehome`). `CaptureController.cancel` — Esc or the close control on the capture bar, or a display that comes or goes —
 ends the press and the bar and closes no pin, no after-shot window and no Copy in flight in it; only
 `CaptureController.teardown`, called when the module is switched off or its view model is replaced, does. Nothing
 about a pin is stored.

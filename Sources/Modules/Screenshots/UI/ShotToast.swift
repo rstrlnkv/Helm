@@ -450,8 +450,9 @@ final class ShotPanel: NSPanel {
         pending = nil
     }
 
-    /// What a refused delivery leaves of its picture: the picture, the caption that is true of it (what was done with
-    /// it, or the refusal's sentence when nothing was), and the file when one was written.
+    /// What is kept of a picture under a plaque, a refused delivery's or the one a display change closed an editor on: the
+    /// picture, the caption that is true of it (what was done with it, or the refusal's sentence when nothing was), and the
+    /// file when one was written.
     struct Kept {
         let image: CGImage
         let caption: String
@@ -459,14 +460,16 @@ final class ShotPanel: NSPanel {
         let reading: ShotReading?
     }
 
-    /// The plaque, in the shots' place for its nine seconds. **With `kept` the refused delivery's picture stays as a
-    /// finished shot under it**, the still-writing shot finished or, when none is writing, a new one, so that
-    /// the marks drawn on it are not lost with the write; it is the window again when the plaque goes (`advance`, `close`).
+    /// The plaque, in the shots' place for its nine seconds. **With `kept` a picture stays as a finished shot under it**: a
+    /// refused delivery's, or the one an editor's marks make when a display change closes it. It is the still-writing shot
+    /// finished or, when none is writing, a new one, so that the marks drawn on it are not lost; it is the window again when
+    /// the plaque goes (`advance`, `close`).
     /// Without, a refusal of a Copy, an Edit or a capture the still-writing shot has no part in leaves that shot as it is,
     /// and its result still lands on it. The other shots are kept under the plaque, folded, and are back when it goes.
     /// `aboutAShot` is for a refusal about a shot that was taken though none is kept here, the one an editor was opened
-    /// on, and only its uncomposed picture passes it: a refused Copy passes nothing and is titled as a capture that failed;
-    /// a kept shot is one anyway.
+    /// on or an Edit was pressed on: its uncomposed picture passes it, and so does a display change that closes an editor
+    /// with nothing drawn, or that comes after Edit was pressed and before the editor opened. A refused Copy passes nothing
+    /// and is titled as a capture that failed; a kept shot is one anyway.
     func showRefusal(_ reason: CaptureRefusal, keeping kept: Kept? = nil, aboutAShot: Bool = false) {
         show(lasting: 9) {
             if let kept { finish(kept.image, caption: kept.caption, file: kept.file, reading: kept.reading) }
@@ -479,7 +482,7 @@ final class ShotPanel: NSPanel {
     /// the grant**. A button that cannot do what it says is worse than none: a
     /// full disk is not mended in the Privacy pane. Its own function so the
     /// decision is one a test can ask without a window. `aboutAShot`: the refusal is about a shot that was taken, one kept
-    /// under the plaque or the one an editor was opened on.
+    /// under the plaque, or the one an editor was opened on or an Edit was pressed on.
     static func refusalContent(_ reason: CaptureRefusal, aboutAShot: Bool) -> ShotToastModel.Content {
         let permission = reason == .noPermission
         let title: String
@@ -487,8 +490,9 @@ final class ShotPanel: NSPanel {
         case .noPermission: title = ScStr.noPermissionTitle
         // A shot that was taken and could not be opened or replaced: «not taken» would be untrue of it.
         case .notEditable, .notReplaced: title = ScStr.thumbnailLabel
-        // «Not taken» is as untrue of a shot kept under the plaque or one an editor was opened on; about none it is what these say.
-        case .captureFailed, .displayGone, .windowGone, .write, .pasteboard, .encoding:
+        // «Not taken» is as untrue of a shot kept under the plaque, or one an editor was opened or an Edit pressed on; about
+        // none it is what these say.
+        case .captureFailed, .displayGone, .displayChanged, .windowGone, .write, .pasteboard, .encoding:
             title = aboutAShot ? ScStr.thumbnailLabel : ScStr.failedTitle
         }
         return .refusal(title: title, body: ScStr.refusal(reason), offersSettings: permission)

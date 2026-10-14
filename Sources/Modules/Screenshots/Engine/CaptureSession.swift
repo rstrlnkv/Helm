@@ -11,6 +11,10 @@ public enum CaptureRefusal: Sendable, Equatable {
     case captureFailed
     /// A display was listed and gone by the time it was captured.
     case displayGone
+    /// A display came or went while a capture, or the editor opened on a shot, was under way, and its owner ended it. The
+    /// session never answers with this case: the owner says it, and asks the session for nothing more than the picture of
+    /// the marks an editor held.
+    case displayChanged
     /// A window that neither the system nor the freeze has any more.
     case windowGone
     case write(WriteRefusal)

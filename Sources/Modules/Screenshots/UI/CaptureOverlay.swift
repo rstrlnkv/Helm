@@ -57,7 +57,6 @@ struct EditorTextTools {
     private let freeze: Freeze
     private var onFinish: ((OverlayResult) -> Void)?
     private var panels: [DisplayID: (panel: OverlayPanel, view: OverlayView)] = [:]
-    private var screenObserver: NSObjectProtocol?
 
     private var mode: Mode { didSet { render() } }
     private var drag: (display: DisplayID, drag: SelectionDrag)?
@@ -141,6 +140,14 @@ struct EditorTextTools {
     var editedLayers: [Annotation] { edit?.layers.layers ?? [] }
     /// The area the editor holds now, a crop still pending included, for a test that reads it without leaving.
     var editedArea: CGRect? { edit?.rect }
+    /// What an exit would deliver of the editor this instant, the editor left open: an input still open has placed its text,
+    /// and a stroke still under the pointer is a layer, as `perform(.exit)` makes them. Nil where no area is being edited.
+    func heldForExit() -> (display: DisplayID, local: CGRect, layers: [Annotation])? {
+        endTyping()
+        guard var current = edit else { return nil }
+        current.layers.end()
+        return (current.display, current.rect, current.layers.layers)
+    }
     var coloursAreOpen: Bool { popover?.kind == .colours }
     /// The text being typed: the display whose field it is in and where the line starts, in that display's top-left
     /// points. The field itself is the view's (`OverlayView.textField`); this is the overlay's one record that an input
@@ -232,7 +239,7 @@ struct EditorTextTools {
         return true
     }
 
-    /// The panels and the observer, built and **not** ordered in: a test drives
+    /// The panels, built and **not** ordered in: a test drives
     /// the events by hand and must not put a window on the screen of whoever runs
     /// it.
     func build() -> Bool {
@@ -257,14 +264,6 @@ struct EditorTextTools {
         // for — one plugged in during the freeze, or one the freeze filed as gone
         // while it is still there — would stay live under a capture.
         guard !panels.isEmpty, panels.count == NSScreen.screens.count else { close(); return false }
-
-        // A display added or taken away while the overlay is open: the frames
-        // are of a desk that no longer exists, so the capture ends.
-        screenObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.finish(.cancelled) }
-        }
 
         // The pointer where it already is, so the coordinates plate is there at once.
         let mouse = NSEvent.mouseLocation
@@ -300,8 +299,6 @@ struct EditorTextTools {
         colourPanel.close()
         typing = nil
         leaving = false
-        if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
-        screenObserver = nil
         for entry in panels.values {
             entry.panel.orderOut(nil)
             entry.panel.contentView = nil

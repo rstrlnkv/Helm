@@ -218,23 +218,22 @@ final class TheOverlayDecidesWhatTheDragMeansTests: XCTestCase {
         XCTAssertEqual(results.count, 1)
     }
 
-    func testADisplayChangingWhileItIsOpenCancels() throws {
+    /// An overlay does not end itself when a display comes or goes: the capture's controller listens, and ends the press by
+    /// closing the overlay (`TheCaptureEndsWhenADisplayComesOrGoesTests`). A bare overlay that is open when the notification
+    /// is posted is still open afterwards and has reported no result, before and after its owner's close.
+    func testADisplayChangingWhileItIsOpenIsLeftToItsOwner() throws {
         _ = try build()
-        NotificationCenter.default.post(name: NSApplication.didChangeScreenParametersNotification, object: nil)
-        // The observer is delivered on the main queue.
-        let done = expectation(description: "the overlay heard the display change")
+        let open = try XCTUnwrap(overlay)
+        XCTAssertTrue(open.isOpen, "control: the overlay is not open before the notification")
+        NotificationCenter.default.post(name: NSApplication.didChangeScreenParametersNotification, object: NSApplication.shared)
+        // An observer of the overlay's own would be delivered on the main queue.
+        let done = expectation(description: "the main queue drained")
         DispatchQueue.main.async { done.fulfill() }
         wait(for: [done], timeout: 2)
-        guard case .cancelled? = finishedOnce() else { return XCTFail("\(results)") }
-    }
-
-    func testClosingStopsListeningForDisplayChanges() throws {
-        _ = try build()
-        overlay?.close()
-        NotificationCenter.default.post(name: NSApplication.didChangeScreenParametersNotification, object: nil)
-        let done = expectation(description: "drained")
-        DispatchQueue.main.async { done.fulfill() }
-        wait(for: [done], timeout: 2)
-        XCTAssertEqual(results.count, 0, "a closed overlay still answered a display change")
+        XCTAssertEqual(results.count, 0, "the overlay finished by itself on a display change: \(results)")
+        XCTAssertTrue(open.isOpen, "the overlay closed by itself on a display change")
+        open.close()
+        XCTAssertFalse(open.isOpen, "control: the owner's close did not close the overlay")
+        XCTAssertEqual(results.count, 0, "the owner's close finished the overlay")
     }
 }
