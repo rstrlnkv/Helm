@@ -2,9 +2,8 @@ import SwiftUI
 
 // **What a settings page may put in the window's bar, said once here so
 // every module page says it the same way.** The bar itself is `HelmApp`'s —
-// `SettingsToolbar`, the controller of the toolbar the settings window wears
-// (its `.pageBar` build has `ShellPageBar` in its place); it hears the
-// selection and this channel itself and tells its items, or its zones, what to show.
+// `SettingsToolbar`, the controller of the toolbar the settings window wears;
+// it hears the selection and this channel itself and tells its items what to show.
 //
 // A page cannot reach an
 // object in another target, so it says what it wants through this contract
@@ -13,7 +12,7 @@ import SwiftUI
 // `Equatable`, which a `perform` or `onSubmit` closure never is.
 //
 // A module's UI target imports `HelmUI` and never `HelmApp` — so this file,
-// and not `ShellPageBar`, is where a page-facing name has to live.
+// and not `SettingsToolbar`, is where a page-facing name has to live.
 
 /// One tab a page's toolbar centres — the switcher's segments, said as data
 /// rather than as a view, since a module's UI target cannot build
@@ -271,17 +270,16 @@ public struct HelmPageToolbarContent {
 /// **The one channel a page's toolbar content crosses into `HelmApp` by.**
 ///
 /// Not `ObservableObject`, and deliberately not read by SwiftUI at all: the
-/// reader is the bar's controller in `HelmApp` (`SettingsToolbar`, or `ShellPageBar` in the window's
-/// `.pageBar` build), and it is told
+/// reader is the bar's controller in `HelmApp` (`SettingsToolbar`), and it is told
 /// about a change rather than asked to watch for one — `onChange` is one slot,
-/// written by the reader's initialiser (`ShellPageBar`'s and `SettingsToolbar`'s write the same slot),
+/// written by the reader's initialiser,
 /// and called after every `declare` and every `withdraw` that actually changed
 /// something.
 ///
 /// **Content is kept per page token, not in one shared slot.** `SettingsDetail`
 /// mounts exactly one page's view at a time, so in steady state at most one
 /// token ever has a live entry — but the reader reads a page's content
-/// by *that page's own token* (`SettingsToolbar`'s `pageKey` and `ShellPageBar.pageKey(for:)` answer the same page key
+/// by *that page's own token* (`SettingsToolbar`'s `pageKey` answers the page key
 /// every module already passes to `helmWindowToolbar`), which is what keeps a
 /// declaration credited to the page that made it rather than to whichever
 /// selection happened to be current when it arrived. Two measured orderings
@@ -326,7 +324,7 @@ public final class HelmWindowToolbarChannel {
     public init() {}
 
     /// What the page named by `token` last declared, or `nil` where it has
-    /// never declared or has since withdrawn — the one thing the reader (`SettingsToolbar`, or `ShellPageBar`)
+    /// never declared or has since withdrawn — the one thing the reader (`SettingsToolbar`)
     /// reads, keyed on the page it is currently showing rather than on
     /// whichever page wrote last.
     public func content(for token: AnyHashable) -> HelmPageToolbarContent? {
@@ -367,7 +365,7 @@ public extension View {
     /// `token` is the page's own key — a module's engine identifier, or a
     /// literal for one of the three non-module pages — and it is what
     /// `HelmWindowToolbarChannel` stores content under and what
-    /// the bar's controller (`SettingsToolbar`, or `ShellPageBar`) reads back by the page it is currently showing.
+    /// the bar's controller (`SettingsToolbar`) reads back by the page it is currently showing.
     /// Two mounts of the same page (a language-triggered remount, an outgoing
     /// and an incoming page briefly overlapping) share one token on purpose;
     /// the channel's own generation guard, not a fresh token per mount, is

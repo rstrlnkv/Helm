@@ -50,7 +50,7 @@ comment, not on a page.
 - [The menu-bar panel](Architecture/TheMenuBarPanel.md) — the window, chrome and card of the panel, and the pure grid and drag rules beneath them.
 - [The status item](Architecture/TheStatusItem.md) — the rule that picks what the menu-bar item shows: a countdown, a spin, a tint or a title.
 - [The Settings window](Architecture/TheSettingsWindow.md) — the card shell, the sidebar on the glass and the hosting controllers the window is built from.
-- [The page header](Architecture/ThePageHeader.md) — the page bar that carries a page's header and controls; § The bar's zones, § Toolbar actions, § The tabs and the search field, § The bar's menu and style, § The header strip.
+- [The page header](Architecture/ThePageHeader.md) — the window's toolbar that carries a page's header and controls; § The bar's zones, § Toolbar actions, § The tabs and the search field, § The bar's menu and style, § The header strip.
 - [The sidebar is an arrangement](Architecture/TheSidebarIsAnArrangement.md) — the sidebar as a stored value in which every module appears exactly once, shared with the status item's menu.
 - [A window a module needs and the host owns](Architecture/AWindowAModuleNeedsAndTheHostOwns.md) — the base class for a host-owned window: activation policy, the closed flag and release on close.
 - [Revealing a path](Architecture/RevealingAPath.md) — how a path is shown in Finder without launching or mounting a bundle.

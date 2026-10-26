@@ -47,7 +47,7 @@ public extension Notification.Name {
 /// glass and, outside a toolbar in a key window, the accent in the selected segment. Only `SettingsToolbar`
 /// asks for `systems`, for the switchers of the window's toolbar under Liquid Glass (under Flat it asks for
 /// `flat` there too): a control outside a toolbar that wore it
-/// would show the accent no segmented control in the page bar draws.
+/// would show that accent.
 /// What AppKit's cell draws inside the toolbar of a key window is not measured.
 public enum HelmSwitcherCell: Sendable {
     case flat, systems
@@ -81,17 +81,15 @@ public struct HelmSwitcherSegment<Value: Hashable> {
 /// **The switcher in the bar: an `NSSegmentedControl` sized to what it shows, wearing `HelmFlatSegmentedCell`
 /// unless its environment asks for AppKit's cell.**
 ///
-/// In the page bar the strip is the same under both looks: the neutral pill of the flat cell, unless the
+/// The strip is the neutral pill of the flat cell, unless the
 /// environment's `helmSwitcherCell` asks for AppKit's (a switcher in the window's toolbar does under Liquid
 /// Glass; under Flat it wears the flat cell there too: the tabs on a plate `SettingsToolbar` puts under them, a
 /// capsule's switcher on the capsule's own flat fill).
 /// The system's own cell is what a switcher in the window's toolbar wears under Liquid Glass, for the glass
 /// it brings (measured 2026-09-17 against Apple Music's toolbar: pressing a
 /// segment swells its glass and dragging carries that glass from segment to
-/// segment). Outside a toolbar it selected with the accent colour in a key window, which no
-/// segmented control in the page bar draws, so every other switcher,
-/// and the toolbar's under Flat, wears the flat cell: in the page bar the look changes the plate under the strip (`HelmBarAppearance`), not the
-/// strip, and there is no glass swell. Whether AppKit still draws any of its own under
+/// segment). Outside a toolbar it selected with the accent colour in a key window, so every other switcher,
+/// and the toolbar's under Flat, wears the flat cell, and there is no glass swell. Whether AppKit still draws any of its own under
 /// the flat cell was not seen on a screen (the cell's header).
 /// Under the flat cell a press slides the pick from the old segment to the new one
 /// (`HelmFlatSegmentedCell.slide`), and AppKit's cell is not asked to; the page under the bar still changes
@@ -122,8 +120,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     /// the strip into the toolbar's «»» menu the moment it stops fitting
     /// beside an opening search field. One `NSSegmentedControl` instance can carry both forms:
     /// `updateNSView` refills the same control when this flips.
-    /// `SettingsToolbar` flips it on a mounted control (`patchTabs` hands the hosted switcher `PageBar.tabsFolded`);
-    /// `ShellBarTabs` flips nothing: it mounts two switchers, one of each form, and its plate holds whichever the layout says.
+    /// `SettingsToolbar` flips it on a mounted control (`patchTabs` hands the hosted switcher `PageBar.tabsFolded`).
     private let compact: Bool
     /// The control's own `NSView.menu` — see this type's own header: the
     /// bar's menu for the centre tabs, nil for a switcher that belongs to
@@ -135,7 +132,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
 
     public init(_ name: String, selection: Binding<Value>, segments: [HelmSwitcherSegment<Value>],
                 compact: Bool = false, menu: NSMenu? = nil, appearance: HelmBarAppearance = .liquidGlass) {
-        // `appearance` is read by nothing here: both looks wear one cell (this type's header).
+        // `appearance` is read by nothing here.
         self.name = name
         self.segments = segments
         self._selection = selection
@@ -186,8 +183,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     /// one with Control held, which is how a trackpad without a right click
     /// sends it. Public for `SettingsToolbar`'s own monitor, which is the one
     /// place the gesture is answered on the toolbar, so the two can never
-    /// disagree about what it is; `ShellPageBar` reads no gesture, AppKit
-    /// opens its view's `menu`.
+    /// disagree about what it is.
     public static func isTheGesture(type: NSEvent.EventType, modifiers: NSEvent.ModifierFlags) -> Bool {
         switch type {
         case .rightMouseDown: return true
@@ -577,7 +573,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     }
 }
 
-/// **The bar's segmented cell, under both looks: no bezel, a capsule of
+/// **The bar's segmented cell: no bezel, a capsule of
 /// `HelmSurface.barPick` under the selected segment, the word in 13 pt
 /// medium.** It reads each segment's label, image and menu indicator from the
 /// control's own per-segment state, so what `fill` writes, the dot and the

@@ -80,8 +80,7 @@ public final class HelmToolbarActionsModel {
         /// the model's owner through `pressItem`, the same route a `.menu`
         /// item's own press already takes. `reserveWidth` is carried rather
         /// than computed here: `HelmApp` measures it, through a measurer of its
-        /// own (`SettingsToolbar.actionEntries(for:look:)` and
-        /// `ShellBarActions.entries(for:appearance:)`), and this module may not
+        /// own (`SettingsToolbar.actionEntries(for:look:)`), and this module may not
         /// reach across that boundary to ask for one.
         case segmented([SegmentEntry], selectedID: String, reserveWidth: CGFloat)
     }
@@ -125,12 +124,11 @@ public final class HelmToolbarActionsModel {
     /// which internal access already answers for.
     private(set) var declared: [Entry] = []
     /// The subset of `declared` currently shown — always a subsequence of
-    /// `declared` in the same order. `public`: `ShellBarActions.show`, in another
+    /// `declared` in the same order. `public`: `SettingsToolbar`, in another
     /// module, reads this to decide whether the visible set actually moved
     /// before writing it again.
     public private(set) var visibleIDs: [String] = []
-    /// Mirrors a frozen `PageBar`'s own inertness (`SettingsToolbar.freeze`),
-    /// and a dimmed page's in `ShellBarActions.show`
+    /// Mirrors a frozen `PageBar`'s own inertness (`SettingsToolbar.freeze`)
     /// — a custom-view item has no `NSToolbarItem.isEnabled` of its own to
     /// dim, so this is how that fact reaches the buttons this model feeds.
     /// Not `public`, on the same grounds as `declared` above: only this
@@ -160,7 +158,7 @@ public final class HelmToolbarActionsModel {
 
     /// Never observed by SwiftUI, and never anything but data going the
     /// other way: `id` in, nothing back. Set once by whoever owns the model:
-    /// `SettingsToolbar.makeActionsItem`, or `ShellBarActions`' initialiser.
+    /// `SettingsToolbar.makeActionsItem`.
     @ObservationIgnored public var press: (String) -> Void = { _ in }
     /// The `.menu` twin of `press`: the entry's own `id`, then the pressed
     /// item's — nothing back, on the same grounds.
@@ -193,12 +191,10 @@ public final class HelmToolbarActionsModel {
         isInteractive = value
     }
 
-    /// Called by `ShellBarActions.show` with the activity its bar hands it —
-    /// `SettingsWindow`'s own direct read of the window's `isKeyWindow` and
-    /// `isMainWindow`, passed to `ShellPageBar.setWindowAppearsActive(_:)`; see
-    /// this type's own `appearsActive` header for why the value crosses in
-    /// from there rather than being read here.
-    /// `SettingsToolbar.setWindowAppearsActive(_:)` calls it too.
+    /// Called by `SettingsToolbar.setWindowAppearsActive(_:)` with the activity
+    /// `SettingsWindow` hands it — its own direct read of the window's `isKeyWindow` and
+    /// `isMainWindow`; see this type's own `appearsActive` header for why the value
+    /// crosses in from there rather than being read here.
     public func setAppearsActive(_ value: Bool) {
         guard appearsActive != value else { return }
         appearsActive = value
@@ -209,7 +205,6 @@ public final class HelmToolbarActionsModel {
 /// `NSHostingView` with no AppKit border of its own (`isBordered = false`):
 /// a bordered item wraps its view in a second glass, measured, so the
 /// capsule's own `.glassEffect` would sit inside another one.
-/// `ShellBarActions` hosts it too, in no toolbar item.
 ///
 /// **Why `body` does not read `\.controlActiveState`, and does not override
 /// it either.** A Helm Dev probe saw no movement in `\.controlActiveState`
@@ -267,14 +262,13 @@ public struct HelmToolbarActionsCapsule: View {
     @Environment(\.helmBarAppearance) private var appearance
 
     /// **4 pt: the trailing inset the status zone falls back to** when it has no status or its ink
-    /// cannot be measured (`StatusZoneView.trailingInset(for:barHeight:boxMargin:)`), and what
+    /// cannot be measured (`StatusZoneView.trailingInset(for:barHeight:)`), and what
     /// `StatusZoneView.boxMargin` takes from 8. The number is a reading of AppKit's toolbar, kept
     /// as a number: a custom-view item with `isBordered = false`, last in an `NSToolbar`, ended
     /// 4.0 pt from the window's trailing edge at 1060 pt where a bordered one ended 8.0 pt.
     /// The capsule carries an inset of its own only where its caller hands one
-    /// (`trailingInset`, 0 by default): `ShellBarActions` hands none, `ShellBarLayout.trailing`
-    /// being what stands between the bar's last control and the bar's edge there, and
-    /// `SettingsToolbar.actionsHost(_:for:)` hands this number where no search follows the capsule.
+    /// (`trailingInset`, 0 by default): `SettingsToolbar.actionsHost(_:for:)` hands this number
+    /// where no search follows the capsule.
     public static let edgeMargin: CGFloat = 4
 
     /// **36 pt — AppKit's own bordered toolbar button's height**, measured
@@ -332,7 +326,7 @@ public struct HelmToolbarActionsCapsule: View {
 
     /// Non-zero exactly when this capsule is a toolbar's own last item (no
     /// search follows it) — see `edgeMargin`'s own header for the measurement
-    /// this closes. `ShellBarActions` leaves it at 0: its bar's layout owns the margin.
+    /// this closes.
     public let trailingInset: CGFloat
 
     /// **The two numbers a flat capsule dims by in a window that is not active,
@@ -603,24 +597,13 @@ public struct HelmToolbarActionsCapsule: View {
     /// whose own header has what a bare hosting view got wrong for the tabs —
     /// mounting the same segments, non-compact and in `.icons`, the one style
     /// `entryContent(_:)` ever draws a `.segmented` entry in.
-    /// `ShellBarActions.segmentedReserveWidth(_:appearance:)` is a second measurer: it mounts
-    /// the switcher in a detached hosting view, in the look the capsule draws in (both looks draw the same widths), because the
-    /// bar it serves has no toolbar item to attach to. This module cannot import `HelmApp` to
-    /// reach either itself — `Package.swift`'s own target graph has `HelmApp` depend on
+    /// This module cannot import `HelmApp` to
+    /// reach it itself — `Package.swift`'s own target graph has `HelmApp` depend on
     /// `HelmUI` (the `HelmApp` target's `dependencies:` in `host`), and the reverse edge would be a cycle — which is
     /// why the number crosses as plain data on the entry rather than being asked for here.
     @MainActor
     func reserveWidth(_ entry: HelmToolbarActionsModel.Entry) -> CGFloat {
         Self.reserveWidth(for: entry)
-    }
-
-    /// **The width of the capsule's reserve for these entries** — every declared entry's
-    /// `reserveWidth(_:)` laid end to end, which is what the hidden back layer in `body`
-    /// is. Static and plain arithmetic, so a caller that must answer a width synchronously
-    /// asks it without drawing the capsule.
-    @MainActor
-    public static func reserveWidth(of entries: [HelmToolbarActionsModel.Entry]) -> CGFloat {
-        entries.reduce(0) { $0 + reserveWidth(for: $1) }
     }
 
     @MainActor

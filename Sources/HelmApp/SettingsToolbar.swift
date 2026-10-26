@@ -351,11 +351,11 @@ import HelmUI
             bar.actionsModel?.setAppearsActive(active)
             // Only the glass needs a new host to follow the window; a flat capsule dims by the model's
             // `appearsActive`, which it reads where it draws (`HelmToolbarActionsCapsule.glyph(_:)` for a
-            // glyph, `backing(_:for:)` for a segmented entry's plate), so the model told is all it needs —
-            // as `ShellBarActions.show` has it. That a flat plate dimmed this way reads right on a screen
+            // glyph, `backing(_:for:)` for a segmented entry's plate), so the model told is all it needs.
+            // That a flat plate dimmed this way reads right on a screen
             // was not seen (`HelmToolbarActionsCapsule.backing(_:for:)`'s header has the caveat).
             if bar.shape.look == .liquidGlass { rebuildActionsHost(bar) }
-            // The tabs' plate (Flat only) dims and undims by this value, handed in, as the page bar's does.
+            // The tabs' plate (Flat only) dims and undims by this value, handed in.
             bar.tabsPlate?.isActive = active
         }
         // The name zone's own ink: a plain SwiftUI value, not glass, so the
@@ -438,8 +438,8 @@ import HelmUI
     /// **The view of the `helm.actions` item: `HelmToolbarActionsCapsule` in a hosting view, dressed by
     /// the look the bar was built under (`PageBar.shape`), never by a re-read of the stored value.**
     /// `\.helmBarAppearance` is the capsule's plate (glass under Liquid Glass, a flat fill under Flat)
-    /// and `flatInactiveInk` the numbers a flat capsule dims by in an inactive window, the name zone's
-    /// (`ShellBarActions` hands the capsule both the same way); `\.helmSwitcherCell` is what a
+    /// and `flatInactiveInk` the numbers a flat capsule dims by in an inactive window, the name zone's;
+    /// `\.helmSwitcherCell` is what a
     /// `.segmented` entry's switcher wears (`HelmBarAppearance.switcherCell`). The root is no `AnyView`: a
     /// reader of the root walks value types.
     ///
@@ -1623,7 +1623,7 @@ import HelmUI
     /// on a hosting-view item in a key
     /// window in the dark appearance that took AppKit's platter off, and Light
     /// and a window that is not key were not seen. Its view is a
-    /// `ShellBarPlate` wearing the flat look with the hosting view inside it,
+    /// `ShellBarPlate` with the hosting view inside it,
     /// pinned edge to edge, so the plate is exactly as large as the strip and
     /// follows it when the strip is refilled or folded. The strip is Helm's
     /// cell, whose slide moves the pick. `PageBar.tabsSwitcherHost` is
@@ -1637,7 +1637,7 @@ import HelmUI
         let hosting = NSHostingView(rootView: helmSwitcherView(tabs, bar: bar))
         hosting.sizingOptions = [.intrinsicContentSize]
         if bar.shape.look == .flat {
-            let plate = ShellBarPlate(appearance: .flat, isActive: windowAppearsActive,
+            let plate = ShellBarPlate(isActive: windowAppearsActive,
                                       titlebarIsTransparent: titlebarIsTransparent)
             plate.translatesAutoresizingMaskIntoConstraints = false
             plate.content = hosting

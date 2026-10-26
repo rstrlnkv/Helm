@@ -6,8 +6,7 @@ import HelmUI
 
 /// **A page mounted with a real, attached `SettingsToolbar`** — the fixture of
 /// the families that read the `NSToolbar` itself: its items, their order and
-/// their frames. `LivePageToolbarFixture` is the other one: it puts the page
-/// bar (`MountedPageBar`) in the window, not a `SettingsToolbar`.
+/// their frames.
 ///
 /// Before the SwiftUI-AppKit bridge was replaced by `SettingsToolbar`
 /// (`SettingsToolbar.swift`'s own header), `MountedRender`'s window picked up

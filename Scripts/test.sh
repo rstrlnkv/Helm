@@ -15,15 +15,20 @@ set -euo pipefail
 # itself ORs a repeated `--filter`, so every occurrence is read here too, in
 # both the `--filter X` and `--filter=X` forms, and joined the same way.
 #
-# Reading a run: this script prints its own verdict last. The closing "Test
-# Suite 'All tests' passed" speaks for the last bundle and the very last
-# line, "✔ Test run with 0 tests in 0 suites passed", for Swift Testing's
-# empty run — neither speaks for the suite. A summary line that also carries
-# a skip count reads as zero failures under a shorter pattern, and a
-# `--filter` whose alternatives match nothing, or match only in part, still
-# exits 0; the runner counts each alternative against the cases that
-# actually ran and fails, naming the one that ran none. Where a bare `swift
-# test` log has to be read, take the status on its own line —
+# Reading a run: this script prints its own verdict last, on stdout; the log
+# it names is a file, and its closing lines do not stand for that verdict. A
+# full run (HELM_FULL_SUITE=1, no --filter) closes each bundle with "Test
+# Suite 'All tests' passed" or "failed" and, after the last bundle, prints
+# Swift Testing's empty runs, each closing on a line that begins "✔ Test run
+# with 0 tests in 0 suites passed"; a default or --filter run closes each
+# bundle with "Test Suite 'Selected tests' passed" or "failed". The last
+# bundle can close "passed" in a run whose earlier bundle failed, and an empty
+# run's "passed" is about 0 tests: neither speaks for the suite. A summary
+# line that also carries a skip count reads as zero failures under a shorter
+# pattern, and a `--filter` whose alternatives match nothing, or match only
+# in part, still exits 0; the runner counts each alternative against the
+# cases that actually ran and fails, naming the one that ran none. Where a
+# bare `swift test` log has to be read, take the status on its own line —
 #   swift test > log 2>&1; echo "EXIT=$?"
 # — and count
 #   command grep -cE 'with ([0-9]+ tests? skipped and )?[1-9][0-9]* failures?' log
