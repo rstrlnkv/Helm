@@ -30,6 +30,13 @@ set -euo pipefail
 #   command grep -c 'warning: No matching test cases were run' log
 # A filter that matches in part is invisible to both counts.
 #
+# The build checks imports: --explicit-target-dependency-import-check error
+# refuses an import of a target outside the importing target's dependencies,
+# direct or through another (ARCHITECTURE.md § The boundaries). It checks
+# only a target that recompiles, so a rerun after a refusal is green, and the
+# refusing run's last build line can still be "Build complete!" (measured on
+# Swift 6.4, 26.10.2026): $STATUS is the verdict, not that line.
+#
 # Usage: Scripts/test.sh [swift test arguments...]
 # The log path is $HELM_TEST_LOG if set, otherwise a fresh file under
 # ${TMPDIR:-/tmp}; the summary line always prints where it went.
@@ -169,9 +176,9 @@ if ! { : > "$LOG"; } 2>/dev/null; then
   exit 1
 fi
 
-echo "==> swift test $* (log: $LOG)"
+echo "==> swift test --explicit-target-dependency-import-check error $* (log: $LOG)"
 set +e
-swift test "$@" > "$LOG" 2>&1
+swift test --explicit-target-dependency-import-check error "$@" > "$LOG" 2>&1
 STATUS=$?
 set -e
 
@@ -253,7 +260,7 @@ fi
 
 # swift test's own --filter matches a regular expression against
 # <target>.<class>/<method> (measured: --filter
-# 'DocumentsNameTheTreeTests/testTheExcusedNamesAreStillMentioned' selects
+# 'DocumentsNameTheTreeTests/testTheReaderRecognisesEveryFileLineShape' selects
 # exactly that one case, and a bare class name or a partial name matches by
 # substring the same way). Sequentially the log spells a run case with a
 # space where the filter wants a slash — `Test Case '-[Target.Class

@@ -66,12 +66,11 @@ public enum Redact {
     /// Replaces every occurrence of the software's name in `text` with its tag,
     /// for a line that quotes the name outside the path Helm wrote.
     ///
-    /// **Known gap Redact-F1:** its one call site, in `HelmTrash`, hands it not the
+    /// **Known defect Redact-F1:** its one call site, in `HelmTrash`, hands it not the
     /// system's sentence for a software leaf but Helm's own verdict
     /// («<domain> <code>, <reason>»), and this replaces every occurrence, so an app
     /// named like a word of that verdict («Cocoa», «Permission», «missing») garbles
     /// the line and can be read back from the tag.
-    /// `testTheVerdictIsNotRewrittenByTheSoftwaresName` reproduces it.
     ///
     /// Four characters at least, because this replaces every occurrence rather than
     /// a delimited one: swapping a two-letter name out of a sentence rewrites the
@@ -95,10 +94,9 @@ public enum Redact {
     /// registry answers for *this* Mac: an installed app can register its own
     /// product name as a filename extension, and a gate that opens for it on one
     /// machine and not another is a redaction that fails open where nobody looks.
-    /// **Known gap Redact-F2:** a bundle id that happens to end in one of these words
-    /// (`com.acme.log`) is read as a name plus an extension and wears two tags, and a
-    /// vendor's ids do not share one.
-    /// `testAnIDEndingInAListedWordWearsOneTagAcrossItsLeftovers` reproduces it.
+    /// **Known defect Redact-F2:** a bundle id that happens to end in one of these words
+    /// (`com.acme.log`) is read as a name plus an extension and wears two tags, and
+    /// several ids of one vendor can share the vendor's tag.
     private static func softwareStem(_ path: String) -> String {
         let leaf = (path as NSString).lastPathComponent
         let ext = knownExtension(of: leaf)

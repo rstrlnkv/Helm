@@ -10,20 +10,27 @@ leaving the filesystem unread, are on the doc comment above `struct Module`):
 ## The boundaries
 
 **The modules are blind to each other.** Each UI target imports exactly one
-engine, its own, and no engine imports another:
+engine, its own, and no engine imports another. The build holds it:
+`Package.swift` declares one engine per UI target and none per engine, and
+`Scripts/test.sh` and `Scripts/package-app.sh` build with
+`--explicit-target-dependency-import-check error`, which refuses an import of a
+target outside the importing target's dependencies, direct or through another.
+The check runs on a target only when it recompiles, so a rerun after a refusal
+builds green and the refusing run can end on "Build complete!": its exit code is
+the verdict. A fresh build folder compiles, and so checks, every target the build
+asks for; the release's fresh clone asks for the targets `HelmApp` depends on —
+the shared ones and every module's engine and UI, no test target.
 
-```bash
-command grep -rn '^import Module_' Sources/Modules/ \
-  | sed 's|Sources/Modules/\([^/]*\)/\([^/]*\)/.*:[0-9]*:import \(.*\)|\1/\2 <- \3|' | sort -u
-```
-
-prints one row per module, each naming its own engine.
-
-**Engines carry no UI.**
-`command grep -rln '^import SwiftUI\|^import HelmUI' Sources/Modules/*/Engine/`
-prints nothing. AppKit reaches only system calls, in the files
+**Engines carry no UI, and the host imports no engine.** The build holds
+neither: SwiftUI is a system module rather than a target, and the check passes
+an import of a target reached through a declared one, which is how `HelmApp`,
+declaring every module's UI target, could import every engine.
+`Tests/HelmRuntimeTests/TheBoundariesTheBuildCannotHoldTests.swift` reads the
+imports instead; its doc comment lists the spellings it counts. AppKit reaches
+only system calls, in the files
 `command grep -rln '^import AppKit' Sources/Modules/*/Engine/` names, most of
-them a module's Sources/Modules/<Name>/Engine/SystemPorts.swift.
+them a module's Sources/Modules/<Name>/Engine/SystemPorts.swift; that is read
+in review, because an import line cannot tell a system call from a drawing.
 
 **A command is a case of the module's own enum.** There is one
 Sources/Modules/<Name>/Engine/Logic/<Name>Command.swift per module, and the

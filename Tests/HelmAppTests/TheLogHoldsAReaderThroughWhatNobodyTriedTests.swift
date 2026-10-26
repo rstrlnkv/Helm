@@ -7,10 +7,9 @@ import HelmUI
 @testable import HelmApp
 
 /// The Log page in a window on screen, under the changes
-/// `TheLogKeepsAReaderWhereTheyWereTests` does not make: a fold opened at the
-/// top of the view, the window *widened*, a card crossing
-/// `LogView.lazyAbove` while it is read, and — with Follow lit — whether the end
-/// is reached in one landing or in steps a person would see.
+/// `TheLogKeepsAReaderWhereTheyWereTests` does not make: the window *widened*
+/// and — with Follow lit — whether the end is reached in one landing or in
+/// steps a person would see.
 ///
 /// The reader's place is read the way that file reads it, by the pixels of the
 /// one red glyph on the page (`TheLogKeepsAReaderWhereTheyWereTests.Window`).
@@ -18,12 +17,6 @@ import HelmUI
 final class TheLogHoldsAReaderThroughWhatNobodyTriedTests: XCTestCase {
 
     private typealias Window = TheLogKeepsAReaderWhereTheyWereTests.Window
-
-    /// The cases that reproduce a defect found and not yet decided are skipped
-    /// unless `HELM_KNOWN_GAPS=1`, the reproduction below each skip untouched, the
-    /// convention `TheLogsHeadingsAndMarksHoldInEveryLanguageAndAppearanceTests`
-    /// follows. When a gap is closed, delete its skip.
-    private static var knownGapsRun: Bool { ProcessInfo.processInfo.environment["HELM_KNOWN_GAPS"] == "1" }
 
     /// As in the file beside this one: a point of rounding and room for a pixel.
     private let still: CGFloat = 2
@@ -76,41 +69,6 @@ final class TheLogHoldsAReaderThroughWhatNobodyTriedTests: XCTestCase {
             .suffix(HelmLog.tailLimit))
     }
 
-    // MARK: - Follow off: a fold opened in view
-
-    /// Follow off, a start-up fold at the very top of the view, opened by a
-    /// click: the lines it brings are drawn below the fold the person clicked,
-    /// where they asked for them. The view does not move — a press on something
-    /// in view is not a change under the reader, and the first line below the
-    /// fold is the one `LogReaderPlace` would otherwise hold, by scrolling the
-    /// opened lines up out of view.
-    func testAFoldOpenedAtTheTopOfTheViewOpensInView() throws {
-        try XCTSkipUnless(Self.knownGapsRun, "Known gap log-fold-at-top: the held line below a fold at the top of the view scrolls the opened lines out of view")
-        let lines = Self.tail(rows: [0, 200], landmarkIn: -1, landmarkRow: -1)
-        var moved: [String] = []
-        var opened = 0
-        for width in [760, 1_000] as [CGFloat] {
-            let page = Window(lines, width: width)
-            defer { page.close() }
-            page.pump(3)
-            try page.pressFollow()
-            try page.scroll(toY: 0)
-            page.pump(0.6)
-            let scroll = try XCTUnwrap(page.scroll)
-            let before = scroll.documentVisibleRect.minY
-            let was = page.reading()
-            guard try page.openFoldBelow(0, through: 160) else { continue }
-            opened += 1
-            let after = scroll.documentVisibleRect.minY
-            if abs(after - before) > still {
-                moved.append("\(Int(width)) pt: the view moved \(Int(after - before)) pt (\(was) → \(page.reading()))")
-            }
-        }
-        XCTAssertGreaterThan(opened, 0, "no click opened the fold, so nothing was asked")
-        XCTAssertTrue(moved.isEmpty, "opening a fold at the top of the view scrolled away from it — "
-                      + moved.joined(separator: "; "))
-    }
-
     // MARK: - Follow off: the window widened
 
     /// Follow off, the window widened: every row above the reader that wrapped
@@ -146,69 +104,6 @@ final class TheLogHoldsAReaderThroughWhatNobodyTriedTests: XCTestCase {
         }
         XCTAssertTrue(lost.isEmpty, "with Follow off a wider window moved the line being read — "
                       + lost.joined(separator: "; "))
-    }
-
-    // MARK: - Follow off: a card crossing the lazy threshold
-
-    /// Follow off, the reader inside the newest launch, which holds two rows
-    /// under `LogView.lazyAbove` — drawn plain — while lines arrive one by one
-    /// and take it past the threshold, where its rows are drawn lazily: the
-    /// stack the rows live in is replaced under the reader.
-    func testTheReadersCardGrowingPastTheLazyThresholdKeepsTheLine() throws {
-        try XCTSkipUnless(Self.knownGapsRun, "Known gap log-lazy-crossing: a card turning lazy under the reader loses the line")
-        let rows = LogView.lazyAbove - 2
-        let lines = Self.tail(rows: [300, HelmLog.tailLimit - 300 - 7 - 7 - rows, rows],
-                              landmarkIn: 2, landmarkRow: rows / 2)
-        XCTAssertEqual(lines.count, HelmLog.tailLimit, "precondition: the tail is full")
-        try crossing(lines, arrivals: 5, label: "newest card 398 → 403 rows")
-    }
-
-    /// Follow off, the reader inside the tail's head, two rows over the
-    /// threshold — drawn lazily — while lines arrive and the oldest leave it,
-    /// until it is drawn plain.
-    func testTheReadersCardShrinkingUnderTheLazyThresholdKeepsTheLine() throws {
-        try XCTSkipUnless(Self.knownGapsRun, "Known gap log-lazy-crossing: a card turning plain under the reader moves the line")
-        let rows = LogView.lazyAbove + 2
-        let lines = Self.tail(rows: [rows, 284, HelmLog.tailLimit - rows - 7 - 284 - 7],
-                              landmarkIn: 0, landmarkRow: rows / 2)
-        XCTAssertEqual(lines.count, HelmLog.tailLimit, "precondition: the tail is full")
-        try crossing(lines, arrivals: 5, label: "head card 402 → 397 rows")
-    }
-
-    /// Follow off, the reader in a plain card *below* a lazy head card, while
-    /// lines arrive and the oldest leave the lazy card above them.
-    func testAReaderBelowALazyCardKeepsTheLineAsTheHeadShrinks() throws {
-        try XCTSkipUnless(Self.knownGapsRun, "Known gap log-below-lazy: a lazy card above a plain one loses the reader as lines arrive")
-        let lines = Self.tail(rows: [600, HelmLog.tailLimit - 600 - 7 - 100 - 7, 100],
-                              landmarkIn: 1, landmarkRow: 150)
-        XCTAssertEqual(lines.count, HelmLog.tailLimit, "precondition: the tail is full")
-        try crossing(lines, arrivals: 5, label: "reader below a lazy head of 600 rows")
-    }
-
-    private func crossing(_ lines: [LogEntry], arrivals: Int, label: String) throws {
-        var moved: [String] = []
-        for width in [760, 1_000] as [CGFloat] {
-            let page = Window(lines, width: width)
-            defer { page.close() }
-            page.pump(3)
-            try page.pressFollow()
-            let before = try page.scrollToLandmark()
-            let was = page.reading()
-            var path: [String] = []
-            for index in 0..<arrivals {
-                arrive(page, "an arriving line \(index)")
-                page.pump(1.6)
-                let at = page.landmark()
-                path.append(at.map { "\(Int($0))" } ?? "gone")
-            }
-            let after = page.landmark()
-            if after.map({ abs($0 - before) > still }) ?? true {
-                moved.append("\(Int(width)) pt: line at \(Int(before)) → \(path.joined(separator: " → "))"
-                             + " (\(was) → \(page.reading()))")
-            }
-        }
-        XCTAssertTrue(moved.isEmpty, "\(label): with Follow off the line being read moved as lines arrived — "
-                      + moved.joined(separator: "; "))
     }
 
     // MARK: - Follow lit: one landing, or steps

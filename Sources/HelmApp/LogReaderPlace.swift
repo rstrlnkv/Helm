@@ -19,8 +19,8 @@ import HelmUI
 /// changes (`rowMoved`), and when it is that line that moved while the view did
 /// not, moves the view by the difference (`holdLine`). Where the rows above are
 /// measured the line stays where it was on screen, with one exception: a line
-/// taller than the room below it is moved by the hold itself (300 pt to 200 pt in
-/// `TheReadersLineLandsWhereItWasTests`, the known gap `log-tall-line`).
+/// taller than the room below it is moved by the hold itself (`log-tall-line` in
+/// the defect log).
 ///
 /// **What it can hold, and what it cannot.** A row's place is a reading only
 /// where the rows above it are measured. A card's rows are plain up to
@@ -271,7 +271,7 @@ final class LogReaderPlace {
 
     /// The first drawn row whose top is in the view, and how far that top is from
     /// the view's top. Only the top is tested: a row taller than the view's remaining
-    /// room is chosen too, which is the known gap `log-tall-line`.
+    /// room is chosen too, which is a known defect, `log-tall-line` in the defect log.
     private func capture() {
         let top = metrics.top
         var best: (id: LogEntry.ID, frame: CGRect)?

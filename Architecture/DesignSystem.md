@@ -5,6 +5,12 @@
 which every module's UI target depends on and no engine does. A reason that is about one
 file is on that file's doc comment; this page keeps the rules that cross files.
 
+The look is rebuilt one module at a time. For that work the shell, this kit and the pages
+as they stand are no model: a copy carries forward exactly what the rebuild replaces. One
+module's look is finished before the next one's is started, because a page is judged
+beside finished neighbours, and two modules in flight change the same kit and the same
+string tables at once.
+
 ## Surfaces
 
 `Sources/HelmUI/DesignSystem/HelmSurfaces.swift` holds `HelmSurface` — a small set of

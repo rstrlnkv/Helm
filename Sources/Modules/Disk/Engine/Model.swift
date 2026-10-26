@@ -61,8 +61,8 @@ public struct DiskEntry: Codable, Equatable, Sendable, Identifiable {
     /// every sum a saved file can reach saturates (`Sequence.saturatingSum()`, and
     /// `RingLayout` for its own), and why `DiskAdvice.Target` is held to the same
     /// ceiling where the advice is decoded in its current form (`targets`). An advice
-    /// row in the older form, with no `targets` key, is not clamped: a known gap,
-    /// `Q-legacy-advice`, in `AnOlderAdviceRowIsHeldToTheCeilingTests`.
+    /// row in the older form, with no `targets` key, is not clamped: a known defect,
+    /// `Q-legacy-advice` in the defect log.
     public static let byteCeiling = 1 << 50
 
     public init(name: String, path: String, bytes: Int, isDirectory: Bool,

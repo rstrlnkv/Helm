@@ -89,7 +89,7 @@ One page per module, in the order `ls Sources/Modules` prints.
 ## Shipping and checking
 
 - [Release](Architecture/Release.md) — where the version lives, how a build is numbered, signed and shipped, the updater and the disk image window; § Channels and publishing, § Signing and grants, § The updater, § What shipped, § The disk image window.
-- [Tests and measurement](Architecture/TestsAndMeasurement.md) — what makes a check a check, and how measuring tests are written; § What makes a check, § Readings and mutants, § Fakes, § Shared test plumbing, § Harnesses, § Measuring motion, § Why the commands are run.
+- [Tests and measurement](Architecture/TestsAndMeasurement.md) — what makes a check a check, what proves which defect, what a removal takes with it, and how measuring tests are written; § What makes a check, § What proves what, § Removal takes its traces, § Readings and mutants, § Fakes, § Shared test plumbing, § Harnesses, § Measuring motion, § Why the commands are run.
 
 ## What else to read
 

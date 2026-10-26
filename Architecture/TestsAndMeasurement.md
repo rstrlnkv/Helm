@@ -9,10 +9,44 @@ something: one that logs a figure for a person to read cannot fail, and a real r
 sits in it until somebody reads the number by hand. A test looking for a missing word
 asserts first that the subject happened at all, since it passes when nothing was logged,
 which is the default in a test process because the log is off outside a dev build.
-Every known gap in the tree is skipped the one way: the test is skipped unless
-`HELM_KNOWN_GAPS=1` is set, with a reason that starts «Known gap <id>», at the top of
-the test, the reproduction left intact below, so `HELM_KNOWN_GAPS=1` runs all of them
-and each reads red while its gap is open.
+
+## What proves what
+
+The proof follows the class of the defect, and only some classes keep theirs in the tree.
+
+| The defect | Its proof | Kept |
+|---|---|---|
+| data deleted, moved, overwritten or half-written; a secret or a name reaching a log, argv or a file; a privilege raised or a scope widened; work done while nobody watches | a test | yes |
+| a crash on what a file, the system or another process hands Helm | a test | yes |
+| an import across a boundary; a path or `§` pointer to nothing | the build's import check (ARCHITECTURE.md § The boundaries) and the checks of the tree | yes |
+| the look: layout, size, colour, contrast, a page's states | shots before and after | no |
+| motion | a recording before and after (§ Measuring motion) | no |
+| logic that costs no data | the repro or a command printing the value, before and after | no |
+
+A proof that is not kept is the same command run before the fix and after it, the before
+already red, and its files stay outside the tree. A test outside the kept classes is
+optional, and its class decides it: such tests are to be named by class in a list that
+the run before every commit passes to `--skip`, and the full suite runs before a release.
+No such list is in the tree yet, so no run skips a test by its class. A defect found and
+not fixed goes to the defect log — the repository's issues, and a security defect to the
+owner's private record, never to a public issue — and not into the tree as a skipped test:
+a skip reads as a pass in a failures-only summary, and a reproduction nobody runs goes
+stale.
+
+## Removal takes its traces
+
+When code leaves the tree, its tests and its lines on these pages and in `CLAUDE.md` leave
+in the same commit; its lines in the crew's knowledge leave in the same change and reach
+Core Crew's git when the owner commits them. A test of removed code no longer builds, and a
+backticked Swift file name, a path with an extension `DocumentsNameTheTreeTests` knows
+(slashed, or bare with a `:line`), a directory in the map or a `§` pointer left behind
+fails the checks of the tree;
+any other name, a bare type or a name in a doc comment, fails nothing, so the commit that
+removes a name first runs
+`command grep -rn '<name>' ARCHITECTURE.md Architecture CLAUDE.md README.md Sources Tests Scripts .claude/crew/knowledge`
+and takes every line it prints — a mention, not a caller, the one question `grep` answers
+here (ARCHITECTURE.md § Why the commands are run). Nothing is kept for later: git holds
+what was removed.
 
 ## Readings and mutants
 
@@ -82,7 +116,7 @@ anchors on something that moves with what is measured, since a fixed rectangle o
 growing page measures the page; it crops to the part that moves, because a whole-window
 difference is dominated by whatever else changed; it measures at the shipping duration,
 because at a longer duration an instant snap reads as "it drew quickly at the start"; and it
-ships the control with every ramp test, because without it the ramp passes on a machine
+ships the control with every ramp it measures, because without it the ramp passes on a machine
 that animates everything by default. Motion is never measured from a hosting view's
 fitting size, which answers with the ideal size and reads every ramp as a step.
 

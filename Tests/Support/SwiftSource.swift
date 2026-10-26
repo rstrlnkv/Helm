@@ -41,9 +41,8 @@ public enum SwiftSource {
     /// `L("")` and all 1054 keys report as dead at once, which at least fails
     /// loudly. Run over the **raw** file it reads the opposite way and fails
     /// silently: this repository writes backticked names inside doc comments on
-    /// purpose — `DocumentsNameTheTreeTests` exists to read them back — so
-    /// `Sources/HelmApp/AppStrings.swift`'s «Not `L("Off")`» keeps the key «Off»
-    /// alive by explaining why nothing uses it there.
+    /// purpose, so `Sources/HelmApp/AppStrings.swift`'s «Not `L("Off")`» keeps
+    /// the key «Off» alive by explaining why nothing uses it there.
     ///
     /// Not a second walk, and it could not be one: a `//` inside a string is not
     /// a comment, so blanking comments correctly already requires parsing every

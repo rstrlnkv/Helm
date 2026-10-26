@@ -283,8 +283,7 @@ enum LogSessions {
     /// span and a heading one family in six of the eight languages; in Chinese
     /// and Japanese the interval formatter answers in numerals
     /// (`2026/9/22 – 2026/9/23`) beside a heading spelled `2026年9月22日`. That is
-    /// a known gap, kept red-by-design in `testASpanIsSpelledWithTheWordsTheDayHeadingsUse`
-    /// and skipped there until it is decided.
+    /// a known defect, `log-span-zh-ja` in the defect log.
     ///
     /// The formatter is kept per language and zone, never in one constant: the
     /// app's language changes while it runs, and a formatter built per call is
@@ -390,8 +389,7 @@ enum LogSearch {
     /// version, «Helm <version>», or the day and minute as drawn, case and
     /// accents aside; a card whose lines match is drawn for its lines. The head of
     /// the tail also draws «Earlier launch», and no query finds a card by that
-    /// word — a known gap, skipped in `testEveryWordAHeaderDrawsFindsItsCardInEveryLanguage`
-    /// until it is decided.
+    /// word — a known defect, `log-earlier-launch-search` in the defect log.
     static func matches(header session: LogSession, _ query: String,
                         drawnTime: (Date) -> String) -> Bool {
         let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)

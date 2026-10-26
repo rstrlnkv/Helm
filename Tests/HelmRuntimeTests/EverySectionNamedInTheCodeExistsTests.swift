@@ -9,8 +9,8 @@ import XCTest
 /// headings the document no longer had, and following one arrived nowhere.
 /// Nothing failed, because a comment is not compiled and a document is not
 /// parsed — the two halves of one sentence lived in two files with nothing
-/// between them. `DocumentsNameTheTreeTests` reads the other direction, names
-/// the documents use that the tree must still have; this reads names the
+/// between them. `DocumentsNameTheTreeTests` reads the other direction, file
+/// paths the documents use that the tree must still have; this reads names the
 /// *code* uses to point back into the documents.
 ///
 /// **Why it reads the code and not the document.** The document is allowed to

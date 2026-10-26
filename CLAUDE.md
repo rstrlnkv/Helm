@@ -5,7 +5,7 @@
 ## Commands
 
 - `bash Scripts/test.sh` runs the suite, `--filter '<Name>|<Other>'` a family; read a run by the script's last line; "Test Suite 'All tests' passed" is the last bundle, "✔ Test run with 0 tests in 0 suites passed" the empty Swift Testing run; the runner fails a `--filter` alternative that ran none, naming it, a bare `swift test` partial filter exits 0 → `test.sh` header.
-- `swift build --target <Name>` for one target, a release only as `swift build -c release --product HelmApp`; package with `bash Scripts/package-app.sh`, install only its signed `$TMPDIR` copy; `bash Scripts/package-dev.sh` to click through; version from `/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/HelmApp/Info.plist` → § Targets, § Release.
+- `swift build --target <Name>` for one target, a release only as `swift build -c release --product HelmApp --explicit-target-dependency-import-check error`; package with `bash Scripts/package-app.sh`, install only its signed `$TMPDIR` copy; `bash Scripts/package-dev.sh` to click through; version from `/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/HelmApp/Info.plist` → § Targets, § Release.
 - After a token moves, `HELM_WRITE_DESIGN_TOKENS=1 bash Scripts/test.sh --filter PublishedTokensAreTheTrees` regenerates `Resources/DesignSystem/design-tokens.json`; never passes, record republished outside → § Design system.
 - After a hand edit `plutil -lint Sources/HelmUI/Resources/*.lproj/Localizable.strings`; after touching a `.strings` file, before the suite, `bash Scripts/test.sh --filter 'PunctuationIsTerminologyTests|StringsCoverageTests|NoOrphanTranslationsTests'` → § Tests and measurement.
 - "Who uses this" from an index, never `grep`: `swift build --build-tests`, then `periphery scan --skip-build --index-store-path "$PWD/.build/out" --format csv`; its report is no to-do list; keep `command grep -rn HELM_DEBUG Sources/` empty before every commit; before cleanup `du -sh "$TMPDIR"`, then what is not `helm-*`; `--scratch-path` only if another run is up, one per session → § Tests and measurement.
@@ -21,7 +21,9 @@
 - Of an event-stream value ask which event clears it, what if it never comes → § State and lifetime.
 - Where is a value read from, how often, before sealing → `SettingGuard.swift`.
 - What would *total* failure of a new check's subject print; put the defect back, watch it go red → § Tests and measurement.
+- Prove a visual fix by shots before and after, it breeds no test; a defect left unfixed goes to the defect log, not a skipped test → § What proves what.
 - Who draws a thing, what identity a view keeps across a change, before fixing → § Design system.
+- Finish one module's look before starting another's; the old shell, kit and pages are no model → § Design system.
 - Build from a fresh `git clone` before release → § Release.
 
 ## What not to do, and what breaks if you do
@@ -53,7 +55,7 @@
 - New module: `Sources/Modules/<Name>` Engine and UI, `Tests/Modules/<Name>` EngineTests and UITests, descriptor in `ModuleRegistry.swift`; commit a file into each test directory before pushing → § Module pattern.
 - Shared strings and controls in `Sources/HelmUI`, test plumbing in `Tests/Support`, no simpler than what it replaces, a local helper doing more keeps its body and calls the shared one, app-layer checks in `Tests/HelmAppTests`; `public` means another target uses it, demote by the compiler not by reading, expect several passes → § Targets.
 - Hand-written list of module ids next to the thing it names, or it becomes a comment; scanning module conforms its engine and enters `ScanRunner.swift`, `ListsAgreeWithTheTreeTests.swift` fails on either half → § Background scans.
-- Declare a name in any document rather than discuss it, only what tree has; removed name to known-absent list with its reason, macOS's to foreign list, anything else failing means the backticks were the mistake; command, not count; documents beside `Package.swift`, the check skips out loud when none, which a failures-only summary reads as green → `DocumentsNameTheTreeTests.swift`, § What else to read.
+- A removal takes its tests and page lines in its commit, its crew knowledge in the same change → § Removal takes its traces.
 
 ## Shipping — what a person does, not a role
 

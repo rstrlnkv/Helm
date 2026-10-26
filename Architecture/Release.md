@@ -66,10 +66,12 @@ attached with a `sha256` line for each in the notes, which `Scripts/make-zip.sh`
 `Scripts/make-dmg.sh` each print. The zip is what the in-app updater downloads for a
 silent install; the dmg is the manual drag-install path.
 
-`Scripts/package-app.sh:258` builds `swift build -c release --product HelmApp`, assembles
-and signs in `$TMPDIR/helm-package`, and leaves a copy in `build/` for inspection. Only the signed copy under `$TMPDIR` is
-installed: it is the bundle the script signed and verified, while `.build/` holds an
-unsigned one with no usable identity at all. `Scripts/make-dmg.sh` and
+`Scripts/package-app.sh:258` builds
+`swift build -c release --product HelmApp --explicit-target-dependency-import-check error`,
+assembles and signs in `$TMPDIR/helm-package`, and leaves a copy in `build/` for
+inspection. Only the signed copy under `$TMPDIR` is installed: it is the bundle the
+script signed and verified, while `.build/` holds an unsigned one with no usable
+identity at all. `Scripts/make-dmg.sh` and
 `Scripts/make-zip.sh` package that signed bundle and refuse one that does not verify.
 `Scripts/package-dev.sh` builds through `Scripts/package-app.sh` and installs **Helm Dev**
 beside the real app; its header says why a separate bundle. The release scripts are

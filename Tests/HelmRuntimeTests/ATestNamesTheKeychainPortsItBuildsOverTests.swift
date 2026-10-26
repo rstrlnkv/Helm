@@ -58,8 +58,8 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
     /// into the developer's own keychain. All three are covered through doubles.
     /// The list exists so the next person who genuinely needs the real item — a
     /// check gated behind `HELM_BENCH=1`, say — writes the reason down beside it
-    /// instead of deleting the rule. The shape is `knownAbsent`'s, one document
-    /// over: a repo-relative `file:line` and why.
+    /// instead of deleting the rule. The shape is a repo-relative `file:line`
+    /// and why.
     private static let allowed: [String: String] = [:]
 
     // MARK: - The rule

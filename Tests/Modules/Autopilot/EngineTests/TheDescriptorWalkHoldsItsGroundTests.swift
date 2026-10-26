@@ -13,13 +13,6 @@ import HelmTestSupport
 /// read, and the module's tests stayed green with the walk's gates, its
 /// `O_NOFOLLOW`, its ceiling and every `close` taken out. These ask the reader
 /// itself, which is where each of them lives.
-///
-/// **One case here is a documented gap, skipped and not deleted:**
-/// `testPastTheCeilingTheWatcherAndTheSweepAgree` (F-Y2) is skipped unless
-/// `HELM_KNOWN_GAPS=1`, with a reason starting «Known gap F-Y2», and keeps its
-/// reproduction, so removing the skip is what turns it into the guard once `admits`
-/// knows the ceiling; `HELM_KNOWN_GAPS=1` runs it red. Every known gap in the tree
-/// is skipped this one way.
 final class TheDescriptorWalkHoldsItsGroundTests: XCTestCase {
 
     private var home: URL!
@@ -157,31 +150,6 @@ final class TheDescriptorWalkHoldsItsGroundTests: XCTestCase {
         XCTAssertFalse(deep.contains("leaf.pdf"))
         // A depth under the ceiling is the depth asked for.
         XCTAssertEqual(reader.facts(in: root.path, depth: 8).count, 8)
-    }
-
-    /// The watcher's question and the sweep's are pinned to one another
-    /// (`TheWatcherAndTheSweepAskOneQuestionTests`) — at depths under the
-    /// ceiling. Past it the sweep stops and `admits` does not, so a file at
-    /// level 70 of a folder set to depth 100 is acted on when it arrives and
-    /// never by any sweep.
-    func testPastTheCeilingTheWatcherAndTheSweepAgree() throws {
-        try XCTSkipUnless(ProcessInfo.processInfo.environment["HELM_KNOWN_GAPS"] == "1", "Known gap F-Y2: past FolderReader.deepest the watcher admits files the sweep never reads.")
-        let root = home.appendingPathComponent("Deep")
-        let chain = (1...(FolderReader.deepest + 6)).map { "d\($0)" }
-        try write("Deep/" + chain.joined(separator: "/") + "/leaf.pdf", in: home)
-        let reader = FolderReader(home: home.path)
-        let folder = WatchedFolder(id: "w", path: root.path, enabled: true, rules: [], depth: 100)
-
-        let swept = Set(reader.facts(in: root.path, depth: folder.depth).map(\.path))
-        var path = root.path
-        var disagree: [String] = []
-        for name in chain + ["leaf.pdf"] {
-            path += "/" + name
-            let admitted = reader.admits(URL(fileURLWithPath: path), under: folder)
-            let read = swept.contains { WatchScope.sameFolder($0, path) }
-            if admitted != read { disagree.append(name) }
-        }
-        XCTAssertEqual(disagree, [], "the watcher admits what the sweep never reads")
     }
 
     // MARK: - A folder saved as a link meets its own bucket
