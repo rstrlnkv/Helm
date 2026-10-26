@@ -16,8 +16,7 @@ import Module_Screenshots_Engine
 /// leak into the area path and leave the file unwritten.
 ///
 /// The thumbnail is switched off in every store here, because the toast is a real
-/// panel and this must not put one on the screen of whoever runs it; its content
-/// is `TheRefusalToastOffersSettingsOnlyForAMissingGrantTests`' subject.
+/// panel and this must not put one on the screen of whoever runs it.
 @MainActor
 final class TheHandOffCopiesAndSavesTests: XCTestCase {
 

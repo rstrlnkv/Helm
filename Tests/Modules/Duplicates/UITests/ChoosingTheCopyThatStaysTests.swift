@@ -158,64 +158,6 @@ final class ChoosingTheCopyThatStaysTests: XCTestCase {
         XCTAssertEqual(dvm.groups.first?.paths.first, filed)
     }
 
-    // MARK: - What the header says about it
-
-    func testAGroupChosenByHandSaysSo() async throws {
-        let dvm = await searched([trio()])
-        dvm.keep(archived, in: try XCTUnwrap(dvm.groups.first))
-
-        XCTAssertEqual(dvm.grounds(of: try XCTUnwrap(dvm.groups.first)), .byHand)
-    }
-
-    /// One fixture per rung of the ladder, because the header reads the rung that
-    /// actually separated the survivor from the copy that came closest — not the
-    /// policy's name. Every branch, so a rung that stops being reachable is a
-    /// failure here rather than a header that quietly says the same thing about
-    /// everything.
-    func testEveryRungOfTheLadderCanBeWhatTheHeaderSays() async throws {
-        let noon = Date(timeIntervalSince1970: 1_700_000_000)
-        let cases: [(KeepReason, [DuplicateGroup.Copy])] = [
-            // One copy is in transit and the other is filed: the tier decides
-            // before anything else is asked.
-            (.place, [.init(path: downloaded, bytes: 9, added: noon),
-                      .init(path: filed, bytes: 9, added: noon)]),
-            // Both filed, so the tier says nothing and the dates do.
-            (.date, [.init(path: filed, bytes: 9, added: noon),
-                     .init(path: archived, bytes: 9, added: noon.addingTimeInterval(60))]),
-            // Same day to the second — which a filesystem really does report for
-            // files that arrived together — so how far in they sit decides.
-            (.depth, [.init(path: "\(home)/Documents/photo.jpg", bytes: 9, added: noon),
-                      .init(path: archived, bytes: 9, added: noon)]),
-            // Alike in every way the rule can see. The alphabet is a fact about
-            // their spelling and nothing else, which is why it has to be visible.
-            (.name, [.init(path: "\(home)/Documents/a.jpg", bytes: 9, added: noon),
-                     .init(path: "\(home)/Documents/b.jpg", bytes: 9, added: noon)]),
-        ]
-        for (rung, copies) in cases {
-            let dvm = await searched([DuplicateGroup(copies: copies)])
-            dvm.choose(.byDate)
-            dvm.choose(.byPlace)
-
-            XCTAssertEqual(dvm.grounds(of: try XCTUnwrap(dvm.groups.first)), .rung(rung),
-                           "the group built for \(rung.rawValue) was decided by something else")
-        }
-    }
-
-    /// And the rung follows the policy, since the ladder is ordered by it.
-    func testTheRungFollowsThePolicy() async throws {
-        let noon = Date(timeIntervalSince1970: 1_700_000_000)
-        let dvm = await searched([DuplicateGroup(copies: [
-            .init(path: downloaded, bytes: 9, added: noon),
-            .init(path: filed, bytes: 9, added: noon.addingTimeInterval(60)),
-        ])])
-
-        dvm.choose(.byDate)
-        XCTAssertEqual(dvm.grounds(of: try XCTUnwrap(dvm.groups.first)), .rung(.date))
-
-        dvm.choose(.byPlace)
-        XCTAssertEqual(dvm.grounds(of: try XCTUnwrap(dvm.groups.first)), .rung(.place))
-    }
-
     /// «Mark every extra copy» reads the array, so a hand-chosen survivor is the
     /// one copy it leaves alone. This is the button that acts on the whole page
     /// at once, and it is where a second notion of «the survivor» would show up

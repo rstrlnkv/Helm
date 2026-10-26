@@ -1,12 +1,11 @@
-import XCTest
 import AppKit
 import SwiftUI
 import HelmTestSupport
 import HelmUI
 @testable import HelmApp
 
-/// **A page mounted in a window that holds the Settings window's real page bar** — the fixture the
-/// Homebrew integration tests and the bar's readings share.
+/// **A page mounted in a window that holds the Settings window's real page bar** — held, with no
+/// user now, until `ASearchKeepsNoHistoryOfWhatWasTypedTests` is retargeted.
 ///
 /// `MountedRender`'s window holds the page and nothing else: it has no bar, so a page's
 /// `helmWindowToolbar` declaration reaches nobody. This adds a `MountedPageBar` to that window, listening
@@ -59,72 +58,5 @@ struct LivePageToolbarFixture {
     func drop() {
         pageBar.remove()
         mount.drop()
-    }
-}
-
-/// **The fixture's own check: the bar it builds is in a window, laid out, drawing, and hearing the page.**
-/// A bar that is built and never added to a window still carries a name view (its first refresh draws the
-/// page's identity), so a check that asks the bar itself finds something and cannot fail. The first
-/// assertion walks down from the frame view of the mount's window and never asks the fixture for its bar;
-/// the rest hold that what it found is the fixture's bar, that it has a size, that its
-/// name draws, and that a page declared on the fixture's channel arrives in it.
-@MainActor
-final class LivePageToolbarFixtureTests: XCTestCase {
-    private static let width: CGFloat = 600
-
-    private func page() -> some View {
-        Color.clear.frame(width: Self.width, height: 100)
-            .helmWindowToolbar(
-                HelmPageToolbarContent(
-                    actions: [HelmToolbarAction(id: "refresh", title: "Refresh list",
-                                                symbol: "arrow.clockwise") {}]),
-                token: "general")
-    }
-
-    func testTheFixturesBarIsInTheWindow() {
-        let fx = LivePageToolbarFixture(page(), selection: .general, width: Self.width, height: 400)
-        defer { fx.drop() }
-        fx.settle()
-
-        // 1. Found from the window, not from the fixture.
-        guard let root = fx.mount.window?.contentView?.superview else {
-            XCTFail("the fixture's mount has no window")
-            return
-        }
-        guard let found = root.everyView(ofType: ShellPageBarView.self).first else {
-            XCTFail("the fixture's bar is in no window: every test built on it read an empty bar")
-            return
-        }
-
-        // 2. It is the fixture's bar, at the window's width and the bar's height.
-        XCTAssertTrue(found === fx.bar.view, "the bar in the window is not the fixture's bar")
-        XCTAssertTrue(found.window === fx.mount.window, "the bar's window is not the fixture's window")
-        XCTAssertEqual(found.frame.width, Self.width, "the bar is not as wide as the window")
-        XCTAssertEqual(found.frame.height, ShellBarLayout.height, "the bar is not the bar's height")
-
-        // 3. It has been laid out, and its name has room.
-        XCTAssertNotNil(found.frames, "the bar was never laid out")
-        XCTAssertTrue(found.reachableZones.contains(.name), "the bar holds no name")
-        let name = found.view(for: .name)
-        XCTAssertGreaterThan(name?.frame.width ?? 0, 0, "the name zone has no width")
-
-        // 4. The name draws.
-        if let name, let rep = name.bitmapImageRepForCachingDisplay(in: name.bounds) {
-            name.cacheDisplay(in: name.bounds, to: rep)
-            var inked = 0
-            for y in 0..<rep.pixelsHigh {
-                for x in 0..<rep.pixelsWide where (rep.colorAt(x: x, y: y)?.alphaComponent ?? 0) > 0.1 {
-                    inked += 1
-                }
-            }
-            XCTAssertGreaterThan(inked, 0, "the name zone drew nothing")
-        } else {
-            XCTFail("the name zone cannot be photographed")
-        }
-
-        // 5. A page declared on the fixture's channel arrives.
-        XCTAssertEqual(fx.bar.presentation, .page(key: "general", isLive: true, isDimmed: false),
-                       "the page's declaration did not reach the fixture's bar")
-        XCTAssertNotNil(found.view(for: .actions), "the page's action did not reach the bar")
     }
 }

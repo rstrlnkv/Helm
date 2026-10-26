@@ -2,6 +2,30 @@ import XCTest
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
 
+private let openssl = BrewPackage(name: "openssl@3", version: "3.6.4", isCask: false)
+private let node = BrewPackage(name: "node", version: "26.8.2", isCask: false)
+private let nodeOutdated = OutdatedPackage(name: "node", installed: "26.8.2", latest: "26.9.0",
+                                           isCask: false)
+private let pinned = OutdatedPackage(name: "git", installed: "2.54.0", latest: "2.55.0",
+                                     isCask: false, pinned: true)
+private let helm = SearchHit(name: "helm", isCask: false)
+/// `docker` is both a formula and a cask — the defect `BrewKey` exists
+/// against (`Model.swift`'s own doc comment). A lookup by name alone
+/// would find whichever one comes first.
+private let dockerFormula = BrewPackage(name: "docker", version: "1.0.0", isCask: false)
+private let dockerCask = BrewPackage(name: "docker", version: "2.0.0", isCask: true)
+private func state(_ segment: HomebrewViewModel.Segment, _ selected: String?,
+                   installed: [BrewPackage]? = nil,
+                   hits: [SearchHit]? = nil,
+                   loadedOutdated: Bool = true,
+                   descriptions: [String: String] = [:]) -> InspectorState {
+    InspectorState.of(segment: segment, selected: selected,
+                      installed: installed ?? [openssl, node],
+                      outdated: [nodeOutdated, pinned],
+                      loadedOutdated: loadedOutdated,
+                      hits: hits ?? [helm], descriptions: descriptions)
+}
+
 /// The inspector's whole decision, without a view.
 ///
 /// Five things decide it: which segment, what is selected, what the lists
@@ -17,29 +41,23 @@ import XCTest
 /// inspector is not allowed to be blank while it runs.
 final class InspectorStateTests: XCTestCase {
 
-    private let openssl = BrewPackage(name: "openssl@3", version: "3.6.4", isCask: false)
-    private let node = BrewPackage(name: "node", version: "26.8.2", isCask: false)
-    private let nodeOutdated = OutdatedPackage(name: "node", installed: "26.8.2", latest: "26.9.0",
-                                               isCask: false)
-    private let pinned = OutdatedPackage(name: "git", installed: "2.54.0", latest: "2.55.0",
-                                         isCask: false, pinned: true)
-    private let helm = SearchHit(name: "helm", isCask: false)
-    /// `docker` is both a formula and a cask — the defect `BrewKey` exists
-    /// against (`Model.swift`'s own doc comment). A lookup by name alone
-    /// would find whichever one comes first.
-    private let dockerFormula = BrewPackage(name: "docker", version: "1.0.0", isCask: false)
-    private let dockerCask = BrewPackage(name: "docker", version: "2.0.0", isCask: true)
-    private func state(_ segment: HomebrewViewModel.Segment, _ selected: String?,
-                       installed: [BrewPackage]? = nil,
-                       hits: [SearchHit]? = nil,
-                       loadedOutdated: Bool = true,
-                       descriptions: [String: String] = [:]) -> InspectorState {
-        InspectorState.of(segment: segment, selected: selected,
-                          installed: installed ?? [openssl, node],
-                          outdated: [nodeOutdated, pinned],
-                          loadedOutdated: loadedOutdated,
-                          hits: hits ?? [helm], descriptions: descriptions)
+    /// `docker` is both a formula and a cask, and the two must not collide —
+    /// this is the exact defect `BrewKey`'s own doc comment names.
+    func testLookupIsByIdAndNotByName() {
+        guard case let .package(subject) = state(.installed, dockerCask.id,
+                                                 installed: [dockerFormula, dockerCask]) else {
+            return XCTFail("expected a package")
+        }
+        XCTAssertTrue(subject.isCask)
+        XCTAssertEqual(subject.version, "2.0.0")
     }
+}
+
+/// The ordinary branches of the decision this file opens with, by segment and
+/// selection: what an installed, an outdated, a pinned package and a search hit
+/// each offer, what a description adds once it has arrived, and that the health
+/// segment has no inspector. `InspectorStateTests` keeps the lookup by id.
+final class InspectorStateDecisionsTests: XCTestCase {
 
     func testNothingSelectedIsItsOwnState() {
         XCTAssertEqual(state(.installed, nil), .nothingSelected)
@@ -125,17 +143,6 @@ final class InspectorStateTests: XCTestCase {
     /// belt and braces beside the view model's own reconcile.
     func testASelectionTheListDoesNotHoldIsNothing() {
         XCTAssertEqual(state(.installed, "f:gone"), .nothingSelected)
-    }
-
-    /// `docker` is both a formula and a cask, and the two must not collide —
-    /// this is the exact defect `BrewKey`'s own doc comment names.
-    func testLookupIsByIdAndNotByName() {
-        guard case let .package(subject) = state(.installed, dockerCask.id,
-                                                 installed: [dockerFormula, dockerCask]) else {
-            return XCTFail("expected a package")
-        }
-        XCTAssertTrue(subject.isCask)
-        XCTAssertEqual(subject.version, "2.0.0")
     }
 
     func testADescriptionIsUsedWhenItHasArrivedAndOmittedWhenItHasNot() {

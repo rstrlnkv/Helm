@@ -40,8 +40,7 @@ enum ScStr {
 
     /// The four boxes macOS ticks, in macOS's own words — copied out of the
     /// Keyboard settings extension's `DefaultShortcutsTable.loctable`, which is
-    /// where the list Helm sends a person to draws them. `TheNameIsMacOSsInEveryLanguageTests`
-    /// reads that table and compares.
+    /// where the list Helm sends a person to draws them.
     static func boxName(_ box: SystemBox) -> String {
         switch box {
         case .saveScreen: L("Save picture of screen as a file")
@@ -60,8 +59,7 @@ enum ScStr {
 
     /// macOS's own words for the bar — the tooltips of its three capture buttons,
     /// «Options», «Timer», «Capture», «Show Floating Thumbnail» and «Remember Last
-    /// Selection» — read out of `screencaptureui`'s `Localizable.loctable`;
-    /// `TheNameIsMacOSsInEveryLanguageTests` reads that table and compares.
+    /// Selection» — read out of `screencaptureui`'s `Localizable.loctable`.
     static var panelScreen: String { L("Capture entire screen") }
     static var panelWindow: String { L("Capture selected window") }
     static var panelArea: String { L("Capture selected portion") }
@@ -360,8 +358,7 @@ enum ScStr {
     /// macOS's own file-name template, with its word already in it. The English
     /// key is the pattern and the seven translations are copied out of
     /// `screencaptureui`'s `Localizable.loctable` — the template for the order of
-    /// the parts and the word for the noun — at development time;
-    /// `TheNameIsMacOSsInEveryLanguageTests` reads that table and compares.
+    /// the parts and the word for the noun — at development time.
     static var nameTemplate: String { L("Screenshot %@ at %@") }
 
     /// The word is Helm's language and the clock is the system's region, both

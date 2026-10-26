@@ -251,8 +251,8 @@ struct VPNSettingsPage: View {
             // `min(count, 3)` was the answer to both, and it was right for one
             // and two and wrong from four: photographed, four connections drew
             // 3+1 with 477 pt of empty row beside the last card. The rule and
-            // the reason it has a threshold now live in `VPNGridLayout`, with
-            // `TheGridLeavesNoHoleTests` behind it; the ceiling stays here,
+            // the reason it has a threshold now live in `VPNGridLayout`; the
+            // ceiling stays here,
             // because it is what keeps a card card-shaped.
             let total = vm.connections.count
             let columns = VPNGridLayout.columns(for: total)

@@ -7,7 +7,7 @@ import Module_Homebrew_UI
 
 /// Screenshots arriving in a sidebar somebody already rearranged.
 ///
-/// `SidebarLayoutStoreTests` proves the untouched case: a seeded sidebar meets
+/// `SidebarLayoutStoreSeedAndReconcileTests` proves the untouched case: a seeded sidebar meets
 /// the eleventh module inside Utilities. A person who has used the composer has
 /// a sidebar the seed no longer describes — Utilities renamed, moved, emptied or
 /// deleted, its modules carried elsewhere — and each of those is a different

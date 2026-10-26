@@ -70,7 +70,7 @@ struct HomebrewHealthPage: View {
                     // edge, with no padding of its own** — the one the
                     // verdict's plate and both cards stand on. It was inset by
                     // a card's padding under nothing that had one, a fourth
-                    // left edge on the page (`TheVerdictHoldsItsPlaceOnThePageTests`).
+                    // left edge on the page.
                     Text(HbStr.noMatches)
                         .foregroundStyle(HelmText.quiet)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -121,13 +121,13 @@ struct HomebrewHealthPage: View {
         // than the answer that replaced it with two, and a refusal that wraps
         // higher again — the title jumping at the moment it was being read.
         // Now its first line begins at the same place in every reading, whatever
-        // is under it (`TheVerdictHoldsItsPlaceOnThePageTests`).
+        // is under it.
         HStack(alignment: .top, spacing: HelmSpace.s5) {
             switch verdict {
             case .checking:
                 // **Waiting moves**: the reading is `brew doctor`, the slowest
                 // query in the module, and a still sentence over it reads as a
-                // page that has stopped (`TheHealthWaitMovesTests`).
+                // page that has stopped.
                 // Beside the title's first line, which is where the title now
                 // stands: centred in the slot it would sit under it.
                 ProgressView().controlSize(.small)
@@ -276,7 +276,7 @@ private struct FindingRow: View {
 /// **The destructive one, drawn and behaved as the destructive one it is.**
 /// `role: .destructive` is what makes it behave in a menu or a dialog and
 /// draws nothing on this macOS, so `helmDestructive` carries what a person can
-/// see (`TheDestructiveControlIsMarkedInInkTests`); `askToRunFix` is what makes
+/// see; `askToRunFix` is what makes
 /// it *behave* differently, and `FixAsk` decides which of the two commands on
 /// the allowlist that means — `brew cleanup` still runs on the press, because a
 /// cached download comes back.

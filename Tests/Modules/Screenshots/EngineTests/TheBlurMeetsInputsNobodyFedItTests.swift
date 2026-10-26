@@ -3,55 +3,86 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Screenshots_Engine
 
+/// A picture in which every pixel has a colour of its own, in `space` at `bits` a channel.
+private func pattern(width: Int, height: Int, space: CGColorSpace? = nil, bits: Int = 8) -> CGImage {
+    let space = space ?? CGColorSpace(name: CGColorSpace.sRGB)!
+    let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: bits, bytesPerRow: 0, space: space,
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    context.setShouldAntialias(false)
+    for y in 0..<height { for x in 0..<width {
+        let colour = (UInt32(y * width + x) &* 2_654_435_761 &+ 12_345) & 0xFF_FFFF
+        context.setFillColor(CGColor(colorSpace: space, components: [CGFloat(colour >> 16) / 255, CGFloat(colour >> 8 & 0xFF) / 255,
+                                                                     CGFloat(colour & 0xFF) / 255, 1])!)
+        context.fill(CGRect(x: x, y: height - 1 - y, width: 1, height: 1))
+    } }
+    return context.makeImage()!
+}
+
+private func pixels(_ image: CGImage) -> [UInt32] {
+    let context = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: image.width * 4,
+                            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+    let bytes = context.data!.assumingMemoryBound(to: UInt8.self)
+    return (0..<(image.width * image.height)).map { UInt32(bytes[$0 * 4]) << 16 | UInt32(bytes[$0 * 4 + 1]) << 8 | UInt32(bytes[$0 * 4 + 2]) }
+}
+
+private func blur(_ rect: CGRect, _ step: AnnotationThickness = .medium) -> Annotation {
+    Annotation(tool: .blur, start: rect.origin, end: CGPoint(x: rect.maxX, y: rect.maxY), style: AnnotationStyle(thickness: step))
+}
+
+/// The file for `layers` over the whole of `source`, drawn as the editor's export draws it.
+private func file(_ layers: [Annotation], over source: CGImage, scale: CGFloat) throws -> [UInt32] {
+    pixels(try XCTUnwrap(CaptureSession.draw(layers, over: source, at: .zero, scale: scale, display: source)))
+}
+
+/// Nothing outside the box `(x0, y0, x1, y1)` (whole pixels) differs from `base`, and every grid block of `side`
+/// inside it is one colour; returns the number of blocks seen.
+@discardableResult
+private func holds(_ out: [UInt32], _ base: [UInt32], width: Int, box: (Int, Int, Int, Int), side: Int, _ name: String) -> Int {
+    var blocks: [[Int]: Set<UInt32>] = [:]
+    for y in 0..<(base.count / width) { for x in 0..<width {
+        if x >= box.0, x < box.2, y >= box.1, y < box.3 { blocks[[x / side, y / side], default: []].insert(out[y * width + x]) }
+        else if out[y * width + x] != base[y * width + x] { XCTFail("\(name): (\(x), \(y)) outside the box changed"); return blocks.count }
+    } }
+    for (block, colours) in blocks where colours.count != 1 { XCTFail("\(name): block \(block) holds \(colours.count) colours") }
+    return blocks.count
+}
+
+/// One colour a block in P3, 16-bit sRGB, Adobe RGB, linear, grey and half-transparent pictures.
+final class TheBlurMeetsInputsNobodyFedItTests: XCTestCase {
+    func testAPictureWithAlphaSixteenBitsOrAnotherSpaceStillHasOneColourABlock() throws {
+        let spaces: [(String, CGColorSpace, Int)] = [("P3", CGColorSpace(name: CGColorSpace.displayP3)!, 8),
+                                                      ("16-bit sRGB", CGColorSpace(name: CGColorSpace.sRGB)!, 16),
+                                                      ("Adobe RGB", CGColorSpace(name: CGColorSpace.adobeRGB1998)!, 8),
+                                                      ("linear", CGColorSpace(name: CGColorSpace.linearSRGB)!, 8)]
+        for (name, space, bits) in spaces {
+            let source = pattern(width: 80, height: 50, space: space, bits: bits)
+            let base = try file([], over: source, scale: 1)
+            let out = try file([blur(CGRect(x: 9, y: 7, width: 50, height: 30))], over: source, scale: 1)
+            XCTAssertGreaterThan(holds(out, base, width: 80, box: (9, 7, 59, 37), side: 16, name), 6, name)
+            XCTAssertNotEqual(out, base, name)
+        }
+        // A grey picture: no RGB model of its own, so the bitmap is sRGB.
+        let grey = CGContext(data: nil, width: 80, height: 50, bitsPerComponent: 8, bytesPerRow: 0,
+                             space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue)!
+        for x in 0..<80 { grey.setFillColor(gray: CGFloat(x % 7) / 7, alpha: 1); grey.fill(CGRect(x: x, y: 0, width: 1, height: 50)) }
+        let greyImage = grey.makeImage()!
+        let out = try file([blur(CGRect(x: 8, y: 8, width: 32, height: 32))], over: greyImage, scale: 1)
+        XCTAssertEqual(Set((16..<32).flatMap { y in (16..<32).map { out[y * 80 + $0] } }).count, 1, "a grey picture's block is not one colour")
+        // A half-transparent picture draws, and the box's block is one colour.
+        let clear = CGContext(data: nil, width: 40, height: 40, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        clear.setFillColor(red: 0.5, green: 0, blue: 0, alpha: 0.5); clear.fill(CGRect(x: 0, y: 0, width: 40, height: 40))
+        let clearImage = clear.makeImage()!
+        let alpha = try file([blur(CGRect(x: 4, y: 4, width: 30, height: 30))], over: clearImage, scale: 1)
+        XCTAssertEqual(Set((4..<16).flatMap { y in (4..<16).map { alpha[y * 40 + $0] } }).count, 1)
+    }
+}
+
 /// **The blur meets the boxes, pictures and orders nobody drew it with.** Every case holds the same things, read off
 /// the file's bytes: nothing outside the box moved, no block inside it is two colours, and the mosaic is of the
 /// frame's own pixels and never of what was drawn before it.
-final class TheBlurMeetsInputsNobodyFedItTests: XCTestCase {
-    /// A picture in which every pixel has a colour of its own, in `space` at `bits` a channel.
-    private func pattern(width: Int, height: Int, space: CGColorSpace? = nil, bits: Int = 8) -> CGImage {
-        let space = space ?? CGColorSpace(name: CGColorSpace.sRGB)!
-        let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: bits, bytesPerRow: 0, space: space,
-                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        context.setShouldAntialias(false)
-        for y in 0..<height { for x in 0..<width {
-            let colour = (UInt32(y * width + x) &* 2_654_435_761 &+ 12_345) & 0xFF_FFFF
-            context.setFillColor(CGColor(colorSpace: space, components: [CGFloat(colour >> 16) / 255, CGFloat(colour >> 8 & 0xFF) / 255,
-                                                                         CGFloat(colour & 0xFF) / 255, 1])!)
-            context.fill(CGRect(x: x, y: height - 1 - y, width: 1, height: 1))
-        } }
-        return context.makeImage()!
-    }
-
-    private func pixels(_ image: CGImage) -> [UInt32] {
-        let context = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: image.width * 4,
-                                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
-        let bytes = context.data!.assumingMemoryBound(to: UInt8.self)
-        return (0..<(image.width * image.height)).map { UInt32(bytes[$0 * 4]) << 16 | UInt32(bytes[$0 * 4 + 1]) << 8 | UInt32(bytes[$0 * 4 + 2]) }
-    }
-
-    private func blur(_ rect: CGRect, _ step: AnnotationThickness = .medium) -> Annotation {
-        Annotation(tool: .blur, start: rect.origin, end: CGPoint(x: rect.maxX, y: rect.maxY), style: AnnotationStyle(thickness: step))
-    }
-
-    /// The file for `layers` over the whole of `source`, drawn as the editor's export draws it.
-    private func file(_ layers: [Annotation], over source: CGImage, scale: CGFloat) throws -> [UInt32] {
-        pixels(try XCTUnwrap(CaptureSession.draw(layers, over: source, at: .zero, scale: scale, display: source)))
-    }
-
-    /// Nothing outside the box `(x0, y0, x1, y1)` (whole pixels) differs from `base`, and every grid block of `side`
-    /// inside it is one colour; returns the number of blocks seen.
-    @discardableResult
-    private func holds(_ out: [UInt32], _ base: [UInt32], width: Int, box: (Int, Int, Int, Int), side: Int, _ name: String) -> Int {
-        var blocks: [[Int]: Set<UInt32>] = [:]
-        for y in 0..<(base.count / width) { for x in 0..<width {
-            if x >= box.0, x < box.2, y >= box.1, y < box.3 { blocks[[x / side, y / side], default: []].insert(out[y * width + x]) }
-            else if out[y * width + x] != base[y * width + x] { XCTFail("\(name): (\(x), \(y)) outside the box changed"); return blocks.count }
-        } }
-        for (block, colours) in blocks where colours.count != 1 { XCTFail("\(name): block \(block) holds \(colours.count) colours") }
-        return blocks.count
-    }
-
+final class TheBlurMeetsBoxesScalesAndOrdersNobodyDrewTests: XCTestCase {
     func testBoxesThatAreNotABoxDrawNothingAndDoNotTrap() throws {
         let source = pattern(width: 60, height: 40)
         let base = try file([], over: source, scale: 1)
@@ -137,34 +168,6 @@ final class TheBlurMeetsInputsNobodyFedItTests: XCTestCase {
         XCTAssertNotEqual(over[41 * 120 + 50], blurOnly[41 * 120 + 50], "the control: the shape and the mosaic are one colour here")
         XCTAssertEqual(under[41 * 120 + 50], blurOnly[41 * 120 + 50], "the blur over the shape took the shape into its mean, or left it showing")
         XCTAssertEqual(under[41 * 120 + 15], barOnly[41 * 120 + 15], "outside the blur the shape is still there")
-    }
-
-    func testAPictureWithAlphaSixteenBitsOrAnotherSpaceStillHasOneColourABlock() throws {
-        let spaces: [(String, CGColorSpace, Int)] = [("P3", CGColorSpace(name: CGColorSpace.displayP3)!, 8),
-                                                      ("16-bit sRGB", CGColorSpace(name: CGColorSpace.sRGB)!, 16),
-                                                      ("Adobe RGB", CGColorSpace(name: CGColorSpace.adobeRGB1998)!, 8),
-                                                      ("linear", CGColorSpace(name: CGColorSpace.linearSRGB)!, 8)]
-        for (name, space, bits) in spaces {
-            let source = pattern(width: 80, height: 50, space: space, bits: bits)
-            let base = try file([], over: source, scale: 1)
-            let out = try file([blur(CGRect(x: 9, y: 7, width: 50, height: 30))], over: source, scale: 1)
-            XCTAssertGreaterThan(holds(out, base, width: 80, box: (9, 7, 59, 37), side: 16, name), 6, name)
-            XCTAssertNotEqual(out, base, name)
-        }
-        // A grey picture: no RGB model of its own, so the bitmap is sRGB.
-        let grey = CGContext(data: nil, width: 80, height: 50, bitsPerComponent: 8, bytesPerRow: 0,
-                             space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue)!
-        for x in 0..<80 { grey.setFillColor(gray: CGFloat(x % 7) / 7, alpha: 1); grey.fill(CGRect(x: x, y: 0, width: 1, height: 50)) }
-        let greyImage = grey.makeImage()!
-        let out = try file([blur(CGRect(x: 8, y: 8, width: 32, height: 32))], over: greyImage, scale: 1)
-        XCTAssertEqual(Set((16..<32).flatMap { y in (16..<32).map { out[y * 80 + $0] } }).count, 1, "a grey picture's block is not one colour")
-        // A half-transparent picture draws, and the box's block is one colour.
-        let clear = CGContext(data: nil, width: 40, height: 40, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        clear.setFillColor(red: 0.5, green: 0, blue: 0, alpha: 0.5); clear.fill(CGRect(x: 0, y: 0, width: 40, height: 40))
-        let clearImage = clear.makeImage()!
-        let alpha = try file([blur(CGRect(x: 4, y: 4, width: 30, height: 30))], over: clearImage, scale: 1)
-        XCTAssertEqual(Set((4..<16).flatMap { y in (4..<16).map { alpha[y * 40 + $0] } }).count, 1)
     }
 
     func testACutInsideTheDisplayHoldsTheBlocksOfTheDisplayAndANeighbourDoesNotLeakIn() async throws {

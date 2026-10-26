@@ -6,18 +6,7 @@ import HelmTestSupport
 import XCTest
 @testable import HelmApp
 
-/// A build whose identifier is not the one a release carries is told so before
-/// anything is fetched.
-///
-/// **Why this is a test.** `Installer.installZip` already refuses to put a
-/// bundle calling itself `com.helm.app` at `Helm Dev.app`'s address — the guard
-/// `AnUpdateDoesNotSwapOneProgramForAnotherTests` stands over. But it refuses at
-/// the *last* moment: by then the whole asset has been downloaded and hashed,
-/// and the only thing left to do with the refusal is log it. Measured on the
-/// installed dev build, every press spent a 7.4 MB download and a 100 MB hashing
-/// phase to arrive at `install failed: identityMismatch`, which is the sentence
-/// a person reads as «Helm is broken» rather than «this copy is not the one that
-/// gets replaced».
+/// Only the release's own identifier takes a published bundle, and that identifier is the one the plist declares.
 final class ABuildThatIsNotTheReleaseIsNotSwappedTests: XCTestCase {
 
     /// The identifier the app ships under is the one `AppBuild` names. A literal
@@ -45,8 +34,23 @@ final class ABuildThatIsNotTheReleaseIsNotSwappedTests: XCTestCase {
         XCTAssertFalse(AppBuild.isReleaseIdentifier(nil),
                        "a bundle that will not say what it is is not the one being replaced")
     }
+}
 
-    /// And the finding: the question is asked before the asset is fetched, not
+/// A build whose identifier is not the one a release carries is told so before
+/// anything is fetched.
+///
+/// **Why this is a test.** `Installer.installZip` already refuses to put a
+/// bundle calling itself `com.helm.app` at `Helm Dev.app`'s address — the guard
+/// `AnUpdateDoesNotSwapOneProgramForAnotherTests` stands over. But it refuses at
+/// the *last* moment: by then the whole asset has been downloaded and hashed,
+/// and the only thing left to do with the refusal is log it. Measured on the
+/// installed dev build, every press spent a 7.4 MB download and a 100 MB hashing
+/// phase to arrive at `install failed: identityMismatch`, which is the sentence
+/// a person reads as «Helm is broken» rather than «this copy is not the one that
+/// gets replaced».
+final class TheReleaseIsAskedAboutBeforeTheDownloadTests: XCTestCase {
+
+    /// The finding: the question is asked before the asset is fetched, not
     /// after. Read from the source because the act it guards is a download —
     /// a test that ran it would be a test that downloads a release.
     func testTheQuestionIsAskedBeforeAnythingIsFetched() throws {

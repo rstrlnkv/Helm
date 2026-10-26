@@ -181,8 +181,7 @@ public enum RenderedInk {
     /// dictionary over 1.2 million pixels a frame would make the settle loop
     /// below take minutes, and the background of one of these bands is a
     /// majority of it by a wide margin. The sample is deterministic, so two
-    /// readings of one drawing still agree to the byte, which is what the
-    /// equality checks in `BothNoticesShareOneSlotTests` compare.
+    /// readings of one drawing still agree to the byte.
     private static func background(_ data: UnsafeMutablePointer<UInt8>,
                                    _ rep: NSBitmapImageRep,
                                    _ rows: Range<Int>,
@@ -212,7 +211,7 @@ public enum RenderedInk {
 /// **A window, not a bare view**: a `List` is an AppKit table and draws nothing
 /// without one, and `NSHostingView` will not lay out a `Form`'s chrome outside
 /// one either. **And `NSHostingView`, never `ImageRenderer`**, which hands back a
-/// blank image for the same content — the story is in `ModulePageRender`.
+/// blank image for the same content.
 ///
 /// The appearance is a required argument. There is no default, because the
 /// default was the bug: every one of these readings used to inherit
@@ -275,15 +274,11 @@ public final class MountedRender {
     ///
     /// Nil is a real answer and not only a harness failure: a mount built with
     /// no `channel` at all publishes nothing to any bar by construction
-    /// (`HelmWindowToolbarChannel`'s own doc — nil channel, no declaration),
-    /// which is the shape `ModulePageRender` deliberately mounts to count a
-    /// page's own layers with the window's controls out of the count
-    /// entirely; a mount built with a live `channel` and a bar in its window
+    /// (`HelmWindowToolbarChannel`'s own doc — nil channel, no declaration); a
+    /// mount built with a live `channel` and a bar in its window
     /// (`LivePageToolbarFixture`, `Tests/HelmAppTests`) is the one where «no
     /// field» means the page genuinely declared none. Every caller that means
-    /// «a field must be here» says so itself, loudly — see
-    /// `TheNarrowBandActsInEverySegmentTests`, whose predecessor said it with
-    /// an `if let` and went quiet instead.
+    /// «a field must be here» says so itself, loudly.
     ///
     /// **A field that is there may be hidden**: the bar keeps the field in its
     /// tree for as long as the page declares a search, and a folded search

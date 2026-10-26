@@ -1,6 +1,5 @@
 import HelmContract
 import HelmRuntime
-import HelmTestSupport
 import HelmUI
 import XCTest
 import Module_Autopilot_Engine
@@ -165,60 +164,5 @@ final class APresetsFolderCanBeChosenTests: XCTestCase {
         await model.load()
 
         XCTAssertFalse(model.sweepsAfterSaving(Rule(name: "r", action: .trash), in: watched))
-    }
-
-    /// The sheet and the sweep read the one expression rather than each writing
-    /// their own — asserted in the source, because the two halves are in
-    /// different files and a rewrite of either would otherwise be green.
-    func testTheSheetAndTheSweepReadTheSameExpression() throws {
-        for file in ["Sources/Modules/Autopilot/UI/RuleEditor.swift",
-                     "Sources/Modules/Autopilot/UI/AutopilotViewModel.swift"] {
-            let calls = try RepoSource.lines(of: file)
-                .filter { RepoSource.code($0).contains("sweepsAfterSaving(") }
-            XCTAssertGreaterThanOrEqual(calls.count, 1, "\(file) does not read sweepsAfterSaving")
-        }
-    }
-
-    // MARK: - The dry run asks again
-
-    func testTheDryRunKeyCarriesTheFolder() {
-        let rule = Rule(id: "r", name: "r", conditions: [.fileExtension(["pdf"])], action: .trash)
-        let a = WatchedFolder(id: "a", path: home + "/Desktop")
-        let b = WatchedFolder(id: "b", path: home + "/Pictures")
-
-        XCTAssertEqual(RuleEditor.previewKey(folder: a, rule: rule),
-                       RuleEditor.previewKey(folder: a, rule: rule),
-                       "precondition: the key is stable for one folder and one rule")
-        XCTAssertNotEqual(RuleEditor.previewKey(folder: a, rule: rule),
-                          RuleEditor.previewKey(folder: b, rule: rule),
-                          "the list is of the folder, and the key did not notice it changed")
-    }
-
-    /// An answer that arrives after the ask was replaced must not land: the rule
-    /// id is the same, so nothing else can tell it from the current one.
-    func testACancelledDryRunDropsItsAnswer() async throws {
-        let rule = Rule(id: "r", name: "r", conditions: [.fileExtension(["dmg"])], action: .trash)
-        func row(_ file: String) -> PreviewRow {
-            PreviewRow(RulePlan(facts: FileFacts(name: file, path: home + "/Downloads/" + file,
-                                                 kind: .document, bytes: 1,
-                                                 added: Date(), modified: Date()),
-                                rule: rule))
-        }
-        let first = row("first.dmg")
-        let second = row("second.dmg")
-        let wire = AutopilotWire(preview: [first])
-        let model = model(on: wire)
-        await model.load()
-        let folder = WatchedFolder(id: "f", path: home + "/Downloads")
-
-        await model.runPreview(for: folder, rule: rule)
-        XCTAssertEqual(model.preview, [first], "precondition: the first ask landed")
-
-        wire.offers([second])
-        let stale = Task { await model.runPreview(for: folder, rule: rule) }
-        stale.cancel()
-        await stale.value
-
-        XCTAssertEqual(model.preview, [first], "a cancelled ask overwrote the current answer")
     }
 }

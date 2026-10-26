@@ -2,7 +2,7 @@ import AppKit
 import HelmUI
 import Module_Screenshots_Engine
 
-/// What opens the system's colour panel for the overlay, and puts it away: a protocol so that a test hands the overlay a fake and
+/// What opens the system's colour panel for the overlay, and puts it away: a protocol so that
 /// no test opens the real `NSColorPanel`.
 @MainActor protocol ColourPanelOpening: AnyObject {
     /// Shows the panel on `ink`; each colour it sends back, in sRGB, goes to `onPick`.

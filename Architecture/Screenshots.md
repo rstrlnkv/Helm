@@ -165,7 +165,7 @@ first responder, so while it is open the keys are the field's and `EditorKeys` s
 `CaptureOverlay.endTyping`: Return, Enter and Esc, a press elsewhere, a right click (not the one beside the picture of an Edit, which does nothing at all; Esc still ends the input there), any palette action but a colour, a step or an opacity (which
 restyle the field), an exit, and the panel ceasing to be key each place a non-empty text and drop an empty one, and the press of Esc that
 ended the input is not the one the Esc rule reads; `close` drops the record of the input without placing the text. When `hasMarkedText()` a
-key is handed to the input context and `onEnd` is not called; a live input method was not tried, the tests mark text by hand.
+key is handed to the input context and `onEnd` is not called; no test tries a live input method or marked text.
 
 The step (`AnnotationTool.step`) is a numbered circle, placed by a click: the circle is centred where the press was, follows the pointer until the
 release, and one undo step each. A press outside the area places none, and unlike the other tools a click on a layer places one too
@@ -173,7 +173,7 @@ release, and one undo step each. A press outside the area places none, and unlik
 (`AnnotationStep.numbers(in:)`, in `Sources/Modules/Screenshots/Engine/Logic/AnnotationStep.swift`), so a delete, the eraser or an undo renumbers
 by changing the list and nothing else; the overlay's cache keeps the number a step's layer was built with beside it, and the export reads the same
 function. The circle's diameter is the thickness step (16, 20 or 28 pt), the digit is the system font in bold at 0.6 of it, centred by its ink, white or black by the
-ink's luma (`AnnotationStep.digitColor(on:)`); the count goes on past 99 and a number wider than 0.8 of the circle is set smaller until it takes no more than that (10 is at the full size in every circle, 99 already a little smaller in the 16 and 20 pt ones, 100 smaller in all three: `TheStepsAreNumberedByTheirOrderTests`). It has no
+ink's luma (`AnnotationStep.digitColor(on:)`); the count goes on past 99 and a number wider than 0.8 of the circle is set smaller until it takes no more than that (10 is at the full size in every circle, 99 already a little smaller in the 16 and 20 pt ones, 100 smaller in all three). It has no
 handles and is taken by its area. The ⋯ menu carries it after Text, with no key.
 
 The spotlight (`AnnotationTool.spotlight`) is a box held like a rectangle (four corners, ⇧ a square, round corners of 10 pt) and taken by its edge, and with no tool also by its inside, below every other layer (`AnnotationHit.selectable`; the spotlight tool, the eraser and the text tool read the edge alone), with no ink and no
@@ -239,12 +239,12 @@ The palette carries the pen, the marker, the pencil, the eraser, the ruler and t
 (`Sources/Modules/Screenshots/UI/PaletteObject.swift`) from vector layers of `PaletteObjects.xcassets`: a body, a tip
 that is a template layer filled with its own tool's colour, and the tip's highlight (the eraser, the ruler and the spotlight have a body only), with two native shadows; the picked
 object is raised 10 pt, its bottom cut by the palette, and under Reduce Motion it moves at once. The artwork carries no SVG
-filter and no text, because macOS drops a filter without a word (`ThePaletteArtworkCarriesNoFilterTests`); the attribution of the pen, the marker, the pencil, the eraser and the ruler is in `NOTICE.md`; the spotlight's shape was drawn for Helm and its body and band fills are the pen's from the same file.
+filter and no text, because macOS drops a filter without a word; the attribution of the pen, the marker, the pencil, the eraser and the ruler is in `NOTICE.md`; the spotlight's shape was drawn for Helm and its body and band fills are the pen's from the same file.
 The eraser is a mode of the editor and no `AnnotationTool` (`EditorAction.erase`, key E, `EditorKeys.eraserKeyCode`): the chosen tool stays chosen
 under it, `EditorMemory` is never asked to keep it, so the next capture opens with the last drawing tool, and choosing a tool or Select puts it down. A drag takes away whole layers:
 `AnnotationEditing.beginErase(at:radius:)` and the drags after it collect the layers the circle of `CaptureOverlay.eraserRadius` meets, by `AnnotationHit.touched(by:radius:in:within:)`,
 which repeats the rule a click selects by (`AnnotationHit.hits`) with the radius as its tolerance, once per layer instead of once per sample, and only over the part of the picture the area shows: a layer across the area's edge
-is cut to the area first by a rule of its own, and a circle that reaches only the part outside meets nothing. The copy is held to `hits` by `TheEraserTakesWholeObjectsInOneStepTests.testTheCircleAndAClickAgreeOnWhereAMarkIs`, for layers wholly inside the area and no more. Each layer's frame is read once per call, and a layer that the samples' box misses is not asked about. Those layers are
+is cut to the area first by a rule of its own, and a circle that reaches only the part outside meets nothing. The copy agrees with `hits` for layers wholly inside the area and no more. Each layer's frame is read once per call, and a layer that the samples' box misses is not asked about. Those layers are
 drawn at `OverlayView.fadedOpacity` while the drag is open and go at the release in one undo step (`AnnotationEditing.remove(_:)`); Esc in the middle of the drag takes none and records none.
 A second click on the raised eraser opens no pop-over and ⋯'s Thickness and Opacity… is disabled for it.
 
@@ -286,7 +286,7 @@ only one is open at a time; unlike it, it opens with no tool chosen, where a pic
 for (orange, purple, white, or one picked on the system's panel or from the picture), the wheel's centre shows it and no grid swatch is ringed.
 
 The pop-over has a third row of two cells with no text: the wheel (`EditorAction.allColours`, named `ScStr.allColours`), which opens the system's colour panel
-(`EditorColourPanel`, behind `ColourPanelOpening` so that a test hands the overlay a fake), and the eyedropper (`EditorAction.eyedropper`, named `ScStr.eyedropper`). The panel is
+(`EditorColourPanel`, behind `ColourPanelOpening`), and the eyedropper (`EditorAction.eyedropper`, named `ScStr.eyedropper`). The panel is
 `NSColorPanel.shared` raised above the overlay, and its reasons are in `EditorColourPanel`'s doc comment. The eyedropper is a mode of the overlay like the eraser and Crop (`CaptureOverlay.sampling`):
 while it is on, the cursor is the eyedropper's symbol on every display (`OverlayView.eyedropperCursor`, before the eraser's circle), so the mode shows before the pointer reaches the area, the loupe (`PixelLoupe`, drawn by `LoupeLayer`) follows the pointer over the area, and the next click on the area sends `EditorAction.color` with the middle pixel of the
 frozen frame, read in sRGB from `FrozenDisplay.image`; Esc, a right click on the picture (not beside it in an Edit, where it does nothing), another action or a click off the area puts it down without a pick. A press on the palette is the palette's: its actions end the mode, its bare background does not; any other press ends it. Nothing asks for the mode but the cell, so it is only ever turned on.

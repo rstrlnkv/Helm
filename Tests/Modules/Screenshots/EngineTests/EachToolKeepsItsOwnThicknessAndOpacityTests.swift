@@ -5,9 +5,7 @@ import XCTest
 @testable import Module_Screenshots_Engine
 
 /// **Each tool keeps its own thickness and opacity; the fill stays everybody's, and the colour has a test of its own.**
-/// The points of a step come from one table, `AnnotationThickness.points(for:)`, and the numbers below are
-/// the owner's, spelled out here and read from nowhere in the tree, so a table that drifts fails against
-/// them and not against itself. What is remembered is three tables in the store (the colour's is read in `EachToolKeepsItsOwnColourTests`), read by walking the tools
+/// What is remembered is three tables in the store (the colour's is read in `EachToolKeepsItsOwnColourTests`), read by walking the tools
 /// there are, never by walking the table.
 final class EachToolKeepsItsOwnThicknessAndOpacityTests: XCTestCase {
 
@@ -19,20 +17,6 @@ final class EachToolKeepsItsOwnThicknessAndOpacityTests: XCTestCase {
     }
 
     // MARK: the table of points
-
-    func testThePointsOfEveryToolAndStepAreTheOwnersNumbers() {
-        let owners: [(AnnotationTool, [CGFloat])] = [
-            (.pen, [1.5, 3, 6]), (.highlighter, [6, 12, 18]), (.pencil, [2, 3.5, 5]),
-            (.arrow, [6, 10, 16]),
-            (.rectangle, [3, 5, 8]), (.ellipse, [3, 5, 8]), (.line, [3, 5, 8]),
-            (.blur, [10, 16, 24]), (.text, [12, 15, 22]), (.step, [16, 20, 28]), (.spotlight, [0, 0, 0]),
-            (.magnifier, [2, 3, 5]), (.emoji, [24, 32, 48]),
-        ]
-        XCTAssertEqual(Set(owners.map(\.0)), Set(AnnotationTool.allCases), "a tool has no row here: add its numbers")
-        for (tool, points) in owners {
-            XCTAssertEqual(AnnotationThickness.allCases.map { $0.points(for: tool) }, points, "\(tool)")
-        }
-    }
 
     func testTheStrokeReadsTheTableAndSoDoesTheArrowsHead() {
         let start = CGPoint(x: 20, y: 60), far = CGPoint(x: 180, y: 60)

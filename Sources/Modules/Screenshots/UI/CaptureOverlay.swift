@@ -126,7 +126,7 @@ struct EditorTextTools {
     /// Where the editor's last tool, colour, thickness and fill are kept. Nil in a test that
     /// remembers nothing.
     private let store: NamespacedStore?
-    /// What opens the system's colour panel (`.allColours`); a test hands in a fake, for no test opens the real one.
+    /// What opens the system's colour panel (`.allColours`), behind a protocol so that no test opens the real one.
     private let colourPanel: ColourPanelOpening
     /// The pop-over that is open, one at a time: the thickness and opacity one, open only while a tool is chosen, or the
     /// colours one, and the centre of the cell that opened it, in the palette's own points. Closed by everything that

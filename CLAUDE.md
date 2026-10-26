@@ -4,10 +4,9 @@
 
 ## Commands
 
-- `bash Scripts/test.sh` runs the suite, `--filter '<Name>|<Other>'` a family; read a run by the script's last line; "Test Suite 'All tests' passed" is the last bundle, "✔ Test run with 0 tests in 0 suites passed" the empty Swift Testing run; the runner fails a `--filter` alternative that ran none, naming it, a bare `swift test` partial filter exits 0 → `test.sh` header.
+- `bash Scripts/test.sh` runs the suite less the classes in `Tests/optional-tests.txt`, `HELM_FULL_SUITE=1` all before a release, `--filter '<Name>|<Other>'` a family unskipped; read a run by the script's last line; "Test Suite 'All tests' passed" is the last bundle, "✔ Test run with 0 tests in 0 suites passed" the empty Swift Testing run; the runner fails a `--filter` alternative that ran none or a listed class none declares, naming it, a bare `swift test` partial filter exits 0 → `test.sh` header.
 - `swift build --target <Name>` for one target, a release only as `swift build -c release --product HelmApp --explicit-target-dependency-import-check error`; package with `bash Scripts/package-app.sh`, install only its signed `$TMPDIR` copy; `bash Scripts/package-dev.sh` to click through; version from `/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/HelmApp/Info.plist` → § Targets, § Release.
-- After a token moves, `HELM_WRITE_DESIGN_TOKENS=1 bash Scripts/test.sh --filter PublishedTokensAreTheTrees` regenerates `Resources/DesignSystem/design-tokens.json`; never passes, record republished outside → § Design system.
-- After a hand edit `plutil -lint Sources/HelmUI/Resources/*.lproj/Localizable.strings`; after touching a `.strings` file, before the suite, `bash Scripts/test.sh --filter 'PunctuationIsTerminologyTests|StringsCoverageTests|NoOrphanTranslationsTests'` → § Tests and measurement.
+- After a hand edit `plutil -lint Sources/HelmUI/Resources/*.lproj/Localizable.strings`; after touching a `.strings` file, before committing, `bash Scripts/test.sh --filter 'PunctuationIsTerminologyTests|StringsCoverageTests|NoOrphanTranslationsTests'` → § Tests and measurement.
 - "Who uses this" from an index, never `grep`: `swift build --build-tests`, then `periphery scan --skip-build --index-store-path "$PWD/.build/out" --format csv`; its report is no to-do list; keep `command grep -rn HELM_DEBUG Sources/` empty before every commit; before cleanup `du -sh "$TMPDIR"`, then what is not `helm-*`; `--scratch-path` only if another run is up, one per session → § Tests and measurement.
 - Read `~/Library/Logs/Helm/helm.log`, its `[permissions]` line, not assumptions → § Diagnostics log.
 
@@ -21,7 +20,7 @@
 - Of an event-stream value ask which event clears it, what if it never comes → § State and lifetime.
 - Where is a value read from, how often, before sealing → `SettingGuard.swift`.
 - What would *total* failure of a new check's subject print; put the defect back, watch it go red → § Tests and measurement.
-- Prove a visual fix by shots before and after, it breeds no test; a defect left unfixed goes to the defect log, not a skipped test → § What proves what.
+- Test only a defect class the table keeps, any other is optional, its class in `Tests/optional-tests.txt`; prove a visual fix by shots before and after, it breeds no test; a defect left unfixed goes to the defect log, not a skipped test → § What proves what.
 - Who draws a thing, what identity a view keeps across a change, before fixing → § Design system.
 - Finish one module's look before starting another's; the old shell, kit and pages are no model → § Design system.
 - Build from a fresh `git clone` before release → § Release.

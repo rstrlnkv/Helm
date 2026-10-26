@@ -112,7 +112,7 @@ extension DockStrip {
     }
 
     /// Asks `ports` about the Dock's process as `dockPID` names it, and places the
-    /// answer. The one place the pid is chosen, so a test drives the choice.
+    /// answer. The one place the pid is chosen.
     public static func placement(entries: [RawWindow], ports: DockBounds, displays: [CGRect], strip: CGRect?,
                                  onTimeout: () -> Void = {}) -> DockPlacement? {
         guard let pid = dockPID(entries) else { return nil }

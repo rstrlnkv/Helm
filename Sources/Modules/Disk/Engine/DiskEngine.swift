@@ -262,7 +262,7 @@ public struct PartialScan: Codable, Equatable, Sendable {
 /// This was a field-for-field copy of `HelmTrash.Result` — the same three
 /// stored properties in the same order, the same `failed`, the same
 /// conformances — which the engine built and then unwrapped and re-wrapped for
-/// no gain. The wire is unchanged by the alias and `RemovalWireFormatTests`
-/// says so; `refused` still carries the reason, which is the only part worth
-/// reading when Full Disk Access is the cause.
+/// no gain. The wire is unchanged by the alias; `refused` still carries the
+/// reason, which is the only part worth reading when Full Disk Access is the
+/// cause.
 public typealias DiskRemoval = HelmTrash.Result

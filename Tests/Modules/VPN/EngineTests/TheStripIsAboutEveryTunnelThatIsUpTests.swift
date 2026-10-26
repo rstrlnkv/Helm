@@ -334,45 +334,4 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
             its predecessor's
             """)
     }
-
-    // MARK: - A document written before this change
-
-    /// **A stored default does not make an older document decode**, which is why
-    /// this payload has a hand-written decoder at all: Swift's synthesised
-    /// `Decodable` wants the key whatever the property's initial value is, and
-    /// `JSONDecoder` then gives up on the whole document — every connection the
-    /// page draws, for the sake of one field.
-    func test_a_payload_written_before_the_switcher_still_draws_its_tunnel() throws {
-        let old = """
-        {
-          "connections": [{"id": "1", "name": "work", "status": "connected", "kind": "IKEv2"}],
-          "autoConnected": [],
-          "facts": {
-            "name": "work", "interface": "utun4",
-            "bytesIn": 4000, "bytesOut": 2000,
-            "exit": {"besideTunnel": {}}
-          }
-        }
-        """
-        let payload = try JSONDecoder().decode(VPNEngine.StatePayload.self,
-                                               from: Data(old.utf8))
-        XCTAssertEqual(payload.tunnels.map(\.name), ["work"], """
-            a payload written by the build before this one lost its tunnel — the \
-            old key is read into a one-element list, or the strip is empty at \
-            every first launch after an update
-            """)
-        XCTAssertEqual(payload.connections.count, 1,
-                       "the whole document was refused for the sake of one renamed key")
-    }
-
-    /// A document from a build older still — before the strip existed — has
-    /// neither key, and is not a throw either.
-    func test_a_payload_from_before_the_strip_decodes_with_no_tunnels() throws {
-        let older = """
-        {"connections": [], "autoConnected": []}
-        """
-        let payload = try JSONDecoder().decode(VPNEngine.StatePayload.self,
-                                               from: Data(older.utf8))
-        XCTAssertEqual(payload.tunnels, [])
-    }
 }

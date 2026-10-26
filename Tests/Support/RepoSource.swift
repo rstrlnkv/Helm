@@ -51,7 +51,7 @@ public enum RepoSource {
         do {
             return try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
         } catch {
-            throw UISources.Failure("\(relative) could not be read: \(error)")
+            throw RepoSource.Failure("\(relative) could not be read: \(error)")
         }
     }
 
@@ -64,8 +64,8 @@ public enum RepoSource {
     /// Every `.swift` file under a directory of the repository, repo-relative
     /// and in walk order.
     ///
-    /// `UISources` had this privately for the nine module UI directories, and
-    /// the second scan that needed it — one that reads all of `Sources` — is the
+    /// One scan had this privately for the nine module UI directories, and the
+    /// second scan that needed it — one that reads all of `Sources` — is the
     /// point at which it stops being one reader's business. The paths come back
     /// relative because that is what `text(of:)` and `lines(of:)` take, and
     /// because a finding has to name a file somebody can open.
@@ -81,7 +81,7 @@ public enum RepoSource {
         let walk = FileManager.default.enumerator(
             at: base, includingPropertiesForKeys: nil, options: [],
             errorHandler: { url, error in
-                refusal = UISources.Failure("\(url.path) could not be enumerated: \(error)")
+                refusal = RepoSource.Failure("\(url.path) could not be enumerated: \(error)")
                 return false
             })
         guard let walk else { return [] }
@@ -103,5 +103,11 @@ public enum RepoSource {
     public static func code(_ line: String) -> String {
         guard let range = line.range(of: "//") else { return line }
         return String(line[line.startIndex..<range.lowerBound])
+    }
+
+    /// A read or a parse that could not finish, naming the path it stopped at.
+    struct Failure: Error, CustomStringConvertible {
+        let description: String
+        init(_ description: String) { self.description = description }
     }
 }

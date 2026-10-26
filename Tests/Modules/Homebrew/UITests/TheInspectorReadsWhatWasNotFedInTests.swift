@@ -2,7 +2,7 @@ import XCTest
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
 
-/// **The inputs `InspectorStateTests` does not put in.**
+/// **The inputs `InspectorStateTests.swift` does not put in.**
 ///
 /// That file proves the ordinary shape of every branch. These are the values
 /// the branches were written against an assumption about: a `pinned` cask,
@@ -133,15 +133,14 @@ final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
     ///
     /// **`.nothingToSelect` and not `.nothingSelected`**: a list that emptied
     /// has nothing to offer, and the invitation the second case draws is an
-    /// instruction nobody can follow — `AnInvitationNeedsSomethingToChooseTests`
-    /// is where that distinction lives. What this file is about is unchanged:
+    /// instruction nobody can follow. What this file is about is unchanged:
     /// the lookup must not fall back to whatever row happens to be first, and
     /// neither answer is a row.
     func testASelectionIntoAnEmptiedListIsNothingSelectedInEverySegment() {
         XCTAssertEqual(state(.installed, node.id, installed: []), .nothingToSelect)
         XCTAssertEqual(state(.updates, nodeOutdated.id, outdated: []), .nothingToSelect)
         // Состояние has no inspector, so an id it once could have held is
-        // nothing there either (`InspectorStateTests.testTheHealthSegmentHasNoInspector`).
+        // nothing there either (`InspectorStateDecisionsTests.testTheHealthSegmentHasNoInspector`).
         XCTAssertEqual(state(.health, "f:helm", hits: []), .nothingToSelect)
     }
 

@@ -13,8 +13,7 @@ import Foundation
 /// so the line satisfies the rule that the log carries no names by construction.
 enum ConditionLabel {
 
-    /// The fixed order. Adding a case to `ActiveCondition` without adding it here
-    /// is caught by `ConditionLabelTests`, which walks `allCases`.
+    /// The fixed order.
     private static let order: [(ActiveCondition, String)] = [
         (.manual, "manual"),
         (.timer, "timer"),

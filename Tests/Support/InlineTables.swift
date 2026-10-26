@@ -221,7 +221,7 @@ public enum InlineTables {
             }
             index += 1
         }
-        throw UISources.Failure("\(path):\(lineOf(characters, openBracket)) — an unclosed table")
+        throw RepoSource.Failure("\(path):\(lineOf(characters, openBracket)) — an unclosed table")
     }
 
     /// The language, the index of its own `.`, and the index one past its `:`
@@ -239,20 +239,20 @@ public enum InlineTables {
         let keyStart = i
         i = skippingAppLanguagePrefix(characters, i, limit: end)
         guard i < end, characters[i] == "." else {
-            throw UISources.Failure("\(path):\(lineOf(characters, keyStart)) — a table row does not "
-                                    + "begin with a language case")
+            throw RepoSource.Failure("\(path):\(lineOf(characters, keyStart)) — a table row does not "
+                                     + "begin with a language case")
         }
         i += 1
         var word = ""
         while i < end, characters[i].isLetter { word.append(characters[i]); i += 1 }
         guard let language = AppLanguage(rawValue: word) else {
-            throw UISources.Failure("\(path):\(lineOf(characters, keyStart)) — \"\(word)\" is not an "
-                                    + "AppLanguage case")
+            throw RepoSource.Failure("\(path):\(lineOf(characters, keyStart)) — \"\(word)\" is not an "
+                                     + "AppLanguage case")
         }
         while i < end, characters[i].isWhitespace { i += 1 }
         guard i < end, characters[i] == ":" else {
-            throw UISources.Failure("\(path):\(lineOf(characters, keyStart)) — \(language.rawValue)'s "
-                                    + "row has no \":\"")
+            throw RepoSource.Failure("\(path):\(lineOf(characters, keyStart)) — \(language.rawValue)'s "
+                                     + "row has no \":\"")
         }
         return (language, keyStart, i + 1)
     }

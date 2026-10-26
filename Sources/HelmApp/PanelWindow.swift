@@ -40,11 +40,6 @@ private final class KeyablePanel: NSPanel {
 /// 1×1 in the app was 10 pt under a floor the app itself had written down. 320
 /// is the width the mockups always used, and it makes the rule true: two tiles
 /// of exactly 144.
-///
-/// Internal rather than `private` so `PanelWidthTests` can read it. Written out
-/// as 300, that test went on passing after the panel moved to 320 — both answer
-/// two columns — which is a check that cannot fail for the thing it is named
-/// after.
 let helmPanelWidth: CGFloat = 320
 /// Room on each side of the card for the glass to cast into.
 ///

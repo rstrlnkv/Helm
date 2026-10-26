@@ -8,8 +8,7 @@ import Module_Duplicates_Engine
 /// choose, search, and mark every extra copy. Measured by drawing the real row
 /// offscreen in each of the eight languages and finding the narrowest pane it
 /// draws whole in, then again by summing real AppKit control metrics; the two
-/// agree within 4 pt, and `DuplicatesBarWidthTests` keeps the second one
-/// running against the shipped strings:
+/// agree within 4 pt:
 ///
 /// | row                                       | needs   | widest |
 /// |-------------------------------------------|---------|--------|
@@ -46,9 +45,7 @@ import Module_Duplicates_Engine
 struct DuplicatesLayout {
     let availableWidth: CGFloat
 
-    /// The two widths. Not private: `DuplicatesBarWidthTests` holds *these*
-    /// numbers against the shipped strings, and a guard that reads its own copy
-    /// of the thing it guards goes on passing whatever the thing becomes.
+    /// The two widths.
     ///
     /// 721.0 measured in French, plus slack.
     static let barWithMarkAllLabel: CGFloat = 760
@@ -62,10 +59,6 @@ struct DuplicatesLayout {
     /// translates — so the widest of them is not a number anybody can know in
     /// advance. The floor is only there to keep the control from collapsing
     /// where a language is unusually terse.
-    ///
-    /// Static and language-taking, so the page and `ThePolicyRowFitsThePaneTests`
-    /// read one arithmetic: a width test holding its own copy of the width goes
-    /// on passing whatever the page starts drawing.
     static func policyPickerWidth(language: AppLanguage = AppLanguage.current) -> CGFloat {
         HelmPickerWidth.fitting(KeepPolicy.allCases.map { DupStr.policyName($0, language: language) },
                                 minimum: 200)
@@ -75,7 +68,7 @@ struct DuplicatesLayout {
     /// prominent trash button. 587.3 measured in German with a real library's
     /// figures, plus slack — below this the clear control keeps its act as a
     /// symbol and gives up only its words, the same trade the toolbar's
-    /// mark-all makes. `TheBasketRowFitsThePaneTests` holds it.
+    /// mark-all makes.
     static let basketWithClearLabel: CGFloat = 620
 
     var labelsMarkAll: Bool { availableWidth >= Self.barWithMarkAllLabel }

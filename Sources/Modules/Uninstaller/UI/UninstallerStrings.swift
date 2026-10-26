@@ -109,8 +109,8 @@ enum UnStr {
                                 language: AppLanguage = AppLanguage.current) -> String { L("\(n) selected · \(size)", [.ru: "Выбрано: \(n) · \(size)", .es: "\(n) seleccionados · \(size)", .fr: "\(n) sélectionnés · \(size)", .de: "\(n) ausgewählt · \(size)", .ja: "\(n) 件選択・\(size)", .zh: "已选 \(n) 项 · \(size)", .pt: "\(n) selecionados · \(size)"], language: language) }
     static var selectNone: String { L("Clear selection") }
     /// At zero the button says only its verb: it is disabled with nothing
-    /// checked, and a dimmed «Review 0» is a control naming a count of nothing
-    /// — `AControlDoesNotNameZeroTests`. The count returns with the first tick.
+    /// checked, and a dimmed «Review 0» is a control naming a count of nothing.
+    /// The count returns with the first tick.
     static func reviewCount(_ n: Int,
                             language: AppLanguage = AppLanguage.current) -> String {
         guard n > 0 else { return L("Review", language: language) }

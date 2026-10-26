@@ -11,8 +11,6 @@
 ///
 /// The window header 56 pt above said «Paused» at that same instant, because
 /// `LayoutDescriptor.activity` reads both flags.
-/// `TheHeaderDoesNotContradictThePageTests` guards that function alone and never
-/// mounted the hero, so the two halves of one sentence were checked apart.
 ///
 /// A type rather than a reordering, because the ordering *is* the rule and a
 /// rule spelled twice is a rule that drifts. It is also the only shape of this

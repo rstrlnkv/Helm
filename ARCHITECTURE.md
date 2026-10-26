@@ -84,7 +84,7 @@ One page per module, in the order `ls Sources/Modules` prints.
 - [Localization](Architecture/Localization.md) — the English key, the eight tables, the guards that watch them, and the helpers that keep the language the app's own.
 - [State and lifetime](Architecture/StateAndLifetime.md) — what outlives a page or a thing it points at, and a value read back whole; § State that outlives a page and ends with its module, § An observer outlives the thing it points at, § A value read back whole.
 - [Stored settings](Architecture/StoredSettings.md) — a stored value nobody else may write, and a number that came from a file; § Sealed settings, § A number that came from a file.
-- [Design system](Architecture/DesignSystem.md) — what `Sources/HelmUI/DesignSystem/` holds and the rules for its surfaces, ladders, type, ink and motion; § Surfaces, § Ladders, § Type, § Ink and contrast, § Motion, § The visual language, § The record, § Widths.
+- [Design system](Architecture/DesignSystem.md) — what `Sources/HelmUI/DesignSystem/` holds and the rules for its surfaces, ladders, type, ink and motion; § Surfaces, § Ladders, § Type, § Ink and contrast, § Motion, § The visual language, § Widths.
 
 ## Shipping and checking
 

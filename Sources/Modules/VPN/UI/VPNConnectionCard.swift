@@ -69,8 +69,7 @@ struct VPNConnectionCard: View {
     /// preview is drawn at (104 : 66). It was derived from the popover's width
     /// when three of them stood in a row; there is one per question now, and a
     /// picture that grows with the popover is a picture that takes the room the
-    /// question needs. `TheNoticeLabelsFitTheCardTests` measures the mode labels
-    /// against `modeWidth` instead.
+    /// question needs.
     static let noticeThumbnail = CGSize(width: 104, height: 66)
 
     /// The width both mode pop-ups take, in one language.
@@ -79,11 +78,8 @@ struct VPNConnectionCard: View {
     /// and the plain arithmetic is a whole symbol column short: at 150 the
     /// control asks for 152 in Russian and 170 in French, and a pop-up narrower
     /// than its own words does not say what it is set to.
-    /// `TheNoticeLabelsFitTheCardTests` measures every language against a real
-    /// control, so a wrong allowance fails there rather than truncating
-    /// «Notification» on somebody else's Mac.
     ///
-    /// Language-taking for the reason `DuplicatesLayout.policyPickerWidth` is:
+    /// Language-taking:
     /// a width read through `AppLanguage.current` is this machine's width eight
     /// times over. 150 is the column the popover was drawn at, and the terse
     /// languages keep it.

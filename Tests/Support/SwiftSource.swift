@@ -195,9 +195,7 @@ public enum SwiftSource {
     /// 14.9 s of a suite whose other hundred-odd classes are milliseconds.
     ///
     /// The tree does not change while the suite runs, so the answer is the same
-    /// every time and the second walk buys nothing. `TheTreeIsReadOnceAProcessTests`
-    /// is the promise: it counts the files taken off disk and asks the reader
-    /// twice.
+    /// every time and the second walk buys nothing.
     public static func code(under directory: String) throws -> [Read] {
         try files(under: directory, keepingStrings: false)
     }
@@ -213,14 +211,6 @@ public enum SwiftSource {
     public static func uncommented(under directory: String) throws -> [Read] {
         try files(under: directory, keepingStrings: true)
     }
-
-    /// How many files the two readers above have taken off disk in this
-    /// process.
-    ///
-    /// A counter is the only way to write «and not again» down as an assertion.
-    /// Timing it would be a test of this Mac's mood, and comparing the two
-    /// answers proves only that the reader is a function.
-    public static var filesRead: Int { counter.value }
 
     /// **`LockedMemo` rather than a fifth hand-rolled one.** It is `HelmRuntime`'s,
     /// it is one lock and one dictionary with the build under the lock, and its
@@ -240,35 +230,12 @@ public enum SwiftSource {
         let key = (keepingStrings ? "kept:" : "code:") + directory
         return try tree.value(for: key) {
             Result {
-                let read = try RepoSource.swiftFiles(under: directory).map {
+                try RepoSource.swiftFiles(under: directory).map {
                     Read(path: $0, text: self.read(try RepoSource.text(of: $0),
                                                    keepingStrings: keepingStrings))
                 }
-                counter.add(read.count)
-                return read
             }
         }.get()
-    }
-
-    private static let counter = Counter()
-
-    /// An accumulator, which is why it is not `ProgressBox` next door: that one
-    /// records the *last* value a progress callback reported, and this adds.
-    private final class Counter: @unchecked Sendable {
-        private let lock = NSLock()
-        private var total = 0
-
-        func add(_ n: Int) {
-            lock.lock()
-            total += n
-            lock.unlock()
-        }
-
-        var value: Int {
-            lock.lock()
-            defer { lock.unlock() }
-            return total
-        }
     }
 
     // MARK: - Call sites
@@ -318,8 +285,7 @@ public enum SwiftSource {
         // **A fast no, before the copy.** The walk below needs the whole source
         // as `[Character]` before it can look at anything, and a call site *is*
         // an occurrence of `callee(` — so a source without that substring has
-        // none, exactly rather than probably
-        // (`testAFileThatNeverSpellsTheTypeHoldsNoConstructionOfIt`).
+        // none, exactly rather than probably.
         //
         // It belongs here and not at a caller: every scan that asks about
         // several callees over one tree was paying a copy per callee, and
@@ -555,8 +521,8 @@ public enum SwiftSource {
         var hashes = 0
         while i < count, characters[i] == "#" { hashes += 1; i += 1 }
         guard i < count, characters[i] == "\"" else {
-            throw UISources.Failure("\(path):\(lineOf(characters, index)) — a literal does not open "
-                                    + "with a quote")
+            throw RepoSource.Failure("\(path):\(lineOf(characters, index)) — a literal does not open "
+                                     + "with a quote")
         }
         let triple = i + 2 < count && characters[i + 1] == "\"" && characters[i + 2] == "\""
         let hashText = String(repeating: "#", count: hashes)
@@ -612,7 +578,7 @@ public enum SwiftSource {
             undecoded.append(characters[i])
             i += 1
         }
-        throw UISources.Failure("\(path):\(lineOf(characters, index)) — an unterminated string literal")
+        throw RepoSource.Failure("\(path):\(lineOf(characters, index)) — an unterminated string literal")
     }
 
     /// The text of one interpolation span, from its own backslash (and, for a
@@ -649,59 +615,12 @@ public enum SwiftSource {
                 i += 1
             }
         }
-        throw UISources.Failure("\(path):\(lineOf(characters, markerStart)) — an unterminated "
-                                + "interpolation")
+        throw RepoSource.Failure("\(path):\(lineOf(characters, markerStart)) — an unterminated "
+                                 + "interpolation")
     }
 
     private static func lineOf(_ characters: [Character], _ index: Int) -> Int {
         characters[..<index].filter { $0 == "\n" }.count + 1
-    }
-
-    // MARK: - Modifier chains
-
-    /// The SwiftUI modifier chain the line at `index` belongs to, by brace
-    /// depth rather than by indent.
-    ///
-    /// **Two accessibility guards need exactly this and it was written twice.**
-    /// `KeyboardReachableControlsTests` asks whether a tap gesture's own chain
-    /// carries an accessibility action; `AHeadingIsAHeadingToTheRotorTests` asks
-    /// whether a heading's own chain carries `.isHeader`. Both must stop at the
-    /// end of the chain and not read the control underneath — a chain that ran
-    /// on would take the neighbour's trait and report a bare heading as judged.
-    ///
-    /// **Depth and not indent**, which is the reading the first of the two had
-    /// to fix: the closing brace of a multi-line closure is a line no deeper
-    /// than the modifier's own that does not begin with a dot, so an indent walk
-    /// ended the chain there and could not see a modifier three lines further
-    /// down. Any offender could have been hidden from such a rule by pressing
-    /// return.
-    ///
-    /// A blank line or a comment-only line does not end a chain: the modifiers
-    /// in this repository are separated by their own explanations. Those
-    /// explanations are **stripped from what comes back**, and that is not
-    /// optional — both rules are written down in a comment that quotes the very
-    /// modifier they look for, so a chain carrying its own comments reports the
-    /// reasoning as the finding.
-    public static func modifierChain(from index: Int, in lines: [String]) -> String {
-        var text = RepoSource.code(lines[index])
-        var depth = braces(in: text)
-        for raw in lines.dropFirst(index + 1) {
-            let code = RepoSource.code(raw)
-            let body = code.trimmingCharacters(in: .whitespaces)
-            if depth > 0 {
-                text += "\n" + code
-                depth += braces(in: code)
-                continue
-            }
-            guard body.isEmpty || body.hasPrefix(".") else { break }
-            text += "\n" + code
-            depth += braces(in: code)
-        }
-        return text
-    }
-
-    private static func braces(in code: String) -> Int {
-        code.filter { $0 == "{" }.count - code.filter { $0 == "}" }.count
     }
 
     // MARK: - Bodies

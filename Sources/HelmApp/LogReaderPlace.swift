@@ -11,8 +11,7 @@ import HelmUI
 /// A scroll view keeps its offset while the content under it changes, and the
 /// line the person was reading is somewhere else: the oldest line leaves the top
 /// of a full tail as a new one arrives, a fold opens, a narrower window wraps
-/// every row above. `TheLogKeepsAReaderWhereTheyWereTests` puts each of those
-/// under a reader in a window on screen.
+/// every row above.
 ///
 /// So the page remembers the line at the top of the view and how far from the
 /// top it was (`anchor`), is told every time a drawn row's place in the content

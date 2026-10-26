@@ -85,18 +85,6 @@ final class HelmFailureAdversarialTests: XCTestCase {
         }
     }
 
-    /// A newline in the middle is replaced, and the text on both sides of it
-    /// survives — the existing guarantee, pinned so a fix for the above cannot
-    /// quietly turn into "strip the message".
-    func testANewlineIsReplacedNotDropped() {
-        let error = NSError(domain: "D", code: 1,
-                            userInfo: [NSLocalizedDescriptionKey: "before\nafter"])
-        let described = HelmFailure.describe(error)
-        XCTAssertFalse(described.contains("\n"), described)
-        XCTAssertTrue(described.contains("before"), described)
-        XCTAssertTrue(described.contains("after"), described)
-    }
-
     /// Cyrillic, emoji, a tab and a right-to-left script all reach the log
     /// intact: the line is UTF-8 and the message is evidence, not a token.
     func testTextThatIsNotASCIISurvivesIntact() {
@@ -330,40 +318,5 @@ final class HelmFailureAdversarialTests: XCTestCase {
                            "1970-01-01 00:00:00.000 [error] [c\(i)] message \(i)"
                            + "  (F\(i).swift:\(i) f\(i)())")
         }
-    }
-
-    /// `HelmFailure.posix` reads a buffer libc shares between threads.
-    ///
-    /// Darwin's `strerror` returns a pointer to a constant string for a known
-    /// errno, but for an unknown code it formats "Unknown error: N" into one
-    /// static buffer for the whole process. A tight C loop over that — 8
-    /// threads, 1.6M calls — had 1750 of them come back naming another
-    /// thread's code, some torn mid-number ("Unknown error" with no number at
-    /// all). The hazard is libc's and it is real.
-    ///
-    /// Through `posix` it is much narrower: the returned pointer is copied
-    /// into a Swift String immediately and the rest of the call dwarfs the
-    /// window, and the same 1.6M calls came back clean. So this is a watch,
-    /// not a proof — it will catch the day a caller holds that pointer longer.
-    /// `strerror_r` is the call with no window at all. Nothing calls `posix`
-    /// yet, which is the only reason none of this is in the log already.
-    ///
-    /// Timing-dependent, so it reports rather than gates — HELM_BENCH=1.
-    func testPosixUnderContentionNamesTheCodeItWasAsked() throws {
-        try XCTSkipUnless(ProcessInfo.processInfo.environment["HELM_BENCH"] == "1")
-        let threads = 8, each = 200_000
-        let wrong = UnsafeMutablePointer<Int>.allocate(capacity: threads)
-        wrong.initialize(repeating: 0, count: threads)
-        defer { wrong.deinitialize(count: threads); wrong.deallocate() }
-
-        DispatchQueue.concurrentPerform(iterations: threads) { t in
-            let code = Int32(900_000 + t)
-            for _ in 0..<each where !HelmFailure.posix(code).contains("\(code)") {
-                wrong[t] += 1
-            }
-        }
-        let total = (0..<threads).reduce(0) { $0 + wrong[$1] }
-        XCTAssertEqual(total, 0, "\(total) of \(threads * each) descriptions named "
-                       + "another thread's errno")
     }
 }

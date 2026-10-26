@@ -21,12 +21,8 @@ protocol FoldLink: AnyObject {
 /// the link, the target, the closure, and the closure holds the view weakly.
 ///
 /// The wrapper stops the link in `stop()` and in `deinit`. What holds each way a link ends: a shell that leaves
-/// its window ends a fold in flight and stops the link (`ShellContentView.viewDidMoveToWindow`, row
-/// `testAViewMovedToAnotherWindowOrToNoneMidWayLandsOnTheTarget`); the wrapper released while it runs invalidates
-/// in `deinit` (row `testTheRealLinksTargetIsGoneAfterTheWrapperIsReleased`); the closure holds the view weakly
-/// (row `testNothingKeepsTheViewAliveAfterItsControllerIsReleased`, over a link ticked by hand). A shell freed
-/// with its real link running is a net over that whole chain
-/// (`testAShellReleasedWhileItsRealLinkRunsLetsTheTargetGo`), not a guard of the `deinit` or of the closure.
+/// its window ends a fold in flight and stops the link (`ShellContentView.viewDidMoveToWindow`); the wrapper
+/// released while it runs invalidates in `deinit`; the closure holds the view weakly.
 /// The `CADisplayLink` is added to the main run loop in the common modes.
 ///
 /// Assumed, read on no screen and by no row (no row ticks this link): that the system pauses the link while the

@@ -24,8 +24,7 @@ struct HomebrewSettingsPage: View {
                 console
             }
         }
-        // **The console arrives by taking its height off everything above it**
-        // (`ThePageMovesRatherThanCutsTests` measures the travel), and it used
+        // **The console arrives by taking its height off everything above it**, and it used
         // to do that in one frame: the first install of the session put a
         // divider and the well under the page, and the list, the status bar and
         // whatever row the eye was on jumped up together. One token, on
@@ -53,8 +52,7 @@ struct HomebrewSettingsPage: View {
         // visit to Homebrew opens a confirmation for the app's only
         // irreversible deletion that nobody asked for. `LatestRequest` retires
         // work on a later press and on a cancel; leaving is neither, and this
-        // is the one place that knows it happened
-        // (`LeavingThePageRetiresAnUninstallAskTests`). The modifier is not on
+        // is the one place that knows it happened. The modifier is not on
         // this page and this comment used to say it was: `.helmIdlesOffScreen()`
         // is on the detail hosting controller in `SettingsWindow.swift`, which
         // holds whichever module page is open — so hiding the app or occluding
@@ -213,15 +211,14 @@ struct HomebrewSettingsPage: View {
                     // spend, and the 12 pt on the inspector's side moves into
                     // `detail`'s own leading padding below — the distance
                     // from the divider to the inspector's content is
-                    // unchanged, only where it is spent has moved
-                    // (`TheGapBesideTheListClosesOnlyThereTests`).
+                    // unchanged, only where it is spent has moved.
                     HStack(spacing: 0) {
                         listArea(singleColumn: split.singleColumn)
                             // `minWidth` and the compressibility it buys are
                             // kept exactly as they were: the split threshold
                             // was measured against a master that gives way
                             // before the inspector does, and a fixed `width:`
-                            // here would move the floor that test re-measures.
+                            // here would move the floor the 521 pt measurement was taken at.
                             .frame(minWidth: 240, idealWidth: split.masterWidth,
                                    maxWidth: split.masterWidth)
                         Divider()
@@ -287,8 +284,6 @@ struct HomebrewSettingsPage: View {
         // flip `selected == nil`; the transaction line below is *inner* to the
         // curve line, where the nearer modifier wins, and so a switch of segment
         // reaches the pane as a cut even when it changes what is selected.
-        // `EveryTabSwitchIsACutTests` holds it across every module, and
-        // `ThePageMovesRatherThanCutsTests` holds this page's own shapes of it.
         .transaction(value: hb.segment) { $0.animation = nil }
         .animation(HelmMotion.interface, value: hb.selected == nil)
         // **The page's controls, in the window's own `NSToolbar`
@@ -1058,8 +1053,7 @@ struct HomebrewSettingsPage: View {
     /// installed list reserves exactly its width (`columnHeader`), and a
     /// heading that reserved a different glyph's would put «Package» a point or
     /// two off the names under it. The symbol and not a built view: the row's
-    /// mark has to stay an `Image` at its own call site, which is what
-    /// `TheRowsUpdateMarkerIsMoreThanAColourTests` reads.
+    /// mark has to stay an `Image` at its own call site.
     static let updateMarkSymbol = "arrow.up.circle.fill"
 
     /// **The heading over a list's columns: what the names are, and what the
@@ -1375,8 +1369,7 @@ private extension View {
 /// own fill and not the white pane behind it. Light: `#D9584D` on `#EFEFEF`,
 /// 3.35:1 where its neighbour reads 11.49:1. Dark: `#F16B60` on `#3F3F3F`,
 /// 3.52:1 where its neighbour reads 8.40:1. The two labels are no longer one
-/// ink in either appearance, which is what
-/// `TheDestructiveControlIsMarkedInInkTests` reads back.
+/// ink in either appearance.
 ///
 /// **And the shortfall is named rather than hidden.** `HelmSignal.danger` is
 /// specified at 4.52:1 and that is against white; a bordered button's fill is

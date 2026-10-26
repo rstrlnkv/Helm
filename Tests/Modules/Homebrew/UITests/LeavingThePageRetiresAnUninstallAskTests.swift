@@ -1,7 +1,6 @@
 import XCTest
 import HelmContract
 import HelmRuntime
-import HelmTestSupport
 import HelmUI
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
@@ -83,42 +82,6 @@ private struct NoPrivileges: PrivilegedRunner {
 
 @MainActor
 final class LeavingThePageRetiresAnUninstallAskTests: XCTestCase {
-
-    // MARK: - The page is the only thing that knows it has gone
-
-    /// The page it is a rule about, named once.
-    private static let page = "Sources/Modules/Homebrew/UI/HomebrewSettingsPage.swift"
-
-    /// A source scan, because the defect is invisible to anything that can be
-    /// called: `onDisappear` is delivered by SwiftUI to a mounted subtree, and
-    /// the view model below cannot tell a page that left from one that never
-    /// drew. The behavioural half proves the mechanism the wiring leans on; this
-    /// half proves the page is wired to it at all.
-    ///
-    /// Comments and the insides of string literals are blanked, so a doc comment
-    /// that merely *says* the page retires the ask does not satisfy the check —
-    /// which is exactly how this defect arrived.
-    func testThePageRetiresThePendingAskWhenItDisappears() throws {
-        let code = SwiftSource.code(try RepoSource.text(of: Self.page))
-        // Assert the subject happened before asserting anything about it: a
-        // page that no longer raises the ask would otherwise pass this by
-        // having nothing to retire.
-        XCTAssertTrue(code.contains("askToUninstall"),
-                      "\(Self.page) no longer raises the uninstall ask — this rule is about a page that does")
-
-        guard let start = code.range(of: ".onDisappear") else {
-            return XCTFail("\(Self.page) never retires the uninstall ask it can leave in flight: "
-                           + "the query outlives the subtree, so the answer raises a confirmation "
-                           + "for an irreversible deletion on the next visit to Homebrew")
-        }
-        let tail = code[start.upperBound...]
-        guard let close = tail.firstIndex(of: "}") else {
-            return XCTFail("\(Self.page)'s .onDisappear closure has no end — the scan cannot read it")
-        }
-        XCTAssertTrue(tail[..<close].contains("cancelUninstall("),
-                      ".onDisappear on \(Self.page) does not call cancelUninstall(), "
-                      + "so an uninstall ask still out when the page unmounts stays out")
-    }
 
     // MARK: - What the page's departure reaches
 

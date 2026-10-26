@@ -469,7 +469,7 @@ struct MenuBarSettingsView: View {
         // The `Form` is this page's scroll view, so nothing here caps it: a
         // capped scroller leaves the pane either side of it dead to the wheel,
         // and the 704 pt column is the grouped form style's own anyway
-        // (`helmSettingsColumn`, and `ThePaneTakesTheWheelAtItsEdgesTests`).
+        // (`helmSettingsColumn`).
         // What the page does still want is the idling, which is the half of that
         // modifier this call is.
         .helmIdlesOffScreen()

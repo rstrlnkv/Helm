@@ -6,7 +6,6 @@ import XCTest
 final class ScanScheduleTests: XCTestCase {
 
     private let noon = Date(timeIntervalSince1970: 1_785_672_000)
-    private let interval: TimeInterval = 24 * 3600
 
     private func conditions(idle: TimeInterval = 600,
                             onMains: Bool = true,
@@ -46,6 +45,39 @@ final class ScanScheduleTests: XCTestCase {
         XCTAssertEqual(ScanSchedule.verdict(conditions(onMains: false)), .onBattery)
     }
 
+    /// Fast user switching and a locked screen both stop this session receiving
+    /// events, so `idleSeconds` grows without bound and looks like an empty
+    /// desk. Reading one person's home folder while another is at the keyboard
+    /// is the outcome this refuses.
+    func testAnotherUserAtTheConsoleStopsTheScan() {
+        XCTAssertEqual(ScanSchedule.verdict(conditions(idle: 9999, onConsole: false)),
+                       .notAtTheConsole)
+    }
+
+    func testALockedScreenStopsTheScan() {
+        XCTAssertEqual(ScanSchedule.verdict(conditions(idle: 9999, screenLocked: true)),
+                       .notAtTheConsole)
+    }
+}
+
+final class ScanScheduleClockAndPriorityTests: XCTestCase {
+
+    private let noon = Date(timeIntervalSince1970: 1_785_672_000)
+    private let interval: TimeInterval = 24 * 3600
+
+    private func conditions(idle: TimeInterval = 600,
+                            onMains: Bool = true,
+                            ranToday: Int = 0,
+                            lastRun: Date? = nil,
+                            enabled: Bool = true,
+                            onConsole: Bool = true,
+                            screenLocked: Bool = false) -> ScanSchedule.Conditions {
+        ScanSchedule.Conditions(now: noon, lastRun: lastRun, idleSeconds: idle,
+                                onMains: onMains, runsToday: ranToday,
+                                isEnabled: enabled, onConsole: onConsole,
+                                screenLocked: screenLocked)
+    }
+
     /// Once a day. A scan that already ran is not due again because the app
     /// relaunched — which is what a naive "run at launch" would do to somebody
     /// who opens and quits Helm five times an afternoon.
@@ -81,20 +113,6 @@ final class ScanScheduleTests: XCTestCase {
     func testAFutureLastRunIsNamedRatherThanSilentlyRefused() {
         let restored = conditions(lastRun: noon.addingTimeInterval(30 * 86400))
         XCTAssertEqual(ScanSchedule.verdict(restored), .clockSkew)
-    }
-
-    /// Fast user switching and a locked screen both stop this session receiving
-    /// events, so `idleSeconds` grows without bound and looks like an empty
-    /// desk. Reading one person's home folder while another is at the keyboard
-    /// is the outcome this refuses.
-    func testAnotherUserAtTheConsoleStopsTheScan() {
-        XCTAssertEqual(ScanSchedule.verdict(conditions(idle: 9999, onConsole: false)),
-                       .notAtTheConsole)
-    }
-
-    func testALockedScreenStopsTheScan() {
-        XCTAssertEqual(ScanSchedule.verdict(conditions(idle: 9999, screenLocked: true)),
-                       .notAtTheConsole)
     }
 
     /// The order is the decision, and it is what these two pin. `.notDue`

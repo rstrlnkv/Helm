@@ -9,14 +9,7 @@ import XCTest
 /// `HELM_BENCH=1`, and answers about a fixed number of files rather than about
 /// whatever is in the home directory of whoever ran it.
 ///
-/// `LeftoversScanFootprintTests` asks the same question against the real `~` and
-/// reads `MemoryFootprint.current()`. It does fail on the defect — measured here,
-/// three runs, 3657/3599/3599 bytes an item against its 2500 — but it is the
-/// instrument CLAUDE.md warns off a per-item figure (`phys_footprint` answers
-/// what the process costs the machine), it skips unless the Mac running it has
-/// fifty items to find, and an ordinary `swift test` skips it altogether — so the
-/// reading only exists when somebody remembers to ask for it.
-/// This one reads `malloc_zone_statistics`' `size_in_use`, which is what malloc
+/// It reads `malloc_zone_statistics`' `size_in_use`, which is what malloc
 /// has handed out and not been given back — the number an autoreleased `Data`
 /// moves and a resident-page reading need not.
 ///

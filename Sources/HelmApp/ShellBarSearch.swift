@@ -19,12 +19,11 @@ import HelmUI
 ///
 /// **The reading after the end of editing happens a turn later.** The notification arrives while the field
 /// editor is still attached, so a reading taken inside it says "being edited" about a field that is about to
-/// be idle; and a Return ends the session and starts another at once (measured by
-/// `TheSearchRestsAsItsMagnifierTests.testAFieldTakesAndGivesUpItsEditorInAWindowThatWasNeverShown`).
+/// be idle; and a Return ends the session and starts another at once (measured).
 /// `controlTextDidEndEditing` therefore
 /// schedules `stateMoved()` on the main queue and the reading is taken inside the block. A field that
-/// becomes first responder (a click, Tab, `makeFirstResponder`) does the same from `becomeFirstResponder`;
-/// the test file reaches it by `makeFirstResponder` only. The clear button with no editor sends
+/// becomes first responder (a click, Tab, `makeFirstResponder`) does the same from `becomeFirstResponder`.
+/// The clear button with no editor sends
 /// the action alone, with no editing at either end, so the action handler calls `stateMoved()` itself when
 /// the zone is live; when it is not, it writes the page's text back and returns.
 ///
@@ -32,8 +31,7 @@ import HelmUI
 /// take first responder leaves the field's editor in place and nothing in AppKit ends it. So the monitor
 /// hands every left mouse-down to `pressed(at:in:)`, which ends the session when the press is in the
 /// field's window and outside the bar's view; a press inside the bar does not, since it may be the
-/// field's own. The monitor never consumes an event. No test sends an event through the monitor: the
-/// test file calls `pressed(at:in:)`.
+/// field's own. The monitor never consumes an event, and no test drives it.
 ///
 /// **The resting field answers the bar's menu.** With no editor the field's `menu(for:)` returns the menu of
 /// the nearest ancestor that has one, which is the bar's own, so a right-click on the zone opens what a
@@ -44,23 +42,21 @@ import HelmUI
 /// changes of that frame made by the bar. Inside the plate the field is unbezeled with no background,
 /// because an unbezeled field with `drawsBackground` off leaves the plate unpainted, and a bezeled one
 /// paints its own fill even with it off
-/// (`TheSearchRestsAsItsMagnifierTests.testAnUnbezeledFieldDrawsTheMagnifierAndTheClearButtonAndNoFill`
-/// reads this in both appearances). That test also reads the unbezeled field's intrinsic height as 16 at
+/// (read in both appearances). The unbezeled field's intrinsic height read 16 at
 /// every control size. `Container.layout()` gives the field that height, centred in the plate, so the field
 /// stays inside the plate and its ink sits at the plate's middle;
-/// `TheBarsInkSitsInTheMiddleOfTheBarTests.testThePlaceholderAndTheMagnifierEachSitAtThePlatesMiddle` reads the
-/// placeholder's and the magnifier's ink within 1.5 pt of the middle of a 36 pt plate, in both appearances, in
+/// the placeholder's and the magnifier's ink read within 1.5 pt of the middle of a 36 pt plate, in both appearances, in
 /// the window's own bitmap. An unbezeled field hands its editor the whole bounds, not the rectangle the resting
 /// label draws in, so the typed text would begin 25.5 pt left of the placeholder, over the magnifier; the field's
 /// cell (`Cell`) gives the editor `searchTextRect(forBounds:)` instead, and
-/// `TheTypedTextStartsWhereThePlaceholderDidTests` reads the typed ink beginning within 1 pt of the placeholder's
+/// the typed ink read as beginning within 1 pt of the placeholder's
 /// and none of it over the magnifier, in both appearances. That rectangle runs 2 pt under the clear button's
 /// left edge, as the resting label does (read from a bare field's `searchTextRect(forBounds:)` and
 /// `cancelButtonRect(forBounds:)`; no test reads the right edge).
 /// Assumed, not measured: that
 /// Return is the only way a non-empty string reaches the field's action (`sendsWholeSearchString` on,
 /// `sendsActionOnEndEditing` off), and that `makeFirstResponder(field)` on a field just unhidden in the same
-/// call gives it an editor (the test file measures this in a window that was never shown, not in a key one).
+/// call gives it an editor (not measured in a key window).
 @MainActor
 final class ShellBarSearch: NSObject, ShellBarZone, NSSearchFieldDelegate {
 
@@ -68,8 +64,7 @@ final class ShellBarSearch: NSObject, ShellBarZone, NSSearchFieldDelegate {
     private static let fieldHeight: CGFloat = 16
 
     /// A search cell that gives the field editor the rectangle the resting label draws in: an unbezeled field
-    /// hands its editor the whole bounds, which puts the typed text over the magnifier (with this cell
-    /// `TheTypedTextStartsWhereThePlaceholderDidTests` reads none there; no row builds a bare cell) and the
+    /// hands its editor the whole bounds, which puts the typed text over the magnifier and the
     /// whole of the clear button over the text's end (read from the rectangles, not measured).
     private final class Cell: NSSearchFieldCell {
         override func edit(withFrame rect: NSRect, in controlView: NSView, editor: NSText, delegate: Any?, event: NSEvent?) {

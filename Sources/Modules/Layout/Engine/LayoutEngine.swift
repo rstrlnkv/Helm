@@ -962,9 +962,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         let readAudible = settings.bool(LayoutKey.audible, default: false)
         let readFixCapitals = settings.bool(LayoutKey.fixCapitals, default: true)
         // -1 is the recorder's own «nothing bound», not a keycode. Read out here
-        // with its neighbours: `TheLockIsNeverHeldAcrossAWaitTests` caught this
-        // one inside the critical section the moment it was written, which is
-        // the guard doing exactly what it was built for.
+        // with its neighbours, before the lock.
         let recorded = settings.int("\(LayoutHotkey.storePrefix)KeyCode", default: -1)
         let readHotkey: UInt16? = recorded >= 0 ? UInt16(recorded) : nil
         let readTapKey = ModifierTap(

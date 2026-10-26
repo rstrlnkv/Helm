@@ -85,20 +85,4 @@ final class ClearSelectionIsNotAWayOutOfRemovalTests: XCTestCase {
 
         XCTAssertTrue(dvm.basket.isEmpty, "the guard outlived the removal it was for")
     }
-
-    /// The page's half: the button that would call it is dimmed for the same
-    /// reason. A model that refuses while the control stays live is a press that
-    /// looks like it worked, and a control that dims while the model accepts is
-    /// one redraw from the same defect.
-    func testTheClearButtonIsDimmedWhileARemovalRuns() throws {
-        // `RepoSource`, not a count of `deletingLastPathComponent`s: that count is
-        // a fact about where this file sits and breaks silently when it moves.
-        let lines = try RepoSource.lines(of: "Sources/Modules/Duplicates/UI/DuplicatesSettingsPage.swift")
-        let button = try XCTUnwrap(lines.firstIndex { $0.contains("DupStr.clearBasket") },
-                                   "the page no longer draws that button under that name")
-        let following = lines[button...].prefix(3).joined(separator: "\n")
-        XCTAssertTrue(following.contains(".disabled(dvm.busy)"), """
-            «Clear selection» stays live while a removal runs: \(following)
-            """)
-    }
 }

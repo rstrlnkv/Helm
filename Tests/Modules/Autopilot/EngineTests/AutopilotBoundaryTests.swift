@@ -4,9 +4,9 @@ import HelmTestSupport
 @testable import HelmRuntime
 @testable import Module_Autopilot_Engine
 
-/// The edges of the four things that have no natural stopping point: the
-/// collision counter, the stamp's stored value, the date formatters, and the
-/// scope gate a destination has to pass.
+/// The edges of the three things that have no natural stopping point: the
+/// collision counter, the stamp's stored value, and the scope gate a
+/// destination has to pass.
 final class AutopilotBoundaryTests: XCTestCase {
 
     private let stamp = RuleStamp(key: TestRuleKey.material)
@@ -94,66 +94,6 @@ final class AutopilotBoundaryTests: XCTestCase {
                           "\(id.debugDescription) was lost when a later rule stamped the same file")
         }
         XCTAssertFalse(stamp.isStamped(file.path, by: "not-one-of-them"))
-    }
-
-    // MARK: - Dates with nothing behind them
-
-    /// `FolderReader` substitutes `Date.distantPast` when a file has neither an
-    /// added date nor a creation date — a file restored from a backup, or one on
-    /// a filesystem that does not keep either. Both date-shaped actions then get
-    /// handed a year-one date, and both of them are producing a *name*: the
-    /// answer has to stay one usable path component rather than an empty string
-    /// or something with a separator in it.
-    func testADateThatIsMissingStillMakesAUsableName() {
-        let missing = facts("a.pdf", added: .distantPast)
-
-        let bucket = SortBucket.name(for: missing, scheme: .month)
-        XCTAssertFalse(bucket.isEmpty)
-        XCTAssertFalse(bucket.contains("/"))
-        XCTAssertFalse(bucket.hasPrefix("."))
-        XCTAssertTrue(bucket.allSatisfy { $0.isNumber || $0 == "-" },
-                      "a bucket named \(bucket.debugDescription) is not a date and will not sort")
-
-        let renamed = RenamePattern.apply("{date}", to: missing)
-        XCTAssertNotNil(renamed)
-        XCTAssertFalse(renamed?.contains("/") ?? true)
-    }
-
-    /// The month bucket has to keep sorting chronologically by name, which is
-    /// the whole reason it is `yyyy-MM` and not a month name. Asserted as an
-    /// ordering over a year of dates rather than as literal strings: the
-    /// formatter carries no time zone, so the exact bucket a given instant falls
-    /// into is the machine's business, but the order never is.
-    func testMonthBucketsSortChronologicallyByName() {
-        let start = Date(timeIntervalSince1970: 1_760_000_000)
-        let buckets = (0..<14).map { month -> String in
-            SortBucket.name(for: facts("a.pdf", added: start.addingTimeInterval(Double(month) * 31 * 86_400)),
-                            scheme: .month)
-        }
-
-        XCTAssertEqual(buckets, buckets.sorted(),
-                       "sorting the bucket names does not put the months in order")
-        XCTAssertTrue(buckets.allSatisfy { $0.count == 7 && $0.dropFirst(4).first == "-" })
-        XCTAssertTrue(Set(buckets).count >= 13, "a year and a bit produced fewer than 13 months")
-    }
-
-    /// The two sides of a month boundary must land in adjacent buckets and never
-    /// in the same one, whichever time zone the machine is in. Built from the
-    /// current calendar so the boundary is a real local one rather than an
-    /// assumption about UTC.
-    func testTheTwoSidesOfAMonthBoundaryAreDifferentBuckets() throws {
-        var components = DateComponents()
-        components.year = 2026
-        components.month = 8
-        components.day = 1
-        let firstOfAugust = try XCTUnwrap(Calendar.current.date(from: components))
-        let lastOfJuly = firstOfAugust.addingTimeInterval(-1)
-
-        let before = SortBucket.name(for: facts("a.pdf", added: lastOfJuly), scheme: .month)
-        let after = SortBucket.name(for: facts("a.pdf", added: firstOfAugust), scheme: .month)
-
-        XCTAssertNotEqual(before, after, "a second apart across a month boundary sorted together")
-        XCTAssertLessThan(before, after)
     }
 
     // MARK: - Where a destination may point
@@ -314,6 +254,76 @@ final class AutopilotBoundaryTests: XCTestCase {
             XCTAssertTrue(UserFileScope.isRemovable(destination),
                           "\(destination) is the user's own and a rule was refused it")
         }
+    }
+}
+
+/// The date buckets and date-shaped names at their edges: a date with nothing
+/// behind it, the order of the months, and the two sides of a month boundary.
+final class AutopilotDateBucketTests: XCTestCase {
+
+    private func facts(_ name: String, added: Date) -> FileFacts {
+        FileFacts(name: name, kind: .document, bytes: 4, added: added, modified: added,
+                  now: Date(timeIntervalSince1970: 1_784_116_800))
+    }
+
+    // MARK: - Dates with nothing behind them
+
+    /// `FolderReader` substitutes `Date.distantPast` when a file has neither an
+    /// added date nor a creation date — a file restored from a backup, or one on
+    /// a filesystem that does not keep either. Both date-shaped actions then get
+    /// handed a year-one date, and both of them are producing a *name*: the
+    /// answer has to stay one usable path component rather than an empty string
+    /// or something with a separator in it.
+    func testADateThatIsMissingStillMakesAUsableName() {
+        let missing = facts("a.pdf", added: .distantPast)
+
+        let bucket = SortBucket.name(for: missing, scheme: .month)
+        XCTAssertFalse(bucket.isEmpty)
+        XCTAssertFalse(bucket.contains("/"))
+        XCTAssertFalse(bucket.hasPrefix("."))
+        XCTAssertTrue(bucket.allSatisfy { $0.isNumber || $0 == "-" },
+                      "a bucket named \(bucket.debugDescription) is not a date and will not sort")
+
+        let renamed = RenamePattern.apply("{date}", to: missing)
+        XCTAssertNotNil(renamed)
+        XCTAssertFalse(renamed?.contains("/") ?? true)
+    }
+
+    /// The month bucket has to keep sorting chronologically by name, which is
+    /// the whole reason it is `yyyy-MM` and not a month name. Asserted as an
+    /// ordering over a year of dates rather than as literal strings: the
+    /// formatter carries no time zone, so the exact bucket a given instant falls
+    /// into is the machine's business, but the order never is.
+    func testMonthBucketsSortChronologicallyByName() {
+        let start = Date(timeIntervalSince1970: 1_760_000_000)
+        let buckets = (0..<14).map { month -> String in
+            SortBucket.name(for: facts("a.pdf", added: start.addingTimeInterval(Double(month) * 31 * 86_400)),
+                            scheme: .month)
+        }
+
+        XCTAssertEqual(buckets, buckets.sorted(),
+                       "sorting the bucket names does not put the months in order")
+        XCTAssertTrue(buckets.allSatisfy { $0.count == 7 && $0.dropFirst(4).first == "-" })
+        XCTAssertTrue(Set(buckets).count >= 13, "a year and a bit produced fewer than 13 months")
+    }
+
+    /// The two sides of a month boundary must land in adjacent buckets and never
+    /// in the same one, whichever time zone the machine is in. Built from the
+    /// current calendar so the boundary is a real local one rather than an
+    /// assumption about UTC.
+    func testTheTwoSidesOfAMonthBoundaryAreDifferentBuckets() throws {
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 8
+        components.day = 1
+        let firstOfAugust = try XCTUnwrap(Calendar.current.date(from: components))
+        let lastOfJuly = firstOfAugust.addingTimeInterval(-1)
+
+        let before = SortBucket.name(for: facts("a.pdf", added: lastOfJuly), scheme: .month)
+        let after = SortBucket.name(for: facts("a.pdf", added: firstOfAugust), scheme: .month)
+
+        XCTAssertNotEqual(before, after, "a second apart across a month boundary sorted together")
+        XCTAssertLessThan(before, after)
     }
 }
 

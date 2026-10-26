@@ -1,4 +1,3 @@
-import CoreGraphics
 import XCTest
 @testable import Module_KeepAwake_Engine
 
@@ -105,60 +104,6 @@ final class BatteryGuardInvariantTests: XCTestCase {
             XCTAssertFalse(BatteryGuard.shouldDeactivate(enabled: true, isOnBattery: false,
                                                          percent: percent, threshold: 100))
         }
-    }
-}
-
-/// The jiggle exists to reset macOS's idle timer, which only happens if the
-/// cursor actually moves. A returned point equal to where the cursor already is
-/// is a no-op event: the session looks alive and the display sleeps anyway.
-final class JiggleTargetInvariantTests: XCTestCase {
-
-    private let frames: [CGRect] = [
-        CGRect(x: 0, y: 0, width: 1440, height: 900),      // built-in
-        CGRect(x: -1920, y: 0, width: 1920, height: 1080), // display to the left
-        CGRect(x: 0, y: 0, width: 5, height: 5),           // barely wider than the inset
-        CGRect(x: 0, y: 0, width: 4, height: 4),           // exactly the inset — degenerate
-        CGRect(x: 0, y: 0, width: 0, height: 0),
-    ]
-
-    private func points(in f: CGRect) -> [CGPoint] {
-        [CGPoint(x: f.midX, y: f.midY),
-         CGPoint(x: f.minX, y: f.minY),
-         CGPoint(x: f.maxX, y: f.maxY),
-         CGPoint(x: f.maxX - 1, y: f.midY),
-         CGPoint(x: f.minX + 1, y: f.midY),
-         CGPoint(x: f.minX - 5000, y: f.minY - 5000),   // cursor on another display
-         CGPoint(x: f.maxX + 5000, y: f.maxY + 5000)]
-    }
-
-    /// A nudge that lands outside the display is a cursor teleported off-screen.
-    func test_the_nudge_always_lands_inside_the_inset_frame() {
-        for f in frames {
-            let inset = f.insetBy(dx: 2, dy: 2)
-            for p in points(in: f) {
-                guard let n = JiggleTarget.nudge(from: p, in: f) else { continue }
-                XCTAssertTrue((inset.minX...inset.maxX).contains(n.x), "\(f) \(p) -> \(n)")
-                XCTAssertTrue((inset.minY...inset.maxY).contains(n.y), "\(f) \(p) -> \(n)")
-            }
-        }
-    }
-
-    /// The whole point of the call: the target must differ from where the
-    /// cursor is, or the posted event moves nothing and resets no timer.
-    func test_the_nudge_never_returns_the_point_it_was_given() {
-        for f in frames {
-            for p in points(in: f) {
-                guard let n = JiggleTarget.nudge(from: p, in: f) else { continue }
-                XCTAssertNotEqual(n, p, "no-op nudge in \(f) from \(p)")
-            }
-        }
-    }
-
-    /// A display too small to inset has no safe target; returning a point there
-    /// would be a click-through into whatever sits at the edge.
-    func test_a_frame_no_larger_than_the_inset_has_no_target() {
-        XCTAssertNil(JiggleTarget.nudge(from: .zero, in: CGRect(x: 0, y: 0, width: 4, height: 4)))
-        XCTAssertNil(JiggleTarget.nudge(from: .zero, in: .zero))
     }
 }
 

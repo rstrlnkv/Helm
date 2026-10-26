@@ -64,8 +64,7 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
                     BrewStatus(installed: true, brewPath: "/opt/fixture/bin/brew"))
             case .listInstalled: return try JSONEncoder().encode(installedList)
             case .search:
-                // Failable, the way this module's other search fixture reads the
-                // same payload (`AStaleSearchDoesNotLandOnANewerOneTests`).
+                // Failable: a payload that is not UTF-8 reads as the empty word.
                 let word = String(data: command.payload, encoding: .utf8) ?? ""
                 lock.withLock { asked.append(word) }
                 return try JSONEncoder().encode([SearchHit]())

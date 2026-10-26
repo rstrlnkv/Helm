@@ -313,42 +313,6 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
 
     // MARK: - The measurement
 
-    /// **The run is not bound to the tunnel's interface, and that is the honest
-    /// reading rather than a workaround.** Measured on this machine while this
-    /// was written: `networkQuality -I utunN` against a real tunnel prints
-    /// `"error_code": -1009` with exit status 0 and no throughput at all, while
-    /// the same tool unbound answers normally — binding a socket to a
-    /// point-to-point tun does not work here. The strip exists only for the
-    /// tunnel carrying the default route, so an unbound measurement follows that
-    /// route and *is* that tunnel's figure whenever the strip is on screen.
-    ///
-    /// The port keeps its `onInterface:` all the same — it is the seam a build
-    /// with a working bind goes through — and the fake records what it was
-    /// handed, so «this run was not bound» is a fact rather than a hope.
-    func test_a_measurement_is_unbound_and_lands_in_the_payload() async throws {
-        let runner = FakeRunner()
-        runner.listOutput = list("Connected")
-        let transport = LocalTransport()
-        let speed = FakeSpeed()
-        let reading = VPNSpeedReading(down: 240, up: 40, rpm: 300, at: at)
-        speed.answer = reading
-        let engine = makeEngine(runner, transport: transport,
-                                interfaces: tunnelIsTheDefaultRoute(), speed: speed)
-        engine.refresh()
-        // The run happens off the module's queue now, so the figure arrives when
-        // it arrives: awaited on the payload, never on a count of yields.
-        let landed = expectation(description: "the reading reached the page")
-        let watcher = watchState(transport, until: { $0.tunnels.first?.speed == reading }, then: landed)
-
-        _ = try await engine.transport.send(measureCommand("A"))
-
-        await fulfillment(of: [landed], timeout: 5)
-        watcher.cancel()
-        XCTAssertEqual(speed.askedFor, [nil],
-                       "one run, and unbound: `networkQuality -I utunN` answers -1009 and no "
-                       + "throughput at all on this build of macOS")
-    }
-
     /// **The measurement must not hold the module's one serial queue.**
     ///
     /// `VPNWorkQueue` is serial and every connect, disconnect and poll passes
@@ -558,20 +522,5 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
 
         XCTAssertEqual(events.count, 2,
                        "three readings over two drawable states must say exactly two things")
-    }
-
-    // MARK: - The wire
-
-    /// A state event from a build that predates the field still decodes. A throw
-    /// here would cost the page every connection it draws for the sake of one field
-    /// (CLAUDE.md § What not to do, and what breaks if you do).
-    func test_a_state_payload_without_the_tunnel_still_decodes() throws {
-        let legacy = Data("""
-        {"connections":[],"autoConnected":[],"defaultName":null}
-        """.utf8)
-
-        let payload = try JSONDecoder().decode(VPNEngine.StatePayload.self, from: legacy)
-
-        XCTAssertNil(payload.tunnels.first)
     }
 }

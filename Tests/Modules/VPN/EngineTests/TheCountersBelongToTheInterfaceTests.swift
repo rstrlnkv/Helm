@@ -132,8 +132,7 @@ final class TheCountersBelongToTheInterfaceTests: XCTestCase {
 
     /// The counters are the one field of the payload that moves on their own,
     /// and the engine withholds only a payload equal to the last one it sent —
-    /// so a raw byte count would make every re-read news
-    /// (`AnUnchangedStateIsSaidOnceTests` for what that costs). Whole kilobytes
+    /// so a raw byte count would make every re-read news. Whole kilobytes
     /// is the granularity the strip draws at: `HelmBytes` writes bytes exactly
     /// below a kilobyte and rounds to whole kilobytes above one.
     func testTheWireCarriesWholeKilobytes() {

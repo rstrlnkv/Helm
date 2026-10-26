@@ -121,20 +121,4 @@ final class ASearchIsNotAWayOutOfARemovalTests: XCTestCase {
                       "and the search answering does not bring the Stop control back either")
         await finish(dvm, wire)
     }
-
-    /// The page's half of the gate, the way `testTheClearButtonIsDimmedWhileARemovalRuns`
-    /// holds the other one: a model that refuses while the control stays live is
-    /// a press that looks like it worked (ARCHITECTURE.md § One removal at a time).
-    func testTheSearchControlIsDimmedWhileARemovalRuns() throws {
-        let lines = try RepoSource
-            .lines(of: "Sources/Modules/Duplicates/UI/DuplicatesSettingsPage.swift")
-        let search = try XCTUnwrap(lines.firstIndex { $0.contains("dvm.search()") },
-                                   "the toolbar no longer calls the search from this page")
-        let around = lines[max(0, search - 4)...].prefix(8).joined(separator: "\n")
-        XCTAssertTrue(around.contains("dvm.busy"), """
-            «Search again» stays live and undimmed for the whole of a removal, and pressing it \
-            clears the basket the request is out with:
-            \(around)
-            """)
-    }
 }

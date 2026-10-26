@@ -36,14 +36,6 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
         offer.preset.rule(named: "Screenshots", in: offer.folder.path)
     }
 
-    // MARK: - The control
-
-    func testAMacWithNoRulesIsOfferedThePresets() async {
-        let model = model(on: AutopilotWire())
-        await model.load()
-        XCTAssertEqual(model.presets.map(\.preset.kind), PresetKind.allCases)
-    }
-
     // MARK: - Saving one
 
     func testTheFolderIsSavedWithTheRuleAlreadyInIt() async throws {
@@ -58,20 +50,6 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
         XCTAssertEqual(saved.map(\.path), [home + "/Desktop"])
         XCTAssertEqual(saved.first?.rules.map(\.id), ["preset.screenshots"])
         XCTAssertEqual(saved.first?.rules.first?.enabled, true)
-    }
-
-    /// The draft folder is watched with the module's own default depth, not with
-    /// anything the preset chose: a preset does not decide how deep somebody
-    /// watches a folder.
-    func testTheFolderArrivesAtTheFoldersOwnDepth() async throws {
-        let wire = AutopilotWire()
-        let model = model(on: wire)
-        await model.load()
-        let offer = try offer(model, .screenshots)
-
-        await model.save(draft(offer), in: offer.folder)
-
-        XCTAssertEqual(wire.saved.last?.first?.depth, 1)
     }
 
     /// **Only the rule the preset was about.** The draft the editor was given is
@@ -112,19 +90,6 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
         XCTAssertEqual(saved.count, 1, "one folder was stored twice")
         XCTAssertEqual(saved.first?.rules.map(\.id),
                        ["preset.downloads-by-kind", "preset.old-installers"])
-    }
-
-    /// Added, and the block is gone with it: the first rule on the page ends the
-    /// offer (`StartingRulesAreOfferedOnlyWhileThereAreNoneTests`).
-    func testAPresetThatWasAddedIsNoLongerOffered() async throws {
-        let wire = AutopilotWire()
-        let model = model(on: wire)
-        await model.load()
-        let offer = try offer(model, .screenshots)
-
-        await model.save(draft(offer), in: offer.folder)
-
-        XCTAssertEqual(model.presets, [])
     }
 
     // MARK: - The sweep
@@ -211,19 +176,6 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
 
     // MARK: - Rules that are not Helm's
 
-    /// A refused rule set has one gesture and this is not it. The engine refuses
-    /// the write too; this is the half that stops the page offering a button
-    /// whose only outcome is a line in the log.
-    func testARefusedRuleSetIsOfferedNoPresets() async {
-        let wire = AutopilotWire(status: AutopilotStatus(refusal: .tampered))
-        let model = model(on: wire)
-
-        await model.load()
-
-        XCTAssertEqual(model.screen, .rulesRefused(.tampered), "precondition")
-        XCTAssertEqual(model.presets, [], "a refused page offered to add a rule")
-    }
-
     /// And if one were pressed anyway, nothing goes out. The offer being empty
     /// is a fact about the screen; this is a fact about the gesture.
     func testARefusedRuleSetDoesNotTakeAPreset() async {
@@ -238,5 +190,77 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
 
         XCTAssertEqual(wire.saved, [], "a preset was written over a refused rule set")
         XCTAssertEqual(model.folders, [], "a refused page put the folder on screen anyway")
+    }
+}
+
+/// The starting rules on offer: shown to a Mac with none, gone once a rule
+/// exists or the rule set is refused, and watching their folder at its own
+/// default depth.
+@MainActor
+final class APresetOnOfferTests: XCTestCase {
+
+    private let home = "/Users/x"
+
+    private func model(on wire: AutopilotWire) -> AutopilotViewModel {
+        AutopilotViewModel(vm: ModuleViewModel(transport: wire),
+                           presetFolders: FakePresetFolders(home: home), home: home)
+    }
+
+    private func offer(_ model: AutopilotViewModel, _ kind: PresetKind) throws -> OfferedPreset {
+        try XCTUnwrap(model.presets.first { $0.preset.kind == kind })
+    }
+
+    /// What the row's button hands to the editor, and what the editor's Done
+    /// hands back.
+    private func draft(_ offer: OfferedPreset) -> Rule {
+        offer.preset.rule(named: "Screenshots", in: offer.folder.path)
+    }
+
+    // MARK: - The control
+
+    func testAMacWithNoRulesIsOfferedThePresets() async {
+        let model = model(on: AutopilotWire())
+        await model.load()
+        XCTAssertEqual(model.presets.map(\.preset.kind), PresetKind.allCases)
+    }
+
+    /// The draft folder is watched with the module's own default depth, not with
+    /// anything the preset chose: a preset does not decide how deep somebody
+    /// watches a folder.
+    func testTheFolderArrivesAtTheFoldersOwnDepth() async throws {
+        let wire = AutopilotWire()
+        let model = model(on: wire)
+        await model.load()
+        let offer = try offer(model, .screenshots)
+
+        await model.save(draft(offer), in: offer.folder)
+
+        XCTAssertEqual(wire.saved.last?.first?.depth, 1)
+    }
+
+    /// Added, and the block is gone with it: the first rule on the page ends the
+    /// offer.
+    func testAPresetThatWasAddedIsNoLongerOffered() async throws {
+        let wire = AutopilotWire()
+        let model = model(on: wire)
+        await model.load()
+        let offer = try offer(model, .screenshots)
+
+        await model.save(draft(offer), in: offer.folder)
+
+        XCTAssertEqual(model.presets, [])
+    }
+
+    /// A refused rule set has one gesture and this is not it. The engine refuses
+    /// the write too; this is the half that stops the page offering a button
+    /// whose only outcome is a line in the log.
+    func testARefusedRuleSetIsOfferedNoPresets() async {
+        let wire = AutopilotWire(status: AutopilotStatus(refusal: .tampered))
+        let model = model(on: wire)
+
+        await model.load()
+
+        XCTAssertEqual(model.screen, .rulesRefused(.tampered), "precondition")
+        XCTAssertEqual(model.presets, [], "a refused page offered to add a rule")
     }
 }

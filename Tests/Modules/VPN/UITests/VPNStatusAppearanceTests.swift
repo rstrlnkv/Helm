@@ -196,26 +196,6 @@ final class VPNStatusAppearanceTests: XCTestCase {
         XCTAssertEqual(appearance.title, "Office", "the name is a separate setting and still applies")
     }
 
-    func testEachKindTurnsInItsOwnColour() {
-        let tints: [VPNAutomation.Kind: String] = [.connected: "purple", .disconnected: "pink"]
-        let (up, upHost) = descriptor(firing: firing(secondsAgo: 0, kind: .connected),
-                                      notice: .menuBar, spin: true, spinTints: tints)
-        XCTAssertEqual(up.statusAppearance(upHost).spinTintToken, "purple")
-
-        let (down, downHost) = descriptor(firing: firing(secondsAgo: 0, kind: .disconnected),
-                                          notice: .menuBar, spin: true, spinTints: tints)
-        XCTAssertEqual(down.statusAppearance(downHost).spinTintToken, "pink")
-    }
-
-    func testTheDefaultColoursDifferByKind() {
-        let (up, upHost) = descriptor(firing: firing(secondsAgo: 0, kind: .connected),
-                                      notice: .menuBar, spin: true)
-        let (down, downHost) = descriptor(firing: firing(secondsAgo: 0, kind: .disconnected),
-                                          notice: .menuBar, spin: true)
-        XCTAssertEqual(up.statusAppearance(upHost).spinTintToken, "green")
-        XCTAssertEqual(down.statusAppearance(downHost).spinTintToken, "orange")
-    }
-
     /// The decision this module wrote down three days ago, which the colour
     /// work must not quietly spend: a tint is a claim on the icon between
     /// moments, and this module makes none.

@@ -14,8 +14,7 @@ import XCTest
 /// running, that path is the only way back to it.
 ///
 /// **The row is no longer where all of that is said, and the promise is
-/// unchanged.** The caption had grown to 606 characters in German
-/// (`TheLidCaptionFitsUnderTheSwitchTests` has the measurement); the directory
+/// unchanged.** The caption had grown to 606 characters in German; the directory
 /// stays in the row, and the rule's own path and the command that removes it
 /// moved into the explanation behind the ⓘ, which is one press away on the same
 /// row and reachable *before* the password is asked for. So this reads both

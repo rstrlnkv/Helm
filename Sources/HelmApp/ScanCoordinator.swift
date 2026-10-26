@@ -55,9 +55,9 @@ final class ScanCoordinator {
     }
 
     /// The one category the app layer files a module's story under, and the area
-    /// the notice port names itself with. `LogCategoriesAreModuleIdsTests`
-    /// records it as the single shared category on purpose; a literal spelled
-    /// five times in this file is the same name with five chances to drift.
+    /// the notice port names itself with. It is the single shared category on
+    /// purpose; a literal spelled at every use in this file is the same name with
+    /// a chance to drift at each.
     static let logArea = "scan"
 
     func start() {
@@ -313,8 +313,8 @@ final class ScanCoordinator {
     /// names. The banner may name the person's folder; the log may not.
     ///
     /// **`change` reads back off disk what `record` has just written, and that
-    /// is deliberate — measured and kept.** `ScanNewsAfterRecordBenchmark`
-    /// prices it, three runs each: at 6900 items `record` costs 0.0080 s a call
+    /// is deliberate — measured and kept.** Measured 2026-08-21 (54635be9),
+    /// three runs each: at 6900 items `record` costs 0.0080 s a call
     /// and this reading 0.0321–0.0322 s; at 69 000, 0.0743–0.0746 s against
     /// 0.3260–0.3263 s. Four times the write, once per completed background
     /// scan — against a scan that walked the volume for minutes, off the

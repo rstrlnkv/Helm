@@ -8,6 +8,55 @@ import XCTest
 import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
+/// The reader the overlay is handed: every call waits for `answer`, and it counts what the cancellation reached.
+private final class Reader: @unchecked Sendable {
+    private let lock = NSLock()
+    private var waiting: [CheckedContinuation<CaptureSession.AreaReading, Never>] = []
+    private var _asked: [(DisplayID, CGRect)] = []
+    private var _cancelled = 0
+    private var _copied: [[RecognizedLine]] = []
+    var copyAnswer = CaptureSession.TextCopy.copied
+
+    var calls: Int { lock.withLock { _asked.count } }
+    var asked: [(DisplayID, CGRect)] { lock.withLock { _asked } }
+    var cancelled: Int { lock.withLock { _cancelled } }
+    var copied: [[RecognizedLine]] { lock.withLock { _copied } }
+
+    func read(_ display: DisplayID, _ area: CGRect) async -> CaptureSession.AreaReading {
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { (continuation: CheckedContinuation<CaptureSession.AreaReading, Never>) in
+                lock.withLock { waiting.append(continuation); _asked.append((display, area)) }
+            }
+        } onCancel: { lock.withLock { _cancelled += 1 } }
+    }
+
+    func copy(_ lines: [RecognizedLine]) -> CaptureSession.TextCopy {
+        lock.withLock { _copied.append(lines) }
+        return copyAnswer
+    }
+
+    /// Answers the `index`th call, in the order the calls came.
+    func answer(_ index: Int, _ reading: CaptureSession.AreaReading) {
+        // A missing call is a finding of its own, and not a crash that takes the other tests of the file with it.
+        guard let continuation = lock.withLock({ waiting.indices.contains(index) ? waiting[index] : nil }) else {
+            return XCTFail("the reader was never asked for call \(index)")
+        }
+        continuation.resume(returning: reading)
+    }
+}
+
+private let area = CGRect(x: 100, y: 100, width: 400, height: 300)
+
+/// One e-mail address, on the upper part of the area as the reader sees it, and the part of the frame that was read.
+private var reading: CaptureSession.AreaReading {
+    .read([RecognizedLine(string: "me@example.com", box: CGRect(x: 0.1, y: 0.6, width: 0.5, height: 0.1),
+                          matches: [PrivateMatch(kind: .emailAddress, box: CGRect(x: 0.1, y: 0.6, width: 0.5, height: 0.1))])],
+           RecognizedBoxes.Source(pixels: area, scale: 1))
+}
+
+@MainActor
+private func plates(_ view: OverlayView) -> [String] { view.visiblePlates.compactMap(\.string) }
+
 /// **A reading of the area's text belongs to the editor that asked, for the area it asked about, and an answer that finds either gone is
 /// dropped:** nothing is inserted, nothing is copied, no plate is put up.
 ///
@@ -20,44 +69,6 @@ import Module_Screenshots_Engine
 @MainActor
 final class ARecognitionThatOutlivesTheEditorIsDroppedTests: XCTestCase {
 
-    /// The reader the overlay is handed: every call waits for `answer`, and it counts what the cancellation reached.
-    private final class Reader: @unchecked Sendable {
-        private let lock = NSLock()
-        private var waiting: [CheckedContinuation<CaptureSession.AreaReading, Never>] = []
-        private var _asked: [(DisplayID, CGRect)] = []
-        private var _cancelled = 0
-        private var _copied: [[RecognizedLine]] = []
-        var copyAnswer = CaptureSession.TextCopy.copied
-
-        var calls: Int { lock.withLock { _asked.count } }
-        var asked: [(DisplayID, CGRect)] { lock.withLock { _asked } }
-        var cancelled: Int { lock.withLock { _cancelled } }
-        var copied: [[RecognizedLine]] { lock.withLock { _copied } }
-
-        func read(_ display: DisplayID, _ area: CGRect) async -> CaptureSession.AreaReading {
-            await withTaskCancellationHandler {
-                await withCheckedContinuation { (continuation: CheckedContinuation<CaptureSession.AreaReading, Never>) in
-                    lock.withLock { waiting.append(continuation); _asked.append((display, area)) }
-                }
-            } onCancel: { lock.withLock { _cancelled += 1 } }
-        }
-
-        func copy(_ lines: [RecognizedLine]) -> CaptureSession.TextCopy {
-            lock.withLock { _copied.append(lines) }
-            return copyAnswer
-        }
-
-        /// Answers the `index`th call, in the order the calls came.
-        func answer(_ index: Int, _ reading: CaptureSession.AreaReading) {
-            // A missing call is a finding of its own, and not a crash that takes the other tests of the file with it.
-            guard let continuation = lock.withLock({ waiting.indices.contains(index) ? waiting[index] : nil }) else {
-                return XCTFail("the reader was never asked for call \(index)")
-            }
-            continuation.resume(returning: reading)
-        }
-    }
-
-    private let area = CGRect(x: 100, y: 100, width: 400, height: 300)
     private var results: [OverlayResult] = []
     private var rigged: (overlay: CaptureOverlay, display: DisplayID, view: OverlayView)?
     private var reader = Reader()
@@ -81,15 +92,6 @@ final class ARecognitionThatOutlivesTheEditorIsDroppedTests: XCTestCase {
         rigged = built
         return built
     }
-
-    /// One e-mail address, on the upper part of the area as the reader sees it, and the part of the frame that was read.
-    private var reading: CaptureSession.AreaReading {
-        .read([RecognizedLine(string: "me@example.com", box: CGRect(x: 0.1, y: 0.6, width: 0.5, height: 0.1),
-                              matches: [PrivateMatch(kind: .emailAddress, box: CGRect(x: 0.1, y: 0.6, width: 0.5, height: 0.1))])],
-               RecognizedBoxes.Source(pixels: area, scale: 1))
-    }
-
-    private func plates(_ view: OverlayView) -> [String] { view.visiblePlates.compactMap(\.string) }
 
     // MARK: The control: an answer that finds everything as it was
 
@@ -122,6 +124,35 @@ final class ARecognitionThatOutlivesTheEditorIsDroppedTests: XCTestCase {
             XCTAssertTrue(results.isEmpty, "\(ask): the close delivered something")
             rigged = nil
         }
+    }
+}
+
+/// An answer for an area that moved, was cropped, or a second choice while one reading runs, is dropped.
+@MainActor
+final class ARecognitionForAnAreaThatChangedIsDroppedTests: XCTestCase {
+
+    private var results: [OverlayResult] = []
+    private var rigged: (overlay: CaptureOverlay, display: DisplayID, view: OverlayView)?
+    private var reader = Reader()
+
+    override func setUp() {
+        super.setUp()
+        AppLanguage.override = .en
+    }
+
+    override func tearDown() {
+        rigged?.overlay.close()
+        rigged = nil
+        AppLanguage.override = nil
+        super.tearDown()
+    }
+
+    private func build() throws -> (overlay: CaptureOverlay, display: DisplayID, view: OverlayView) {
+        reader = Reader()
+        let tools = EditorTextTools(read: { [reader] in await reader.read($0, $1) }, copy: { [reader] in reader.copy($0) })
+        let built = try OverlayRig.overlay(scale: 1, area: area, textTools: tools) { [weak self] in self?.results.append($0) }
+        rigged = built
+        return built
     }
 
     // MARK: The area changed

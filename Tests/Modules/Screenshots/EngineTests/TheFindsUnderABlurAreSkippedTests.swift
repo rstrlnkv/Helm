@@ -2,19 +2,18 @@ import CoreGraphics
 import XCTest
 @testable import Module_Screenshots_Engine
 
-/// **A find lying wholly under a blur already placed is skipped**, so a second press adds nothing, and what the
-/// person covered by hand is not covered twice. A find that is only partly under one is made, and so is one
-/// under a layer that is not a blur.
+private let source = RecognizedBoxes.Source(pixels: CGRect(x: 0, y: 0, width: 400, height: 200), scale: 2)
+private let bounds = CGRect(x: 0, y: 0, width: 200, height: 100)
+/// The text's own box in points: x 20…100, y 10…20.
+private let email = PrivateMatch(kind: .emailAddress, box: CGRect(x: 0.1, y: 0.85, width: 0.4, height: 0.05))
+
+private func reading(_ matches: PrivateMatch...) -> [RecognizedLine] {
+    [RecognizedLine(string: "line", box: CGRect(x: 0, y: 0, width: 1, height: 1), matches: matches)]
+}
+
+/// **A find lying wholly under a blur already placed is skipped**, and what the person covered by hand is not covered
+/// twice. A find that is only partly under one is made, and so is one under a layer that is not a blur.
 final class TheFindsUnderABlurAreSkippedTests: XCTestCase {
-
-    private let source = RecognizedBoxes.Source(pixels: CGRect(x: 0, y: 0, width: 400, height: 200), scale: 2)
-    private let bounds = CGRect(x: 0, y: 0, width: 200, height: 100)
-    /// The text's own box in points: x 20…100, y 10…20.
-    private let email = PrivateMatch(kind: .emailAddress, box: CGRect(x: 0.1, y: 0.85, width: 0.4, height: 0.05))
-
-    private func reading(_ matches: PrivateMatch...) -> [RecognizedLine] {
-        [RecognizedLine(string: "line", box: CGRect(x: 0, y: 0, width: 1, height: 1), matches: matches)]
-    }
 
     private func layer(_ tool: AnnotationTool, _ rect: CGRect) -> Annotation {
         Annotation(tool: tool, start: rect.origin, end: CGPoint(x: rect.maxX, y: rect.maxY), id: 77)
@@ -57,6 +56,24 @@ final class TheFindsUnderABlurAreSkippedTests: XCTestCase {
         XCTAssertEqual(PersonalFinds.finds(in: reading(email), source: source, under: [elsewhere]).count, 1)
     }
 
+    /// A blur the person deleted is a find again.
+    func testADeletedBlurIsFoundAgain() {
+        var editing = AnnotationEditing(bounds: bounds)
+        editing.insert(blurs: PersonalFinds.finds(in: reading(email), source: source, under: []))
+        editing.undo()
+        XCTAssertEqual(PersonalFinds.finds(in: reading(email), source: source, under: editing.layers).count, 1)
+    }
+
+    /// A match that is not on the area read — a line of the picture's edge the area cut — makes no find.
+    func testAMatchOffTheAreaIsNoFind() {
+        let off = PrivateMatch(kind: .link, box: CGRect(x: 1.5, y: 0.5, width: 0.1, height: 0.1))
+        XCTAssertEqual(PersonalFinds.finds(in: reading(off), source: source, under: []), [])
+    }
+}
+
+/// A second press over the same picture adds nothing, and of finds in one place there is one.
+final class TheFindsAreMadeOnceAndInOnePlaceTests: XCTestCase {
+
     /// Pressing twice: what the first press put is what the second finds covered.
     func testASecondPressOverTheSamePictureAddsNothing() {
         var editing = AnnotationEditing(bounds: bounds)
@@ -71,14 +88,6 @@ final class TheFindsUnderABlurAreSkippedTests: XCTestCase {
         XCTAssertTrue(editing.layers.isEmpty, "one undo took the one press's layers, and the second press made no step")
     }
 
-    /// A blur the person deleted is a find again.
-    func testADeletedBlurIsFoundAgain() {
-        var editing = AnnotationEditing(bounds: bounds)
-        editing.insert(blurs: PersonalFinds.finds(in: reading(email), source: source, under: []))
-        editing.undo()
-        XCTAssertEqual(PersonalFinds.finds(in: reading(email), source: source, under: editing.layers).count, 1)
-    }
-
     /// Of two finds in the same place — the card number the system also reads as a phone number — one box; of a
     /// find and a bigger one round it, the bigger; of two equal ones, the first.
     func testAFindInsideAnotherOfTheSameReadingIsOnePlace() {
@@ -91,11 +100,5 @@ final class TheFindsUnderABlurAreSkippedTests: XCTestCase {
         XCTAssertEqual(both.count, 1, "two equal places are one")
         XCTAssertEqual(both, PersonalFinds.finds(in: reading(card), source: source, under: []))
         XCTAssertEqual(PersonalFinds.finds(in: reading(email, card), source: source, under: []).count, 2, "apart, they are two")
-    }
-
-    /// A match that is not on the area read — a line of the picture's edge the area cut — makes no find.
-    func testAMatchOffTheAreaIsNoFind() {
-        let off = PrivateMatch(kind: .link, box: CGRect(x: 1.5, y: 0.5, width: 0.1, height: 0.1))
-        XCTAssertEqual(PersonalFinds.finds(in: reading(off), source: source, under: []), [])
     }
 }

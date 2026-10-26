@@ -107,9 +107,8 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
                        transport: transport, marker: InMemoryOpMarker())
     }
 
-    /// Everything the engine put on the transport, read back through the replay
-    /// — the shape `AVanishedBrewIsNotASilentPressTests` uses, and for the same
-    /// reason: with the fakes synchronous, whatever was emitted is already there.
+    /// Everything the engine put on the transport, read back through the replay:
+    /// with the fakes synchronous, whatever was emitted is already there.
     private func states(_ transport: LocalTransport) async -> [OpState] {
         transport.emit(EngineEvent(name: "test.sentinel", payload: Data()))
         var found: [OpState] = []

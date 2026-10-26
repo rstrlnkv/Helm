@@ -11,9 +11,9 @@ import HelmRuntime
 /// loop with the accessibility grant and feeds every real keystroke into the
 /// engine, which spell-checks words — visible as endless contactsd/CoreData
 /// 4097 retry spam through the remainder of `swift test`. The teardowns in
-/// `BootstrapDoesNotOrphanEnginesTests` and `DisclosureProbe` call `shutdown()`
-/// to prevent that; this test is what makes those calls a guard rather than a
-/// gesture.
+/// `BootstrapDoesNotOrphanEnginesTests` and
+/// `TheHostPutsAModulesOwnItemInTheMenuBarTests` call `shutdown()` to prevent
+/// that; this test is what makes those calls a guard rather than a gesture.
 ///
 /// The assertion is that the engines are **gone**, not that `live` is empty —
 /// `live` emptied is `shutdown()` reading back its own write. An engine still alive

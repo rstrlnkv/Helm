@@ -146,6 +146,19 @@ final class LayoutEngineConcurrencyTests: XCTestCase {
             XCTAssertFalse(plan.insert.isEmpty, "a plan that types nothing")
         }
     }
+}
+
+/// The thread-sanitiser run of the storm in `LayoutEngineConcurrencyTests`,
+/// which only reports.
+final class LayoutEngineUnderTheSanitiserTests: XCTestCase {
+
+    private func engine(_ settings: NamespacedStore,
+                        tap: ConcurrentTap,
+                        typing: ConcurrentTyping) -> LayoutEngine {
+        LayoutEngine(tap: tap, typing: typing, sources: ConcurrentSources(),
+                     translation: ConcurrentTranslation(), spell: ConcurrentSpell(),
+                     secure: ConcurrentContext(), settings: settings)
+    }
 
     /// The same storm, longer, for a thread sanitiser to look at.
     ///

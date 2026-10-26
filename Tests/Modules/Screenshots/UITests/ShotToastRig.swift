@@ -50,22 +50,6 @@ final class StepClock {
     }
 }
 
-/// A view on a window that was never ordered in, which stands where the thumbnail's view stands. The window is held
-/// here: a view does not keep its window alive.
-@MainActor
-final class StandInThumbnail {
-    let window: NSWindow
-    let view: NSView
-
-    init(at origin: CGPoint = .zero) {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 100, height: 60))
-        window = NSWindow(contentRect: NSRect(origin: origin, size: NSSize(width: 100, height: 60)), styleMask: [.borderless],
-                          backing: .buffered, defer: false)
-        window.isReleasedWhenClosed = false
-        window.contentView = view
-    }
-}
-
 @MainActor
 enum ShotToastRig {
     static func picture(width: Int = 520, height: Int = 300) throws -> CGImage {
@@ -101,12 +85,6 @@ enum ShotToastRig {
         let mount = MountedRender(ShotToastView(model: model), width: width, height: height, appearance: .aqua)
         mount.settle(20)
         return (model, mount)
-    }
-
-    /// The controls a rendered toast holds, counted off the tree, where a control drawn by SwiftUI is a focus-ring
-    /// view. The capsule, and the ✕ in it, come up with the pointer over the picture.
-    static func controls(_ content: ShotToastModel.Content, hovering: Bool = true) -> Int {
-        mount(content, hovering: hovering).mount.host.everyView(named: "_FocusRingView").count
     }
 
     /// A toast with no panel, over a clock the test holds.

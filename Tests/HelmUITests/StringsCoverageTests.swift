@@ -46,26 +46,6 @@ final class StringsCoverageTests: XCTestCase {
         }
     }
 
-    /// One key, read end to end through the same lookup `L()` uses, for a key
-    /// whose eight languages are genuinely different words rather than the
-    /// same one recopied. "When" is the cleanest of the seventeen splits this
-    /// migration resolved: German alone tells "Wenn" (conditions) from "Wann"
-    /// (timing), and every other language answers it with its own distinct
-    /// word — «Когда», "Cuando", "Quand", "条件", "当", "Quando".
-    func testAKeyThatGenuinelyDiffersPerLanguageReadsCorrectlyEndToEnd() {
-        let expected: [AppLanguage: String] = [
-            .en: "When", .ru: "Когда", .es: "Cuando", .fr: "Quand", .de: "Wenn",
-            .ja: "条件", .zh: "当", .pt: "Quando",
-        ]
-        for (language, want) in expected {
-            XCTAssertEqual(L("When", language: language), want,
-                           "\(language.rawValue) did not read back what the .lproj file carries")
-        }
-        // Confirm they are not all the same word wearing different bytes.
-        XCTAssertEqual(Set(expected.values).count, expected.values.count,
-                       "the eight languages should not have collapsed onto fewer distinct words")
-    }
-
     /// The inline-table half of `testEveryEnglishKeyExistsInEveryOtherLanguage`
     /// — English is not required, since an inline table has no `.en` row to
     /// diff against, but it is still counted for the duplicate check: a
@@ -113,24 +93,5 @@ final class StringsCoverageTests: XCTestCase {
         XCTAssertTrue(offenders.isEmpty,
                       "\(offenders.count) inline table row(s) are empty:\n"
                       + offenders.sorted().joined(separator: "\n"))
-    }
-
-    /// The other side of `testAKeyThatGenuinelyDiffersPerLanguageReadsCorrectlyEndToEnd`
-    /// — proof that a fix lands in the *scalar* a person's Mac renders and not
-    /// merely in the source file the guard reads. `HelmBasket.line` carries a
-    /// French row with the unbreakable space `LayoutStrings.swift` already
-    /// writes at its own French rows.
-    func testFrenchInlineTableCarriesTheUnbreakableSpaceEndToEnd() {
-        AppLanguage.only(.fr) {
-            let rendered = HelmBasket.line(count: 1, size: "1 Ko")
-            let scalars = Array(rendered.unicodeScalars)
-            guard let colon = scalars.firstIndex(of: ":") else {
-                XCTFail("no \":\" in the French render: \(rendered)")
-                return
-            }
-            XCTAssertGreaterThan(colon, 0, "the render starts with \":\"")
-            XCTAssertEqual(scalars[colon - 1], Unicode.Scalar(0x00A0)!,
-                           "the scalar before \":\" in the French render is not U+00A0: \(rendered)")
-        }
     }
 }

@@ -33,8 +33,8 @@ enum VPNStr {
     /// smallest tile in the panel wrapped to two lines in four of the eight
     /// languages — and the tile stands under a header that already says VPN, so
     /// the word the sentence lost was one the reader had just read.
-    /// `TheCompactTileFitsItsOwnWordsTests` holds the budget. The page's own
-    /// empty state is `noVPNsSystem`, which has room to explain.
+    /// The page's own empty state is `noVPNsSystem`,
+    /// which has room to explain.
     static func noVPNs(language: AppLanguage = AppLanguage.current) -> String {
         L("No VPNs", language: language)
     }
@@ -411,9 +411,7 @@ enum VPNStr {
     /// 117.9 pt in German, 125.0 in Portuguese, 147.3 in Spanish and 148.7 in
     /// French and wrapped onto two lines; the three modes are the items of the
     /// mode pop-up now, where the same length truncates instead. What they have
-    /// to fit is `VPNConnectionCard.modeWidth`, and
-    /// `TheNoticeLabelsFitTheCardTests` measures every language against a real
-    /// `NSPopUpButton` carrying these titles and their glyphs. The names are the
+    /// to fit is `VPNConnectionCard.modeWidth`. The names are the
     /// pane's own: `ControlCenterSettings.appex`'s display name and
     /// `DesktopSettings.appex`'s `Menu Bar`.
     ///
@@ -691,8 +689,7 @@ enum VPNStr {
     /// body step (`HelmText.rowTitle`), and at that size the old sentence
     /// needed 717 pt in English and 916 in German against a 684 pt column — so
     /// the state a Mac with no VPN shows every time would have grown a line in
-    /// three more languages and pushed the first card down
-    /// (`AHeroThatDoesNotShoveThePageTests`).
+    /// three more languages and pushed the first card down.
     static var noTunnelUpNote: String {
         L("Traffic is leaving this Mac directly — bring a connection up below.")
     }

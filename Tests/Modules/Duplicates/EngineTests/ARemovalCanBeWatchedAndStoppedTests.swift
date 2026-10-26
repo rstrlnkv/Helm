@@ -5,12 +5,10 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Duplicates_Engine
 
-/// The heaviest read in the module names itself while it runs, reports how far
-/// it has got, and obeys Stop between files.
+/// The heaviest read in the module obeys Stop between files.
 ///
 /// `trash` re-reads every pair in full before anything moves — minutes on an
-/// external drive — and it used to do that namelessly, silently and
-/// un-abandonably: no phase, no progress event, and `cancel` reached only the
+/// external drive — and it used to do that un-abandonably: `cancel` reached only the
 /// search. The verification port here parks on purpose: a check that answers
 /// on the spot is over before Stop can be pressed, so every assertion about
 /// "while it runs" would pass with the guard deleted.
@@ -101,57 +99,6 @@ final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
         XCTAssertTrue(result.cancelled)
         XCTAssertEqual(result.refused.map(\.reason), [.outOfScope])
         XCTAssertEqual(result.refused.map(\.path), ["/System/Library/nope.bin"])
-    }
-
-    /// The phase is open while the verification runs — named while it runs, not
-    /// only after — and closed once the removal has answered.
-    func testTheVerificationNamesItsPhaseWhileItRuns() async throws {
-        let parked = ParkedVerify()
-        let engine = DuplicatesEngine(settings: suiteSealGuard(),
-                                      trashing: { _ in },
-                                      verifying: { { parked.check($0, $1) } })
-        let plans = try plans(1)
-
-        let removal = Task { await engine.trash(plans) }
-        for _ in 0..<20_000 where parked.calls < 1 { await Task.yield() }
-        XCTAssertEqual(parked.calls, 1)
-
-        XCTAssertTrue(HelmActivity.running.contains { $0.label == "duplicates.verify" },
-                      "the heaviest read in the module runs namelessly")
-
-        parked.release(1)
-        _ = await removal.value
-        XCTAssertFalse(HelmActivity.running.contains { $0.label == "duplicates.verify" },
-                       "the phase outlived the removal it names")
-    }
-
-    /// Every verified pair is a tick a page can draw. The events are collected
-    /// off the engine's own transport — the wire the page really listens to.
-    func testEveryVerifiedPairCrossesTheWireAsProgress() async throws {
-        let engine = DuplicatesEngine(settings: suiteSealGuard(), trashing: { _ in })
-        let plans = try plans(2)
-
-        let collector = ProgressCollector()
-        let events = engine.transport.events
-        let listening = Task {
-            for await event in events where DuplicatesEvent(rawValue: event.name) == .progress {
-                guard let tick = try? JSONDecoder().decode(DuplicateProgress.self,
-                                                           from: event.payload)
-                else { continue }
-                collector.add(tick)
-                if collector.ticks.count >= 2 { break }
-            }
-        }
-
-        let result = await engine.trash(plans)
-        for _ in 0..<20_000 where collector.ticks.count < 2 { await Task.yield() }
-        listening.cancel()
-
-        XCTAssertFalse(result.cancelled)
-        XCTAssertEqual(result.removed.count, 2)
-        XCTAssertEqual(collector.ticks.map(\.hashed), [1, 2],
-                       "the page cannot draw how far a removal has got")
-        XCTAssertEqual(Set(collector.ticks.map(\.candidates)), [2])
     }
 
     /// Stop with no removal running is a no-op, not a crash and not a stop

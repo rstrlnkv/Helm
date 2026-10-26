@@ -9,10 +9,7 @@ import HelmUI
 /// puts them (their *home*), less `ShellGeometry.toolbarLift` when the window wears a toolbar: AppKit's
 /// home is that much further right and down there, so the buttons stand where they stand in a window with
 /// none (read from `window.toolbar` at every placement; the lift's size is one reading in a window never
-/// shown, and `TheWindowButtonsStayWhereHelmPutThemTests.testTheToolbarWindowHoldsItsButtonsWhereThePageBarWindowHoldsThem`
-/// holds that the window the app builds, which wears `SettingsToolbar`'s toolbar, stands them within 0.5 pt
-/// of where the `.pageBar` window's stand, expanded and in the rail; the other rows hold the lift's arithmetic;
-/// `SettingsToolbar`'s file alone writes `window.toolbar`). In the rail they keep their row and stand under a closed capsule of three
+/// shown; `SettingsToolbar`'s file alone writes `window.toolbar`). In the rail they keep their row and stand under a closed capsule of three
 /// dots, at alpha 0; the pointer in the capsule's hover zone opens the capsule around them and shows the
 /// real buttons, and the capsule answers no hit, so a press there is meant to reach them. Not measured: a
 /// real pointer, the hover glyphs, a click and the zoom button's menu on a button that was at alpha 0. The
@@ -25,11 +22,10 @@ import HelmUI
 ///
 /// **Held by origin, on both axes.** Measured: AppKit puts the buttons back at its own origins (below).
 /// Measured in a window never shown, under the toolbar the window the app builds wears
-/// (`SettingsToolbar`'s), and held by `testTheToolbarWindowHoldsItsButtonsWhereThePageBarWindowHoldsThem`: with a
+/// (`SettingsToolbar`'s): with a
 /// toolbar the strip stands more than 10 pt taller, and the buttons, placed with the lift taken, stand
 /// within 0.5 pt of a bare window's, expanded and in the rail. A change of the titlebar's height therefore
-/// moves the home on both axes, and the lift is taken from both. The 52 pt strip is held within 1.5 pt by
-/// `TheWindowWearsTheToolbarTests.testThePaneStartsWhereTheStripEndsAndHelmAddsNothing` (a pane safe area of
+/// moves the home on both axes, and the lift is taken from both. The 52 pt strip read within 1.5 pt (a pane safe area of
 /// 48, the strip less `ShellGeometry.inset`); the 32 pt title bar it stands in place of and the buttons at 19
 /// and 19 from the corner instead of 9 and 9 are one reading in a window never shown, held by no row.
 /// Assumed: that it does the same in a shown window and
@@ -37,18 +33,14 @@ import HelmUI
 /// Every placement writes each button's origin: its home plus the offset. A write to a button's origin that
 /// this object did not make and that reaches it (`NSView.frameDidChangeNotification`, an origin other than
 /// the one written here) is taken for AppKit's: it becomes the new home and is answered in the same turn
-/// with the placement. The rows make that write by hand. That answer does not hold every write AppKit makes:
+/// with the placement. That answer does not hold every write AppKit makes:
 /// the one inside an alpha write, below, left the zoom button at AppKit's origin, and why the answer missed
 /// it is not measured. AppKit writing an origin in a shown window is not measured. This object's own writes
 /// are told by `isPlacing` and by their value, so answering cannot loop. Measured in an unshown window: a
-/// write to a button's alpha makes AppKit put the buttons back at its own origins (the rows of
-/// `TheWindowButtonsStayWhereHelmPutThemTests` rest on it: the fold row goes red without the answer). So
+/// write to a button's alpha makes AppKit put the buttons back at its own origins. So
 /// every placement, and every hover change made without an animation, ends by putting back each button that
 /// stands elsewhere, after the last alpha write. An animated change does it once at once and once more when
-/// the animation completes. One row reaches a completion, and only after the placement was given up, where
-/// it must write nothing (`testAnAnimationsEndWritesNoOriginOnceThePlacementIsGivenUp`); a completion that
-/// puts a button back while a placement is held is reached by no row: every other row that changes the
-/// hover on an attached owner sets Reduce Motion on.
+/// the animation completes.
 ///
 /// **Hover is an event-stream value.** `isOpen` is set by the tracking area's enter and exit, cleared by
 /// leaving the rail, by full screen and by `attach(to: nil)`, and read again from the pointer's place in
@@ -85,8 +77,7 @@ final class ShellWindowButtons {
     /// The placement for `home`, the union of the three buttons where AppKit puts them in the content's
     /// coordinates, for a window with no toolbar (`placed(home:rail:lift:)` with a zero lift). Nil when `home`
     /// is nil, empty, null or not a finite place: nothing is moved or hidden. Nothing under `Sources` calls it
-    /// now: `place(rail:)` goes through `placed(home:rail:lift:)`. It stays for the rows that use it
-    /// (`ThePaneStartsBelowTheBarTests`, `TheWindowButtonsStayWhereHelmPutThemTests`).
+    /// now: `place(rail:)` goes through `placed(home:rail:lift:)`.
     nonisolated static func placement(home: CGRect?, rail: Bool) -> Placement? {
         placed(home: home, rail: rail, lift: .zero)
     }
@@ -133,7 +124,7 @@ final class ShellWindowButtons {
     var reach: CGRect { view.isHidden || view.superview == nil ? .null : view.frame }
 
     /// The real buttons' union now, in the capsule's superview's coordinates; `.null` without a window,
-    /// a superview or buttons. Read by tests.
+    /// a superview or buttons.
     var buttonsFrame: CGRect {
         guard let window, let content = view.superview else { return .null }
         return Self.standardButtons(of: window).reduce(CGRect.null) {

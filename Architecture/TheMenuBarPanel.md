@@ -13,8 +13,7 @@ after `orderFrontRegardless()` — is written where each is set: the doc comment
 `helmPanelWidth`, `helmPanelShadowMargin` and `.helmPanelDidShow`, and the `//`
 comments in `HelmPanel.init` and `HelmPanel.toggle`. The width is the one
 `PanelGrid.narrowestPanel` is the arithmetic for, and the card's edges are
-`PanelGrid.padding` and `PanelGrid.gap` rather than numbers typed twice;
-`PanelWidthTests` and `CardEdgesAreTheGridsConstantsTests` are the guards.
+`PanelGrid.padding` and `PanelGrid.gap` rather than numbers typed twice.
 
 What the panel stores keeps its reasons on its own doc comments: the `init(from:)`
 decoders of `PanelLayout` and its nested types, its `dismissed` and `hidden` lists,

@@ -19,19 +19,22 @@ The proof follows the class of the defect, and only some classes keep theirs in 
 | data deleted, moved, overwritten or half-written; a secret or a name reaching a log, argv or a file; a privilege raised or a scope widened; work done while nobody watches | a test | yes |
 | a crash on what a file, the system or another process hands Helm | a test | yes |
 | an import across a boundary; a path or `§` pointer to nothing | the build's import check (ARCHITECTURE.md § The boundaries) and the checks of the tree | yes |
+| the suite itself touching this Mac: its Keychain, defaults, Trash or a person's files | a test | yes |
 | the look: layout, size, colour, contrast, a page's states | shots before and after | no |
 | motion | a recording before and after (§ Measuring motion) | no |
 | logic that costs no data | the repro or a command printing the value, before and after | no |
 
 A proof that is not kept is the same command run before the fix and after it, the before
 already red, and its files stay outside the tree. A test outside the kept classes is
-optional, and its class decides it: such tests are to be named by class in a list that
-the run before every commit passes to `--skip`, and the full suite runs before a release.
-No such list is in the tree yet, so no run skips a test by its class. A defect found and
-not fixed goes to the defect log — the repository's issues, and a security defect to the
-owner's private record, never to a public issue — and not into the tree as a skipped test:
-a skip reads as a pass in a failures-only summary, and a reproduction nobody runs goes
-stale.
+optional, and its class decides it: `Tests/optional-tests.txt` names such classes one per
+line, `Scripts/test.sh` passes each to `--skip` on every run without a `--filter`, and
+`HELM_FULL_SUITE=1` runs the full suite before a release. Hosts' tests are not on that list
+and run on every commit for as long as the module is in the tree. A name on the list that no
+test class declares fails the run, because a stale name skips nothing and says so nowhere. A
+defect found and not fixed goes to the defect log — the repository's issues, and a
+security defect to the owner's private record, never to a public issue — and not into the
+tree as a skipped test: a skip reads as a pass in a failures-only summary, and a
+reproduction nobody runs goes stale.
 
 ## Removal takes its traces
 
@@ -40,7 +43,7 @@ in the same commit; its lines in the crew's knowledge leave in the same change a
 Core Crew's git when the owner commits them. A test of removed code no longer builds, and a
 backticked Swift file name, a path with an extension `DocumentsNameTheTreeTests` knows
 (slashed, or bare with a `:line`), a directory in the map or a `§` pointer left behind
-fails the checks of the tree;
+fails the checks of the tree, and a class left on `Tests/optional-tests.txt` fails the run;
 any other name, a bare type or a name in a doc comment, fails nothing, so the commit that
 removes a name first runs
 `command grep -rn '<name>' ARCHITECTURE.md Architecture CLAUDE.md README.md Sources Tests Scripts .claude/crew/knowledge`
@@ -126,9 +129,10 @@ The commands a session runs each have a reason that is not obvious from the comm
 filtered run is far shorter than the suite, which is what makes running a guard before the
 suite cheap enough to actually do. A malformed
 `Localizable.strings` is silent and every string in it falls back to English with no error
-anywhere, which is why `plutil -lint` follows any hand edit, and the three string guards
-are cheap to run first. The visual harness is env-gated and belongs in the working tree only while it is
-being used, so `command grep -rn HELM_DEBUG Sources/` is empty before a commit.
+anywhere, which is why `plutil -lint` follows any hand edit, and the three string guards,
+which the run before a commit skips, are run by name before committing. The visual
+harness is env-gated and belongs in the working tree only while it is being used, so
+`command grep -rn HELM_DEBUG Sources/` is empty before a commit.
 
 "Who uses this" is answered from an index and never from `grep`: the tree writes backticked
 names inside doc comments deliberately and at volume, so a grep counts prose as a caller.

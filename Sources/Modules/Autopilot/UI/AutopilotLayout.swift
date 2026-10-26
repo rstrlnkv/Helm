@@ -8,9 +8,8 @@ enum AutopilotLayout {
     ///
     /// Set against the narrowest pane a page can be given — 540 pt, the
     /// smallest window with the sidebar dragged wide — less the form insets and
-    /// the button's own bezel, with slack. `TheReturnBannerFoldsItsButtonsTests`
-    /// holds the arithmetic; `HelmWrappingRow` measures children at their ideal
-    /// width, so without this cap a long rule name would overflow the pane
-    /// rather than wrap.
+    /// the button's own bezel, with slack. `HelmWrappingRow` measures children
+    /// at their ideal width, so without this cap a long rule name would
+    /// overflow the pane rather than wrap.
     static let turnOffButtonCap: CGFloat = 440
 }

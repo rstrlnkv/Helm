@@ -360,9 +360,7 @@ enum KAStr {
     /// subtitle is a fragment in a list joined with « · » inside a 320 pt card, so
     /// it takes the sentence and not the way out of it; the settings row, which
     /// has the width, takes `sleepIsOffNote` — the same sentence with the
-    /// revocation clause after it. One wording, two lengths, and
-    /// `testTheLidNoteOpensOnTheSentenceThePanelDraws` fails, in all eight, if the
-    /// long form stops opening on the short one.
+    /// revocation clause after it. One wording, two lengths.
     ///
     /// It replaced `lidClosed` — «Lid closed — staying awake» — which named the
     /// lid in a list of what was holding the Mac. The lid is not what is holding
@@ -547,9 +545,7 @@ enum KAStr {
     /// had been corrected in another (`BatteryGuard.shouldDeactivate` is
     /// `percent <= threshold`, so the boundary is inclusive: 以下 and 及以下, never
     /// 未満 or 低于). The three sentences are composed from this one now, so a
-    /// person who reads the row and then the banner reads the same words, and
-    /// `TheBoundaryIsSpelledOnceTests` fails on any of the three that stops
-    /// containing it.
+    /// person who reads the row and then the banner reads the same words.
     ///
     /// **The space before the sign is per language, not universal**, which is
     /// what the note on this function used to claim. Counted over the 1176

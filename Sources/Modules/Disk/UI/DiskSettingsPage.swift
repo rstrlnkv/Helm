@@ -118,7 +118,7 @@ struct DiskSettingsPage: View {
             // precisely because the header must not centre itself over
             // full-bleed content, so a column here put the cards 32.5 pt right
             // of the note introducing them at the default window, and 202.5 at
-            // 1400 — measured in `StartScreenColumnTests`.
+            // 1400.
             .padding(HelmLayout.formInset)
         }
     }

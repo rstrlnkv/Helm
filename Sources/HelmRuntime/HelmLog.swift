@@ -190,7 +190,7 @@ public final class HelmLog: @unchecked Sendable {
     /// Deliberately **not** in `allFileURLs`: it is the record that the purge
     /// happened, so a purge that removed it would be able to run again. Named
     /// here rather than inside the purge because a file name invented in a
-    /// second place is the exact defect `LogFileNamesTests` was written for.
+    /// second place is a defect nothing in the suite catches now.
     public static var resetMarkerURL: URL {
         directory.appendingPathComponent(".redaction-reset")
     }

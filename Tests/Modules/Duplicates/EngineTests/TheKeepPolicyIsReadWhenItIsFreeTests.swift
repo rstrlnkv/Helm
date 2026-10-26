@@ -41,34 +41,6 @@ final class TheKeepPolicyIsReadWhenItIsFreeTests: XCTestCase {
                                          guardedBy: SettingGuard(keys: probe))
     }
 
-    // MARK: - Cold
-
-    func testAColdKeyIsNotAnAnswer() {
-        plant(.byDate)
-
-        XCTAssertNil(DuplicatesSettings.keepPolicyIfWarm(in: store, guardedBy: settings),
-                     "an answer was given that only a keychain round trip could support")
-    }
-
-    func testAColdReadDoesNotGoToTheKeychain() {
-        plant(.byDate)
-        let planted = probe.reads
-
-        _ = DuplicatesSettings.keepPolicyIfWarm(in: store, guardedBy: settings)
-
-        XCTAssertEqual(probe.reads, planted,
-                       "reading the policy went to the keychain, which on an ad-hoc build is a "
-                       + "modal dialog — and one of this reading's two callers draws")
-    }
-
-    /// Nothing stored is «not yet» too, and it has to be: that branch is where
-    /// the blocking read *establishes* the key, which is the most expensive round
-    /// trip of them all and the one a first launch pays.
-    func testNothingStoredIsAlsoNotAnsweredWhileTheKeyIsCold() {
-        XCTAssertNil(DuplicatesSettings.keepPolicyIfWarm(in: store, guardedBy: settings))
-        XCTAssertEqual(probe.reads, 0, "the fresh-install branch established the key inline")
-    }
-
     // MARK: - Warm
 
     func testTheStoredPolicyIsAnsweredOnceTheKeyIsInHand() async {
@@ -113,5 +85,63 @@ final class TheKeepPolicyIsReadWhenItIsFreeTests: XCTestCase {
 
         XCTAssertGreaterThan(silent.reads, 0, "nothing ever asked, so the refusal never happened")
         XCTAssertNil(DuplicatesSettings.keepPolicyIfWarm(in: store, guardedBy: settings))
+    }
+}
+
+/// **A key not yet fetched is «not yet», and asking costs no keychain round trip.**
+///
+/// The cold half of `TheKeepPolicyIsReadWhenItIsFreeTests`: while the seal key
+/// has not been fetched, `keepPolicyIfWarm` answers nil, and does not go to the
+/// keychain to find out, because one of its two callers is the thread that draws.
+final class TheKeepPolicyIsNotAnsweredWhileTheKeyIsColdTests: XCTestCase {
+
+    private var store: NamespacedStore!
+    private var probe: SealKeyProbe!
+    /// The production wiring: the cache is what makes a warm read memory rather
+    /// than a second round trip, so a test of «if warm» without it is a test of
+    /// something the app does not have.
+    private var settings: SettingGuard!
+
+    override func setUp() {
+        super.setUp()
+        store = NamespacedStore(namespace: DuplicatesEngine.moduleID,
+                                backing: InMemoryKeyValueStore())
+        probe = SealKeyProbe()
+        settings = SettingGuard(keys: SealKeyCache(probe))
+    }
+
+    /// Sealed through the probe directly, so the value is planted without warming
+    /// the cache the reading below goes through.
+    private func plant(_ policy: KeepPolicy) {
+        DuplicatesSettings.setKeepPolicy(policy, in: store,
+                                         guardedBy: SettingGuard(keys: probe))
+    }
+
+    // MARK: - Cold
+
+    func testAColdKeyIsNotAnAnswer() {
+        plant(.byDate)
+
+        XCTAssertNil(DuplicatesSettings.keepPolicyIfWarm(in: store, guardedBy: settings),
+                     "an answer was given that only a keychain round trip could support")
+    }
+
+    func testAColdReadDoesNotGoToTheKeychain() {
+        plant(.byDate)
+        let planted = probe.reads
+
+        _ = DuplicatesSettings.keepPolicyIfWarm(in: store, guardedBy: settings)
+
+        XCTAssertEqual(probe.reads, planted,
+                       "reading the policy went to the keychain, which on an ad-hoc build is a "
+                       + "modal dialog — and one of this reading's two callers draws")
+    }
+
+    /// Nothing stored is «not yet» too, and it has to be: that branch is where
+    /// the blocking read *establishes* the key, which is the most expensive round
+    /// trip of them all and the one a first launch pays.
+    func testNothingStoredIsAlsoNotAnsweredWhileTheKeyIsCold() {
+        XCTAssertNil(DuplicatesSettings.keepPolicyIfWarm(in: store, guardedBy: settings))
+        XCTAssertEqual(probe.reads, 0, "the fresh-install branch established the key inline")
     }
 }

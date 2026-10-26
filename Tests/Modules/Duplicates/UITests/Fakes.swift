@@ -13,8 +13,8 @@ import Module_Duplicates_Engine
 // that answers synchronously is over before the code under test is reached, so
 // nothing about a search *in flight* — a cancellation, an older answer landing
 // after a newer one, a page that goes away mid-search — can be written down
-// against it. Merging the two would make `DuplicateSearchRaceTests` and
-// `SharedViewModelTests` vacuous rather than shorter.
+// against it. Merging the two would make `DuplicateSearchRaceTests`
+// vacuous rather than shorter.
 //
 // Each was spelled twice before it moved here. The one difference between the
 // two `HeldTransport`s was a list of the command names it had been sent, which
@@ -44,8 +44,7 @@ final class OneAnswerTransport: EngineTransport, @unchecked Sendable {
 /// page still asked for `[DuplicateGroup]`, every search decoded as nothing, and
 /// nothing in this target could tell — because every fake here was still
 /// speaking the old shape and agreeing with the page about it.
-/// `TheEngineAnswersWhatThePageReadsTests` drives the real engine for
-/// that reason; this keeps the fakes from being wrong in the meantime.
+/// This keeps the fakes from being wrong about it.
 func searchReply(_ groups: [DuplicateGroup], unreadable: Int = 0,
                  librariesSkipped: Int = 0) -> Data {
     (try? JSONEncoder().encode(DuplicateFindings(groups: groups, unreadable: unreadable,
@@ -98,8 +97,7 @@ final class HeldTransport: EngineTransport, @unchecked Sendable {
 /// **The two fakes above cannot be silent, and that made two states in the tree
 /// unrepresentable.** `OneAnswerTransport` and `HeldTransport` answer `Data()`
 /// to everything but "find", so no test that drives a removal through them ever
-/// reached the wire at all; `RemovingTransport` in
-/// `DuplicateRemovalOutcomeTests` always encodes a `DuplicateRemoval`. So «the
+/// reached the wire at all. So «the
 /// engine did not answer the removal» — which
 /// `DuplicatesEngine.wireTransport` returns for a deallocated engine, for a
 /// command name it cannot parse and for a payload that will not decode, and

@@ -72,7 +72,7 @@ no threshold (`ScopeCost`).
 the allocator's own books — `malloc_zone_statistics`' `size_in_use`. Every walk with a
 budget carries its ceiling as a file rather than as a paragraph, per entry or per item:
 `Tests/Modules/Disk/EngineTests/ScanFootprintTests.swift`,
-`Tests/Modules/Leftovers/EngineTests/LeftoversScanFootprintTests.swift`,
+`Tests/Modules/Leftovers/EngineTests/AScanKeepsWhatItFoundTests.swift`,
 `Tests/Modules/Duplicates/EngineTests/WalkFootprintTests.swift` and
 `Tests/HelmRuntimeTests/ReleaseDigestFootprintTests.swift`, with
 `Tests/HelmRuntimeTests/MemoryTrailCoverageTests.swift` holding the list of phases
@@ -146,7 +146,6 @@ not redrawn and the toolbar not declared again. A tail at its cap is wholly draw
 nothing to draw. A launch that is not drawn is not in the content and takes no height, so
 the place of a drawn line is still a measurement where its rows are plain (a card over
 `lazyAbove` rows is lazy and its height an estimate), and the hold above is as exact as it
-was. The count of what is drawn is `LogReaderPlace.drawnRows`, and
-`Tests/HelmAppTests/TheLogDrawsTheNewestLaunchesFirstTests.swift` holds, in rows, that four
-times the log does not draw four times the rows. «Copy log» and the footer's counts are
+was. The count of what is drawn is `LogReaderPlace.drawnRows`.
+«Copy log» and the footer's counts are
 over the whole presentation, not over the cards drawn.

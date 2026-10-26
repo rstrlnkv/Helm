@@ -248,8 +248,7 @@ public enum HelmMotion {
     /// appearing and disappearing in place.
     ///
     /// The same shape as `spins` and `swaps`, and for the same reason: a
-    /// decision made of an argument can be asserted
-    /// (`TheActionsCapsuleMorphsOnlyWithMotionTests`), a decision that reads
+    /// decision made of an argument can be asserted, a decision that reads
     /// `NSWorkspace` can only be asserted about the machine it ran on.
     public static func morphs(reduceMotion: Bool) -> Bool {
         !reduceMotion

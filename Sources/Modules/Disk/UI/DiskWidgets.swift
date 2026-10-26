@@ -105,7 +105,7 @@ private struct CapacityBar: View {
 /// the one glyph that means «there is more, over there» without a word.
 ///
 /// Named, because a control whose whole face is a glyph is invisible to anybody
-/// using VoiceOver and `NamedControlsTests` scans the source for exactly this.
+/// using VoiceOver.
 private struct OpenTheModule: View {
     var body: some View {
         Button {

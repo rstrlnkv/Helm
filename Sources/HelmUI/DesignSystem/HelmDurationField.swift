@@ -138,8 +138,7 @@ public struct HelmDurationField: View {
     /// is about to become, and it should not arrive in a different voice from
     /// it; tabular digits for the same reason the hero's figure has them. 34 is
     /// on no step of the scale — it goes 22 · 40, and 22 halves the field — so
-    /// it is recorded by `TypeScaleRatchetTests` as an exception rather than
-    /// swept into a screen redrawn.
+    /// it is an exception to the scale rather than swept into a screen redrawn.
     private static let digitFont = Font.system(size: 34, weight: .light).monospacedDigit()
 
     private func digits(_ text: String) -> Int {

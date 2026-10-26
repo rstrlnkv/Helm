@@ -154,9 +154,7 @@ toolbar that does not exist for it (ARCHITECTURE.md § The header strip).
 The header strip is the system's 52 pt and lies over the page rather than above it:
 `helmPageHeader` (`Sources/HelmUI/DesignSystem/HelmPageHeader.swift`) applies it as
 a modifier, so content scrolls behind its material. A page whose top band stays put
-draws `HelmPageHeader` as an ordinary view and gets no scroll-edge material; the
-guard that reads these pages (`ThePageHeaderCarriesNoRuleTests`) hunts for both
-spellings.
+draws `HelmPageHeader` as an ordinary view and gets no scroll-edge material.
 
 Over a scroll view there is no rule at rest; the whole strip lights for three
 reasons — the pointer on it while the window is key, the page scrolled underneath,

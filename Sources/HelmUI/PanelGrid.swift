@@ -121,7 +121,7 @@ public enum PanelGrid {
     /// **And a bar nobody draws takes its gap with it.** The card is three
     /// blocks with `gap` between them, of which only the tab strip is
     /// conditional, so the gaps drawn are two when the strip is there and one
-    /// when it is not — measured, `PanelCardGapsProbe`. This read `gap * 2`
+    /// when it is not — measured. This read `gap * 2`
     /// unconditionally from the day it was four lines in the card, and the
     /// seeded panel is one tab, which is no strip: rendered at a 320 pt strip
     /// the card stopped 8 pt short of the strip it had been given and the grid

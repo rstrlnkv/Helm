@@ -140,7 +140,7 @@ public extension View {
     /// either way. The pane's content type has nothing to do with it: the
     /// reading is a `Form` because the settings pages are, and a tester read a
     /// `List` and a bare `ScrollView` the same way.
-    /// `TheSystemsScrollEdgeEffectAttachesTests` is that measurement, taken by
+    /// That measurement was taken by
     /// walking layers and not pixels — the effect *is* a layer and an offscreen
     /// render never composites one, which is how the note that stood here came
     /// to blame `Form`.
@@ -231,14 +231,7 @@ private struct HelmPageBarStyleTracker: ViewModifier {
             // setting that way, so a style chosen through the bar's own
             // right-click menu (`ShellBarMenu.Actions.chosePageBar`) left
             // that picker showing the old choice until the page was left and
-            // reopened. Measured (engineer, 2026-09-28): dropping this `.id`
-            // fails `TheGeneralPickerFollowsTheBarMenuTests
-            // .testThePickerOnScreenFollowsAChoiceMadeInTheBarsMenu`, besides
-            // this file's own source check
-            // (`AStyleChosenInTheBarReachesTheBarTests
-            // .testThePageBarStyleTrackerKeysItsSubtreeOnTheStyle`, which
-            // fails on any source without this line by construction) —
-            // nothing else in this round's style-switch families.
+            // reopened. Nothing guards this line.
             .id(style ?? current())
             .onReceive(NotificationCenter.default.publisher(for: .helmPageBarStyleChanged)) { _ in
                 style = current()
@@ -322,10 +315,8 @@ private struct ToolbarBackdrop: ViewModifier {
             // blurs the content passing under the toolbar (the owner: content
             // behind the toolbar should blur slightly). Without a style the
             // system picks `.automatic`; WWDC25 session 356 says "Hard is
-            // mostly used on macOS". On macOS 27.2
-            // `On26TheBandAsksTheSystemForASoftEdgeTests
-            // .testOn27SoftAndNoModifierDrawTheSameParts` measured automatic
-            // drawing the same parts as soft, which says nothing about 26.
+            // mostly used on macOS". On macOS 27.2 automatic measured as drawing
+            // the same parts as soft, which says nothing about 26.
             // Only the top edge, where the toolbar is.
             // **Unmeasured here**: this Mac runs macOS 27, whose arm is the
             // other one, so how the blur looks on 26 is the owner's to read

@@ -135,7 +135,6 @@ struct DuplicatesView: View {
             // compressed was «Restore the recommendation»'s own words, while
             // the reason above sat whole — the reason is the part with
             // `lineLimit(1)`, so the reason is the part that yields.
-            // `TheGroupHeaderKeepsItsButtonsTests` holds the arithmetic.
             if grounds == .byHand {
                 Button(DupStr.restoreRecommendation) { dvm.restoreRecommendation(for: group) }
                     .controlSize(.small)

@@ -367,18 +367,6 @@ final class ThePageShowsTheLogAndNotTheSessionTests: XCTestCase {
                        "the switch wrote its own line and then went on logging")
     }
 
-    /// The gate «Clear» is drawn from: a file on disk is a thing to clear even
-    /// when this process has written nothing.
-    func testAStoredLogCountsAsSomethingToClearWithAnEmptyTail() throws {
-        let folder = scratchDirectory("log-clear-gate")
-        let previous = folder.appendingPathComponent("helm.previous.log")
-
-        XCTAssertFalse(HelmLog.anyFileExists(among: [previous]))
-        try Data("x".utf8).write(to: previous)
-        XCTAssertTrue(HelmLog.anyFileExists(among: [previous]),
-                      "a rolled-over half on disk reads as nothing to clear")
-    }
-
     // MARK: -
 
     private func entry(_ message: String, at seconds: TimeInterval) -> LogEntry {

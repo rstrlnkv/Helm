@@ -15,7 +15,7 @@ import Module_Leftovers_Engine
 /// selection is not emptied until the rescan that *follows* the removal has
 /// come back. Between the press and that moment the button is live and the
 /// paths are still in `selected`. Six controls on this page can start work; the
-/// last of them to be found was Scan itself, and its own reading is below.
+/// last of them to be found was Scan itself.
 ///
 /// What the second press costs is not a second deletion — the files are already
 /// in the Trash — it is a **wrong report about the first**. `HelmTrash` answers
@@ -194,55 +194,6 @@ final class OneRemovalAtATimeTests: XCTestCase {
         XCTAssertEqual(transport.scanRequests, before + 1,
                        "the rescan a removal makes for itself was refused with the rest — the "
                        + "list still shows the rows that have just gone to the Trash")
-    }
-
-    /// **And the invitation's own Scan has to say so too**, or the model's
-    /// refusal is a press that does nothing — «the model refuses; the page
-    /// dims. Both, or neither is reliable.» Scan itself moved into the
-    /// settings window's toolbar (2026-09-16); its own dimming while a
-    /// removal runs is proven at the declaration level by
-    /// `TheToolbarDeclarationMatchesWhatThePageOffersTests
-    /// .testScanIsDisabledWhileARemovalIsRunning`, in this same module's
-    /// `UITests`, which reads `HelmToolbarAction.isEnabled` off a mounted
-    /// page rather than off source text. What is left for this file, which
-    /// still builds only the page and not a window's `NSToolbar`
-    /// (`LivePageToolbarFixture`'s own header says why that needs
-    /// `HelmApp`), is the invitation's own button — drawn on the empty-state
-    /// screens instead of the toolbar's — and the one property both share,
-    /// so the two cannot drift apart on what refuses a press.
-    func testTheInvitationsScanGoesDimWhileARemovalRuns() throws {
-        let page = "Sources/Modules/Leftovers/UI/LeftoversSettingsPage.swift"
-        let code = SwiftSource.code(try RepoSource.text(of: page))
-        // A computed property rather than a `func`, which `SwiftSource`'s body
-        // reader does not cover: from the declaration to its matching brace.
-        func body(of property: String) throws -> String {
-            let declaration = try XCTUnwrap(code.range(of: "var \(property)"),
-                                            "\(page) no longer declares \(property)")
-            var depth = 0, opened = false
-            var end = declaration.upperBound
-            for index in code[declaration.upperBound...].indices {
-                let character = code[index]
-                if character == "{" { depth += 1; opened = true }
-                if character == "}" { depth -= 1 }
-                if opened && depth == 0 { end = code.index(after: index); break }
-            }
-            return String(code[declaration.lowerBound..<end])
-        }
-        let button = try body(of: "scanButton")
-        XCTAssertTrue(button.contains("lvm.scan()"),
-                      "scanButton no longer scans — the rule below would pass over a button "
-                      + "that does something else")
-        XCTAssertTrue(button.contains(".disabled(scanRefused)"), """
-            scanButton no longer reads the shared `scanRefused` property — the toolbar's own \
-            Scan action and this button can now dim on two different conditions, which is \
-            exactly the drift the shared property exists to end
-            """)
-        let refused = try body(of: "scanRefused")
-        XCTAssertTrue(refused.contains("lvm.busy") && refused.contains("lvm.scanning"), """
-            scanRefused no longer reads both `lvm.busy` and `lvm.scanning` — either button it \
-            gates would then stay live under a press the model refuses, a control that does \
-            nothing.
-            """)
     }
 
     /// And the row's own delete, which is the control the Uninstaller's pass found

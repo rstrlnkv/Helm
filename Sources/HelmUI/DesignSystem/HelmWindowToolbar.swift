@@ -126,8 +126,7 @@ public struct HelmToolbarAction {
 
     public let id: String
     /// Said in the tooltip and in the accessibility label — a glyph-only
-    /// control has no other name (`Tests/HelmUITests/NamedControlsTests.swift`'s
-    /// own rule, restated for a control this target cannot mount itself).
+    /// control has no other name.
     public let title: String
     public let symbol: String
     /// **Dimmed while it stays in the capsule, and inapplicable *there* rather
@@ -208,7 +207,7 @@ public struct HelmToolbarAction {
     /// accessibility label and the overflow menu's submenu title. It has to
     /// differ from `HelmA11y.whatToShow`, the centre tabs' name on the same
     /// bar, or VoiceOver reads two switchers under one name; Hosts' is
-    /// `HostsStr.viewGroup` (`TheViewModeSwitcherKeepsItsNamesTests`). Each
+    /// `HostsStr.viewGroup`. Each
     /// option carries its own word and glyph, so this action's own `symbol`
     /// goes unused and is fixed to `""`.
     public init(id: String, title: String, isEnabled: Bool = true, isVisible: Bool = true,

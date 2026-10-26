@@ -29,8 +29,7 @@ import SwiftUI
 /// unselected label of a `.regular` stock segmented control as 229.3 with its
 /// window key and 229.3 with it not key: that control, outside a toolbar, did not dim its
 /// label when its window stopped being key, only its selection capsule turned grey (in a toolbar
-/// AppKit's own control does dim when the app is inactive:
-/// `TheCapsuleDrawsWhatAppKitsPlatterDrawsTests`). The strip
+/// AppKit's own control does dim when the app is inactive). The strip
 /// on this plate is `HelmFlatSegmentedCell` under both looks, whose inks are
 /// fixed, so the glass plate dims there as the flat one does. **Not seen on a
 /// screen:** this plate with a control on it — that the flat cell's fixed inks
@@ -110,8 +109,7 @@ final class ShellBarPlate: NSView {
         layer?.cornerRadius = radius
         // Said again after the radius: on 27.2 AppKit turned masking on by itself
         // once a radius above 0 was set — read on the shell content view's clip
-        // layer (its own note), and `ThePlateDrawsByAppearanceAndActivityTests`
-        // read this layer clipping without this line.
+        // layer (its own note), and this layer read as clipping without this line.
         layer?.masksToBounds = false
         glass?.frame = bounds
         glass?.cornerRadius = radius

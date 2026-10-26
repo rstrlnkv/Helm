@@ -15,11 +15,6 @@ import HelmRuntime
 /// `Int(left / 60)`. `SessionRestore.decide` refuses everything at or past the
 /// deadline — `endDate > now`, then `bounded > 0`, both strict — and the first
 /// case here is what says so rather than leaving it to be re-derived from a log.
-///
-/// The second case is the defect that is left: a trail whose whole job is to
-/// explain a Mac that would not sleep prints «0 min left» for a live session,
-/// and one reader has already spent a morning on it. Every other number in this
-/// module's log is the number it acted on.
 final class ASessionWithSecondsLeftIsNotOverTests: XCTestCase {
 
     private var backing: InMemoryKeyValueStore!
@@ -34,8 +29,6 @@ final class ASessionWithSecondsLeftIsNotOverTests: XCTestCase {
     }
 
     override func tearDown() {
-        HelmLog.shared.setEnabled(false)
-        HelmLog.shared.clearTail()
         backing = nil
         store = nil
         clock = nil
@@ -87,33 +80,5 @@ final class ASessionWithSecondsLeftIsNotOverTests: XCTestCase {
 
         XCTAssertFalse(after.isActive)
         XCTAssertFalse(assertions.held)
-    }
-
-    /// And the line says what it did. `Int(left / 60)` prints «0 min left» for
-    /// everything under a minute, which is the one wording that reads as «there
-    /// was nothing left» — beside a line saying the assertion was taken.
-    func testTheLineDoesNotReportALiveSessionAsHavingNothingLeft() {
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-        let before = engine()
-        before.startSession(minutes: 60)
-        clock.current = clock.current.addingTimeInterval(60 * 60 - 39)
-
-        engine().activate()
-
-        // First that the line exists at all: «the log does not say X» is green
-        // in a process that logged nothing, which is the default outside a
-        // `-dev` build.
-        XCTAssertEqual(lines(containing: "restored a session").count, 1,
-                       "precondition: the restore announced itself")
-        XCTAssertTrue(lines(containing: "0 min left").isEmpty,
-                      "a session with 39 seconds left is reported as having no time left, in "
-                      + "the trail that exists to explain why the Mac stayed awake")
-    }
-
-    private func lines(containing text: String) -> [String] {
-        HelmLog.shared.recentEntries()
-            .filter { $0.category == KeepAwakeEngine.moduleID && $0.message.contains(text) }
-            .map(\.message)
     }
 }

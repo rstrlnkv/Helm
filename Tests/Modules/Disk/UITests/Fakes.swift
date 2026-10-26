@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 import HelmContract
 import HelmRuntime
@@ -60,7 +59,6 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
     private var removal = DiskRemoval(removed: [], refused: [], freedBytes: 0)
     private var answer: Answer = .reply
     private var volumes: [VolumeInfo]
-    private var volumeRequests = 0
     let events: AsyncStream<EngineEvent>
 
     init(volumes: [VolumeInfo]) {
@@ -80,18 +78,8 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
         lock.lock(); self.volumes = volumes; lock.unlock()
     }
 
-    /// How many times the list was really asked for. The tile asked once per
-    /// launch and this is what says so.
-    var volumeReads: Int {
-        lock.lock(); defer { lock.unlock() }; return volumeRequests
-    }
-
     private var currentVolumes: [VolumeInfo] {
         lock.lock(); defer { lock.unlock() }; return volumes
-    }
-
-    private func noteVolumes() {
-        lock.lock(); volumeRequests += 1; lock.unlock()
     }
 
     func answer(_ path: String, with result: ScanResult) {
@@ -140,7 +128,6 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
         if command.name == DiskCommand.trash.rawValue {
             noteTrash((try? JSONDecoder().decode([String].self, from: command.payload)) ?? [])
         }
-        if command.name == DiskCommand.volumes.rawValue { noteVolumes() }
         switch currentAnswer {
         case .refuse: throw NoEngine.gone
         case .nothing: return Data()
@@ -325,22 +312,4 @@ func untilTrashing(_ transport: HeldTransport, count: Int = 1) async {
 @MainActor
 func settle() async {
     for _ in 0..<50 { await Task.yield() }
-}
-
-// MARK: - The page, mounted
-
-/// `DiskSettingsPage` in a window, with its grants **named**.
-///
-/// The environment value is the whole reason this is here rather than at each
-/// call site: the page draws a Full Disk Access note of its own, so a render
-/// that inherits `helmGrants` is a measurement of whichever permissions this
-/// terminal happens to hold that hour — the same trap `MountedRender` refuses
-/// for appearance by making it a required argument. Three files were spelling it
-/// out, and a fourth would have been the one that forgot.
-@MainActor
-func mountedDiskPage(vm: ModuleViewModel, width: CGFloat, height: CGFloat,
-                     appearance: NSAppearance.Name) -> MountedRender {
-    MountedRender(DiskSettingsPage(vm: vm)
-        .environment(\.helmGrants, HelmGrants(accessibility: .granted, fullDisk: .granted)),
-                  width: width, height: height, appearance: appearance)
 }

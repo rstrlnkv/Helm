@@ -913,7 +913,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// uninstaller in a terminal, with Helm's window sitting open on the list
     /// brew answered before it went. This used to be a bare `return` — no
     /// `opState`, no log, a button that did nothing visibly forever. A refusal
-    /// is an outcome and it is named (`AVanishedBrewIsNotASilentPressTests`).
+    /// is an outcome and it is named.
     private func brewOrRefuse(verb: String, label: String) -> String? {
         if let brew = locator.brewPath() { return brew }
         HelmLog.shared.warn(Self.moduleID, "\(verb) refused: brew is no longer installed")

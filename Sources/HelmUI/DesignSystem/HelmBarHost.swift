@@ -7,7 +7,7 @@ extension NSHostingView {
     /// titlebar's. A hosting view under it passes that inset on, and SwiftUI centres its content in what is
     /// left, below the middle of the zone's frame. The regions are set here, at construction: on a view that
     /// has already been laid out the ink did not move
-    /// (`TheBarsInkSitsInTheMiddleOfTheBarTests` reads it from the window's bitmap).
+    /// (read from the window's bitmap).
     @MainActor
     public static func inBar(rootView: Content) -> NSHostingView<Content> {
         let host = NSHostingView(rootView: rootView)

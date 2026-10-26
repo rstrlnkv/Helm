@@ -503,7 +503,7 @@ import HelmUI
     /// end: where the edge goes on following the inset by a point or more, the reads stop at it, one warn line is
     /// logged, and the name keeps the inset of the last read. No loop that only the count ends has been read: in a
     /// toolbar nothing has laid out the edge follows the inset one for one (756.0 at an inset of 123.5 and 879.5
-    /// at 0, read in a window of `TheBarTellsItsShellWhenItIsAttachedTests` that claims to be shown), and there the
+    /// at 0, read in a test window that claims to be shown), and there the
     /// inset reached its floor of 0 and the reads ended after two moves, under the count.
     ///
     /// Why 4: chosen, measured by nobody.
@@ -552,8 +552,8 @@ import HelmUI
     /// `itemsStartMoves` is at its ceiling; refuses an edge that is not finite, below zero or past the window's width
     /// (with no window there is no ceiling), and one within `itemsStartTolerance` of the start held. Assumed, not
     /// tried: that `isVisible` is the gate that tells a toolbar AppKit has laid out from one it has not; a window never
-    /// ordered in held the item at 756 and at 879.5 on a toolbar nothing had laid out (read in a window of
-    /// `TheBarTellsItsShellWhenItIsAttachedTests`), and no start taken from it may reach the inset.
+    /// ordered in held the item at 756 and at 879.5 on a toolbar nothing had laid out (read in a test window),
+    /// and no start taken from it may reach the inset.
     private func learnStartOfItems(_ bar: PageBar) -> Bool {
         guard lead == .spacer, itemsStartMoves < Self.itemsStartMoveCeiling, window?.isVisible == true,
               let pane, let view = bar.nameItem?.view,
@@ -600,8 +600,8 @@ import HelmUI
 
     /// Where a look's gap starts before any bar of it has been read: the figure read in a window never shown on
     /// macOS 27.2 and on no other system, 0 under Flat and 4.0 under Liquid Glass (the lower end of the 4.0 to 4.5
-    /// read there; with 4.5 the tabs stood 1.0 to 1.4 points left of the card's middle at 7 of the 42 readings of
-    /// `testAcrossAFoldTheTabsMiddleFollowsTheCardsMiddle` (`TheWindowWearsTheToolbarTests`), with 4.0 at none).
+    /// read there; with 4.5 the tabs stood 1.0 to 1.4 points left of the card's middle at 7 of 42 readings across a
+    /// fold, with 4.0 at none).
     /// Both are constants: no input of theirs can be not-a-number.
     nonisolated static func tabsGapPrior(of look: HelmBarAppearance) -> CGFloat {
         switch look {
@@ -1378,10 +1378,7 @@ import HelmUI
     /// the real window's default and narrowest panes in the fold tests'
     /// split rig: the frames of `helm.tabs`, `helm.actions` and
     /// `helm.search` read the same to a tenth of a point before and after
-    /// this set grew (engineer, 2026-09-26 —
-    /// `Tests/HelmAppTests/ASwitcherInTheCapsuleIsCentredWithTheTabsTests.swift`'s
-    /// own header carries the full reading, and its guard is what this
-    /// method answers). **Only with a `.segmented` entry**: no other kind in
+    /// this set grew (engineer, 2026-09-26). **Only with a `.segmented` entry**: no other kind in
     /// the capsule has a selection to slide, so no other page's bar is asked
     /// to change. `ShapeSignature.hasSegmentedAction` is what builds a fresh
     /// bar if that answer moves.
@@ -1467,8 +1464,7 @@ import HelmUI
     /// **The title bar and toolbar's own height** — the window's frame less
     /// its content layout rect, which is what AppKit centres every toolbar
     /// item in and therefore what sets the gap between the window's top edge
-    /// and a shorter item's top (52 pt in a 700 pt window on macOS 27.2, read
-    /// in `TheStatusBadgeSitsAsFarFromTheRightEdgeAsFromTheTopTests`).
+    /// and a shorter item's top (52 pt in a 700 pt window on macOS 27.2).
     /// `nil` before there is a window.
     private var barHeight: CGFloat? {
         window.map { $0.frame.height - $0.contentLayoutRect.height }
@@ -1623,8 +1619,8 @@ import HelmUI
     /// view itself, bordered, and the switcher wears AppKit's cell
     /// (`HelmBarAppearance.switcherCell`), so AppKit draws the platter and the
     /// selection's motion. Under Flat the item is `isBordered = false`, which
-    /// reads back `false` on this shape and not on a bare control
-    /// (`TheToolbarsItemsFollowTheLookTests`); on a hosting-view item in a key
+    /// reads back `false` on this shape and not on a bare control;
+    /// on a hosting-view item in a key
     /// window in the dark appearance that took AppKit's platter off, and Light
     /// and a window that is not key were not seen. Its view is a
     /// `ShellBarPlate` wearing the flat look with the hosting view inside it,
@@ -1804,7 +1800,7 @@ import HelmUI
     /// settle, so a page that republishes on every keystroke (Hosts' SSH
     /// editor, `HostsViewModel.setSSHText(_:)`) paid for measurements after
     /// every character, for tabs nothing typed can move:
-    /// `AKeystrokeInHostsSettlesWithoutMeasuringTheTabsTests` counted 20 for
+    /// a count read 20 for
     /// 10 keystrokes before this key (tester, 2026-09-26, compact and full
     /// both measured), and 10 for 10 with the key's read taken out once only
     /// the full width was (engineer, 2026-09-26).
@@ -1825,9 +1821,7 @@ import HelmUI
     /// rebuilds the bar — a fresh `PageBar`, with no cached width at all —
     /// before this key is ever compared, so a key with `ids` left out would
     /// be measured exactly as often
-    /// (`TheTabsAreMeasuredAgainOnlyWhenWhatTheyDrawMovesTests
-    /// .testNewIdsUnderTheSameWordsAreMeasuredOnceOnAFreshBar`, tester,
-    /// 2026-09-26). The field stays on the key regardless — a change to it
+    /// (tester, 2026-09-26). The field stays on the key regardless — a change to it
     /// alone never reaches this comparison to be the miss. Kept per bar, not
     /// in a static table: a bar is dropped with its shape, and its width
     /// goes with it. **That is why the look is not on the key**: it is on the
@@ -2245,8 +2239,7 @@ import HelmUI
     /// comment claims to have isolated — so the fix is to measure inside the
     /// same kind of container the attached item actually is, not to guess at
     /// a correction. The window is real enough for AppKit to lay a toolbar
-    /// out in and is never ordered in at all — `isOnScreen` is what
-    /// `AnUnfoldIsPredictedNeverTrialledTests.testTheMeasurementWindowNeverReachesTheScreen` reads — and it is
+    /// out in and is never ordered in at all, and it is
     /// reused across every call precisely so this measurement never touches
     /// the live, attached bar.
     @MainActor
@@ -2321,9 +2314,7 @@ import HelmUI
     /// second instance would just mean a second idle, never-shown window.
     private static let measurementRig = SwitcherMeasurementRig()
 
-    /// Whether the shared measurement window has reached the screen — read by
-    /// `AnUnfoldIsPredictedNeverTrialledTests.testTheMeasurementWindowNeverReachesTheScreen` after a real
-    /// measurement has run.
+    /// Whether the shared measurement window has reached the screen.
     static var measurementWindowIsOnScreen: Bool { measurementRig.isOnScreen }
     static var measurementsTaken: Int { measurementRig.measurements }
 
@@ -2409,9 +2400,7 @@ import HelmUI
     /// it is flexible, and grows into whatever room a fold frees, the same
     /// way `NSSearchToolbarItem` grows an idle field (`searchRoomBudget(_:)`'s
     /// own header).** Read at one pane, tabs full versus tabs folded, with
-    /// nothing else on the bar changed (`swift test --filter
-    /// AnUnfoldIsPredictedNeverTrialledTests` on this Mac,
-    /// `testTheWindowTitleStyleUnfoldsWithinMarginOfAppKitsOwnThreshold`):
+    /// nothing else on the bar changed (on this Mac):
     /// `NSToolbarTitleView.frame.width` was 183.5 pt with the tabs full and
     /// 270.5 pt with the tabs folded — the container absorbed the room the
     /// fold freed, 87 pt of it, while `fittingSize.width` read 98 pt in
@@ -2500,9 +2489,8 @@ import HelmUI
     /// own eviction width under `.windowTitle` (Russian, this Mac), that
     /// fallback predicted room that was not there and unfolded straight back
     /// into an eviction at every step of the sweep
-    /// (`testTheWindowTitleStyleNeverBlinksAcrossASweepAtAppKitsOwnEvictionWidth`,
-    /// run before this fix: red on both "no eviction" and "no refusal
-    /// recorded"). This header used to describe that fallback as "never
+    /// (read before this fix: an eviction at every step, and refusals recorded against the unfold).
+    /// This header used to describe that fallback as "never
     /// observed to latch, only to answer slightly pessimistic" — true of
     /// every shape this file's tests had swept until then, and false of this
     /// one, because nobody had swept a `.windowTitle` page with a search
@@ -2522,7 +2510,7 @@ import HelmUI
     /// a `.windowTitle` container on a `.sidebarSeparator` bar that has not yet given back a fold's own
     /// growth (that method's own header) makes this method's return value
     /// alone still too optimistic right at AppKit's own threshold — measured
-    /// directly against this fixture, crediting that growth in full unfolded
+    /// directly against that shape, crediting that growth in full unfolded
     /// straight into an eviction of the actions item, every time, across a
     /// whole band of panes AppKit itself was already refusing to hold full
     /// tabs at. `settle(_:)`'s own worst-case check is what reads
@@ -2664,8 +2652,7 @@ import HelmUI
     /// reclaimed, and that growth does not visibly reverse in the same pass
     /// that hands the tabs item its full width back
     /// (`currentToolbarSlack(_:)`'s "Two gates" paragraph). Measured directly
-    /// against this fixture (`swift test --filter
-    /// AnUnfoldIsPredictedNeverTrialledTests`, this Mac, Russian, Homebrew's
+    /// against Homebrew's bar (this Mac, Russian, its
     /// own three tabs): at the pane one AppKit fold-width below the real
     /// threshold, `predictedSlack` minus `titleGrowth` came to 19.5 pt and
     /// the tabs still could not actually hold full width there — an unfold
@@ -2673,8 +2660,7 @@ import HelmUI
     /// pt, where an ordinary magnifier press/close cycle already worked, the
     /// same worst-case reading came to 38.0 pt. This sits between the two,
     /// a judgment call rather than a measurement the same way `unfoldMargin`
-    /// itself is — `testTheWindowTitleStyleNeverBlinksAcrossASweepAtAppKitsOwnEvictionWidth`
-    /// is what a change to this number has to keep passing.
+    /// itself is.
     static let unfoldWorstCaseMargin: CGFloat = 24
 
     /// **The narrowest width AppKit was ever seen to hold `NSToolbarTitleView`
@@ -2843,8 +2829,7 @@ import HelmUI
     /// value no future `settle(_:)` call, which always runs while the field
     /// has already settled one way or the other, could ever match again,
     /// which is what let `checkOverflow()` record a refusal that never once
-    /// refused (`AnUnfoldIsPredictedNeverTrialledTests`'s own build report
-    /// for this fix). `checkOverflow()` passes the width `settle(_:)` itself
+    /// refused. `checkOverflow()` passes the width `settle(_:)` itself
     /// read at the very moment it decided to unfold
     /// (`PageBar.pendingUnfoldFieldWidth`) instead, which is exactly the
     /// steady, settled width a later `settle(_:)` call — folded again, room
@@ -2855,22 +2840,16 @@ import HelmUI
                          language: AppLanguage.current, style: AppSettings.toolbarSwitcherStyle)
     }
 
-    /// Test-only counters for the two gates below — read by
-    /// `AnUnfoldIsPredictedNeverTrialledTests`, and `gateUnfoldFieldWidths` by
-    /// `AlwaysCollapseSearchFirstPressTests` as well, the same widened-for-testing
-    /// precedent `tookMagnifierPress` and `settleInterval` already set in
-    /// this file. `gateUnfoldFieldWidths` is the search field's own live
-    /// width at the exact moment `settle(_:)` decided to unfold, one entry
-    /// per unfold — what a test can check it against is the field's width
-    /// while search was still open, since at a pane with slack to spare the
-    /// field need not have narrowed *at all* for the unfold to be correct
-    /// (measured: equal, not less, at 760/860 pt) — the invariant is *never
-    /// wider*, not *always narrower*. Bounded at `gateUnfoldFieldWidthsLimit`
+    /// Counters for the two gates below. `gateUnfoldFieldWidths` is the search
+    /// field's own live width at the exact moment `settle(_:)` decided to
+    /// unfold, one entry per unfold — what a test can check it against is the
+    /// field's width while search was still open, since at a pane with slack
+    /// to spare the field need not have narrowed *at all* for the unfold to be
+    /// correct (measured: equal, not less, at 760/860 pt) — the invariant is
+    /// *never wider*, not *always narrower*. Bounded at `gateUnfoldFieldWidthsLimit`
     /// (`CLAUDE.md`'s own rule against a record that grows for the life of
-    /// the app) rather than unbounded — this array ships in every build, not
-    /// only the test target, since it is only ever *read* by a test; a test
-    /// run exercises at most a handful of unfolds per case, so the cap never
-    /// binds there.
+    /// the app) rather than unbounded — this array ships in every build, and
+    /// nothing reads it now.
     private(set) var gateWaitedCount = 0
     private(set) var gateRefusedCount = 0
     private static let gateUnfoldFieldWidthsLimit = 32
@@ -3196,9 +3175,8 @@ import HelmUI
         // method's own tail, below), so the one settle tick that could still
         // observe a live edit is whichever `settleInterval` timer the *last*
         // such frame change armed, and whether the editor has attached by
-        // the time that timer fires is exactly the race — this file's own
-        // `testARefusalDoesNotOutliveTheInteractionThatEarnedIt` caught that
-        // approach clearing the stale refusal on one run and missing it on
+        // the time that timer fires is exactly the race — that
+        // approach cleared the stale refusal on one run and missed it on
         // another, same pane, same language, nothing committed in between.
         // The field's own growth is not subject to either problem: it
         // reached its full `preferredWidthForSearchField` (240 pt on this
@@ -3354,7 +3332,7 @@ import HelmUI
         // `searchRoomBudget(_:)` never captures a `collapsedFieldWidth` to
         // fall back on and the fold reads as permanent (measured: exactly
         // this sequence, at a real pane and real Russian labels where full
-        // tabs do fit, in `AnUnfoldIsPredictedNeverTrialledTests`).
+        // tabs do fit).
         guard let tabsWidth = bar.tabsItem?.view?.frame.width, tabsWidth > 0 else { return }
         guard !watchedItemsAllVisible(bar) else { return }
         // **Attribute this fold to our own recent unfold, if it is one** —
@@ -3366,8 +3344,7 @@ import HelmUI
         // header for why a fresh read here recorded a value no later
         // `settle(_:)` call could ever match, which is what let this
         // recording run on every single fold without the comparison in
-        // `settle(_:)` ever once matching it back
-        // (`AnUnfoldIsPredictedNeverTrialledTests`'s own build report).
+        // `settle(_:)` ever once matching it back.
         // `settle(_:)` reads this back and does not attempt the identical
         // context again until one of the four has moved.
         if let unfoldedAt = bar.lastOurUnfoldAt,
@@ -3443,8 +3420,7 @@ import HelmUI
     /// keystroke in the SSH editor (`HostsViewModel.setSSHText(_:)`); without
     /// this cache, that mounts `SwitcherMeasurementRig` — a fresh hosting
     /// view, a fresh toolbar and a full layout — once per character. Before
-    /// this cache existed, `AKeystrokeInHostsMountsNoMeasuringSwitcherTests`
-    /// counted one mount per keystroke, 20 of 20, and 100 declares of one
+    /// this cache existed, a count read one mount per keystroke, 20 of 20, and 100 declares of one
     /// unchanged `.segmented` entry took 1828–1990 ms against 1.7 ms for the
     /// same declares with no `.segmented` entry in them (tester, 2026-09-25,
     /// debug build); with this cache's read taken back out (2026-09-26) it
@@ -3453,8 +3429,8 @@ import HelmUI
     /// under** (`ReserveKey`: the look names the cell the switcher is measured
     /// wearing, `HelmBarAppearance.switcherCell`), **and nothing else**,
     /// because `HelmToolbarActionsCapsule.entryContent(_:)` fixes a
-    /// `.segmented` entry's style to `.icons` unconditionally
-    /// (`ASegmentedActionIsAlwaysGlyphsTests`) — no title, no `id`, no
+    /// `.segmented` entry's style to `.icons` unconditionally —
+    /// no title, no `id`, no
     /// selection and no ambient label style ever reaches what is drawn, only
     /// each option's own SF Symbol name feeds its image, and the array's own
     /// length already says how many segments there are. A key built from the
@@ -3485,15 +3461,13 @@ import HelmUI
     /// capsule mounts it beside every other declared action inside one
     /// `GlassEffectContainer`, and a segmented control with a single segment
     /// does not draw there at the width the rig alone reads for it —
-    /// `AOneOptionSegmentedEntrysReserveCoversItTests` measured the gap on
-    /// this Mac at 3.0 pt for `keyboard`, 3.0 pt for `rectangle.3.group` and
+    /// the gap measured on
+    /// this Mac was 3.0 pt for `keyboard`, 3.0 pt for `rectangle.3.group` and
     /// 2.5 pt for `tablecells`, against a rig reading of 36.0–39.0 pt. Two
-    /// options or more do not show this gap on a fresh bar
-    /// (`ASegmentedEntrysReserveIsWhatItDrawsTests`,
-    /// `ASegmentedEntrysReserveCoversItsOwnGlyphsTests` hold that case to the
-    /// point already), so the margin is added only when `options.count == 1`,
+    /// options or more do not show this gap on a fresh bar, so the margin is
+    /// added only when `options.count == 1`,
     /// and it is the ceiling of what was measured rather than the exact
-    /// figure. A wider sweep of 22 glyphs (same test file) found the rig
+    /// figure. A wider sweep of 22 glyphs found the rig
     /// never reading below a 36.0 pt floor, while the capsule attached draws
     /// anywhere from 35.0 to 39.0 pt at that floor — so a narrow glyph such
     /// as `minus` or `circle` reserves 39.0 pt over the 35.0 pt it actually
@@ -3516,7 +3490,7 @@ import HelmUI
     /// bare hosting view's `fittingSize` is not what a toolbar item draws —
     /// and per glyph set, because each of four pairs reserves what it draws,
     /// 73.0–85.0 pt across the set, rather than one number standing in for
-    /// all of them (`ASegmentedEntrysReserveCoversItsOwnGlyphsTests`).
+    /// all of them.
     /// **The dated readings in this doc and in `oneOptionCapsuleMargin`'s are of AppKit's cell**
     /// (the switcher's, before the look reached the measuring views); under
     /// Flat the reserve is measured wearing Helm's cell, and the three reserve
@@ -3534,7 +3508,7 @@ import HelmUI
     /// Hosts' own pair (77.5 pt, this file's centre-tabs width too, since the
     /// capsule's `helm.actions` item sits beside them) left the tabs evicting
     /// once and coming back a point later as the pane widened across it
-    /// (`HostsTabsUnfoldWithoutABlinkTests`: 72.0, 78.0 and 80.0 unfold
+    /// (72.0, 78.0 and 80.0 unfold
     /// clean, 77.5 blinks every time — a correlation with the half point,
     /// not a located threshold) — rounding down would risk landing short on
     /// some other pair the same way, so the ceiling is the only direction
@@ -3849,8 +3823,7 @@ import HelmUI
         // change to configure the item's own default field instead of
         // building a fresh one, cannot silently turn this back on. Off, only
         // the field editor's own `insertNewline(_:)` — a Return — reaches
-        // `searchSubmitted`, which `testEndingEditingSubmitsNothing`
-        // (`ASearchRunsOnReturnNotOnAKeyTests.swift`) guards directly.
+        // `searchSubmitted`.
         field.cell?.sendsActionOnEndEditing = false
         field.recentsAutosaveName = nil
         field.delegate = self
@@ -3935,9 +3908,7 @@ import HelmUI
         // **Defect found in this pass**: the field's own accessibility label
         // was set once, in `makeSearchItem`, and never again — nothing in the
         // toolbar's shape tracks the language, so after a language change the
-        // field kept naming itself in the old one
-        // (`TheSearchFieldsNameFollowsALanguageChangeThroughTheNewToolbarTests
-        // .testALanguageChangeReReadsTheSearchFieldsAccessibilityLabel`).
+        // field kept naming itself in the old one.
         item.searchField.setAccessibilityLabel(HelmA11y.searchField)
         guard let search = bar.content?.search else { return }
         if item.searchField.placeholderString != search.prompt {

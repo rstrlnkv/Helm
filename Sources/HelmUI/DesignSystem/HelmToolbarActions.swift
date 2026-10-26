@@ -38,9 +38,7 @@ import SwiftUI
 @MainActor
 @Observable
 public final class HelmToolbarActionsModel {
-    /// Data only — no closures. A frozen `PageBar`'s retention guard
-    /// (`testAFrozenBarDropsTheClosuresItsContentCaptured`) has to stay true
-    /// of this model as well: none of `HelmToolbarAction.Kind`'s closures, nor
+    /// Data only — no closures: none of `HelmToolbarAction.Kind`'s closures, nor
     /// a menu item's `perform`, ever reach here — only what a button or a
     /// menu draws itself from.
     public struct Entry: Equatable, Sendable {
@@ -257,12 +255,7 @@ public final class HelmToolbarActionsModel {
 /// `correctActionsGlassOnFirstAttach(_:)` calls it at most once, and only for
 /// a bar built while the window reads inactive, for the
 /// separate, confirmed reason its own header gives.
-/// `TheToolbarsItemsFollowTheLookTests.testAChangeOfLookHandsTheCapsuleItsLookAndOnlyGlassRebuildsItsHostWhenTheWindowsActivityFlips`
-/// flips the activity on a built bar and reads that under Liquid Glass the host is a new one after each
-/// flip and what the new host is handed, and that under Flat the host stays and the model reads the
-/// activity told; `testAGlassCapsuleFirstAttachedInAnInactiveWindowIsRebuilt` and
-/// `testAFlatCapsuleFirstAttachedInAnInactiveWindowIsNotRebuilt` read the first attach. What its glass
-/// draws after a live transition was not seen on a screen.
+/// What its glass draws after a live transition was not seen on a screen.
 public struct HelmToolbarActionsCapsule: View {
     let model: HelmToolbarActionsModel
     @Namespace private var glassSpace
@@ -278,8 +271,6 @@ public struct HelmToolbarActionsCapsule: View {
     /// `StatusZoneView.boxMargin` takes from 8. The number is a reading of AppKit's toolbar, kept
     /// as a number: a custom-view item with `isBordered = false`, last in an `NSToolbar`, ended
     /// 4.0 pt from the window's trailing edge at 1060 pt where a bordered one ended 8.0 pt.
-    /// `BareToolbarEdgeIsolationTests` reads both numbers off a bare `NSToolbar`, and
-    /// `TheLastItemsGlassSitsAsFarFromTheEdgeTests` holds the capsule that ends Hosts' bar to the 8.
     /// The capsule carries an inset of its own only where its caller hands one
     /// (`trailingInset`, 0 by default): `ShellBarActions` hands none, `ShellBarLayout.trailing`
     /// being what stands between the bar's last control and the bar's edge there, and
@@ -320,12 +311,10 @@ public struct HelmToolbarActionsCapsule: View {
     /// `.environment(\.isEnabled, true)` inside the label does not undo it),
     /// found by drawing a fixed value and reading what a screen actually
     /// shows (an out-of-tree probe, 2026-09-28, both appearances, key and not
-    /// key; `ADisabledActionDimsAsAppKitsOwnButtonTests` now photographs the
-    /// result beside a live disabled `NSToolbarButton` on every run): drawing
-    /// `1.0` / `inactiveGlyphOpacity` read back as 0.500 Dark / 0.520 Light
-    /// in a key window and 0.126 / 0.163 not key — against a live disabled
-    /// `NSToolbarButton`'s 0.240 / 0.313 key and 0.178 / 0.260 not key, ours
-    /// came out brighter than AppKit when key and dimmer when not, never
+    /// key): drawing `1.0` / `inactiveGlyphOpacity` read back as 0.500 Dark /
+    /// 0.520 Light in a key window and 0.126 / 0.163 not key — against a live
+    /// disabled `NSToolbarButton`'s 0.240 / 0.313 key and 0.178 / 0.260 not
+    /// key, ours came out brighter than AppKit when key and dimmer when not, never
     /// AppKit's own number, because that automatic halving sits between
     /// whatever this file draws and what lands on screen. So these four are
     /// not solved against AppKit's own reading directly the way
@@ -432,13 +421,7 @@ public struct HelmToolbarActionsCapsule: View {
                         // that item's hosted view; nothing does above this
                         // one), so the switcher drew with neither AppKit's
                         // glass nor this one — the owner's first report
-                        // (2026-09-25). `TheViewModeSwitcherSitsOnOneGlassTests
-                        // .testTheSwitcherSitsInsideExactlyOneGlassAndNoAppKitPlatter`
-                        // proves the glass *shape* — not only a marker layer,
-                        // which belongs to the whole `GlassEffectContainer`
-                        // and passes just as well with the switcher bare
-                        // beside a glassy button — actually covers the
-                        // switcher's own frame, on the real page.
+                        // (2026-09-25).
                         //
                         // **`interactive()` is a second thing, and `glass(for:)`
                         // below withholds it from `.segmented` alone.** Reading
@@ -604,10 +587,8 @@ public struct HelmToolbarActionsCapsule: View {
     }
 
     /// **What one declared entry costs the reserve.** Every button-shaped
-    /// kind costs exactly `Self.side` — the invariant
-    /// `testAMenuEntryCostsTheSameReserveAsEveryOtherKindAcrossVisibility`
-    /// holds them to — but a `.segmented` entry draws at whatever width its
-    /// own glyphs need in `.icons` style, the one style `entryContent(_:)`
+    /// kind costs exactly `Self.side`, but a `.segmented` entry draws at whatever
+    /// width its own glyphs need in `.icons` style, the one style `entryContent(_:)`
     /// ever puts it in — no word ever reaches what is drawn, so the reserve
     /// tracks the symbol set rather than the current language — so its
     /// reserve is carried on the entry itself as `EntryKind.segmented`'s own
@@ -615,7 +596,7 @@ public struct HelmToolbarActionsCapsule: View {
     ///
     /// **Measured attached, per glyph set** — each pair's own reserve tracks
     /// what it draws rather than one number standing in for all of them
-    /// (`ASegmentedEntrysReserveCoversItsOwnGlyphsTests`: 73.0–85.0 pt across
+    /// (73.0–85.0 pt across
     /// four pairs). `SettingsToolbar.actionEntries(for:look:)` measures through
     /// `SwitcherMeasurementRig` — the same rig the centre tabs' own fold
     /// prediction uses (`SettingsToolbar.switcherWidth(tabs:style:look:selectedID:)`),
@@ -675,10 +656,8 @@ public struct HelmToolbarActionsCapsule: View {
     /// 2026-09-28 and read 17.5 × 21.0 pt of ink for Refresh beside the live
     /// button's 14.5 × 17.5. With no font of its own the `Label` takes
     /// the hosting view's default body size, smaller again — the owner's "very
-    /// small" (`TheActionsGlyphIsAppKitsOwnSizeTests` holds ours beside the
-    /// live button, every kind, both appearances). The glyph sits inside the
-    /// same `Self.side` frame whatever its size, so no reserve, fold prediction
-    /// or edge margin reads it.
+    /// small". The glyph sits inside the same `Self.side` frame whatever its
+    /// size, so no reserve, fold prediction or edge margin reads it.
     @ViewBuilder
     private func glyph(_ entry: HelmToolbarActionsModel.Entry, symbol: String? = nil) -> some View {
         let isDisabled = !entry.isEnabled || !model.isInteractive

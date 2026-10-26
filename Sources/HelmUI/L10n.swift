@@ -218,9 +218,8 @@ public enum HelmDates {
     ///
     /// So the third case is not offered. This is a switch over something the
     /// app defines, exhaustive on purpose: a caller cannot choose the answer
-    /// that is wrong, and the mapping below is what
-    /// `AnAgeIsNotASignedDeltaTests` holds — the enum stops a caller picking it
-    /// and cannot stop the enum being wired to it.
+    /// that is wrong. The enum stops a caller picking it and cannot stop the
+    /// enum being wired to it; nothing checks the mapping below.
     public enum AgeStyle {
         /// «1 минуту назад» — for a line that has the width for it.
         case full

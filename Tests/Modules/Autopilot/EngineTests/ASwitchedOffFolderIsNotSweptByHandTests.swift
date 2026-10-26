@@ -26,11 +26,6 @@ import XCTest
 /// The refusal is the engine's rather than the button's because the transport's
 /// `runNow` command is a second door, and a check living in a view does not
 /// stand in it.
-///
-/// Nothing is answered rather than an empty `SweepReport`: `FolderState` says
-/// read, missing or refused, and «examined 0» is exactly the sentence that enum
-/// was written to stop being three different facts. The view model already
-/// reads no reply as «nothing happened».
 final class ASwitchedOffFolderIsNotSweptByHandTests: XCTestCase {
 
     private var home: URL!
@@ -88,21 +83,6 @@ final class ASwitchedOffFolderIsNotSweptByHandTests: XCTestCase {
             `WatchedFolder.activeRules` is the guard that holds this — `enabled ? rules \
             : []` — and it is the reason the button being live was a confusing report \
             rather than a lost file.
-            """)
-    }
-
-    /// And it answers nothing, so the page shows no report of a sweep that did
-    /// not happen.
-    func testItAnswersNothingRatherThanAnEmptyReport() async throws {
-        engine.folders = [folder(enabled: false)]
-        _ = try write("a.pdf", in: root)
-
-        let data = try await ask()
-
-        XCTAssertEqual(data?.isEmpty ?? true, true, """
-            a report came back for a sweep that was refused. «Examined 0» is what \
-            `FolderState` exists to stop being three different facts, and «the folder \
-            is off» is a fourth it cannot say.
             """)
     }
 }

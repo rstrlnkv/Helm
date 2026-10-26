@@ -59,7 +59,6 @@ struct AutopilotSettingsPage: View {
                     // report it compressed to «Выключить правило „Ск…“» at the
                     // narrow pane. Pinned leading because `HelmWrappingRow`
                     // answers with its widest line and centres otherwise.
-                    // `TheReturnBannerFoldsItsButtonsTests` holds all three.
                     HelmWrappingRow(spacing: 8, lineSpacing: HelmSpace.s3,
                                     alignment: .leading) {
                         // The pass this run just made, offered where the
@@ -134,9 +133,9 @@ struct AutopilotSettingsPage: View {
             // in whatever space it is given, with `maxHeight: .infinity`; inside
             // a scroll view that height is unbounded and the page draws
             // differently — measured at 25 layers against 44 for the same page
-            // under two permission readings, which inverted a guard in
-            // `PagesAreToldAboutTheDiskGrantTests`. The empty state takes the
-            // flexible space and the card sits under it.
+            // under two permission readings, which inverted a layer-count
+            // guard. The empty state takes the flexible space and the card sits
+            // under it.
             VStack(spacing: HelmSpace.s6) {
                 HelmEmptyState(symbol: "location.north.circle",
                                tint: AutopilotDescriptor.tint.colour,
@@ -183,7 +182,6 @@ struct AutopilotSettingsPage: View {
             // model subscribes for the life of the page and re-asks, so a
             // `.task` here would only re-read the same store on open and on
             // every remount after an off-screen idle.
-            // `ThePageHearsWhatTheEngineDidTests` holds both halves.
         }
     }
 

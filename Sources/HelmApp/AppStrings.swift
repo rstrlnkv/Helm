@@ -653,7 +653,7 @@ enum AppStr {
     /// **«only», because a bare «Names» was already taken.** `HostsStr.names` is
     /// the hosts file's own column of hostnames — «Имена» — and one English key
     /// means one thing, so the two would have shared a translation and the
-    /// pop-up drew «Имена» until it was looked at. `NoKeyIsWrittenTwiceTests`
+    /// pop-up drew «Имена» until it was looked at. `OneEntryPerKeyTests`
     /// is the guard that was missing: every reader of these files goes through
     /// `NSDictionary`, which resolves a repeated key silently.
     static func tabLabelStyle(_ style: TabLabelStyle) -> String {

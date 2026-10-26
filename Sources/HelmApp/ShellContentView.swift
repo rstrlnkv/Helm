@@ -243,16 +243,14 @@ final class ShellContentView: NSView {
     }
 
     /// How many times the window has told this view it took a bar (`barWasAttached()`). `needsLayout` cannot
-    /// tell that call from the other causes that set it, so the count is what shows the call was made;
-    /// `TheWindowWearsTheToolbarTests.testAWindowTakingABarAsksTheShellForALayout` reads it.
+    /// tell that call from the other causes that set it, so the count is what shows the call was made.
     private(set) var barAttachments = 0
 
     /// Asks for a layout, so the corner is read again and the buttons are placed again. For whoever gives the
     /// window a toolbar. Whether the request is needed is not measured: in a window never ordered in, on
     /// macOS 27.2, this view's `needsLayout` was true right after an assignment with this call left out, and
     /// what set it is not found. Assumed, not measured: that an assignment moves the window buttons. Below
-    /// macOS 27 there is no probe to notice the corner moved. The calls taken are counted in `barAttachments`,
-    /// which `TheWindowWearsTheToolbarTests.testAWindowTakingABarAsksTheShellForALayout` reads.
+    /// macOS 27 there is no probe to notice the corner moved. The calls taken are counted in `barAttachments`.
     func barWasAttached() {
         barAttachments += 1
         needsLayout = true

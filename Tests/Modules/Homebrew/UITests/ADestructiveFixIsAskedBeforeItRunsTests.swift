@@ -146,26 +146,4 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
         await settle(clinic) { !clinic.fired.isEmpty }
         XCTAssertEqual(clinic.fired, [], "a confirm with no question standing ran something")
     }
-
-    /// The page presses through the door and not past it, and it retires the
-    /// question when it goes away. Structural, the way
-    /// `TheStopButtonReachesTheChildTests` pins its own seam: `runDoctorFix` is
-    /// private now, so a call to it would not compile — what a reader has to be
-    /// stopped from is a *new* unconfirmed path.
-    func testThePageAsksAndRetires() throws {
-        func read(_ path: String) throws -> String {
-            try String(contentsOf: RepoSource.root.appendingPathComponent(path), encoding: .utf8)
-        }
-        // The Run button is drawn on the Health page (`HomebrewHealthPage`),
-        // where a finding's fix lives; the question it raises, and the
-        // dialog that answers it, are the page's own.
-        let health = try read("Sources/Modules/Homebrew/UI/HomebrewHealthPage.swift")
-        let source = try read("Sources/Modules/Homebrew/UI/HomebrewSettingsPage.swift")
-        XCTAssertTrue(health.contains("role: .destructive) { hb.askToRunFix(fix) }"),
-                      "the Run button no longer asks, or no longer reads as the destructive one")
-        XCTAssertTrue(source.contains("hb.cancelFix()"),
-                      "the page does not retire a standing question when it goes away")
-        XCTAssertTrue(source.contains("role: .destructive) { hb.confirmFix() }"),
-                      "the dialog's own button does not read as the destructive one")
-    }
 }

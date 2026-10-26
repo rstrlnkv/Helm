@@ -31,6 +31,60 @@ final class TheBoundLayoutIsSelectedOnActivationTests: XCTestCase {
         super.tearDown()
     }
 
+    /// A deactivated engine has stopped watching. Without this the watcher
+    /// outlives the module being switched off, and every activation selects a
+    /// layout for a module that is not running.
+    func testADeactivatedEngineStopsWatching() {
+        let engine = engine(bindings: ["ru.keepcoder.Telegram": "ru"])
+        engine.deactivate()
+        FrontmostApp.shared.setForTesting("ru.keepcoder.Telegram")
+        XCTAssertTrue(sources.selected.isEmpty)
+        withExtendedLifetime(engine) {}
+    }
+
+    /// Two `activate()`s in a row, with no `deactivate()` between: the second
+    /// must drop the first registration rather than orphan it in
+    /// `FrontmostApp.shared`'s watcher dictionary. Proved through
+    /// `deactivate()`: a fixed engine holds one token, and that one call
+    /// stops it — an orphaned first token would still be registered and
+    /// would go on selecting for a module the page shows as off.
+    func testActivatingTwiceLeavesNoOrphanedWatcherBehind() {
+        let engine = engine(bindings: ["ru.keepcoder.Telegram": "ru"])
+        engine.activate()
+        engine.deactivate()
+        FrontmostApp.shared.setForTesting("ru.keepcoder.Telegram")
+        XCTAssertTrue(sources.selected.isEmpty)
+        withExtendedLifetime(engine) {}
+    }
+}
+
+/// Which layout the activation of an app selects, and which it does not.
+@MainActor
+final class WhichLayoutAnActivationSelectsTests: XCTestCase {
+
+    private var sources = FakeSources()
+
+    /// `FakeSources.installed()` answers `["en", "ru"]` and starts on `en`, so
+    /// the bindings below name those.
+    private func engine(bindings: [String: String]) -> LayoutEngine {
+        sources = FakeSources()
+        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
+                                    backing: InMemoryKeyValueStore())
+        store.set(bindings, for: LayoutKey.appLayouts)
+        let engine = LayoutEngine(
+            tap: FakeTap(), typing: FakeTyping(), sources: sources,
+            translation: FakeTranslation(table: [:]),
+            spell: FakeSpell(valid: []), secure: FakeSecure(),
+            settings: store)
+        engine.activate()
+        return engine
+    }
+
+    override func tearDown() {
+        FrontmostApp.shared.setForTesting("")
+        super.tearDown()
+    }
+
     func testComingForwardSelectsTheBoundLayout() {
         let engine = engine(bindings: ["ru.keepcoder.Telegram": "ru"])
         FrontmostApp.shared.setForTesting("ru.keepcoder.Telegram")
@@ -80,32 +134,6 @@ final class TheBoundLayoutIsSelectedOnActivationTests: XCTestCase {
         engine.activate()
         FrontmostApp.shared.setForTesting("com.apple.Terminal")
         XCTAssertEqual(sources.selected, ["ru"])
-        withExtendedLifetime(engine) {}
-    }
-
-    /// A deactivated engine has stopped watching. Without this the watcher
-    /// outlives the module being switched off, and every activation selects a
-    /// layout for a module that is not running.
-    func testADeactivatedEngineStopsWatching() {
-        let engine = engine(bindings: ["ru.keepcoder.Telegram": "ru"])
-        engine.deactivate()
-        FrontmostApp.shared.setForTesting("ru.keepcoder.Telegram")
-        XCTAssertTrue(sources.selected.isEmpty)
-        withExtendedLifetime(engine) {}
-    }
-
-    /// Two `activate()`s in a row, with no `deactivate()` between: the second
-    /// must drop the first registration rather than orphan it in
-    /// `FrontmostApp.shared`'s watcher dictionary. Proved through
-    /// `deactivate()`: a fixed engine holds one token, and that one call
-    /// stops it — an orphaned first token would still be registered and
-    /// would go on selecting for a module the page shows as off.
-    func testActivatingTwiceLeavesNoOrphanedWatcherBehind() {
-        let engine = engine(bindings: ["ru.keepcoder.Telegram": "ru"])
-        engine.activate()
-        engine.deactivate()
-        FrontmostApp.shared.setForTesting("ru.keepcoder.Telegram")
-        XCTAssertTrue(sources.selected.isEmpty)
         withExtendedLifetime(engine) {}
     }
 }

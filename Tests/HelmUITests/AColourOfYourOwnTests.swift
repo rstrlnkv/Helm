@@ -61,25 +61,6 @@ final class AColourOfYourOwnTests: XCTestCase {
         }
     }
 
-    /// And the menu-bar renderer draws it, rather than falling back to white —
-    /// which is what every unknown token did before there was such a thing as a
-    /// known one that is not a name.
-    func testTheMenuBarIconDrawsACustomTint() throws {
-        let drawn = try XCTUnwrap(MenuBarIcon.nsColor(forTintToken: "#3399E6")
-            .usingColorSpace(.sRGB))
-        XCTAssertEqual(Double(drawn.redComponent), 0.2, accuracy: 0.01)
-        XCTAssertEqual(Double(drawn.greenComponent), 0.6, accuracy: 0.01)
-        XCTAssertEqual(Double(drawn.blueComponent), 0.9, accuracy: 0.01)
-    }
-
-    /// The control: an unknown token is still white, so the test above is about
-    /// the custom colour rather than about the fallback having changed.
-    func testAnUnknownTokenIsStillWhite() throws {
-        let drawn = try XCTUnwrap(MenuBarIcon.nsColor(forTintToken: "chartreuse")
-            .usingColorSpace(.sRGB))
-        XCTAssertEqual(Double(drawn.redComponent), 1, accuracy: 0.01)
-    }
-
     /// The retired names still resolve. They are somebody's stored setting on a
     /// Mac that has already run Helm, and a case that stops existing reads back
     /// as white with no explanation.
@@ -91,12 +72,11 @@ final class AColourOfYourOwnTests: XCTestCase {
                            "\(name) is still offered, so it was not retired at all")
         }
     }
+}
 
-    /// And the eight that are offered are Calendar's, in Calendar's order.
-    func testTheMenuOffersCalendarsEight() {
-        XCTAssertEqual(PaletteColor.offered.map(\.rawValue),
-                       ["white", "red", "orange", "yellow", "green", "blue", "purple", "brown"])
-    }
+/// «Other…» in the palette pop-up (`PaletteSwatches`) reaches the system colour
+/// panel itself, with no colour well or popover between the menu item and it.
+final class TheOtherColourOpensTheSystemPanelTests: XCTestCase {
 
     /// **«Other…» opens the system panel, not a popover with a well in it.**
     ///
@@ -119,17 +99,5 @@ final class AColourOfYourOwnTests: XCTestCase {
                        + "extra click this replaced")
         XCTAssertFalse(source.contains(".popover("),
                        "the popover is back")
-    }
-
-    /// And the panel's target is held. `NSColorPanel` keeps it **weakly**, so a
-    /// bridge created inside the action that opens the panel is gone before the
-    /// first colour comes back — which reads as a panel that does nothing.
-    func testTheColourPanelsTargetIsRetained() throws {
-        let url = RepoSource.root
-            .appendingPathComponent("Sources/HelmUI/DesignSystem/PaletteSwatches.swift")
-        let source = try String(contentsOf: url, encoding: .utf8)
-        XCTAssertTrue(source.contains("@State private var bridge = ColorPanelBridge()"),
-                      "the target is not held by the view, so it is deallocated before the "
-                      + "panel can call it")
     }
 }

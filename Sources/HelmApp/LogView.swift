@@ -117,7 +117,7 @@ struct LogView: View {
             // scrolls *under* the band. A material over content that never
             // passes behind it would blur nothing, and the rule would be a
             // hairline between a header and a card — the line measured away
-            // in `ThePageHeaderCarriesNoRuleTests`, back under a new name. The
+            // from the page headers, back under a new name. The
             // 52 pt strip is the same either way; only the edge is not.
             //
             // `bleeds: true` like every other full-width page: without it the
@@ -349,8 +349,8 @@ struct LogView: View {
                 // estimate put the end — then the rows are measured, the page
                 // changes height under a view that stays where it was, and the
                 // newest line is somewhere below. Measured on a real tail in a
-                // window on screen: the page opened at y = 7 677 of 15 901 pt
-                // (`TheLogOpensOnItsNewestLineInARealWindowTests`), and with
+                // window on screen: the page opened at y = 7 677 of 15 901 pt,
+                // and with
                 // the bottom anchor for the first offset alone it opened
                 // 1 227 pt short at 760 pt wide and 1 262 pt short at 848 and
                 // 1 000. Anchoring the bottom for size changes too keeps the
@@ -433,8 +433,7 @@ struct LogView: View {
     /// are drawn, and an estimate is what a one-off `scrollTo` lands on; the
     /// arrangement here (the end mark after the last card, the rows of a large
     /// card lazy) is measured to end at the page's own bottom padding with the
-    /// anchor in place, on a real tail in a window on screen
-    /// (`TheLogOpensOnItsNewestLineInARealWindowTests`).
+    /// anchor in place, on a real tail in a window on screen.
     private func cardView(_ card: LogPresentation.Card) -> some View {
         let burstLines = card.startup.reduce(0) { $0 + $1.repeats }
         let open = Self.startupIsOpen(card.id, opened: openStartups, query: query)
@@ -475,9 +474,7 @@ struct LogView: View {
     /// estimates the height of everything the view has scrolled past, and the
     /// estimate is re-made on every arrival and fold. Lazy is what makes a
     /// thousand rows cheap, so it stays for the card too large to draw whole. The
-    /// figure is chosen, not measured here: what mounting that many plain rows
-    /// costs is what `testTheMainThreadCostOfOneArrivingLineOnScreen`
-    /// (`HELM_BENCH=1`, in `TheLogHoldsAReaderThroughWhatNobodyTriedTests`) reads.
+    /// figure is chosen, not measured here.
     /// It counts the rows of one card that is drawn: the launches not drawn
     /// (`drawnAtOpen`) are not counted and are not in the page. At open a log of
     /// many launches, each of at most this many rows, draws fewer than `drawnAtOpen`
@@ -494,8 +491,7 @@ struct LogView: View {
     /// threshold reached or passed, and the last launch added may take them well
     /// past it. The newest launch is outside the count and is drawn whole whatever
     /// its size. Chosen, not measured here: what it keeps from growing with the log
-    /// is the number of rows laid out at open, which
-    /// `TheLogDrawsTheNewestLaunchesFirstTests` counts, in rows and never in time.
+    /// is the number of rows laid out at open.
     /// Each doubling of it (`earlier`) is a step of an ask for earlier launches.
     static let drawnAtOpen = 100
 
@@ -503,8 +499,7 @@ struct LogView: View {
     /// lines is wholly drawn: the first one that reaches that figure. A tail at its
     /// cap therefore takes at most this many asks that write anything, each raising
     /// `earlier` by one or more, and the next one finds every launch drawn. Nothing
-    /// in the page reads it; the bound is a consequence of the figures, and
-    /// `TheLogDrawsTheNewestLaunchesFirstTests` reads it.
+    /// in the page reads it; the bound is a consequence of the figures.
     static let earlierCeiling: Int = {
         var asks = 0
         while drawnAtOpen << asks < HelmLog.tailLimit { asks += 1 }
@@ -739,7 +734,7 @@ struct LogView: View {
     /// whether or not the value differs, and this runs once a second for as long
     /// as the page is on screen: with nothing written in between, re-reading the
     /// tail was a full re-diff of up to a thousand rows for a page that had not
-    /// moved (`LogPageTickChurnBenchmark` is the reading of what that cost).
+    /// moved.
     /// `LogEntry`'s `==` is its five parts — the id is not one of them — so a
     /// tail that says the same thing is the same tail.
     private func refresh() {

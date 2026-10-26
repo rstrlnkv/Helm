@@ -12,8 +12,7 @@ import Module_VPN_Engine
 /// verdict is — and none of it can be read back off a rendering: an
 /// `NSHostingView`'s accessibility tree is empty outside a real client, and
 /// SwiftUI draws its own type rather than through `NSTextField`. A view whose
-/// content is a value is a view whose content has a test
-/// (`TheStripDrawsOnlyWhatIsKnownTests`); a view that decides in its `body` has
+/// content is a value is a view whose content can be tested; a view that decides in its `body` has
 /// prose instead.
 struct VPNTunnelStrip {
 
@@ -211,8 +210,7 @@ struct VPNTunnelStrip {
     /// This line read the staleness — «may the figure stand as live» — as «show
     /// the age», so a reading stamped ahead of this page's clock, which is
     /// stale for that very reason, drew «Мбит/с · через 5 мин.»: a time still
-    /// to come under a figure taken in the past
-    /// (`AnAgeIsNeverAheadOfTheClockTests`).
+    /// to come under a figure taken in the past.
     private static func speedTile(_ facts: VPNTunnelFacts, now: Date) -> Tile {
         guard let speed = facts.speed else {
             // **The unit alone.** A price tag — «about 15 s, spends traffic» —
@@ -449,8 +447,7 @@ struct VPNTunnelHero: View {
     /// standing inside the centred row it pushed the sentence 16.25 pt to the
     /// right of the caption underneath it. Both were arithmetic against a line
     /// box rather than against the drawing. `KeepAwakeHero` carries its verdict
-    /// in words alone at the same rank, and now so does this — which is what
-    /// `TheStripDrawsOnlyWhatIsKnownTests` § 5 already called the rule.
+    /// in words alone at the same rank, and now so does this.
     @ViewBuilder
     private func headline(_ strip: VPNTunnelStrip) -> some View {
         Text(strip.verdict)
@@ -588,8 +585,6 @@ struct VPNTunnelHero: View {
     /// row's `.fixedSize(vertical:)` the `HStack` still takes the height of its
     /// tallest card and no more — this only spends that height on the other
     /// three — and `alignment: .top` on the row keeps every word where it was.
-    /// `TheReadingsAreOneRowTests` reads it off the drawing, because a SwiftUI
-    /// idiom is not a contract and no value carries the answer.
     private func column(_ tile: VPNTunnelStrip.Tile) -> some View {
         VStack(alignment: .leading, spacing: HelmSpace.s3) {
             Text(tile.label)

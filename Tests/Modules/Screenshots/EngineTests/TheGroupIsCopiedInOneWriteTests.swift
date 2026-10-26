@@ -7,69 +7,39 @@ import UniformTypeIdentifiers
 import XCTest
 @testable import Module_Screenshots_Engine
 
+private func png(width: Int, height: Int = 6) throws -> Data {
+    let data = NSMutableData()
+    let destination = try XCTUnwrap(CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil))
+    CGImageDestinationAddImage(destination, makeImage(width: width, height: height, red: UInt8(width % 250)), nil)
+    XCTAssertTrue(CGImageDestinationFinalize(destination))
+    return data as Data
+}
+
+private func width(of png: Data) throws -> Int {
+    let source = try XCTUnwrap(CGImageSourceCreateWithData(png as CFData, nil), "a write that is no picture")
+    return try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil)).width
+}
+
+private func file(_ folder: URL, width: Int) throws -> URL {
+    let url = folder.appendingPathComponent("shot-\(width).png")
+    try png(width: width).write(to: url)
+    return url
+}
+
 /// **A group goes to the clipboard in one write, whole or not at all.** A group copied picture by picture is as many
 /// writes, each taking the board from the one before, and only the last would be there to paste. Read here: the
 /// session's `copyAll` against a board that counts writes (`FakePasteboard.lists`, one entry a write), and the real
 /// port against a pasteboard of the test's own, whose items are counted and whose change count says how many
 /// writes it was.
 ///
-/// The inputs nobody fed: a group of one, three and twenty; pictures held in memory mixed with pictures in files, in the
-/// list's order; a file that is gone, that is no picture, that is another picture since; an empty list; a board that
-/// refuses; a task that was cancelled before the write.
+/// The inputs nobody fed: a file that is gone, that is no picture, that is another picture since; an empty list; a board
+/// that refuses; a task that was cancelled before the write.
 ///
-/// Total failure of the subject prints: a write a picture, a group in an order that is not the list's, a board that
-/// holds the first nine of twenty because the tenth file was unreadable, a refusal that says the clipboard when it was
-/// the file, an empty group that reports a copy.
+/// Total failure of the subject prints: a write a picture, a board that holds the first nine of twenty because the tenth
+/// file was unreadable, a refusal that says the clipboard when it was the file, an empty group that reports a copy.
 final class TheGroupIsCopiedInOneWriteTests: XCTestCase {
 
-    // MARK: What is copied
-
-    private func png(width: Int, height: Int = 6) throws -> Data {
-        let data = NSMutableData()
-        let destination = try XCTUnwrap(CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil))
-        CGImageDestinationAddImage(destination, makeImage(width: width, height: height, red: UInt8(width % 250)), nil)
-        XCTAssertTrue(CGImageDestinationFinalize(destination))
-        return data as Data
-    }
-
-    private func width(of png: Data) throws -> Int {
-        let source = try XCTUnwrap(CGImageSourceCreateWithData(png as CFData, nil), "a write that is no picture")
-        return try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil)).width
-    }
-
-    private func file(_ folder: URL, width: Int) throws -> URL {
-        let url = folder.appendingPathComponent("shot-\(width).png")
-        try png(width: width).write(to: url)
-        return url
-    }
-
     private func rig(_ name: String) -> Rig { Rig(home: scratchDirectory(name)) }
-
-    func testAGroupOfOneThreeAndTwentyIsOneWriteInTheListsOrder() async throws {
-        for n in [1, 3, 20] {
-            let rig = rig("group-\(n)")
-            let shots = (0..<n).map { ShotSource.picture(makeImage(width: 10 + $0, height: 6)) }
-            let delivery = await rig.session.copyAll(shots)
-            XCTAssertTrue(delivery.copied, "\(n): the control: the group was copied")
-            XCTAssertTrue(delivery.refusals.isEmpty, "\(n): \(delivery.refusals)")
-            XCTAssertEqual(rig.pasteboard.lists.count, 1, "\(n) shots were \(rig.pasteboard.lists.count) writes")
-            XCTAssertTrue(rig.pasteboard.copies.isEmpty, "\(n): a picture went by the single-picture write")
-            let written = try XCTUnwrap(rig.pasteboard.lists.first)
-            XCTAssertEqual(try written.map(width(of:)), (0..<n).map { 10 + $0 }, "\(n): not the list's order, or not all of it")
-        }
-    }
-
-    func testPicturesInMemoryAndPicturesInFilesKeepTheirPlacesInTheList() async throws {
-        let rig = rig("group-mixed")
-        let folder = scratchDirectory("group-mixed-files")
-        let shots: [ShotSource] = [.picture(makeImage(width: 11, height: 6)), .file(try file(folder, width: 12)),
-                                   .picture(makeImage(width: 13, height: 6)), .file(try file(folder, width: 14)),
-                                   .file(try file(folder, width: 15))]
-        let delivery = await rig.session.copyAll(shots)
-        XCTAssertTrue(delivery.copied)
-        XCTAssertEqual(rig.pasteboard.lists.count, 1)
-        XCTAssertEqual(try XCTUnwrap(rig.pasteboard.lists.first).map(width(of:)), [11, 12, 13, 14, 15])
-    }
 
     // MARK: Nothing partial
 
@@ -204,5 +174,42 @@ final class TheGroupIsCopiedInOneWriteTests: XCTestCase {
         XCTAssertEqual(board.pasteboardItems?.count, 2, "an empty list cleared what was there")
         XCTAssertEqual(port.copy(png: try png(width: 50)), .accepted)
         XCTAssertEqual(board.pasteboardItems?.count, 1, "a single copy after a group left the group's items")
+    }
+}
+
+/// **A group is written in the list's order, whatever each picture is held in.** A group of one, three and twenty;
+/// pictures held in memory mixed with pictures in files, in the list's order.
+///
+/// Total failure of the subject prints: a group in an order that is not the list's.
+final class TheGroupKeepsTheListsOrderOnTheBoardTests: XCTestCase {
+
+    // MARK: What is copied
+
+    private func rig(_ name: String) -> Rig { Rig(home: scratchDirectory(name)) }
+
+    func testAGroupOfOneThreeAndTwentyIsOneWriteInTheListsOrder() async throws {
+        for n in [1, 3, 20] {
+            let rig = rig("group-\(n)")
+            let shots = (0..<n).map { ShotSource.picture(makeImage(width: 10 + $0, height: 6)) }
+            let delivery = await rig.session.copyAll(shots)
+            XCTAssertTrue(delivery.copied, "\(n): the control: the group was copied")
+            XCTAssertTrue(delivery.refusals.isEmpty, "\(n): \(delivery.refusals)")
+            XCTAssertEqual(rig.pasteboard.lists.count, 1, "\(n) shots were \(rig.pasteboard.lists.count) writes")
+            XCTAssertTrue(rig.pasteboard.copies.isEmpty, "\(n): a picture went by the single-picture write")
+            let written = try XCTUnwrap(rig.pasteboard.lists.first)
+            XCTAssertEqual(try written.map(width(of:)), (0..<n).map { 10 + $0 }, "\(n): not the list's order, or not all of it")
+        }
+    }
+
+    func testPicturesInMemoryAndPicturesInFilesKeepTheirPlacesInTheList() async throws {
+        let rig = rig("group-mixed")
+        let folder = scratchDirectory("group-mixed-files")
+        let shots: [ShotSource] = [.picture(makeImage(width: 11, height: 6)), .file(try file(folder, width: 12)),
+                                   .picture(makeImage(width: 13, height: 6)), .file(try file(folder, width: 14)),
+                                   .file(try file(folder, width: 15))]
+        let delivery = await rig.session.copyAll(shots)
+        XCTAssertTrue(delivery.copied)
+        XCTAssertEqual(rig.pasteboard.lists.count, 1)
+        XCTAssertEqual(try XCTUnwrap(rig.pasteboard.lists.first).map(width(of:)), [11, 12, 13, 14, 15])
     }
 }

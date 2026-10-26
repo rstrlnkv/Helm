@@ -10,10 +10,9 @@ import SwiftUI
 /// without.
 ///
 /// A number typed in three places with one of them wrong is the argument for one
-/// place, and a number typed at all is the argument for measuring it:
-/// `ARowWithNothingToTickKeepsTheColumnTests` hosts a real `.checkbox` toggle and
-/// pins `side` against what AppKit says it wants. AppKit owns that size and can
-/// change it in a release; nothing else in the tree would notice.
+/// place, and a number typed at all is the argument for measuring it. AppKit owns
+/// that size and can change it in a release, and nothing in the tree would
+/// notice.
 ///
 /// A clear rectangle rather than a hidden `Toggle`, which would be the same width
 /// by construction: these lists run to hundreds of rows, and a real control per
@@ -22,8 +21,7 @@ public struct HelmCheckboxSlot: View {
     /// What macOS draws a `.checkbox` toggle at, measured rather than chosen.
     ///
     /// Internal, not `public`: no other target reads the number — they draw the
-    /// slot — and the one thing that does is the test that measures it, through
-    /// `@testable`.
+    /// slot.
     static let side: CGFloat = 16
 
     public init() {}

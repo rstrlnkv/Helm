@@ -13,13 +13,10 @@ import CoreGraphics
 /// 4 pt and does not at 40, and above that each is about half again the one
 /// below — near enough that a value chosen by eye has one obvious neighbour to
 /// round to. A number off the ladder is a number somebody has to argue for,
-/// which is the point. `LaddersAreTheStepsTheyClaimTests` holds both halves of
-/// that shape, because nothing else can see a token leave its own step.
+/// which is the point.
 ///
-/// **Landing the ladder is not adopting it.** `SpaceLadderRatchetTests` counts
-/// what the tree still spells by hand and only ever goes down; these constants
-/// are what it goes down *to*. Nothing is swept here — the sweep is a change to
-/// layout, and this is a change to vocabulary.
+/// **Landing the ladder is not adopting it.** Nothing is swept here — the sweep
+/// is a change to layout, and this is a change to vocabulary.
 public enum HelmSpace {
     /// Hairline separation: a glyph from the word it belongs to.
     public static let s1: CGFloat = 2
@@ -42,10 +39,7 @@ public enum HelmSpace {
 /// **A corner has one ladder: 4 · 6 · 10 · 14 · 26 pt.**
 ///
 /// Sixteen distinct radii were counted against three declared tokens on the
-/// mockup side, and the app's own reading is in `RadiusLadderRatchetTests` —
-/// measured off the render rather than the source, because radius is the one
-/// ladder that survives into `CALayer.cornerRadius` and can therefore be caught
-/// even where nobody typed it.
+/// mockup side.
 ///
 /// Five steps, and each names the thing it belongs to rather than a size: the
 /// call site should say what it is drawing, not how round it wants it.

@@ -370,10 +370,9 @@ private struct BreadcrumbBar: View {
 /// rows read 25 471 668 ink apiece with `.disabled(removing)` in place and
 /// nothing else changed. So the tint answers to the same flag the press does,
 /// one line below it, at the 0.4 AppKit gives a disabled template image. The
-/// name and the trait keep their own tight chain under the button, where
-/// `ResultViewAccessibilityTests` reads them — and the button toggles, so the
-/// name has to: it read "Add" in both states, which on a marked row is the
-/// opposite of what pressing it does.
+/// name and the trait keep their own tight chain under the button — and the
+/// button toggles, so the name has to: it read "Add" in both states, which on a
+/// marked row is the opposite of what pressing it does.
 private struct BasketButton: View {
     /// The row this button belongs to, as the row draws it. Read aloud once per
     /// row down a list of two hundred, and without it every one of them was
@@ -386,11 +385,7 @@ private struct BasketButton: View {
 
     var body: some View {
         // Named once: the `Image` draws it and the swap is told what it drew,
-        // and a pair spelled twice is a pair that can drift. It stays inside
-        // `body` and directly above the name below it, because
-        // `ResultViewAccessibilityTests` reads the ten lines after this one for
-        // the label and the trait — the scan is what stops this button being
-        // announced as «Add» on a row where pressing it removes.
+        // and a pair spelled twice is a pair that can drift.
         let symbol = basketed ? "checkmark.circle.fill" : "plus.circle"
         return Button(action: toggle) {
             Image(systemName: symbol)
@@ -539,7 +534,7 @@ private struct ChildRow: View {
         // the same thing, so does Return on the selected row, so does the menu
         // below. It used to be the only way in, with an accessibility action
         // under it that reached VoiceOver and left the keyboard exactly as
-        // stuck — the shape `KeyboardReachableControlsTests` reads.
+        // stuck.
         .onTapGesture(count: 2) { child.isDirectory ? onDrill() : reveal() }
         .contextMenu {
             if child.isDirectory {

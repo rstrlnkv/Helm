@@ -4,15 +4,12 @@ import HelmUI
 import XCTest
 @testable import HelmApp
 
-/// **A stored shortcut Carbon cannot take is no shortcut, and the row says so.**
+/// **A stored shortcut Carbon cannot take is no shortcut.**
 ///
 /// The preferences file is anybody's to write, and the fallback only answers
 /// for a key that is *absent*: a key that is present and nonsense — a string,
 /// a number past Carbon's byte, a code with its modifiers missing — reaches
-/// `HotkeyCombination` and is refused there. What this adds to
-/// `AnAbsentHotkeyIsTheDefaultAClearedOneIsNotTests` is the row: the recorder
-/// draws `<prefix>Label`, which is a separate key, so a row can show a
-/// combination the manager never registered, and pressing it does nothing.
+/// `HotkeyCombination` and is refused there.
 @MainActor
 final class AHotkeyTheStoreCannotSpellHoldsNothingTests: XCTestCase {
 
@@ -42,6 +39,31 @@ final class AHotkeyTheStoreCannotSpellHoldsNothingTests: XCTestCase {
             XCTAssertNil(answer, "\(what): registered \(String(describing: answer.map { ($0.code, $0.modifiers) }))")
         }
     }
+}
+
+/// What this adds to `AnAbsentHotkeyIsTheDefaultAClearedOneIsNotTests` is the
+/// row: the recorder draws `<prefix>Label`, which is a separate key, so a row
+/// can show a combination the manager never registered, and pressing it does
+/// nothing.
+@MainActor
+final class TheHotkeyRowDrawsWhatTheManagerHoldsTests: XCTestCase {
+
+    private let fallback = HotkeyFallback(keyCode: 18, modifiers: cmdKey | shiftKey, label: "⇧⌘1")
+
+    private func store(_ values: [String: Any]) -> NamespacedStore {
+        let backing = InMemoryKeyValueStore()
+        for (key, value) in values { backing.set(value, forKey: "module.test.\(key)") }
+        return NamespacedStore(namespace: "test", backing: backing)
+    }
+
+    private let garbage: [(String, [String: Any])] = [
+        ("a string for a key code", ["hotkeyKeyCode": "twenty", "hotkeyModifiers": cmdKey | shiftKey]),
+        ("a key code past Carbon's byte", ["hotkeyKeyCode": 0x1_14, "hotkeyModifiers": cmdKey | shiftKey]),
+        ("the largest integer", ["hotkeyKeyCode": Int.max, "hotkeyModifiers": Int.max]),
+        ("a negative modifier mask", ["hotkeyKeyCode": 20, "hotkeyModifiers": -1]),
+        ("a key code with no modifiers stored", ["hotkeyKeyCode": 20]),
+        ("data for a key code", ["hotkeyKeyCode": Data([20]), "hotkeyModifiers": cmdKey | shiftKey]),
+    ]
 
     /// The row: with a label on file beside the nonsense, the row draws a
     /// combination the manager holds nothing for.

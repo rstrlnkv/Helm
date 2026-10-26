@@ -71,7 +71,7 @@ public enum StandingDocuments {
         case "CLAUDE":
             return headings(in: try RepoSource.text(of: "CLAUDE.md"))
         default:
-            throw UISources.Failure("\(document) is not a document whose headings pointers name")
+            throw RepoSource.Failure("\(document) is not a document whose headings pointers name")
         }
     }
 }

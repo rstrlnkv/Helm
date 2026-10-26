@@ -47,7 +47,7 @@ public extension Notification.Name {
 /// glass and, outside a toolbar in a key window, the accent in the selected segment. Only `SettingsToolbar`
 /// asks for `systems`, for the switchers of the window's toolbar under Liquid Glass (under Flat it asks for
 /// `flat` there too): a control outside a toolbar that wore it
-/// would show the accent no segmented control in the page bar draws (`TheBarDrawsNoAccentInAKeyWindowTests`).
+/// would show the accent no segmented control in the page bar draws.
 /// What AppKit's cell draws inside the toolbar of a key window is not measured.
 public enum HelmSwitcherCell: Sendable {
     case flat, systems
@@ -89,7 +89,7 @@ public struct HelmSwitcherSegment<Value: Hashable> {
 /// it brings (measured 2026-09-17 against Apple Music's toolbar: pressing a
 /// segment swells its glass and dragging carries that glass from segment to
 /// segment). Outside a toolbar it selected with the accent colour in a key window, which no
-/// segmented control in the page bar draws (`TheBarDrawsNoAccentInAKeyWindowTests`), so every other switcher,
+/// segmented control in the page bar draws, so every other switcher,
 /// and the toolbar's under Flat, wears the flat cell: in the page bar the look changes the plate under the strip (`HelmBarAppearance`), not the
 /// strip, and there is no glass swell. Whether AppKit still draws any of its own under
 /// the flat cell was not seen on a screen (the cell's header).
@@ -121,7 +121,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     /// menu for the rest**, rather than letting AppKit's own overflow move
     /// the strip into the toolbar's «»» menu the moment it stops fitting
     /// beside an opening search field. One `NSSegmentedControl` instance can carry both forms:
-    /// `updateNSView` refills the same control when this flips (`TheSwitcherFoldsToOneSegmentTests`).
+    /// `updateNSView` refills the same control when this flips.
     /// `SettingsToolbar` flips it on a mounted control (`patchTabs` hands the hosted switcher `PageBar.tabsFolded`);
     /// `ShellBarTabs` flips nothing: it mounts two switchers, one of each form, and its plate holds whichever the layout says.
     private let compact: Bool
@@ -204,11 +204,10 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         context.coordinator.compact = compact
 
         // **The bar's metric, written on every pass.** `dress` writes `.extraLarge` in `makeNSView`, and with this
-        // write removed a mounted control read `.regular` all the same under `HelmFlatSegmentedCell`
-        // (`TheFirstGlassSwitcherIsDrawnAtTheBarsSizeTests` and `TheSwitcherDrawsFlatUnderEveryLookTests` went red on
-        // the control size); with the system's cell it read `.regular` after a single write here, and again once its
-        // window became key. What resets it was not established under either cell. The cell's size does not read the
-        // metric (`cellSize`), so this holds `controlSize`, which those two families read.
+        // write removed a mounted control read `.regular` all the same under `HelmFlatSegmentedCell`; with the system's
+        // cell it read `.regular` after a single write here, and again once its window became key. What resets it was
+        // not established under either cell. The cell's size does not read the metric (`cellSize`), so this holds
+        // `controlSize`.
         if control.controlSize != .extraLarge { control.controlSize = .extraLarge }
 
         let shown = displaySegments
@@ -228,10 +227,9 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         if isInitial || countChanged || styleChanged || compactChanged {
             // Animate only when changing style on an existing populated
             // control, never on initial population and never on a fold or
-            // unfold — `TheSwitcherFoldsToOneSegmentTests` requires the
-            // intrinsic width to change in the same update, and animating a
-            // fold or an unfold is exactly the per-segment slide the owner
-            // reported as text still moving in the tabs.
+            // unfold — the intrinsic width has to change in the same update, and
+            // animating a fold or an unfold is exactly the per-segment slide the
+            // owner reported as text still moving in the tabs.
             let shouldAnimate = !isInitial && !countChanged && !compactChanged && !HelmMotion.reduceMotion
             if shouldAnimate {
                 NSAnimationContext.runAnimationGroup { animation in
@@ -278,22 +276,20 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             // accessibility description (`fill`'s own `setToolTip` and
             // `NSImage(... accessibilityDescription:)`), which is what a
             // language change moves without moving `shown.count`, the style
-            // or the selection: `AGlyphSwitcherFollowsALanguageChangeTests`
-            // read the old English word back from both after switching to
-            // Russian, on this exact bug. `lastNames` tracks the segments'
-            // own names regardless of what style draws them, so a changed
-            // name forces a fill even while `labelsMatch` alone would not.
+            // or the selection: a mounted switcher read the old English word back
+            // from both after switching to Russian, on this exact bug. `lastNames`
+            // tracks the segments' own names regardless of what style draws them,
+            // so a changed name forces a fill even while `labelsMatch` alone would not.
             let namesChanged = context.coordinator.lastNames != shown.map(\.label)
             // **A glyph is drawn, not read back — `control.image(forSegment:)`
             // is the same `NSImage` whichever symbol produced it, so nothing
             // here can compare the control's own state against a changed
             // `symbol` the way `labelsMatch` compares the drawn word.** The
-            // capsule's `.segmented` entries are always `.icons`
-            // (`ASegmentedActionIsAlwaysGlyphsTests`), the one style where a
-            // glyph is *all* that is drawn, so a page that re-declares an
+            // capsule's `.segmented` entries are always `.icons`, the one style
+            // where a glyph is *all* that is drawn, so a page that re-declares an
             // option's glyph under the same name and the same selection has
             // nothing else here to force a refill on:
-            // `AGlyphSwitcherRedrawsAChangedGlyphTests` read the old glyphs
+            // the old glyphs read as
             // still drawn after such a re-declare, on this exact gap.
             // `lastSymbols` tracks the segments' own glyphs the same way
             // `lastNames` tracks their words.
@@ -314,13 +310,9 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             // so the labels, images and widths it rewrites are the values
             // already there — and it carries the single bounded
             // `setSelected(forSegment:)` in this file.
-            // `TheSwitcherRefusesASegmentThatIsNotThereTests` counts that call
-            // and requires the one occurrence to sit inside `fill`'s body,
-            // because AppKit raises `NSRangeException` on an index the control
-            // does not have; a second call site is a second way to abort the
+            // It is the only one, because AppKit raises `NSRangeException` on an index
+            // the control does not have; a second call site is a second way to abort the
             // app for whichever caller passes an index of its own next.
-            // Measured 2026-09-20: with a second `setSelected` here that file
-            // read "calls setSelected( 2 time(s)" and went red.
             if !labelsMatch || selectionMoved || namesChanged || symbolsChanged || attentionChanged {
                 NSAnimationContext.beginGrouping()
                 NSAnimationContext.current.allowsImplicitAnimation = false
@@ -417,8 +409,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             control.setSelected(true, forSegment: selected)
         }
         // No index at all clears the selection: a press AppKit has already lit must not stay lit when the
-        // selection names no segment. Through `selectedSegment`, not a second `setSelected(`, which
-        // `TheSwitcherRefusesASegmentThatIsNotThereTests` counts.
+        // selection names no segment. Through `selectedSegment`, not a second `setSelected(`.
         if selected == nil, control.selectedSegment != -1 { control.selectedSegment = -1 }
     }
 
@@ -505,7 +496,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
         /// for the one style that draws nothing else: `.icons` shows a symbol
         /// and no word, so a re-declare that swaps a glyph under an unchanged
         /// name and selection moves nothing `labelsMatch` or `namesChanged`
-        /// can see (`AGlyphSwitcherRedrawsAChangedGlyphTests`).
+        /// can see.
         var lastSymbols: [String]?
         /// Which segments carried a dot as of the last fill, for the same reason.
         var lastAttention: [Bool]?
@@ -568,7 +559,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
                 tabsMenu.popUp(positioning: tabsMenu.items.first { $0.state == .on }, at: .zero, in: sender)
                 return
             }
-            // The cell is asked to slide before the page's write is made (`TheSwitchersPickSlidesToAPressedSegmentTests`);
+            // The cell is asked to slide before the page's write is made;
             // that its animation group has also returned by then is by reading, held by no row.
             let to = sender.selectedSegment
             (sender.cell as? HelmFlatSegmentedCell)?.slide(from: shownSelection, to: to)
@@ -591,8 +582,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
 /// medium.** It reads each segment's label, image and menu indicator from the
 /// control's own per-segment state, so what `fill` writes, the dot and the
 /// refill rule stay one. `cellSize` is its own, so the control's fitting size
-/// follows it (`TheSwitcherDrawsFlatUnderEveryLookTests` reads the height back
-/// as `height` and the width as the picks plus the insets).
+/// follows it.
 ///
 /// A disabled control draws its words and template glyphs in
 /// `tertiaryLabelColor`, and the pick and a glyph that carries the attention dot

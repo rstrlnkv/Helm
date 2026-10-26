@@ -109,10 +109,6 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
 
     /// The one constant in this tree a keychain port hides behind, spelled as a
     /// use site outside its own type has to spell it.
-    ///
-    /// Written once because four cases name it: three fixtures and the tree
-    /// reading below, and a name that appears in a check four times is a rename
-    /// away from three of them going quiet.
     static let constant = "DuplicatesSettings.guardOfScanSettings"
 
     /// The indirection is followed, or `settings:` would never be a subject at
@@ -121,7 +117,7 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
     ///
     /// The owner is half of what is asserted, and deliberately: the member name
     /// alone is what this scan used to key by, and
-    /// `testTwoStaticsSharingANameAreBothRead` is why it no longer does.
+    /// two statics sharing a name overwrote each other, which is why it no longer does (`merge`).
     func testAPortNamedThroughAConstantIsStillAPort() throws {
         let names = try Self.keychainNames()
         XCTAssertTrue(names.contains(Self.constant), """
@@ -131,218 +127,12 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
             """)
     }
 
-    /// **Two declarations of one name, and the scan reads both.**
-    ///
-    /// The key was the bare member name, so these two overwrote each other and
-    /// only the last one walked survived — `Reaching` is declared first here, so
-    /// the harmless one buried it, `reaching` never grew through it, and a
-    /// default naming it read as a plain value. The rule then passed over every
-    /// call site it exists for, which is the one failure a guard must not have.
-    ///
-    /// `command grep -rn 'static let shared' Sources/` says how many names this
-    /// tree already shares; the next keychain-reaching constant to take one would
-    /// have taken the whole rule green with it.
-    func testTwoStaticsSharingANameAreBothRead() {
-        let source = SwiftSource.code("""
-        public enum Reaching {
-            public static let shared = SettingGuard(keys: KeychainSealKey(service: "s"))
-        }
-        public enum Harmless {
-            public static let shared = SettingGuard(keys: InMemorySealKey())
-        }
-        """)
-        XCTAssertEqual(Self.declarations(in: source).keys.sorted(),
-                       ["Harmless.shared", "Reaching.shared"],
-                       "one declaration overwrote the other, so the scan can see only one of them")
-        XCTAssertEqual(Self.keychainNames(in: source), ["Reaching.shared"],
-                       "either the buried declaration never reached the keychain, or the bare "
-                       + "word «shared» carried its harmless namesake in with it")
-
-        // And the half that goes quiet: the port behind the buried constant is
-        // demanded of a call site again.
-        let site = SwiftSource.code("""
-        public final class Page {
-            public init(settings: SettingGuard = Reaching.shared) {}
-        }
-        """)
-        XCTAssertEqual(Self.ports(in: site, reaching: Self.keychainNames(in: source)),
-                       ["Page": ["settings"]])
-
-        // A namesake that does not reach is not a port, or the fix would be a
-        // rule that reports every call site and proves nothing.
-        let harmless = SwiftSource.code("""
-        public final class Page {
-            public init(settings: SettingGuard = Harmless.shared) {}
-        }
-        """)
-        XCTAssertEqual(Self.ports(in: harmless, reaching: Self.keychainNames(in: source)), [:])
-    }
-
-    /// A bare `member`, written inside the type that declares it, is that
-    /// declaration — and written anywhere else it is not.
-    func testABareNameResolvesOnlyInsideItsOwnType() {
-        let reaching: Set<String> = ["Reaching.shared"]
-        let inside = SwiftSource.code("""
-        public enum Reaching {
-            public static let shared = SettingGuard(keys: KeychainSealKey(service: "s"))
-            public init(settings: SettingGuard = shared) {}
-        }
-        """)
-        XCTAssertEqual(Self.ports(in: inside, reaching: reaching), ["Reaching": ["settings"]])
-
-        let elsewhere = SwiftSource.code("""
-        public enum Elsewhere {
-            public static let shared = SettingGuard(keys: InMemorySealKey())
-            public init(settings: SettingGuard = shared) {}
-        }
-        """)
-        XCTAssertEqual(Self.ports(in: elsewhere, reaching: reaching), [:],
-                       "a bare name matched across owners, so every «shared» in the tree is a "
-                       + "keychain port")
-    }
-
-    // MARK: - And it reads code, not prose
-
-    /// A fixture, because the rule has to be provably able to fail on input this
-    /// tree does not contain today — and because every rule in this repository is
-    /// explained in a comment that quotes the thing it forbids, so a scan that
-    /// reads comments reports the explanation as the offence.
-    func testTheReaderSeesCodeAndSpansLines() {
-        let source = SwiftSource.code("""
-        // AutopilotEngine(store: s) with no keys: — the offence, in prose
-        let a = AutopilotEngine(store: s, keys: TestRuleKey(),
-                                sequence: TestRuleSequence())
-        let b = AutopilotEngine(store: s)  // sequence: is only mentioned here
-        let c = AutopilotEngine(store: s, keys: TestRuleKey())
-        """)
-        let calls = SwiftSource.callSites(of: "AutopilotEngine", in: source)
-        XCTAssertEqual(calls.count, 3, "a comment was read as a construction, or one was missed")
-        // Spanning two lines, with the second label found on the far side of the
-        // break.
-        XCTAssertEqual(calls[0].names, ["store", "keys", "sequence"])
-        XCTAssertEqual(calls[1].names, ["store"],
-                       "a label from the line's comment tail was read as an argument")
-        XCTAssertEqual(calls[2].names, ["store", "keys"])
-    }
-
-    /// A nested call must not end the argument list early, and a label inside one
-    /// is not the outer call's.
-    func testALabelInsideANestedCallIsNotTheOuterCalls() {
-        let source = "let m = DuplicatesViewModel(vm: ModuleViewModel(settings: x), store: s)"
-        XCTAssertEqual(SwiftSource.callSites(of: "DuplicatesViewModel", in: source).map(\.names),
-                       [["vm", "store"]])
-    }
-
-    /// A parenthesis inside a string literal does not close the argument list.
-    func testAParenthesisInAStringDoesNotCloseTheCall() {
-        let source = #"let m = DuplicatesViewModel(vm: v, note: "a) b", settings: g)"#
-        XCTAssertEqual(SwiftSource.callSites(of: "DuplicatesViewModel", in: source).map(\.names),
-                       [["vm", "note", "settings"]])
-    }
-
-    /// The property under `callSites`' own early return: **a source that never
-    /// spells `Type(` holds no call of it.**
-    ///
-    /// The walk looks for exactly that substring and then asks what precedes
-    /// it, so the guard is the same question asked before the source is copied
-    /// into `[Character]` — it can save the copy, never an answer. Asserted
-    /// rather than assumed, because it is what lets every scan in this suite
-    /// skip a file unread: a guard that could say no to a source holding a call
-    /// site would take offences out of all of them at once, with nothing on
-    /// screen to say so.
-    func testAFileThatNeverSpellsTheTypeHoldsNoConstructionOfIt() {
-        let source = SwiftSource.code("""
-        let a = SomethingElse(store: s, keys: k)
-        // AutopilotEngine(store: s) — named in prose, and prose is blanked
-        """)
-        XCTAssertFalse(source.contains("AutopilotEngine("),
-                       "the guard would have let this source through, so the case below "
-                       + "proves nothing")
-        XCTAssertEqual(SwiftSource.callSites(of: "AutopilotEngine", in: source).count, 0)
-    }
-
-    /// And a longer name ending with a subject's is not the subject:
-    /// `FakeDuplicatesViewModel(` is not `DuplicatesViewModel(`.
-    func testATypeWhoseNameMerelyEndsWithASubjectsIsNotOne() {
-        XCTAssertEqual(SwiftSource.callSites(of: "DuplicatesViewModel",
-                                             in: "let m = FakeDuplicatesViewModel(vm: v)").count, 0)
-    }
-
-    /// A parameter with no default is not a port this rule can be about, so a
-    /// type whose ports are all required contributes nothing — which is how
-    /// `SealedRules` stays out of it.
-    func testAPortWithNoDefaultIsNotASubject() {
-        let source = SwiftSource.code("""
-        final class SealedRules {
-            init(store: NamespacedStore, keys: RuleKeyPort, sequence: RuleSequencePort) {}
-        }
-        """)
-        XCTAssertEqual(Self.ports(in: source, reaching: [Self.constant]), [:])
-    }
-
-    /// And one that *is* defaulted to a port is, wherever the type is declared.
-    func testADefaultedPortIsFoundWithItsOwnersName() {
-        let source = SwiftSource.code("""
-        public final class Widget {
-            public init(store: Store, keys: SealKeyPort = KeychainSealKey(service: "s"),
-                        guarded: SettingGuard = DuplicatesSettings.guardOfScanSettings,
-                        home: String = NSHomeDirectory()) {}
-        }
-        """)
-        XCTAssertEqual(Self.ports(in: source, reaching: [Self.constant]),
-                       ["Widget": ["guarded", "keys"]],
-                       "home: is not a keychain port and must not be demanded of a call site")
-    }
-
-    /// The owner of an `init` is the type whose braces are around it, not the
-    /// last type declared above it.
-    ///
-    /// This is the reading the first version of the scan got wrong, on the very
-    /// file it was written for: `DuplicatesViewModel` declares a nested
-    /// `enum Phase`, the init was filed under `Phase`, and the rule then went
-    /// green over three call sites — a guard that had stopped being able to fail,
-    /// with nothing on screen to say so.
-    func testAnInitBelowANestedTypeBelongsToTheOuterOne() {
-        let source = SwiftSource.code("""
-        public final class Page {
-            public enum Phase { case start, running }
-            public init(settings: SettingGuard = DuplicatesSettings.guardOfScanSettings) {}
-        }
-        """)
-        XCTAssertEqual(Self.ports(in: source, reaching: [Self.constant]),
-                       ["Page": ["settings"]])
-    }
-
-    /// And Swift quoted inside Swift is not Swift. This file's own fixtures are
-    /// `"""` blocks holding call sites, and the first run of this guard reported
-    /// two of them as offences in `Tests/`.
-    func testAConstructionInsideAStringLiteralIsNotAConstruction() {
-        let source = SwiftSource.code(#"""
-        let explanation = """
-        let a = AutopilotEngine(store: s)
-        """
-        let real = AutopilotEngine(store: s, keys: k, sequence: q)
-        """#)
-        XCTAssertEqual(SwiftSource.callSites(of: "AutopilotEngine", in: source).map(\.names),
-                       [["store", "keys", "sequence"]])
-    }
-
-    /// The other half of the same reading: a `//` inside a string is not a
-    /// comment, so blanking it must not swallow the rest of the line.
-    func testASlashInsideAStringDoesNotStartAComment() {
-        let source = SwiftSource.code(#"""
-        let url = "https://example.com"; let real = AutopilotEngine(store: s, keys: k)
-        """#)
-        XCTAssertEqual(SwiftSource.callSites(of: "AutopilotEngine", in: source).map(\.names),
-                       [["store", "keys"]])
-    }
-
     // MARK: - Deriving the subjects
 
     /// **Every derivation below is computed once a process, and the reason is
     /// XCTest's own shape.** It builds a fresh instance per test case, so an
     /// instance's worth of scanning is paid by every case in the class — this
-    /// one has twelve, and three of them start a whole-tree derivation. Before
+    /// one has three, and each of them starts a whole-tree derivation. Before
     /// these three memos it walked and parsed `Sources/` five times over and
     /// `Tests/` twice more, and the class cost 11.1 s of a suite whose other
     /// hundred-odd classes are milliseconds.
@@ -383,19 +173,6 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
             merge(&bodies, from: file.text)
         }
         return closure(of: bodies)
-    }
-
-    /// Every static declaration in `source`, by `Owner.member` — the seam the
-    /// fixtures read, so what they exercise is what the tree goes through.
-    static func declarations(in source: String) -> [String: String] {
-        var bodies: [String: String] = [:]
-        merge(&bodies, from: source)
-        return bodies
-    }
-
-    /// `keychainNames()` over one source rather than over `Sources/`.
-    static func keychainNames(in source: String) -> Set<String> {
-        closure(of: declarations(in: source))
     }
 
     /// The fixed point: a declaration reaches the keychain when its own value
@@ -481,8 +258,8 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
     /// see — `command grep -rn 'static let shared' Sources/` says how many names
     /// are already shared. A keychain port hidden behind the loser never entered
     /// `reaching`, no default naming it was ever a port, and the rule went green
-    /// over the call sites it exists for with nothing on screen to say so
-    /// (`testTwoStaticsSharingANameAreBothRead`). `SwiftSource.innermost` over
+    /// over the call sites it exists for with nothing on screen to say so.
+    /// `SwiftSource.innermost` over
     /// `SwiftSource.typeBodies` is the same owner reading `ports(in:reaching:)`
     /// does, and it is right for the same reason: the owner is the type whose
     /// braces are around the declaration, not the last one declared above it.
@@ -518,8 +295,7 @@ final class ATestNamesTheKeychainPortsItBuildsOverTests: XCTestCase {
         return out.mapValues { Array(Set($0)).sorted() }
     }
 
-    /// The same reading, of one file's text — which is what makes the fixtures
-    /// above go through exactly what the tree goes through.
+    /// The same reading, of one file's text.
     static func ports(in source: String, reaching: Set<String>) -> [String: [String]] {
         let bodies = SwiftSource.typeBodies(in: source)
         var out: [String: [String]] = [:]

@@ -15,13 +15,13 @@ import HelmUI
 /// item's leading edge so that it starts sixteen points past the card and never left of where AppKit starts its items, told where the card is. The shell's pane starts
 /// where AppKit's strip ends and the shell adds nothing to it. The window's `.pageBar` build is the one
 /// that has no toolbar: the page's bar is Helm's own (`ShellPageBar`), a view at the top of the card's
-/// clip that `ShellContentView` places, and the pane starts under it. Only tests construct that build,
-/// and the window recalculates its key-view loop in it alone (`autorecalculatesKeyViewLoop`, in
-/// `init`), which is how that bar's views come to be in it.
+/// clip that `ShellContentView` places, and the pane starts under it. No test constructs that build now; it
+/// stays until `.pageBar` goes, and the window recalculates its key-view loop in it alone
+/// (`autorecalculatesKeyViewLoop`, in `init`), which is how that bar's views come to be in it.
 @MainActor final class SettingsWindow: NSObject, NSWindowDelegate {
     /// Which bar the window is built with: AppKit's toolbar, owned by `SettingsToolbar`, or Helm's own
-    /// page bar, a view of the card. The app takes the default; `.pageBar` is built by the test families
-    /// written against the page bar, and the choice never reads a setting.
+    /// page bar, a view of the card. The app takes the default and nothing builds `.pageBar` now;
+    /// the choice never reads a setting.
     enum Bar { case toolbar, pageBar }
 
     private let window: NSWindow
@@ -109,9 +109,7 @@ import HelmUI
         // flag off that layer stands at opacity 1 over the pane's width —
         // which is the whole reason `helmToolbarBackdrop` exists, and the
         // bar's own backdrop layer does not move with it.
-        // `TheSystemsScrollEdgeEffectAttachesTests` is that measurement and
-        // holds the two halves of the decision together. On macOS 27 a dev
-        // toggle once read the system's own scroll edge instead; shown a
+        // On macOS 27 a dev toggle once read the system's own scroll edge instead; shown a
         // screenshot of it, the owner kept Helm's own band there. On macOS 26
         // the owner asked for the system's back, so the flag is off there and
         // the pane draws no band of Helm's — that the system's effect then
@@ -124,16 +122,16 @@ import HelmUI
         window.isReleasedWhenClosed = false
         // **The `.pageBar` window recalculates its key-view loop.** The bar's zones are content views, and the actions
         // host is built anew when another page's actions arrive. In a window that was never shown, with this
-        // line removed every row of `TheKeyViewRingRunsSidebarPaneBarTests` is red: Tab from the
-        // sidebar's host leaves the first responder at the window. With it, Tab from there lands in the bar's
+        // line removed, Tab from the sidebar's host leaves the first responder at the window. With it, Tab
+        // from there lands in the bar's
         // search field, and the raw `nextKeyView` ring closes through sidebar, pane, bar, the bar's zones in
-        // `Zone` order with the search zone among them and a rebuilt actions host on it in place of the old one;
-        // the family asserts each of these. Pane before bar is the order AppKit gave, accepted and not chosen;
+        // `Zone` order with the search zone among them and a rebuilt actions host on it in place of the old one.
+        // Pane before bar is the order AppKit gave, accepted and not chosen;
         // why it gives that order is not measured (the two are siblings in the clip with one top-left corner).
         // No `nextKeyView` is set by hand: assumed, not measured in the tree, that a hosting view overwrites a
         // link set on it. Not measured: a key or shown window, Shift-Tab, a pressed key, and anything with
-        // keyboard navigation on; the rows do not read that setting and were run with it off, so Tab is shown
-        // to reach the search field only, not the tabs, the actions or the sidebar's rows.
+        // keyboard navigation on; read with it off, Tab was read landing in the search field; whether it
+        // stops at the tabs, the actions or the sidebar's rows was not read.
         window.autorecalculatesKeyViewLoop = pageBar != nil
         // Remember whatever size the user settles on.
         window.setFrameAutosaveName("HelmSettingsWindow.v4")
@@ -238,10 +236,7 @@ import HelmUI
     /// `resignMainAppearance` moves `_hasActiveAppearance` and AppKit's own
     /// glass but leaves `isKeyWindow`, `isMainWindow`, `NSApp.keyWindow` and
     /// `NSApp.mainWindow` all unchanged and posts none of the four
-    /// notifications below. `TheCapsuleDrawsWhatAppKitsPlatterDrawsTests`'s
-    /// own rig stands in for the window server for exactly that reason,
-    /// driving the private appearance calls and the notifications together
-    /// rather than trusting a second reading to cover the gap.
+    /// notifications below.
     func windowDidBecomeKey(_ notification: Notification) { updateWindowAppearsActive() }
     func windowDidResignKey(_ notification: Notification) { updateWindowAppearsActive() }
     func windowDidBecomeMain(_ notification: Notification) { updateWindowAppearsActive() }
@@ -274,8 +269,7 @@ enum SettingsSelection: Hashable {
     /// `willSet`, and the page bar redraws synchronously inside that announcement (`ShellPageBar`'s
     /// `selectionWatch`). Measured in the test process, in a window ordered front: without this `didSet` a
     /// selection that leaves the log for a module page left the pane's page title the log's, and with it the
-    /// title is the module's
-    /// (`EveryPageNamesTheWindowAfterItselfTests.testASelectionFromTheLogStraightToAModulePageTitlesThePaneWithTheModule`).
+    /// title is the module's.
     /// That the pane's update ran against the old selection, and that the bar's redraw inside `willSet` is
     /// the cause, are inferred from that, not read.
     @Published var selection: SettingsSelection? = .general {

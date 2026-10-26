@@ -18,8 +18,7 @@ import AppKit
 /// So the values below are **solved, not chosen**. Each but two is the system colour
 /// blended toward black by the smallest fraction that lets white clear 3:1,
 /// per appearance — the same shape `HelmSignal` uses — and then checked pairwise
-/// so no two are closer than 0,15 in sRGB. `ModuleTintTests` measures both and
-/// is what may change these numbers; do not hand-edit one and trust the eye.
+/// so no two are closer than 0,15 in sRGB; do not hand-edit one and trust the eye.
 ///
 /// **Three variants, not two.** Apple asks a colour you define yourself for a
 /// light value, a dark value *and* an increased-contrast option for each; a
@@ -66,7 +65,7 @@ public enum ModuleTint: String, CaseIterable, Sendable {
         // sRGB, where the floor is 0,15, and white reads 4,86:1 on it — past the
         // higher floor as well, so the two sets and the two appearances share one
         // value. Found by a search over the hue wheel for the largest distance
-        // at a contrast of at least 4,55:1; `ModuleTintTests` is what measures it.
+        // at a contrast of at least 4,55:1.
         case .screenshots: return (light: (0.384, 0.480, 0.000), dark: (0.384, 0.480, 0.000))
         }
     }
@@ -90,8 +89,7 @@ public enum ModuleTint: String, CaseIterable, Sendable {
     /// The pairwise check is re-run on this set rather than inherited: blending
     /// ten colours toward one point moves them toward each other. The closest
     /// pair here is Duplicates and Hosts at 0,209 in light and Disk and Keyboard
-    /// at 0,215 in dark, both past the 0,15 floor. `ModuleTintTests` measures
-    /// both halves on both sets.
+    /// at 0,215 in dark, both past the 0,15 floor.
     private var increasedContrast: Pair {
         switch self {
         case .keepAwake:   return (light: (0.699, 0.384, 0.105), dark: (0.687, 0.391, 0.125))

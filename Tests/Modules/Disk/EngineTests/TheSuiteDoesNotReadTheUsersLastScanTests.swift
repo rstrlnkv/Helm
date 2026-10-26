@@ -20,13 +20,12 @@ import Module_Disk_Engine
 /// `restoreLastScan()` reads that file and — when the saved scan is less than a
 /// day old — draws the person's tree on a page the ratchets measure. The file on
 /// this Mac was 8 MB, decoded on a detached task, and it raced the harness's
-/// settle loop: `ModulePageRender` read Disk at **172 layers at 17:59:50 and 50
-/// layers at 17:59:59**, same commit, same machine, nine seconds apart. The
-/// distinct off-ladder corner radius `1.25` — a `RoundedRectangle` whose 6 pt
+/// settle loop: the page-render harness read Disk at **172 layers at 17:59:50
+/// and 50 layers at 17:59:59**, same commit, same machine, nine seconds apart.
+/// The distinct off-ladder corner radius `1.25` — a `RoundedRectangle` whose 6 pt
 /// corner is clamped by a bar 2.5 pt wide, so a fact about the *byte
 /// distribution* of somebody's disk — was in the first reading and not the
-/// second. That is the wobble `RadiusLadderRatchetTests` recorded a ceiling over,
-/// and the ceiling cost it a whole distinct value of resolution.
+/// second.
 ///
 /// The 24-hour cache lifetime makes it worse rather than better, because it
 /// makes the dependence intermittent on a scale nobody connects to a test: the

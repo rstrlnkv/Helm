@@ -125,10 +125,7 @@ import Module_Homebrew_Engine
     private var infoAsks = LatestRequest()
 
     /// The ask in flight. Held so a superseded one can be dropped rather than
-    /// left to resume into a screen that has moved on, and read by
-    /// `TheInspectorDoesNotWaitForInfoTests` to await the answer it is about to
-    /// drop — a guard about arrival order cannot be written against work it
-    /// has no handle on.
+    /// left to resume into a screen that has moved on.
     private(set) var infoAsk: Task<Void, Never>?
 
     /// Which list the page is showing, and therefore which selection below
@@ -156,8 +153,7 @@ import Module_Homebrew_Engine
         /// added to this enum drew no row at all: the segment existed, every
         /// `switch` in the page had an arm for it, and there was no way to
         /// reach it. A `switch` with no `default:` makes forgetting a label a
-        /// build error instead, and
-        /// `ARefusedDoctorIsNotAHealthyMacTests` names all three.
+        /// build error instead.
         var label: String {
             switch self {
             case .installed: return HbStr.segInstalled
@@ -1038,8 +1034,7 @@ import Module_Homebrew_Engine
     }
     /// `loadedInstalled`'s twin, derived from `outdatedReading` for the same
     /// reason. `loadIfNeeded` deliberately never asks `brew outdated`, so this
-    /// is false on every launch until somebody opens the segment — which is
-    /// what `AStatusLineDoesNotInventZeroUpdatesTests` holds.
+    /// is false on every launch until somebody opens the segment.
     public var loadedOutdated: Bool { outdatedReading == .answered }
 
     /// Which search the hits belong to, so an older answer cannot land on a

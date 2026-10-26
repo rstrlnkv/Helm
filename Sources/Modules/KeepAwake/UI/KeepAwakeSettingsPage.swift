@@ -396,8 +396,7 @@ struct KeepAwakeSettingsPage: View {
     /// have to move on one clock. Three went on reading the live value after the
     /// marked ones moved to the drawn one, and that was worse than no animation:
     /// the row gaining a tick ramped while the three beside it jumped, so the card
-    /// came apart down the middle on every press. `MarkColumnHasOneClockTests`
-    /// fails on a second reader.
+    /// came apart down the middle on every press.
     ///
     /// The two rules and the lid can be marked; the timer setting and the battery
     /// guard never are. With none of them countable the column is not drawn at

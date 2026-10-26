@@ -78,7 +78,7 @@ public extension View {
     /// it — now depends on whether the process running the measurement holds
     /// Accessibility, and every ratchet built on the offscreen render became a
     /// fact about somebody's terminal. This is the same discipline
-    /// `ModulePageRender` applies to the appearance: a reading says which screen
+    /// the offscreen render harness applies to the appearance: a reading says which screen
     /// it is of, rather than inheriting whatever this Mac happens to be.
     func helmTracksAccessibility(_ state: Binding<PermissionState>,
                                  alsoOn extra: Notification.Name? = nil) -> some View {

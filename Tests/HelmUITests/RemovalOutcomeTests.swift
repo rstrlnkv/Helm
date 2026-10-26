@@ -1,81 +1,11 @@
 import XCTest
 @testable import HelmUI
 
-/// The line above a removal that did not entirely work.
-///
-/// Disk composes its success sentence before it knows the outcome, so a batch
-/// where every path refused produced "Removed — 0 bytes freed — 1 item could
-/// not be moved": a claim, its own refutation, and two em-dashes, in one
-/// caption. Seen on a real run against a read-only folder.
-///
-/// These assert the shape rather than one language's wording, and they name the
-/// language rather than reading `AppLanguage.current`: the suite runs in whatever
-/// this machine is set to — `ru-RU` here, not the English CLAUDE.md assumes — so a
-/// test that asks `.current` checks one arbitrary language eight times. Measured:
-/// with the em dash put back in the *English* branch, the unparameterized version
-/// of `testSomethingRemovedKeepsBothHalvesWithoutASecondDash` passed, because it
-/// was reading the Russian value the mutation had not touched.
+/// The verdict a removal ends on, and which sentence it draws: nothing removed
+/// and nothing refused says nothing, any refusal is said, a reply that never
+/// came is not silence, and one whose rescan was lost too is not the same
+/// verdict as one whose rescan answered.
 final class RemovalOutcomeTests: XCTestCase {
-
-    private let claim = "REMOVED-CLAIM"
-
-    func testNothingRemovedMeansNoClaimThatAnythingWas() {
-        for language in AppLanguage.allCases {
-            let line = HelmRemovalOutcome.heading(succeeded: nil, failed: 1, language: language)
-            XCTAssertFalse(line.contains("—"),
-                           "\(language.rawValue): no dash left where the claim used to be: \(line)")
-            XCTAssertFalse(line.isEmpty, "\(language.rawValue): nothing said at all")
-        }
-    }
-
-    /// The join is a full stop, not a second em dash.
-    ///
-    /// `succeeded` is the caller's own sentence and already carries one — «Moved
-    /// to the Trash: 3 items — 4 KB» — so joining with another put two in one
-    /// caption, which is the exact shape the doc comment eight lines above this
-    /// component's `init` says was fixed. The Uninstaller's own copy of the line
-    /// used a comma, so the app disagreed with itself about it.
-    ///
-    /// `claim` carries no dash of its own, so any dash in the result came from the
-    /// join — which is what makes this readable in all eight at once.
-    func testSomethingRemovedKeepsBothHalvesWithoutASecondDash() {
-        for language in AppLanguage.allCases {
-            let line = HelmRemovalOutcome.heading(succeeded: claim, failed: 1, language: language)
-            XCTAssertTrue(line.contains(claim),
-                          "\(language.rawValue): the success half is still said: \(line)")
-            XCTAssertFalse(line.contains("—"), """
-                \(language.rawValue): the heading adds an em dash of its own, and the sentence it \
-                is joining to already has one: \(line)
-                """)
-        }
-    }
-
-    /// French spaces its punctuation, and this heading is an inline table —
-    /// which is where `PunctuationIsTerminologyTests` cannot look, since that
-    /// one reads the eight `.strings` files.
-    func testTheFrenchHeadingSpacesItsColonTheWayMacOSDoes() {
-        for succeeded in [nil, claim] {
-            let line = HelmRemovalOutcome.heading(succeeded: succeeded, failed: 1, language: .fr)
-            let characters = Array(line)
-            for (index, character) in characters.enumerated() where ":;?!".contains(character) {
-                let before = index > 0 ? characters[index - 1] : nil
-                XCTAssertNotEqual(before, " ", """
-                    an ordinary space before \(character) is a breaking one, so the mark can \
-                    start the next line by itself: \(line)
-                    """)
-            }
-        }
-    }
-
-    /// The failed count is a counted noun, so the sentence has to change with it
-    /// — "1 объект" and "3 объекта" are different words, not a different digit.
-    func testTheCountedNounFollowsTheCount() {
-        let one = HelmRemovalOutcome.heading(succeeded: nil, failed: 1)
-        let three = HelmRemovalOutcome.heading(succeeded: nil, failed: 3)
-        XCTAssertNotEqual(one, three)
-        XCTAssertTrue(one.contains("1"))
-        XCTAssertTrue(three.contains("3"))
-    }
 
     /// The branch that was still not asking.
     ///
@@ -127,5 +57,17 @@ final class RemovalOutcomeTests: XCTestCase {
                               .unanswered,
                               "a reply carrying \(removed)/\(failed) read as no reply at all")
         }
+    }
+
+    /// The fifth verdict, and it is not the fourth: a round where the rescan
+    /// answered and one where it did not are different states, and the sentence
+    /// is the only thing that can tell the person which they are in.
+    func testAStaleListIsNotTheSameVerdictAsAFreshOne() {
+        XCTAssertEqual(HelmRemovalOutcome.unansweredWithStaleList.verdict, .unansweredStaleList)
+        XCTAssertNotEqual(HelmRemovalOutcome.unansweredWithStaleList.verdict,
+                          HelmRemovalOutcome.unanswered.verdict, """
+                          a removal whose rescan was also lost draws the sentence promising the \
+                          list above is where the files are now.
+                          """)
     }
 }

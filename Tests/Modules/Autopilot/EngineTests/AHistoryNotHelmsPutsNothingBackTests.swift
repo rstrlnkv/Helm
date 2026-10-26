@@ -50,29 +50,6 @@ final class AHistoryNotHelmsPutsNothingBackTests: XCTestCase {
         return file
     }
 
-    // MARK: - The pass
-
-    /// One value for a whole sweep, so the page can offer "put back the twelve
-    /// files that arrived at 14:22" instead of five hundred separate rows.
-    func testEveryRecordOfOneSweepCarriesOneRunAndTwoSweepsAreTwo() throws {
-        try aSweptFile("a.pdf")
-        try aSweptFile("b.pdf")
-
-        let runs = engine.history.compactMap(\.run)
-        XCTAssertEqual(runs.count, 2, "a record came out of a sweep with no pass to belong to")
-        XCTAssertEqual(Set(runs).count, 2, "two sweeps were recorded as one pass")
-    }
-
-    func testTheRecordsOfOneSweepShareItsRun() throws {
-        try write("a.pdf", in: root)
-        try write("b.pdf", in: root)
-        engine.sweep(folder(.move(to: root.appendingPathComponent("Sorted").path)))
-
-        let runs = Set(engine.history.compactMap(\.run))
-        XCTAssertEqual(engine.history.count, 2)
-        XCTAssertEqual(runs.count, 1, "one sweep was recorded as \(runs.count) passes")
-    }
-
     // MARK: - Putting one back
 
     func testAnActionGoesBackAndTheRowSaysSo() throws {
@@ -204,5 +181,69 @@ final class AHistoryNotHelmsPutsNothingBackTests: XCTestCase {
         XCTAssertEqual(engine.history, [])
         try aSweptFile("b.pdf")
         XCTAssertEqual(engine.history.count, 1, "the section never records again")
+    }
+}
+
+/// One sweep is one run in the history: every record of a sweep carries the
+/// same run, and two sweeps carry two.
+final class ASweepIsOneRunInTheHistoryTests: XCTestCase {
+
+    private var home: URL!
+    private var root: URL!
+    private var store: NamespacedStore!
+    private var engine: AutopilotEngine!
+
+    override func setUpWithError() throws {
+        home = scratchDirectory("home")
+        root = home.appendingPathComponent("Files")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        store = NamespacedStore(namespace: "rules.test.\(UUID().uuidString)",
+                                backing: InMemoryKeyValueStore())
+        engine = AutopilotEngine(store: store, home: home.path,
+                                 keys: TestRuleKey(), sequence: TestRuleSequence())
+    }
+
+    private func folder(_ action: RuleAction) -> WatchedFolder {
+        WatchedFolder(id: "f", path: root.path, enabled: true,
+                      // Every PDF: `contains ""` is false in Swift, which is a
+                      // trap a matcher test would have caught and a runner test
+                      // never can — the runner is handed its plan.
+                      rules: [Rule(id: "r", name: "Sort", enabled: true,
+                                   conditions: [.fileExtension(["pdf"])], action: action)],
+                      depth: 1)
+    }
+
+    /// A sweep that really moved something, so everything below is about a
+    /// history with something in it.
+    @discardableResult
+    private func aSweptFile(_ name: String = "a.pdf") throws -> URL {
+        let file = try write(name, in: root)
+        engine.sweep(folder(.move(to: root.appendingPathComponent("Sorted").path)))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path),
+                       "nothing was moved, so this proves nothing")
+        return file
+    }
+
+    // MARK: - The pass
+
+    /// One value for a whole sweep, so the page can offer "put back the twelve
+    /// files that arrived at 14:22" instead of five hundred separate rows.
+    func testEveryRecordOfOneSweepCarriesOneRunAndTwoSweepsAreTwo() throws {
+        try aSweptFile("a.pdf")
+        try aSweptFile("b.pdf")
+
+        let runs = engine.history.compactMap(\.run)
+        XCTAssertEqual(runs.count, 2, "a record came out of a sweep with no pass to belong to")
+        XCTAssertEqual(Set(runs).count, 2, "two sweeps were recorded as one pass")
+    }
+
+    func testTheRecordsOfOneSweepShareItsRun() throws {
+        try write("a.pdf", in: root)
+        try write("b.pdf", in: root)
+        engine.sweep(folder(.move(to: root.appendingPathComponent("Sorted").path)))
+
+        let runs = Set(engine.history.compactMap(\.run))
+        XCTAssertEqual(engine.history.count, 2)
+        XCTAssertEqual(runs.count, 1, "one sweep was recorded as \(runs.count) passes")
     }
 }

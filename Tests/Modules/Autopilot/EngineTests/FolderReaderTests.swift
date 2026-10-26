@@ -56,39 +56,6 @@ final class FolderReaderTests: XCTestCase {
         }
     }
 
-    // MARK: - Depth
-
-    /// Depth 1 is the folder's own contents — which includes its subfolders as
-    /// *things*, without their contents. Worth stating, because it means the
-    /// `Images/` a sort rule created a moment ago is itself offered back to the
-    /// rules on the next sweep.
-    func testDepthOneIsTheFoldersOwnContentsIncludingItsSubfolders() throws {
-        try write("a.pdf", in: root)
-        try write("sub/b.pdf", in: root)
-        try write("sub/deeper/c.pdf", in: root)
-
-        XCTAssertEqual(names(depth: 1), ["a.pdf", "sub"])
-        XCTAssertEqual(names(depth: 2), ["a.pdf", "b.pdf", "deeper", "sub"])
-        XCTAssertEqual(names(depth: 3), ["a.pdf", "b.pdf", "c.pdf", "deeper", "sub"])
-    }
-
-    /// `WatchedFolder.depth` is an unbounded `Int`. Nothing below 1 may read
-    /// anything: the dangerous failure would be a zero or negative depth falling
-    /// through to an unlimited walk of somebody's home folder.
-    func testADepthBelowOneReadsNothing() throws {
-        try write("a.pdf", in: root)
-        try write("sub/b.pdf", in: root)
-
-        XCTAssertTrue(names(depth: 0).isEmpty)
-        XCTAssertTrue(names(depth: -1).isEmpty)
-        XCTAssertTrue(names(depth: Int.min).isEmpty)
-    }
-
-    func testAnEnormousDepthIsJustTheWholeTree() throws {
-        try write("one/two/three/c.pdf", in: root)
-        XCTAssertEqual(names(depth: Int.max), names(depth: 4))
-    }
-
     // MARK: - Names
 
     /// The names a Downloads folder actually collects. All of these are legal
@@ -114,19 +81,6 @@ final class FolderReaderTests: XCTestCase {
         try write("visible.pdf", in: root)
 
         XCTAssertEqual(names(depth: 1), ["visible.pdf"])
-    }
-
-    /// An empty folder is no facts, not one fact about itself.
-    func testAnEmptyFolderOffersNothing() {
-        XCTAssertTrue(names(depth: 1).isEmpty)
-    }
-
-    /// A folder that is not there reads as empty rather than throwing or
-    /// hanging — the folder a rule watches can be on a volume that went away
-    /// between the sweep timer firing and the enumerator starting.
-    func testAFolderThatIsGoneReadsAsEmpty() {
-        XCTAssertTrue(reader.facts(in: root.appendingPathComponent("gone").path,
-                                   depth: 1).isEmpty)
     }
 
     // MARK: - What is weighed
@@ -187,6 +141,68 @@ final class FolderReaderTests: XCTestCase {
             lock.withLock { names.append(name) }
             return 7
         }
+    }
+}
+
+/// How far a read goes down, and what it offers when there is nothing to walk:
+/// the depth limit, an empty folder, a folder that is gone.
+final class FolderReaderDepthTests: XCTestCase {
+
+    private var root: URL!
+    private let reader = FolderReader()
+
+    override func setUpWithError() throws {
+        root = scratchDirectory("reader")
+    }
+
+    private func names(depth: Int) -> [String] {
+        reader.facts(in: root.path, depth: depth).map(\.name).sorted()
+    }
+
+    // MARK: - Depth
+
+    /// Depth 1 is the folder's own contents — which includes its subfolders as
+    /// *things*, without their contents. Worth stating, because it means the
+    /// `Images/` a sort rule created a moment ago is itself offered back to the
+    /// rules on the next sweep.
+    func testDepthOneIsTheFoldersOwnContentsIncludingItsSubfolders() throws {
+        try write("a.pdf", in: root)
+        try write("sub/b.pdf", in: root)
+        try write("sub/deeper/c.pdf", in: root)
+
+        XCTAssertEqual(names(depth: 1), ["a.pdf", "sub"])
+        XCTAssertEqual(names(depth: 2), ["a.pdf", "b.pdf", "deeper", "sub"])
+        XCTAssertEqual(names(depth: 3), ["a.pdf", "b.pdf", "c.pdf", "deeper", "sub"])
+    }
+
+    /// `WatchedFolder.depth` is an unbounded `Int`. Nothing below 1 may read
+    /// anything: the dangerous failure would be a zero or negative depth falling
+    /// through to an unlimited walk of somebody's home folder.
+    func testADepthBelowOneReadsNothing() throws {
+        try write("a.pdf", in: root)
+        try write("sub/b.pdf", in: root)
+
+        XCTAssertTrue(names(depth: 0).isEmpty)
+        XCTAssertTrue(names(depth: -1).isEmpty)
+        XCTAssertTrue(names(depth: Int.min).isEmpty)
+    }
+
+    func testAnEnormousDepthIsJustTheWholeTree() throws {
+        try write("one/two/three/c.pdf", in: root)
+        XCTAssertEqual(names(depth: Int.max), names(depth: 4))
+    }
+
+    /// An empty folder is no facts, not one fact about itself.
+    func testAnEmptyFolderOffersNothing() {
+        XCTAssertTrue(names(depth: 1).isEmpty)
+    }
+
+    /// A folder that is not there reads as empty rather than throwing or
+    /// hanging — the folder a rule watches can be on a volume that went away
+    /// between the sweep timer firing and the enumerator starting.
+    func testAFolderThatIsGoneReadsAsEmpty() {
+        XCTAssertTrue(reader.facts(in: root.appendingPathComponent("gone").path,
+                                   depth: 1).isEmpty)
     }
 
     // MARK: - Where the walk may descend

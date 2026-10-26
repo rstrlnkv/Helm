@@ -12,12 +12,6 @@ import XCTest
 /// background queue, so the first use with text selected took the process down.
 ///
 /// Same answer as `RunningApps`: refresh on main, read the snapshot anywhere.
-///
-/// **The snapshot also gains a way to say it changed.** A module that wants to
-/// act on an application coming forward had no way to hear about it and would
-/// have added a second observer for the same notification this type already
-/// owns. The channel tests below are driven through `setForTesting` rather
-/// than through AppKit: they are about delivery, not about the workspace.
 @MainActor
 final class FrontmostAppTests: XCTestCase {
 
@@ -58,6 +52,20 @@ final class FrontmostAppTests: XCTestCase {
     func testOnMainItReadsLiveRatherThanTheSnapshot() {
         FrontmostApp.shared.setForTesting("com.example.stale")
         XCTAssertNotEqual(FrontmostApp.shared.bundleID(), "com.example.stale")
+    }
+}
+
+/// **The snapshot also gains a way to say it changed.** A module that wants to
+/// act on an application coming forward had no way to hear about it and would
+/// have added a second observer for the same notification this type already
+/// owns. The channel tests below are driven through `setForTesting` rather
+/// than through AppKit: they are about delivery, not about the workspace.
+@MainActor
+final class FrontmostAppWatcherTests: XCTestCase {
+
+    override func tearDown() {
+        FrontmostApp.shared.setForTesting("")
+        super.tearDown()
     }
 
     func testAWatcherHearsTheChange() {

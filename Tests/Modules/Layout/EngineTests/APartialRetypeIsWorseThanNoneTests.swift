@@ -113,10 +113,6 @@ final class APartialRetypeIsWorseThanNoneTests: XCTestCase {
     /// `lastEvent` on its way through — so a refusal loses both. The page then
     /// shows no last conversion at all, over a field that is still holding the
     /// conversion, and «Never this word» goes with it.
-    ///
-    /// `TheRefusedChangeStaysOnThePageTests` holds the same promise for the undo
-    /// that *worked*: «rejecting a change erased its record». This is the half
-    /// where the rejection did not land.
     func testARefusedUndoLeavesTheChangeOnThePage() async {
         let world = World()
         let engine = world.engine()

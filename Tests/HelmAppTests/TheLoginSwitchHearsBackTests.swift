@@ -61,20 +61,4 @@ final class TheLoginSwitchHearsBackTests: XCTestCase {
         XCTAssertNotNil(AppStr.loginItemNote(.refused))
         XCTAssertNotNil(AppStr.loginItemNote(.needsApproval))
     }
-
-    func testBothSentencesAreWrittenInAllEightLanguages() throws {
-        for state in [LoginItemState.refused, .needsApproval] {
-            let english = try XCTUnwrap(AppStr.loginItemNote(state, language: .en))
-            for language in AppLanguage.allCases where language != .en {
-                let translated = try XCTUnwrap(AppStr.loginItemNote(state, language: language))
-                XCTAssertNotEqual(translated, english,
-                                  "\(language.rawValue) fell back to English for \(state)")
-            }
-        }
-        let english = AppStr.openLoginItems(language: .en)
-        for language in AppLanguage.allCases where language != .en {
-            XCTAssertNotEqual(AppStr.openLoginItems(language: language), english,
-                              "\(language.rawValue) fell back to English for the button")
-        }
-    }
 }

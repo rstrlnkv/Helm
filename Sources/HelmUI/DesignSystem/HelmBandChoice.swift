@@ -8,7 +8,7 @@ import SwiftUI
 /// On macOS 27 the band is Helm's: `helmToolbarBackdrop` draws
 /// `HeaderEdgeLight` over the pane's top inset, and the window's transparent
 /// title bar holds the system's own scroll-edge effect at opacity 0 over that
-/// pane (`TheSystemsScrollEdgeEffectAttachesTests` is the measurement). On
+/// pane. On
 /// macOS 26 the owner asked for the system's behaviour back (2026-09-27): the
 /// sidebar there is the system's floating glass, and Helm's band ended in a
 /// straight edge at its rounded corner (a screenshot from a 26.6.2 virtual

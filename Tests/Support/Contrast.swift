@@ -12,10 +12,8 @@ import SwiftUI
 /// 14.94:1 against the window in light — so every opacity clears every
 /// threshold, and the check cannot fail.
 ///
-/// The same four functions were spelled by hand in `SignalColourContrastTests`,
-/// `MetricTintTests`, `ChannelInkTests` and `ModuleTintTests`, and only two of
-/// the four composited. `Scripts/design/contrast.swift` is the same arithmetic
-/// again on the measuring side, and the two agree token for token.
+/// The same four functions were spelled by hand in four tests, and only two of
+/// the four composited.
 public enum Contrast {
 
     /// Body text, and anything Helm treats as body text.

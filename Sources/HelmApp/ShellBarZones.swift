@@ -88,11 +88,7 @@ struct NameZoneView: View {
     /// 0.399, Dark 0.279 — against 0.329 and 0.296 under the transparent
     /// title bar in the same run, which the pair above answers. Whether
     /// macOS 26 itself dims its title by the same amount is for the owner's
-    /// 26 virtual machine to confirm; `TheCapsuleDrawsWhatAppKitsPlatterDrawsTests`
-    /// holds the zone's shares to AppKit's title under both title bars. The zone's
-    /// S1 ink under this one is not held to the title's:
-    /// `testTheNameZoneDrawsAppKitsTitleInkUnderTheOpaqueTitleBar` there compares
-    /// the two and says what each reads.
+    /// 26 virtual machine to confirm.
     static let inactiveOpacityOpaqueDark: Double = 0.28
     static let inactiveOpacityOpaqueLight: Double = 0.40
 

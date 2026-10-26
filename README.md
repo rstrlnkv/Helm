@@ -81,12 +81,13 @@ the version scheme and the shape of a tag are described in ARCHITECTURE.md § Re
 Requires Xcode with the macOS 26 SDK and a Swift 6 toolchain.
 
 ```bash
-bash Scripts/test.sh            # the unit suite, read for you
+bash Scripts/test.sh            # the suite less its optional classes, read for you
 bash Scripts/package-app.sh     # build + sign → $TMPDIR/helm-package/Helm.app
 ```
 
-`bash Scripts/test.sh` runs `swift test`, keeps the whole log and reads it for
-you — the closing lines of a run speak for its last bundle and not for the suite;
+`bash Scripts/test.sh` runs `swift test` less the classes `Tests/optional-tests.txt` names
+(`HELM_FULL_SUITE=1` runs them all), keeps the whole log and reads it for you — the
+closing lines of a run speak for its last bundle and not for the suite;
 [CLAUDE.md](CLAUDE.md) says everything else.
 
 ## Licence

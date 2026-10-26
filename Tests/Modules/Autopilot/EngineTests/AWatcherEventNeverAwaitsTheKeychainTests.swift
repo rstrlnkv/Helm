@@ -11,17 +11,17 @@ import XCTest
 /// `watch` and `stop` to, and `AutopilotEngine.handle` is called synchronously
 /// from that callback. Reading the rule set resolves the seal's key, and the
 /// real port can sit inside a modal keychain prompt for as long as a person
-/// ignores it — `AutopilotLaunchTests` has the measured launches. So a `handle`
-/// that reads `folders` before dispatching parks the watcher for the whole
-/// prompt: no folder can be watched or unwatched until it is answered, and the
-/// engine's own rule — the rule set is read on the engine's queue — is broken on
-/// the one leg that fires with nobody at the desk.
+/// ignores it — `StalledRuleKey`'s doc carries the measured launches. So a
+/// `handle` that reads `folders` before dispatching parks the watcher for the
+/// whole prompt: no folder can be watched or unwatched until it is answered,
+/// and the engine's own rule — the rule set is read on the engine's queue — is
+/// broken on the one leg that fires with nobody at the desk.
 ///
 /// The blocking is a timing property, so the assertion is structural, the way
-/// `AutopilotLaunchTests` asserts it: the call returns while the port has not
-/// answered at all. A port that never answers cannot be beaten by a race — and
-/// the test can lose, because moving the read back onto the caller's thread
-/// leaves `returned` unfulfilled whatever the machine.
+/// `TheLaunchNeverWaitsForTheKeyPortTests` asserts it: the call returns while
+/// the port has not answered at all. A port that never answers cannot be
+/// beaten by a race — and the test can lose, because moving the read back onto
+/// the caller's thread leaves `returned` unfulfilled whatever the machine.
 final class AWatcherEventNeverAwaitsTheKeychainTests: XCTestCase {
 
     private var home: URL!

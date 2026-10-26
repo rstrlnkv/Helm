@@ -7,15 +7,7 @@ import Module_Leftovers_Engine
 /// removal reply, and the three things the transport behind the real page can do
 /// with a request.
 ///
-/// **There were two of these, and they were one fake.**
-/// `ARemovalReportDoesNotEatTheListTests.Wire` and
-/// `LeftoversPageContractTests.ScanTransport` answered the same two commands from
-/// the same two fields through the same lock; the only difference was that one
-/// could be told what the rescan after a removal would find and the other could
-/// not — so the poorer of the two silently made «the list after the removal» a
-/// question no test in that file could ask. One fake with the richer behaviour,
-/// the way `HelmTestSupport` holds `scratchDirectory` rather than thirty copies of
-/// it. It is not in `HelmTestSupport` itself for the reason nothing module-shaped
+/// It is not in `HelmTestSupport` itself for the reason nothing module-shaped
 /// can be: that target is below the modules and knows no `StaleItem`.
 ///
 /// **Three answers, because the wire has three and the view model reads two of
@@ -33,8 +25,7 @@ import Module_Leftovers_Engine
 ///
 /// A throw is what `EngineTransport.send` is declared to do and what
 /// `TransportClient.request` already folds to the same nil with `try?` — today's
-/// only implementation raises it just by way of a handler that throws, which is
-/// what `FixtureTransport` in `HelmAppTests` does for a command it was not given.
+/// only implementation raises it just by way of a handler that throws.
 /// It is kept apart from the empty reply rather than folded into it because the
 /// two are not the same wire: JSON decodes nothing from either, but a *raw* reply
 /// decodes something from empty `Data`, so a module that ever answers a plain

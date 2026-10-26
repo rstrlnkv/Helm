@@ -183,7 +183,7 @@ struct LayoutTile: View {
     /// reads as the tile's subject, and the subject is the figure.
     ///
     /// Named, because a control whose face is its value alone is «pop up button»
-    /// to VoiceOver, and `NamedControlsTests` scans the source for that shape.
+    /// to VoiceOver.
     private var periods: some View {
         Menu {
             ForEach(ConversionPeriod.allCases, id: \.self) { option in

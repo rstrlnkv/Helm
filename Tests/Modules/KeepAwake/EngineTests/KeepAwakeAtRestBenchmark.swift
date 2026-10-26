@@ -2,10 +2,7 @@ import XCTest
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
-/// What `KeepAwakeEngine` does per minute while nothing is happening, and what
-/// `AppTriggerRules.decode` costs on the path that reaches it.
-///
-/// `HELM_BENCH=1 swift test --filter KeepAwakeAtRestBenchmark`
+/// What `KeepAwakeEngine` does per minute while nothing is happening.
 final class KeepAwakeAtRestBenchmark: XCTestCase {
     var backing: InMemoryKeyValueStore!
     var store: NamespacedStore!
@@ -51,8 +48,7 @@ final class KeepAwakeAtRestBenchmark: XCTestCase {
     /// and this module has none — its three observers are edge-triggered
     /// (`NSApplication.didChangeScreenParametersNotification`, an IOKit power
     /// callback, `NSWorkspace` launch/terminate). This is a fact about the
-    /// engine's own logic, not the machine, so — unlike the timing halves below
-    /// — it is not skipped by default. It fails the moment a rewrite adds a
+    /// engine's own logic, not the machine. It fails the moment a rewrite adds a
     /// polling timer at rest.
     func testActivateWithNothingConfiguredSchedulesNoTimer() {
         engine.activate()
@@ -84,7 +80,7 @@ final class KeepAwakeAtRestBenchmark: XCTestCase {
                              "an indefinite session should arm the battery guard")
     }
 
-    // MARK: - 2. AppTriggerRules.decode: how often, and how much
+    // MARK: - 2. AppTriggerRules.decode: how often
 
     /// `KeepAwakeSettings.appTriggers` is a computed property — it decodes the
     /// stored JSON on every read, with nothing cached between calls, and
@@ -97,8 +93,7 @@ final class KeepAwakeAtRestBenchmark: XCTestCase {
     /// fires the real observer three times in a row on an app that is already
     /// running and checks the real settings type answers correctly each time —
     /// proof `appCondition()` re-reads and re-decodes rather than caching a
-    /// first answer, which is the fact `testDecodeWarmCost` below needs to be
-    /// about the actual hot path rather than a function nobody calls this way.
+    /// first answer.
     func testAppConditionReEvaluatesOnEveryAppEvent() {
         let triggers = (0..<5).map { AppTrigger(bundleID: "com.example.app\($0)") }
         settings.setAppTriggers(triggers)
@@ -116,24 +111,5 @@ final class KeepAwakeAtRestBenchmark: XCTestCase {
         XCTAssertFalse(engine.activeConditions.contains(.app),
                        "the app condition did not track a change after its first read — "
                        + "something cached the first decode")
-    }
-
-    /// The decode cost itself, isolated from the engine. Report only — see the
-    /// house rule on timing figures.
-    func testDecodeWarmCost() throws {
-        try XCTSkipUnless(ProcessInfo.processInfo.environment["HELM_BENCH"] == "1")
-        for count in [1, 5, 50] {
-            let encoded = AppTriggerRules.encode((0..<count).map {
-                AppTrigger(bundleID: "com.example.app\($0)")
-            })
-            _ = AppTriggerRules.decode(encoded) // warm
-            let iterations = 20_000
-            let start = Date()
-            for _ in 0..<iterations { _ = AppTriggerRules.decode(encoded) }
-            let elapsed = Date().timeIntervalSince(start)
-            print(String(format: "AppTriggerRules.decode at %d rule(s): %.5f ms/call "
-                         + "(%d calls in %.4f s)",
-                         count, elapsed / Double(iterations) * 1000, iterations, elapsed))
-        }
     }
 }

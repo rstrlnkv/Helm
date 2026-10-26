@@ -45,7 +45,7 @@ enum AnnotationHit {
 
     /// The ids of the layers an eraser's circle of `radius` meets along `path`, in the list's order: the rule is that of `hits`,
     /// the one a click selects by, with the radius as its tolerance, written again in `reached` so as to be built once per
-    /// layer and not per sample; a test sweeps the two against each other, for layers wholly inside the area only, and a layer
+    /// layer and not per sample; the two agree for layers wholly inside the area only, and a layer
     /// across the area's edge is read by the rule of `reached` alone. The path is walked in steps of a quarter of the radius, at least half a point and at most
     /// `maxSteps` to a segment, and a point that is not a number is skipped. With `area`, a point farther from it than the
     /// radius is skipped too: the circle is not over the picture there. A radius that is not a positive number meets nothing.

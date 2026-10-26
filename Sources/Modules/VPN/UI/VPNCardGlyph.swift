@@ -16,13 +16,10 @@ import Module_VPN_Engine
 ///
 /// The word has not gone anywhere. It is the button's tooltip and the name
 /// VoiceOver reads (`VPNStr.cardWord`), so the control is named in the two
-/// places a glyph-faced control has to be named — `NamedControlsTests` scans
-/// the source for exactly this shape.
+/// places a glyph-faced control has to be named.
 enum VPNCardGlyph {
     /// A symbol name is a string, and a string can be wrong: a misspelling
     /// draws nothing at all and looks like a button that lost its face.
-    /// `TheCardWearsAGlyphThatExistsTests` resolves every one of these against
-    /// SF Symbols.
     static func of(_ action: VPNCardAction) -> String {
         switch action.word {
         case .cancel: return "xmark"

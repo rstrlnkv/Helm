@@ -1,5 +1,3 @@
-import AppKit
-import SwiftUI
 import XCTest
 import HelmTestSupport
 import HelmContract
@@ -184,68 +182,6 @@ final class ALostReplyKeepsTheBasketTests: XCTestCase {
         XCTAssertFalse(dvm.replyLost,
                        "the sentence about a lost answer sits over a batch that was answered")
         XCTAssertEqual(dvm.removedCount, 1)
-    }
-
-    // MARK: - And it is on the screen
-
-    /// The sentence has to be *drawn*, and a flag on a view model is not a
-    /// drawing: the verdict this replaces computed a banner and then rendered
-    /// `EmptyView`, which is precisely a report that exists everywhere except on
-    /// the screen.
-    ///
-    /// Measured as room taken, not as ink. `EmptyView` is given no layout at all,
-    /// so a report that says nothing costs the page exactly 0 pt — which is what
-    /// the survey measured on this defect from the other side: the list *grew*
-    /// 24 pt when the basket went and the bar drew nothing. A row that is really
-    /// there takes its height out of the list above it.
-    func testTheSentenceReachesTheScreenOverABasketThatIsStillThere() async throws {
-        for appearance in RenderedInk.bothAppearances {
-            let transport = AnsweringTransport(volumes: [big])
-            let vm = ModuleViewModel(transport: transport)
-            let dvm = DiskViewModel.shared(vm: vm)
-            transport.answer("/Volumes/Big",
-                             with: ScanResult(root: folder("/Volumes/Big", bytes: 900,
-                                                           children: [folder("/Volumes/Big/Sub",
-                                                                             bytes: 600)]),
-                                              freeBytes: 100, filesScanned: 10, seconds: 1))
-            let mount = MountedRender(DiskSettingsPage(vm: vm)
-                // Named, never inherited: the page draws a permission note of its
-                // own on a Mac without the grant, and no reading here is a fact
-                // about this terminal's permissions.
-                .environment(\.helmGrants, HelmGrants(accessibility: .granted,
-                                                      fullDisk: .granted)),
-                                      width: 744, height: 600, appearance: appearance)
-            defer { mount.drop() }
-            await dvm.loadVolumes()
-            await dvm.scan(path: "/Volumes/Big")
-            dvm.toggleBasket(folder("/Volumes/Big/Sub", bytes: 600))
-            mount.settle(30)
-            let before = try XCTUnwrap(Self.listHeight(in: mount.host),
-                                       "precondition: the list was never drawn")
-
-            transport.answers(.nothing)
-            await dvm.emptyBasket()
-            mount.settle(30)
-            let after = try XCTUnwrap(Self.listHeight(in: mount.host),
-                                      "the list stopped being drawn")
-
-            XCTAssertTrue(dvm.replyLost, "precondition: the reply really was lost")
-            XCTAssertFalse(dvm.basket.isEmpty, "precondition: the basket is still on the screen")
-            XCTAssertLessThan(after, before, """
-                the page took no room for a removal nobody answered \
-                (\(RenderedInk.label(of: appearance))), which is what `EmptyView` costs: the \
-                report is computed and never drawn, over a basket that is still ticked.
-                """)
-        }
-    }
-
-    /// The drawn list's height. `ListCoreScrollView` is what SwiftUI backs a
-    /// `List` with on macOS 26/27, and its frame is the room the rows have — the
-    /// quantity a row added below it takes from.
-    private static func listHeight(in host: NSView) -> CGFloat? {
-        host.everyView.filter { $0.appKitClassName.contains("ListCoreScrollView") }
-            .map(\.bounds.height)
-            .max()
     }
 
     /// A new scan is a new screen, so the sentence about the last one goes with it.

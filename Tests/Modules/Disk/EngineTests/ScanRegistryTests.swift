@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import HelmTestSupport
 @testable import Module_Disk_Engine
 
 /// Two scans can be in flight at once, so one slot is not enough.
@@ -69,5 +70,18 @@ final class ScanRegistryTests: XCTestCase {
         XCTAssertTrue(registry.inFlight.isEmpty)
         registry.remove(7)
         XCTAssertTrue(registry.inFlight.isEmpty)
+    }
+
+    /// What `cancel()` is for: a walk told to stop answers nil, and nil is also
+    /// the answer for a path that is not there — hence the control, a scanner
+    /// that was not cancelled reading the same root.
+    func testCancelReturnsNil() throws {
+        let root = scratchDirectory("disk-cancel")
+        try write("a.bin", in: root, bytes: 1_000)
+        XCTAssertNotNil(DiskScanner(foldThreshold: 0).scan(root: root.path))
+
+        let scanner = DiskScanner(foldThreshold: 0)
+        scanner.cancel()
+        XCTAssertNil(scanner.scan(root: root.path))
     }
 }

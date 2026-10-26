@@ -51,9 +51,7 @@ final class ShellBarActions: ShellBarZone {
     private static var reserveCache: [ReserveKey: CGFloat] = [:]
     /// What a one-option entry gets on top of what a switcher measures alone. The figure, 3 pt, is
     /// `SettingsToolbar`'s, from its measurement of a one-option entry in its capsule, attached in a toolbar;
-    /// here it is added, not derived: `TheBarsActionsKeepTheirReserveTests` holds a one-option switcher drawn
-    /// in this zone's host, in no window, within the reserve under both looks, and does not ask what the
-    /// reserve would be without it.
+    /// here it is added, not derived.
     private static let oneOptionCapsuleMargin: CGFloat = 3
 
     init(titlebarIsTransparent: Bool) {
@@ -180,7 +178,7 @@ final class ShellBarActions: ShellBarZone {
     /// pass. The first option stands for whichever is picked, no options reserve nothing, a one-option
     /// entry gets `oneOptionCapsuleMargin`, and the result is rounded up to a whole point. A zero reading
     /// is not cached. **Compared with the switcher drawn inside the capsule's host under both looks, in no
-    /// window** (`TheBarsActionsKeepTheirReserveTests`): the drawn control is no wider than the reserve. Not
+    /// window**: the drawn control is no wider than the reserve. Not
     /// compared in a window or in a bar: `SettingsToolbar`'s measurement is taken attached, in a toolbar, and
     /// this one is not.
     static func segmentedReserveWidth(_ options: [HelmToolbarTab], appearance: HelmBarAppearance) -> CGFloat {

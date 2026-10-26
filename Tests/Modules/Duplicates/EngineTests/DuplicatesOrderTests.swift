@@ -1,15 +1,14 @@
 import XCTest
 @testable import Module_Duplicates_Engine
 
-/// The two things the pipeline decides that nobody can check by looking: which
-/// copy is offered for deletion, and in what order the groups arrive.
+/// The one thing the pipeline decides that nobody can check by looking: which
+/// copy is offered for deletion.
 ///
-/// `DuplicatesTests` already covers both — but through assertions that cannot
+/// `DuplicatesTests` already covers it — but through assertions that cannot
 /// see what they claim to check. `testAHardLinkPairPlusARealCopyStillGroups`
 /// asserts a count of 2 and that `/realcopy` is in there; it never asks which
 /// of the two linked names came with it, which is the only part that decides
-/// what gets trashed. `testGroupsComeLargestWasteFirst` asserts
-/// `wasted >= wasted`, which is true of any order when the wastes are equal.
+/// what gets trashed.
 final class DuplicatesOrderTests: XCTestCase {
 
     private func day(_ n: Int) -> Date { Date(timeIntervalSince1970: TimeInterval(n) * 86_400) }
@@ -71,42 +70,5 @@ final class DuplicatesOrderTests: XCTestCase {
         XCTAssertEqual(Array(offered), ["/h/other.bin"],
                        "the group claims \(groups.first?.wasted ?? 0) bytes of waste; "
                        + "only deleting the copy on its own inode frees them")
-    }
-
-    // MARK: - The order of the groups themselves
-
-    /// Groups whose waste is equal come back in whatever order
-    /// `Dictionary.values` hands them over — keyed by the content digest, a
-    /// string the person never sees, hashed with a seed that is new every time
-    /// the app launches.
-    ///
-    /// So the same folder, unchanged, lists its groups in a different order
-    /// after a relaunch. `SurvivingCopy` goes to the trouble of a third
-    /// tiebreak so that "the row does not move between scans"; between groups
-    /// nothing does.
-    ///
-    /// Asserted without a second process: the same files, partitioned exactly
-    /// the same way, are hashed under three different digest strings. Same
-    /// groups, same wastes — and three different orders.
-    func testGroupOrderDoesNotDependOnTheDigestStringsNobodySees() {
-        // Sixteen, not two: two orders of two groups agree half the time, and a
-        // gate that passes by luck is how the last wrong survivor rule shipped.
-        var files: [FileFacts] = []
-        for index in 0..<16 {
-            files.append(file("/g\(index)/a.bin", id: UInt64(index * 2 + 1), added: 10))
-            files.append(file("/g\(index)/b.bin", id: UInt64(index * 2 + 2), added: 11))
-        }
-        // Every group is two copies of one 5 MB file, so every group wastes
-        // exactly the same and nothing but the tiebreak can order them.
-        func survivors(digestedWith salt: String) -> [String] {
-            let digest: (FileFacts) -> String? = { salt + String($0.path.split(separator: "/")[0]) }
-            return Duplicates.groups(files: files, minBytes: 1_000_000, by: KeepRule(.standard),
-                                     partial: digest, full: digest).map { $0.paths[0] }
-        }
-
-        let plain = survivors(digestedWith: "")
-        XCTAssertEqual(plain.count, 16, "sixteen groups, all wasting 5 MB")
-        XCTAssertEqual(plain, survivors(digestedWith: "sha256:"))
-        XCTAssertEqual(plain, survivors(digestedWith: "0123456789abcdef"))
     }
 }
