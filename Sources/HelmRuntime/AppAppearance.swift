@@ -17,8 +17,7 @@ public enum AppAppearance: String, CaseIterable, Sendable {
 
     /// The `NSAppearance` name to force, or nil to follow the system.
     ///
-    /// The names rather than the objects, so this type stays free of AppKit and
-    /// can be tested without a running app.
+    /// The names rather than the objects, so this type stays free of AppKit.
     public var appearanceName: String? {
         switch self {
         case .system: return nil

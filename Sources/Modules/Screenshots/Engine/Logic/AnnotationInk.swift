@@ -51,6 +51,4 @@ public struct AnnotationInk: Sendable, Hashable {
     public static let green = AnnotationInk(AnnotationColor.green)
     public static let blue = AnnotationInk(AnnotationColor.blue)
     public static let purple = AnnotationInk(AnnotationColor.purple)
-    public static let black = AnnotationInk(AnnotationColor.black)
-    public static let white = AnnotationInk(AnnotationColor.white)
 }

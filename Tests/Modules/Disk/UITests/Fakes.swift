@@ -1,11 +1,8 @@
 import Foundation
 import HelmContract
 import HelmRuntime
-import HelmTestSupport
-import HelmUI
 import Module_Disk_Engine
 import XCTest
-@testable import Module_Disk_UI
 
 // The two transports this module's page tests are written against, and the
 // waits that go with them.
@@ -58,24 +55,12 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
     private var results: [String: ScanResult] = [:]
     private var removal = DiskRemoval(removed: [], refused: [], freedBytes: 0)
     private var answer: Answer = .reply
-    private var volumes: [VolumeInfo]
+    private let volumes: [VolumeInfo]
     let events: AsyncStream<EngineEvent>
 
     init(volumes: [VolumeInfo]) {
         self.volumes = volumes
         events = AsyncStream { _ in }
-    }
-
-    /// A disk plugged in, ejected, or filling up while the app runs.
-    ///
-    /// **A volume list fixed at init cannot change under the app**, which is the
-    /// one thing this port really does: a volume-attributes read answers a different number every
-    /// time somebody writes a file, and a Mac gains and loses disks. A fake that
-    /// answers the same list for ever makes «the tile is showing what the disk held
-    /// at launch» unrepresentable (CLAUDE.md § What not to do, and what breaks if
-    /// you do).
-    func answerVolumes(with volumes: [VolumeInfo]) {
-        lock.lock(); self.volumes = volumes; lock.unlock()
     }
 
     private var currentVolumes: [VolumeInfo] {

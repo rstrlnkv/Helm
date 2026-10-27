@@ -10,9 +10,6 @@ struct ScreenshotsSettingsPage: View {
 
     @ObservedObject private var model: ScreenshotsPageModel
     private let store: NamespacedStore
-    /// Whether a folder may be written into: the one question a capture asks the
-    /// disk that raises a protected-folder prompt. A seam so a test can count it.
-    private let writable: (String) -> Bool
 
     @State private var tab = Tab.capturing
     @State private var screenRecording: PermissionState = .granted
@@ -43,13 +40,9 @@ struct ScreenshotsSettingsPage: View {
     @StateObject private var screenKey: HelmHotkeyRecorder
     @StateObject private var panelKey: HelmHotkeyRecorder
 
-    /// `tab` is the one the page opens on: the window's switcher moves it afterwards, and a test names the tab it reads.
-    init(vm: ModuleViewModel, store: NamespacedStore, tab: Tab = .capturing,
-         writable: @escaping (String) -> Bool = { FileManager.default.isWritableFile(atPath: $0) }) {
+    init(vm: ModuleViewModel, store: NamespacedStore) {
         model = ScreenshotsPageModel.shared(vm: vm)
         self.store = store
-        self.writable = writable
-        _tab = State(initialValue: tab)
         let settings = ScreenshotsSettings.read(store)
         _target = State(initialValue: settings.saveTarget)
         _otherFolder = State(initialValue: settings.otherFolder)
@@ -149,7 +142,7 @@ struct ScreenshotsSettingsPage: View {
         var settings = ScreenshotsSettings.defaults
         settings.saveTarget = target
         settings.otherFolder = otherFolder
-        judged = SaveLocation.folder(for: settings, macOS: nil, locations: .system, writable: writable)?.refused
+        judged = SaveLocation.folder(for: settings, macOS: nil, locations: .system)?.refused
     }
 
     // MARK: - Shortcuts
@@ -337,8 +330,8 @@ struct ScreenshotsSettingsPage: View {
         }
     }
 
-    /// What the button writes, as data so a test can ask without a recorder.
-    static func systemKeys(for boxes: [SystemBoxReading])
+    /// What the button writes.
+    private static func systemKeys(for boxes: [SystemBoxReading])
         -> [(ScreenshotsHotkey, (keyCode: Int, modifiers: Int, label: String))] {
         var out: [(ScreenshotsHotkey, (keyCode: Int, modifiers: Int, label: String))] =
             [(.fullScreen, systemScreenKey), (.area, systemAreaKey)]

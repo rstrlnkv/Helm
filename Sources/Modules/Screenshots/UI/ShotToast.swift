@@ -106,10 +106,6 @@ import Module_Screenshots_Engine
     /// More than one shot, folded.
     var isPile: Bool { refusal == nil && shots.count > 1 && !unfolded }
 
-    var full: CGImage? {
-        get { current?.full }
-        set { if let id = current?.id { update(id) { $0.full = newValue } } }
-    }
     var reading: ShotReading? {
         get { current?.reading }
         set { if let id = current?.id { update(id) { $0.reading = newValue } } }
@@ -219,10 +215,10 @@ import Module_Screenshots_Engine
 enum ShotCapsule {
     enum Cell: Equatable { case edit, copy, copyAll, reveal, pin, close }
 
-    static func cells(hasFile: Bool, canEdit: Bool = false, pinOffered: Bool = PinEntry.isOffered) -> [Cell] {
+    static func cells(hasFile: Bool, canEdit: Bool) -> [Cell] {
         var cells: [Cell] = canEdit ? [.edit, .copy] : [.copy]
         if hasFile { cells.append(.reveal) }
-        if pinOffered { cells.append(.pin) }
+        if PinEntry.isOffered { cells.append(.pin) }
         return cells + [.close]
     }
 
@@ -318,27 +314,20 @@ final class ShotPanel: NSPanel {
     /// Whether the pointer is over the window's shots, in screen points: inside the anchor view's rect, or anywhere
     /// in the row while it is unfolded. Asked by `advance`: under a hold that only the pointer keeps, to end it when
     /// the pointer is elsewhere; when the time is up, to hold when it is there; and of an unfolded row at every
-    /// step, to fold it once the pointer has been away for `ShotShelf.foldDelay`. A seam for a test.
-    var pointerIsOver: () -> Bool = { false }
+    /// step, to fold it once the pointer has been away for `ShotShelf.foldDelay`.
+    private var pointerIsOver: () -> Bool = { false }
     /// What the capsule's Edit, Copy, Copy All and Pin ask of whoever owns the session and the board.
     var onEdit: () -> Void = {}
     var onCopy: () -> Void = {}
     var onCopyAll: () -> Void = {}
     var onPin: (CGImage, CGRect) -> Void = { _, _ in }
-    /// Makes the panel key when the row unfolds, and gives the keys back when it folds. Seams: a test has no panel
-    /// and counts the calls.
+    /// Makes the panel key when the row unfolds, and gives the keys back when it folds.
     ///
     /// Giving back is ordering the panel out and in again: AppKit has no call that only resigns key. That a key
     /// window that leaves the screen hands the keys to the next that can take them, and that the two orders in one
     /// turn of the run loop are not seen as a blink, are not measured.
-    var takeKey: () -> Void = {}
-    var yieldKey: () -> Void = {}
-    /// Closes a sheet that is open. A seam: a test reads which sheet was closed, and the running app asks the picker.
-    var closePicker: (NSSharingServicePicker) -> Void = { $0.close() }
-    /// Shows the sheet relative to the thumbnail's view. A seam: a test must not open a system sheet.
-    var presentPicker: (NSSharingServicePicker, NSView) -> Void = { picker, view in
-        picker.show(relativeTo: view.bounds, of: view, preferredEdge: .maxY)
-    }
+    private var takeKey: () -> Void = {}
+    private var yieldKey: () -> Void = {}
 
     /// What keeps the lifetime from running: the pointer over the picture or the pile, the Share sheet open, the
     /// editor open on a shot taken from a group. An unfolded row is not a hold: while it is unfolded the lifetime
@@ -445,9 +434,8 @@ final class ShotPanel: NSPanel {
 
     /// What a refusal says, and whether it offers «Open Settings» — **only for
     /// the grant**. A button that cannot do what it says is worse than none: a
-    /// full disk is not mended in the Privacy pane. Its own function so the
-    /// decision is one a test can ask without a window.
-    static func refusalContent(_ reason: CaptureRefusal) -> ShotToastModel.Content {
+    /// full disk is not mended in the Privacy pane.
+    private static func refusalContent(_ reason: CaptureRefusal) -> ShotToastModel.Content {
         let permission = reason == .noPermission
         let title: String
         switch reason {
@@ -464,7 +452,7 @@ final class ShotPanel: NSPanel {
         dismissal?.cancel()
         dismissal = nil
         // A sheet left open under a window that is gone would sit beside the one the next Share opens.
-        if let picker { closePicker(picker) }
+        picker?.close()
         resetHolds()
         model.shown = false
         clear()
@@ -691,7 +679,7 @@ final class ShotPanel: NSPanel {
         self.picker = picker
         pickerDelegate = delegate
         holds.insert(.sheet)
-        presentPicker(picker, anchor)
+        picker.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .maxY)
     }
 
     /// The sheet is over, chosen from or cancelled.

@@ -38,38 +38,6 @@ public enum RingUnfold {
         return top + (angle - pivotStart) * k + (1 - t) * (pivotStart - top)
     }
 
-    /// Which ring an arc is drawn in partway through: the pivot's descendants
-    /// move one ring inward, because that is where they will be once the drill
-    /// lands. Everything else stays put.
-    public static func ring(_ ring: Int, isDescendant: Bool, progress t: Double) -> Double {
-        isDescendant ? Double(ring) - t : Double(ring)
-    }
-
-    /// The pivot itself is on its way to becoming the middle, and everything
-    /// outside its subtree is on its way out; both fade. Its descendants stay
-    /// solid — they are what the user is about to be looking at.
-    ///
-    /// `isSpare` is the level that is not drawn until the unfold needs it. The
-    /// ring shows three levels; the drill promotes each one inward, so the
-    /// level that becomes the new outermost was never on screen and had nowhere
-    /// to slide in from — it simply appeared, whole, the instant the tree
-    /// swapped. Now it is laid out one level deeper than is drawn and enters
-    /// the way everything else does: sliding inward, and fading up with the
-    /// same progress, which is 0 exactly where it is invisible anyway.
-    public static func opacity(isDescendant: Bool, isSpare: Bool = false,
-                               progress t: Double) -> Double {
-        // Solid for a progress that is not a number, which is what this line
-        // answered as `max(0, min(1, t))` — `Swift.min(1, .nan)` is 1 — and
-        // what the shared clamp stopped answering, because `min(max(…))` hands
-        // a NaN back. The spare level is what the person is about to be looking
-        // at; an unreadable progress is not a reason to draw a hole where they
-        // drilled. An infinite one keeps its bound, which is the same 0 and 1
-        // the old spelling gave.
-        if isSpare { return isDescendant ? t.clamped(to: 0...1, whenNotANumber: 1) : 0 }
-        if isDescendant { return 1 }
-        return max(0, 1 - t)
-    }
-
     /// Where an arc sits partway between the layout it is in and the layout it
     /// is becoming.
     ///

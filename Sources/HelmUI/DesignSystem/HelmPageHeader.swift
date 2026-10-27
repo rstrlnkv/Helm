@@ -263,9 +263,6 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// there the band has two reasons and not three. The `&&` above is what
     /// makes the pair honest wherever the pointer *is* asked for; it is not a
     /// claim that both live triggers reach both placements.
-    ///
-    /// Static and taking its four facts, so it is a question a test can ask
-    /// without a window, a pointer, or a render.
     static func isLit(hovering: Bool, active: ControlActiveState, scrolled: Bool,
                       standsOnStillContent: Bool) -> Bool {
         standsOnStillContent || isLive(hovering: hovering, active: active, scrolled: scrolled)

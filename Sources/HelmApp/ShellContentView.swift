@@ -30,7 +30,7 @@ import HelmUI
 /// `sidebarWidth`'s setter (every write), `barWasAttached()` and `ShellWindowButtons` (full screen, a button's frame). Events only ask (`needsLayout = true`).
 ///
 /// **The fold is the width travelling.** `fold(to:animated:)` starts a travel and writes no frame: it keeps
-/// the fold it was asked for, asks for a layout, starts `foldLink` and then tells `onFold`. The first call of the
+/// the fold it was asked for, asks for a layout and starts `foldLink`. The first call of the
 /// link with a finite timestamp only records it; each other one writes `sidebarWidth`, from the time since that
 /// first, or the target itself when the timestamp is not finite, is below the last or reaches the end, and does
 /// nothing else, every write asks for a layout, and `layout()` places the card and the pane from the
@@ -49,11 +49,9 @@ final class ShellContentView: NSView {
     /// outside `ShellGeometry.sidebarRange`). Setting it asks for a layout, and writing the
     /// width a fold is travelling to ends that fold's claim on the buttons (`foldTarget`).
     ///
-    /// `@objc dynamic` so that a key-value observer sees every write, which is how a row counts the writes of a
-    /// travel: one for each call of the link that moves the width, none for the call that only records the start.
     /// `layout()` places everything from the value standing. Every write other than the link's moves the width at
     /// once and ends the travel only when it writes the target or comes through `fold(to:animated:)` as a cut.
-    @objc dynamic var sidebarWidth: CGFloat = ShellGeometry.defaultSidebarWidth {
+    private var sidebarWidth: CGFloat = ShellGeometry.defaultSidebarWidth {
         didSet {
             if sidebarWidth == foldTarget { endTravel() }
             needsLayout = true
@@ -61,21 +59,14 @@ final class ShellContentView: NSView {
     }
 
     /// What a fold asked for: the width it starts from, the width it ends at and for how long.
-    struct Fold: Equatable {
+    private struct Fold: Equatable {
         let from: CGFloat
         let to: CGFloat
         let duration: TimeInterval
     }
 
-    /// Whether the system's Reduce Motion is on, asked when a fold would travel.
-    var reducesMotion: () -> Bool = { HelmMotion.reduceMotion }
-
-    /// The fold's source of frames: the display's own (`DisplayFoldLink`).
-    var foldLink: any FoldLink = DisplayFoldLink()
-
-    /// Told each fold the view starts a travel for, never a cut, after the link is started: a listener that cuts
-    /// inside its call stops the link it finds running.
-    var onFold: (Fold) -> Void = { _ in }
+    /// The fold's source of frames: the display's own.
+    private let foldLink = DisplayFoldLink()
 
     /// A fold in flight: what it was asked for and the link's timestamps. `start` is the timestamp of the first
     /// call of the link after the flip and `last` the latest one that moved the width; both are nil until that
@@ -93,7 +84,7 @@ final class ShellContentView: NSView {
     /// by a cut (`fold(to:animated:)`), and by the view's move to another window (`viewDidMoveToWindow`),
     /// which finishes the fold; each of them ends the travel and stops the link.
     /// If none of them came, the buttons would stay in the rail's placement at an expanded width.
-    var foldTarget: CGFloat? { travel?.fold.to }
+    private var foldTarget: CGFloat? { travel?.fold.to }
 
     /// Whether `layout()` gives the window's buttons the rail's placement: a fold is travelling (`foldTarget`) or
     /// the width standing is the rail's (`ShellGeometry.isRail(sidebarWidth:)`). The one expression `layout()`
@@ -101,10 +92,10 @@ final class ShellContentView: NSView {
     var buttonsStandInRail: Bool { foldTarget != nil || ShellGeometry.isRail(sidebarWidth: sidebarWidth) }
 
     /// Carries the fill, the radius and the shadow; never masks.
-    let card = NSView()
+    private let card = NSView()
 
     /// Masks at the card's radius; holds the pane.
-    let clip = NSView()
+    private let clip = NSView()
 
     private let sidebar: NSView
     private let pane: NSView
@@ -143,7 +134,7 @@ final class ShellContentView: NSView {
     /// changed `buttonsStandInRail`, after the card is placed and before the buttons are, so a receiver that
     /// reads `buttonsStandInRail` reads the placement this layout gives them; what it does must not assign
     /// `window.toolbar`. A layout in which both stand as they did calls nothing.
-    init(sidebar: NSView, pane: NSView, cardMoved: @escaping (CGRect) -> Void = { _ in }) {
+    init(sidebar: NSView, pane: NSView, cardMoved: @escaping (CGRect) -> Void) {
         self.sidebar = sidebar
         self.pane = pane
         self.cardMoved = cardMoved
@@ -233,26 +224,20 @@ final class ShellContentView: NSView {
         needsLayout = true
     }
 
-    /// How many times the window has told this view it took a bar (`barWasAttached()`). `needsLayout` cannot
-    /// tell that call from the other causes that set it, so the count is what shows the call was made.
-    private(set) var barAttachments = 0
-
     /// Asks for a layout, so the corner is read again and the buttons are placed again. For whoever gives the
     /// window a toolbar. Whether the request is needed is not measured: in a window never ordered in, on
     /// macOS 27.2, this view's `needsLayout` was true right after an assignment with this call left out, and
     /// what set it is not found. Assumed, not measured: that an assignment moves the window buttons. Below
-    /// macOS 27 there is no probe to notice the corner moved. The calls taken are counted in `barAttachments`.
+    /// macOS 27 there is no probe to notice the corner moved.
     func barWasAttached() {
-        barAttachments += 1
         needsLayout = true
     }
 
     /// Sets the card's and the clip's radius from the window's corner, only when
     /// the corner differs from the one applied. It writes no line: the journal is
     /// written in `layout()`, after this, and only for a view that has a window,
-    /// so a corner handed in directly with no window writes nothing, and a layout
-    /// in a window writes once per change, up to `WindowCorner.Journal.cap` lines.
-    func apply(_ corner: WindowCorner) {
+    /// so a layout in a window writes once per change, up to `WindowCorner.Journal.cap` lines.
+    private func apply(_ corner: WindowCorner) {
         guard corner != applied else { return }
         applied = corner
         let radius = ShellGeometry.cardRadius(windowRadius: corner.radius)
@@ -285,13 +270,13 @@ final class ShellContentView: NSView {
     /// `layout()` places the card, the sidebar and the buttons from the width standing, so there
     /// is one writer of frames. A cut is a plain write, ends a travel in flight and stops its link, so a call
     /// of the link that is already on its way finds nothing to move. A `width` that is not finite (not-a-number or an infinity) is a caller's
-    /// defect and is refused whole (nothing written, nothing heard, false): the stored width never gets
+    /// defect and is refused whole (nothing written, false): the stored width never gets
     /// here unclamped. The fold itself and the lights giving way to the capsule are not seen on a screen.
     @discardableResult
     func fold(to width: CGFloat, animated: Bool) -> Bool {
         guard width.isFinite else { return false }
         guard animated, sidebarWidth.isFinite, sidebarWidth != width,
-              HelmMotion.travels(reduceMotion: reducesMotion()) else {
+              HelmMotion.travels(reduceMotion: HelmMotion.reduceMotion) else {
             endTravel()
             sidebarWidth = width
             return false
@@ -300,7 +285,6 @@ final class ShellContentView: NSView {
         travel = Travel(fold: fold)
         needsLayout = true
         foldLink.start(on: self) { [weak self] timestamp in self?.tick(timestamp) }
-        onFold(fold)
         return true
     }
 

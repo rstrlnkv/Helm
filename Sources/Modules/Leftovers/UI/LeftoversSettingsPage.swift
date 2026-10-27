@@ -23,7 +23,7 @@ struct LeftoversSettingsPage: View {
     /// step follows; for a leftover none does, and the click deleted. Where no
     /// dialog follows the row says exactly what the bar below it says, because
     /// it is the same act.
-    static func deleteLabel(for item: StaleItem) -> String {
+    private static func deleteLabel(for item: StaleItem) -> String {
         LeftoverActions.needsConfirmation(item) ? LfStr.deleteItem : LfStr.removeSelected
     }
 
@@ -34,7 +34,7 @@ struct LeftoversSettingsPage: View {
     /// on «All», and «Found: 1 item» over four rows every one of which is badged
     /// «Leftover». Both quantities are wanted; `leftoverCount` goes on gating
     /// «Select all», which is the question it actually answers.
-    static func foundCaption(_ lvm: LeftoversViewModel) -> String {
+    private static func foundCaption(_ lvm: LeftoversViewModel) -> String {
         LfStr.foundLine(lvm.visibleItems.count)
     }
 
@@ -479,11 +479,7 @@ struct LeftoversSettingsPage: View {
     /// The mark over each empty state. The filter's own glyph for the filter's
     /// own message — the menu that caused it is on screen directly above, wearing
     /// the same symbol.
-    ///
-    /// Internal rather than private, for the reason `deleteLabel(for:)` and
-    /// `foundCaption` above are: which mark stands over which sentence is a claim
-    /// this page makes, and a claim with no test under it is a promise in prose.
-    static func symbol(for nothing: LeftoversEmpty.Reason) -> String {
+    private static func symbol(for nothing: LeftoversEmpty.Reason) -> String {
         switch nothing {
         case .notScanned: "wand.and.rays"
         case .nothingFound: "checkmark.circle"
@@ -628,9 +624,8 @@ struct LeftoversSettingsPage: View {
     ///
     /// Its own function, and exhaustive over the note for the reason
     /// `LfStr.kindName` records: which sentence stands over which silence is the
-    /// whole of this fix, and a `switch` inside a `body` is a rule no test can
-    /// reach.
-    static func silenceOutcome(_ note: LeftoversSilence.Note?) -> HelmRemovalOutcome? {
+    /// whole of this fix.
+    private static func silenceOutcome(_ note: LeftoversSilence.Note?) -> HelmRemovalOutcome? {
         switch note {
         case .removalLost: .unanswered
         // The rescan that would have made «the list above shows where the files

@@ -90,11 +90,9 @@ struct HomebrewHealthPage: View {
 
     // MARK: - The verdict
 
-    /// The sentence each verdict says, apart from the views that draw it — the
-    /// same reason `HomebrewSettingsPage.severityWord` is out where a test can
-    /// reach it: which reading says which sentence is a decision, and a `body`
-    /// is not somewhere a test can look.
-    static func verdictTitle(_ verdict: HealthVerdict) -> String {
+    /// The sentence each verdict says, apart from the views that draw it: which
+    /// reading says which sentence is a decision.
+    private static func verdictTitle(_ verdict: HealthVerdict) -> String {
         switch verdict {
         case .checking: return HbStr.examiningThisMac
         case .clean: return HbStr.nothingToFix

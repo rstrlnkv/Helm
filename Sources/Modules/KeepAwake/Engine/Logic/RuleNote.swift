@@ -11,9 +11,6 @@ import Foundation
 /// now» — two hundred points below a banner reading «Paused until the rule
 /// applies again». One screen, two accounts of one rule, and the row's was the
 /// one that sounded like nothing was wrong.
-///
-/// Pure, and out here where a test can reach it: the fix inside a `@ViewBuilder`
-/// would have been the same three lines with no way to pin them.
 public enum RuleNote: Equatable, Sendable {
     /// Switched off — so the note explains what switching it on would do.
     /// The one moment somebody needs to know what a rule means is before they

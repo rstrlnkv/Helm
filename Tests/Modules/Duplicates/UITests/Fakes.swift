@@ -45,9 +45,8 @@ final class OneAnswerTransport: EngineTransport, @unchecked Sendable {
 /// nothing in this target could tell — because every fake here was still
 /// speaking the old shape and agreeing with the page about it.
 /// This keeps the fakes from being wrong about it.
-func searchReply(_ groups: [DuplicateGroup], unreadable: Int = 0,
-                 librariesSkipped: Int = 0) -> Data {
-    (try? JSONEncoder().encode(DuplicateFindings(groups: groups, unreadable: unreadable,
+func searchReply(_ groups: [DuplicateGroup], librariesSkipped: Int = 0) -> Data {
+    (try? JSONEncoder().encode(DuplicateFindings(groups: groups, unreadable: 0,
                                                  librariesSkipped: librariesSkipped))) ?? Data()
 }
 
@@ -91,22 +90,9 @@ final class HeldTransport: EngineTransport, @unchecked Sendable {
 // MARK: - The removal side of the wire
 
 /// The wire the removal tests are drawn against: a search reply, a removal
-/// reply, and the four things the transport behind the real page can do with a
-/// request.
+/// reply, and a request it can hold.
 ///
-/// **The two fakes above cannot be silent, and that made two states in the tree
-/// unrepresentable.** `OneAnswerTransport` and `HeldTransport` answer `Data()`
-/// to everything but "find", so no test that drives a removal through them ever
-/// reached the wire at all. So «the
-/// engine did not answer the removal» — which
-/// `DuplicatesEngine.wireTransport` returns for a deallocated engine, for a
-/// command name it cannot parse and for a payload that will not decode, and
-/// which `DuplicatesViewModel.shared(vm:store:)`'s own comment says a cached
-/// model outliving its engine gets *from then on* — was a state no test in this
-/// target could write down. Nor could a throw: `EngineTransport.send` is
-/// declared `throws` and nothing here has ever thrown.
-///
-/// And it can **park**, for the same reason `HeldTransport` exists one section
+/// It can **park**, for the same reason `HeldTransport` exists one section
 /// up: a removal that answers on the spot is over before any control the page
 /// leaves live during it can be pressed, so every question about what happens
 /// *while* a removal is in flight would pass with the guard deleted.
@@ -116,11 +102,6 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
     enum Answer: Equatable {
         /// The reply the fixture holds: an engine that is there and answers.
         case reply
-        /// `send` throws, which `TransportClient.request` turns into the same nil
-        /// as a reply that will not decode.
-        case refuse
-        /// Empty `Data` — an engine that is gone, or a command it does not know.
-        case nothing
         /// Held until the test releases it, so the interleaving is chosen rather
         /// than raced.
         case park
@@ -128,11 +109,6 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
 
     private let lock = NSLock()
     private var groups: [DuplicateGroup]
-    /// What the walk behind this wire could not look at. **A real search answers
-    /// with these and no fake here could**, so «the page is showing the last
-    /// walk's refusal» — the state the counts exist for — was one no test could
-    /// write down.
-    private let unreadable: Int
     private let librariesSkipped: Int
     private var removal: DuplicateRemoval
     private var answer: Answer
@@ -159,39 +135,19 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
     private var planned: [DuplicateRemovalRequest] = []
     private var held: [(command: DuplicatesCommand, continuation: CheckedContinuation<Data, Never>)] = []
 
-    /// Stored, not rebuilt per access: the view model subscribes once at init,
-    /// and a fresh empty stream per read is a wire nothing can arrive on. Until
-    /// this, every fake's `events` was exactly that, so the progress branch the
-    /// busy screen draws was exercised by nothing.
-    private let eventStream: AsyncStream<EngineEvent>
-    private let eventContinuation: AsyncStream<EngineEvent>.Continuation
-
-    var events: AsyncStream<EngineEvent> { eventStream }
-
-    /// A tick, as the engine emits one. Takes the progress value and not a free
-    /// name-and-payload pair: the real port can only say `progress` with a
-    /// `DuplicateProgress` in it, and a fake that could say more would let a
-    /// test pass on an event no engine can produce.
-    func emits(_ progress: DuplicateProgress) {
-        eventContinuation.yield(EngineEvent(
-            name: DuplicatesEvent.progress.rawValue,
-            payload: (try? JSONEncoder().encode(progress)) ?? Data()))
-    }
+    var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
 
     init(groups: [DuplicateGroup],
-         unreadable: Int = 0,
          librariesSkipped: Int = 0,
          removal: DuplicateRemoval = DuplicateRemoval(removed: [], refused: [], freedBytes: 0),
          answering answer: Answer = .reply) {
         self.groups = groups
-        self.unreadable = unreadable
         self.librariesSkipped = librariesSkipped
         self.removal = removal
         self.answer = answer
-        (eventStream, eventContinuation) = AsyncStream.makeStream(of: EngineEvent.self)
     }
 
-    /// The engine going away under the page, or coming back. A port that can change
+    /// The engine answering again, or holding what it is asked. A port that can change
     /// while the app runs hands that state back rather than being fixed at init
     /// (CLAUDE.md § What not to do, and what breaks if you do).
     func answers(_ next: Answer) { lock.withLock { answer = next } }
@@ -221,7 +177,7 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
     /// two callers already hold, so what is parked and what is answered on the
     /// spot cannot be two different replies.
     private var findReply: Data {
-        searchReply(groups, unreadable: unreadable, librariesSkipped: librariesSkipped)
+        searchReply(groups, librariesSkipped: librariesSkipped)
     }
 
     /// Lets every parked request through, each with the reply its own command
@@ -255,8 +211,7 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
             record(name, command.payload)
             let answer = name.flatMap { overrides[$0] } ?? answer
             switch (answer, name) {
-            case (.refuse, _): return .refuse
-            case (.nothing, _), (_, .none), (_, .cancel), (_, .stopRemoval),
+            case (_, .none), (_, .cancel), (_, .stopRemoval),
                  (_, .backgroundScan): return .empty
             case (.park, .find), (.park, .trash): return .park(name!)
             case (.reply, .find): return .data(self.findReply)
@@ -264,7 +219,6 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
             }
         }
         switch reply {
-        case .refuse: throw CancellationError()
         case .empty: return Data()
         case .data(let data): return data
         case .park(let command): return await withCheckedContinuation { park(command, $0) }
@@ -300,11 +254,10 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
         lock.withLock { held.append((command, continuation)) }
     }
 
-    /// Decided under the lock and delivered outside it — a `throw` cannot happen
-    /// inside `withLock` without carrying the lock into the error path, and a
-    /// continuation must not be awaited while it is held.
+    /// Decided under the lock and delivered outside it: a continuation must not
+    /// be awaited while the lock is held.
     private enum Reply {
-        case refuse, empty
+        case empty
         case data(Data)
         case park(DuplicatesCommand)
     }

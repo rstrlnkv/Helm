@@ -122,7 +122,7 @@ struct PackageSecondTier: View {
         // Collapsed to nothing rather than drawn empty, the way `facts`
         // above is: a `VStack`'s step is not paid around an absent child, and an
         // `HStack` of nothing is a child. `PackageBlocks` is the one that
-        // decides, so a test can read the answer.
+        // decides.
         if PackageBlocks.hasOrigin(info) {
             HStack(spacing: HelmSpace.s5) {
                 if let homepage = info.homepage {

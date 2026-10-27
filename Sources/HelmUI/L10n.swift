@@ -273,18 +273,6 @@ public enum HelmDates {
             .localizedString(for: date, relativeTo: now)
     }
 
-    /// The same age with the refusal flattened to an empty string.
-    ///
-    /// `age` is what a screen draws — all five of them already have an `if let`
-    /// to hang the absence on, and `DkStr.measured("")` draws «Измерено » with
-    /// nothing after it. This is for a comparison that has already established
-    /// the stamp is a real age and wants the spelling of it.
-    public static func relative(_ date: Date, to now: Date = Date(),
-                                style: AgeStyle = .full,
-                                language: String = AppLanguage.current.rawValue) -> String {
-        age(date, to: now, style: style, language: language) ?? ""
-    }
-
     /// The seam, measured rather than assumed: below a full second every one of
     /// the eight writes the rounded zero as a forecast, and at one second every
     /// one of them says «ago».
@@ -292,7 +280,7 @@ public enum HelmDates {
 
     /// A **span** in the person's language — «1 ч 14 мин», "1h 14m".
     ///
-    /// Beside `relative` rather than in the module that wanted it first: how a
+    /// Beside `age` rather than in the module that wanted it first: how a
     /// language writes a length of time is `HelmUI`'s business, the same as how
     /// it writes a size or a date, and the second module to draw an uptime
     /// would otherwise write this again with its own idea of which units to

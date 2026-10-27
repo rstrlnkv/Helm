@@ -99,7 +99,7 @@ extension Notification.Name {
     /// **Whether the settings window's sidebar is folded to the rail**, as a person last left it
     /// (`SettingsShellViewController.flipSidebar`). A stored string, or a number other than 0 and 1, reads as
     /// expanded; a stored number 1 reads as folded. Read once, when a window is built, and nothing unattended reads it, so it is not
-    /// sealed; the two functions take the store `SettingsShellViewController` was built with.
+    /// sealed; the two functions take the store `SettingsShellViewController` holds (`AppSettings.store`).
     static func sidebarCollapsed(in store: NamespacedStore) -> Bool {
         store.bool("sidebarCollapsed", default: false)
     }

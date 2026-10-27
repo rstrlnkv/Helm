@@ -180,7 +180,7 @@ The spotlight (`AnnotationTool.spotlight`) is a box held like a rectangle (four 
 steps: a second click on its cell opens no pop-over and ⋯'s Thickness and Opacity… is disabled for it. It is no picture of its own: the area is dimmed 42 % of black where no
 spotlight is, as **one** even-odd path, the area and the union of every spotlight's outline cut to the area (`Spotlights.dim(of:within:)`, in
 `Sources/Modules/Screenshots/Engine/Logic/Spotlights.swift`), so two spotlights that meet leave the dim the same between them as everywhere. The export fills it
-before every other layer (`CaptureSession.draw`) and the overlay lays it as one layer, `OverlayView.drawnSpotlightDim`, between the picture and the annotations' layers; a spotlight is in
+before every other layer (`CaptureSession.draw`) and the overlay lays it as one layer, `OverlayView`'s `spotlightLayer`, between the picture and the annotations' layers; a spotlight is in
 no entry of the layer cache. The dim is under every other annotation in the list, a blur's mosaic included, which is made from the display's own pixels and is not dimmed.
 
 The magnifier (`AnnotationTool.magnifier`) is a circle that shows the picture under it twice as large, with a ring in the layer's ink. It is begun by a drag from one
@@ -286,7 +286,7 @@ only one is open at a time; unlike it, it opens with no tool chosen, where a pic
 for (orange, purple, white, or one picked on the system's panel or from the picture), the wheel's centre shows it and no grid swatch is ringed.
 
 The pop-over has a third row of two cells with no text: the wheel (`EditorAction.allColours`, named `ScStr.allColours`), which opens the system's colour panel
-(`EditorColourPanel`, behind `ColourPanelOpening`), and the eyedropper (`EditorAction.eyedropper`, named `ScStr.eyedropper`). The panel is
+(`EditorColourPanel`), and the eyedropper (`EditorAction.eyedropper`, named `ScStr.eyedropper`). The panel is
 `NSColorPanel.shared` raised above the overlay, and its reasons are in `EditorColourPanel`'s doc comment. The eyedropper is a mode of the overlay like the eraser and Crop (`CaptureOverlay.sampling`):
 while it is on, the cursor is the eyedropper's symbol on every display (`OverlayView.eyedropperCursor`, before the eraser's circle), so the mode shows before the pointer reaches the area, the loupe (`PixelLoupe`, drawn by `LoupeLayer`) follows the pointer over the area, and the next click on the area sends `EditorAction.color` with the middle pixel of the
 frozen frame, read in sRGB from `FrozenDisplay.image`; Esc, a right click on the picture (not beside it in an Edit, where it does nothing), another action or a click off the area puts it down without a pick. A press on the palette is the palette's: its actions end the mode, its bare background does not; any other press ends it. Nothing asks for the mode but the cell, so it is only ever turned on.

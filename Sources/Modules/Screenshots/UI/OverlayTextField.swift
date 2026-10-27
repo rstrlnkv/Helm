@@ -9,7 +9,7 @@ import Module_Screenshots_Engine
 /// context, which takes the Return that accepts a candidate and the Esc that cancels one before AppKit's
 /// `insertNewline(_:)` and `cancelOperation(_:)` are asked, and `keyDown` leaves it so while `hasMarkedText()`.
 /// What the code does is that: when `hasMarkedText()` the key is handed to the input context and `onEnd` is not called.
-/// A live input method was not tried; the tests mark text by hand.
+/// No test tries a live input method or marked text.
 ///
 /// **It draws what the layer will.** The font is `AnnotationText.font` and the ink the picked colour at its opacity,
 /// drawn without font smoothing as the layer is; the text starts at the point the click gave, inside a small padding

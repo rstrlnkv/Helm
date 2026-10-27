@@ -223,9 +223,8 @@ import Module_Homebrew_Engine
     // MARK: - The search field, on every tab
 
     /// **The window toolbar's own search field, on all three tabs.** Moved
-    /// here from the page's `@State` 2026-09-24, so the pause and the trigger
-    /// rule below live where a test can drive them without a window — and so
-    /// the query survives leaving and returning to the page: today, hiding or
+    /// here from the page's `@State` 2026-09-24, so the query survives leaving
+    /// and returning to the page: today, hiding or
     /// occluding the window unmounts the page, its `@State` is lost, and
     /// `SettingsToolbar.patchSearch` writes "" back into the field. Kept here
     /// instead, that visible change is a cost the owner judges rather than an
@@ -776,7 +775,6 @@ import Module_Homebrew_Engine
     /// cleared by a stop, so that promise would stay on screen under «Stopped».
     /// Any other step — a failure, a stop of an operation that was not waiting,
     /// a second identical state — says nothing here.
-    /// Pure and static, so a test can hold the lines without a view model.
     static func consoleLine(from old: OpState, to new: OpState,
                             language: AppLanguage = AppLanguage.current) -> String? {
         if old.waiting == nil, new.waiting == .commandLineTools, new.phase == .running {

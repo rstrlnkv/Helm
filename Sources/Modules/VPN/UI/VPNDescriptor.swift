@@ -107,7 +107,7 @@ import Module_VPN_Engine
     /// firings, and giving it a permanent one — which is what a tint is, since
     /// `StatusPlan.choose` falls back to the first module that tints — is a
     /// larger change than saying that a rule fired. It would also settle
-    /// "whose icon is this" by `ModuleOrder`, which `StatusItemController`
+    /// "whose icon is this" by module order, which `StatusItemController`
     /// notes is latent today precisely because no second module tints.
     ///
     /// The spin's colour is `spinTintToken`, which `StatusPlan.choose` does not

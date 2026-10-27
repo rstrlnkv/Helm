@@ -4,8 +4,8 @@
 import Foundation
 
 /// The tour's own words. Every module's name and summary comes from that
-/// module's descriptor — a second copy here is nine descriptions that go stale
-/// on the first rename.
+/// module's descriptor — a second copy here is one more set of descriptions
+/// that go stale on the first rename.
 ///
 /// English is the key into `Resources/<lang>.lproj/Localizable.strings`, same
 /// as everywhere else in the app; `back` and `done` share the app's own

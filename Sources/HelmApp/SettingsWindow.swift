@@ -48,10 +48,10 @@ import HelmUI
     /// Below this the list rows start truncating names and paths.
     private static let minSize = NSSize(width: 860, height: 540)
 
-    /// `band` is whose band lies under the bar — the running system's
-    /// decision by default; the same value sets the title bar below and reaches the pane's
-    /// `helmToolbarBackdrop` (`HelmBandChoice`).
-    init(host: ModuleHost, band: HelmBandChoice = .running) {
+    /// The band under the bar is the running system's decision (`HelmBandChoice.running`); the
+    /// same value sets the title bar below and reaches the pane's `helmToolbarBackdrop`.
+    init(host: ModuleHost) {
+        let band = HelmBandChoice.running
         let model = SettingsModel(host: host)
         self.model = model
         let transparent = band.titlebarAppearsTransparent
@@ -203,7 +203,7 @@ enum SettingsSelection: Hashable {
     case about
     /// On every build — the logging switch lives in this page, so gating the
     /// page would hide the control that turns the log on. Not a module: no
-    /// store, no engine, no tour step, no place in `ModuleOrder`, and nothing
+    /// store, no engine, no tour step, no place in `SidebarLayout`, and nothing
     /// counts it among the modules.
     case log
 }
@@ -307,18 +307,16 @@ enum SettingsSelection: Hashable {
     private let fold = SidebarFold()
 
     /// Where the fold state is remembered (`AppSettings.sidebarCollapsed(in:)`).
-    private let store: NamespacedStore
+    private let store = AppSettings.store
 
     /// The width the sidebar has when expanded, read from the store once, when the window is built.
     /// Nothing in the window changes it, so an unfold always ends here.
     private let expandedWidth: CGFloat
 
-    init(model: SettingsModel, toolbarChannel: HelmWindowToolbarChannel, band: HelmBandChoice,
-         store: NamespacedStore = AppSettings.store) {
+    init(model: SettingsModel, toolbarChannel: HelmWindowToolbarChannel, band: HelmBandChoice) {
         self.model = model
         self.toolbarChannel = toolbarChannel
         self.band = band
-        self.store = store
         self.expandedWidth = AppSettings.sidebarWidth(in: store)
         super.init(nibName: nil, bundle: nil)
         fold.collapsed = AppSettings.sidebarCollapsed(in: store)
@@ -331,16 +329,6 @@ enum SettingsSelection: Hashable {
     override func loadView() {
         view = shell
         shell.fold(to: width(collapsed: fold.collapsed), animated: false)
-    }
-
-    /// Whether the sidebar is folded to the rail. Setting it is a cut and is not remembered: the
-    /// state a person left is written by `flipSidebar()` alone.
-    var sidebarCollapsed: Bool {
-        get { fold.collapsed }
-        set {
-            fold.collapsed = newValue
-            if isViewLoaded { shell.fold(to: width(collapsed: newValue), animated: false) }
-        }
     }
 
     /// A person's flip of the sidebar, from the sidebar's own control: the state is written to the

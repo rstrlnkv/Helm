@@ -1,7 +1,6 @@
 import CoreGraphics
 import HelmTestSupport
 import XCTest
-@testable import Module_Screenshots_Engine
 
 /// The Dock bounds port reads trust with `AXIsProcessTrusted` and never the prompting `…WithOptions` anywhere in the
 /// module, logs nothing itself, and its one timeout line is a fixed sentence under the module's category.

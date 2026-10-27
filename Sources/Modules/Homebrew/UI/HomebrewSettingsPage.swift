@@ -107,11 +107,7 @@ struct HomebrewSettingsPage: View {
     /// refused before it launched anything writes no console line, so a refusal
     /// with an empty console had no console to be drawn in and reached the page
     /// as nothing at all.
-    ///
-    /// Internal rather than private for `statusLine`'s reason: it is the value
-    /// the page's own layout animation is keyed on, and a `body` is not
-    /// somewhere a test can reach.
-    var showsConsole: Bool {
+    private var showsConsole: Bool {
         !hb.consoleLines.isEmpty || hb.running || hb.op.phase == .failed
     }
 
@@ -124,7 +120,7 @@ struct HomebrewSettingsPage: View {
     ///
     /// **The tint is the module's, not the category's.** This comment used to
     /// say the colour was «read off the descriptor rather than written as
-    /// `.pink`» — and it was reading `category.tint`, which is `.pink` reached
+    /// `.pink`» — and it was reading the category's colour, which is `.pink` reached
     /// the long way round and shared with two other modules. The plate in the
     /// page header above it was already green.
     private var installScreen: some View {
@@ -145,11 +141,7 @@ struct HomebrewSettingsPage: View {
     // MARK: - Manager
 
     /// Counts as a quiet status line rather than a panel of dials.
-    ///
-    /// Internal rather than private, for the reason the Uninstaller's
-    /// `statusLine` gives: which sentence stands over which loading state is
-    /// the whole of a fix, and a `body` is not somewhere a test can reach.
-    var statusLine: String {
+    private var statusLine: String {
         // **Three readings, three sentences.** A count that has not arrived is
         // not a count of zero — the list reloads after every operation, and for
         // that second the line read "0 packages · 0 updates · 0 casks" over a
@@ -379,8 +371,8 @@ struct HomebrewSettingsPage: View {
 
     /// The sentence a package list's own section draws instead of its rows,
     /// or nil when `screen` says to draw the rows themselves — apart from
-    /// `packageList`'s `body` for `severityWord`'s reason: which reading
-    /// says which sentence is a decision a test can hold. `notes` are the
+    /// `packageList`'s `body`: which reading says which sentence is a
+    /// decision. `notes` are the
     /// three sentences each call site already carries (`installedList`'s
     /// "No packages installed.", `updatesList`'s "Everything is up to date.",
     /// and the two refusals beside them); `.noMatches` earns the one sentence
@@ -466,25 +458,20 @@ struct HomebrewSettingsPage: View {
     /// it (`upgrade wget`, in English in every language), except for the
     /// install of Homebrew itself, which `HbStr.operationName` words in the
     /// person's language.
-    /// Static, so a test can reach it without a view.
     static func pillTitle(for op: OpState, language: AppLanguage = AppLanguage.current) -> String {
         op.waiting == nil ? HbStr.operationName(op.label, language: language)
                           : HbStr.waitingForTools(language: language)
     }
 
     /// Stop's title while the operation is the wait for Apple's tools: the
-    /// press ends the waiting and leaves Apple's window to finish. Static, so a
-    /// test can reach it without a view.
+    /// press ends the waiting and leaves Apple's window to finish.
     static func stopTitle(for op: OpState) -> String {
         op.waiting == .commandLineTools ? HbStr.stopWaiting : HbStr.stop
     }
 
-    /// The badge's word and the badge's tint, apart from the views that draw
-    /// them: which severity reads as which word is a decision a test can hold,
-    /// and a `body` is not somewhere a test can reach.
     /// The title of the question a press on Run raises, and the sentence under
-    /// it — apart from the view that draws them, for `severityWord`'s reason:
-    /// which act is asked about in which words is a decision a test can hold.
+    /// it — apart from the view that draws them: which act is asked about in
+    /// which words is a decision a test can hold.
     ///
     /// nil is «this fix raises no question», which is `FixAsk.runsOnThePress`
     /// and never reaches `pendingFix` — `askToRunFix` sends that one straight
@@ -922,8 +909,7 @@ struct HomebrewSettingsPage: View {
     /// taken off the top and the bottom.
     static let consoleInset = HelmSpace.s4
 
-    /// The ten. Its own constant so the derivation above has something to name
-    /// and a test has something to multiply by.
+    /// The ten. Its own constant so the derivation above has something to name.
     static let consoleLinesShown = 10
 
     @ViewBuilder private var statusPill: some View {

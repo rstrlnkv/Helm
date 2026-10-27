@@ -61,31 +61,19 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
 
     /// Whether the list has been answered at all, for the page to read.
     ///
-    /// The same flag `appCount` folds, published rather than spelled a second
+    /// Published rather than spelled a second
     /// time: two sources of "has anybody answered" would drift into a page whose
     /// count says «Counting apps…» over a body claiming the Mac holds no
     /// applications.
     ///
     /// **And drift they did, in the other direction.** The body drew
     /// `AppsEmpty.reason(answered:apps:shown:)` off this flag while the footer
-    /// drew `UnStr.appsCount` off `appCount` — one flag, two readings, and the
+    /// drew `UnStr.appsCount` off a count folded from the same flag — one flag, two readings, and the
     /// nil in the middle of the second meant both «not yet» and «never». The
     /// footer reads the body's own `AppsEmpty.Reason` now
     /// (`AppsEmpty.status(_:loading:apps:)`), so there is one reading and not
     /// two agreeing by hand.
     public var listAnswered: Bool { loadedApps }
-
-    /// How many applications are installed, or nil while Helm does not know.
-    ///
-    /// The page's footer draws this through `UnStr.appsCount`, which already has a
-    /// sentence for the unknown — «Counting apps…» — and that is the honest state
-    /// for a query still out **and** for one that came back with nothing at all.
-    /// Read from the flag rather than from `apps.isEmpty`, because a Mac with no
-    /// applications on it is an answer and reads as «0 apps».
-    public var appCount: Int? {
-        guard listAnswered, !loadingApps else { return nil }
-        return apps.count
-    }
 
     // MARK: - Where the person is, and what they chose
 

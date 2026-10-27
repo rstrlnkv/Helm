@@ -7,7 +7,7 @@ import SwiftUI
 /// these are not one view with a scale factor: they are the pieces each of the
 /// three answers is built from, and a module picks the ones its answer needs.
 ///
-/// Written once here because nine modules would otherwise each invent a
+/// Written once here because every module would otherwise invent its own
 /// heading, and the panel's whole claim is that its tiles are the same object
 /// seen at three magnifications.
 public struct HelmWidgetHeader: View {

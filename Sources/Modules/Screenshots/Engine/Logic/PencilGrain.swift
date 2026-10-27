@@ -14,7 +14,7 @@ import Foundation
 /// bytes, 0...1: the approved frame's graphite (alpha = clamp(1.45 - 1.6 * fractal noise)), the mean of four
 /// uniform bytes standing for the noise, bell-shaped about 0.5 as fractal noise is. Arithmetic from that bell
 /// (standard deviation 0.144), not a measurement: about 7 % of pixels fully inked (6.7 % by the arithmetic), under 1 % nearly bare, mean
-/// ink about 0.65, so the ink adds up to about 0.65 of the stroke's width; the tests' bounds check it. The pen is the other end.
+/// ink about 0.65, so the ink adds up to about 0.65 of the stroke's width. The pen is the other end.
 ///
 /// **How big.** The mask covers only the stroke's bounding box, widened by half the stroke's width and one pixel,
 /// and only where it meets `pixels`; one byte a pixel, on screen too (`Mask.alpha` is alpha-only). A stroke still being

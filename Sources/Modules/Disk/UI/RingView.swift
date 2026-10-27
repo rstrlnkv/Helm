@@ -47,7 +47,7 @@ struct RingView: View {
     private let geometry = RingGeometry(innerRadius: 0.34, thickness: 0.155, gap: 0.012)
 
     /// How many levels the ring shows. The layout carries one more — see
-    /// `DiskViewModel.recomputeSegments` and `RingUnfold.opacity(isSpare:)`:
+    /// `DiskViewModel.recomputeSegments`:
     /// the spare is what the new outermost ring slides in from during a drill,
     /// and it is drawn only while that is happening.
     static let visibleRings = 3

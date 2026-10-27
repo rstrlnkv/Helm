@@ -19,24 +19,18 @@ final class VPNStatusAppearanceTests: XCTestCase {
 
     private func descriptor(firing: VPNAutomation?, notice: VPNNotice,
                             bannerAuthorized: Bool = false,
-                            spin: Bool = false,
-                            spinTints: [VPNAutomation.Kind: String]? = nil)
+                            spin: Bool = false)
                             -> (VPNDescriptor, ModuleViewModel) {
         let descriptor = VPNDescriptor()
         let host = ModuleViewModel(transport: LocalTransport())
         descriptor.viewModel(host).setForTesting(automation: firing, notice: notice,
                                                  bannerAuthorized: bannerAuthorized,
-                                                 spin: spin, spinTints: spinTints)
+                                                 spin: spin)
         return (descriptor, host)
     }
 
     private func firing(secondsAgo: TimeInterval, name: String = "Office") -> VPNAutomation {
         VPNAutomation(at: Date().addingTimeInterval(-secondsAgo), name: name, kind: .connected)
-    }
-
-    private func firing(secondsAgo: TimeInterval, name: String = "Office",
-                        kind: VPNAutomation.Kind) -> VPNAutomation {
-        VPNAutomation(at: Date().addingTimeInterval(-secondsAgo), name: name, kind: kind)
     }
 
     func testFreshFiringSpinsTheRingAndNamesTheConnection() {

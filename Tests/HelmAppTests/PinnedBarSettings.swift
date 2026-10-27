@@ -32,12 +32,4 @@ enum PinnedBarSettings {
         AppSettings.alwaysCollapseSearch = false
         AppSettings.barAppearance = .flat
     }
-
-    /// Turns the run loop for `seconds` by the clock; a turn that returns on the first source it serves
-    /// buys no time.
-    @MainActor
-    static func rest(_ seconds: TimeInterval) {
-        let until = Date().addingTimeInterval(seconds)
-        while Date() < until { RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01)) }
-    }
 }

@@ -6,8 +6,8 @@ import Foundation
 /// list the engine never answered and a Mac whose app folders really came back
 /// empty all drew the same empty inset `List`, under a footer still counting
 /// apps. Three facts, one picture — and one of them, the unanswered list, is
-/// the state `UninstallerViewModel.appCount` already refuses to fold, so the
-/// body was undoing the footer's honesty.
+/// the state the footer's count already refused to fold, so the body was
+/// undoing the footer's honesty.
 ///
 /// Here rather than in the view, and over counts rather than over the rows, for
 /// the reason `DuplicatesEmpty` and `HistoryEmpty` give: it is the module's
@@ -97,7 +97,8 @@ public enum AppsEmpty {
 
     /// - Parameters:
     ///   - answered: whether the list has ever been answered — the view model's
-    ///     flag, not `apps.isEmpty`, for the reason `appCount` gives.
+    ///     flag, not `apps.isEmpty`: a Mac with no applications on it is an
+    ///     answer and reads as «0 apps».
     ///   - apps: what the module holds.
     ///   - shown: what survives the search filter. Any at all and this screen
     ///     is a list, not a statement.

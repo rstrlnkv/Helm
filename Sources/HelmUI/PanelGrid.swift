@@ -34,9 +34,9 @@ public enum PanelWidgetSize: String, CaseIterable, Codable, Sendable {
 
 /// The panel's geometry, as arithmetic rather than as a layout.
 ///
-/// Pure so the rules can be argued with in a test: how many columns a width
-/// gets, which sizes a widget may actually take, and what happens to a stored
-/// size that the module no longer offers.
+/// Pure arithmetic: how many columns a width gets, which sizes a widget may
+/// actually take, and what happens to a stored size that the module no longer
+/// offers.
 public enum PanelGrid {
     /// The narrowest a tile is allowed to be. Below it a button already costs
     /// the figure it sits under, which is the whole content of a compact
@@ -55,13 +55,6 @@ public enum PanelGrid {
     /// stops at the Dock; the grid scrolls only once that is used up.
     public static let maximumHeight: CGFloat = 768
 
-    /// The narrowest panel two 144 pt tiles fit in: 2 × 144 + 8 + 2 × 12.
-    ///
-    /// Below it the floor cannot be honoured at all, because two columns is the
-    /// minimum. The panel is drawn at exactly this width, which is what makes
-    /// the floor a rule rather than a sentence.
-    public static let narrowestPanel: CGFloat = 2 * minimumTile + gap + 2 * padding
-
     /// Columns at a given panel width — never fewer than two.
     ///
     /// The width decides how many columns fit, never how narrow a tile may
@@ -72,12 +65,6 @@ public enum PanelGrid {
     public static func columns(for width: CGFloat) -> Int {
         let inner = width - padding * 2
         return max(2, Int(((inner + gap) / (minimumTile + gap)).rounded(.down)))
-    }
-
-    /// The width of one tile, for a widget that has to know.
-    public static func tileWidth(for width: CGFloat) -> CGFloat {
-        let count = CGFloat(columns(for: width))
-        return (width - padding * 2 - gap * (count - 1)) / count
     }
 
     /// The size a widget actually gets, given what its module offers.

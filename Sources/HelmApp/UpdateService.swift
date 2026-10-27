@@ -61,18 +61,9 @@ import HelmRuntime
     /// A short status for the settings row after a manual check (nil = idle).
     @Published private(set) var note: Note?
 
-    /// The singleton is one state of this type, and every other state was
-    /// unreachable from any harness — which is why the card shipped with a
-    /// branch nothing could draw. Nothing in the app calls this; `shared` is
-    /// what the app uses, and a service in a named state is what a test needs.
-    init(available: Release? = nil, installState: InstallState = .idle,
-         aheadOfChannel: String? = nil, note: Note? = nil,
-         notices: AutomationNoticePort = SystemAutomationNotice(area: UpdateService.logArea),
+    /// The app's one instance is `shared`; a test passes its own notice port and store.
+    init(notices: AutomationNoticePort = SystemAutomationNotice(area: UpdateService.logArea),
          store: NamespacedStore = AppSettings.store) {
-        self.available = available
-        self.installState = installState
-        self.aheadOfChannel = aheadOfChannel
-        self.note = note
         self.notices = notices
         self.store = store
     }

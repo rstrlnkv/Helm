@@ -70,14 +70,8 @@ final class ShellWindowButtons {
     }
 
     /// The placement for `home`, the union of the three buttons where AppKit puts them in the content's
-    /// coordinates, for a window with no toolbar (`placed(home:rail:lift:)` with a zero lift). Nil when `home`
-    /// is nil, empty, null or not a finite place: nothing is moved or hidden. Nothing under `Sources` calls it
-    /// now: `place(rail:)` goes through `placed(home:rail:lift:)`.
-    nonisolated static func placement(home: CGRect?, rail: Bool) -> Placement? {
-        placed(home: home, rail: rail, lift: .zero)
-    }
-
-    /// The same for a window whose home is `lift` further right and down (`ShellGeometry.buttonsOffset`'s).
+    /// coordinates, in a window whose home is `lift` further right and down (`ShellGeometry.buttonsOffset`'s;
+    /// zero with no toolbar). Nil when `home` is nil, empty, null or not a finite place: nothing is moved or hidden.
     nonisolated static func placed(home: CGRect?, rail: Bool, lift: CGSize) -> Placement? {
         guard let home, !home.isNull, !home.isInfinite, home.width > 0, home.height > 0,
               [home.minX, home.minY, home.width, home.height].allSatisfy(\.isFinite) else { return nil }
@@ -94,26 +88,8 @@ final class ShellWindowButtons {
     /// no click.
     var capsule: NSView { view }
 
-    /// Whether the Reduce Motion setting is on; read at every change.
-    var reducesMotion: () -> Bool = { HelmMotion.reduceMotion }
-
-    /// The system's control tint; read at every redraw of the dots.
-    var controlTint: () -> NSControlTint = { NSColor.currentControlTint }
-
     /// Whether the capsule is open, the real buttons showing.
-    private(set) var isOpen = false
-
-    /// The plate in the capsule's coordinates.
-    var plateFrame: CGRect { view.plate.frame }
-
-    /// The real buttons' union now, in the capsule's superview's coordinates; `.null` without a window,
-    /// a superview or buttons.
-    var buttonsFrame: CGRect {
-        guard let window, let content = view.superview else { return .null }
-        return Self.standardButtons(of: window).reduce(CGRect.null) {
-            $0.union(content.convert($1.bounds, from: $1))
-        }
-    }
+    private var isOpen = false
 
     private let view = CapsuleView()
     private weak var window: NSWindow?
@@ -144,7 +120,6 @@ final class ShellWindowButtons {
     init() {
         view.isHidden = true
         view.onHover = { [weak self] inside in self?.hover(inside) }
-        view.tint = { [weak self] in self?.controlTint() ?? NSColor.currentControlTint }
     }
 
     deinit {
@@ -348,7 +323,7 @@ final class ShellWindowButtons {
         applied = target
         view.plate.cornerRadius = rect.height / 2
         let real = watched.map(\.button)
-        guard animated, HelmMotion.morphs(reduceMotion: reducesMotion()) else {
+        guard animated, HelmMotion.morphs(reduceMotion: HelmMotion.reduceMotion) else {
             view.plate.frame = rect
             for dot in view.dots { dot.alphaValue = target.dots }
             for button in real { button.alphaValue = target.buttons }
@@ -372,8 +347,6 @@ private final class CapsuleView: NSView {
     let plate = NSGlassEffectView()
     let dots = (0..<3).map { _ in NSView() }
     var onHover: ((Bool) -> Void)?
-    /// The system's control tint, asked at every redraw and never kept.
-    var tint: () -> NSControlTint = { NSColor.currentControlTint }
 
     /// Whether the window appears active.
     var active = true {
@@ -447,7 +420,7 @@ private final class CapsuleView: NSView {
     func redrawInk() {
         effectiveAppearance.performAsCurrentDrawingAppearance {
             let graphite = Array(repeating: NSColor.labelColor.withAlphaComponent(Self.graphiteAlpha), count: 3)
-            let lit = tint() == .graphiteControlTint ? graphite : Self.coloured
+            let lit = NSColor.currentControlTint == .graphiteControlTint ? graphite : Self.coloured
             let inks = active ? lit : Array(repeating: NSColor.labelColor.withAlphaComponent(0.25), count: 3)
             for (dot, ink) in zip(dots, inks) { dot.layer?.backgroundColor = ink.cgColor }
         }

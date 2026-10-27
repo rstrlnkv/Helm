@@ -11,9 +11,7 @@ import Module_VPN_Engine
 /// about *content* — which tiles exist, what each says, which sentence the
 /// verdict is — and none of it can be read back off a rendering: an
 /// `NSHostingView`'s accessibility tree is empty outside a real client, and
-/// SwiftUI draws its own type rather than through `NSTextField`. A view whose
-/// content is a value is a view whose content can be tested; a view that decides in its `body` has
-/// prose instead.
+/// SwiftUI draws its own type rather than through `NSTextField`.
 struct VPNTunnelStrip {
 
     /// What stands under the readings — the offer, the run that is already
@@ -33,8 +31,7 @@ struct VPNTunnelStrip {
         case notOffered(String)
     }
 
-    /// Which reading a tile holds — the identity `ForEach` needs, and what a
-    /// test asks about instead of matching a translated label.
+    /// Which reading a tile holds — the identity `ForEach` needs.
     enum Reading: String { case uptime, down, up, speed }
 
     struct Tile: Identifiable {
@@ -107,8 +104,7 @@ struct VPNTunnelStrip {
     /// the same figure with its measurement written at it.
     ///
     /// Here rather than in the view for the reason this whole type exists: a
-    /// number the page draws is content, and content that lives in a `body` has
-    /// prose instead of a test.
+    /// number the page draws is content.
     ///
     /// Still a **length**, never a stage — the engine knows only whether a run
     /// is in flight (`VPNEngine.measuringSpeed` is a name or nothing) — so the

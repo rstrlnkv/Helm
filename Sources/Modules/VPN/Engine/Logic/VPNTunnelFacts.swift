@@ -61,7 +61,7 @@ public struct VPNTunnelFacts: Equatable, Sendable {
     /// `speedIsStale` answers «may this figure stand as the link's speed now»,
     /// and a stamp ahead of the clock answers that `false` as surely as an
     /// hour-old one does. But its only reader took the `true` as «show the age»
-    /// and drew `HelmDates.relative` of a future date: «через 5 мин.», "in
+    /// and drew the relative age of a future date: «через 5 мин.», "in
     /// 5 min." — a time still to come under a figure taken in the past. The
     /// property's own doc comment had already decided the opposite — «a figure
     /// stamped in the future has no age to show» — so the rule was written down

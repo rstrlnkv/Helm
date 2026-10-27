@@ -2,8 +2,8 @@ import CoreGraphics
 import HelmRuntime
 
 /// Where the shots of the after-shot window stand when there is more than one: folded into a pile in the corner, or
-/// unfolded into a row that reaches leftward from it. Numbers and bookkeeping only, so the window's view, its clock
-/// and a test ask the same functions; nothing here knows a view.
+/// unfolded into a row that reaches leftward from it. Numbers and bookkeeping only, so the window's view and its
+/// clock ask the same functions; nothing here knows a view.
 ///
 /// **An age, not an index.** A shot is named by how many shots are newer than it: 0 is the newest, which stands in
 /// the corner in both shapes. The list itself is kept oldest first (`add`), so the shot at index `i` of `count` has

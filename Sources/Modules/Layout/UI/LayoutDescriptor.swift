@@ -168,9 +168,7 @@ import Module_Layout_Engine
         return Self.activity(enabled: state.enabled, suspended: state.suspended)
     }
 
-    /// The rule itself, pure so a test can reach it: the method above needs a
-    /// `ModuleViewModel`, which needs a transport and an engine, and none of
-    /// that is the subject.
+    /// The rule itself.
     ///
     /// **The header may be coarser than the page. It may not say the
     /// opposite.** `suspended` was left out here, and the tap stays live

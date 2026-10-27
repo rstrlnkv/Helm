@@ -5,9 +5,8 @@ import Foundation
 /// The sidebar's `List` (`SidebarComposerList`) speaks in row indices, through
 /// `.onMove`, and knows nothing about sections;
 /// `SidebarLayout` speaks in sections and knows nothing about rows. Everything
-/// that translates between the two lives here, so a drop landing in the wrong
-/// section is a failing test rather than something noticed later — the list
-/// itself only reports *which row* and *which index*.
+/// that translates between the two lives here — the list itself only reports
+/// *which row* and *which index*.
 public extension SidebarLayout {
 
     /// One line of the list: a section's heading, or a module inside one.

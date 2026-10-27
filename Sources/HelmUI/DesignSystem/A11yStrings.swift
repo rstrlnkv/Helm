@@ -133,9 +133,6 @@ public enum HelmA11y {
     ///
     /// A function rather than an announcement inlined at the call site, so the
     /// one call is nameable and so a second surface cannot spell it differently.
-    /// Callers hold it as a closure they can substitute in a test: an
-    /// announcement leaves no trace anything can read back, so the alternative is
-    /// a promise with no test under it.
     public static func announce(_ text: String) {
         AccessibilityNotification.Announcement(text).post()
     }

@@ -50,7 +50,7 @@ enum EditorMenu {
         return EditorKeys.toolKeys.contains { $0.letter.lowercased() == typed }
     }
 
-    @MainActor static func items(for model: EditorBarModel, pinOffered: Bool = PinEntry.isOffered) -> [EditorMenuItem] {
+    @MainActor static func items(for model: EditorBarModel) -> [EditorMenuItem] {
         func tool(_ object: (tool: AnnotationTool, symbol: String?, place: EditorPalette.Place)) -> EditorMenuItem? {
             guard let symbol = object.symbol else { return nil }
             return .tool(title: ScStr.tool(object.tool), symbol: symbol, isOn: model.tool == object.tool && !model.erasing,
@@ -87,7 +87,7 @@ enum EditorMenu {
         items.append(.action(title: ScStr.thicknessAndOpacity, action: .thicknessAndOpacity(anchorX: model.moreFrame.midX),
                              isEnabled: model.tool != nil && model.tool != .spotlight && !model.erasing, isOn: false))
         items += [.separator, .action(title: ScStr.save, action: .exit(.save), isEnabled: true, isOn: false)]
-        if pinOffered { items.append(.action(title: ScStr.pin, action: .exit(.pin), isEnabled: true, isOn: false)) }
+        if PinEntry.isOffered { items.append(.action(title: ScStr.pin, action: .exit(.pin), isEnabled: true, isOn: false)) }
         items.append(.action(title: ScStr.share, action: .exit(.share), isEnabled: true, isOn: false))
         items += [.separator,
                   .reading(title: ScStr.copyText, symbol: "text.viewfinder", action: .copyText, isEnabled: !model.reading, hint: nil),

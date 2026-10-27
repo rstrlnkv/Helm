@@ -58,21 +58,6 @@ public enum Plural {
         }
     }
 
-    /// "3 правила", "1 rule" — the autopilot page counts these.
-    public static func rules(_ count: Int, language: String) -> String {
-        let digits = HelmBytes.grouped(count, language: language)
-        switch language {
-        case "ru": return digits + " " + russian(count, "правило", "правила", "правил")
-        case "es": return digits + " " + (count == 1 ? "regla" : "reglas")
-        case "fr": return digits + " " + (count <= 1 ? "règle" : "règles")
-        case "de": return digits + " " + (count == 1 ? "Regel" : "Regeln")
-        case "pt": return digits + " " + (count == 1 ? "regra" : "regras")
-        case "ja": return "\(digits)個のルール"
-        case "zh": return "\(digits)条规则"
-        default: return digits + " " + (count == 1 ? "rule" : "rules")
-        }
-    }
-
     /// "30 дней", "1 day" — a rule's age conditions are written in these.
     public static func days(_ count: Int, language: String) -> String {
         let digits = HelmBytes.grouped(count, language: language)

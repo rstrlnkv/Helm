@@ -22,8 +22,7 @@ import SwiftUI
 /// by the owner in a 26 virtual machine, not by anything in this tree.
 ///
 /// **One value, read in one place.** `running` is the only reading of the
-/// system's version; `SettingsWindow` takes the value as an argument (so a test
-/// builds either system's window on this one), sets its title bar from it and
+/// system's version; `SettingsWindow` reads it once, sets its title bar from it and
 /// hands the same value to its pane through the environment (`helmBandChoice`),
 /// where `helmToolbarBackdrop` and `HelmPageHeader` read it. A flag set from
 /// one reading and a band drawn from another is a page with two bands or none.

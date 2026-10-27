@@ -64,9 +64,8 @@ import HelmUI
 /// every launch is drawn.
 ///
 /// A plain reference type, held by the page and never read by a body — in its
-/// `@State`, or handed in (`LogView.readerPlace`): what it remembers changes on
-/// every scroll, and a body that read it would be redrawn by the thing it is
-/// trying to keep still.
+/// `@State`: what it remembers changes on every scroll, and a body that read it
+/// would be redrawn by the thing it is trying to keep still.
 @MainActor
 final class LogReaderPlace {
     /// What the scroll view reports, in the content's own coordinates.
@@ -125,12 +124,6 @@ final class LogReaderPlace {
     var drawEarlier: () -> Void = {}
 
     private var isAtEnd: Bool { metrics.gap <= Self.endTolerance }
-
-    /// How many rows stand drawn: those that have reported a place and have not
-    /// left. A reading of the record the place already keeps, not a count of its
-    /// own; it exists so that what the page draws can be read from outside by the
-    /// one object every row reports to (`LogView.readerPlace`).
-    var drawnRows: Int { frames.count }
 
     /// Follow asked for the end (a filter changed, Follow was pressed, a new
     /// line came, the page opened): hold nothing until it has been reached.

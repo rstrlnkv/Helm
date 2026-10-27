@@ -61,7 +61,7 @@ import HelmContract
 /// string.
 ///
 /// Generic over `RawRepresentable` rather than a protocol of our own: the enums
-/// live in nine engine targets and this one knows about none of them, which is
+/// live in the engine targets and this one knows about none of them, which is
 /// the point — `HelmUI` is below every module, not beside them.
 public extension TransportClient {
     func request<C: RawRepresentable, T: Decodable>(_ command: C, as type: T.Type = T.self) async -> T?

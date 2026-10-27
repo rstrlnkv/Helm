@@ -46,7 +46,7 @@ enum ListReading: Equatable {
 ///
 /// `AvailableSection` and `HealthScreen` are the shape this follows, for the
 /// reason those files give: which sentence stands over which state is the whole
-/// of the decision, and a `body` is nowhere a test can reach.
+/// of the decision.
 ///
 /// Waiting *moves*; the two answers do not, and they are not the same sentence.
 /// Drawn as one — which is what a single `empty:` string and a `Bool` amounted
@@ -71,13 +71,6 @@ enum ListScreen: Equatable {
     /// it is its own sentence, over the same list underneath.
     case noMatches
 
-    /// The three-way reading alone, unchanged — every existing caller keeps
-    /// this and never sees `.noMatches`, because `shownIsEmpty` here is
-    /// exactly `isEmpty`.
-    static func of(isEmpty: Bool, reading: ListReading) -> ListScreen {
-        of(isEmpty: isEmpty, shownIsEmpty: isEmpty, reading: reading)
-    }
-
     /// `isEmpty` is the underlying list `brew` answered with; `shownIsEmpty`
     /// is what a filter leaves of it. The two differ only when there are rows
     /// to filter, which is the one case `.noMatches` exists for.
@@ -92,9 +85,7 @@ enum ListScreen: Equatable {
 
     /// Whether a package list's own section is drawn as a `List` row rather
     /// than as a single centred sentence — the section forces the shape even
-    /// over a state that would otherwise be centred. Extracted so a test holds
-    /// the shape decision without a `body`, the way `AvailableSection.of`
-    /// already lets one hold the section's own decision.
+    /// over a state that would otherwise be centred.
     static func forcesListShape(section: AvailableSection?, screen: ListScreen) -> Bool {
         section != nil || screen == .rows || screen == .noMatches
     }

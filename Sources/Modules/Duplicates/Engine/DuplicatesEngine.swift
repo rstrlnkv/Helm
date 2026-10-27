@@ -263,7 +263,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
 
     /// The engine has the last word on deletion, as everywhere else in Helm:
     /// the view model builds the list, and this decides what may go.
-    /// Refusals come back in `failed`, never dropped.
+    /// Refusals come back in `refused`, never dropped.
     ///
     /// **There was a `trash(_ paths: [String])` beside this**, and it was worse
     /// than dead. Nothing called it — the transport sends plans, the view model
@@ -551,21 +551,12 @@ public struct DuplicateRemoval: Codable, Equatable, Sendable {
     /// verified was never attempted.
     public let cancelled: Bool
 
-    public var failed: [String] { refused.map(\.path) }
-
     public init(removed: [String], refused: [HelmTrash.Refusal],
                 freedBytes: Int, cancelled: Bool = false) {
         self.removed = removed
         self.refused = refused
         self.freedBytes = freedBytes
         self.cancelled = cancelled
-    }
-
-    /// The engine's own construction: the trash result whole, nothing dropped
-    /// on the way through — a refusal is never silently discarded.
-    public init(_ result: HelmTrash.Result, cancelled: Bool) {
-        self.init(removed: result.removed, refused: result.refused,
-                  freedBytes: result.freedBytes, cancelled: cancelled)
     }
 
     /// **Hand-written, because a synthesised `Decodable` requires every key.** A

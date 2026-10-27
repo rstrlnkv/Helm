@@ -15,8 +15,6 @@ public struct RingSegment: Sendable, Equatable {
     public let isOther: Bool
     public let isFreeSpace: Bool
     public let noAccess: Bool
-
-    public var span: Double { endAngle - startAngle }
 }
 
 /// Radii in unit space (0…1 of half the ring view's side).

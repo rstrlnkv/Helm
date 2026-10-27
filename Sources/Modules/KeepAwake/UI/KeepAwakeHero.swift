@@ -110,15 +110,6 @@ struct KeepAwakeHero: View {
     let start: (Int) -> Void
     let stop: () -> Void
     let resume: () -> Void
-    /// How the veto is said out loud, once, when it arrives.
-    ///
-    /// Substitutable because an announcement leaves nothing behind that a test
-    /// could read: `AccessibilityNotification.Announcement.post()` returns
-    /// nothing, records nothing and does nothing at all with VoiceOver off, so
-    /// the alternative is the promise this file's own notes warn about — a rule
-    /// written in prose with nothing under it. `HelmA11y.announce` is the one
-    /// that ships.
-    let announce: (String) -> Void
 
     /// Natural height of whichever state is showing, so the block can ramp
     /// between two of them instead of snapping. `nil` until the first one
@@ -177,8 +168,7 @@ struct KeepAwakeHero: View {
          batteryStopped: Bool, batteryFloor: Int,
          timedNote: @escaping (Date) -> String,
          start: @escaping (Int) -> Void, stop: @escaping () -> Void,
-         resume: @escaping () -> Void,
-         announce: @escaping (String) -> Void = HelmA11y.announce) {
+         resume: @escaping () -> Void) {
         self.state = state
         self.now = now
         self.anyRuleOn = anyRuleOn
@@ -193,7 +183,6 @@ struct KeepAwakeHero: View {
         self.start = start
         self.stop = stop
         self.resume = resume
-        self.announce = announce
         _shownState = State(initialValue: state)
         _shownSuppressed = State(initialValue: suppressed || batteryStopped)
     }
@@ -266,7 +255,7 @@ struct KeepAwakeHero: View {
         // again, which is what pressing one will say. Said with the long form,
         // because the way out is the whole point of speaking at all.
         .onChange(of: batteryStopped) { _, stopped in
-            if stopped { announce(KAStr.stoppedByBattery(batteryFloor)) }
+            if stopped { HelmA11y.announce(KAStr.stoppedByBattery(batteryFloor)) }
         }
     }
 

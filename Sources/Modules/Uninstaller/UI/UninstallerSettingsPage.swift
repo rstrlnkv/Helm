@@ -194,11 +194,7 @@ struct UninstallerSettingsPage: View {
     /// switch with its own Grant button — same grant, same pane, two rows a person
     /// has to work out are the same thing. What the switch adds is a consequence,
     /// not a notice, so it lands in this sentence instead.
-    ///
-    /// Internal rather than private, for the reason `statusLine` gives: which of
-    /// these two sentences stands over which state is the whole of a fix, and a
-    /// `body` is not somewhere a test can reach.
-    var permissionNote: String? {
+    private var permissionNote: String? {
         guard diskAccess == .denied || uvm.trashWatch == .cannotReadTrash else { return nil }
         return uvm.trashWatch.isOn ? UnStr.accessNeededWithWatch : UnStr.removalNeedsAccess
     }
@@ -216,13 +212,9 @@ struct UninstallerSettingsPage: View {
     /// sentence: a reply on its way and a reply that never came. So the count
     /// is derived from `appsEmpty` — the value the body itself draws — and not
     /// from a second reading of the same flags; `AppsEmpty.Status` is where
-    /// that is decided and tested, and the switch here is exhaustive so a
+    /// that is decided, and the switch here is exhaustive so a
     /// fourth answer cannot arrive as a `default`.
-    ///
-    /// Internal rather than private: which of `UnStr.appsCount`'s two sentences
-    /// stands over a list the engine never answered is the whole of that fix, and a
-    /// `body` is not somewhere a test can reach.
-    var statusLine: String? {
+    private var statusLine: String? {
         let count: Int?
         switch AppsEmpty.status(appsEmpty, loading: loading, apps: apps.count) {
         case .silent: return nil
@@ -256,11 +248,7 @@ struct UninstallerSettingsPage: View {
     /// of them: `AppsEmpty` holds the rule and says why there are three. The
     /// «answered» half is the view model's own flag, the one the footer's count
     /// reads, so the body cannot contradict the line under it.
-    ///
-    /// Internal rather than private, for the reason `statusLine` gives: which of
-    /// these three sentences stands over which state is the whole of the fix, and
-    /// a `body` is not somewhere a test can reach.
-    var appsEmpty: AppsEmpty.Reason? {
+    private var appsEmpty: AppsEmpty.Reason? {
         AppsEmpty.reason(answered: uvm.listAnswered, apps: apps.count, shown: filtered.count)
     }
 

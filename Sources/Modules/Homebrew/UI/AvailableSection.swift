@@ -19,8 +19,7 @@ import Module_Homebrew_Engine
 ///
 /// A value type rather than a decision inside `body`, for the reason
 /// `InspectorState` and `HealthScreen` give at their own top: which sentence
-/// stands over which state is the whole of the decision, and a `body` is
-/// nowhere a test can reach.
+/// stands over which state is the whole of the decision.
 enum AvailableSection: Equatable {
     case searching
     case found

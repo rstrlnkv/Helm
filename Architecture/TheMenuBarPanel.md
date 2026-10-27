@@ -11,8 +11,8 @@ Why the window is built as it is — no window shadow, a strip wider than the ca
 `helmPanelShadowMargin`, one size per opening, a plain `NSHostingView`, `makeKey()`
 after `orderFrontRegardless()` — is written where each is set: the doc comments of
 `helmPanelWidth`, `helmPanelShadowMargin` and `.helmPanelDidShow`, and the `//`
-comments in `HelmPanel.init` and `HelmPanel.toggle`. The width is the one
-`PanelGrid.narrowestPanel` is the arithmetic for, and the card's edges are
+comments in `HelmPanel.init` and `HelmPanel.toggle`. The width is two `PanelGrid.minimumTile`
+tiles, one `PanelGrid.gap` and `PanelGrid.padding` either side, and the card's edges are
 `PanelGrid.padding` and `PanelGrid.gap` rather than numbers typed twice.
 
 What the panel stores keeps its reasons on its own doc comments: the `init(from:)`

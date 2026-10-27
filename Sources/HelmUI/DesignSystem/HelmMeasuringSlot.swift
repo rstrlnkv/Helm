@@ -64,13 +64,12 @@ public extension View {
     /// `measuring` is the engine's own fact — a run is in flight for this
     /// tunnel — and `false` is completely inert: no border, full ink, and a
     /// paused schedule that wakes nothing.
-    func helmMeasuringSlot(_ measuring: Bool,
-                           lap: Double = HelmMeasuringSlot.lap) -> some View {
-        modifier(HelmMeasuringSlot(measuring: measuring, lap: lap))
+    func helmMeasuringSlot(_ measuring: Bool) -> some View {
+        modifier(HelmMeasuringSlot(measuring: measuring, lap: HelmMeasuringSlot.lap))
     }
 }
 
-public struct HelmMeasuringSlot: ViewModifier {
+struct HelmMeasuringSlot: ViewModifier {
 
     /// How long the segment takes to get round, in seconds.
     ///
@@ -80,12 +79,12 @@ public struct HelmMeasuringSlot: ViewModifier {
     /// it round and ask where it is going, which is the reading this must not
     /// invite. Nine laps in a measurement is a cycle nobody can mistake for a
     /// journey.
-    public nonisolated static let lap: Double = 2.4
+    nonisolated static let lap: Double = 2.4
 
     /// How much of the border is lit at once, as a fraction of the perimeter.
     /// A sixth is long enough to read as a moving *thing* rather than a
     /// travelling dot, and short enough that the card is never nearly outlined.
-    public nonisolated static let segment: Double = 0.17
+    nonisolated static let segment: Double = 0.17
 
     /// **Where the lit segment is, as two spans of the border's own
     /// parametrisation.**
@@ -94,18 +93,17 @@ public struct HelmMeasuringSlot: ViewModifier {
     /// `trim(from:to:)` — and they are always both returned rather than being
     /// chosen between, so there is no branch and therefore no frame on which the
     /// shape's identity changes. Off the wrap, the second is empty.
-    public struct Sweep: Equatable {
-        public let first: ClosedRange<Double>
-        public let second: ClosedRange<Double>
+    struct Sweep: Equatable {
+        let first: ClosedRange<Double>
+        let second: ClosedRange<Double>
 
         /// The head runs from 0 to 1 once per `lap`, taken off absolute time so
         /// it is a pure function of the clock with no state to fall out of step
         /// with — the same property that makes `HelmExpectedWait` measurable
         /// offscreen, and for the same reason.
-        public static func at(_ now: Date, lap: Double,
-                              segment: Double = HelmMeasuringSlot.segment) -> Sweep {
-            guard lap > 0, segment > 0 else { return Sweep(first: 0...0, second: 0...0) }
-            let length = Swift.min(segment, 1)
+        static func at(_ now: Date, lap: Double) -> Sweep {
+            guard lap > 0 else { return Sweep(first: 0...0, second: 0...0) }
+            let length = HelmMeasuringSlot.segment
             // Folded twice on purpose. `truncatingRemainder` keeps the sign
             // of its *dividend*, and the interval is negative on any Mac whose
             // clock has reset — a dead battery boots at the Unix epoch, which
@@ -120,23 +118,16 @@ public struct HelmMeasuringSlot: ViewModifier {
             return Sweep(first: head...Swift.min(tail, 1),
                          second: 0...Swift.max(tail - 1, 0))
         }
-
-        /// What is actually lit, which must be `segment` however the wrap
-        /// falls — the property a test can hold the arithmetic to.
-        public var lit: Double {
-            (first.upperBound - first.lowerBound) + (second.upperBound - second.lowerBound)
-        }
     }
 
-    /// The figure's ink, as arguments — the shape `HelmMotion.spins` set, so
-    /// the rule can be asserted rather than described.
+    /// The figure's ink, as arguments — the shape `HelmMotion.spins` set.
     ///
     /// `HelmText.quiet` rather than something quieter still: it is a token whose
     /// contrast has been measured against every surface this app draws
     /// (4,92:1 light, 6,06:1 dark), and a stale figure must stay *readable* —
     /// somebody's last measurement is the only speed reading they have while a
     /// new one is being taken.
-    public static func ink(measuring: Bool) -> Color {
+    private static func ink(measuring: Bool) -> Color {
         measuring ? HelmText.quiet : .primary
     }
 
@@ -155,7 +146,7 @@ public struct HelmMeasuringSlot: ViewModifier {
         _shown = State(initialValue: measuring)
     }
 
-    public func body(content: Content) -> some View {
+    func body(content: Content) -> some View {
         // **No branch around `content`, ever.** An `if` inside a `ViewModifier`
         // is SwiftUI being told the two sides are different views, and after
         // that no transaction on the outside can interpolate between them

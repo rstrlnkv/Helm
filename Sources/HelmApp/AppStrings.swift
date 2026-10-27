@@ -115,9 +115,6 @@ enum AppStr {
         NoticeText(title: updateReady, body: updateFoundBody(version: version, language: language))
     }
 
-    /// The body alone, so the eight-language check is of the words rather than
-    /// of the assembly — the same split as `scanFindingBody`.
-    ///
     /// **It is the version and the way to it, and no verb.** A banner is not a
     /// button: nothing in Helm answers a click on one, so a sentence that says
     /// «install it» describes something the banner itself cannot do. The path is

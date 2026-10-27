@@ -8,49 +8,19 @@ import AppKit
 /// targets before this existed. That is the shape `scratchDirectory` and
 /// `RepoSource` were each in before they moved here.
 ///
-/// **It is deliberately not `first(ofType:)`.** Four of the eleven need more than
-/// «is there one of these under here», and a helper that offered only the easy
-/// question would have made those four unrepresentable — which is the rule about
-/// a helper being no simpler than the thing it stands for, applied to plumbing
-/// rather than to a fake. What they actually need:
-///
-/// - the view, by AppKit **type** (`NSProgressIndicator`);
-/// - the view, by the **name** of a class the SDK does not export — `_FocusRingView`
-///   and `_NSGraphicsView` are how this suite finds a control and a card, and
-///   they can only be matched as strings;
-/// - the view's **parent**, which the walker must have been holding;
-/// - what the view is **inside**, which is state carried down the recursion —
-///   VPN's card measurement counts focus rings *outside* a card and would be
-///   wrong by every ring on the page without it.
-///
-/// So the primitive is the sequence with its ancestry, and the two convenient
-/// readings are built on it. Coordinate conversion stays at the call site: a
-/// frame means nothing without the space it was read in, and which space that is
-/// is the caller's question.
+/// Two readings are built on the one walk, `everyView`: by AppKit **type**, and by the
+/// **name** of a class the SDK does not export — `_FocusRingView` and `_NSGraphicsView`
+/// can only be matched as strings. Coordinate conversion stays at the call site: a
+/// frame means nothing without the space it was read in, and which space that is is
+/// the caller's question.
 public extension NSView {
 
     /// This view and everything under it, outermost first.
     ///
     /// Includes `self`, which every hand-written walk here did — each began
-    /// `walk(host)` with the predicate applied to the host — and a version that
-    /// quietly dropped the root would change what nine tests measure.
+    /// `walk(host)` with the predicate applied to the host.
     var everyView: [NSView] {
         [self] + subviews.flatMap(\.everyView)
-    }
-
-    /// The same walk, each view with the chain above it, outermost first and not
-    /// including the view itself.
-    ///
-    /// `ancestry.last` is the parent; `ancestry.contains` answers «what am I
-    /// inside», which is the state the two VPN measurements carry down by hand.
-    var everyViewWithAncestry: [(view: NSView, ancestry: [NSView])] {
-        var out: [(view: NSView, ancestry: [NSView])] = []
-        func walk(_ view: NSView, _ ancestry: [NSView]) {
-            out.append((view, ancestry))
-            for sub in view.subviews { walk(sub, ancestry + [view]) }
-        }
-        walk(self, [])
-        return out
     }
 
     /// The name AppKit gave this view's class.
@@ -75,23 +45,5 @@ public extension NSView {
     /// made the other read wrong at a glance.
     func everyView(named name: String) -> [NSView] {
         everyView.filter { $0.appKitClassName == name }
-    }
-}
-
-public extension NSRect {
-    /// The view whose coordinate space this frame is in, found by matching it in
-    /// the tree under `root`.
-    ///
-    /// A frame read off a subview means nothing without the space it was read in,
-    /// and a grouped form's section cards sit several containers down from the
-    /// host. Written three times in the VPN suite before it moved here — and one
-    /// of the three had the bug the comment below records.
-    ///
-    /// **The last match, not the first.** That is what the hand-written walk this
-    /// replaces answered: it overwrote its answer on every hit rather than
-    /// stopping, and the two are different views whenever a container has the
-    /// same frame as the thing inside it — which a card and its row do.
-    func superview(in root: NSView) -> NSView {
-        root.everyViewWithAncestry.last { $0.view.frame == self }?.ancestry.last ?? root
     }
 }

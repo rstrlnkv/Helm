@@ -33,8 +33,7 @@ wire plumbing that logs, and the log lives in `Sources/HelmRuntime`.
 `Sources/HelmRuntime` is the answer to "has this been written already", and
 `ls Sources/HelmRuntime` is the list; `ls Tests/Support` is the same list for
 test plumbing. A shared helper is no simpler than the thing it stands in for
-(the reason is on the doc comments of `Tests/Support/SealKeyProbe.swift` and
-`Tests/Support/ViewTree.swift`), and
+(the reason is on the doc comment of `Tests/Support/SealKeyProbe.swift`), and
 a local helper that does more keeps its own body and calls the shared one.
 
 `public` means "another target uses this" and nothing else. Every module is several

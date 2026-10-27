@@ -36,8 +36,7 @@ public struct WelcomeStep: Equatable, Identifiable, Sendable {
 /// The tour, built from what the modules already say about themselves.
 public enum WelcomeSteps {
     /// Takes metadata rather than reaching for `ModuleRegistry`, which lives in
-    /// `HelmApp` — an executable target with no tests. This signature is why
-    /// the tour can be asserted at all; do not "simplify" it back.
+    /// `HelmApp`, a target this one cannot import.
     public static func build(from modules: [ModuleMetadata]) -> [WelcomeStep] {
         let intro = WelcomeStep(id: "intro", sfSymbol: "sparkles",
                                 title: WelcomeStr.introTitle, body: WelcomeStr.introBody,

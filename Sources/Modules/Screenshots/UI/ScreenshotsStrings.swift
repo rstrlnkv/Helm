@@ -368,12 +368,8 @@ enum ScStr {
     /// language Helm is speaking in the region the Mac is set to, so the
     /// day-period marker comes in the word's language and the hour cycle in the
     /// region's.
-    static var naming: ShotNaming { naming(system: .current) }
-
-    /// `system` is the Mac's locale; a test passes one the machine it runs on
-    /// is not set to.
-    static func naming(system: Locale, language: AppLanguage = .current) -> ShotNaming {
-        ShotNaming(template: nameTemplate, locale: fileNameLocale(language: language, system: system))
+    static var naming: ShotNaming {
+        ShotNaming(template: nameTemplate, locale: fileNameLocale(language: .current, system: .current))
     }
 
     static func fileNameLocale(language: AppLanguage, system: Locale) -> Locale {

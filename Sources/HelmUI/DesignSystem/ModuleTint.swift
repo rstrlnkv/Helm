@@ -3,7 +3,7 @@ import AppKit
 
 /// The colour a module is known by, and the only place they are written.
 ///
-/// **Why not `ModuleCategory.tint`.** That gave one colour to a category, so
+/// **Why not a colour per category.** That gave one colour to a category, so
 /// Uninstaller, Disk, Duplicates and Autopilot were one blue and Homebrew,
 /// Login Items and Keyboard were one pink. A colour four modules share does not
 /// tell you which of them you are looking at, which is the whole job.

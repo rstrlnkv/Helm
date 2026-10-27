@@ -61,13 +61,8 @@ public enum AppInfo {
     ///
     /// Each id is resolved **once** rather than at every comparison a sort
     /// makes, which is the same question asked per pair instead of per item.
-    ///
-    /// - Parameter name: how an id becomes the word the row shows. Defaulted to
-    ///   `resolve`, and an argument so the order can be tested without asking
-    ///   this Mac what it has installed.
-    public static func sortedByName(_ bundleIDs: some Sequence<String>,
-                                    name: (String) -> String = { resolve($0).name }) -> [String] {
-        bundleIDs.map { (id: $0, name: name($0)) }
+    public static func sortedByName(_ bundleIDs: some Sequence<String>) -> [String] {
+        bundleIDs.map { (id: $0, name: resolve($0).name) }
             .sorted { left, right in
                 switch left.name.localizedStandardCompare(right.name) {
                 case .orderedAscending: return true

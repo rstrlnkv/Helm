@@ -63,9 +63,8 @@ enum DupStr {
     /// plain «reading» when there is not — true of a search and of a removal's
     /// verification alike, since both are files being read in full.
     ///
-    /// A function rather than an expression inside the page, because the page's
-    /// branch was exercised by nothing: no fake could emit a progress event, so
-    /// the `progressLine` half had never been reached by any test.
+    /// A function rather than an expression inside the page: the page draws it
+    /// in two places.
     static func busyLine(_ progress: DuplicateProgress?,
                          language: AppLanguage = AppLanguage.current) -> String {
         guard let progress, progress.candidates > 0 else {

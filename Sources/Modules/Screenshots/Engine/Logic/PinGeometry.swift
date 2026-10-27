@@ -4,8 +4,7 @@ import HelmRuntime
 
 /// Where a pin opens, how far it scales, how opaque it gets and where it goes when its display leaves.
 ///
-/// Pure arithmetic over **AppKit-global** points (the space a window's frame is in), so each
-/// edge of a display and each display above or left of the primary is a case a test can ask.
+/// Pure arithmetic over **AppKit-global** points (the space a window's frame is in).
 /// The scale of a pin is its width over the selection's own width in points (`native`), so
 /// "1:1" is 1 and the limits are limits on that one number.
 public enum PinGeometry {

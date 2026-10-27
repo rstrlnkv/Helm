@@ -40,27 +40,6 @@ struct LogView: View {
     /// window's toolbar instead of in this stack.
     @Environment(\.helmPageBar) private var pageBar
 
-    /// Where the lines come from, and whether there is a log on disk behind them.
-    ///
-    /// The app passes the log; the defaults are what every caller uses. They are
-    /// parameters because a measurement of this page otherwise reads whatever
-    /// this Mac happens to have logged — the row's own geometry was unmeasurable
-    /// for exactly that reason, and the filter row's overflow in Russian was
-    /// found on a page with no lines in it because that was the only page a
-    /// harness could draw.
-    var source: () -> [LogEntry] = { HelmLog.shared.recentEntries() }
-    var storedLog: () -> Bool = { HelmLog.anyFileExists() }
-
-    /// Where the reader is, when the caller holds it: a measurement of this page
-    /// reads how many rows stand drawn (`LogReaderPlace.drawnRows`) from the one
-    /// object every row reports to, and the page's own `@State` is out of its
-    /// reach. Nil — what the app passes — is the page's own place, made with the
-    /// page and gone with it. A place handed in belongs to the caller: the page
-    /// forgets and seeks through it as through its own, its rows leave it as they
-    /// are unmounted, and what the caller keeps after the page is gone is the
-    /// closures the page set on it.
-    var readerPlace: LogReaderPlace?
-
     /// The Settings page's tabs, when the page is shown as one of them. They
     /// take the bar's one switcher slot, and the level filter that stands there
     /// when none are handed becomes the first action, before the module filter.
@@ -79,10 +58,8 @@ struct LogView: View {
     @State private var chosen: Set<String> = []
     @State private var query = ""
     @State private var following = true
-    /// Where the reader is, by the line (`LogReaderPlace`), when the caller holds
-    /// none (`readerPlace`).
-    @State private var ownPlace = LogReaderPlace()
-    private var place: LogReaderPlace { readerPlace ?? ownPlace }
+    /// Where the reader is, by the line (`LogReaderPlace`).
+    @State private var place = LogReaderPlace()
     /// How many times `drawnAtOpen` is doubled to give the figure that the launches
     /// before the newest are drawn to hold (`drawn(rowsBefore:)`). Raised by
     /// `LogReaderPlace.drawEarlier` alone, to the nearest count at which a launch
@@ -225,7 +202,7 @@ struct LogView: View {
                 set: { id in minimumLevel = Self.levelTabs.first { $0.id == id }?.level ?? .info }),
             actions: [
                 // Built from what has arrived, so it names the modules that
-                // spoke rather than the nine that exist. A line with no module
+                // spoke rather than every one that exists. A line with no module
                 // (an unreadable one) has no entry of its own here: it is not
                 // something to filter *to*.
                 HelmToolbarAction(id: "modules",
@@ -495,17 +472,6 @@ struct LogView: View {
     /// Each doubling of it (`earlier`) is a step of an ask for earlier launches.
     static let drawnAtOpen = 100
 
-    /// The count of doublings of `drawnAtOpen` at which a tail of `HelmLog.tailLimit`
-    /// lines is wholly drawn: the first one that reaches that figure. A tail at its
-    /// cap therefore takes at most this many asks that write anything, each raising
-    /// `earlier` by one or more, and the next one finds every launch drawn. Nothing
-    /// in the page reads it; the bound is a consequence of the figures.
-    static let earlierCeiling: Int = {
-        var asks = 0
-        while drawnAtOpen << asks < HelmLog.tailLimit { asks += 1 }
-        return asks
-    }()
-
     /// **What `earlier` becomes when the reader asks for earlier launches.** The
     /// nearest count above it at which `page` draws a launch more than it does now;
     /// nil when every launch is drawn already, and then nothing is written, so the
@@ -738,9 +704,9 @@ struct LogView: View {
     /// `LogEntry`'s `==` is its five parts — the id is not one of them — so a
     /// tail that says the same thing is the same tail.
     private func refresh() {
-        let read = source()
+        let read = HelmLog.shared.recentEntries()
         if read != entries { entries = read }
-        let stored = storedLog()
+        let stored = HelmLog.anyFileExists()
         if stored != hasStoredLog { hasStoredLog = stored }
     }
 }

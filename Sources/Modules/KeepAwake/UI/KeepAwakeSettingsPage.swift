@@ -424,8 +424,8 @@ struct KeepAwakeSettingsPage: View {
         // that is still sliding.
         let enabled = shownEnabled.contains(condition)
         let satisfied = shownConditions.contains(condition)
-        // The four cases live in `RuleNote`, out in the engine's logic where a
-        // test can reach them. Written here as nested ternaries there was no
+        // The four cases live in `RuleNote`, out in the engine's logic. Written
+        // here as nested ternaries there was no
         // room for the fourth — a rule that is on, whose trigger holds, and
         // which is paused — so it read as «Not applying right now» directly
         // under a banner saying it was paused.

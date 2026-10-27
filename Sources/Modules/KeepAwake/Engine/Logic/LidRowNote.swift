@@ -18,10 +18,7 @@ import Foundation
 ///   grant back; a declined dialog is an answer, and the rule stays. Its `Bool`
 ///   was discarded, so the only record was a log line accusing something else of
 ///   having written a rule Helm wrote itself.
-///
-/// Out here rather than in the `@ViewBuilder` for the reason `RuleNote` is: the
-/// same four lines inside a view body are four lines nothing can pin.
-public enum LidRowNote: CaseIterable, Equatable, Sendable {
+public enum LidRowNote: Equatable, Sendable {
     /// macOS was asked to turn sleep off and said no.
     case refused
     /// The option is off and its `/etc/sudoers.d` rule is still there.

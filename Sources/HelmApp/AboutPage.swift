@@ -14,7 +14,7 @@ import HelmUI
 /// Orange is `HelmSignal.warning` because that is what it means: this channel
 /// ships rough edges on purpose. Beta is the accent, which is what macOS uses
 /// for "the one that is chosen" everywhere else.
-enum ChannelInk {
+private enum ChannelInk {
     static func fill(_ channel: UpdateCheck.Channel) -> Color {
         switch channel {
         case .beta: return .accentColor
@@ -80,14 +80,7 @@ enum ChannelInk {
 struct AboutHelmView: View {
     @State private var showWhatsNew = false
     @State private var channel = UpdateService.channel
-    @ObservedObject private var updater: UpdateService
-
-    /// Takes the updater, defaulting to the app's own.
-    ///
-    /// The card has eleven states and the singleton could only ever be in one
-    /// of them, so nothing could draw the other ten — which is how an
-    /// unreachable branch shipped. This is the whole seam.
-    init(updater: UpdateService = .shared) { self.updater = updater }
+    @ObservedObject private var updater = UpdateService.shared
 
     private var shortVersion: String {
         AppBuild.shortVersion ?? "0.1.0"

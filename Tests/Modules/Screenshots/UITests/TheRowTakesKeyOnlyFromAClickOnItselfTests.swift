@@ -2,7 +2,6 @@ import AppKit
 import CoreGraphics
 import HelmTestSupport
 import XCTest
-import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// The window's end and the module switched off take an open row and everything it held.

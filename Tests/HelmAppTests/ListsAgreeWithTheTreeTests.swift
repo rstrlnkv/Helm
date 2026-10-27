@@ -17,12 +17,12 @@ import XCTest
 /// **Every engine builds in 55 ms with an in-memory store**, measured over all
 /// nine before this file was written, so a test may hold the real registry
 /// rather than a copy of it. `activate()` is never called: building is what these
-/// checks need, and starting nine modules' watchers inside a test is not.
+/// checks need, and starting the modules' watchers inside a test is not.
 final class ListsAgreeWithTheTreeTests: XCTestCase {
 
     @MainActor private func engines() -> [(id: String, engine: any ModuleEngine)] {
-        // In-memory, never `UserDefaults`: a test that builds nine engines
-        // against the real store leaves nine modules' settings behind, and the
+        // In-memory, never `UserDefaults`: a test that builds every engine
+        // against the real store leaves every module's settings behind, and the
         // house rule about harnesses was written after exactly that.
         let backing = InMemoryKeyValueStore()
         return ModuleRegistry.all.map { descriptor in
