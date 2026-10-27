@@ -100,8 +100,8 @@ final class SidebarLayoutStoreSeedAndReconcileTests: XCTestCase {
         XCTAssertEqual(Set(placed).count, placed.count)
     }
 
-    /// A sidebar stored by the build before Screenshots existed — the shipped ten,
-    /// seeded and written — meets the eleventh module on its next read, and the
+    /// A sidebar stored by the build before Screenshots existed — seeded and
+    /// written — meets Screenshots on its next read, and the
     /// module lands inside the Utilities section beside what lives there: not in
     /// a section of its own and not at the end of the sidebar.
     func testScreenshotsJoinsAStoredSidebarInUtilities() throws {

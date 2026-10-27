@@ -650,10 +650,9 @@ enum AppStr {
     /// transliteration of jargon in a settings pop-up. What is being chosen
     /// between is a tab's name and a tab's icon, and those are the words.
     ///
-    /// **«only», because a bare «Names» was already taken.** `HostsStr.names` is
-    /// the hosts file's own column of hostnames — «Имена» — and one English key
-    /// means one thing, so the two would have shared a translation and the
-    /// pop-up drew «Имена» until it was looked at. `OneEntryPerKeyTests`
+    /// **«only», so the bare word stays free.** One English key means one
+    /// thing: a bare «Names» is a label any other page may need for a second
+    /// meaning, and the two would share one translation. `OneEntryPerKeyTests`
     /// is the guard that was missing: every reader of these files goes through
     /// `NSDictionary`, which resolves a repeated key silently.
     static func tabLabelStyle(_ style: TabLabelStyle) -> String {

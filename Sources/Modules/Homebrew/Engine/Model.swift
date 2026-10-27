@@ -280,8 +280,7 @@ public struct ConfigLine: Codable, Equatable, Sendable, Identifiable {
 /// could not make a `key: value` of. `text` is the document, byte for byte as
 /// brew printed it, and it is what «Copy for a bug report» puts on the
 /// pasteboard: a bug report asks for what the tool said, not for Helm's reading
-/// of it. The same rule `HostsFile` carries — a parse is a reading and never
-/// the document.
+/// of it: a parse is a reading and never the document.
 public struct BrewConfig: Codable, Equatable, Sendable {
     public let lines: [ConfigLine]
     public let text: String

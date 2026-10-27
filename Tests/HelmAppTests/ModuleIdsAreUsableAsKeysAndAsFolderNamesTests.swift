@@ -6,7 +6,7 @@ import HelmContract
 /// forwards it up from the engine.
 ///
 /// `ListsAgreeWithTheTreeTests` proves the ids are unique and
-/// `StoreNamespacesAreModuleIdsTests` proves none of the nine that shipped has
+/// `StoreNamespacesAreModuleIdsTests` proves none of the registered ids has
 /// moved. Neither says anything about the two *other* things every id is: a
 /// key in the dictionaries the host builds, and a component of a path.
 ///

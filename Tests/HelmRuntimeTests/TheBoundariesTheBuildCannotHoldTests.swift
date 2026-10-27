@@ -179,10 +179,10 @@ final class TheBoundariesTheBuildCannotHoldTests: XCTestCase {
     /// no module, and listing it blames the engine read for a module nobody has.
     func testTheModulesAreTheDirectoriesOfSourcesModules() throws {
         let directory = scratchDirectory("modules")
-        for file in ["Disk/Engine/a", "Hosts/UI/a", ".hidden/a", "NOTES.md", ".DS_Store"] {
+        for file in ["Disk/Engine/a", "Layout/UI/a", ".hidden/a", "NOTES.md", ".DS_Store"] {
             try write(file, in: directory)
         }
-        XCTAssertEqual(try Self.modules(in: directory), ["Disk", "Hosts"])
+        XCTAssertEqual(try Self.modules(in: directory), ["Disk", "Layout"])
     }
 
     /// The words a shell line runs, read close to the way bash reads it: split at

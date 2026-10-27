@@ -92,16 +92,17 @@ final class StoreNamespacesAreModuleIdsTests: XCTestCase {
                       + offenders.joined(separator: "\n"))
     }
 
-    // MARK: - The ids that are already on people's machines
+    // MARK: - The registered ids, the prefix of what people saved
 
-    /// The ids that shipped, written down because they are **data, not names**.
+    /// The registered ids, written down because they are **data, not names**.
     ///
     /// A module id is the `module.<id>.*` prefix of every setting that module
-    /// has ever saved, and for three of them it is a directory under
-    /// Application Support as well. Renaming one is not a rename: the old keys
-    /// stay where they are and the module reads an empty store, so the person
-    /// finds their folder, their schedule and their exclusions gone, with
-    /// nothing anywhere reporting an error.
+    /// has ever saved — the host's on/off switch among them — and for the
+    /// modules that scan it also names a folder under Application Support,
+    /// `Scans/<id>` (`ScanJournal.directory(module:)`). Renaming one is not a
+    /// rename: the old keys stay where they are and the module reads an empty
+    /// store, so the person finds their folder, their schedule and their
+    /// exclusions gone, with nothing anywhere reporting an error.
     ///
     /// Nothing caught that. Measured rather than assumed — `LeftoversEngine`'s
     /// id was changed to `leftoverz` and the whole suite passed, 2182 tests, 0
@@ -110,23 +111,26 @@ final class StoreNamespacesAreModuleIdsTests: XCTestCase {
     /// `ScanRunner.scannableModules` names.
     ///
     /// So this is a hand-written list, and it is the kind CLAUDE.md allows: it
-    /// is not a second spelling of anything the tree already knows, it is a
-    /// record of what is on disk elsewhere. A module gained or renamed on
-    /// purpose edits it, and that edit is the moment to think about the
-    /// settings being left behind.
-    private static let shippedIDs: Set<String> = [
-        "autopilot", "disk", "duplicates", "homebrew", "hosts", "keep-awake",
+    /// is not a second spelling of anything the tree already knows, it is the
+    /// prefixes the registered modules' keys are stored under in people's
+    /// defaults. A module gained or renamed on purpose edits it, and that edit
+    /// is the moment to think about the settings being left behind. A module
+    /// archived leaves the list and its keys stay: Hosts' `module.hosts.*` keys
+    /// are still on machines, and the tag `archive/hosts` holds the module that
+    /// read them.
+    private static let registeredIDs: Set<String> = [
+        "autopilot", "disk", "duplicates", "homebrew", "keep-awake",
         "layout", "leftovers", "screenshots", "uninstaller", "vpn",
     ]
 
     @MainActor func testNoModuleIdChangesUnderneathItsStoredSettings() {
         let now = Set(ModuleRegistry.all.map { type(of: $0).id.rawValue })
 
-        XCTAssertEqual(now, Self.shippedIDs,
+        XCTAssertEqual(now, Self.registeredIDs,
                        "a module id moved. Every `module.<id>.*` key that module has "
                        + "saved stays under the old name, so the person's settings are "
-                       + "gone with nothing to say so — gained: \(now.subtracting(Self.shippedIDs)), "
-                       + "lost: \(Self.shippedIDs.subtracting(now))")
+                       + "gone with nothing to say so — gained: \(now.subtracting(Self.registeredIDs)), "
+                       + "lost: \(Self.registeredIDs.subtracting(now))")
     }
 
     // MARK: - Inside a module, an id is never a literal

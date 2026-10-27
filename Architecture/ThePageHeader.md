@@ -27,7 +27,7 @@ name, a flexible space, `helm.status` at the trailing edge — and under
 
 **The actions are one capsule, not one view or item per action.** The capsule
 (`HelmToolbarActionsCapsule`, `Sources/HelmUI/DesignSystem/HelmToolbarActions.swift`) reserves the width of every
-*declared* action (`HelmToolbarActionsCapsule.reserveWidth`) and only the visible set morphs inside it; an
+*declared* action (its `body` lays out one clear square per entry of the model's `declared`, never drawn) and only the visible set morphs inside it; an
 action inapplicable on its tab is dimmed through the capsule's model and one that belongs to
 other tabs is left out of the visible set; the capsule's header holds why. The capsule is
 one `NSToolbarItem`, and the bar's identifier list never changes for an action dimmed or left out: the tabs and the actions both live in `NSToolbar`'s own layout, not SwiftUI's,
@@ -36,12 +36,10 @@ app reaches.
 
 ## Toolbar actions
 
-`HelmToolbarAction.Kind` is the one shape an action takes: a button, a toggle, a
-`.segmented` pair (Hosts' Table/Plain-text switcher) or a `.menu` of checkmarked
-items, each with its own press — `Sources/HelmUI/DesignSystem/HelmWindowToolbar.swift`
-holds what each draws, how `isVisible`, `isEnabled` and `isBusy` differ, and why a
-kind cannot be two at once. In the toolbar, whether a segmented action slides on a press depends on
-`SettingsToolbar.centredIdentifiers(_:)`, whose header has what was measured. The
+`HelmToolbarAction.Kind` is the one shape an action takes: a button, a toggle or a
+`.menu` of checkmarked items, each with its own press —
+`Sources/HelmUI/DesignSystem/HelmWindowToolbar.swift` holds what each draws, how
+`isVisible`, `isEnabled` and `isBusy` differ, and why a kind cannot be two at once. The
 overflow floor, when even the capsule does not fit, is
 `NSToolbarItem.menuFormRepresentation` (`SettingsToolbar.patchActionsMenu`).
 
@@ -53,8 +51,7 @@ The tabs have one form, `HelmToolbarSwitcher`
 its `compact` flag folds it to the current tab. In the toolbar it folds before AppKit would push the strip
 into its overflow menu, and `SettingsToolbar`'s "Folding the tabs" section decides
 when. The switcher wears Helm's flat cell (`HelmFlatSegmentedCell`) unless
-the environment's `helmSwitcherCell` asks for AppKit's, and only `SettingsToolbar` asks, under Liquid Glass, on the tabs and on the
-actions capsule, so the toolbar's segmented controls wear AppKit's cell under Liquid Glass and every other switcher, and the toolbar's under Flat, wears Helm's (ARCHITECTURE.md § Ink and contrast). A press on a tab of the whole strip asks the switcher's cell to slide the pick to it over `HelmMotion.interfaceDuration` (a cut under Reduce Motion, on the first draw, when the page sets the selection, and for a tab chosen from the folded strip's menu; a republication that also renames a tab or moves a dot ends the slide); the page under the bar changes at once. The slide was not seen on a screen, and a cell that is not Helm's is not asked to slide. A tab may carry a dot (`HelmToolbarTab.needsAttention`): AppKit draws a segment's image before its label, so
+the environment's `helmSwitcherCell` asks for AppKit's, and only `SettingsToolbar` asks, under Liquid Glass, on the tabs, so the toolbar's tabs wear AppKit's cell under Liquid Glass and every other switcher, and the toolbar's under Flat, wears Helm's (ARCHITECTURE.md § Ink and contrast). A press on a tab of the whole strip asks the switcher's cell to slide the pick to it over `HelmMotion.interfaceDuration` (a cut under Reduce Motion, on the first draw, when the page sets the selection, and for a tab chosen from the folded strip's menu; a republication that also renames a tab or moves a dot ends the slide); the page under the bar changes at once. The slide was not seen on a screen, and a cell that is not Helm's is not asked to slide. A tab may carry a dot (`HelmToolbarTab.needsAttention`): AppKit draws a segment's image before its label, so
 the dot is the segment's image, and a folded switcher marks the tab in its menu with a badge. How the dot reads over the glass plate on a real screen was not measured. In the toolbar the search field is an `NSSearchToolbarItem` carrying an `NSSearchField`
 `SettingsToolbar` builds itself (`makeSearchItem`): Return, and only Return, runs a
 page's `onSubmit`. With `AppSettings.alwaysCollapseSearch` on, an empty idle field
@@ -116,9 +113,9 @@ items, and no item reads the setting itself. It changes what two items are made 
 | item | Liquid Glass | Flat |
 |---|---|---|
 | tabs | a bordered item, AppKit's platter behind AppKit's cell | `isBordered = false` (AppKit's platter off), Helm's flat cell on a `ShellBarPlate`, which follows the window's activity; a press slides the pick |
-| actions | the capsule on glass, `\.helmSwitcherCell` AppKit's for a segmented entry | the capsule on a flat fill (`\.helmBarAppearance`), dimmed in an inactive window by the name zone's numbers through the model's `appearsActive`, which is told the window's activity and rebuilds no host (the glass capsule's host is rebuilt for it), a segmented entry in Helm's cell |
+| actions | the capsule on glass | the capsule with nothing drawn behind its entries (`\.helmBarAppearance` is `.flat`), dimmed in an inactive window by the name zone's numbers through the model's `appearsActive`, which is told the window's activity and rebuilds no host (the glass capsule's host is rebuilt for it) |
 
-The name and the search field are not made differently under either look. The widths the tabs and a segmented entry are measured at are measured wearing the cell
+The name and the search field are not made differently under either look. The widths the tabs are measured at are measured wearing the cell
 the look puts on them, and a measurement is kept with the look it was taken under. **Not seen on a screen:** the plate under the cell inside a toolbar item, that no platter of
 AppKit's is behind it, the slide inside the toolbar, and the capsule drawn flat. `HelmBarAppearance`'s header has the two defaults.
 

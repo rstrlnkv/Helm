@@ -28,9 +28,8 @@ A proof that is not kept is the same command run before the fix and after it, th
 already red, and its files stay outside the tree. A test outside the kept classes is
 optional, and its class decides it: `Tests/optional-tests.txt` names such classes one per
 line, `Scripts/test.sh` passes each to `--skip` on every run without a `--filter`, and
-`HELM_FULL_SUITE=1` runs the full suite before a release. Hosts' tests are not on that list
-and run on every commit for as long as the module is in the tree. A name on the list that no
-test class declares fails the run, because a stale name skips nothing and says so nowhere. A
+`HELM_FULL_SUITE=1` runs the full suite before a release. A name on the list that no test
+class declares fails the run, because a stale name skips nothing and says so nowhere. A
 defect found and not fixed goes to the defect log — the repository's issues, and a
 security defect to the owner's private record, never to a public issue — and not into the
 tree as a skipped test: a skip reads as a pass in a failures-only summary, and a
@@ -49,7 +48,9 @@ removes a name first runs
 `command grep -rn '<name>' ARCHITECTURE.md Architecture CLAUDE.md README.md Sources Tests Scripts .claude/crew/knowledge`
 and takes every line it prints — a mention, not a caller, the one question `grep` answers
 here (ARCHITECTURE.md § Why the commands are run). Nothing is kept for later: git holds
-what was removed.
+what was removed. A module archived rather than dropped is tagged `archive/<module>` on its
+last commit; a lesson in the crew's knowledge that outlives it stays, its address the old
+path followed by «in the tag `archive/<module>`», read with `git show archive/<module>:<path>`.
 
 ## Readings and mutants
 

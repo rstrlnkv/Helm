@@ -43,7 +43,6 @@ let modules: [Module] = [
     Module(name: "Autopilot"),
     // flag-icons flag artwork, MIT — see NOTICE.md.
     Module(name: "Layout", uiResources: [.copy("Flags")]),
-    Module(name: "Hosts"),
     // The editor palette's Pen, Marker and Pencil artwork, from a community recreation of Apple's PencilKit picker,
     // modified for Helm — NOTICE.md records the source and the owner's decision; author and licence are placeholders there
     // for the owner.

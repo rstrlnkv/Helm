@@ -1,14 +1,11 @@
 # The gates
 
-Five types answer five different questions about where a path may be reached,
-and four of them are about reading or removing. The fifth is about writing, and
-it is the only one, which is why it reads differently from its neighbours: it
-answers *may Helm write this path*, over one file the user owns and Helm did not
-create. This is the list of who asks which:
+Four types answer four different questions about where a path may be reached.
+This is the list of who asks which:
 
 ```bash
 command grep -rn --include='*.swift' \
-  -oE '(RemovableScope|UserFileScope|WatchScope|ScanRoot|SSHFileScope)\.[a-zA-Z]+' Sources/
+  -oE '(RemovableScope|UserFileScope|WatchScope|ScanRoot)\.[a-zA-Z]+' Sources/
 ```
 
 `RemovableScope` (`Sources/HelmRuntime/RemovableScope.swift`) asks what belongs to an
@@ -24,18 +21,13 @@ sed -n '/private static func roots/,/^    }/p' Sources/HelmRuntime/RemovableScop
 (`Sources/Modules/Autopilot/Engine/Logic/WatchScope.swift`) is Autopilot's own and asks
 where an unattended folder rule may reach. `ScanRoot` (`Sources/HelmRuntime/ScanRoot.swift`)
 asks where a read nobody is watching may begin and how far it may descend. The doc comments
-of `WatchScope`, `ScanRoot` and `SSHFileScope` say what the others cannot answer.
-
-`SSHFileScope` (`Sources/Modules/Hosts/Engine/Logic/SSHFileScope.swift`) asks whether Helm
-may **write** a path, and it exists because Hosts & Keys is the one module that edits a
-file the user wrote by hand; `mayWrite(_:home:under:)` is the whole gate.
+of `WatchScope` and `ScanRoot` say what the others cannot answer.
 
 Paths reach `RemovableScope` and `UserFileScope` through
 `Sources/HelmRuntime/PathCanonical.swift`, which resolves symlinked ancestors and leaves
-the leaf alone, so a stale alias is trashed rather than chased. `ScanRoot` and the
-deciding check of `SSHFileScope` use its `resolvingWholePath`, which resolves the leaf
-too, because they read or write what the path points at rather than remove the name
-(`PathCanonical.swift` says why for reading, `SSHFileScope`'s doc comment for writing). `WatchScope` canonicalises on its own, resolving the
+the leaf alone, so a stale alias is trashed rather than chased. `ScanRoot` uses its
+`resolvingWholePath`, which resolves the leaf too, because it reads what the path points
+at rather than removing the name (`PathCanonical.swift` says why). `WatchScope` canonicalises on its own, resolving the
 whole path, leaf included, as far as it exists. `PathCanonical.ancestryIdentity(of:)` returns the device-and-inode chain that
 `Sources/HelmRuntime/HelmTrash.swift` re-reads immediately before each move.
 

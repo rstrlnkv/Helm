@@ -27,8 +27,7 @@ import SwiftUI
 /// `flat`: it is the value read back for a person who chose nothing. The
 /// environment's, below, is `liquidGlass`: it is what a view mounted with
 /// nobody having set a look gets: for a bare actions capsule `liquidGlass`
-/// is the plate that existed before the setting did (its strip wears the flat
-/// cell). `SettingsToolbar` is the builder in `Sources/` that sets a look on it, from the look its bar was built under.
+/// is the plate that existed before the setting did. `SettingsToolbar` is the builder in `Sources/` that sets a look on it, from the look its bar was built under.
 ///
 /// **Not sealed:** nothing unattended reads it (`AppSettings.barAppearance`).
 public enum HelmBarAppearance: String, CaseIterable, Sendable {

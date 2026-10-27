@@ -83,8 +83,7 @@ public struct HelmSwitcherSegment<Value: Hashable> {
 ///
 /// The strip is the neutral pill of the flat cell, unless the
 /// environment's `helmSwitcherCell` asks for AppKit's (a switcher in the window's toolbar does under Liquid
-/// Glass; under Flat it wears the flat cell there too: the tabs on a plate `SettingsToolbar` puts under them, a
-/// capsule's switcher on the capsule's own flat fill).
+/// Glass; under Flat it wears the flat cell there too: the tabs on a plate `SettingsToolbar` puts under them).
 /// The system's own cell is what a switcher in the window's toolbar wears under Liquid Glass, for the glass
 /// it brings (measured 2026-09-17 against Apple Music's toolbar: pressing a
 /// segment swells its glass and dragging carries that glass from segment to
@@ -124,7 +123,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
     private let compact: Bool
     /// The control's own `NSView.menu` — see this type's own header: the
     /// bar's menu for the centre tabs, nil for a switcher that belongs to
-    /// something else (the actions capsule's, the measuring rig's).
+    /// something else (the measuring rig's).
     private let menu: NSMenu?
     @Environment(\.helmSwitcherStyle) private var style
     @Environment(\.helmSwitcherCell) private var cell
@@ -280,13 +279,12 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
             // **A glyph is drawn, not read back — `control.image(forSegment:)`
             // is the same `NSImage` whichever symbol produced it, so nothing
             // here can compare the control's own state against a changed
-            // `symbol` the way `labelsMatch` compares the drawn word.** The
-            // capsule's `.segmented` entries are always `.icons`, the one style
-            // where a glyph is *all* that is drawn, so a page that re-declares an
-            // option's glyph under the same name and the same selection has
-            // nothing else here to force a refill on:
-            // the old glyphs read as
-            // still drawn after such a re-declare, on this exact gap.
+            // `symbol` the way `labelsMatch` compares the drawn word.** In
+            // `.icons`, the one style where a glyph is *all* that is drawn, a
+            // page that re-declares an option's glyph under the same name and
+            // the same selection has nothing else here to force a refill on:
+            // the old glyphs read as still drawn after such a re-declare, on
+            // this exact gap.
             // `lastSymbols` tracks the segments' own glyphs the same way
             // `lastNames` tracks their words.
             let symbolsChanged = context.coordinator.lastSymbols != shown.map(\.symbol)

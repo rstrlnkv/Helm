@@ -92,15 +92,6 @@ final class StringsLiveInLprojTests: XCTestCase {
         // Belegung, Disposition, Distribución, 配列, 布局), which is what makes
         // this an identity rather than a row nobody filled in.
         "Layout": [.pt],
-        // The key is the column header on the keys tab. French spells the word
-        // exactly as English does — Larousse lists «type» and nothing shorter
-        // fits a column — and the other six all differ, which is what makes
-        // this an identity rather than a table nobody filled in.
-        "Type": [.fr],
-        // German borrowed this one whole, the way it borrowed «Filter»: Duden
-        // lists «Passphrase» and the alternatives — «Kennwortsatz» — are
-        // dictionary words nobody types. The other six all differ.
-        "Passphrase": [.de],
         // The severity badge over a `brew doctor` finding that is an `Error:`
         // rather than a `Warning:`. German spells it exactly as English does —
         // Duden lists «Problem» and the alternatives («Schwierigkeit»,
@@ -176,12 +167,6 @@ final class StringsLiveInLprojTests: XCTestCase {
         "h": [.es, .fr, .pt],
         "Hardware": [.es, .de, .pt],
         "Homebrew": [.ru, .es, .fr, .de, .ja, .zh, .pt],
-        // The networking sense of «host» is a loanword in these three and takes
-        // the English plural in all of them, so the sidebar's short name comes
-        // out identical while the module's full name does not — «Hosts &
-        // Schlüssel», «Hosts y claves», «Hosts e chaves». French and the four
-        // non-Latin scripts have a word of their own and use it.
-        "Hosts": [.es, .de, .pt],
         "Image": [.fr],
         // The package view's licence tile. The English key is the British
         // spelling, which is the French word — «licence», capitalised as a

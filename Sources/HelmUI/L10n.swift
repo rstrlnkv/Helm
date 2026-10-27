@@ -238,7 +238,7 @@ public enum HelmDates {
     /// stamp that has none.
     ///
     /// Every caller of this draws how old something is: «Checked …»,
-    /// «Measured …», «Last scan …», a key file's date, a speed reading's date.
+    /// «Measured …», «Last scan …», a speed reading's date.
     /// Not one of them ever wants a time still to come, and there are two ways
     /// the system formatter writes one:
     ///
@@ -250,9 +250,8 @@ public enum HelmDates {
     ///    `RelativeDateTimeFormatter` rounds the interval to the nearest second
     ///    and renders a rounded zero in the *future* voice — 0.9 s ago comes
     ///    back «через 0 секунд», "in 0 seconds", "0秒钟后", and only at a full
-    ///    second does it say «1 секунду назад». A key file `ssh-keygen` has
-    ///    just written, and a scan row redrawn the moment its scan comes back,
-    ///    both sit inside that first second.
+    ///    second does it say «1 секунду назад». A scan row redrawn the moment
+    ///    its scan comes back sits inside that first second.
     ///
     /// **`nil`, and never a clamp.** «Just now» for a file dated next March is
     /// wrong in a way nothing on screen can show and no test can catch, because
@@ -262,10 +261,10 @@ public enum HelmDates {
     /// `.unknown`, `UpdateCheck.lastChecked` answers `nil`, and the VPN tile
     /// leaves the unit standing alone.
     ///
-    /// `style` defaults to what the four callers that predate it already drew:
-    /// a scan row, the update check, Disk's «measured» line and the key table
-    /// each have a full row's width, and only the VPN speed tile — 143 pt at the
-    /// default window and 91 at the narrowest — asks for the short form.
+    /// `style` defaults to what the three callers that predate it already drew:
+    /// a scan row, the update check and Disk's «measured» line each have a full
+    /// row's width, and only the VPN speed tile — 143 pt at the default window
+    /// and 91 at the narrowest — asks for the short form.
     public static func age(_ date: Date, to now: Date = Date(),
                            style: AgeStyle = .full,
                            language: String = AppLanguage.current.rawValue) -> String? {

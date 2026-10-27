@@ -109,18 +109,6 @@ public struct HelmToolbarAction {
         case button(() -> Void)
         case toggle(isOn: Bool, () -> Void)
         case menu([HelmToolbarMenuItem])
-        /// A grouped choice among `options`, one of them selected — drawn as
-        /// `HelmToolbarSwitcher` in the capsule (`HelmToolbarActions.swift`,
-        /// this same directory) rather than as two `.toggle` actions kept in
-        /// lockstep by hand, or as a `.menu`'s dropdown. Hosts' Table /
-        /// Plain-text pair is the first caller. `options` reuses
-        /// `HelmToolbarTab`'s own shape (id, word, glyph) — the same triple
-        /// the centred tabs switcher already takes a segment from — and
-        /// `selection` is a plain `Binding<String>`, the same shape
-        /// `HelmPageToolbarContent.selectedTab` already is, rather than a
-        /// closure per option: there is nothing here for a per-option
-        /// `perform` to do that writing the binding does not already say.
-        case segmented(options: [HelmToolbarTab], selection: Binding<String>)
     }
 
     public let id: String
@@ -157,8 +145,7 @@ public struct HelmToolbarAction {
     /// action, which draws exactly as it did before there was a face.
     public let toggleFace: HelmToolbarToggleFace?
 
-    /// A plain button — the shape every action but Hosts' view-mode switcher
-    /// and Leftovers' kind filter takes.
+    /// A plain button: a `perform` and nothing else. A toggle and a menu take the initializers below.
     public init(id: String, title: String, symbol: String, isEnabled: Bool = true,
                 isVisible: Bool = true, isBusy: Bool = false, perform: @escaping () -> Void) {
         self.id = id
@@ -199,25 +186,6 @@ public struct HelmToolbarAction {
         self.isVisible = isVisible
         self.isBusy = false
         self.kind = .menu(menu)
-        self.toggleFace = nil
-    }
-
-    /// A segmented control: `title` names the *group* — the switcher's own
-    /// accessibility label and the overflow menu's submenu title. It has to
-    /// differ from `HelmA11y.whatToShow`, the centre tabs' name on the same
-    /// bar, or VoiceOver reads two switchers under one name; Hosts' is
-    /// `HostsStr.viewGroup`. Each
-    /// option carries its own word and glyph, so this action's own `symbol`
-    /// goes unused and is fixed to `""`.
-    public init(id: String, title: String, isEnabled: Bool = true, isVisible: Bool = true,
-                options: [HelmToolbarTab], selection: Binding<String>) {
-        self.id = id
-        self.title = title
-        self.symbol = ""
-        self.isEnabled = isEnabled
-        self.isVisible = isVisible
-        self.isBusy = false
-        self.kind = .segmented(options: options, selection: selection)
         self.toggleFace = nil
     }
 }

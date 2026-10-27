@@ -59,9 +59,9 @@ Sources/Modules/<Name>/UI is declared there; the doc comment of
 `command grep -rn 'public static let moduleID' Sources/Modules/*/Engine/` prints
 one line per engine; the descriptor forwards the id upward, in the same direction
 the command enums travel.
-`Tests/HelmAppTests/StoreNamespacesAreModuleIdsTests.swift:28` records the ids
-that shipped and fails on a rename, since a rename orphans everything anybody has
-configured.
+`Tests/HelmAppTests/StoreNamespacesAreModuleIdsTests.swift:28` records the
+registered ids and fails on a rename, since a rename orphans everything anybody
+has configured.
 
 ## Ports and logic
 

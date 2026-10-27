@@ -41,10 +41,9 @@ import HelmUI
     /// were the same number, is a comment.
     ///
     /// The height is 760 by the owner's decision, up from 700: the eleventh
-    /// module (Screenshots, in Utilities) makes the shipped composer measure 723,
-    /// which 700 could not hold. 760 holds the eleven with 37 pt to spare, which
-    /// is less than the 40 pt row a twelfth module adds, so a twelfth wants the
-    /// window raised again.
+    /// module (Screenshots, in Utilities) made the shipped composer measure 723,
+    /// which 700 could not hold. With Hosts archived (the tag `archive/hosts`)
+    /// there are ten, one 40 pt row fewer; the height was left at 760.
     nonisolated static let defaultSize = NSSize(width: 1060, height: 760)
     /// Below this the list rows start truncating names and paths.
     private static let minSize = NSSize(width: 860, height: 540)

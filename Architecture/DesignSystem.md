@@ -78,8 +78,8 @@ photographable before it is chosen for a surface this house verifies by photogra
 
 A segmented control wears Helm's flat cell (`HelmFlatSegmentedCell`) unless the environment value
 `helmSwitcherCell` asks for AppKit's `NSSegmentedCell`, and only `SettingsToolbar.swift` asks, and only under Liquid Glass: on the tabs,
-on the actions capsule and on the switchers it measures them by, so the switcher measured wears the cell the switcher drawn wears. Under Flat it sets
-the same four to Helm's cell, so the toolbar's switchers wear it too.
+and on the switcher it measures them by, so the switcher measured wears the cell the switcher drawn wears. Under Flat it sets
+both to Helm's cell, so the toolbar's tabs wear it too.
 A control that wears AppKit's cell outside a toolbar selects with the system's accent colour in a key
 window, so the default is flat. The cell is chosen when the control is made. That AppKit's cell draws no accent
 inside the window's toolbar is not stated here: no one has seen it in a key window.

@@ -14,8 +14,8 @@ import XCTest
 /// **Why exact and not by prefix.** The sibling matches a heading as a prefix
 /// of whatever follows the section sign, which is right for code that quotes a heading with
 /// prose after it, and wrong here: a pointer reading `Release notes` would resolve to a
-/// heading `Release`, and one reading `Hosts and SSH` would stay green if that section were
-/// renamed `Hosts`, the heading being only a prefix of the pointer's text. A pointer here ends at a terminator — `.`, `,`, `;`, `:`,
+/// heading `Release`, and one reading `Readings and mutants` would stay green if that section were
+/// renamed `Readings`, the heading being only a prefix of the pointer's text. A pointer here ends at a terminator — `.`, `,`, `;`, `:`,
 /// `)`, `]`, the next §, an arrow or the end of the paragraph, a closing mark
 /// (a backtick, quote or asterisk) being allowed between the heading and the
 /// terminator — and the text before it has to equal a heading, case included. The price is
