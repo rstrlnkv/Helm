@@ -189,6 +189,28 @@ public struct HelmToolbarSearch {
     }
 }
 
+/// **How much room the actions and the search take, said by what they are made of** — a count and a yes — so
+/// that the owner of a tab strip can declare, once, the widest run any page under that strip will have
+/// (`HelmPageToolbarContent.reserves`). It is a count the owner keeps by hand, not read off the page's
+/// own controls: the page that owns the widest run says so beside it (`LogView.trailingRun`).
+public struct HelmTrailingRun: Sendable {
+    private let actions: Int
+    private let search: Bool
+
+    public init(actions: Int, search: Bool) {
+        self.actions = actions
+        self.search = search
+    }
+
+    /// The run's width: the actions' buttons (`HelmHeaderActions.side` each), the row's 12 pt gap, the
+    /// search's fixed width (`HelmHeaderSearch.width`); language-independent, all three.
+    var width: CGFloat {
+        let buttons = HelmHeaderActions.side * CGFloat(actions)
+        let field = search ? HelmHeaderSearch.width : 0
+        return buttons + field + (actions > 0 && search ? 12 : 0)
+    }
+}
+
 /// **The whole of what a page asks the window's header row to show**, beyond the
 /// name every page gets for nothing. Any of the three may be empty or nil — a
 /// page with none of them still gets tabs-less, action-less, search-less
@@ -207,14 +229,22 @@ public struct HelmPageToolbarContent {
     public var tabsEnabled: Bool
     public var actions: [HelmToolbarAction]
     public var search: HelmToolbarSearch?
+    /// **Set only by a tab strip's owner, for pages that share one strip and put different things beside it**
+    /// (the settings window's three): the widest run any of them declares. The row keeps at least that much
+    /// room for the actions and the search, so the strip does not move from one page to the next. Nil for a
+    /// page whose own declaration does not change across its tabs: it reserves exactly what it declares
+    /// (`HelmHeaderActions` holds the room of every declared action).
+    public var reserves: HelmTrailingRun?
 
     public init(tabs: [HelmToolbarTab] = [], selectedTab: Binding<String>? = nil, tabsEnabled: Bool = true,
-                actions: [HelmToolbarAction] = [], search: HelmToolbarSearch? = nil) {
+                actions: [HelmToolbarAction] = [], search: HelmToolbarSearch? = nil,
+                reserves: HelmTrailingRun? = nil) {
         self.tabs = tabs
         self.selectedTab = selectedTab
         self.tabsEnabled = tabsEnabled
         self.actions = actions
         self.search = search
+        self.reserves = reserves
     }
 }
 

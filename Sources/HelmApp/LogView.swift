@@ -157,6 +157,12 @@ struct LogView: View {
         Self.levelTabs.first { $0.level == minimumLevel } ?? Self.levelTabs[0]
     }
 
+    /// **The widest run of the three settings pages: Log's** — the level, the module filter, Follow, Copy, «More
+    /// actions», and the search. The window hands it to General, About and Log as `reserves` (Log carries the
+    /// window's value on, below), so the tab strip stands in one place on all three. A sixth action here widens Log's run alone and
+    /// shows at once as the strip moving, until this count says it.
+    static let trailingRun = HelmTrailingRun(actions: 5, search: true)
+
     /// **What the page asks of the header row**, in one place:
     /// `levelToolbarContent` as it stands when no tabs were handed; with
     /// `settingsTabs`, those tabs and the level as the first action.
@@ -166,6 +172,7 @@ struct LogView: View {
         content.tabs = settingsTabs.tabs
         content.selectedTab = settingsTabs.selectedTab
         content.actions.insert(levelAction, at: 0)
+        content.reserves = settingsTabs.reserves
         return content
     }
 

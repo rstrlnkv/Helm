@@ -619,7 +619,12 @@ private struct CardHeader: ViewModifier {
     }
 }
 
-/// Tabs, actions and search, in that order, on the right of the row; each only where the page declared it.
+/// Tabs, then actions and search, in that order, on the right of the row; each only where the page declared it.
+///
+/// **The tab strip's place is the owner's, not the page's.** Where pages share one strip and declare different
+/// runs (the settings window's three), the owner declares the widest (`HelmPageToolbarContent.reserves`) and the
+/// run keeps at least that width, so the strip ends 12 pt before it on every one of them. A page without a
+/// declaration gets exactly the room of what it declared, as the row had before.
 private struct HelmHeaderControls: View {
     let content: HelmPageToolbarContent?
 
@@ -629,11 +634,16 @@ private struct HelmHeaderControls: View {
                 if !content.tabs.isEmpty, let selected = content.selectedTab {
                     HelmHeaderTabs(tabs: content.tabs, selection: selected, enabled: content.tabsEnabled)
                 }
-                if !content.actions.isEmpty {
-                    HelmHeaderActions(actions: content.actions)
-                }
-                if let search = content.search {
-                    HelmHeaderSearch(search: search)
+                if !content.actions.isEmpty || content.search != nil || content.reserves != nil {
+                    HStack(spacing: 12) {
+                        if !content.actions.isEmpty {
+                            HelmHeaderActions(actions: content.actions)
+                        }
+                        if let search = content.search {
+                            HelmHeaderSearch(search: search)
+                        }
+                    }
+                    .frame(minWidth: content.reserves?.width ?? 0, alignment: .trailing)
                 }
             }
         }

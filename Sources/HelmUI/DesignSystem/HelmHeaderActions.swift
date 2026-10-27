@@ -15,7 +15,7 @@ struct HelmHeaderActions: View {
 
     /// 36 pt — AppKit's own bordered toolbar button's height, measured against a live window. The tab strip beside them is 32 pt
     /// (`HelmHeaderTabs`); the row's `HStack` centres both on one line.
-    private static let side = CGFloat(36)
+    static let side = CGFloat(36)
     /// A disabled glyph's dimming, fit to what AppKit's own disabled toolbar glyph reads back on screen (a
     /// measurement of the old toolbar's capsule, taken per appearance; the display moves it by a few hundredths).
     private static let disabledGlyphOpacityDark = 0.49

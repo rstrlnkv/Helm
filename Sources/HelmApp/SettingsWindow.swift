@@ -417,7 +417,8 @@ private struct SettingsDetail: View {
     @ViewBuilder
     private var content: some View {
         let tabs = HelmPageToolbarContent(tabs: SettingsTabs.all,
-                                          selectedTab: SettingsTabs.binding($model.selection))
+                                          selectedTab: SettingsTabs.binding($model.selection),
+                                          reserves: LogView.trailingRun)
         // A module that is off reads as General, as it does in the sidebar,
         // whatever the selection still says.
         switch ShellSidebarRows.settled(model.selection, enabled: model.host.enabledModuleIDs) {
