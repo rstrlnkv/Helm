@@ -218,6 +218,11 @@ import HelmUI
         settingsWindow.show(selecting: moduleID)
     }
 
+    /// Open Settings on exactly this page (`LaunchPage`).
+    func showSettings(page: SettingsSelection) {
+        settingsWindow.show(page: page)
+    }
+
     @objc private func quit() {
         NSApp.terminate(nil)
     }

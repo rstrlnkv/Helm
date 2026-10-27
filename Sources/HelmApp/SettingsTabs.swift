@@ -32,12 +32,17 @@ enum SettingsTabs {
                 }
             },
             set: { id in
-                switch id {
-                case "general": selection.wrappedValue = .general
-                case "log": selection.wrappedValue = .log
-                case "about": selection.wrappedValue = .about
-                default: break
-                }
+                if let tab = Self.selection(id) { selection.wrappedValue = tab }
             })
+    }
+
+    /// The selection a tab id stands for, nil for an id that is no tab.
+    static func selection(_ id: String) -> SettingsSelection? {
+        switch id {
+        case "general": return .general
+        case "log": return .log
+        case "about": return .about
+        default: return nil
+        }
     }
 }

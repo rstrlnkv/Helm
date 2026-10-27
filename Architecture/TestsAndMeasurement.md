@@ -20,7 +20,7 @@ The proof follows the class of the defect, and only some classes keep theirs in 
 | a crash on what a file, the system or another process hands Helm | a test | yes |
 | an import across a boundary; a path or `§` pointer to nothing | the build's import check (ARCHITECTURE.md § The boundaries) and the checks of the tree | yes |
 | the suite itself touching this Mac: its Keychain, defaults, Trash or a person's files | a test | yes |
-| the look: layout, size, colour, contrast, a page's states | shots before and after | no |
+| the look: layout, size, colour, contrast, a page's states | shots before and after (§ Snapshot rules) | no |
 | motion | a recording before and after (§ Measuring motion) | no |
 | logic that costs no data | the repro or a command printing the value, before and after | no |
 
@@ -106,14 +106,79 @@ able to replace what it kills before it kills anything. Accessibility is granted
 process at the top of the launch chain rather than to the test runner, because the system
 attributes the ask to the responsible process.
 
+## Two screen instruments
+
+`Scripts/shoot.sh` takes the still and `Sources/HelmReadout/` reads it. Neither judges:
+the first prints where and how big, the second prints numbers, and a threshold lives in
+the person or the check that reads them.
+
+`shoot.sh <page>` launches Helm Dev on a page and captures the window. Helm Dev is the
+process whose executable path, as the kernel holds it (`HelmReadout exe <pid>`), is exactly
+`/Applications/Helm Dev.app/Contents/MacOS/HelmApp`, never one found by name or by `ps`'s
+command column, which is argv[0] and which any process sets: Helm and Helm Dev run one
+executable name, and a SIGTERM must reach only Helm Dev. The pid is checked again before
+every press and before it is ended. The page is opened by `-HelmOpenPage <id>`
+(`Sources/HelmApp/LaunchPage.swift`), the one thing a press cannot reach, since Helm Dev has
+no window at launch; any other state is brought by pressing a control by its accessibility
+name (`--press`), through the Accessibility C API, so no System Events and no AppleScript
+runs. A page that cannot be opened is refused and logged, never replaced by another.
+
+The region is the window's bounds read before and after the capture, both printed:
+an autosaved window origin can land on another display under `.accessory`, so no place
+is assumed. `screencapture -R` takes the region, not `-l` by window number, which
+mis-renders a window whose material is active. Another application often takes the front,
+so each press and the capture print whether anything sits above the window, and shoot
+says "front: no" in words rather than fighting for the front. An `mkdir` lock
+(`helm-shoot.lock` in the user's temp directory, its owner's pid in a file inside) stops two
+shoots on one screen: the second refuses at once with exit 73 naming the owner pid, and
+never waits. A locked screen is refused with 75. `defaults export` of Helm Dev's domain
+is taken before and after, the run reports whether it changed, and Helm Dev is ended by
+SIGTERM sent to the checked pid only; only after that pid is seen to have ended (a Helm Dev
+still running would overwrite it) is a changed domain deleted and the copy imported, since
+`defaults import` alone merges and a key added during the run would survive; a third export
+is compared with the copy and the run prints "defaults restored: identical" or "DIFFERENT". The shot's pixel
+size is compared with the window's bounds times the display's scale (`HelmReadout scale`)
+and a disagreement is printed, because `-R` is given a rect and nothing here proves that
+every display arrangement honours it.
+
+`HelmReadout` is an executable target declared in no product (SwiftPM synthesises one for
+it, and `HelmApp` does not depend on it, so `--product HelmApp` never builds it) and with no
+dependency on any other target; `swift build --target HelmReadout` builds it, `shoot.sh`
+never does. A capture carries the display's profile, so `point` prints the file's own
+values with the profile name beside the sRGB ones; the other subcommands read sRGB.
+Its subcommands: `point`, `bands`, `contrast`, `diff` over two captures of one size,
+`window <pid>` with the windows in front of each, `exe <pid>`, `scale <x> <y>`, `ax <pid>`,
+`press <pid> <name>`, and `session`, which says whether the screen is locked and which
+grants this chain has.
+
+## Snapshot rules
+
+A still proves the look only if it was taken so that a one-point defect shows.
+
+- The region at its natural size, never scaled: a scaled picture hides a 1 pt line.
+- Beside it, the system's own analogue at the same size, taken by the same
+  `screencapture -R` of the window `HelmReadout window <pid>` names: a number about
+  Helm's ground means something only against the ground the system draws on the same
+  screen (measured once: Helm's flat dark sidebar read 40 where System Settings' read 38).
+- Light and dark by pressing Helm's own switch, never the system's: the system's
+  switch is a setting of somebody's Mac, which no crew member changes.
+- Active and inactive (`--inactive`): a window's material and its controls draw
+  differently when it is not key (measured: a light ground read 211 active and 240 inactive).
+- Before and after the change, the same page and state: a difference between two shots
+  of different states is not the change's.
+- Motion by frames (§ Measuring motion), with `HelmReadout diff` over a crop: a still
+  shows a settled state only.
+- Colour read in sRGB: a capture carries the display's profile, so its file values are
+  not the token's.
+
 ## Measuring motion
 
 Motion is recorded with a screen recording and the recorder is never wrapped in a timeout:
 the file is written when the recording stops and the signal kills it first, which reads
 exactly like a permissions refusal. Stills arrive slowly and are for
-settled states, and a shot is taken by window number rather than display index, because
-that index is not the screen order and a full-screen capture photographs whatever else is
-open on somebody's machine. A pixel probe timestamps its sampling loop, because reading
+settled states, and a still is taken by `Scripts/shoot.sh` (§ Two screen instruments) of
+the window's region rather than by display index, because that index is not the screen
+order and a full-screen capture photographs whatever else is open on somebody's machine. A pixel probe timestamps its sampling loop, because reading
 pixels costs enough per frame that a run of samples nominally "20 ms" apart
 covers far more time than that; it
 anchors on something that moves with what is measured, since a fixed rectangle over a

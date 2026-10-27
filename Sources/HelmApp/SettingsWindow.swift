@@ -148,6 +148,17 @@ import HelmUI
             model.selection = ShellSidebarRows.settled(.module(moduleID),
                                                        enabled: model.host.enabledModuleIDs)
         }
+        bringForward()
+    }
+
+    /// Opens the window on exactly this page, whatever the page is: Log and About
+    /// too, which `show(selecting:)` cannot name (`LaunchPage`).
+    func show(page: SettingsSelection) {
+        model.selection = page
+        bringForward()
+    }
+
+    private func bringForward() {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)

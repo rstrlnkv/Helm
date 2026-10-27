@@ -148,6 +148,7 @@ import Module_Uninstaller_UI
         HelmLog.shared.memory("launch")
         startFootprintWatch()
 
+        LaunchPage.openRequested(by: statusController, enabled: host.enabledModuleIDs)
     }
 
     /// The tour on a first launch, and the permission audit whenever the tour is

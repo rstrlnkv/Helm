@@ -6,7 +6,7 @@
 module's engine on the contract and the runtime, its UI target on the contract,
 `HelmUI` and its own engine, and `HelmApp` on every module's UI target and on no
 engine. `HelmTestSupport` (`Tests/Support`) is a plain target every test target
-depends on and no product lists.
+depends on and no product lists. `HelmReadout` depends on nothing, and `HelmApp` does not depend on it.
 
 Each target and what it holds:
 
@@ -18,6 +18,7 @@ Each target and what it holds:
 - `Module_<X>_UI` — a module's descriptor, settings page, panel tile and view model.
 - `HelmTestSupport` — `Tests/Support`, below.
 - Test targets — `Module_<X>_EngineTests` and `Module_<X>_UITests` per module, and `HelmContractTests`, `HelmAppTests`, `HelmRuntimeTests`, `HelmUITests`; each depends on `HelmTestSupport`, and `HelmAppTests` holds the app-layer checks.
+- `HelmReadout` — `Sources/HelmReadout`: the screen instrument that reads a capture and a window; no dependency on any other target, so an import of Helm's own target fails its build, and declared in no product (SwiftPM synthesises one for it, but `HelmApp` does not depend on it), so `--product HelmApp` never builds it. ARCHITECTURE.md § Two screen instruments.
 - `HelmApp` — the executable.
 
 The declarations in the contract are what this prints:

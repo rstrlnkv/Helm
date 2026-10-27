@@ -137,6 +137,14 @@ let support: [Target] = [
     .target(name: "HelmTestSupport", dependencies: ["HelmRuntime", "HelmUI"], path: "Tests/Support"),
 ]
 
+/// Screen instruments: built by `swift build --target HelmReadout`, listed in no
+/// product (SwiftPM synthesises one for an executable target) and no dependency of
+/// `HelmApp`, so `--product HelmApp` in `Scripts/package-app.sh` never builds them;
+/// no dependencies, so an import of Helm's own target fails its build.
+let instruments: [Target] = [
+    .executableTarget(name: "HelmReadout"),
+]
+
 /// The host and the tests that belong to no module.
 let host: [Target] = [
     .executableTarget(
@@ -177,6 +185,7 @@ let package = Package(
     targets: foundation
         + modules.flatMap(\.sourceTargets)
         + support
+        + instruments
         + host
         + modules.flatMap(\.testTargets)
 )
