@@ -4,7 +4,7 @@
 in a folder created 0700 (`PrivateFile.directory(at:)`). `LogPolicy.isEnabled` answers
 whether it logs at all and `LogDestination` where it lives: every `-dev` build logs
 whatever was saved, and a beta build stays silent until its owner turns on the «Write a
-log file» item of the «More actions» menu on the Log page's window toolbar.
+log file» item of the «More actions» menu in the Log page's header row.
 
 What the installed build says about itself is read from that file rather than assumed: the
 lines tagged "permissions" (`Sources/HelmApp/PermissionAudit.swift`) state which grants it
@@ -90,7 +90,7 @@ is idle (ARCHITECTURE.md § The activity registry).
 
 `Sources/HelmApp/LogView.swift` is the same lines readable while they are being written,
 on every build. It computes nothing about the file: one `write`, one format, and the pane
-is a window onto it. Its controls live in the settings window's own toolbar rather than
+is a window onto it. Its controls live in the header row of the settings window's card rather than
 in a band of the page (`LogView.toolbarContent`), so the place a person is sent to when
 they report a problem is the one named after it.
 

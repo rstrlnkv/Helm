@@ -1,18 +1,14 @@
 import SwiftUI
 
-// **What a settings page may put in the window's bar, said once here so
-// every module page says it the same way.** The bar itself is `HelmApp`'s —
-// `SettingsToolbar`, the controller of the toolbar the settings window wears;
-// it hears the selection and this channel itself and tells its items what to show.
+// **What a settings page may put in the header row of the card, said once here so
+// every module page says it the same way.** The row is drawn by `helmCardHeader`
+// (`HelmPageHeader.swift`) from `HelmPageToolbarKey`, a preference: the page and the row
+// live in one hosting view, so what a page declares travels up to the row and no object
+// in another target has to be reached. `HelmWindowToolbarChannel` and the publisher below
+// are what the window's toolbar once read the same content through; nothing calls them now.
 //
-// A page cannot reach an
-// object in another target, so it says what it wants through this contract
-// and `HelmWindowToolbarChannel` instead — the same shape a preference key
-// would give, without the requirement that a preference's value be
-// `Equatable`, which a `perform` or `onSubmit` closure never is.
-//
-// A module's UI target imports `HelmUI` and never `HelmApp` — so this file,
-// and not `SettingsToolbar`, is where a page-facing name has to live.
+// A module's UI target imports `HelmUI` and never `HelmApp` — so this file is where a
+// page-facing name has to live.
 
 /// One tab a page's toolbar centres — the switcher's segments, said as data
 /// rather than as a view, since a module's UI target cannot build
@@ -206,7 +202,7 @@ public struct HelmToolbarSearch {
     }
 }
 
-/// **The whole of what a page asks the window's toolbar to show**, beyond the
+/// **The whole of what a page asks the window's header row to show**, beyond the
 /// name every page gets for nothing. Any of the three may be empty or nil — a
 /// page with none of them still gets tabs-less, action-less, search-less
 /// treatment rather than an error, which is what "temporarily show only the
@@ -320,27 +316,37 @@ public final class HelmWindowToolbarChannel {
     }
 }
 
+/// **What the page on screen declared for the header row**, nil where it declared nothing.
+///
+/// The last declaration in tree order wins, as the title's does (`HelmPageTitleKey`). The default is computed:
+/// the value holds closures and is not `Sendable`, which a stored static would have to be.
+public struct HelmPageToolbarKey: PreferenceKey {
+    public static var defaultValue: HelmPageToolbarContent? { nil }
+
+    public static func reduce(value: inout HelmPageToolbarContent?, nextValue: () -> HelmPageToolbarContent?) {
+        value = nextValue() ?? value
+    }
+}
+
 public extension EnvironmentValues {
-    /// nil where nothing carries one — a sheet, a page mounted on its own in a
-    /// test — and `helmWindowToolbar` below then does nothing at all. The
-    /// settings window is the one place that sets it.
+    /// The old window toolbar's channel. `helmWindowToolbar` below no longer reads it, and nothing sets it
+    /// now; it stays until the channel is deleted.
     @Entry var helmWindowToolbarChannel: HelmWindowToolbarChannel? = nil
 }
 
 public extension View {
     /// **The one way a page's toolbar content reaches the window.**
     ///
-    /// `token` is the page's own key — a module's engine identifier, or a
-    /// literal for one of the three non-module pages — and it is what
-    /// `HelmWindowToolbarChannel` stores content under and what
-    /// the bar's controller (`SettingsToolbar`) reads back by the page it is currently showing.
-    /// Two mounts of the same page (a language-triggered remount, an outgoing
-    /// and an incoming page briefly overlapping) share one token on purpose;
-    /// the channel's own generation guard, not a fresh token per mount, is
-    /// what keeps the later mount's declaration from being overwritten by the
-    /// earlier one's.
+    /// `token` is the page's own key — a module's engine identifier, or a literal for one of the three
+    /// non-module pages — which the window's old toolbar stored content under.
+    ///
+    /// **Now a preference, read by the header row in the card** (`helmCardHeader`, `HelmPageHeader.swift`):
+    /// the page sits in the same hosting view as the row, so what it declares travels up the tree and the row
+    /// reads it with `overlayPreferenceValue`, which asks nothing of the value — a `perform` closure is never
+    /// `Equatable`. `token` is no longer read; it stays so that no page changes, until the channel it
+    /// belonged to is deleted.
     func helmWindowToolbar(_ content: HelmPageToolbarContent?, token: AnyHashable) -> some View {
-        modifier(HelmWindowToolbarPublisher(content: content, token: token))
+        preference(key: HelmPageToolbarKey.self, value: content)
     }
 }
 

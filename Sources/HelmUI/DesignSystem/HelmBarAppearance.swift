@@ -9,10 +9,10 @@ import SwiftUI
 /// - `liquidGlass` — the system's own glass under a group. What nothing says
 ///   is this look.
 ///
-/// The toolbar the window wears reads the stored value (`SettingsToolbar`, in the shape of each bar it
-/// builds): under `flat` its tabs are `HelmFlatSegmentedCell` drawing the pick, `HelmSurface.barPick`
-/// (`HelmToolbarSwitcher`'s header), on a flat plate, and its actions capsule is the flat one; under
-/// `liquidGlass` its tabs wear AppKit's cell and its capsule is glass.
+/// The header row in the card reads the look from the environment, and the window sets it at the root of
+/// the detail pane from the stored value (`helmTracksBarAppearance`): under `flat` its tabs sit on a plate
+/// of `HelmSurface.barPlate` with the pick `HelmSurface.barPick` (`HelmHeaderTabs`) and its actions stand
+/// bare (`HelmHeaderActions`); under `liquidGlass` both are the system's glass.
 ///
 /// **The key is its own, and it is not `appearance`.** That key, in the same
 /// namespace, already holds light, dark or the system's choice
@@ -26,8 +26,8 @@ import SwiftUI
 /// **Two defaults, and they differ.** The stored one, `init(stored:)`, is
 /// `flat`: it is the value read back for a person who chose nothing. The
 /// environment's, below, is `liquidGlass`: it is what a view mounted with
-/// nobody having set a look gets: for a bare actions capsule `liquidGlass`
-/// is the plate that existed before the setting did. `SettingsToolbar` is the builder in `Sources/` that sets a look on it, from the look its bar was built under.
+/// nobody having set a look gets: for a bare actions row `liquidGlass`
+/// is the plate that existed before the setting did. The settings window is the one place that sets a look on it.
 ///
 /// **Not sealed:** nothing unattended reads it (`AppSettings.barAppearance`).
 public enum HelmBarAppearance: String, CaseIterable, Sendable {
@@ -48,4 +48,26 @@ public extension Notification.Name {
 public extension EnvironmentValues {
     /// `liquidGlass`, not the stored default: see `HelmBarAppearance`.
     @Entry var helmBarAppearance: HelmBarAppearance = .liquidGlass
+}
+
+public extension View {
+    /// Sets `helmBarAppearance` from `current` and again whenever `.helmBarAppearanceChanged` is posted, the
+    /// way `helmTracksModuleIconStyle` follows the sidebar's icons. No new identity: the page below is not
+    /// rebuilt for a look it does not draw.
+    func helmTracksBarAppearance(_ current: @escaping () -> HelmBarAppearance) -> some View {
+        modifier(HelmBarAppearanceTracker(current: current))
+    }
+}
+
+private struct HelmBarAppearanceTracker: ViewModifier {
+    let current: () -> HelmBarAppearance
+    @State private var look: HelmBarAppearance?
+
+    func body(content: Content) -> some View {
+        content
+            .environment(\.helmBarAppearance, look ?? current())
+            .onReceive(NotificationCenter.default.publisher(for: .helmBarAppearanceChanged)) { _ in
+                look = current()
+            }
+    }
 }

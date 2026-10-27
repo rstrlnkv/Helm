@@ -62,7 +62,7 @@ exactly as it did before any of this existed.
 
 ## Searching for a package
 
-The window toolbar's own search field sits on all three tabs, and `HomebrewViewModel`
+The header row's search field (`HelmHeaderSearch`) sits on all three tabs, and `HomebrewViewModel`
 owns the query rather than the page: typing filters whichever list `segment`
 is showing, through the one substring rule in `ListFilter`. On the two package
 tabs, once that filter finds nothing a pause (`HomebrewViewModel.searchPause`) starts

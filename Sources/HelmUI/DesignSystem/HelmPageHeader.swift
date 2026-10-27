@@ -177,6 +177,18 @@ struct HeaderEdgeLight: ViewModifier {
     }
 }
 
+/// What the module is doing, as the header row says it after the name: `word` is localised already,
+/// `active` picks the badge over the quiet word.
+public struct HelmHeaderStatus: Equatable, Sendable {
+    public let word: String
+    public let active: Bool
+
+    public init(word: String, active: Bool) {
+        self.word = word
+        self.active = active
+    }
+}
+
 /// The strip at the top of every page: what this page is, and the controls
 /// that belong to the page rather than to any row in it.
 ///
@@ -331,6 +343,12 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// does scroll under it. That is an over-reach the design pass chose, not
     /// an oversight to repair.
     let standsOnStillContent: Bool
+    /// The module's state, said after the name: a badge while it is active, a quiet word while it is idle.
+    /// nil for a page that has none, and then nothing is drawn.
+    let status: HelmHeaderStatus?
+    /// The row's elements — name, status, tabs, actions, search — dim as one; the ground under them does not,
+    /// so a header over content hides what passes behind it as well in a window that is not the active one.
+    let dimmed: Bool
     let trailing: Trailing
 
     public init(symbol: String, tint: Color, title: String,
@@ -347,7 +365,8 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// above because a page that draws this header as a view — the log — has
     /// no `helmPageHeader` to declare it through.
     init(symbol: String, tint: Color, title: String, bleeds: Bool,
-         overContent: Bool, scrolled: Bool, standsOnStillContent: Bool,
+         overContent: Bool, scrolled: Bool, standsOnStillContent: Bool, status: HelmHeaderStatus? = nil,
+         dimmed: Bool = false,
          @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
         self.symbol = symbol
         self.tint = tint
@@ -356,6 +375,8 @@ public struct HelmPageHeader<Trailing: View>: View {
         self.overContent = overContent
         self.scrolled = scrolled
         self.standsOnStillContent = standsOnStillContent
+        self.status = status
+        self.dimmed = dimmed
         self.trailing = trailing()
     }
 
@@ -393,9 +414,20 @@ public struct HelmPageHeader<Trailing: View>: View {
                 .font(.system(size: 16, weight: .semibold))
                 .tracking(-0.2)
                 .lineLimit(1)
+                // The name does not give way, nor do the tabs and the search beside it: the window's minimum
+                // width (`SettingsWindow.minSize`) is measured on the Log page, the fullest row, in every language.
+                .fixedSize(horizontal: true, vertical: false)
+            if let status {
+                if status.active {
+                    HelmBadge(status.word, tint: HelmSignal.success)
+                } else {
+                    Text(status.word).font(.system(size: 11)).foregroundStyle(HelmText.quiet)
+                }
+            }
             Spacer(minLength: 12)
             trailing
         }
+        .opacity(dimmed ? 0.6 : 1)
         // **20 across, not the redesign's 18.** The mockups draw this strip and
         // the pane below it at one gutter, and moving only the header to 18
         // breaks the rule that matters more: a bleeding page's content starts
@@ -450,17 +482,14 @@ public extension View {
     /// to be the edge of; a rule there would be the hairline this app measured
     /// away under a different name.
     ///
-    /// **Where the window has a toolbar, the header goes there instead**
-    /// (`PageBarStyle`): the settings window sets `helmPageBar`, and this draws
-    /// no row in the page at all. `subtitle` is the status said in words, for
-    /// the `.windowTitle` style, which gives it to the window as its subtitle; the settings window hides its title. Carries
-    /// no trailing content any more, under either bar style or none: the one
-    /// caller that filled it drew a status badge, and that badge now lives at
-    /// the bar's own trailing edge (`SettingsToolbar.makeStatusItem`, the
-    /// owner, 2026-09-28) — a page mounted with no window toolbar at all (a
-    /// sheet, a page on its own) draws `HelmPageHeader` directly instead,
-    /// which still takes a `trailing` view of its own for that case
-    /// (`AboutPage`'s `WhatsNewView`, its one caller today).
+    /// **Where the window has set `\.helmPageBar`** (`.helmTracksPageBarStyle`, `SettingsWindow`; a page's
+    /// `helmPageBar(title:)`, as `LogView` and `AboutPage` call it, sets no environment), this draws
+    /// no row in the page at all: the settings window's own row, `helmCardHeader`, is the header and takes
+    /// the page's name from the window's page identity; `PageBarContent` carries the window's title and
+    /// whether the page has scrolled under the row. `subtitle` is the status said in words, for the
+    /// `.windowTitle` style, which gives it to the window as its subtitle; the settings window hides its title.
+    /// A page mounted with no `helmPageBar` (a sheet, a page on its own) draws `HelmPageHeader` directly, which
+    /// takes a `trailing` view of its own for that case (`AboutPage`'s `WhatsNewView`, its one caller today).
     func helmPageHeader(
         symbol: String, tint: Color, title: String, subtitle: String? = nil, bleeds: Bool = false
     ) -> some View {
@@ -486,11 +515,8 @@ private struct PageHeaderPlacement: ViewModifier {
             content.modifier(PageHeaderOverContent(symbol: symbol, tint: tint, title: title,
                                                    bleeds: bleeds))
         } else {
-            // `PageBarContent`'s `.moduleName` arm draws nothing of its own
-            // any more (its own comment, `PageBarStyle.swift`) —
-            // `SettingsToolbar` owns the name and the status item directly on
-            // the app-owned `NSToolbar`; neither the icon nor a trailing view
-            // reaches this arm.
+            // The window's card header draws the name and the status;
+            // neither the icon nor a trailing view reaches this arm.
             content.modifier(PageBarContent(title: title, subtitle: subtitle))
         }
     }
@@ -519,7 +545,7 @@ private struct PageHeaderPlacement: ViewModifier {
 /// **And the page's own declaration about what is under the band travels the
 /// same direction.** `helmPageStandsOnStillContent` is set inside the page and
 /// read here, exactly as `HelmPageScrolledKey` is set inside the page and read
-/// by `ToolbarBackdrop` — the header is applied from outside the page, so a
+/// by `CardHeader` — the header is applied from outside the page, so a
 /// preference is the only way round, and the alternative would be a hand-kept
 /// list of pages living somewhere neither the page nor the band can see.
 private struct PageHeaderOverContent: ViewModifier {
@@ -552,4 +578,80 @@ private struct PageHeaderOverContent: ViewModifier {
                                standsOnStillContent: standsOnStillContent)
             }
     }
+}
+
+public extension View {
+    /// **The header row in the card, over this page.** One row for every page of the settings window, drawn
+    /// at the root of the detail pane so it keeps its identity across a page switch: the page's name and
+    /// status on the left, on the right what the page declared through `helmWindowToolbar` — tabs, actions,
+    /// search (`HelmPageToolbarKey`). The page scrolls under it, as it does under `helmPageHeader`, and
+    /// the pane reserves the row's height as a top inset.
+    ///
+    /// The declaration is read with `overlayPreferenceValue`: the value carries closures cut from the page's
+    /// state at its last body, and a copy kept in `@State` behind an `==` would hold the old ones
+    /// (`LogView`'s Copy captures `page.lines`).
+    ///
+    /// The empty part of the row drags the window, since there is no title bar under it any more.
+    func helmCardHeader(symbol: String, tint: Color, title: String, status: HelmHeaderStatus?) -> some View {
+        modifier(CardHeader(symbol: symbol, tint: tint, title: title, status: status))
+    }
+}
+
+private struct CardHeader: ViewModifier {
+    let symbol: String
+    let tint: Color
+    let title: String
+    let status: HelmHeaderStatus?
+
+    @State private var scrolled = false
+    @State private var standsOnStillContent = false
+    @Environment(\.helmWindowAppearsActive) private var windowAppearsActive
+
+    /// The 28 pt plate and `HelmSpace.s5` above and below it: System Settings' own strip (`HelmPageHeader`).
+    static let height = HelmSpace.s5 * 2 + 28
+
+    func body(content: Content) -> some View {
+        content
+            .onPreferenceChange(HelmPageScrolledKey.self) { scrolled = $0 }
+            .onPreferenceChange(HelmPageStandsOnStillContentKey.self) { standsOnStillContent = $0 }
+            .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: Self.height) }
+            .overlayPreferenceValue(HelmPageToolbarKey.self, alignment: .top) { controls in
+                HelmPageHeader(symbol: symbol, tint: tint, title: title, bleeds: true,
+                               overContent: true, scrolled: scrolled,
+                               standsOnStillContent: standsOnStillContent, status: status,
+                               dimmed: !windowAppearsActive) {
+                    HelmHeaderControls(content: controls)
+                }
+                .frame(height: Self.height)
+                .background { Color.clear.contentShape(Rectangle()).gesture(WindowDragGesture()) }
+            }
+    }
+}
+
+/// Tabs, actions and search, in that order, on the right of the row; each only where the page declared it.
+private struct HelmHeaderControls: View {
+    let content: HelmPageToolbarContent?
+
+    var body: some View {
+        if let content {
+            HStack(spacing: 12) {
+                if !content.tabs.isEmpty, let selected = content.selectedTab {
+                    HelmHeaderTabs(tabs: content.tabs, selection: selected, enabled: content.tabsEnabled)
+                }
+                if !content.actions.isEmpty {
+                    HelmHeaderActions(actions: content.actions)
+                }
+                if let search = content.search {
+                    HelmHeaderSearch(search: search)
+                }
+            }
+        }
+    }
+}
+
+public extension EnvironmentValues {
+    /// Whether the window draws its chrome active — the window's own reading (`SettingsWindow`'s header above
+    /// `windowDidBecomeKey`), not `\.controlActiveState`, which reads `.inactive` under a sheet where the
+    /// window is still the active one. The header row dims by it; a view outside the settings window reads true.
+    @Entry var helmWindowAppearsActive = true
 }

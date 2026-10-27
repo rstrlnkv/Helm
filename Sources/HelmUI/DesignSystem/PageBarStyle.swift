@@ -96,8 +96,8 @@ public struct HelmPageTitleKey: PreferenceKey {
     }
 }
 
-/// Whether the page's content has scrolled under the window's toolbar. The
-/// page's scroll view is the only thing that knows, and the window's strip is
+/// Whether the page's content has scrolled under the header row. The
+/// page's scroll view is the only thing that knows, and the row (`CardHeader`, `HelmPageHeader.swift`) is
 /// the thing that draws it, so the answer travels up as a preference.
 public struct HelmPageScrolledKey: PreferenceKey {
     public static let defaultValue = false

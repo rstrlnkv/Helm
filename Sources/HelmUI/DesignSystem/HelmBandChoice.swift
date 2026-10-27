@@ -1,30 +1,26 @@
 import Foundation
 import SwiftUI
 
-/// **Whose band lies under the settings window's toolbar — Helm's or the
-/// system's — decided once, from the running macOS, and handed down as one
-/// value.**
+/// **Whose band lies under the settings window's header row — Helm's or the system's — decided once, from
+/// the running macOS, and handed down as one value.**
 ///
-/// On macOS 27 the band is Helm's: `helmToolbarBackdrop` draws
-/// `HeaderEdgeLight` over the pane's top inset, and the window's transparent
-/// title bar holds the system's own scroll-edge effect at opacity 0 over that
-/// pane. On
-/// macOS 26 the owner asked for the system's behaviour back (2026-09-27): the
-/// sidebar there is the system's floating glass, and Helm's band ended in a
-/// straight edge at its rounded corner (a screenshot from a 26.6.2 virtual
-/// machine, not a reading taken here) — so on 26 Helm draws no band under the
-/// toolbar and leaves the title bar opaque, which is what lets the system's
-/// effect attach to the pane.
+/// On macOS 27 the band is Helm's: `HeaderEdgeLight` over the row (`HelmPageHeader`). On macOS 26 the owner
+/// asked for the system's behaviour back (2026-09-27): the sidebar there is the system's floating glass, and
+/// Helm's band ended in a straight edge at its rounded corner (a screenshot from a 26.6.2 virtual machine, not
+/// a reading taken here) — so on 26 `pageHeaderBand` is false and no band is drawn under the row.
 ///
-/// **On 26 the second half is inference, not measurement.** This Mac runs 27,
-/// and the reading that an opaque title bar lets the pane's effect draw was
-/// taken here; whether macOS 26 draws the same from the same flag is checked
-/// by the owner in a 26 virtual machine, not by anything in this tree.
+/// **What the window does with it now.** `SettingsWindow` reads `running` once and hands the same value to
+/// its pane through the environment (`helmBandChoice`), where `HelmPageHeader` reads `pageHeaderBand`. It no
+/// longer sets its title bar from it: the title bar is transparent on every system
+/// (`titlebarAppearsTransparent = true`, `SettingsWindow.init`), so the owner's 26 decision that the title bar
+/// stays opaque there is not carried out; that is open with the owner. `toolbarBand` is read only
+/// by `ToolbarBackdrop` (`helmToolbarBackdrop`, which no page applies); `titlebarAppearsTransparent` has no
+/// code reader at all. Both go with the page bar's code.
 ///
-/// **One value, read in one place.** `running` is the only reading of the
-/// system's version; `SettingsWindow` reads it once, sets its title bar from it and
-/// hands the same value to its pane through the environment (`helmBandChoice`),
-/// where `helmToolbarBackdrop` and `HelmPageHeader` read it. A flag set from
+/// **On 26 the whole is inference, not measurement.** This Mac runs 27; whether macOS 26 looks as described
+/// is checked by the owner in a 26 virtual machine, not by anything in this tree.
+///
+/// **One value, read in one place.** `running` is the only reading of the system's version; a flag set from
 /// one reading and a band drawn from another is a page with two bands or none.
 public struct HelmBandChoice: Equatable, Sendable {
     /// Helm's own band under the window's toolbar (`helmToolbarBackdrop`).

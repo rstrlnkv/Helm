@@ -17,17 +17,19 @@ import HelmUI
 /// The card carries the fill and the shadow and never masks, so the shadow is
 /// not cut; the clip masks, so the pane's band does not run square to the
 /// window's corner. The sidebar and the pane are handed in, and so is `cardMoved`, called each time the card moves or the buttons change between the rail's
-/// placement and the other (`buttonsStandInRail`); this view names no page and builds no toolbar; of the
-/// window's toolbar it asks only whether there is one.
+/// placement and the other (`buttonsStandInRail`); the settings window hands it `{ _ in }`, since it has no
+/// toolbar to place any more (to go with the toolbar code). This view names no page and builds no toolbar; of the
+/// window's toolbar it asks only whether there is one, and there is none.
 ///
 /// **The clip holds the pane alone, and the pane starts where AppKit's strip ends:** this view adds nothing
-/// to the pane's top safe-area inset, which stays AppKit's under the window's toolbar. It neither writes the
+/// to the pane's top safe-area inset; the pane's own hosting controller takes none from the title bar
+/// (`safeAreaRegions = []`, `SettingsWindow`). It neither writes the
 /// window buttons' frames nor reads them; `ShellWindowButtons` does.
 ///
 /// **One reader.** `layout()` reads the corner, whoever asked for the layout:
 /// AppKit on a resize, the probe on macOS 27 when its radii change,
 /// `viewDidMoveToWindow`, the window's occlusion notification,
-/// `sidebarWidth`'s setter (every write), `barWasAttached()` and `ShellWindowButtons` (full screen, a button's frame). Events only ask (`needsLayout = true`).
+/// `sidebarWidth`'s setter (every write), `barWasAttached()` (no caller now) and `ShellWindowButtons` (full screen, a button's frame). Events only ask (`needsLayout = true`).
 ///
 /// **The fold is the width travelling.** `fold(to:animated:)` starts a travel and writes no frame: it keeps
 /// the fold it was asked for, asks for a layout and starts `foldLink`. The first call of the
@@ -224,8 +226,8 @@ final class ShellContentView: NSView {
         needsLayout = true
     }
 
-    /// Asks for a layout, so the corner is read again and the buttons are placed again. For whoever gives the
-    /// window a toolbar. Whether the request is needed is not measured: in a window never ordered in, on
+    /// Asks for a layout, so the corner is read again and the buttons are placed again. Written for
+    /// whoever gave the window a toolbar; nothing calls it since the window lost its toolbar. Whether the request is needed is not measured: in a window never ordered in, on
     /// macOS 27.2, this view's `needsLayout` was true right after an assignment with this call left out, and
     /// what set it is not found. Assumed, not measured: that an assignment moves the window buttons. Below
     /// macOS 27 there is no probe to notice the corner moved.

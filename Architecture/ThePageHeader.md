@@ -1,16 +1,15 @@
 # The page header
 
-In the settings window a page's header and its controls live in the window's toolbar: an app-owned `NSToolbar` built by `SettingsToolbar` (`Sources/HelmApp/SettingsToolbar.swift`), a cached `NSToolbar` for each page that declares toolbar content and one shared by the pages that declare none, told what to show on every page change and assigned to the window by that class alone. The window has one build, and it wears that toolbar.
+In the settings window a page's header and its controls live in a row at the top of the card, drawn by `SettingsDetail` (`helmCardHeader`, `Sources/HelmUI/DesignSystem/HelmPageHeader.swift`): the name and status on the left, the page's tabs, actions and search on the right (`HelmHeaderTabs`, `HelmHeaderActions`, `HelmHeaderSearch`), always whole, with no folding and no collapsed search. The window wears no `NSToolbar`.
 
 A page says what it wants — tabs, actions, search — through
-`HelmWindowToolbarChannel` and `.helmWindowToolbar(_:token:)`
-(`Sources/HelmUI/DesignSystem/HelmWindowToolbar.swift`), so a module's UI target
-never imports `HelmApp`; that file's headers hold why content is kept per page
-token and how a generation number keeps an outgoing mount's late write from
-overwriting the page on screen. A page that never calls it shows the name, and
-under `PageBarStyle.moduleName` a status-bearing page's status, and nothing else;
+`.helmWindowToolbar(_:token:)`
+(`Sources/HelmUI/DesignSystem/HelmWindowToolbar.swift`), which publishes it as the preference `HelmPageToolbarKey`; the row reads it with `overlayPreferenceValue`, because the value carries closures cut from the page's state at its last body and a copy kept behind an `==` would hold the old ones. A module's UI target
+never imports `HelmApp`. A page that never calls it shows the name and, for a status-bearing module, its status, and nothing else;
 that is not an error state. `command grep -rln '\.helmWindowToolbar(' Sources`
 lists the files that publish.
+
+The sections from § The bar's zones to § The bar's menu and style describe `SettingsToolbar`, which the window no longer builds; they stay until the code goes.
 
 ## The bar's zones
 
@@ -141,7 +140,7 @@ reasons — the pointer on it while the window is key, the page scrolled underne
 the page declaring that what sits under the band is not a scroll view — from one
 answer, `HelmPageHeader.isLit`, which feeds both the fill and the rule.
 
-Under the settings window's bar the same light is `helmToolbarBackdrop`'s, and
-whose band lies there depends on the system: `HelmBandChoice`
+In the settings window the row is that header (`helmCardHeader`, `overContent: true`) with the page's scroll report (`HelmPageScrolledKey`) read at the pane's root, so the light is the header's own, and
+whether the band is drawn at all depends on the system: `HelmBandChoice`
 (`Sources/HelmUI/DesignSystem/HelmBandChoice.swift`) is read once from the running
 macOS and handed down as one value, and its header holds the 26-versus-27 reasoning.

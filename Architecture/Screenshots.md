@@ -222,7 +222,7 @@ before: `editorInk`, three numbers, or, while `editorInk` is absent, the swatch 
 on one tool never reaches the tools that have no entry yet; an `editorInk` that is there and is not three numbers is no colour, without the old key being asked.
 A pick with an object selected is the object's tool's, and with none selected the tool last in hand's.
 
-The settings page (`Sources/Modules/Screenshots/UI/ScreenshotsSettingsPage.swift`) hands the window's toolbar three tabs
+The settings page (`Sources/Modules/Screenshots/UI/ScreenshotsSettingsPage.swift`) hands the window's header row three tabs
 through `HelmPageToolbarContent`: Capturing (the shortcuts, what a capture makes, the folder), Editor and System shortcuts.
 The third carries a dot, `HelmToolbarTab.needsAttention`, while a capture box is read as still ticked in macOS
 (`ScreenshotsSettingsPage.holdsSystemKeys`, the other side of `offersToUseSystemKeys`, which offers «Use ⇧⌘3 and ⇧⌘4» once

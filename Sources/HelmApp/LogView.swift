@@ -31,13 +31,13 @@ import HelmUI
 /// report a problem was not the one named after it.
 ///
 /// **The controls are the window's, not the page's.** Level, module, search,
-/// Follow, Copy and the rest live in the window's toolbar like every other
-/// page's (`toolbarContent`); the page is the cards and a footer. The permanent
+/// Follow, Copy and the rest live in the header row of the card like every other
+/// page's (`toolbarContent`, drawn by `helmCardHeader`); the page is the cards and a footer. The permanent
 /// band that held the writing switch is gone — the switch is one line in the
 /// «More actions» menu, which is as often as anyone needs it.
 struct LogView: View {
-    /// Set by the settings window, where the page's header lives in the
-    /// window's toolbar instead of in this stack.
+    /// Set by the settings window, where the page's header is the card's row
+    /// (`helmCardHeader`) instead of one in this stack.
     @Environment(\.helmPageBar) private var pageBar
 
     /// The Settings page's tabs, when the page is shown as one of them. They
@@ -101,8 +101,8 @@ struct LogView: View {
             // header caps at `HelmLayout.settingsColumn` and centres, which put
             // its icon at x = 53 against the rows' x = 21 on this pane.
             //
-            // In the settings window the header is in the window's toolbar
-            // (`PageBarStyle`), and this row is not drawn at all.
+            // In the settings window the header is the card's row
+            // (`helmCardHeader`), and this row is not drawn at all.
             if pageBar == nil {
                 HelmPageHeader(symbol: "text.alignleft", tint: .gray,
                                title: AppStr.logPane,
@@ -122,8 +122,7 @@ struct LogView: View {
         // fires. So before this the band was structurally incapable of
         // lighting: nothing above it against the `Divider()`s below. The header
         // in the row takes the fact as an argument because it is right here;
-        // the header in the window's toolbar is drawn by `helmToolbarBackdrop`
-        // a window away, and a preference is how it hears.
+        // the card's row is drawn at the pane's root, a view away, and a preference is how it hears.
         .helmPageStandsOnStillContent()
         .helmPageBar(title: AppStr.settingsPane)
         // The token is the page's own key, the one `SettingsToolbar`'s `pageKey`
@@ -144,7 +143,7 @@ struct LogView: View {
         }
     }
 
-    // MARK: - The window's toolbar
+    // MARK: - The header row's controls
 
     /// The three levels by id. One declaration, so the toolbar's segments, the
     /// level menu's items and the filter they set cannot disagree.
@@ -159,10 +158,9 @@ struct LogView: View {
         Self.levelTabs.first { $0.level == minimumLevel } ?? Self.levelTabs[0]
     }
 
-    /// **What the page asks of the window's toolbar**, in one place:
+    /// **What the page asks of the header row**, in one place:
     /// `levelToolbarContent` as it stands when no tabs were handed; with
-    /// `settingsTabs`, those tabs centred and the level as the first action of
-    /// the capsule.
+    /// `settingsTabs`, those tabs and the level as the first action.
     private func toolbarContent(_ page: LogPresentation) -> HelmPageToolbarContent {
         var content = levelToolbarContent(page)
         guard let settingsTabs else { return content }

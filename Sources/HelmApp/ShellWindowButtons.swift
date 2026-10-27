@@ -9,7 +9,8 @@ import HelmUI
 /// puts them (their *home*), less `ShellGeometry.toolbarLift` when the window wears a toolbar: AppKit's
 /// home is that much further right and down there, so the buttons stand where they stand in a window with
 /// none (read from `window.toolbar` at every placement; the lift's size is one reading in a window never
-/// shown; `SettingsToolbar`'s file alone writes `window.toolbar`). In the rail they keep their row and stand under a closed capsule of three
+/// shown). The settings window wears none now, so the lift is never taken; `SettingsToolbar`'s file is the
+/// only code left that would write `window.toolbar`. In the rail they keep their row and stand under a closed capsule of three
 /// dots, at alpha 0; the pointer in the capsule's hover zone opens the capsule around them and shows the
 /// real buttons, and the capsule answers no hit, so a press there is meant to reach them. Not measured: a
 /// real pointer, the hover glyphs, a click and the zoom button's menu on a button that was at alpha 0.
@@ -18,8 +19,8 @@ import HelmUI
 /// directions, so the placement changes once, at the travel's start or its end.
 ///
 /// **Held by origin, on both axes.** Measured: AppKit puts the buttons back at its own origins (below).
-/// Measured in a window never shown, under the toolbar the window the app builds wears
-/// (`SettingsToolbar`'s): with a
+/// Measured in a window never shown, under the toolbar the window the app built wore
+/// (`SettingsToolbar`'s, before the header row moved into the card): with a
 /// toolbar the strip stands more than 10 pt taller, and the buttons, placed with the lift taken, stand
 /// within 0.5 pt of a bare window's, expanded and in the rail. A change of the titlebar's height therefore
 /// moves the home on both axes, and the lift is taken from both. The 52 pt strip read within 1.5 pt (a pane safe area of
