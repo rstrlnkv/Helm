@@ -235,7 +235,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// Safe to take synchronously here: `status` is answered by `answerAtOnce`
     /// on the thread that asked, never from inside a block `offQueue` put on
-    /// this queue (`TheQueueIsNotAskedToWaitForItselfTests`).
+    /// this queue.
     public var historyRefused: Bool {
         !queue.sync { rules.historyIsHelms(store.data(ActionHistory.storeKey)) }
     }

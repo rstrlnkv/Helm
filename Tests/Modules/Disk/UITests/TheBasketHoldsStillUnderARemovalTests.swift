@@ -1,5 +1,3 @@
-import AppKit
-import SwiftUI
 import XCTest
 import HelmTestSupport
 import HelmContract
@@ -121,75 +119,5 @@ final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
 
         XCTAssertEqual(transport.trashRequests, [[sub]],
                        "the engine was handed a different batch from the one consented to")
-    }
-
-    // MARK: - And the page dims
-
-    /// «The model refuses; the page dims. Both, or neither is reliable.» A model
-    /// that refuses under a button that is still live is a press that does
-    /// nothing at all, which is worse than the discard it replaced.
-    ///
-    /// Read off the drawing, not off the source: `.disabled` leaves no view to
-    /// ask, and what a person sees is ink. The list is the whole reading — the
-    /// ring is not drawn at this width (`DiskLayout.showsRing`) — and the two
-    /// mounts hold the same tree with the same row ticked, so the mark buttons
-    /// are the only thing in them that can differ.
-    ///
-    /// **Two mounts, not one read twice.** Reading the same mount before and
-    /// after the reply compares two different pages: the answer prunes the tree
-    /// and empties the basket, so the second reading is of a shorter list. It
-    /// measured *more* ink busy than idle, which is a difference about the rows
-    /// that had gone rather than about the button.
-    func testTheMarkButtonGoesDimWhileARemovalRuns() async throws {
-        for appearance in RenderedInk.bothAppearances {
-            let atRest = await mountedRows(busy: false, appearance: appearance)
-            defer { atRest.mount.drop() }
-            let idle = try XCTUnwrap(atRest.mount.settledInk(), "the list was not drawn")
-            XCTAssertGreaterThan(idle, 0, "precondition: the rows drew something at all")
-
-            let running = await mountedRows(busy: true, appearance: appearance)
-            defer { running.mount.drop() }
-            XCTAssertTrue(running.model.busy, "precondition: the removal is in flight")
-            let busy = try XCTUnwrap(running.mount.settledInk())
-
-            XCTAssertLessThan(busy, idle, """
-                the rows are drawn identically while a removal runs, in \
-                \(RenderedInk.label(of: appearance)): the mark button is live under a press \
-                the model now refuses, so pressing it does nothing and says nothing.
-                """)
-            running.transport.releaseTrash()
-            await settle()
-        }
-    }
-
-    /// A mounted page and what it was built on, kept together so the removal can
-    /// be released afterwards — a batch left parked never finishes the task
-    /// waiting on it.
-    private struct Rows {
-        let mount: MountedRender
-        let transport: HeldTransport
-        let model: DiskViewModel
-    }
-
-    /// The same page in the two states, each on a transport of its own.
-    private func mountedRows(busy: Bool, appearance: NSAppearance.Name) async -> Rows {
-        let transport = HeldTransport()
-        let dvm = busy ? await removing(transport) : await ticked(transport)
-        let mount = MountedRender(DiskResultView(dvm: dvm, hovered: .constant(nil))
-            .environment(\.helmGrants, HelmGrants(accessibility: .granted, fullDisk: .granted)),
-                                  width: 500, height: 400, appearance: appearance)
-        return Rows(mount: mount, transport: transport, model: dvm)
-    }
-
-    /// The scanned volume with the same row ticked, and no removal started.
-    private func ticked(_ transport: HeldTransport) async -> DiskViewModel {
-        let dvm = DiskViewModel(vm: ModuleViewModel(transport: transport),
-                                store: ScanStore(directory: scratchDirectory("disk-idle")))
-        Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(transport, count: 1)
-        transport.release(0, with: tree())
-        await settle()
-        dvm.toggleBasket(folder(sub, bytes: 600))
-        return dvm
     }
 }

@@ -3,9 +3,7 @@ import SwiftUI
 import HelmRuntime
 import HelmUI
 
-/// Internal rather than private so a test can render it: the panel is a
-/// menu-bar window over Liquid Glass, and there is no other way to look at it
-/// without a screenshot of somebody's screen.
+/// Internal because `HelmPanel` (PanelWindow.swift) hosts it.
 struct HelmPanelContent: View {
     @ObservedObject var host: ModuleHost
     /// The panel is a second window with its own hosting view, so the settings
@@ -37,10 +35,10 @@ struct HelmPanelContent: View {
     /// entrance animates from, then true again.
     ///
     /// **True to begin with**, not false. If the notification that plays the
-    /// entrance ever failed to arrive — a probe hosting this view, a path that
-    /// shows the window without going through `toggle` — starting at false
-    /// would leave a panel drawn at zero opacity, which is a missing panel. The
-    /// worst this way round is a missing animation.
+    /// entrance ever failed to arrive — a path that shows the window without
+    /// going through `toggle` — starting at false would leave a panel drawn at
+    /// zero opacity, which is a missing panel. The worst this way round is a
+    /// missing animation.
     @State private var revealed = true
     /// The drawer is choosing its rows rather than showing them.
     @State private var choosingUtilities = false
@@ -468,8 +466,8 @@ struct HelmPanelContent: View {
     ///
     /// The three decisions inside — which frames are still real, which tile is
     /// under the pointer, and whether the pointer has travelled far enough to
-    /// swap — are `PanelDrag`, where they can be argued with in a test. What
-    /// stays here is the state and the order it changes in.
+    /// swap — are `PanelDrag`. What stays here is the state and the order it
+    /// changes in.
     private func gridDrag(items: [Widget]) -> some Gesture {
         DragGesture(minimumDistance: 4, coordinateSpace: .named(Self.gridSpace))
             .onChanged { value in
@@ -804,8 +802,8 @@ struct HelmPanelContent: View {
     }
 
     /// What the grid may take. The arithmetic — and the rule that a bar nobody
-    /// draws reserves nothing — is `PanelGrid.roomForGrid`, where it has a test
-    /// per rule; what stays here is which bars are on screen.
+    /// draws reserves nothing — is `PanelGrid.roomForGrid`; what stays here is
+    /// which bars are on screen.
     private var availableForGrid: CGFloat {
         // `?? 0`, not the bare optional: `roomForGrid` reads `nil` as «this
         // bar is not drawn» and takes its gap away with it, so a bar that *is*

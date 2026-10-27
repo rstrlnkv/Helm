@@ -1,12 +1,8 @@
-import AppKit
 import Foundation
 import HelmContract
 import HelmRuntime
-import HelmTestSupport
-import HelmUI
 import Module_Disk_Engine
 import XCTest
-@testable import Module_Disk_UI
 
 // The two transports this module's page tests are written against, and the
 // waits that go with them.
@@ -59,8 +55,7 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
     private var results: [String: ScanResult] = [:]
     private var removal = DiskRemoval(removed: [], refused: [], freedBytes: 0)
     private var answer: Answer = .reply
-    private var volumes: [VolumeInfo]
-    private var volumeRequests = 0
+    private let volumes: [VolumeInfo]
     let events: AsyncStream<EngineEvent>
 
     init(volumes: [VolumeInfo]) {
@@ -68,30 +63,8 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
         events = AsyncStream { _ in }
     }
 
-    /// A disk plugged in, ejected, or filling up while the app runs.
-    ///
-    /// **A volume list fixed at init cannot change under the app**, which is the
-    /// one thing this port really does: a volume-attributes read answers a different number every
-    /// time somebody writes a file, and a Mac gains and loses disks. A fake that
-    /// answers the same list for ever makes «the tile is showing what the disk held
-    /// at launch» unrepresentable (CLAUDE.md § What not to do, and what breaks if
-    /// you do).
-    func answerVolumes(with volumes: [VolumeInfo]) {
-        lock.lock(); self.volumes = volumes; lock.unlock()
-    }
-
-    /// How many times the list was really asked for. The tile asked once per
-    /// launch and this is what says so.
-    var volumeReads: Int {
-        lock.lock(); defer { lock.unlock() }; return volumeRequests
-    }
-
     private var currentVolumes: [VolumeInfo] {
         lock.lock(); defer { lock.unlock() }; return volumes
-    }
-
-    private func noteVolumes() {
-        lock.lock(); volumeRequests += 1; lock.unlock()
     }
 
     func answer(_ path: String, with result: ScanResult) {
@@ -140,7 +113,6 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
         if command.name == DiskCommand.trash.rawValue {
             noteTrash((try? JSONDecoder().decode([String].self, from: command.payload)) ?? [])
         }
-        if command.name == DiskCommand.volumes.rawValue { noteVolumes() }
         switch currentAnswer {
         case .refuse: throw NoEngine.gone
         case .nothing: return Data()
@@ -325,22 +297,4 @@ func untilTrashing(_ transport: HeldTransport, count: Int = 1) async {
 @MainActor
 func settle() async {
     for _ in 0..<50 { await Task.yield() }
-}
-
-// MARK: - The page, mounted
-
-/// `DiskSettingsPage` in a window, with its grants **named**.
-///
-/// The environment value is the whole reason this is here rather than at each
-/// call site: the page draws a Full Disk Access note of its own, so a render
-/// that inherits `helmGrants` is a measurement of whichever permissions this
-/// terminal happens to hold that hour — the same trap `MountedRender` refuses
-/// for appearance by making it a required argument. Three files were spelling it
-/// out, and a fourth would have been the one that forgot.
-@MainActor
-func mountedDiskPage(vm: ModuleViewModel, width: CGFloat, height: CGFloat,
-                     appearance: NSAppearance.Name) -> MountedRender {
-    MountedRender(DiskSettingsPage(vm: vm)
-        .environment(\.helmGrants, HelmGrants(accessibility: .granted, fullDisk: .granted)),
-                  width: width, height: height, appearance: appearance)
 }

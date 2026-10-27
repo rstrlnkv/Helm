@@ -39,17 +39,13 @@ private struct NoPrivileges: PrivilegedRunner {
 
 /// **The one line that makes the whole feature run, held by a test.**
 ///
-/// Two other guards stand either side of this one and neither can see it.
-/// `TheLiveCountsReachTheEngineTests` reads `HomebrewDescriptor` as text and
-/// proves the live store is the one handed to the engine;
-/// `ASearchRanksByPopularityWhenItHasItTests` proves a reading that is already
-/// in the store reaches the ranking. Between them sits `activate()`'s single
-/// `Task`, which is the only thing anywhere in the app that ever asks the store
-/// to fetch — and deleting that line left every test in the tree green. A Mac
-/// that had never cached the documents would then never cache them, search
-/// would go on drawing brew's alphabetical order, and nothing would say why.
+/// `activate()`'s single `Task` is the only thing anywhere in the app that ever
+/// asks the store to fetch — and deleting that line left every test in the tree
+/// green. A Mac that had never cached the documents would then never cache them,
+/// search would go on drawing brew's alphabetical order, and nothing would say
+/// why.
 ///
-/// It has to be a runtime test rather than a third text scan: what is being
+/// It has to be a runtime test rather than another text scan: what is being
 /// asserted is that the ask *happens*, and a scan for `refreshIfDue` in the
 /// file would pass over a task nobody ever started.
 final class ActivationIsWhatStartsTheRefreshTests: XCTestCase {

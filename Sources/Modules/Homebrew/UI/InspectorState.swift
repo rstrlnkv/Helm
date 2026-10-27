@@ -163,8 +163,7 @@ enum DoctorReading: Equatable {
 /// and the middle two are the whole point.**
 ///
 /// `AvailableSection.of` is the shape this follows, for the reason that file
-/// gives: which sentence stands over which state is the whole of the decision,
-/// and a `body` is nowhere a test can reach.
+/// gives: which sentence stands over which state is the whole of the decision.
 ///
 /// `.clean` and `.unexaminable` are both an empty list of findings and they are
 /// not the same sentence. One is `brew doctor` having looked and found nothing, which
@@ -253,8 +252,7 @@ enum HealthVerdict: Equatable {
 /// sentence for each reading a row in that list. It is one page now — the
 /// verdict first, then a card of findings that each open in place, then the
 /// configuration in a card of its own (`HomebrewHealthPage`) — so what the
-/// three parts hold is decided here, where a test can reach it and a `body`
-/// cannot.
+/// three parts hold is decided here, once, and not in a `body`.
 ///
 /// **The fourth reading, `noMatches`, is about the findings and not about the
 /// Mac.** `brew doctor` really finding nothing and a query hiding what it did
@@ -365,8 +363,7 @@ struct InspectorSubject: Equatable {
 /// actually read.
 ///
 /// A value type rather than a view, for the reason `InspectorState` above gives:
-/// which tiles an answer earns is the whole of the decision, and a `body` is not
-/// somewhere a test can reach.
+/// which tiles an answer earns is the whole of the decision.
 struct PackageFact: Equatable {
     let label: String
     let value: String
@@ -491,8 +488,7 @@ enum PackageFacts {
 /// the tier paid its 24 pt step around each of two empty blocks where the
 /// design's rhythm is 12.
 ///
-/// Here rather than as computed properties of the view, for the reason
-/// `PackageFacts` is here: a `body` is nowhere a test can reach, and the question
+/// Here rather than as computed properties of the view, because the question
 /// is about the answer rather than about the layout.
 ///
 /// Presence is all these ask, because presence is all there is to ask:

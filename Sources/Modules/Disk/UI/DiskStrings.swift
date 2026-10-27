@@ -78,7 +78,7 @@ enum DkStr {
     static var volumeListLost: String { L("Helm got no answer, so this may not be every volume.") }
     /// The count goes through `Count`: a scan of `/` reports seven digits, and
     /// seven ungrouped digits are read by counting them. Same in the two
-    /// statements below — `BigCountsReadGroupedTests` holds all three.
+    /// statements below.
     static func scannedIn(_ files: Int, _ seconds: String,
                           language: AppLanguage = AppLanguage.current) -> String {
         let n = Count(files, language: language)
@@ -110,7 +110,7 @@ enum DkStr {
     /// `showsScanStatement` threshold was measured for is that budget, so at
     /// windows just above it the line would arrive truncated. A warning with an
     /// ellipsis in it is a poor warning; the count moved to the hint, which has no
-    /// width to answer to. `StoppedStatementWidthTests` holds the budget.
+    /// width to answer to.
     static var stopped: String { L("Stopped") }
     /// Why that line matters, and how far the walk got. `TreeBuilder` charges a
     /// directory as its files are found, so every folder in a stopped tree shows a

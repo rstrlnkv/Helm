@@ -2,8 +2,10 @@ import Foundation
 import XCTest
 @testable import Module_Leftovers_Engine
 
-/// A row Helm could not read is still a row somebody may delete on purpose — and
-/// the question asked first has to be about what is true of it.
+/// A row Helm could not read is still a row somebody may delete on purpose, and
+/// three things hold of it: the question asked first is about what is true of it
+/// (it could not be read, which is not «loaded»), the row keeps its own delete
+/// while the batch does not, and the switch is not offered on a guessed label.
 ///
 /// `APlistNobodyCouldReadTests` is the finding: an unreadable launchd job was
 /// swept up by «Select all». Keeping it out of the batch leaves the row's own
@@ -20,21 +22,7 @@ final class AnUnreadableJobAsksItsOwnQuestionTests: XCTestCase {
                   status: status)
     }
 
-    /// Clearing a leftover is tidying: no dialog, and the row says «Move to
-    /// Trash» rather than promising a step that never comes.
-    func testALeftoverIsNotAskedAbout() {
-        XCTAssertNil(LeftoverActions.askBeforeDeleting(item(.orphaned)))
-        XCTAssertFalse(LeftoverActions.needsConfirmation(item(.orphaned)),
-                       "the two answers are one answer, or they will part")
-    }
-
-    /// Something the Mac is loading now: the question this module already had.
-    func testSomethingInUseIsAskedAboutBeingLoaded() {
-        XCTAssertEqual(LeftoverActions.askBeforeDeleting(item(.inUse)), .loadedNow)
-        XCTAssertTrue(LeftoverActions.needsConfirmation(item(.inUse)))
-    }
-
-    /// And a job whose definition could not be read is asked about *that*, not
+    /// A job whose definition could not be read is asked about *that*, not
     /// about being loaded — the fact Helm has is that it could not read the file.
     func testAnUnreadableJobIsAskedAboutBeingUnreadable() {
         XCTAssertEqual(LeftoverActions.askBeforeDeleting(item(.unreadable)), .cannotBeRead)

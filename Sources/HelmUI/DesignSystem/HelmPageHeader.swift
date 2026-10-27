@@ -71,9 +71,7 @@ import SwiftUI
 /// shape.
 ///
 /// **An offscreen `cacheDisplay` never composites it**, so the material is the
-/// one part of this modifier no render can check — see
-/// `TheHeaderIsTheSystemsScrollEdgeTests`, which guards it by construction and
-/// says so in every message it prints.
+/// one part of this modifier no render can check.
 ///
 /// It was measured once by hand instead, on the shipped build, through
 /// `screencapture -l` with the appearance thumbnails scrolled under the strip.
@@ -104,7 +102,7 @@ struct HeaderEdgeLight: ViewModifier {
     /// `lit` reads that first delivery as a change and fades the band into
     /// place — measured from the window being built at 243, 145 and 148 ms,
     /// against 0 ms keyed this way, where the first readable frame is already
-    /// the settled value (`TheBandIsThereFromTheFirstFrameTests`, this Mac,
+    /// the settled value (this Mac,
     /// dark, three runs each).
     ///
     /// CLAUDE.md states the rule for a measured height — **do not animate the
@@ -146,12 +144,9 @@ struct HeaderEdgeLight: ViewModifier {
     /// Confirmed through the real compositor at 2×: the rule lands on exactly
     /// one pixel row, the last of the strip's 104.
     ///
-    /// So the app draws 0.5 pt on a Retina display, 1 pt on a 1× one, and the
-    /// offscreen renders in `TheHeaderIsTheSystemsScrollEdgeTests` — where
-    /// `displayScale` reads 1.0 while the bitmap is still backed at 2× — see a
-    /// point. Which means the guards there prove the fill and the rule are
-    /// *present, absent and together*, and do not prove the rule's thickness.
-    /// Nothing offscreen can.
+    /// So the app draws 0.5 pt on a Retina display, 1 pt on a 1× one, and an
+    /// offscreen render — where `displayScale` reads 1.0 while the bitmap is still
+    /// backed at 2× — sees a point. Nothing offscreen can prove the rule's thickness.
     @Environment(\.displayScale) private var displayScale
 
     func body(content: Content) -> some View {
@@ -233,7 +228,7 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// **Both directions are tempting and both are wrong.** Lighting every
     /// page's band always, because the older capture says the system draws its
     /// rule at rest, puts the hairline this app measured away
-    /// (`ThePageHeaderCarriesNoRuleTests`) back over the five pages that hand
+    /// back over the five pages that hand
     /// over a `Form`. Taking the declaration out, because the newer capture
     /// says the system draws none at rest, leaves every page that stands on
     /// still content waiting for a scroll that cannot come. The rule above is
@@ -268,9 +263,6 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// there the band has two reasons and not three. The `&&` above is what
     /// makes the pair honest wherever the pointer *is* asked for; it is not a
     /// claim that both live triggers reach both placements.
-    ///
-    /// Static and taking its four facts, so it is a question a test can ask
-    /// without a window, a pointer, or a render.
     static func isLit(hovering: Bool, active: ControlActiveState, scrolled: Bool,
                       standsOnStillContent: Bool) -> Bool {
         standsOnStillContent || isLive(hovering: hovering, active: active, scrolled: scrolled)
@@ -303,14 +295,11 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// `command grep -rn 'pageBleeds: Bool { true }' Sources` names the module
     /// descriptors that declare it, and the log, which has no descriptor,
     /// spells `bleeds: true` at its own call to this view.
-    /// `TheBandStandsOnWhatIsUnderItTests` holds both halves and fails on
-    /// either alone.
     let bleeds: Bool
     /// Whether the page's content passes *under* this strip.
     ///
-    /// Not `showsRule:` with a nicer name. `ThePageHeaderCarriesNoRuleTests`
-    /// argues that one out at length — a per-page choice about whether to draw
-    /// a line is four decisions where there should be none — and this is the
+    /// Not `showsRule:` with a nicer name: a per-page choice about whether to
+    /// draw a line is four decisions where there should be none, and this is the
     /// other kind of parameter: a fact about how the page is built, the way
     /// `bleeds` is a fact a module declares about its own content. No call site
     /// spells it, because the only thing that sets it is `helmPageHeader`,
@@ -410,9 +399,9 @@ public struct HelmPageHeader<Trailing: View>: View {
         // **20 across, not the redesign's 18.** The mockups draw this strip and
         // the pane below it at one gutter, and moving only the header to 18
         // breaks the rule that matters more: a bleeding page's content starts
-        // at 20, and `StartScreenColumnTests` measures that the two begin at
-        // the same x. The gutter is an app-wide number; changing it is its own
-        // pass, not a side effect of restyling a header.
+        // at 20, and the two have to begin at the same x. The gutter is an
+        // app-wide number; changing it is its own pass, not a side effect of
+        // restyling a header.
         .padding(.horizontal, HelmLayout.formInset)
         // 12 above and below a 28 pt plate is **52** — System Settings' own
         // strip, measured on the Accessibility pane at 2× as 11,5 over a 29,0
@@ -459,7 +448,7 @@ public extension View {
     /// bands, a sheet is a sheet — draws `HelmPageHeader` directly instead. It
     /// gets the same 52 pt strip and no scroll edge, because there is no scroll
     /// to be the edge of; a rule there would be the hairline this app measured
-    /// away (`ThePageHeaderCarriesNoRuleTests`) under a different name.
+    /// away under a different name.
     ///
     /// **Where the window has a toolbar, the header goes there instead**
     /// (`PageBarStyle`): the settings window sets `helmPageBar`, and this draws

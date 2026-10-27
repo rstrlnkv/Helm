@@ -51,7 +51,7 @@ public struct HelmPaletteSwatches: View {
     /// - Parameter name: what this colour is *for*, in the caller's words.
     ///   Hidden on screen — the row beside it already says so — and read aloud,
     ///   which is the whole point: a picker with no name is «pop up button» and
-    ///   nothing else, and `NamedControlsTests` fails on one.
+    ///   nothing else.
     public init(_ name: String, selection: String, pick: @escaping (String) -> Void) {
         self.name = name
         self.selection = selection

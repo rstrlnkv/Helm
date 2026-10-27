@@ -1,32 +1,16 @@
 import AppKit
 import QuartzCore
 
-/// **The source of frames for the sidebar's fold: one call per frame of a view's display, each with the link's own
-/// timestamp.** `ShellContentView` drives the width from these calls and from nothing else, so a row hands the
-/// view a link of its own and ticks it by hand.
-@MainActor
-protocol FoldLink: AnyObject {
-    /// Starts the calls for the display `view` is on; a link already running is stopped first. `tick` gets the
-    /// link's timestamp in seconds; only differences between timestamps mean anything.
-    func start(on view: NSView, tick: @escaping @MainActor (CFTimeInterval) -> Void)
-
-    /// Ends the calls; safe when nothing runs. A tick already on its way may still arrive, and the caller takes it
-    /// as nothing.
-    func stop()
-}
-
-/// **`FoldLink` over the display link AppKit makes for a view.** The link's target is a small object of this file
+/// **The sidebar fold's source of frames: one call per frame of the view's display, each with the link's own
+/// timestamp, from the display link AppKit makes for a view.** `ShellContentView` drives the width from these calls
+/// and from nothing else. The link's target is a small object of this file
 /// that holds the tick closure and nothing else: neither the view nor this wrapper is ever the target, because the
 /// system's link keeps its target and a view as target would never be freed. The chain is the view, this wrapper,
 /// the link, the target, the closure, and the closure holds the view weakly.
 ///
 /// The wrapper stops the link in `stop()` and in `deinit`. What holds each way a link ends: a shell that leaves
-/// its window ends a fold in flight and stops the link (`ShellContentView.viewDidMoveToWindow`, row
-/// `testAViewMovedToAnotherWindowOrToNoneMidWayLandsOnTheTarget`); the wrapper released while it runs invalidates
-/// in `deinit` (row `testTheRealLinksTargetIsGoneAfterTheWrapperIsReleased`); the closure holds the view weakly
-/// (row `testNothingKeepsTheViewAliveAfterItsControllerIsReleased`, over a link ticked by hand). A shell freed
-/// with its real link running is a net over that whole chain
-/// (`testAShellReleasedWhileItsRealLinkRunsLetsTheTargetGo`), not a guard of the `deinit` or of the closure.
+/// its window ends a fold in flight and stops the link (`ShellContentView.viewDidMoveToWindow`); the wrapper
+/// released while it runs invalidates in `deinit`; the closure holds the view weakly.
 /// The `CADisplayLink` is added to the main run loop in the common modes.
 ///
 /// Assumed, read on no screen and by no row (no row ticks this link): that the system pauses the link while the
@@ -36,19 +20,17 @@ protocol FoldLink: AnyObject {
 /// from inside the link's own call, which every travel that arrives does (tick, then `didSet`, `endTravel`,
 /// `stop`).
 @MainActor
-final class DisplayFoldLink: FoldLink {
+final class DisplayFoldLink {
     init() {}
 
-    /// Whether this wrapper holds a link: true from `start(on:tick:)` until `stop()`. It says nothing of whether the
-    /// system calls the target. Rows read it; nothing in the app does.
-    var isRunning: Bool { link != nil }
-
-    /// What the system's link calls and keeps; readable so a row can hold it weakly and see it go.
-    private(set) var target: AnyObject?
+    /// What the system's link calls and keeps.
+    private var target: AnyObject?
 
     /// Read in `deinit`, which Swift 6 treats as nonisolated even on a `@MainActor` class.
     nonisolated(unsafe) private var link: CADisplayLink?
 
+    /// Starts the calls for the display `view` is on; a link already running is stopped first. `tick` gets the
+    /// link's timestamp in seconds; only differences between timestamps mean anything.
     func start(on view: NSView, tick: @escaping @MainActor (CFTimeInterval) -> Void) {
         stop()
         let target = Target(tick)
@@ -58,6 +40,8 @@ final class DisplayFoldLink: FoldLink {
         self.link = link
     }
 
+    /// Ends the calls; safe when nothing runs. A tick already on its way may still arrive, and the caller takes it
+    /// as nothing.
     func stop() {
         (target as? Target)?.tick = nil
         link?.invalidate()

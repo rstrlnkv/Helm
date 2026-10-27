@@ -247,13 +247,13 @@ final class FakePasteboard: ShotPasteboard, @unchecked Sendable {
     }
 }
 
-/// Reads what it was told to and counts the pictures it was handed — it keeps them, so a test can ask which
-/// picture a reading was made of. It answers at once; `held` makes it wait for `release()` first, which is
-/// how a test has a reading still in flight when the editor goes away.
+/// Reads what it was told to and counts the pictures it was handed. It answers at once;
+/// `held` makes it wait for `release()` first, which is how a test has a reading still in flight when the
+/// editor goes away.
 final class FakeTextReader: ScreenTextReading, @unchecked Sendable {
     private let lock = NSLock()
     private var _reading: TextReading = .read([])
-    private var _images: [CGImage] = []
+    private var _calls = 0
     private var _held = false
     private var _waiting: [CheckedContinuation<Void, Never>] = []
 
@@ -265,15 +265,13 @@ final class FakeTextReader: ScreenTextReading, @unchecked Sendable {
         get { lock.withLock { _held } }
         set { lock.withLock { _held = newValue } }
     }
-    /// The pictures each call was handed, in order.
-    var images: [CGImage] { lock.withLock { _images } }
-    var calls: Int { lock.withLock { _images.count } }
+    var calls: Int { lock.withLock { _calls } }
 
     func read(_ image: CGImage) async -> TextReading {
-        // The picture is kept and the wait begun in one step, so a `release()` cannot fall between them.
+        // The call is counted and the wait begun in one step, so a `release()` cannot fall between them.
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             let answersNow = lock.withLock { () -> Bool in
-                _images.append(image)
+                _calls += 1
                 guard _held else { return true }
                 _waiting.append(continuation)
                 return false
@@ -385,37 +383,4 @@ enum ScreenshotsLog {
                       file: file, line: line)
         HelmLog.shared.clearTail()
     }
-}
-
-/// The Dock's Accessibility bounds, in every state the real port has: trusted with a
-/// rectangle (on a display or hidden off one), trusted with no list element, and not
-/// trusted. It records the pid it was asked about.
-final class FakeDockBounds: DockBounds, @unchecked Sendable {
-    private let lock = NSLock()
-    private var _reading: DockBoundsReading
-    private var _asked: [pid_t] = []
-
-    init(_ reading: DockBoundsReading) { _reading = reading }
-
-    var reading: DockBoundsReading {
-        get { lock.withLock { _reading } }
-        set { lock.withLock { _reading = newValue } }
-    }
-    var asked: [pid_t] { lock.withLock { _asked } }
-
-    func read(dockPID pid: pid_t) -> DockBoundsReading {
-        lock.withLock { _asked.append(pid); return _reading }
-    }
-}
-
-/// One rectangle (200,200)-(300,260) drawn in `bounds` and selected by a click on its left edge.
-func drawnAndSelectedRectangle(in bounds: CGRect) -> AnnotationEditing {
-    var editing = AnnotationEditing(bounds: bounds)
-    editing.begin(.rectangle, at: CGPoint(x: 200, y: 200), style: .standard)
-    editing.drag(to: CGPoint(x: 300, y: 260), shift: false)
-    editing.end()
-    XCTAssertTrue(editing.press(at: CGPoint(x: 200, y: 230), tool: nil))
-    editing.end()
-    XCTAssertNotNil(editing.selected, "nothing was selected, so every edit below is of nothing")
-    return editing
 }

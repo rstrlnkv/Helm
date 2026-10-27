@@ -5,16 +5,8 @@ import HelmTestSupport
 
 /// **The software-name redaction and the refusal line it feeds, at the inputs
 /// the first pass did not feed in.** A leaf with two dots, an extension in
-/// capitals, a bundle id that ends in a word the extension list also holds,
-/// and an app whose name happens to be a piece of the line Helm composes in
-/// place of macOS's sentence.
-///
-/// **Two cases here are documented gaps, skipped and not deleted.** F1 and F2
-/// of the round-3 tester pass are findings not yet decided; each skips with
-/// skipped unless `HELM_KNOWN_GAPS=1`, with a reason starting «Known gap <id>», at the
-/// top of its body and keeps its reproduction below, so removing the skip is the whole change that
-/// turns it into the guard once the fix exists; `HELM_KNOWN_GAPS=1` runs it red.
-/// Every known gap in the tree is skipped this one way.
+/// capitals, and the line Helm composes in place of macOS's sentence for
+/// each code.
 ///
 /// Every line-reading case asserts that its line was written before asserting
 /// what the line carries or lacks: the log is off in a test process, and an
@@ -108,25 +100,6 @@ final class RedactSoftwareLeavesNobodyFedTests: XCTestCase {
         }
     }
 
-    /// **The same property for an id that ends in a word the extension list
-    /// holds.** `com.acme.log`'s container is read as `com.acme` plus `.log`,
-    /// while its preferences file is `com.acme.log` plus `.plist` — two tags for
-    /// one app, and the container's tag is the vendor's, shared with every other
-    /// app of that vendor whose id ends in a listed word.
-    func testAnIDEndingInAListedWordWearsOneTagAcrossItsLeftovers() throws {
-        try XCTSkipUnless(ProcessInfo.processInfo.environment["HELM_KNOWN_GAPS"] == "1", "Known gap Redact-F2: a bundle id ending in a listed word wears two tags and shares the vendor's.")
-        let home = "/Users/x"
-        for id in ["com.acme.log", "com.acme.db", "com.acme.app"] {
-            let container = Redact.path("\(home)/Library/Containers/\(id)", leaf: .softwareName, home: home)
-            let prefs = Redact.path("\(home)/Library/Preferences/\(id).plist", leaf: .softwareName, home: home)
-            XCTAssertTrue((prefs as NSString).lastPathComponent.hasPrefix(Redact.app(id)),
-                          "precondition: the plist carries the id's tag: \(prefs)")
-            XCTAssertTrue((container as NSString).lastPathComponent.hasPrefix(Redact.app(id)),
-                          "«\(id)»: the container and the plist wear different tags — "
-                          + "\(container) against \(prefs)")
-        }
-    }
-
     // MARK: - The line Helm composes instead of macOS's sentence
 
     /// **Each code is logged with the reason the batch returned**, and the
@@ -154,31 +127,6 @@ final class RedactSoftwareLeavesNobodyFedTests: XCTestCase {
                           "the line does not carry the domain, the code and the reason: \(line)")
             XCTAssertFalse(line.contains(stem), "the software's name reached the log: \(line)")
             XCTAssertFalse(line.contains("couldn’t be moved"), "macOS's sentence reached the log: \(line)")
-        }
-    }
-
-    /// **An app whose name is a piece of the composed verdict.** The verdict is
-    /// Helm's own text — a domain, a code, a reason — and cannot quote the
-    /// software, yet it is still passed through `Redact.naming`, which replaces
-    /// the stem wherever it occurs. `Cocoa.app` turns the domain into
-    /// `NSapp#….ErrorDomain`, `missing.app` replaces the reason outright, and
-    /// because the surrounding text is a known constant the tag can be read
-    /// back: the redaction itself spells the name it was hiding.
-    func testTheVerdictIsNotRewrittenByTheSoftwaresName() throws {
-        try XCTSkipUnless(ProcessInfo.processInfo.environment["HELM_KNOWN_GAPS"] == "1", "Known gap Redact-F1: HelmTrash still passes its own verdict through Redact.naming.")
-        let cases: [(stem: String, code: Int, reason: TrashFailure.Reason)] = [
-            ("Cocoa", 513, .noPermission),
-            ("Error", 513, .noPermission),
-            ("Permission", 513, .noPermission),
-            ("missing", NSFileNoSuchFileError, .missing),
-        ]
-        for c in cases {
-            let (reason, line) = refuse("\(parent)/\(c.stem).app", domain: NSCocoaErrorDomain,
-                                        code: c.code, saying: "irrelevant")
-            XCTAssertEqual(reason, c.reason, "precondition: \(c.stem).app classified")
-            guard let line else { continue }
-            XCTAssertTrue(line.hasSuffix(": \(NSCocoaErrorDomain) \(c.code), \(c.reason.rawValue)"),
-                          "«\(c.stem).app» rewrote the verdict: \(line)")
         }
     }
 }

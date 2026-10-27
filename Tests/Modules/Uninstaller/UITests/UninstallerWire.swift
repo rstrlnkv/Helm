@@ -31,20 +31,18 @@ final class UninstallerWire: EngineTransport, @unchecked Sendable {
         /// The two the caller cannot tell apart: `TransportClient.request` folds
         /// both to one nil. A test about "nobody answered" runs over this rather
         /// than picking one, and it lives here because it is a fact about the
-        /// wire — two test files had written the pair out.
+        /// wire.
         static let silences: [Answer] = [.refuse, .nothing]
     }
 
     private let lock = NSLock()
     private var apps: [InstalledApp]
-    private var scans: [String: ScanResult]
-    private var removal: UninstallResult
+    private let scans: [String: ScanResult]
+    private let removal: UninstallResult
     private var offers: [TrashedAppLeftovers]
-    /// What the engine says the Trash-offer switch is *doing*, which is not the
-    /// same as what it says: a `Bool` here is how the switch came to be the only
-    /// thing the page could know (`TrashWatch`).
-    private var watch: TrashWatch
-    private var answer: Answer
+    /// What the engine says the Trash-offer switch is doing (`TrashWatch`).
+    private let watch: TrashWatch = .off
+    private let answer: Answer = .reply
     /// What Spotlight says: a date per path, a path missing from it having no
     /// record, and `unreadDates` the paths its read never reached.
     private var opens: [String: Date] = [:]
@@ -61,43 +59,23 @@ final class UninstallerWire: EngineTransport, @unchecked Sendable {
     init(apps: [InstalledApp] = [],
          scans: [String: ScanResult] = [:],
          removal: UninstallResult = UninstallResult(trashed: [], freedBytes: 0),
-         offers: [TrashedAppLeftovers] = [],
-         watching watch: TrashWatch = .off,
-         answering answer: Answer = .reply) {
+         offers: [TrashedAppLeftovers] = []) {
         self.apps = apps
         self.scans = scans
         self.removal = removal
         self.offers = offers
-        self.watch = watch
-        self.answer = answer
     }
 
-    /// The engine going away under the page, or coming back. A port that can change
-    /// while the app is running hands that state back rather than being fixed at
-    /// init (CLAUDE.md § What not to do, and what breaks if you do).
-    func answers(_ next: Answer) { lock.withLock { answer = next } }
-
-    /// The same, for one command only.
+    /// What the engine does with one command, where that differs from a reply: the
+    /// request that is lost while the others are answered.
     func answers(_ next: Answer, to command: UninstallerCommand) {
         lock.withLock { perCommand[command] = next }
     }
 
-    /// What the engine says about last-opened dates and the remembered order.
+    /// What the engine says about last-opened dates.
     func setOpened(_ dates: [String: Date], unread: [String] = []) {
         lock.withLock { opens = dates; unreadDates = unread }
     }
-    func setOrder(_ next: AppSortOrder) { lock.withLock { order = next } }
-
-    /// The state the engine reports for the switch. Its own setter, because the
-    /// grant it depends on is taken away and given back while the app runs.
-    func setWatch(_ next: TrashWatch) { lock.withLock { watch = next } }
-
-    /// What the next removal comes back with.
-    func setRemoval(_ next: UninstallResult) { lock.withLock { removal = next } }
-
-    /// What the next scan finds — the Trash is a place files move to, so a scan
-    /// after a removal is not a scan before it.
-    func setScans(_ next: [String: ScanResult]) { lock.withLock { scans = next } }
 
     /// Which commands reached the wire, in order — so a test can assert that the
     /// act it is about really was attempted before asserting what was said about

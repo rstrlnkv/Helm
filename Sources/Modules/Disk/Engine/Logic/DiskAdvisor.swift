@@ -30,7 +30,8 @@ public struct DiskAdvice: Codable, Equatable, Sendable, Identifiable {
         /// is one any process running as the user can write, and the sum over
         /// targets in `DiskAdvice` runs in the decoder. Only for the form that has
         /// `targets`: an older row decodes `bytes` unbounded and builds a `Target`
-        /// through the memberwise initialiser, the known gap `Q-legacy-advice`.
+        /// through the memberwise initialiser, the known defect `Q-legacy-advice` in
+        /// the defect log.
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             path = try c.decode(String.self, forKey: .path)

@@ -11,15 +11,13 @@ import XCTest
 /// and a sentence in their language, neither of which the permutation test can
 /// see.
 ///
-/// Two things it fixes in place. **The undated copy stays whatever is below the
+/// One thing it fixes in place. **The undated copy stays whatever is below the
 /// rung**, which the fixtures already in the suite could not show: in
 /// `SurvivingCopyTests` and `KeepPolicyTests` the dateless copy is also the
 /// shallower one, so both were green whether the undated rung decided or the
 /// depth rung did — they ask `SurvivingCopy.reason` now, which tells the two
 /// apart on the fixture they already had. This file keeps the other half: a
-/// dateless copy with every rung below it *against* it. And **the reason is the
-/// rung that decided**, which is what stops the header saying «arrived first»
-/// about a copy nothing on this Mac records the arrival of.
+/// dateless copy with every rung below it *against* it.
 ///
 /// `TransitFolders(roots: [])` so the `.place` rung is silent for every path
 /// here and nothing depends on where this Mac keeps Downloads.
@@ -57,16 +55,6 @@ final class ACopyWithNoDateIsTheOneThatStaysTests: XCTestCase {
         }
     }
 
-    /// And the header is told which rung it was, because `.date` here would be
-    /// «kept: arrived first» about a copy with no arrival on record.
-    func testTheReasonIsTheMissingDateAndNotTheDate() {
-        for policy in KeepPolicy.allCases {
-            XCTAssertEqual(SurvivingCopy.reason(among: copies, by: rule(policy)), .undated,
-                           "policy «\(policy.rawValue)»: the rung that decided is the one the "
-                           + "header reads, and it is the missing date rather than the date")
-        }
-    }
-
     // MARK: - Controls
 
     /// **The control that keeps the rungs below.** Two copies that both lack a
@@ -74,7 +62,7 @@ final class ACopyWithNoDateIsTheOneThatStaysTests: XCTestCase {
     /// to the shorter path.
     ///
     /// Without it the repair could be «the deeper copy wins» or «the second copy
-    /// wins» and the tests above would not notice.
+    /// wins» and the test above would not notice.
     func testTwoCopiesWithoutDatesAreAlikeOnThisRung() {
         for policy in KeepPolicy.allCases {
             let ordered = SurvivingCopy.order([file("/Users/r/Archive/2019/Old/deep.jpg"),

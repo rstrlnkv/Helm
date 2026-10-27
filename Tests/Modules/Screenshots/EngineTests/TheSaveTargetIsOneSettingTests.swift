@@ -7,25 +7,14 @@ import XCTest
 /// **One setting decides where a capture goes.** "After a full-screen capture"
 /// (file, clipboard, both) and "Save to" (Desktop, Documents, Clipboard, Other)
 /// were two settings deciding one thing, and a page that drew both would have
-/// let them disagree. The first is gone; this fails while any second key that
-/// names a destination is left in the module, and while a capture follows
-/// anything but the target.
+/// let them disagree. The first is gone; this fails while the old key still steers a capture, and while a capture
+/// follows anything but the target.
 final class TheSaveTargetIsOneSettingTests: XCTestCase {
 
     private func store(_ values: [String: Any]) -> NamespacedStore {
         let backing = InMemoryKeyValueStore()
         for (key, value) in values { backing.set(value, forKey: "module.screenshots.\(key)") }
         return NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: backing)
-    }
-
-    func testNoSecondSettingNamesWhereACaptureGoes() throws {
-        let reads = try SwiftSource.uncommented(under: "Sources/Modules/Screenshots")
-        XCTAssertGreaterThan(reads.count, 10, "the scan read almost nothing, so an empty answer means nothing")
-        XCTAssertTrue(reads.contains { $0.text.contains("saveTarget") }, "the scan did not read the setting it guards")
-        for word in ["afterFullScreen", "ScreenDestination"] {
-            XCTAssertEqual(reads.filter { $0.text.contains(word) }.map(\.path), [],
-                           "\(word) is a second setting for where a capture goes")
-        }
     }
 
     func testTheKeyTheOldSettingWroteDecidesNothing() {

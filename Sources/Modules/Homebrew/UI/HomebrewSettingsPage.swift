@@ -24,8 +24,7 @@ struct HomebrewSettingsPage: View {
                 console
             }
         }
-        // **The console arrives by taking its height off everything above it**
-        // (`ThePageMovesRatherThanCutsTests` measures the travel), and it used
+        // **The console arrives by taking its height off everything above it**, and it used
         // to do that in one frame: the first install of the session put a
         // divider and the well under the page, and the list, the status bar and
         // whatever row the eye was on jumped up together. One token, on
@@ -53,8 +52,7 @@ struct HomebrewSettingsPage: View {
         // visit to Homebrew opens a confirmation for the app's only
         // irreversible deletion that nobody asked for. `LatestRequest` retires
         // work on a later press and on a cancel; leaving is neither, and this
-        // is the one place that knows it happened
-        // (`LeavingThePageRetiresAnUninstallAskTests`). The modifier is not on
+        // is the one place that knows it happened. The modifier is not on
         // this page and this comment used to say it was: `.helmIdlesOffScreen()`
         // is on the detail hosting controller in `SettingsWindow.swift`, which
         // holds whichever module page is open — so hiding the app or occluding
@@ -109,11 +107,7 @@ struct HomebrewSettingsPage: View {
     /// refused before it launched anything writes no console line, so a refusal
     /// with an empty console had no console to be drawn in and reached the page
     /// as nothing at all.
-    ///
-    /// Internal rather than private for `statusLine`'s reason: it is the value
-    /// the page's own layout animation is keyed on, and a `body` is not
-    /// somewhere a test can reach.
-    var showsConsole: Bool {
+    private var showsConsole: Bool {
         !hb.consoleLines.isEmpty || hb.running || hb.op.phase == .failed
     }
 
@@ -126,7 +120,7 @@ struct HomebrewSettingsPage: View {
     ///
     /// **The tint is the module's, not the category's.** This comment used to
     /// say the colour was «read off the descriptor rather than written as
-    /// `.pink`» — and it was reading `category.tint`, which is `.pink` reached
+    /// `.pink`» — and it was reading the category's colour, which is `.pink` reached
     /// the long way round and shared with two other modules. The plate in the
     /// page header above it was already green.
     private var installScreen: some View {
@@ -147,11 +141,7 @@ struct HomebrewSettingsPage: View {
     // MARK: - Manager
 
     /// Counts as a quiet status line rather than a panel of dials.
-    ///
-    /// Internal rather than private, for the reason the Uninstaller's
-    /// `statusLine` gives: which sentence stands over which loading state is
-    /// the whole of a fix, and a `body` is not somewhere a test can reach.
-    var statusLine: String {
+    private var statusLine: String {
         // **Three readings, three sentences.** A count that has not arrived is
         // not a count of zero — the list reloads after every operation, and for
         // that second the line read "0 packages · 0 updates · 0 casks" over a
@@ -213,15 +203,14 @@ struct HomebrewSettingsPage: View {
                     // spend, and the 12 pt on the inspector's side moves into
                     // `detail`'s own leading padding below — the distance
                     // from the divider to the inspector's content is
-                    // unchanged, only where it is spent has moved
-                    // (`TheGapBesideTheListClosesOnlyThereTests`).
+                    // unchanged, only where it is spent has moved.
                     HStack(spacing: 0) {
                         listArea(singleColumn: split.singleColumn)
                             // `minWidth` and the compressibility it buys are
                             // kept exactly as they were: the split threshold
                             // was measured against a master that gives way
                             // before the inspector does, and a fixed `width:`
-                            // here would move the floor that test re-measures.
+                            // here would move the floor the 521 pt measurement was taken at.
                             .frame(minWidth: 240, idealWidth: split.masterWidth,
                                    maxWidth: split.masterWidth)
                         Divider()
@@ -287,8 +276,6 @@ struct HomebrewSettingsPage: View {
         // flip `selected == nil`; the transaction line below is *inner* to the
         // curve line, where the nearer modifier wins, and so a switch of segment
         // reaches the pane as a cut even when it changes what is selected.
-        // `EveryTabSwitchIsACutTests` holds it across every module, and
-        // `ThePageMovesRatherThanCutsTests` holds this page's own shapes of it.
         .transaction(value: hb.segment) { $0.animation = nil }
         .animation(HelmMotion.interface, value: hb.selected == nil)
         // **The page's controls, in the window's own `NSToolbar`
@@ -384,8 +371,8 @@ struct HomebrewSettingsPage: View {
 
     /// The sentence a package list's own section draws instead of its rows,
     /// or nil when `screen` says to draw the rows themselves — apart from
-    /// `packageList`'s `body` for `severityWord`'s reason: which reading
-    /// says which sentence is a decision a test can hold. `notes` are the
+    /// `packageList`'s `body`: which reading says which sentence is a
+    /// decision. `notes` are the
     /// three sentences each call site already carries (`installedList`'s
     /// "No packages installed.", `updatesList`'s "Everything is up to date.",
     /// and the two refusals beside them); `.noMatches` earns the one sentence
@@ -471,25 +458,20 @@ struct HomebrewSettingsPage: View {
     /// it (`upgrade wget`, in English in every language), except for the
     /// install of Homebrew itself, which `HbStr.operationName` words in the
     /// person's language.
-    /// Static, so a test can reach it without a view.
     static func pillTitle(for op: OpState, language: AppLanguage = AppLanguage.current) -> String {
         op.waiting == nil ? HbStr.operationName(op.label, language: language)
                           : HbStr.waitingForTools(language: language)
     }
 
     /// Stop's title while the operation is the wait for Apple's tools: the
-    /// press ends the waiting and leaves Apple's window to finish. Static, so a
-    /// test can reach it without a view.
+    /// press ends the waiting and leaves Apple's window to finish.
     static func stopTitle(for op: OpState) -> String {
         op.waiting == .commandLineTools ? HbStr.stopWaiting : HbStr.stop
     }
 
-    /// The badge's word and the badge's tint, apart from the views that draw
-    /// them: which severity reads as which word is a decision a test can hold,
-    /// and a `body` is not somewhere a test can reach.
     /// The title of the question a press on Run raises, and the sentence under
-    /// it — apart from the view that draws them, for `severityWord`'s reason:
-    /// which act is asked about in which words is a decision a test can hold.
+    /// it — apart from the view that draws them: which act is asked about in
+    /// which words is a decision a test can hold.
     ///
     /// nil is «this fix raises no question», which is `FixAsk.runsOnThePress`
     /// and never reaches `pendingFix` — `askToRunFix` sends that one straight
@@ -927,8 +909,7 @@ struct HomebrewSettingsPage: View {
     /// taken off the top and the bottom.
     static let consoleInset = HelmSpace.s4
 
-    /// The ten. Its own constant so the derivation above has something to name
-    /// and a test has something to multiply by.
+    /// The ten. Its own constant so the derivation above has something to name.
     static let consoleLinesShown = 10
 
     @ViewBuilder private var statusPill: some View {
@@ -1058,8 +1039,7 @@ struct HomebrewSettingsPage: View {
     /// installed list reserves exactly its width (`columnHeader`), and a
     /// heading that reserved a different glyph's would put «Package» a point or
     /// two off the names under it. The symbol and not a built view: the row's
-    /// mark has to stay an `Image` at its own call site, which is what
-    /// `TheRowsUpdateMarkerIsMoreThanAColourTests` reads.
+    /// mark has to stay an `Image` at its own call site.
     static let updateMarkSymbol = "arrow.up.circle.fill"
 
     /// **The heading over a list's columns: what the names are, and what the
@@ -1375,8 +1355,7 @@ private extension View {
 /// own fill and not the white pane behind it. Light: `#D9584D` on `#EFEFEF`,
 /// 3.35:1 where its neighbour reads 11.49:1. Dark: `#F16B60` on `#3F3F3F`,
 /// 3.52:1 where its neighbour reads 8.40:1. The two labels are no longer one
-/// ink in either appearance, which is what
-/// `TheDestructiveControlIsMarkedInInkTests` reads back.
+/// ink in either appearance.
 ///
 /// **And the shortfall is named rather than hidden.** `HelmSignal.danger` is
 /// specified at 4.52:1 and that is against white; a bordered button's fill is

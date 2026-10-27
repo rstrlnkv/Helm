@@ -221,8 +221,7 @@ import Module_Layout_Engine
         //
         // No Keyboard Viewer item beside it: macOS 27 ships no such input
         // source and no such bundle — the system's own menu draws it out of
-        // private frameworks, and the class doc of
-        // `TheIndicatorMenuFollowsTheSystemInputMenuTests` has the count.
+        // private frameworks.
         if isTrusted() {
             menu.addItem(.separator())
             let emoji = actionItem(LyStr.showEmojiPanel(), #selector(openEmojiPalette))

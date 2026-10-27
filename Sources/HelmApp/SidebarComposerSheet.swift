@@ -103,8 +103,7 @@ struct SidebarComposerSheet: View {
     /// the two agreed — and they did not: the tenth module added a 40 pt row,
     /// the shipped arrangement asked for 683, and the composer Helm ships with
     /// came up scrolling. Anyone changing the window's height now moves this
-    /// with it. `SidebarComposerHeightTests` measures the shipped arrangement
-    /// against its own literal, so the guard still has two sides.
+    /// with it.
     ///
     /// **A resized window can still be shorter than the sheet, and this does
     /// not know.** `contentMinSize` is 540 and the frame is autosaved, so on a
@@ -139,7 +138,7 @@ struct SidebarComposerSheet: View {
         // The list is built from `revision`, so this is the transaction every
         // change to the arrangement has to travel in. Without it the list's
         // measured height went from 476 to 536 in one frame — the variant
-        // `DisclosureProbe` already proved dead, with `.animation(_, value:)`
+        // measured dead, with `.animation(_, value:)`
         // sitting on the frame and the row heights written raw underneath.
         withAnimation(HelmMotion.interface) { revision &+= 1 }
         // The sidebar and the icon menu read the same value and cannot observe

@@ -128,7 +128,6 @@ import SwiftUI
     /// decided here, from the same `folders` the page draws its rules from, so
     /// the two places that draw the block (the empty screen and the folder list)
     /// agree without either asking «are there rules» a second time.
-    /// `StartingRulesAreOfferedOnlyWhileThereAreNoneTests` holds it.
     private var hasRules: Bool { folders.contains { !$0.rules.isEmpty } }
 
     private func refreshPresets() {

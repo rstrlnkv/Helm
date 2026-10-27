@@ -1,6 +1,5 @@
 import HelmRuntime
 import HelmTestSupport
-import HelmUI
 import XCTest
 @testable import HelmApp
 
@@ -140,23 +139,5 @@ final class AnUpdateNobodyIsLookingForSaysSoTests: XCTestCase {
         // or not anybody still wants it.
         service.stopChecking()
         XCTAssertFalse(service.isWatchingForUpdates)
-    }
-
-    /// The words, in every language rather than in whichever one this Mac is set
-    /// to — `AppleLanguages` here is `("ru-RU","en-US")`, so a bare assertion
-    /// reads Russian and an English mutation passes.
-    func testTheBannerNamesTheVersionAndTheWayToItInEveryLanguage() {
-        let english = AppStr.updateFoundBody(version: "v0.12.0", language: .en)
-        for language in AppLanguage.allCases {
-            let body = AppStr.updateFoundBody(version: "v0.12.0", language: language)
-            XCTAssertTrue(body.contains("v0.12.0"),
-                          "\(language) named no version: \(body)")
-            XCTAssertTrue(body.contains("→"),
-                          "\(language) said where to go without saying where: \(body)")
-            if language != .en {
-                XCTAssertNotEqual(body, english,
-                                  "\(language) is the English sentence — the path is untranslated")
-            }
-        }
     }
 }

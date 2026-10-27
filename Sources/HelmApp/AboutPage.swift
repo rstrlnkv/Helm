@@ -14,10 +14,7 @@ import HelmUI
 /// Orange is `HelmSignal.warning` because that is what it means: this channel
 /// ships rough edges on purpose. Beta is the accent, which is what macOS uses
 /// for "the one that is chosen" everywhere else.
-///
-/// Internal rather than `private` for the reason `AboutHelmView` is: nothing
-/// outside `HelmApp` names it, and `ChannelInkTests` measures it.
-enum ChannelInk {
+private enum ChannelInk {
     static func fill(_ channel: UpdateCheck.Channel) -> Color {
         switch channel {
         case .beta: return .accentColor
@@ -83,14 +80,7 @@ enum ChannelInk {
 struct AboutHelmView: View {
     @State private var showWhatsNew = false
     @State private var channel = UpdateService.channel
-    @ObservedObject private var updater: UpdateService
-
-    /// Takes the updater, defaulting to the app's own.
-    ///
-    /// The card has eleven states and the singleton could only ever be in one
-    /// of them, so nothing could draw the other ten — which is how an
-    /// unreachable branch shipped. This is the whole seam.
-    init(updater: UpdateService = .shared) { self.updater = updater }
+    @ObservedObject private var updater = UpdateService.shared
 
     private var shortVersion: String {
         AppBuild.shortVersion ?? "0.1.0"
@@ -355,8 +345,7 @@ struct AboutHelmView: View {
     /// is also what the badge on the wordmark now reads.
     ///
     /// Buttons rather than a tap gesture on a shape, so Full Keyboard Access
-    /// reaches them and each carries its own label and selected trait —
-    /// `KeyboardReachableControlsTests` is about exactly this shape.
+    /// reaches them and each carries its own label and selected trait.
     private var channelPills: some View {
         HStack(spacing: 2) {
             ForEach(UpdateCheck.Channel.allCases, id: \.self) { option in

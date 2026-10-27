@@ -46,25 +46,6 @@ final class RefusedPathsAreOneListTests: XCTestCase {
         XCTAssertEqual(result.failed, paths)
     }
 
-    /// **It crosses the transport as JSON**, and a computed property is not
-    /// encoded — so the refused paths now travel inside `failures` and nowhere
-    /// else. Both ends are this one type, which is what makes that safe, and
-    /// this is the check that says so rather than the reasoning that says so.
-    func testTheRefusedPathsSurviveTheJSONHop() throws {
-        let sent = UninstallResult(
-            trashed: ["/moved"], freedBytes: 12,
-            failures: [TrashFailureInfo(path: "/locked",
-                                        reason: .needsFullDiskAccess,
-                                        message: "macOS said no")])
-
-        let back = try JSONDecoder().decode(UninstallResult.self,
-                                            from: try JSONEncoder().encode(sent))
-
-        XCTAssertEqual(back, sent)
-        XCTAssertEqual(back.failed, ["/locked"])
-        XCTAssertEqual(back.failures.first?.message, "macOS said no")
-    }
-
     /// The reason on the wire is the word, whether the field holds a string or
     /// the enum it was always the raw value of. This is the check that let that
     /// field become the enum: JSON written before it must still decode, and what

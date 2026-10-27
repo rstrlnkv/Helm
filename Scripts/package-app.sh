@@ -246,7 +246,6 @@ APP_DIR="$STAGE_DIR/$APP_NAME"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
-
 echo "==> Building release binary"
 # The product, not the package. A bare `swift build -c release` builds every
 # target in the manifest, and one of them is `HelmTestSupport` — a plain target
@@ -255,7 +254,8 @@ echo "==> Building release binary"
 # and HelmTestSupport.swiftmodule landed in Release beside HelmApp. Declaring
 # `products:` does not fix this by itself (measured: a bare build still builds
 # all 466 steps); naming the product is what does — 187 steps, and no harness.
-swift build -c release --product HelmApp
+# Imports checked as an error; from a fresh clone the targets HelmApp depends on compile and are checked, no test target (ARCHITECTURE.md § The boundaries).
+swift build -c release --product HelmApp --explicit-target-dependency-import-check error
 
 echo "==> Assembling $APP_DIR (idempotent)"
 rm -rf "$APP_DIR"

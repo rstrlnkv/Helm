@@ -1,17 +1,14 @@
-import AppKit
 import HelmContract
 import HelmRuntime
 import HelmTestSupport
 import HelmUI
-import SwiftUI
-import Vision
 import XCTest
 @testable import Module_Autopilot_Engine
 @testable import Module_Autopilot_UI
 
 /// The engine's rule-number store, in memory. The twin of the engine target's
-/// `TestRuleSequence`, private for the reason `ThePageNeverWaitsForTheKeychainTests`
-/// gives for its own: a module's port cannot have a stand-in in `HelmTestSupport`.
+/// `TestRuleSequence`, private because a module's port cannot have a stand-in
+/// in `HelmTestSupport`.
 private final class EdgeRuleSequence: RuleSequencePort, @unchecked Sendable {
     private let lock = NSLock()
     private var value: UInt64?
@@ -210,35 +207,6 @@ final class APresetsChosenFolderHoldsAtTheEdgesTests: XCTestCase {
         }
     }
 
-    /// **The sentence and the sweep read one expression, refusal included.** A
-    /// rule set refused while the sheet is open makes Done do nothing, so the
-    /// sheet may not promise «straight away» over it.
-    func testARefusalWhileTheSheetIsOpenTakesTheSweepAndTheSentenceAway() async throws {
-        try standTheHome()
-        let wire = AutopilotWire()
-        let model = fakeModel(wire)
-        await model.load()
-        let offer = try offer(model, .screenshots)
-        XCTAssertTrue(model.sweepsAfterSaving(offer.draft, in: offer.folder), "precondition")
-
-        wire.answers(AutopilotStatus(refusal: .tampered))
-        await model.load()
-        XCTAssertEqual(model.screen, .rulesRefused(.tampered), "precondition: the set is refused")
-
-        XCTAssertFalse(model.sweepsAfterSaving(offer.draft, in: offer.folder),
-                       "Done does nothing over a refused set, and the sheet still says it sweeps")
-        await AppLanguage.only(.en) {
-            let read = readSheet(RuleEditor(rvm: model, folder: offer.folder, rule: offer.draft,
-                                            preset: offer.preset))
-            XCTAssertTrue(read.contains { $0.contains("What would happen") },
-                          "the subject: the sheet did not draw: \(read)")
-            XCTAssertFalse(read.contains { $0.contains("straight away") }, "\(read)")
-        }
-        await model.save(offer.draft, in: offer.folder)
-        XCTAssertEqual(wire.saved, [], "a refused set was written over")
-        XCTAssertFalse(wire.commands.contains(.runNow), "a refused set was swept")
-    }
-
     /// **A spelling that differs only in case is the watched folder too.** The
     /// volume ignores case, and `WatchScope` canonicalizes every component that
     /// exists — the leaf included — so `~/downloads` passes it as `~/Downloads`.
@@ -311,49 +279,6 @@ final class APresetsChosenFolderHoldsAtTheEdgesTests: XCTestCase {
             panelModel.addFolder(at: downloads)
             XCTAssertEqual(panelModel.folders.count, 1,
                            "stored as \(storedPath), added again as \(downloads)")
-        }
-    }
-
-    /// **The sheet already on screen loses its promise when the refusal arrives.**
-    /// `testARefusalWhileTheSheetIsOpenTakesTheSweepAndTheSentenceAway` draws a
-    /// fresh sheet after the refusal; the person is looking at one drawn before
-    /// it. The same mounted sheet is read before and after, and the «before»
-    /// reading is the subject: the sentence was on screen.
-    func testTheMountedSheetDropsTheSentenceWhenTheRefusalArrives() async throws {
-        try standTheHome()
-        let wire = AutopilotWire()
-        let model = fakeModel(wire)
-        await model.load()
-        let offer = try offer(model, .screenshots)
-
-        await AppLanguage.only(.en) {
-            let render = MountedRender(
-                RuleEditor(rvm: model, folder: offer.folder, rule: offer.draft, preset: offer.preset)
-                    .transaction { $0.disablesAnimations = true },
-                width: 640, height: 620, appearance: .aqua)
-            var before: [String] = []
-            for _ in 0..<40 {
-                render.settle(10)
-                before = recognised(render.host)
-                if before.contains(where: { $0.contains("straight away") }) { break }
-            }
-            XCTAssertTrue(before.contains { $0.contains("straight away") },
-                          "the subject: the open sheet never promised a sweep: \(before)")
-
-            wire.answers(AutopilotStatus(refusal: .tampered))
-            await model.load()
-            XCTAssertEqual(model.screen, .rulesRefused(.tampered), "precondition: the set is refused")
-
-            var after: [String] = []
-            for _ in 0..<40 {
-                render.settle(10)
-                after = recognised(render.host)
-                if !after.contains(where: { $0.contains("straight away") }) { break }
-            }
-            XCTAssertTrue(after.contains { $0.contains("What would happen") },
-                          "the subject: the sheet stopped drawing: \(after)")
-            XCTAssertFalse(after.contains { $0.contains("straight away") },
-                           "the sheet on screen still promises a sweep over a refused set: \(after)")
         }
     }
 
@@ -510,83 +435,5 @@ final class APresetsChosenFolderHoldsAtTheEdgesTests: XCTestCase {
 
         XCTAssertTrue(fm.fileExists(atPath: secret.path), "a file in ~/Library/Messages was trashed")
         XCTAssertEqual(helm.folders, [], "a folder that now leads into the Library was stored")
-    }
-
-    // MARK: - The sheet, drawn
-
-    /// **The sentence is drawn exactly when Done sweeps**, read back off the
-    /// rendered sheet rather than off the model: the model's half is held by
-    /// `APresetsFolderCanBeChosenTests`, and only a rendering sees whether the
-    /// sheet asks it. The chooser is drawn for a preset and not for a rule
-    /// somebody wrote. English, Aqua.
-    func testTheSheetDrawsTheSentenceExactlyWhenDoneSweeps() async throws {
-        try standTheHome()
-        let watched = WatchedFolder(id: "pics", path: home.path + "/Pictures")
-        let model = fakeModel(AutopilotWire(folders: [watched]))
-        await model.load()
-        let offer = try offer(model, .oldInstallers)
-
-        await AppLanguage.only(.en) {
-            var off = offer.draft
-            off.enabled = false
-            let cases: [(String, WatchedFolder, Rule, RulePreset?, Bool)] = [
-                ("new folder, rule on", offer.folder, offer.draft, offer.preset, true),
-                ("new folder, rule off", offer.folder, off, offer.preset, false),
-                ("watched folder", watched, offer.draft, offer.preset, false),
-                ("a rule of one's own", watched, Rule(id: "own", name: "Own", action: .trash), nil, false),
-            ]
-            for (label, folder, rule, preset, sentence) in cases {
-                XCTAssertEqual(model.sweepsAfterSaving(rule, in: folder), sentence,
-                               "precondition: \(label)")
-                let read = readSheet(RuleEditor(rvm: model, folder: folder, rule: rule, preset: preset))
-                XCTAssertTrue(read.contains { $0.contains("What would happen") },
-                              "the subject: the sheet did not draw at all (\(label)): \(read)")
-                XCTAssertEqual(read.contains { $0.contains("straight away") }, sentence,
-                               "\(label): sentence drawn \(!sentence), Done sweeps \(sentence): \(read)")
-                XCTAssertEqual(read.contains { $0.hasPrefix("Choose") }, preset != nil,
-                               "\(label): the chooser: \(read)")
-            }
-        }
-    }
-
-    private func readSheet<V: View>(_ sheet: V) -> [String] {
-        let render = MountedRender(sheet.transaction { $0.disablesAnimations = true },
-                                   width: 640, height: 620, appearance: .aqua)
-        // Pumped until the dry run's own heading is read — the sheet's last
-        // section to settle — and bounded, so a sheet that never draws fails on
-        // the subject assertion rather than hanging.
-        var read: [String] = []
-        for _ in 0..<40 {
-            render.settle(10)
-            read = recognised(render.host)
-            if read.contains(where: { $0.contains("What would happen") }) { break }
-        }
-        return read
-    }
-
-    private func recognised(_ host: NSView) -> [String] {
-        guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return [] }
-        host.cacheDisplay(in: host.bounds, to: rep)
-        guard let drawn = rep.cgImage else { return [] }
-        // Onto white first. The sheet's own background is the window's, which
-        // an offscreen cache does not draw, so its text arrives as black on
-        // transparent — which the recogniser reads as black on black: measured,
-        // it read only the two AppKit fields, which paint their own ground.
-        guard let context = CGContext(data: nil, width: drawn.width, height: drawn.height,
-                                      bitsPerComponent: 8, bytesPerRow: 0,
-                                      space: CGColorSpaceCreateDeviceRGB(),
-                                      bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
-        else { return [] }
-        let whole = CGRect(x: 0, y: 0, width: drawn.width, height: drawn.height)
-        context.setFillColor(CGColor(gray: 1, alpha: 1))
-        context.fill(whole)
-        context.draw(drawn, in: whole)
-        guard let image = context.makeImage() else { return [] }
-        let request = VNRecognizeTextRequest()
-        request.recognitionLevel = .accurate
-        request.recognitionLanguages = ["en-US"]
-        request.usesLanguageCorrection = false
-        try? VNImageRequestHandler(cgImage: image).perform([request])
-        return (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
     }
 }

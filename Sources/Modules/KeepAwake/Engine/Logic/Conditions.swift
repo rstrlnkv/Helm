@@ -1,8 +1,3 @@
-/// `CaseIterable` earns its keep in `ConditionLabelTests`, which walks every case
-/// and fails when one is added without a word for the log — otherwise the reason
-/// the module is holding sleep would be the one thing missing from the line that
-/// exists to explain it.
-///
 /// **The raw value is the wire name**, so the two sides of the transport name
 /// the same thing. It used to have none, and the spelling was written out three
 /// times over: a `wireName` extension in the engine, a `switch` over string
@@ -13,8 +8,8 @@
 ///
 /// Not the log's vocabulary: `ConditionLabel` spells `.externalDisplay` as
 /// `display`, and deliberately — a log line is read by a person scanning for
-/// the shape of a session, and it has its own test. Two vocabularies are fine
-/// while each has one owner; three spellings of one of them was the defect.
+/// the shape of a session. Two vocabularies are fine while each has one owner;
+/// three spellings of one of them was the defect.
 public enum ActiveCondition: String, Hashable, Sendable, CaseIterable {
     case manual, timer, externalDisplay, power, app
 

@@ -9,8 +9,6 @@ import Module_Duplicates_Engine
 import Module_Duplicates_UI
 import Module_Homebrew_Engine
 import Module_Homebrew_UI
-import Module_Hosts_Engine
-import Module_Hosts_UI
 import Module_KeepAwake_Engine
 import Module_KeepAwake_UI
 import Module_Layout_Engine
@@ -32,7 +30,7 @@ import Module_VPN_UI
 /// the promise. Each row compares a descriptor's `id` with its engine's
 /// constant directly, so a descriptor rewritten as a diverging literal fails
 /// here and the failure names the module. The *values* are pinned elsewhere:
-/// `StoreNamespacesAreModuleIdsTests` holds the ids that shipped against the
+/// `StoreNamespacesAreModuleIdsTests` holds the registered ids against the
 /// registry, so a rename that both sides agree on still fails there.
 ///
 /// The rows are a hand-written list, which CLAUDE.md allows only tied to the
@@ -46,7 +44,6 @@ final class EveryDescriptorForwardsItsEnginesIdTests: XCTestCase {
         (DiskDescriptor.self, DiskEngine.moduleID),
         (DuplicatesDescriptor.self, DuplicatesEngine.moduleID),
         (HomebrewDescriptor.self, HomebrewEngine.moduleID),
-        (HostsDescriptor.self, HostsEngine.moduleID),
         (KeepAwakeDescriptor.self, KeepAwakeEngine.moduleID),
         (LayoutDescriptor.self, LayoutEngine.moduleID),
         (LeftoversDescriptor.self, LeftoversEngine.moduleID),
@@ -55,8 +52,8 @@ final class EveryDescriptorForwardsItsEnginesIdTests: XCTestCase {
         (VPNDescriptor.self, VPNEngine.moduleID),
     ]
 
-    /// The list above covers exactly the modules the app registers — a tenth
-    /// module, or one dropped, fails here rather than being quietly unguarded.
+    /// The list above covers exactly the modules the app registers — a module
+    /// added, or one dropped, fails here rather than being quietly unguarded.
     func testTheRowsAreTheRegistry() {
         let listed = Set(Self.rows.map { ObjectIdentifier($0.descriptor) })
         let registered = Set(ModuleRegistry.all.map { ObjectIdentifier(type(of: $0)) })

@@ -18,8 +18,8 @@ import HelmContract
 /// `TransportClient`'s own doc comment names the consequence: a typo is
 /// indistinguishable from a refusal, and the only symptom is a feature that
 /// quietly does nothing. Both calls here still answer the same bytes they always
-/// did; they also log, at `error`, in one place, identically for all nine
-/// engines. `#fileID` and `#line` default in from the call site, so the line
+/// did; they also log, at `error`, in one place, identically for every
+/// engine. `#fileID` and `#line` default in from the call site, so the line
 /// names the engine and the arm — a bare command name would not, since
 /// `scan` and `trash` are spelled the same in three modules each.
 ///

@@ -52,8 +52,8 @@ final class ADescriptionBatchCannotCostMoreThanItsNamesTests: XCTestCase {
 
     /// A brew that resolves the names in `known` and refuses any call carrying
     /// a name it does not know — validating the whole call before printing
-    /// anything, which is what `brew desc` does (`HomebrewEngineQueryTests`
-    /// records the observed shape: exit 1, message on stderr, stdout empty).
+    /// anything, which is what `brew desc` does (observed: exit 1, message on
+    /// stderr, stdout empty).
     ///
     /// With `known` empty it is a brew that refuses everything, which is the
     /// state under test. It is a state the real tool is genuinely in whenever

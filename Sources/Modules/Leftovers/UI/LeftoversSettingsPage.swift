@@ -23,7 +23,7 @@ struct LeftoversSettingsPage: View {
     /// step follows; for a leftover none does, and the click deleted. Where no
     /// dialog follows the row says exactly what the bar below it says, because
     /// it is the same act.
-    static func deleteLabel(for item: StaleItem) -> String {
+    private static func deleteLabel(for item: StaleItem) -> String {
         LeftoverActions.needsConfirmation(item) ? LfStr.deleteItem : LfStr.removeSelected
     }
 
@@ -34,7 +34,7 @@ struct LeftoversSettingsPage: View {
     /// on «All», and «Found: 1 item» over four rows every one of which is badged
     /// «Leftover». Both quantities are wanted; `leftoverCount` goes on gating
     /// «Select all», which is the question it actually answers.
-    static func foundCaption(_ lvm: LeftoversViewModel) -> String {
+    private static func foundCaption(_ lvm: LeftoversViewModel) -> String {
         LfStr.foundLine(lvm.visibleItems.count)
     }
 
@@ -124,8 +124,7 @@ struct LeftoversSettingsPage: View {
         // the tab or to `lvm.items.count`) was SwiftUI interpolating two states of
         // one view: the «Found: N» figure morphed
         // digit by digit, rows the new tab drops were still drawn and re-laid out
-        // under moving stripes, and the section headers slid
-        // (`TheTabSwitchHoldsStillAtItsEdgesTests`). A tab and a rescan are a swap.
+        // under moving stripes, and the section headers slid. A tab and a rescan are a swap.
         // Narrowing the list drops the ticks it hides, the way the kind filter
         // and a fresh scan already do. Without this the switcher was the one
         // way a selection could outlive its row. Moved here from the switcher
@@ -164,15 +163,6 @@ struct LeftoversSettingsPage: View {
     /// old toolbar showed them: the menu over a list, Scan wherever the
     /// page's own invitation is not already offering one
     /// (`invitationCarriesTheScan`).
-    ///
-    /// **The first tab's id is `"onlyLeftovers"`, not the bare word
-    /// `"leftovers"`** — this module's own `ModuleTint` case is `.leftovers`
-    /// (`LeftoversDescriptor.swift`), real code rather than a literal, and
-    /// the bare word collided with it: `TheTreeIsReadOnceAProcessTests`
-    /// blanks a literal's insides and checks the result for the literal it
-    /// just blanked, and a second, unrelated spelling of the same word
-    /// elsewhere in this directory's actual code made that check read as if
-    /// the blanking itself had failed.
     private var toolbarContent: HelmPageToolbarContent {
         let hasList = !lvm.items.isEmpty
         return HelmPageToolbarContent(
@@ -224,8 +214,7 @@ struct LeftoversSettingsPage: View {
     /// flexible.** With both captions fixed, at the narrowest pane the window
     /// allows (606 pt): «Сканировать заново» drawn 20.5 pt against the 154.0 its
     /// words need, «Escanear de nuevo» 20.5 against 139.0, German 92.5 against
-    /// 118.5 — the verb reduced to an ellipsis by two labels, which is
-    /// `TheActionBarKeepsItsWordsTests`' defect one row up.
+    /// 118.5 — the verb reduced to an ellipsis by two labels.
     ///
     /// So the captions give way, in an order: what survives a narrow pane is the
     /// one saying the number beside it is incomplete, because a count with no
@@ -490,11 +479,7 @@ struct LeftoversSettingsPage: View {
     /// The mark over each empty state. The filter's own glyph for the filter's
     /// own message — the menu that caused it is on screen directly above, wearing
     /// the same symbol.
-    ///
-    /// Internal rather than private, for the reason `deleteLabel(for:)` and
-    /// `foundCaption` above are: which mark stands over which sentence is a claim
-    /// this page makes, and a claim with no test under it is a promise in prose.
-    static func symbol(for nothing: LeftoversEmpty.Reason) -> String {
+    private static func symbol(for nothing: LeftoversEmpty.Reason) -> String {
         switch nothing {
         case .notScanned: "wand.and.rays"
         case .nothingFound: "checkmark.circle"
@@ -558,7 +543,7 @@ struct LeftoversSettingsPage: View {
     /// buttons either side of it clipped too.
     ///
     /// Its own row costs the list one row's worth of height instead, in every
-    /// language, and `ARemovalReportDoesNotEatTheListTests` holds both numbers.
+    /// language.
     ///
     /// **Nothing here asks whether the outcome has anything to say**, and a first
     /// version of this did: a removal that moved nothing and refused nothing —
@@ -570,7 +555,7 @@ struct LeftoversSettingsPage: View {
     /// page nobody had pressed anything on. The component owns that decision; a
     /// second copy of it here would have been a guard against nothing. What is
     /// **not** free is anything drawn beside it: a `Divider()` added here cost the
-    /// list 1 pt on a silent round, which is what the test above measures.
+    /// list 1 pt on a silent round.
     @ViewBuilder private var outcomeRow: some View {
         if let outcome = removalOutcome { statement(outcome) }
     }
@@ -639,9 +624,8 @@ struct LeftoversSettingsPage: View {
     ///
     /// Its own function, and exhaustive over the note for the reason
     /// `LfStr.kindName` records: which sentence stands over which silence is the
-    /// whole of this fix, and a `switch` inside a `body` is a rule no test can
-    /// reach.
-    static func silenceOutcome(_ note: LeftoversSilence.Note?) -> HelmRemovalOutcome? {
+    /// whole of this fix.
+    private static func silenceOutcome(_ note: LeftoversSilence.Note?) -> HelmRemovalOutcome? {
         switch note {
         case .removalLost: .unanswered
         // The rescan that would have made «the list above shows where the files

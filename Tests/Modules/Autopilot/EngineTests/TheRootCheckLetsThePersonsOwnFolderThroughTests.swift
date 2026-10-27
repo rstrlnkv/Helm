@@ -9,16 +9,12 @@ import HelmTestSupport
 /// A root check refuses in the safe direction, and the cost of refusing too much
 /// is not visible anywhere: the sweep reports the folder as unreadable, the
 /// hourly pass writes one warning into a log nobody reads, and the person's
-/// real rules simply stop. So these hold the other side of the check — every
-/// spelling under which an ordinary watched folder is still the person's own
-/// folder is read, and a gate that compared strings, or one that forgot the
-/// engine's home, fails here — and then the one planted shape the ancestor
-/// test does not cover: the watched folder *itself* replaced by a link after
-/// the rules were saved.
+/// real rules simply stop. So these hold the other side of the check — a folder
+/// that is not there still reads as missing — and then the one planted shape the
+/// ancestor test does not cover: the watched folder *itself* replaced by a link
+/// after the rules were saved.
 ///
-/// Everything is on disk: a scratch home, real folders, real links. The scratch
-/// home lives under `/var/folders`, so its `/private` spelling is a real second
-/// spelling of the same directory.
+/// Everything is on disk: a scratch home, real folders, real links.
 final class TheRootCheckLetsThePersonsOwnFolderThroughTests: XCTestCase {
 
     private var home: URL!
@@ -44,63 +40,6 @@ final class TheRootCheckLetsThePersonsOwnFolderThroughTests: XCTestCase {
     private func storedText() -> String {
         engine.history.compactMap { try? JSONEncoder().encode($0) }
             .compactMap { String(data: $0, encoding: .utf8) }.joined()
-    }
-
-    /// Read, and acted on: the move happened, so the rules really ran.
-    private func assertRead(_ path: String, _ what: String,
-                            file: StaticString = #filePath, line: UInt = #line) {
-        let folder = watch(path)
-        engine.folders = [folder]
-        XCTAssertEqual(engine.preview(folder).count, 1, "\(what): the dry run showed nothing",
-                       file: file, line: line)
-        let report = engine.sweep(folder)
-        XCTAssertEqual(report.folder, .read, "\(what): the person's own folder was refused",
-                       file: file, line: line)
-        XCTAssertEqual(report.examined, 1, "\(what)", file: file, line: line)
-        XCTAssertEqual(report.acted, 1, "\(what): the rule did not run", file: file, line: line)
-        XCTAssertTrue(FileManager.default.fileExists(
-            atPath: home.appendingPathComponent("Sorted/invoice.pdf").path),
-            "\(what): the file was not moved", file: file, line: line)
-    }
-
-    // MARK: - The person's own folder under another spelling
-
-    func testDownloadsItselfIsRead() {
-        assertRead(home.appendingPathComponent("Downloads").path, "control")
-    }
-
-    func testDownloadsSpelledThroughPrivateIsRead() throws {
-        let plain = home.appendingPathComponent("Downloads").path
-        try XCTSkipUnless(plain.hasPrefix("/var/"), "the scratch home is not under /var: \(plain)")
-        assertRead("/private" + plain, "/private spelling")
-    }
-
-    /// The engine's own home spelled through `/private`, the folder not.
-    func testAHomeSpelledThroughPrivateStillHoldsDownloads() throws {
-        try XCTSkipUnless(home.path.hasPrefix("/var/"), "the scratch home is not under /var")
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: "/private" + home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
-        assertRead(home.appendingPathComponent("Downloads").path, "home through /private")
-    }
-
-    /// Not refused by the root check. Whether the reader then reads through the
-    /// link is `AFolderWatchedThroughALinkIsReadTests`' question, not this one.
-    func testALinkToDownloadsIsNotRefusedByTheRootCheck() throws {
-        try FileManager.default.createSymbolicLink(
-            at: home.appendingPathComponent("DL"),
-            withDestinationURL: home.appendingPathComponent("Downloads"))
-        let report = engine.sweep(watch(home.appendingPathComponent("DL").path))
-        XCTAssertEqual(report.folder, .read, "a link to Downloads was refused as outside the scope")
-    }
-
-    func testAnotherCaseOfDownloadsIsRead() {
-        assertRead(home.appendingPathComponent("downloads").path, "lower case")
-    }
-
-    func testATrailingSlashIsRead() {
-        assertRead(home.appendingPathComponent("Downloads").path + "/", "trailing slash")
     }
 
     // MARK: - Absent folders keep saying absent
@@ -180,5 +119,97 @@ final class TheRootCheckLetsThePersonsOwnFolderThroughTests: XCTestCase {
 
         XCTAssertEqual(engine.status.folders[folder.id], swept,
                        "the page is told this folder reads fine while no sweep will ever read it")
+    }
+}
+
+/// The person's own folder is read under every spelling of it.
+///
+/// A root check refuses in the safe direction, and the cost of refusing too much
+/// is not visible anywhere: the sweep reports the folder as unreadable, the
+/// hourly pass writes one warning into a log nobody reads, and the person's
+/// real rules simply stop. So these hold the other side of the check — every
+/// spelling under which an ordinary watched folder is still the person's own
+/// folder is read, and a gate that compared strings, or one that forgot the
+/// engine's home, fails here.
+///
+/// Everything is on disk: a scratch home, real folders, real links. The scratch
+/// home lives under `/var/folders`, so its `/private` spelling is a real second
+/// spelling of the same directory.
+final class ThePersonsOwnFolderReadsUnderEverySpellingTests: XCTestCase {
+
+    private var home: URL!
+    private var engine: AutopilotEngine!
+
+    override func setUpWithError() throws {
+        home = scratchDirectory("home")
+        try write("Downloads/invoice.pdf", in: home)
+        engine = AutopilotEngine(
+            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
+                                   backing: InMemoryKeyValueStore()),
+            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+    }
+
+    private func watch(_ path: String, id: String = "f") -> WatchedFolder {
+        WatchedFolder(id: id, path: path, enabled: true, rules: [
+            Rule(id: "r", name: "Sort", enabled: true, conditions: [.fileExtension(["pdf"])],
+                 action: .move(to: home.appendingPathComponent("Sorted").path)),
+        ], depth: 1)
+    }
+
+    /// Read, and acted on: the move happened, so the rules really ran.
+    private func assertRead(_ path: String, _ what: String,
+                            file: StaticString = #filePath, line: UInt = #line) {
+        let folder = watch(path)
+        engine.folders = [folder]
+        XCTAssertEqual(engine.preview(folder).count, 1, "\(what): the dry run showed nothing",
+                       file: file, line: line)
+        let report = engine.sweep(folder)
+        XCTAssertEqual(report.folder, .read, "\(what): the person's own folder was refused",
+                       file: file, line: line)
+        XCTAssertEqual(report.examined, 1, "\(what)", file: file, line: line)
+        XCTAssertEqual(report.acted, 1, "\(what): the rule did not run", file: file, line: line)
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: home.appendingPathComponent("Sorted/invoice.pdf").path),
+            "\(what): the file was not moved", file: file, line: line)
+    }
+
+    // MARK: - The person's own folder under another spelling
+
+    func testDownloadsItselfIsRead() {
+        assertRead(home.appendingPathComponent("Downloads").path, "control")
+    }
+
+    func testDownloadsSpelledThroughPrivateIsRead() throws {
+        let plain = home.appendingPathComponent("Downloads").path
+        try XCTSkipUnless(plain.hasPrefix("/var/"), "the scratch home is not under /var: \(plain)")
+        assertRead("/private" + plain, "/private spelling")
+    }
+
+    /// The engine's own home spelled through `/private`, the folder not.
+    func testAHomeSpelledThroughPrivateStillHoldsDownloads() throws {
+        try XCTSkipUnless(home.path.hasPrefix("/var/"), "the scratch home is not under /var")
+        engine = AutopilotEngine(
+            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
+                                   backing: InMemoryKeyValueStore()),
+            home: "/private" + home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        assertRead(home.appendingPathComponent("Downloads").path, "home through /private")
+    }
+
+    /// Not refused by the root check. Whether the reader then reads through the
+    /// link is `AFolderWatchedThroughALinkIsReadTests`' question, not this one.
+    func testALinkToDownloadsIsNotRefusedByTheRootCheck() throws {
+        try FileManager.default.createSymbolicLink(
+            at: home.appendingPathComponent("DL"),
+            withDestinationURL: home.appendingPathComponent("Downloads"))
+        let report = engine.sweep(watch(home.appendingPathComponent("DL").path))
+        XCTAssertEqual(report.folder, .read, "a link to Downloads was refused as outside the scope")
+    }
+
+    func testAnotherCaseOfDownloadsIsRead() {
+        assertRead(home.appendingPathComponent("downloads").path, "lower case")
+    }
+
+    func testATrailingSlashIsRead() {
+        assertRead(home.appendingPathComponent("Downloads").path + "/", "trailing slash")
     }
 }

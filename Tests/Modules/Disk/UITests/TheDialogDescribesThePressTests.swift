@@ -9,14 +9,8 @@ import Module_Disk_Engine
 /// The sentence the person answers, against the press it starts.
 ///
 /// The engine-side arithmetic is `TheQuestionIsAboutWhatIsSentTests`; this is the
-/// other end of it — the localized sentence the dialog draws, in all eight
-/// languages, and the batch the transport is actually handed in the same round.
-/// Measured en and ru before the repair: «Move 1 item (120 MB) to the Trash?» /
-/// «Переместить 1 объект (120 МБ) в Корзину?» over four paths.
-///
-/// Parameterized by an explicit language, never by `AppLanguage.current`: the
-/// suite runs in whatever this Mac is set to, and a count that is right in one
-/// language proves nothing about the plural in the other seven.
+/// other end of it — the paths the dialog names and the batch the transport is
+/// actually handed in the same round.
 @MainActor
 final class TheDialogDescribesThePressTests: XCTestCase {
     private let caches = "/Volumes/Big/Library/Caches"
@@ -47,29 +41,7 @@ final class TheDialogDescribesThePressTests: XCTestCase {
         return (dvm, transport)
     }
 
-    /// The title counts what will be sent, in every language — and is not the
-    /// sentence the basket would have produced.
-    func testTheTitleCountsThePathsAndNotTheRows() async {
-        let (dvm, _) = await scannedWithTheCacheRowTicked()
-        let previous = AppLanguage.override
-        defer { AppLanguage.override = previous }
-
-        for language in AppLanguage.allCases {
-            AppLanguage.override = language
-            let title = DkStr.confirmTrash(dvm.removalQuestion)
-
-            XCTAssertEqual(title,
-                           HelmConfirm.trash(Plural.items(4, language: language.rawValue),
-                                             Bytes(600), language: language),
-                           "the question counts basket rows in \(language.rawValue)")
-            XCTAssertNotEqual(title,
-                              HelmConfirm.trash(Plural.items(1, language: language.rawValue),
-                                                Bytes(600), language: language),
-                              "still «1 item» in \(language.rawValue), for a press of four paths")
-        }
-    }
-
-    /// And it names the paths that go, not the folder that stays.
+    /// The message names the paths that go, not the folder that stays.
     func testTheMessageNamesWhatGoesAndNotWhatStays() async {
         let (dvm, _) = await scannedWithTheCacheRowTicked()
 

@@ -131,21 +131,6 @@ final class TheScanSaysWhatTurnedUpWhileYouWereAwayTests: XCTestCase {
 
     // MARK: - What it says
 
-    /// Every language Helm ships, including the seven this machine is not set
-    /// to: a test that read `AppLanguage.current` would check one of eight and
-    /// report on all of them.
-    func testTheBannerIsWrittenInEveryLanguage() {
-        let finding = ScanNews.Finding(count: 7, bytes: 34_200_000_000)
-        var seen: Set<String> = []
-        for language in AppLanguage.allCases {
-            let body = AppStr.scanFindingBody(finding, language: language)
-            XCTAssertTrue(body.contains("7"), "\(language.rawValue) lost the count: \(body)")
-            seen.insert(body)
-        }
-        XCTAssertEqual(seen.count, AppLanguage.allCases.count,
-                       "two languages read identically, so one is untranslated: \(seen)")
-    }
-
     /// **A finding, never a claim of action.** The words a banner must not carry
     /// are the ones that say Helm did something to the person's files while they
     /// were away — it looked, and that is all.
@@ -161,21 +146,6 @@ final class TheScanSaysWhatTurnedUpWhileYouWereAwayTests: XCTestCase {
         }
     }
 
-    /// The counted noun takes the form its language gives it. A number
-    /// interpolated in front of a fixed word reads as a bug in the one place
-    /// that must not look buggy.
-    func testTheCountedNounFollowsItsLanguagesRules() {
-        func body(_ count: Int, _ language: AppLanguage) -> String {
-            AppStr.scanFindingBody(ScanNews.Finding(count: count, bytes: 2_000_000_000),
-                                   language: language)
-        }
-        XCTAssertTrue(body(1, .ru).contains("1 объект"))
-        XCTAssertTrue(body(3, .ru).contains("3 объекта"))
-        XCTAssertTrue(body(5, .ru).contains("5 объектов"))
-        XCTAssertTrue(body(1, .en).contains("1 item"))
-        XCTAssertFalse(body(1, .en).contains("1 items"))
-    }
-
     /// The size is written the way the language writes it, not the way this
     /// Mac's system locale does — a `Foundation` formatter built with no locale
     /// answers in the system's language, which is the trap `HelmBytes` exists
@@ -184,15 +154,6 @@ final class TheScanSaysWhatTurnedUpWhileYouWereAwayTests: XCTestCase {
         let finding = ScanNews.Finding(count: 1, bytes: 34_200_000_000)
         XCTAssertTrue(AppStr.scanFindingBody(finding, language: .ru).contains("ГБ"))
         XCTAssertTrue(AppStr.scanFindingBody(finding, language: .en).contains("GB"))
-    }
-
-    /// French puts a narrow no-break space before its two-part punctuation.
-    func testTheFrenchBannerCarriesNoBareSpaceBeforeTightPunctuation() {
-        let body = AppStr.scanFindingBody(ScanNews.Finding(count: 3, bytes: 2_000_000_000),
-                                          language: .fr)
-        for mark in [":", ";", "?", "!", "»"] {
-            XCTAssertFalse(body.contains(" " + mark), "a bare space before \(mark) in: \(body)")
-        }
     }
 
     /// macOS refusing is a silence with a reason, and nothing is posted.

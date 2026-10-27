@@ -30,8 +30,6 @@ public enum RuleOutcome: Equatable, Sendable {
     case targetOutOfScope
     case failed(String)
 
-    // CaseIterable so the guard on how these read on screen loops the real
-    // list instead of keeping a copy — see `ARefusalSpeaksTheLanguageTests`.
     public enum Refusal: String, CaseIterable, Equatable, Sendable {
         /// The file is not somewhere a rule may reach — the one thing a refusal for
         /// scope can mean *here*. Its record carries no name and no path

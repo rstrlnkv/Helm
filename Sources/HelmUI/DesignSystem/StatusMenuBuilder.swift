@@ -1,10 +1,6 @@
 import AppKit
 
 /// Builds the status item's menu.
-///
-/// Split out of `StatusItemController` so the thing that is easy to get wrong
-/// — which item carries which glyph, and where the rules fall — can be
-/// asserted instead of squinted at in a screenshot.
 public enum StatusMenuBuilder {
 
     /// One row: what to call it, what to draw beside it, and which module it

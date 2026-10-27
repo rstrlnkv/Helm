@@ -9,27 +9,20 @@ import HelmUI
 /// puts them (their *home*), less `ShellGeometry.toolbarLift` when the window wears a toolbar: AppKit's
 /// home is that much further right and down there, so the buttons stand where they stand in a window with
 /// none (read from `window.toolbar` at every placement; the lift's size is one reading in a window never
-/// shown, and `TheWindowButtonsStayWhereHelmPutThemTests.testTheToolbarWindowHoldsItsButtonsWhereThePageBarWindowHoldsThem`
-/// holds that the window the app builds, which wears `SettingsToolbar`'s toolbar, stands them within 0.5 pt
-/// of where the `.pageBar` window's stand, expanded and in the rail; the other rows hold the lift's arithmetic;
-/// `SettingsToolbar`'s file alone writes `window.toolbar`). In the rail they keep their row and stand under a closed capsule of three
+/// shown; `SettingsToolbar`'s file alone writes `window.toolbar`). In the rail they keep their row and stand under a closed capsule of three
 /// dots, at alpha 0; the pointer in the capsule's hover zone opens the capsule around them and shows the
 /// real buttons, and the capsule answers no hit, so a press there is meant to reach them. Not measured: a
-/// real pointer, the hover glyphs, a click and the zoom button's menu on a button that was at alpha 0. The
-/// obstacle the page bar is handed is the closed capsule's frame in the rail, the buttons' union
-/// otherwise, and never depends on hover, so nothing in the bar moves when the capsule opens. The bar
-/// is also handed `reach`, the hover zone, and opens no menu inside it.
+/// real pointer, the hover glyphs, a click and the zoom button's menu on a button that was at alpha 0.
 /// While the sidebar's width travels to a fold, `ShellContentView` asks for the rail's placement from the turn of the
 /// flip until the target width is written, or a cut or the view's move to another window ends the travel, in both
 /// directions, so the placement changes once, at the travel's start or its end.
 ///
 /// **Held by origin, on both axes.** Measured: AppKit puts the buttons back at its own origins (below).
 /// Measured in a window never shown, under the toolbar the window the app builds wears
-/// (`SettingsToolbar`'s), and held by `testTheToolbarWindowHoldsItsButtonsWhereThePageBarWindowHoldsThem`: with a
+/// (`SettingsToolbar`'s): with a
 /// toolbar the strip stands more than 10 pt taller, and the buttons, placed with the lift taken, stand
 /// within 0.5 pt of a bare window's, expanded and in the rail. A change of the titlebar's height therefore
-/// moves the home on both axes, and the lift is taken from both. The 52 pt strip is held within 1.5 pt by
-/// `TheWindowWearsTheToolbarTests.testThePaneStartsWhereTheStripEndsAndHelmAddsNothing` (a pane safe area of
+/// moves the home on both axes, and the lift is taken from both. The 52 pt strip read within 1.5 pt (a pane safe area of
 /// 48, the strip less `ShellGeometry.inset`); the 32 pt title bar it stands in place of and the buttons at 19
 /// and 19 from the corner instead of 9 and 9 are one reading in a window never shown, held by no row.
 /// Assumed: that it does the same in a shown window and
@@ -37,18 +30,14 @@ import HelmUI
 /// Every placement writes each button's origin: its home plus the offset. A write to a button's origin that
 /// this object did not make and that reaches it (`NSView.frameDidChangeNotification`, an origin other than
 /// the one written here) is taken for AppKit's: it becomes the new home and is answered in the same turn
-/// with the placement. The rows make that write by hand. That answer does not hold every write AppKit makes:
+/// with the placement. That answer does not hold every write AppKit makes:
 /// the one inside an alpha write, below, left the zoom button at AppKit's origin, and why the answer missed
 /// it is not measured. AppKit writing an origin in a shown window is not measured. This object's own writes
 /// are told by `isPlacing` and by their value, so answering cannot loop. Measured in an unshown window: a
-/// write to a button's alpha makes AppKit put the buttons back at its own origins (the rows of
-/// `TheWindowButtonsStayWhereHelmPutThemTests` rest on it: the fold row goes red without the answer). So
+/// write to a button's alpha makes AppKit put the buttons back at its own origins. So
 /// every placement, and every hover change made without an animation, ends by putting back each button that
 /// stands elsewhere, after the last alpha write. An animated change does it once at once and once more when
-/// the animation completes. One row reaches a completion, and only after the placement was given up, where
-/// it must write nothing (`testAnAnimationsEndWritesNoOriginOnceThePlacementIsGivenUp`); a completion that
-/// puts a button back while a placement is held is reached by no row: every other row that changes the
-/// hover on an attached owner sets Reduce Motion on.
+/// the animation completes.
 ///
 /// **Hover is an event-stream value.** `isOpen` is set by the tracking area's enter and exit, cleared by
 /// leaving the rail, by full screen and by `attach(to: nil)`, and read again from the pointer's place in
@@ -76,70 +65,31 @@ final class ShellWindowButtons {
     struct Placement: Equatable {
         /// From AppKit's home; x right, y down.
         var offset: CGSize
-        /// The union where Helm holds the three buttons.
-        var buttons: CGRect
         /// Nil: expanded, or a rail whose capsule cannot open onto the buttons (their home above the content).
         var capsule: Capsule?
     }
 
     /// The placement for `home`, the union of the three buttons where AppKit puts them in the content's
-    /// coordinates, for a window with no toolbar (`placed(home:rail:lift:)` with a zero lift). Nil when `home`
-    /// is nil, empty, null or not a finite place: nothing is moved or hidden. Nothing under `Sources` calls it
-    /// now: `place(rail:)` goes through `placed(home:rail:lift:)`. It stays for the rows that use it
-    /// (`ThePaneStartsBelowTheBarTests`, `TheWindowButtonsStayWhereHelmPutThemTests`).
-    nonisolated static func placement(home: CGRect?, rail: Bool) -> Placement? {
-        placed(home: home, rail: rail, lift: .zero)
-    }
-
-    /// The same for a window whose home is `lift` further right and down (`ShellGeometry.buttonsOffset`'s).
+    /// coordinates, in a window whose home is `lift` further right and down (`ShellGeometry.buttonsOffset`'s;
+    /// zero with no toolbar). Nil when `home` is nil, empty, null or not a finite place: nothing is moved or hidden.
     nonisolated static func placed(home: CGRect?, rail: Bool, lift: CGSize) -> Placement? {
         guard let home, !home.isNull, !home.isInfinite, home.width > 0, home.height > 0,
               [home.minX, home.minY, home.width, home.height].allSatisfy(\.isFinite) else { return nil }
         let offset = ShellGeometry.buttonsOffset(home: home, rail: rail, lift: lift)
         let buttons = home.offsetBy(dx: offset.width, dy: offset.height)
-        guard rail, home.minY >= 0 else { return Placement(offset: offset, buttons: buttons, capsule: nil) }
-        return Placement(offset: offset, buttons: buttons,
+        guard rail, home.minY >= 0 else { return Placement(offset: offset, capsule: nil) }
+        return Placement(offset: offset,
                          capsule: Capsule(closed: ShellGeometry.capsuleClosedFrame(buttons: buttons),
                                           open: ShellGeometry.capsuleOpenFrame(buttons: buttons),
                                           hoverZone: ShellGeometry.capsuleHoverZone(buttons: buttons)))
-    }
-
-    /// What the page bar must clear: the closed capsule when there is one, else the buttons' union; `.null`
-    /// for no placement. The open capsule never enters it.
-    nonisolated static func obstacle(_ placement: Placement?) -> CGRect {
-        guard let placement else { return .null }
-        return placement.capsule?.closed ?? placement.buttons
     }
 
     /// The hover-zone view: the plate and three dots. It is the content view's topmost subview and answers
     /// no click.
     var capsule: NSView { view }
 
-    /// Whether the Reduce Motion setting is on; read at every change, set by tests.
-    var reducesMotion: () -> Bool = { HelmMotion.reduceMotion }
-
-    /// The system's control tint; read at every redraw of the dots, set by tests.
-    var controlTint: () -> NSControlTint = { NSColor.currentControlTint }
-
     /// Whether the capsule is open, the real buttons showing.
-    private(set) var isOpen = false
-
-    /// The plate in the capsule's coordinates.
-    var plateFrame: CGRect { view.plate.frame }
-
-    /// The capsule's hover zone, which is the capsule view's frame, in the capsule's superview's
-    /// coordinates; `.null` while the view is hidden or has no superview. It never depends on hover or on
-    /// `isOpen`. The page bar keeps its menu off it.
-    var reach: CGRect { view.isHidden || view.superview == nil ? .null : view.frame }
-
-    /// The real buttons' union now, in the capsule's superview's coordinates; `.null` without a window,
-    /// a superview or buttons. Read by tests.
-    var buttonsFrame: CGRect {
-        guard let window, let content = view.superview else { return .null }
-        return Self.standardButtons(of: window).reduce(CGRect.null) {
-            $0.union(content.convert($1.bounds, from: $1))
-        }
-    }
+    private var isOpen = false
 
     private let view = CapsuleView()
     private weak var window: NSWindow?
@@ -170,7 +120,6 @@ final class ShellWindowButtons {
     init() {
         view.isHidden = true
         view.onHover = { [weak self] inside in self?.hover(inside) }
-        view.tint = { [weak self] in self?.controlTint() ?? NSColor.currentControlTint }
     }
 
     deinit {
@@ -264,11 +213,9 @@ final class ShellWindowButtons {
 
     // MARK: - placing
 
-    /// Puts the buttons and the capsule where `rail` says; returns the obstacle in
-    /// the capsule's superview's coordinates, `.null` when nothing is held (full screen, no window, a
-    /// button missing or hidden, no place for the home).
-    @discardableResult
-    func place(rail: Bool) -> CGRect {
+    /// Puts the buttons and the capsule where `rail` says; holds nothing (`release()`) in full screen,
+    /// with no window, with a button missing or hidden, or with no place for the home.
+    func place(rail: Bool) {
         self.rail = rail
         guard let window, let content = view.superview, !window.styleMask.contains(.fullScreen) else {
             return release()
@@ -313,7 +260,6 @@ final class ShellWindowButtons {
             giveBack(buttons)
         }
         holdOrigins()
-        return Self.obstacle(placement)
     }
 
     /// Writes each watched button's origin to where it was placed, when it stands elsewhere: once, in
@@ -334,11 +280,10 @@ final class ShellWindowButtons {
     /// Nothing is held: the buttons show, the capsule is hidden and shut. The targets are forgotten too:
     /// `holdOrigins` writes only what `wanted` holds, so a running animation's completion, which reaches it
     /// after this, finds nothing to write until the next placement sets the targets again.
-    private func release() -> CGRect {
+    private func release() {
         current = nil
         wanted = [:]
         giveBack(watched.map(\.button))
-        return .null
     }
 
     private func giveBack(_ buttons: [NSButton]) {
@@ -378,7 +323,7 @@ final class ShellWindowButtons {
         applied = target
         view.plate.cornerRadius = rect.height / 2
         let real = watched.map(\.button)
-        guard animated, HelmMotion.morphs(reduceMotion: reducesMotion()) else {
+        guard animated, HelmMotion.morphs(reduceMotion: HelmMotion.reduceMotion) else {
             view.plate.frame = rect
             for dot in view.dots { dot.alphaValue = target.dots }
             for button in real { button.alphaValue = target.buttons }
@@ -402,8 +347,6 @@ private final class CapsuleView: NSView {
     let plate = NSGlassEffectView()
     let dots = (0..<3).map { _ in NSView() }
     var onHover: ((Bool) -> Void)?
-    /// The system's control tint, asked at every redraw and never kept.
-    var tint: () -> NSControlTint = { NSColor.currentControlTint }
 
     /// Whether the window appears active.
     var active = true {
@@ -477,7 +420,7 @@ private final class CapsuleView: NSView {
     func redrawInk() {
         effectiveAppearance.performAsCurrentDrawingAppearance {
             let graphite = Array(repeating: NSColor.labelColor.withAlphaComponent(Self.graphiteAlpha), count: 3)
-            let lit = tint() == .graphiteControlTint ? graphite : Self.coloured
+            let lit = NSColor.currentControlTint == .graphiteControlTint ? graphite : Self.coloured
             let inks = active ? lit : Array(repeating: NSColor.labelColor.withAlphaComponent(0.25), count: 3)
             for (dot, ink) in zip(dots, inks) { dot.layer?.backgroundColor = ink.cgColor }
         }

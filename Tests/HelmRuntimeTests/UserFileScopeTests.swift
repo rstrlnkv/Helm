@@ -9,6 +9,16 @@ final class UserFileScopeTests: XCTestCase {
         }
     }
 
+    func testTheSafetyListCannotBeSidesteppedByATrailingSlash() {
+        XCTAssertFalse(UserFileScope.isRemovable("/System/"))
+        XCTAssertFalse(UserFileScope.isRemovable("/System"))
+    }
+
+    func testRelativeAndEmptyPathsAreNeverRemovable() {
+        XCTAssertFalse(UserFileScope.isRemovable(""))
+        XCTAssertFalse(UserFileScope.isRemovable("relative/path"))
+    }
+
     func testHomeItselfIsNotRemovableButItsContentsAre() {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         XCTAssertFalse(UserFileScope.isRemovable(home))

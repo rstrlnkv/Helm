@@ -25,8 +25,7 @@ import XCTest
 /// convenience init could bind the unguarded `overTheNetwork` straight past it,
 /// invisibly, since every store the module's own tests build names its transfer
 /// explicitly. So the second check reads `FilePopularityStore`'s own
-/// convenience init as text, the way `TheLiveCountsReachTheEngineTests` reads
-/// `HomebrewDescriptor.makeEngine` — nothing at runtime can see this wiring
+/// convenience init as text — nothing at runtime can see this wiring
 /// question from inside a test.
 final class ASuiteRunAsksHomebrewNothingTests: XCTestCase {
 

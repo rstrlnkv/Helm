@@ -258,10 +258,7 @@ public struct HelmRemovalOutcome: View {
     /// apologises for nothing — it points at the list, which the rescan
     /// underneath has just brought up to date, as the answer to the only
     /// question left.
-    ///
-    /// Internal rather than private: the pair below is one machine fact in two
-    /// sentences, and that they open the same way is a claim with a test under it.
-    static var noAnswer: String {
+    private static var noAnswer: String {
         L("Helm got no answer, so it does not know what moved. The list above shows where the files are now.")
     }
 
@@ -272,7 +269,7 @@ public struct HelmRemovalOutcome: View {
     /// It names no verb for trying again. Five call sites in four modules draw
     /// this component and their refresh buttons say three different things, so a
     /// literal here would be wrong in two of five.
-    static var noAnswerStaleList: String {
+    private static var noAnswerStaleList: String {
         L("Helm got no answer, so it does not know what moved. The list above still shows where the files were before.")
     }
 

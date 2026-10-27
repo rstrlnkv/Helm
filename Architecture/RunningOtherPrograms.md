@@ -25,7 +25,14 @@ tool prints reaches the console.
 A privileged command carries its content rather than a path: a staged file's path
 stands in `ps auxww` while the prompt is up. The escaping is `AppleScript.literal`
 (`Sources/HelmRuntime/AppleScript.swift`), and `AppleScript.administratorShellScript` is
-the one place that composes the privileged line.
+the one place that composes the privileged line. A secret is the same: an argument stands
+in `ps auxww` for every process on the Mac, so a secret a tool reads goes to its terminal,
+never to its arguments, its environment, a file or the log. Hosts, which gave a tool its
+passphrase that way, is archived, and its code is
+
+```bash
+git show archive/hosts:Sources/Modules/Hosts/Engine/PTYProcess.swift
+```
 
 A blocking call is hopped through `Sources/HelmRuntime/OffTheCooperativePool.swift`,
 since a transport handler runs on the Swift-concurrency pool and a process waited on or a

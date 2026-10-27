@@ -7,6 +7,50 @@ import XCTest
 import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
+/// A shot that was only copied: it holds its picture and has no file.
+@MainActor
+private func copied(_ s: PileScene, width: Int) throws {
+    s.toast.showDone(try ShotToastRig.picture(width: width, height: 90), caption: ScStr.copied, file: nil)
+}
+
+/// The module goes off with the group's copy in flight: the board is not written afterwards, and a refusal that
+/// would have been said is not said over a window that is gone.
+@MainActor
+final class TheGroupIsCopiedInOneWriteFromThePileTests: XCTestCase {
+
+    private var scenes: [PileScene] = []
+
+    override func tearDown() {
+        for scene in scenes { scene.teardown() }
+        scenes = []
+        super.tearDown()
+    }
+
+    private func scene() throws -> PileScene {
+        let scene = try PileScene(self, name: "copy-all")
+        scenes.append(scene)
+        return scene
+    }
+
+    func testAGroupCopyInFlightWhenTheModuleGoesOffReachesNoBoardAndSaysNothing() async throws {
+        let s = try scene()
+        for i in 0..<3 { try copied(s, width: 200 + i) }
+        s.toast.model.copyAll()
+        s.controller.cancel()
+        await grace(0.3)
+        XCTAssertEqual(s.board.lists.count, 0, "a group was written after the module went off")
+        XCTAssertEqual(s.board.singles, 0)
+        XCTAssertNil(s.toast.model.refusal)
+        XCTAssertTrue(s.toast.model.shots.isEmpty)
+        XCTAssertFalse(s.toast.model.shown)
+        // The control: the same press with the module on writes.
+        let on = try scene()
+        for i in 0..<3 { try copied(on, width: 200 + i) }
+        on.toast.model.copyAll()
+        await waitUntil("the control group was written") { on.board.lists.count >= 1 }
+    }
+}
+
 /// **The pile's Copy All, pressed as the capsule presses it, puts every finished shot of the window on the clipboard in
 /// one write, in the list's order, or tells why it did not and puts none.** The controller, the toast and the session
 /// are the app's own, over real files; the board counts a write a call. What the engine does with a list is
@@ -17,7 +61,7 @@ import Module_Screenshots_Engine
 /// that did not happen and was not told, a refusal that takes the group with it, a group of twenty-five that copies
 /// twenty-five.
 @MainActor
-final class TheGroupIsCopiedInOneWriteFromThePileTests: XCTestCase {
+final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
 
     private var scenes: [PileScene] = []
 
@@ -36,11 +80,6 @@ final class TheGroupIsCopiedInOneWriteFromThePileTests: XCTestCase {
     private func width(of png: Data) throws -> Int {
         let source = try XCTUnwrap(CGImageSourceCreateWithData(png as CFData, nil), "a write that is no picture")
         return try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil)).width
-    }
-
-    /// A shot that was only copied: it holds its picture and has no file.
-    private func copied(_ s: PileScene, width: Int) throws {
-        s.toast.showDone(try ShotToastRig.picture(width: width, height: 90), caption: ScStr.copied, file: nil)
     }
 
     private func refusalBody(_ s: PileScene) -> String? {
@@ -133,27 +172,6 @@ final class TheGroupIsCopiedInOneWriteFromThePileTests: XCTestCase {
         await waitUntil("the group was written") { s.board.lists.count >= 1 }
         XCTAssertEqual(try XCTUnwrap(s.board.lists.first).count, 3)
     }
-
-    /// The module goes off with the group's copy in flight: the board is not written afterwards, and a refusal that
-    /// would have been said is not said over a window that is gone.
-    func testAGroupCopyInFlightWhenTheModuleGoesOffReachesNoBoardAndSaysNothing() async throws {
-        let s = try scene()
-        for i in 0..<3 { try copied(s, width: 200 + i) }
-        s.toast.model.copyAll()
-        s.controller.cancel()
-        await grace(0.3)
-        XCTAssertEqual(s.board.lists.count, 0, "a group was written after the module went off")
-        XCTAssertEqual(s.board.singles, 0)
-        XCTAssertNil(s.toast.model.refusal)
-        XCTAssertTrue(s.toast.model.shots.isEmpty)
-        XCTAssertFalse(s.toast.model.shown)
-        // The control: the same press with the module on writes.
-        let on = try scene()
-        for i in 0..<3 { try copied(on, width: 200 + i) }
-        on.toast.model.copyAll()
-        await waitUntil("the control group was written") { on.board.lists.count >= 1 }
-    }
-
     func testAnOpenRowCopiesTheSameGroupWhateverShotThePointerIsOn() async throws {
         let s = try scene()
         for i in 0..<4 { try copied(s, width: 210 + i) }

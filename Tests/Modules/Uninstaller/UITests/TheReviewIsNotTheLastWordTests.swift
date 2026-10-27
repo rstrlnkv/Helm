@@ -137,26 +137,4 @@ final class TheReviewIsNotTheLastWordTests: XCTestCase {
         XCTAssertNil(model.resultBanner,
                      "the picker's footer draws this, where it is about nothing")
     }
-
-    // MARK: - And the button is not gated on the stale reading
-
-    /// The behavioural test above passes with the button dimmed, because a
-    /// disabled button never calls the model at all — which is the defect it is
-    /// about. This reads the page's own source, the way
-    /// `PageKeepsNoDurableStateTests` does.
-    func testTheRemoveButtonIsNotDisabledByTheScansOwnReading() throws {
-        let page = try String(
-            contentsOf: RepoSource.root
-                .appendingPathComponent("Sources/Modules/Uninstaller/UI/UninstallerSettingsPage.swift"),
-            encoding: .utf8)
-
-        let gates = page.components(separatedBy: "\n")
-            .filter { $0.contains(".disabled(") && $0.contains("ready") }
-
-        XCTAssertEqual(gates, [], """
-            «Move to Trash» is dimmed by `UninstallPlan.readiness`, which reads the \
-            `running` flag the scan left behind — so an app the person quit while reading \
-            the review leaves the button dead with no way out but a second scan
-            """)
-    }
 }

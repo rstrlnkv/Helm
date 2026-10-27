@@ -148,33 +148,6 @@ final class LayoutEngineTests: XCTestCase {
         return engine
     }
 
-    func testAMislayoutWordIsConvertedAndTheSourceFollows() {
-        let engine = engine()
-        tap.type("ghbdtn"); tap.space()
-        // The space is deleted and put back with the replacement: it was
-        // already in the field, and leaving it out of the count left the first
-        // letter behind — `ghbdtn ` came back as `gпривет`.
-        XCTAssertEqual(typing.performed.first?.insert, "привет ")
-        XCTAssertEqual(typing.performed.first?.backspaces, 7)
-        XCTAssertEqual(sources.selected, ["ru"], "the input source follows the text")
-        withExtendedLifetime(engine) {}
-    }
-
-    /// A real word is left alone even though the fake can translate it.
-    func testAValidWordIsUntouched() {
-        let engine = engine()
-        tap.type("ras"); tap.space()
-        XCTAssertTrue(typing.performed.isEmpty)
-        withExtendedLifetime(engine) {}
-    }
-
-    func testNonsenseInBothLayoutsIsUntouched() {
-        let engine = engine()
-        tap.type("qqqq"); tap.space()
-        XCTAssertTrue(typing.performed.isEmpty)
-        withExtendedLifetime(engine) {}
-    }
-
     /// Secure input stops conversions and takes the buffer with it.
     func testSecureInputSuspends() {
         let engine = engine()
@@ -201,15 +174,6 @@ final class LayoutEngineTests: XCTestCase {
         XCTAssertTrue(typing.performed.isEmpty)
         engine.convertLastWord()
         XCTAssertEqual(typing.performed.first?.insert, "привет")
-    }
-
-    /// The hotkey converts a word the dictionary would have declined: the user
-    /// has already decided.
-    func testTheHotkeyIgnoresTheDictionary() {
-        let engine = engine(automatic: false)
-        tap.type("qqqq")
-        engine.convertLastWord()
-        XCTAssertEqual(typing.performed.first?.insert, "ййыы")
     }
 
     func testUndoRestoresTheOriginalOnlyOnce() {
@@ -291,5 +255,76 @@ extension LayoutEngineTests {
         XCTAssertTrue(sources.selected.isEmpty, "the input source must not follow a failure")
         engine.undoLast()
         XCTAssertEqual(typing.performed.count, 1, "nothing was recorded to undo")
+    }
+}
+
+/// The conversions themselves; `LayoutEngineTests` holds the refusals.
+final class LayoutEngineConversionTests: XCTestCase {
+    private var typing = FakeTyping()
+    private var secure = FakeSecure()
+    private var tap = FakeTap()
+    private var sources = FakeSources()
+
+    /// The chord bound as «fix». Only the recorded one ends a word and leaves
+    /// it remembered: every other chord may have changed the text in front of
+    /// the caret — ⌘V pastes, ⌥V types `√` — so the word before it is dropped.
+    private static let shortcut: UInt16 = 9
+
+    /// A store with that binding in it, because these suites use a chord as the
+    /// boundary that remembers.
+    private static func boundStore() -> NamespacedStore {
+        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
+                                    backing: InMemoryKeyValueStore())
+        store.set(Int(shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
+        return store
+    }
+
+    private func engine(automatic: Bool = true) -> LayoutEngine {
+        typing = FakeTyping(); secure = FakeSecure(); tap = FakeTap(); sources = FakeSources()
+        let engine = LayoutEngine(
+            tap: tap, typing: typing, sources: sources,
+            translation: FakeTranslation(table: ["ghbdtn": "привет", "ras": "кфы",
+                                                 "qqqq": "ййыы"]),
+            spell: FakeSpell(valid: ["привет", "ras"]),
+            secure: secure, automatic: automatic,
+            settings: Self.boundStore())
+        engine.activate()
+        return engine
+    }
+
+    func testAMislayoutWordIsConvertedAndTheSourceFollows() {
+        let engine = engine()
+        tap.type("ghbdtn"); tap.space()
+        // The space is deleted and put back with the replacement: it was
+        // already in the field, and leaving it out of the count left the first
+        // letter behind — `ghbdtn ` came back as `gпривет`.
+        XCTAssertEqual(typing.performed.first?.insert, "привет ")
+        XCTAssertEqual(typing.performed.first?.backspaces, 7)
+        XCTAssertEqual(sources.selected, ["ru"], "the input source follows the text")
+        withExtendedLifetime(engine) {}
+    }
+
+    /// A real word is left alone even though the fake can translate it.
+    func testAValidWordIsUntouched() {
+        let engine = engine()
+        tap.type("ras"); tap.space()
+        XCTAssertTrue(typing.performed.isEmpty)
+        withExtendedLifetime(engine) {}
+    }
+
+    func testNonsenseInBothLayoutsIsUntouched() {
+        let engine = engine()
+        tap.type("qqqq"); tap.space()
+        XCTAssertTrue(typing.performed.isEmpty)
+        withExtendedLifetime(engine) {}
+    }
+
+    /// The hotkey converts a word the dictionary would have declined: the user
+    /// has already decided.
+    func testTheHotkeyIgnoresTheDictionary() {
+        let engine = engine(automatic: false)
+        tap.type("qqqq")
+        engine.convertLastWord()
+        XCTAssertEqual(typing.performed.first?.insert, "ййыы")
     }
 }

@@ -71,8 +71,7 @@ final class TheStopButtonReachesTheChildTests: XCTestCase {
     }
 
     /// The page offers the press: a stop nobody can reach is not a feature.
-    /// Structural, the way `AnErasedQueryDoesNotShowOldResultsTests` pins its
-    /// seam into the body.
+    /// Structural.
     func testThePageWiresTheStopButton() throws {
         let page = RepoSource.root
             .appendingPathComponent("Sources/Modules/Homebrew/UI/HomebrewSettingsPage.swift")

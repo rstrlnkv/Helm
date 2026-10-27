@@ -5,9 +5,7 @@ import HelmUI
 @testable import HelmApp
 
 /// **A page mounted with a real, attached `SettingsToolbar`** — the fixture of
-/// the families that read the `NSToolbar` itself: its items, their order and
-/// their frames. `LivePageToolbarFixture` is the other one: it puts the page
-/// bar (`MountedPageBar`) in the window, not a `SettingsToolbar`.
+/// the families that type into the search field on the window's own `NSToolbar`.
 ///
 /// Before the SwiftUI-AppKit bridge was replaced by `SettingsToolbar`
 /// (`SettingsToolbar.swift`'s own header), `MountedRender`'s window picked up
@@ -31,8 +29,6 @@ import HelmUI
 struct LivePageInTheToolbarFixture {
     let mount: MountedRender
     let toolbar: SettingsToolbar
-    let model: SettingsModel
-    let channel: HelmWindowToolbarChannel
 
     init<V: View>(_ view: V, selection: SettingsSelection, width: CGFloat, height: CGFloat,
                  appearance: NSAppearance.Name = .aqua) {
@@ -45,8 +41,6 @@ struct LivePageInTheToolbarFixture {
         toolbar.window = mount.window
         self.mount = mount
         self.toolbar = toolbar
-        self.model = model
-        self.channel = channel
     }
 
     /// Settles the mount (`MountedRender.settle`), `turns` turns.

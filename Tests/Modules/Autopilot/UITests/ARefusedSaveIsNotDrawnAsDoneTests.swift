@@ -20,18 +20,18 @@ import Module_Autopilot_Engine
 /// the port that knows. And there is no channel to have: `AutopilotEvent` has
 /// exactly one case, `history`; `AutopilotCommand.setFolders` is answered with
 /// `Data()` whether the write landed or was refused, so even the two save paths
-/// that *are* `async` and awaited cannot learn; and nothing re-reads the status
-/// after a write.
+/// that *are* `async` and awaited cannot learn from the reply. What is left is
+/// asking again, and before 99a2a306 nothing re-read the status after a write.
 ///
-/// The result is the one thing a settings page must never do: show somebody
-/// their own configuration as saved when the engine dropped it. Every later edit
-/// is refused too, silently, for as long as the page stays open — and the card
-/// that offers the one way out (`discardRefusedRules`) is on the screen the page
-/// is not drawing.
+/// Without that re-read the result is the one thing a settings page must never
+/// do: show somebody their own configuration as saved when the engine dropped
+/// it. Every later edit is refused too, silently, for as long as the page stays
+/// open — and the card that offers the one way out (`discardRefusedRules`) is on
+/// the screen the page is not drawing.
 ///
-/// The module already has the shape of the answer and uses it one method away:
-/// `discardRefusedRules()` sends and then `await load()`s. This is the same
-/// gesture on the write path.
+/// The module already has the shape of the answer and uses it in the same
+/// view model: `discardRefusedRules()` sends and then `await load()`s. This
+/// is the same gesture on the write path.
 @MainActor
 final class ARefusedSaveIsNotDrawnAsDoneTests: XCTestCase {
 
@@ -57,10 +57,10 @@ final class ARefusedSaveIsNotDrawnAsDoneTests: XCTestCase {
     /// there.
     ///
     /// Asserted on **what was sent** rather than on what the page lists
-    /// afterwards. `AutopilotWire` records a save without applying it, which is
-    /// a state the real engine cannot be in — it accepted the write, so its next
-    /// `folders` holds it — and a control resting on that echo would fail for
-    /// the fake's reasons the moment the page learned to re-read after a write.
+    /// afterwards: the page re-reads after a write (`sendFolders` loads), and
+    /// `AutopilotWire` applies a save it was not refused, as `SealedRules.write`
+    /// does, so the list afterwards is the wire's echo of the save rather than
+    /// evidence that the page made it.
     func testARuleSavedOverARuleSetTheEngineAcceptsIsHandedOver() async {
         let wire = AutopilotWire()
         let rvm = model(on: wire)
@@ -106,12 +106,12 @@ final class ARefusedSaveIsNotDrawnAsDoneTests: XCTestCase {
     }
 
     /// The mechanism behind it, stated separately so the finding above cannot be
-    /// read as being about one gesture: after a write, the page asks nothing.
+    /// read as being about one gesture: after a write, the page has to ask.
     ///
     /// A refusal is a fact about the store, and the only thing that ever reports
-    /// it is `AutopilotCommand.status` — which the page sends when it loads and
-    /// never again on this path. `discardRefusedRules()` is the counter-example
-    /// in the same file: it sends, then loads.
+    /// it is `AutopilotCommand.status`, which the page sends when it loads — so
+    /// `sendFolders` sends and then loads, as `discardRefusedRules()` does in
+    /// `AutopilotViewModel.swift`.
     func testAWriteIsNeverFollowedByAskingWhatBecameOfIt() async {
         let wire = AutopilotWire()
         let rvm = model(on: wire)

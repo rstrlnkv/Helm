@@ -22,7 +22,7 @@
 ///
 /// The count is asked of the **total**, never of what is on screen, so pressing
 /// «Show all» adds rows to the grid rather than re-sizing the cards already in
-/// it. `TheGridLeavesNoHoleTests` holds all of this.
+/// it.
 enum VPNGridLayout {
     /// See the note above: a third column takes the width the row card spends
     /// on the configuration's name.

@@ -33,13 +33,3 @@ final class ParkedVerify: @unchecked Sendable {
         return verdict
     }
 }
-
-/// The ticks a progress stream delivered, collected from whatever thread the
-/// engine emits on and read by the test after — the search's guard and the
-/// removal's both listen this way.
-final class ProgressCollector: @unchecked Sendable {
-    private let lock = NSLock()
-    private var collected: [DuplicateProgress] = []
-    var ticks: [DuplicateProgress] { lock.lock(); defer { lock.unlock() }; return collected }
-    func add(_ tick: DuplicateProgress) { lock.lock(); collected.append(tick); lock.unlock() }
-}

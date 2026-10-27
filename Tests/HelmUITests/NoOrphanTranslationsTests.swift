@@ -51,17 +51,15 @@ final class NoOrphanTranslationsTests: XCTestCase {
     /// each, and the class cost 14.9 s of a suite whose other hundred-odd
     /// classes are milliseconds. A promise written in prose with no test under
     /// it reads as a fact, which is exactly how it survived: the reading is
-    /// `SwiftSource.uncommented(under:)` now, cached once a process, and
-    /// `TheTreeIsReadOnceAProcessTests` is the test this paragraph owed.
+    /// `SwiftSource.uncommented(under:)` now, cached once a process.
     ///
     /// *Raw* — which is what both scans did until 2026-08-21 — a key named in
     /// prose reads as asked for. This repository writes backticked names inside
-    /// doc comments on purpose (`DocumentsNameTheTreeTests` exists to read them
-    /// back), so `AppStrings.swift` really does say «Not `L("Off")`», and that
-    /// one sentence really did keep the key «Off» alive by explaining why
-    /// nothing uses it. Measured over the whole tree the day this changed, the
-    /// two readings differed by **0 keys and 0 literals** — this is the hole
-    /// closed before something fell in it.
+    /// doc comments on purpose, so `AppStrings.swift` really does say «Not
+    /// `L("Off")`», and that one sentence really did keep the key «Off» alive
+    /// by explaining why nothing uses it. Measured over the whole tree the day
+    /// this changed, the two readings differed by **0 keys and 0 literals** —
+    /// this is the hole closed before something fell in it.
     ///
     /// `SwiftSource.code` is the opposite mistake and the one that looks right:
     /// it blanks the insides of literals too, so every `L("Off")` becomes

@@ -1263,8 +1263,8 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
 
     /// Emits the state — unless it is **equal in every field** to the last one
     /// sent: the poll above re-reads up to 26 times behind one connect, and
-    /// each duplicate re-rendered every mounted page all night
-    /// (`HiddenPageEventChurnBenchmark` prices that). Exact equality withholds
+    /// each duplicate re-rendered every mounted page all night.
+    /// Exact equality withholds
     /// only duplicates, never a change, and replay still serves late subscribers.
     ///
     /// Which is why the tunnel's byte counters cross in whole kilobytes: they

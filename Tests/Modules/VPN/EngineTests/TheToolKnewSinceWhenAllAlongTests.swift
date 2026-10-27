@@ -115,8 +115,7 @@ final class TheToolKnewSinceWhenAllAlongTests: XCTestCase {
     /// read the tool on exactly that Mac. This target cannot switch the process
     /// locale and has no `AppLanguage` to override (the engine does not import
     /// `HelmUI`), so the running test would pass on any machine whatever the
-    /// formatter said. Structural, the way `AnErasedQueryDoesNotShowOldResults`
-    /// asserts that the page reads its seam.
+    /// formatter said. Structural.
     func testTheStampIsNotReadThroughTheReadersOwnLocale() throws {
         let parser = RepoSource.root
             .appendingPathComponent("Sources/Modules/VPN/Engine/Logic/VPNStatusParser.swift")

@@ -19,24 +19,18 @@ final class VPNStatusAppearanceTests: XCTestCase {
 
     private func descriptor(firing: VPNAutomation?, notice: VPNNotice,
                             bannerAuthorized: Bool = false,
-                            spin: Bool = false,
-                            spinTints: [VPNAutomation.Kind: String]? = nil)
+                            spin: Bool = false)
                             -> (VPNDescriptor, ModuleViewModel) {
         let descriptor = VPNDescriptor()
         let host = ModuleViewModel(transport: LocalTransport())
         descriptor.viewModel(host).setForTesting(automation: firing, notice: notice,
                                                  bannerAuthorized: bannerAuthorized,
-                                                 spin: spin, spinTints: spinTints)
+                                                 spin: spin)
         return (descriptor, host)
     }
 
     private func firing(secondsAgo: TimeInterval, name: String = "Office") -> VPNAutomation {
         VPNAutomation(at: Date().addingTimeInterval(-secondsAgo), name: name, kind: .connected)
-    }
-
-    private func firing(secondsAgo: TimeInterval, name: String = "Office",
-                        kind: VPNAutomation.Kind) -> VPNAutomation {
-        VPNAutomation(at: Date().addingTimeInterval(-secondsAgo), name: name, kind: kind)
     }
 
     func testFreshFiringSpinsTheRingAndNamesTheConnection() {
@@ -194,26 +188,6 @@ final class VPNStatusAppearanceTests: XCTestCase {
         let appearance = d.statusAppearance(host)
         XCTAssertNil(appearance.spinUntil, "the ring must not turn when nobody asked")
         XCTAssertEqual(appearance.title, "Office", "the name is a separate setting and still applies")
-    }
-
-    func testEachKindTurnsInItsOwnColour() {
-        let tints: [VPNAutomation.Kind: String] = [.connected: "purple", .disconnected: "pink"]
-        let (up, upHost) = descriptor(firing: firing(secondsAgo: 0, kind: .connected),
-                                      notice: .menuBar, spin: true, spinTints: tints)
-        XCTAssertEqual(up.statusAppearance(upHost).spinTintToken, "purple")
-
-        let (down, downHost) = descriptor(firing: firing(secondsAgo: 0, kind: .disconnected),
-                                          notice: .menuBar, spin: true, spinTints: tints)
-        XCTAssertEqual(down.statusAppearance(downHost).spinTintToken, "pink")
-    }
-
-    func testTheDefaultColoursDifferByKind() {
-        let (up, upHost) = descriptor(firing: firing(secondsAgo: 0, kind: .connected),
-                                      notice: .menuBar, spin: true)
-        let (down, downHost) = descriptor(firing: firing(secondsAgo: 0, kind: .disconnected),
-                                          notice: .menuBar, spin: true)
-        XCTAssertEqual(up.statusAppearance(upHost).spinTintToken, "green")
-        XCTAssertEqual(down.statusAppearance(downHost).spinTintToken, "orange")
     }
 
     /// The decision this module wrote down three days ago, which the colour

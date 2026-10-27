@@ -146,9 +146,8 @@ import Module_Screenshots_Engine
         return NSHostingView(rootView: CapturePanelView(model: probe)).fittingSize.width
     }()
 
-    /// `.statusBar`, the toast's, and one above `.screenSaver`, the overlay's, while selecting. Not private: a test
-    /// reads the ladder through it and puts no window on a screen.
-    static func level(selecting: Bool) -> NSWindow.Level {
+    /// `.statusBar`, the toast's, and one above `.screenSaver`, the overlay's, while selecting.
+    fileprivate static func level(selecting: Bool) -> NSWindow.Level {
         selecting ? NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue + 1) : .statusBar
     }
 

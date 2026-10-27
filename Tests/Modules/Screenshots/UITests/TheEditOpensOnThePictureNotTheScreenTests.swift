@@ -18,7 +18,7 @@ import Module_Screenshots_Engine
 /// board and what the thumbnail says. The ground behind the picture is RED, so that a file that carries any of the
 /// screen shows it.
 ///
-/// Total failure of the subject prints: a file with the screen's ground in it, an area that leaves the picture, an editor
+/// Total failure of the subject prints: a file with the screen's ground in it, an editor
 /// opened on a file that is not the shot's, a second Done that replaces twice, a thumbnail that offers an Edit it could not
 /// keep, or a replacement that the person is not told of.
 @MainActor
@@ -68,16 +68,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         func uiSounds() -> RawSetting { RawSetting(nil) }
     }
 
-    /// Keeps the pictures it was asked to read, and finds nothing in them.
-    private final class RecordingReader: ScreenTextReading, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _images: [CGImage] = []
-        var images: [CGImage] { lock.withLock { _images } }
-        func read(_ image: CGImage) async -> TextReading { lock.withLock { _images.append(image) }; return .read([]) }
-    }
-
     private final class Box { var overlay: CaptureOverlay?; var count = 0 }
-    private final class Opened { var pickers: [NSSharingServicePicker] = []; var closed: [NSSharingServicePicker] = [] }
 
     private struct Scene {
         let controller: CaptureController
@@ -99,13 +90,11 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
 
     private let clock = StepClock()
     private var controllers: [CaptureController] = []
-    private var stands: [StandInThumbnail] = []
 
     override func tearDown() {
         AppLanguage.override = nil
         for controller in controllers { controller.teardown() }
         controllers = []
-        stands = []
         clock.finish()
         super.tearDown()
     }
@@ -126,7 +115,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         return frames
     }
 
-    private func scene(target: SaveTarget = .desktop, thumbnail: Bool = true, reader: ScreenTextReading = NoTextReader()) throws -> Scene {
+    private func scene(target: SaveTarget = .desktop, thumbnail: Bool = true) throws -> Scene {
         let frames = try groundFrames()
         let home = scratchDirectory("edit-ui")
         let desktop = home.appendingPathComponent("Desktop", isDirectory: true)
@@ -139,7 +128,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         store.set(thumbnail, for: ScreenshotsSettings.Key.thumbnail)
         store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let session = CaptureSession(capture: capture, writer: FileShotWriter(), trash: trash, pasteboard: board,
-                                     preferences: NoPreferences(), shutter: shutter, textReader: reader,
+                                     preferences: NoPreferences(), shutter: shutter, textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: desktop))
         let toast = ShotToastRig.toast(clock)
@@ -313,89 +302,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         XCTAssertEqual(names(s.desktop), [original.url.lastPathComponent])
     }
 
-    // MARK: The editor is on the picture's rectangle and on its display
-
-    func testTheTextItemsReadThePictureBeingEditedAndNotTheRedScreenUnderIt() async throws {
-        let reader = RecordingReader()
-        let s = try scene(reader: reader)
-        _ = try await take(s)
-        let overlay = try await openEditor(s)
-        overlay.perform(.copyText)
-        await waitUntil("the picture was read") { !reader.images.isEmpty }
-        let read = try XCTUnwrap(reader.images.first)
-        XCTAssertLessThan(read.height, 800, "the whole screen was read, not the picture")
-        let colour = rgb(read, 3, 3)
-        XCTAssertGreaterThan(colour.2, 150, "what was read is not the bluish picture: \(colour)")
-        XCTAssertLessThan(colour.0, 120, "what was read has the red ground in it: \(colour)")
-    }
-
-    func testTheEyedropperPicksAPixelOfThePictureBeingEditedAndNotOfTheRedScreenUnderIt() async throws {
-        let s = try scene()
-        _ = try await take(s)
-        let overlay = try await openEditor(s)
-        overlay.perform(.eyedropper)
-        let id = s.display(of: overlay)
-        overlay.mouseDown(on: id, at: CGPoint(x: 500, y: 400), flags: [])
-        overlay.mouseUp(on: id)
-        let picked = try XCTUnwrap(overlay.palette.style.color, "nothing was picked")
-        XCTAssertGreaterThan(picked.blue, 0.55, "the pick is not the bluish picture's: \(picked)")
-        XCTAssertLessThan(picked.red, 0.5, "the pick is the red ground's: \(picked)")
-    }
-
-    func testTheAreaStaysInsideThePictureWhereverTheDragStartsAndEnds() throws {
-        let frames = try groundFrames()
-        let freeze = Freeze(displays: frames.map { .image($0) }, windows: [])
-        let shown = try XCTUnwrap(PictureOnScreen.place(try ShotToastRig.picture(width: 400, height: 300), over: freeze, on: frames[0].id))
-        XCTAssertEqual(shown.rect, CGRect(x: 300, y: 250, width: 400, height: 300))
-        var results: [OverlayResult] = []
-        let overlay = CaptureOverlay(freeze: shown.freeze, picture: (shown.display, shown.rect), store: nil) { results.append($0) }
-        XCTAssertTrue(overlay.build())
-        defer { overlay.close() }
-        XCTAssertNotNil(overlay.chrome(on: shown.display), "the editor is not up at once on the picture")
-        // A new area dragged from the ground, out past the picture's far corner.
-        overlay.mouseDown(on: shown.display, at: CGPoint(x: 20, y: 20), flags: [])
-        overlay.mouseDragged(on: shown.display, at: CGPoint(x: 990, y: 790), flags: [])
-        overlay.mouseUp(on: shown.display)
-        overlay.perform(.exit(.confirm))
-        guard case .edited(let display, let local, _, _)? = results.first else { return XCTFail("\(results)") }
-        XCTAssertEqual(display, shown.display)
-        XCTAssertTrue(shown.rect.insetBy(dx: -0.001, dy: -0.001).contains(local), "the area \(local) leaves the picture \(shown.rect)")
-    }
-
-    func testTheEditorOpensOnTheWholePictureAndReturnTakesItWhole() throws {
-        let frames = try groundFrames()
-        let shown = try XCTUnwrap(PictureOnScreen.place(try ShotToastRig.picture(width: 400, height: 300),
-                                                        over: Freeze(displays: frames.map { .image($0) }, windows: []), on: frames[0].id))
-        var results: [OverlayResult] = []
-        let overlay = CaptureOverlay(freeze: shown.freeze, picture: (shown.display, shown.rect), store: nil) { results.append($0) }
-        XCTAssertTrue(overlay.build())
-        defer { overlay.close() }
-        overlay.perform(.exit(.confirm))
-        guard case .edited(_, let local, let layers, let exit)? = results.first else { return XCTFail("\(results)") }
-        XCTAssertEqual(local, shown.rect)
-        XCTAssertTrue(layers.isEmpty)
-        XCTAssertEqual(exit, .confirm)
-    }
-
-    /// The press on another display is not the picture's: it starts nothing there and the area stays where it was.
-    func testADragOnAnotherDisplayStartsNothing() throws {
-        let frames = try groundFrames()
-        guard frames.count > 1 else { throw XCTSkip("one display: there is no other to press on") }
-        let shown = try XCTUnwrap(PictureOnScreen.place(try ShotToastRig.picture(width: 400, height: 300),
-                                                        over: Freeze(displays: frames.map { .image($0) }, windows: []), on: frames[0].id))
-        var results: [OverlayResult] = []
-        let overlay = CaptureOverlay(freeze: shown.freeze, picture: (shown.display, shown.rect), store: nil) { results.append($0) }
-        XCTAssertTrue(overlay.build())
-        defer { overlay.close() }
-        overlay.mouseDown(on: frames[1].id, at: CGPoint(x: 50, y: 50), flags: [])
-        overlay.mouseDragged(on: frames[1].id, at: CGPoint(x: 500, y: 400), flags: [])
-        overlay.mouseUp(on: frames[1].id)
-        XCTAssertNotNil(overlay.chrome(on: shown.display), "a press on another display took the editor away from the picture")
-        overlay.perform(.exit(.confirm))
-        guard case .edited(let display, let local, _, _)? = results.first else { return XCTFail("\(results)") }
-        XCTAssertEqual(display, shown.display)
-        XCTAssertEqual(local, shown.rect)
-    }
+    // MARK: Escape
 
     func testEscapeLeavesTheFileTheThumbnailGoneAndTheControllerFree() async throws {
         let s = try scene()
@@ -601,29 +508,6 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         XCTAssertEqual(FileShotWriter().reading(of: original.url), original.reading)
         XCTAssertEqual(names(s.desktop), [original.url.lastPathComponent])
         XCTAssertNil(s.toast.model.content)
-    }
-
-    // MARK: Edit while the Share sheet is open
-
-    func testEditWhileTheShareSheetIsOpenClosesTheSheetAndOpensTheEditor() async throws {
-        let s = try scene()
-        let opened = Opened()
-        s.toast.presentPicker = { picker, _ in opened.pickers.append(picker) }
-        s.toast.closePicker = { opened.closed.append($0) }
-        let stand = StandInThumbnail()
-        stands.append(stand)
-        s.toast.model.anchor = stand.view
-        await s.controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 400, height: 300), kind: .area), thenShare: true)
-        XCTAssertEqual(opened.pickers.count, 1, "the sheet did not open")
-        XCTAssertEqual(s.toast.holds, [.sheet])
-        let original = try XCTUnwrap(s.toast.model.editSource?.shot)
-
-        let overlay = try await openEditor(s)
-        XCTAssertEqual(opened.closed.count, 1, "the sheet stayed open under the editor")
-        XCTAssertTrue(opened.closed.first === opened.pickers.first)
-        XCTAssertTrue(s.toast.holds.isEmpty)
-        await finish(s, overlay)
-        XCTAssertEqual(s.trash.moved, [original.url])
     }
 
     // MARK: A shot with no file

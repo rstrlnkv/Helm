@@ -190,7 +190,7 @@ public final class HelmLog: @unchecked Sendable {
     /// Deliberately **not** in `allFileURLs`: it is the record that the purge
     /// happened, so a purge that removed it would be able to run again. Named
     /// here rather than inside the purge because a file name invented in a
-    /// second place is the exact defect `LogFileNamesTests` was written for.
+    /// second place is a defect nothing in the suite catches now.
     public static var resetMarkerURL: URL {
         directory.appendingPathComponent(".redaction-reset")
     }
@@ -317,8 +317,8 @@ public final class HelmLog: @unchecked Sendable {
     }
 
     private func seedLocked(from urls: [URL]) {
-        let onDisk = LogSeed.read(urls, atMost: Self.seedByteLimit, limit: tail.limit)
-        tail.replace(with: LogSeed.seeded(file: onDisk, live: tail.entries, limit: tail.limit))
+        let onDisk = LogSeed.read(urls, atMost: Self.seedByteLimit, limit: LogTail.standardLimit)
+        tail.replace(with: LogSeed.seeded(file: onDisk, live: tail.entries, limit: LogTail.standardLimit))
     }
 
     /// How much of each file the seed reads, against the two megabytes reading
@@ -335,8 +335,8 @@ public final class HelmLog: @unchecked Sendable {
     /// Whether there is a log on disk at all — the question «Clear» is drawn
     /// from, asked of the file system every time rather than remembered, because
     /// the file can go without this process doing it.
-    public static func anyFileExists(among urls: [URL] = allFileURLs) -> Bool {
-        urls.contains { FileManager.default.fileExists(atPath: $0.path) }
+    public static func anyFileExists() -> Bool {
+        allFileURLs.contains { FileManager.default.fileExists(atPath: $0.path) }
     }
 
     public func clearTail() {

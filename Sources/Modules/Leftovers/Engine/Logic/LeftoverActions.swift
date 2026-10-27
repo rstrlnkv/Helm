@@ -96,8 +96,7 @@ public enum LeftoverActions {
         // draws neither the button nor a reason for such a row
         // (`LeftoversSettingsPage.controls`). The invariant the other rows keep —
         // a reason exactly where the button is not — is a rule about rows that
-        // stand for files, and that is what `WhyDeleteIsWithheldTests` reads it
-        // over.
+        // stand for files.
         guard !item.status.isSource else { return nil }
         guard !available(for: item).contains(.delete) else { return nil }
         // A system extension is not a file: macOS removes it with the app that

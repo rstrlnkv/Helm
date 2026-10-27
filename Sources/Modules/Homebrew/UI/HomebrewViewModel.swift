@@ -125,10 +125,7 @@ import Module_Homebrew_Engine
     private var infoAsks = LatestRequest()
 
     /// The ask in flight. Held so a superseded one can be dropped rather than
-    /// left to resume into a screen that has moved on, and read by
-    /// `TheInspectorDoesNotWaitForInfoTests` to await the answer it is about to
-    /// drop — a guard about arrival order cannot be written against work it
-    /// has no handle on.
+    /// left to resume into a screen that has moved on.
     private(set) var infoAsk: Task<Void, Never>?
 
     /// Which list the page is showing, and therefore which selection below
@@ -156,8 +153,7 @@ import Module_Homebrew_Engine
         /// added to this enum drew no row at all: the segment existed, every
         /// `switch` in the page had an arm for it, and there was no way to
         /// reach it. A `switch` with no `default:` makes forgetting a label a
-        /// build error instead, and
-        /// `ARefusedDoctorIsNotAHealthyMacTests` names all three.
+        /// build error instead.
         var label: String {
             switch self {
             case .installed: return HbStr.segInstalled
@@ -227,9 +223,8 @@ import Module_Homebrew_Engine
     // MARK: - The search field, on every tab
 
     /// **The window toolbar's own search field, on all three tabs.** Moved
-    /// here from the page's `@State` 2026-09-24, so the pause and the trigger
-    /// rule below live where a test can drive them without a window — and so
-    /// the query survives leaving and returning to the page: today, hiding or
+    /// here from the page's `@State` 2026-09-24, so the query survives leaving
+    /// and returning to the page: today, hiding or
     /// occluding the window unmounts the page, its `@State` is lost, and
     /// `SettingsToolbar.patchSearch` writes "" back into the field. Kept here
     /// instead, that visible change is a cost the owner judges rather than an
@@ -780,7 +775,6 @@ import Module_Homebrew_Engine
     /// cleared by a stop, so that promise would stay on screen under «Stopped».
     /// Any other step — a failure, a stop of an operation that was not waiting,
     /// a second identical state — says nothing here.
-    /// Pure and static, so a test can hold the lines without a view model.
     static func consoleLine(from old: OpState, to new: OpState,
                             language: AppLanguage = AppLanguage.current) -> String? {
         if old.waiting == nil, new.waiting == .commandLineTools, new.phase == .running {
@@ -1038,8 +1032,7 @@ import Module_Homebrew_Engine
     }
     /// `loadedInstalled`'s twin, derived from `outdatedReading` for the same
     /// reason. `loadIfNeeded` deliberately never asks `brew outdated`, so this
-    /// is false on every launch until somebody opens the segment — which is
-    /// what `AStatusLineDoesNotInventZeroUpdatesTests` holds.
+    /// is false on every launch until somebody opens the segment.
     public var loadedOutdated: Bool { outdatedReading == .answered }
 
     /// Which search the hits belong to, so an older answer cannot land on a

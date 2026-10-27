@@ -5,16 +5,14 @@ import Foundation
 /// Written for the menu bar, which has two of these — a 1 Hz countdown and a
 /// 30 Hz spin — and where the failure is silent: an armed timer nobody wants
 /// keeps redrawing the status item, and a screenshot of the menu bar looks the
-/// same either way. Owning the timer in a type of its own is what lets a test
-/// hold one and see the invalidation; `StatusItemController` needs a real
-/// status bar to exist at all, so nothing there can be asked this question.
+/// same either way.
 @MainActor public final class RepeatingTick {
     private let interval: TimeInterval
     private let onTick: () -> Void
-    /// Internal rather than private so a test can outlive the tick and prove
-    /// the timer was invalidated, not merely forgotten. The run loop keeps its
-    /// own reference, so dropping ours stops nothing.
-    private(set) var timer: Timer?
+    /// The run loop keeps its own reference, so dropping ours stops nothing:
+    /// `set(active: false)` invalidates it, and so does the timer's block once
+    /// the tick is gone.
+    private var timer: Timer?
 
     public init(interval: TimeInterval, onTick: @escaping () -> Void) {
         self.interval = interval

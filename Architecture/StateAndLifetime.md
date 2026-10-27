@@ -43,7 +43,7 @@ until something calls `invalidate()`, `deinit` included. `RepeatingTick.set(acti
 (`Sources/HelmRuntime/RepeatingTick.swift`) has the timer's own callback find its owner
 already gone and invalidate itself. The sidebar's fold takes its display link down twice too, and its callback invalidates nothing: `DisplayFoldLink`
 (`Sources/HelmApp/FoldLink.swift`) gives the system's link a target that holds only the tick closure, never the view,
-and invalidates the link in `stop()` and in its own `deinit`. A shell that leaves its window ends a fold in flight and stops the link, the wrapper released while it runs invalidates in `deinit`, and the tick closure holds the view weakly; the rows that hold each are named in the doc comment of that file.
+and invalidates the link in `stop()` and in its own `deinit`. A shell that leaves its window ends a fold in flight and stops the link, the wrapper released while it runs invalidates in `deinit`, and the tick closure holds the view weakly.
 
 `VPNEngine` stops its network observer from both `deactivate()` and `deinit`, because a
 host that calls `deactivate()` and then drops the engine leaves a callback still

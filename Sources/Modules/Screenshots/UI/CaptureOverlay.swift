@@ -76,9 +76,6 @@ struct EditorTextTools {
     /// The flash is on and the overlay is waiting to close: no input reaches it (`OverlayView` is deaf), and it
     /// finds nobody to deliver to, since `finish` has already run.
     private(set) var leaving = false
-    /// What was lit by the flash, by display, in that display's top-left points; empty with no flash. Only a test
-    /// reads it, and `close()` leaves it as it was.
-    private(set) var flashed: [DisplayID: CGRect] = [:]
     /// Whether Reduce Motion is on, read at the moment of the shot. A test sets it: the setting is the machine's.
     var reducesMotion: () -> Bool = { HelmMotion.reduceMotion }
     /// The panels are up: false before `build` and after `close`.
@@ -126,16 +123,14 @@ struct EditorTextTools {
     /// Where the editor's last tool, colour, thickness and fill are kept. Nil in a test that
     /// remembers nothing.
     private let store: NamespacedStore?
-    /// What opens the system's colour panel (`.allColours`); a test hands in a fake, for no test opens the real one.
-    private let colourPanel: ColourPanelOpening
+    /// What opens the system's colour panel (`.allColours`).
+    private let colourPanel = EditorColourPanel()
     /// The pop-over that is open, one at a time: the thickness and opacity one, open only while a tool is chosen, or the
     /// colours one, and the centre of the cell that opened it, in the palette's own points. Closed by everything that
     /// puts the tool down, and by the exits.
     private var popover: (kind: PopoverKind, anchorX: CGFloat)?
     enum PopoverKind { case thickness, colours }
-    /// Whether either pop-over is open: read by a test only. `thicknessIsOpen` and `coloursAreOpen` say which, and the
-    /// overlay itself reads them to place, draw and close it.
-    var popoverIsOpen: Bool { popover != nil }
+    /// Which pop-over is open: `thicknessIsOpen` and `coloursAreOpen`, which the overlay reads to place, draw and close it.
     var thicknessIsOpen: Bool { popover?.kind == .thickness }
     /// The layers the editor holds now, in the list's order, for a test that holds the screen against the file made from them.
     var editedLayers: [Annotation] { edit?.layers.layers ?? [] }
@@ -146,7 +141,6 @@ struct EditorTextTools {
     /// points. The field itself is the view's (`OverlayView.textField`); this is the overlay's one record that an input
     /// is open; the ways out of it go through `endTyping`, and `close` drops the record itself. Nil when none is.
     private var typing: (display: DisplayID, at: CGPoint)?
-    var isTyping: Bool { typing != nil }
     /// The emoji the Emoji tool places on the next click on the picture, picked in the grid; nil until one is. Nothing of it is remembered.
     private var emoji: String?
     /// What the emoji grid shows; its cells come back through `perform` as `.pickEmoji`.
@@ -157,17 +151,6 @@ struct EditorTextTools {
     private lazy var moreMenu = EditorMenu.make(for: palette)
     /// The menu while `popUp` has not returned, so that `close` can end its tracking without making a menu never opened.
     private var openedMenu: NSMenu?
-
-    /// What the overlay opened on, for a test that must know the capture panel's Area mode
-    /// handed it the remembered selection and no other press did.
-    var preselection: (display: DisplayID, rect: CGRect)? { preselected }
-
-    /// What each view is drawing as its picture, for a test that must know it is
-    /// the frame without the pointer: the live crosshair is drawn over it, and a
-    /// pointer baked into it would be a second one.
-    var drawnPictures: [DisplayID: CGImage] {
-        panels.compactMapValues { $0.view.drawnPicture }
-    }
 
     /// Whether another pin may open: asked at the ⋯ menu's Pin item (`.exit(.pin)`) and nowhere else, so the
     /// other exits leave at the limit as ever. The item is built only while `PinEntry.isOffered`.
@@ -204,14 +187,12 @@ struct EditorTextTools {
     init(freeze: Freeze, mode: Mode = .area, preselection: (display: DisplayID, rect: CGRect)? = nil,
          picture: (display: DisplayID, rect: CGRect)? = nil, store: NamespacedStore? = nil, pinRoom: @escaping () -> Bool = { true },
          textTools: EditorTextTools = .none, selectionOnly: Bool = false,
-         colourPanel: ColourPanelOpening = EditorColourPanel(),
          onFinish: @escaping (OverlayResult) -> Void) {
         self.freeze = freeze
         self.selectionOnly = selectionOnly
         self.pinRoom = pinRoom
         self.textTools = textTools
         self.store = store
-        self.colourPanel = colourPanel
         self.mode = mode
         self.preselected = mode == .area ? preselection : nil
         self.picture = picture
@@ -319,7 +300,6 @@ struct EditorTextTools {
         guard isOpen, let shot = flashShapes(of: result), !shot.rects.isEmpty,
               HelmMotion.flashes(reduceMotion: reducesMotion()) else { close(); return }
         for (display, rect) in shot.rects { panels[display]?.view.flash(over: rect, window: shot.window) }
-        flashed = shot.rects
         leaving = true
         // Held by the timer on purpose: the panels must outlive the flash whoever else lets go of the overlay. A
         // `close` that came first has cleared `leaving`, and there is nothing left to do.
@@ -886,12 +866,6 @@ struct EditorTextTools {
     /// Whether Crop is on, for a test and for nobody else.
     var isCropping: Bool { crop != nil }
 
-    /// Whether the eraser is on, for a test and for nobody else.
-    var isErasing: Bool { erasing }
-
-    /// The ruler on the picture, for a test and for nobody else.
-    var rulerOnThePicture: Ruler? { ruler }
-
     /// A turn of the trackpad's rotate gesture, in degrees, counter-clockwise as AppKit reports it, while the ruler is on the picture. Whether the
     /// non-activating panel is sent the gesture at all is not known; the ⌥-drag turns the strip without it.
     func rotateRuler(by degrees: CGFloat, phase: NSEvent.Phase) {
@@ -1321,21 +1295,8 @@ final class OverlayView: NSView {
         menu.popUp(positioning: nil, at: at, in: self)
     }
 
-    /// Whether the palette is on screen; `openMoreMenu` asks it, and so do the tests.
+    /// Whether the palette is on screen; `openMoreMenu` asks it.
     var paletteIsShown: Bool { paletteMade && !paletteHost.isHidden }
-    /// The view a click at a display-local point would reach, for a test that asks whether it is the palette.
-    func clickTarget(at local: CGPoint) -> NSView? { hitTest(CGPoint(x: local.x, y: bounds.height - local.y)) }
-    /// Whether a view is the palette or inside it.
-    func isPalette(_ view: NSView?) -> Bool {
-        guard paletteMade, let view else { return false }
-        return view.isDescendant(of: paletteHost)
-    }
-
-    var drawnPicture: CGImage? {
-        guard let contents = imageLayer.contents, CFGetTypeID(contents as CFTypeRef) == CGImage.typeID
-        else { return nil }
-        return (contents as! CGImage)
-    }
 
     init(frozen: FrozenDisplay, overlay: CaptureOverlay) {
         self.frozen = frozen
@@ -1503,8 +1464,8 @@ final class OverlayView: NSView {
     /// The eyedropper is on (`OverlayScene.sampling`): the cursor is its symbol, before the eraser's circle, as the press goes to the
     /// eyedropper before the eraser.
     private var sampling = false
-    /// The cursor the view asks for now: what a test reads.
-    var askedCursor: NSCursor {
+    /// The cursor the view asks for now.
+    private var askedCursor: NSCursor {
         windowMode ? Self.cameraCursor : sampling ? Self.eyedropperCursor : erasing ? Self.eraserCursor : NSCursor.crosshair
     }
     private func setCursor() { askedCursor.set() }
@@ -1782,7 +1743,6 @@ final class OverlayView: NSView {
     }
 
     private func makeShape(_ annotation: Annotation, number: Int?, clippedTo box: CGRect, draft: Bool) -> CALayer {
-        shapeBuilds += 1
         if annotation.tool == .blur { return makeMosaic(annotation, clippedTo: box) }
         if annotation.tool == .text || annotation.tool == .emoji { return makeTiled(AnnotationText.tile(of: annotation, scale: frozen.scale), clippedTo: box) }
         if annotation.tool == .magnifier {
@@ -1855,13 +1815,11 @@ final class OverlayView: NSView {
         guard let annotation else {
             frameLayer.path = nil
             handleLayer.path = nil
-            drawnHandles = []
             return
         }
         let path = CGMutablePath()
         frameLayer.path = CGPath(rect: layerRect(annotation.frame), transform: nil)
-        drawnHandles = annotation.handles.map(\.point)
-        for point in drawnHandles {
+        for point in annotation.handles.map(\.point) {
             path.addRect(layerRect(CGRect(x: point.x - Self.handleSide / 2, y: point.y - Self.handleSide / 2,
                                           width: Self.handleSide, height: Self.handleSide)))
         }
@@ -1889,41 +1847,16 @@ final class OverlayView: NSView {
     private(set) var drawnAreaHandles: [CGPoint] = []
 
     /// The layers on screen: `drawLayers` keeps what it has put in the view here to compare the next
-    /// scene's against, and a test reads it to see the editor drew what it holds and what a layer is made of.
-    private(set) var drawnShapes: [CALayer] = []
+    /// scene's against.
+    private var drawnShapes: [CALayer] = []
 
-    /// The one layer the spotlights' dim is, which a test lays over the picture to see what the screen shows of them: it is none of
-    /// `drawnShapes`, and it stands under them.
-    var drawnSpotlightDim: CAShapeLayer { spotlightLayer }
-
-    /// How many shape layers were built since the view was made, for a test that counts the
-    /// rebuilds a pointer event costs.
-    private(set) var shapeBuilds = 0
     private var shapeCache: [Annotation.ID: (annotation: Annotation, shape: CALayer, draft: Bool, number: Int?)] = [:]
     private var cachedBox: CGRect?
 
-    /// Where the selected object's handles are drawn, in display-local points; none for none.
-    private(set) var drawnHandles: [CGPoint] = []
-
-    /// The plates on screen apart from the area's size over its corner (`areaSizePlate`), so a test can ask how many
+    /// The plates on screen apart from the area's size over its corner (`cornerLabel`), so a test can ask how many
     /// there are and where: the coordinates, the size of a drag, the Esc question, and the Pin refusal, which
     /// stands over the palette and not by the pointer.
     var visiblePlates: [LabelLayer] { [coordinateLabel, sizeLabel].filter { !$0.isHidden } }
-
-    /// The size plate over the edited area's top-left corner; nil while none is shown.
-    var areaSizePlate: LabelLayer? { cornerLabel.isHidden ? nil : cornerLabel }
-
-    /// The loupe's plate text, and where its window stands; both nil while the loupe is hidden.
-    var loupeReading: String? { loupeLayer.reading }
-    var loupeDisc: CGRect? { loupeLayer.isHidden ? nil : loupeLayer.disc }
-
-    /// Whether the lines across the screen are drawn.
-    var linesAreDrawn: Bool { crosshairLayer.path != nil }
-    /// Whether the dim over the picture is drawn, and whether the window fill is, and over what.
-    var dimIsDrawn: Bool { dimLayer.path != nil }
-    var windowFill: CGRect? { highlightLayer.path?.boundingBoxOfPath }
-    /// What the flash lit, in display-local top-left points; nil when it has not flashed.
-    var flashedRect: CGRect? { flashLayer.lit.map { CGRect(x: $0.minX, y: bounds.height - $0.maxY, width: $0.width, height: $0.height) } }
 
     /// Lights `rect` (display-local, top-left points) white and fades it, in a window's outline for a window; the palette
     /// goes, since it is not part of the shot, and the overlay is deaf until it closes.
@@ -1932,7 +1865,7 @@ final class OverlayView: NSView {
         if popoverMade { popoverHost.isHidden = true }
         if coloursMade { coloursHost.isHidden = true }
         let box = layerRect(rect)
-        flashLayer.play(over: box, shape: window ? WindowShape.path(for: box) : CGPath(rect: box, transform: nil))
+        flashLayer.play(shape: window ? WindowShape.path(for: box) : CGPath(rect: box, transform: nil))
     }
 }
 

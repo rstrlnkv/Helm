@@ -59,10 +59,8 @@ public struct HelmExpectedWait: View {
     ///
     /// A value rather than a `Double` with sentinels, because the three states
     /// are drawn by three different things and a fraction cannot carry «nobody
-    /// saw this start». It is `public` and pure so the rule can be asserted —
-    /// a decision made of arguments can be tested, a decision made inside a
-    /// `body` can only be described.
-    public enum Claim: Equatable {
+    /// saw this start».
+    private enum Claim {
         /// Nobody saw the wait begin, so there is no elapsed time and no
         /// fraction. Draws the indeterminate control.
         case unknown
@@ -82,8 +80,8 @@ public struct HelmExpectedWait: View {
         /// backwards under the run — an NTP step, a laptop resuming — is one of
         /// them, because a negative elapsed time is not a small fraction, it is
         /// evidence that the stamp cannot be trusted.
-        public static func at(_ now: Date, started: Date?,
-                              expected: TimeInterval) -> Claim {
+        static func at(_ now: Date, started: Date?,
+                       expected: TimeInterval) -> Claim {
             guard let started, expected > 0 else { return .unknown }
             let elapsed = now.timeIntervalSince(started)
             guard elapsed >= 0 else { return .unknown }
@@ -94,12 +92,7 @@ public struct HelmExpectedWait: View {
 
     /// How often the arc may be redrawn, in seconds — `nil` meaning «whenever
     /// the display can».
-    ///
-    /// An argument rather than a read of `NSWorkspace`, for the reason
-    /// `HelmMotion.spins(requested:reduceMotion:)` is: a check that consults the
-    /// machine only proves the machine it ran on was set the way the test
-    /// assumed.
-    public static func tick(reduceMotion: Bool) -> Double? {
+    private static func tick(reduceMotion: Bool) -> Double? {
         reduceMotion ? 1 : nil
     }
 

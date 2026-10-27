@@ -6,12 +6,6 @@ import HelmRuntime
 @MainActor
 final class PanelLayoutStoreTests: XCTestCase {
 
-    /// In memory, always. Writing a test arrangement into the real domain
-    /// rearranges the panel of whoever runs it.
-    private func store() -> NamespacedStore {
-        NamespacedStore(namespace: "test", backing: InMemoryKeyValueStore())
-    }
-
     /// **The key is not `panelLayout`.** That one is in
     /// `ObsoleteDefaults.retired` — a grid the app had once and rolled back —
     /// so a layout stored under it would be deleted at the next launch and the
@@ -22,9 +16,19 @@ final class PanelLayoutStoreTests: XCTestCase {
         XCTAssertFalse(ObsoleteDefaults.retired.contains(namespaced),
                        "\(namespaced) is purged at every launch")
     }
+}
 
-    /// The control for it: the check is real, and the retired list is not empty
-    /// or unreachable.
+@MainActor
+final class PanelLayoutStoreRoundTripTests: XCTestCase {
+
+    /// In memory, always. Writing a test arrangement into the real domain
+    /// rearranges the panel of whoever runs it.
+    private func store() -> NamespacedStore {
+        NamespacedStore(namespace: "test", backing: InMemoryKeyValueStore())
+    }
+
+    /// The control for `PanelLayoutStoreTests.testTheKeyIsNotOneThatGetsPurgedAtLaunch`:
+    /// the check is real, and the retired list is not empty or unreachable.
     func testTheRetiredListIsTheOneThatWouldHaveCaughtIt() {
         XCTAssertTrue(ObsoleteDefaults.retired.contains("module.app.panelLayout"),
                       "the old key is no longer purged, so this guard measures nothing")

@@ -11,18 +11,12 @@ import HelmTestSupport
 /// item exists. So anything either of those does synchronously is something the
 /// user waits for with no menu bar and no window — the app looks like it did
 /// not start.
-///
-/// The blocking is a timing property and a stopwatch assertion would pass on a
-/// fast machine by luck. These assert the structure instead: how many times the
-/// port was consulted, and whether construction completes while it has not
-/// answered at all. A port that never answers cannot be beaten by a race.
 final class AutopilotLaunchTests: XCTestCase {
 
     private var home: URL!
     private var root: URL!
     private var backing: InMemoryKeyValueStore!
     private var namespace: String!
-    private var stalled: StalledRuleKey!
 
     override func setUpWithError() throws {
         home = scratchDirectory("home")
@@ -30,11 +24,9 @@ final class AutopilotLaunchTests: XCTestCase {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         backing = InMemoryKeyValueStore()
         namespace = "autopilot.test.\(UUID().uuidString)"
-        stalled = StalledRuleKey()
     }
 
     override func tearDownWithError() throws {
-        stalled.release()
         try? FileManager.default.removeItem(at: home)
     }
 
@@ -45,26 +37,6 @@ final class AutopilotLaunchTests: XCTestCase {
     private func engine(_ keys: RuleKeyPort) -> AutopilotEngine {
         AutopilotEngine(store: store(), home: home.path, keys: keys, sequence: TestRuleSequence())
     }
-
-    /// Builds the engine on another thread and gives up after five seconds.
-    ///
-    /// Not caution: a construction that consults `StalledRuleKey` never returns,
-    /// and building it on the test's own thread parks the whole suite instead of
-    /// failing it. A regression has to be reported, not waited for.
-    private func engineOffThread(_ keys: RuleKeyPort) throws -> AutopilotEngine {
-        let built = expectation(description: "the engine was built")
-        let store = store()
-        let home = self.home!
-        let box = Box()
-        DispatchQueue.global().async {
-            box.engine = AutopilotEngine(store: store, home: home.path, keys: keys, sequence: TestRuleSequence())
-            built.fulfill()
-        }
-        wait(for: [built], timeout: 5)
-        return try XCTUnwrap(box.engine, "the engine was never built")
-    }
-
-    private final class Box: @unchecked Sendable { var engine: AutopilotEngine? }
 
     /// A barrier on the engine's own queue: `clearHistory` is `queue.sync`, and
     /// the queue is serial, so anything `activate` enqueued has finished by the
@@ -87,8 +59,90 @@ final class AutopilotLaunchTests: XCTestCase {
                        "the keychain was read while the engine was being built")
     }
 
-    /// And the same statement made against a port that cannot be raced: if
-    /// construction consults it, this never fulfils, whatever the machine.
+    // MARK: - What the eager read was protecting
+
+    /// The reason `init` read the key, kept. The keychain item's absence is the
+    /// only evidence that this installation predates sealing, so it has to start
+    /// existing at the first launch — otherwise a machine with no rules stays in
+    /// migration and a rule set planted a month later is adopted as one that
+    /// predates the seal.
+    ///
+    /// `activate` is what makes that true now. Asserted the only way that means
+    /// anything: plant an emptying rule set afterwards and check the file is
+    /// still there.
+    func testTheFirstLaunchLeavesMigrationEvenWithNoRulesToRead() throws {
+        try Data("private".utf8).write(to: root.appendingPathComponent("statement.pdf"))
+        let helm = engine(TestRuleKey())
+
+        helm.activate()
+        settle(helm)
+        helm.deactivate()
+
+        backing.raw["module.\(namespace!).folders"] = try JSONEncoder().encode(
+            [WatchedFolder(id: "planted", path: root.path, enabled: true, rules: [
+                Rule(id: "r", name: "take it", enabled: true, match: .all,
+                     conditions: [.fileExtension(["pdf"])], action: .trash),
+            ], depth: 1)])
+        helm.sweepAll()
+
+        XCTAssertEqual((FileManager.default.enumerator(atPath: root.path)?
+            .allObjects as? [String])?.sorted(), ["statement.pdf"],
+                       "rules planted after the first launch were adopted and run")
+        XCTAssertTrue(helm.rulesRefused)
+    }
+}
+
+/// Construction and `activate` hand the keychain wait to somebody else.
+///
+/// The blocking is a timing property and a stopwatch assertion would pass on a
+/// fast machine by luck. These assert the structure instead: whether the call
+/// completes while the port has not answered at all. A port that never answers
+/// cannot be beaten by a race.
+final class TheLaunchNeverWaitsForTheKeyPortTests: XCTestCase {
+
+    private var home: URL!
+    private var backing: InMemoryKeyValueStore!
+    private var namespace: String!
+    private var stalled: StalledRuleKey!
+
+    override func setUpWithError() throws {
+        home = scratchDirectory("home")
+        backing = InMemoryKeyValueStore()
+        namespace = "autopilot.test.\(UUID().uuidString)"
+        stalled = StalledRuleKey()
+    }
+
+    override func tearDownWithError() throws {
+        stalled.release()
+        try? FileManager.default.removeItem(at: home)
+    }
+
+    private func store() -> NamespacedStore {
+        NamespacedStore(namespace: namespace, backing: backing)
+    }
+
+    /// Builds the engine on another thread and gives up after five seconds.
+    ///
+    /// Not caution: a construction that consults `StalledRuleKey` never returns,
+    /// and building it on the test's own thread parks the whole suite instead of
+    /// failing it. A regression has to be reported, not waited for.
+    private func engineOffThread(_ keys: RuleKeyPort) throws -> AutopilotEngine {
+        let built = expectation(description: "the engine was built")
+        let store = store()
+        let home = self.home!
+        let box = Box()
+        DispatchQueue.global().async {
+            box.engine = AutopilotEngine(store: store, home: home.path, keys: keys, sequence: TestRuleSequence())
+            built.fulfill()
+        }
+        wait(for: [built], timeout: 5)
+        return try XCTUnwrap(box.engine, "the engine was never built")
+    }
+
+    private final class Box: @unchecked Sendable { var engine: AutopilotEngine? }
+
+    /// Construction against a port that cannot be raced: if construction consults
+    /// it, this never fulfils, whatever the machine.
     func testAnEngineIsBuiltWhileTheKeyPortNeverAnswers() throws {
         _ = try engineOffThread(stalled)
     }
@@ -128,37 +182,5 @@ final class AutopilotLaunchTests: XCTestCase {
         }
 
         wait(for: [answered], timeout: 5)
-    }
-
-    // MARK: - What the eager read was protecting
-
-    /// The reason `init` read the key, kept. The keychain item's absence is the
-    /// only evidence that this installation predates sealing, so it has to start
-    /// existing at the first launch — otherwise a machine with no rules stays in
-    /// migration and a rule set planted a month later is adopted as one that
-    /// predates the seal.
-    ///
-    /// `activate` is what makes that true now. Asserted the only way that means
-    /// anything: plant an emptying rule set afterwards and check the file is
-    /// still there.
-    func testTheFirstLaunchLeavesMigrationEvenWithNoRulesToRead() throws {
-        try Data("private".utf8).write(to: root.appendingPathComponent("statement.pdf"))
-        let helm = engine(TestRuleKey())
-
-        helm.activate()
-        settle(helm)
-        helm.deactivate()
-
-        backing.raw["module.\(namespace!).folders"] = try JSONEncoder().encode(
-            [WatchedFolder(id: "planted", path: root.path, enabled: true, rules: [
-                Rule(id: "r", name: "take it", enabled: true, match: .all,
-                     conditions: [.fileExtension(["pdf"])], action: .trash),
-            ], depth: 1)])
-        helm.sweepAll()
-
-        XCTAssertEqual((FileManager.default.enumerator(atPath: root.path)?
-            .allObjects as? [String])?.sorted(), ["statement.pdf"],
-                       "rules planted after the first launch were adopted and run")
-        XCTAssertTrue(helm.rulesRefused)
     }
 }

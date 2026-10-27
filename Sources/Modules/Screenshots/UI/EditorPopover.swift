@@ -56,8 +56,7 @@ struct EditorPopover: View {
     private static let markWidth: CGFloat = 1
     private static let markHeight: CGFloat = 5
     private static let markGap: CGFloat = HelmSpace.s1
-    /// Where a mark's centre stands from the track's end. Set by eye; `ThePopoverSliderAndTheOpenMenusReturnKeyTests` holds
-    /// each mark within 1.5 pt of the position this implies.
+    /// Where a mark's centre stands from the track's end. Set by eye.
     private static let knobInset: CGFloat = 9.5
 
     private func row(_ name: String, number: String, @ViewBuilder slider: () -> some View) -> some View {

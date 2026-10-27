@@ -2,43 +2,15 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
-/// The two halves of where the count lives.
+/// The second half of where the count lives: what it leaves behind. The first,
+/// that it outlives a launch, is `TheLedgerCountsAcrossALaunchTests` below.
 ///
-/// **It outlives a launch** — that is the whole reason the file exists, and the
-/// defect `DailyCount` could not fix.
-///
-/// **And it leaves nothing behind when nobody asked for a file.** Both wrong
+/// **It leaves nothing behind when nobody asked for a file.** Both wrong
 /// answers were tried on the way here: keyed to the process id, every test in
 /// the suite shared one ledger and a case asserting «one word counted» read
 /// five; keyed per instance, a single run left 91 directories in `$TMPDIR`,
 /// which is how this repository once accumulated 7621 of them.
 final class TheLedgerOutlivesALaunchAndLeavesNothingTests: XCTestCase {
-
-    func testACountWrittenByOneStoreIsReadByTheNext() {
-        let directory = scratchDirectory("ledger-relaunch")
-        let first = LedgerStore(directory: directory)
-        first.record(characters: 6, on: Date())
-        // The write is on the store's own queue; `totals` goes through the same
-        // one, so asking is also waiting for it.
-        XCTAssertEqual(first.totals(now: Date()).today.words, 1)
-
-        // A second store over the same directory is the next launch.
-        let second = LedgerStore(directory: directory)
-        XCTAssertEqual(second.totals(now: Date()).today.words, 1,
-                       "the count did not survive — this is the whole reason the file exists")
-        XCTAssertEqual(second.totals(now: Date()).today.characters, 6)
-    }
-
-    /// A selection is several words, and the ledger has to hear that: counting
-    /// a fixed sentence as one word understates the estimate by exactly the
-    /// number of layout switches the person did not have to make.
-    func testASentenceIsCountedAsItsWords() {
-        let store = LedgerStore(directory: scratchDirectory("ledger-sentence"))
-        store.record(words: 3, characters: 12, on: Date())
-        let today = store.totals(now: Date()).today
-        XCTAssertEqual(today.words, 3)
-        XCTAssertEqual(today.characters, 12)
-    }
 
     /// **Nobody named a directory, so nothing is written.** Outside the app the
     /// count is kept in memory and dies with the process — which is what makes
@@ -66,5 +38,36 @@ final class TheLedgerOutlivesALaunchAndLeavesNothingTests: XCTestCase {
 
     private func namesUnder(_ path: String) throws -> Set<String> {
         Set((try? FileManager.default.contentsOfDirectory(atPath: path)) ?? [])
+    }
+}
+
+/// **It outlives a launch** — that is the whole reason the file exists, and the
+/// defect `DailyCount` could not fix.
+final class TheLedgerCountsAcrossALaunchTests: XCTestCase {
+
+    func testACountWrittenByOneStoreIsReadByTheNext() {
+        let directory = scratchDirectory("ledger-relaunch")
+        let first = LedgerStore(directory: directory)
+        first.record(characters: 6, on: Date())
+        // The write is on the store's own queue; `totals` goes through the same
+        // one, so asking is also waiting for it.
+        XCTAssertEqual(first.totals(now: Date()).today.words, 1)
+
+        // A second store over the same directory is the next launch.
+        let second = LedgerStore(directory: directory)
+        XCTAssertEqual(second.totals(now: Date()).today.words, 1,
+                       "the count did not survive — this is the whole reason the file exists")
+        XCTAssertEqual(second.totals(now: Date()).today.characters, 6)
+    }
+
+    /// A selection is several words, and the ledger has to hear that: counting
+    /// a fixed sentence as one word understates the estimate by exactly the
+    /// number of layout switches the person did not have to make.
+    func testASentenceIsCountedAsItsWords() {
+        let store = LedgerStore(directory: scratchDirectory("ledger-sentence"))
+        store.record(words: 3, characters: 12, on: Date())
+        let today = store.totals(now: Date()).today
+        XCTAssertEqual(today.words, 3)
+        XCTAssertEqual(today.characters, 12)
     }
 }

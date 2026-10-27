@@ -25,9 +25,7 @@ public extension View {
     func helmPanelCard() -> some View {
         self
             // The ladder's own «a card's inner padding», not a 12 of this file's:
-            // it is what a 1×1 tile has left over for its words, and
-            // `TheCompactTileFitsItsOwnWordsTests` measures against it — a number
-            // spelled twice across that boundary is one only this side can change.
+            // it is what a 1×1 tile has left over for its words.
             .padding(HelmSpace.s5)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(

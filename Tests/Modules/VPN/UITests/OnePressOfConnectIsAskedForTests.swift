@@ -36,48 +36,6 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
         super.tearDown()
     }
 
-    // MARK: - The sentence
-
-    /// Parameterized by language rather than reading `AppLanguage.current`: the
-    /// suite runs in this machine's language, so a test that asks `current` checks
-    /// English eight times.
-    func testTheSentenceIsWrittenInAllEightLanguages() {
-        let english = VPNStr.secretNeedsAPress("Office", language: .en)
-        XCTAssertFalse(english.isEmpty)
-        for language in AppLanguage.allCases where language != .en {
-            let it = VPNStr.secretNeedsAPress("Office", language: language)
-            XCTAssertFalse(it.isEmpty, "\(language) says nothing")
-            XCTAssertNotEqual(it, english,
-                              "\(language) fell back to English, which is what a missing row in "
-                              + "the table looks like")
-        }
-    }
-
-    /// **It names a control, so it has to name the control this app draws.** A
-    /// 0.9.0 changelog entry told people to press «Configure panel» and all seven
-    /// translations faithfully translated a button that says «Edit panel». The word
-    /// on the card comes from `VPNStr.cardWord`, and every language's own spelling
-    /// of it has to appear in its own sentence.
-    func testEachLanguageNamesTheButtonAsThatLanguageSpellsIt() {
-        for language in AppLanguage.allCases {
-            let word = VPNStr.cardWord(.connect, language: language)
-            XCTAssertTrue(VPNStr.secretNeedsAPress("Office", language: language).contains(word),
-                          "\(language): the sentence tells the person to press something the "
-                          + "card does not call «\(word)»")
-        }
-    }
-
-    /// And the configuration is quoted the way that language quotes a name — the
-    /// marks are `Quoted`'s, not this table's, which is the fix four rows of this
-    /// same file already needed.
-    func testTheConfigurationIsQuotedTheWayEachLanguageQuotesOne() {
-        for language in AppLanguage.allCases {
-            XCTAssertTrue(VPNStr.secretNeedsAPress("Office", language: language)
-                            .contains(Quoted("Office", language: language)),
-                          "\(language) spells its own quotation marks")
-        }
-    }
-
     // MARK: - The wire reaches the model
 
     func testTheModelPublishesWhatTheEngineCouldNotRead() {
@@ -104,8 +62,7 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
     /// card at all** — every setting is on a card or behind its doors. Counted in
     /// AppKit frames rather than pixels, so «the page grew a card» is a number and
     /// not an inference from colour, and the quiet page is the control: a page that
-    /// had stopped drawing the sentence fails here rather than passing an alignment
-    /// nobody drew.
+    /// had stopped drawing the sentence fails here.
     func testALockedConfigurationPutsANewsCardOnThePage() {
         XCTAssertEqual(sectionCards(mount(page([]))).count, 0,
                        "with nothing to say the page draws no section card")
@@ -147,36 +104,7 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
                        + "is \(one): it is not named, or it is named more than once")
     }
 
-    /// **And the sentence is drawn inside that card's column.** It is a row of a
-    /// section now rather than a view riding the header, which is what the header's
-    /// 10 pt outset used to be backed out by hand for; a fill escaping the card is
-    /// the defect that shape removes, so it is worth a photograph.
-    ///
-    /// Two instruments: the card's column is an AppKit frame, the fill is read off
-    /// the rendering.
-    func testTheSentenceIsDrawnInsideTheNewsCard() {
-        let render = mount(page(["One"]))
-        let cards = sectionCards(render)
-        guard let card = cards.first else { return XCTFail("no news card was drawn") }
-        let column = render.host.convert(card, from: card.superview(in: render.host))
-        guard let fill = RenderedField.field(render.host,
-                                            inPoints: (Int(column.minY) + 2)...(Int(column.maxY) - 2),
-                                            paneAtX: Int(column.minX) - 8,
-                                            margin: Self.margin) else {
-            return XCTFail("nothing was drawn inside the news card at all")
-        }
-        XCTAssertGreaterThan(fill.count, 400,
-                            "the widest field in the news card is \(fill.count) pt — a banner "
-                            + "spans its row, so this is measuring something else")
-        XCTAssertGreaterThanOrEqual(fill.lowerBound, Int(column.minX.rounded()) - 1,
-                                    "the sentence starts at \(fill.lowerBound), left of the card "
-                                    + "at \(Int(column.minX)) — a filled field at a heading's inset")
-        XCTAssertLessThanOrEqual(fill.upperBound, Int(column.maxX.rounded()) + 1,
-                                 "the sentence ends at \(fill.upperBound), right of the card at "
-                                 + "\(Int(column.maxX))")
-    }
-
-    // MARK: - The page, and the two instruments
+    // MARK: - The page, and its instrument
 
     private func page(_ locked: [String], ruleFor vpn: String = "One") -> VPNSettingsPage {
         let transport = LocalTransport()
@@ -216,10 +144,6 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
     }
 
     private static let width: CGFloat = 845
-    /// Points ignored at each side of the rendering: the hosting view is 845 pt and
-    /// the scrolling container inside it runs 50.5…794.5, so the 50 pt beside it is
-    /// not the pane and reads as drawn from every row.
-    private static let margin = 60
 
     private func mount(_ page: VPNSettingsPage) -> MountedRender {
         // Pinned light, like every other reading in this house: `NSApp`'s

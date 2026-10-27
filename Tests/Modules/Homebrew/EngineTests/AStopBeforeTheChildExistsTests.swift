@@ -24,10 +24,9 @@ import HelmRuntime
 /// Pressing Stop there does nothing, says nothing, and is then followed by the
 /// module downloading and running the Homebrew installer anyway.
 ///
-/// It is the same family as `AVanishedBrewIsNotASilentPressTests` (a press that
-/// does nothing, visibly forever) and the same family CLAUDE.md names as «a
-/// flag written before the check it guards» — here the flag is not written at
-/// all, because the check in front of it fails.
+/// It is the family of a press that does nothing, visibly forever — here the
+/// flag, `stopRequested`, is not written at all, because the check in front of
+/// it fails.
 ///
 /// **The fake privileged runner has to be *in the middle of* asking.** Every
 /// existing `PrivilegedRunner` fake in this suite returns its answer inline, so

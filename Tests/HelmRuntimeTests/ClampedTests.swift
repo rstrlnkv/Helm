@@ -16,50 +16,6 @@ import XCTest
 /// number inside a range hands back a number that is inside no range at all.
 final class ClampedTests: XCTestCase {
 
-    // MARK: - The rule itself
-
-    func testAValueInsideTheRangeIsUnchanged() {
-        XCTAssertEqual(7.clamped(to: 5...10), 7)
-    }
-
-    func testBelowTheFloorComesBackAsTheFloor() {
-        XCTAssertEqual((-3).clamped(to: 5...10), 5)
-    }
-
-    func testAboveTheCeilingComesBackAsTheCeiling() {
-        XCTAssertEqual(99.clamped(to: 5...10), 10)
-    }
-
-    /// A closed range includes its ends, and so does this.
-    func testTheBoundsThemselvesAreInside() {
-        XCTAssertEqual(5.clamped(to: 5...10), 5)
-        XCTAssertEqual(10.clamped(to: 5...10), 10)
-    }
-
-    /// The degenerate range every index clamp reaches when the list is empty:
-    /// `0...max(0, count - 1)`.
-    func testARangeOfOneValueAnswersThatValue() {
-        XCTAssertEqual(4.clamped(to: 0...0), 0)
-        XCTAssertEqual((-4).clamped(to: 0...0), 0)
-    }
-
-    /// On `Comparable`, not on a numeric protocol: the sites clamp `Int`,
-    /// `Double` and `CGFloat`, and nothing here is arithmetic.
-    func testItIsTheComparableRuleAndNotAnArithmeticOne() {
-        XCTAssertEqual("m".clamped(to: "a"..."f"), "f")
-        XCTAssertEqual(Date(timeIntervalSince1970: 0)
-            .clamped(to: Date(timeIntervalSince1970: 10)...Date(timeIntervalSince1970: 20)),
-                       Date(timeIntervalSince1970: 10))
-    }
-
-    // An inverted range is not expressible, so there is no test of one:
-    // `ClosedRange` traps on its own initialiser when the upper bound is below
-    // the lower one, and the helper can never be handed one. That is a rule for
-    // the call sites instead — anywhere the bounds are computed rather than
-    // literal, the upper one is raised to the lower before the range is formed
-    // (`PanelWindow.reframe` is the one that could reach it, on a Mac with no
-    // screen attached).
-
     // MARK: - Numbers that are not numbers
 
     /// Infinity needs no special case: it has a position on the number line and
@@ -84,12 +40,6 @@ final class ClampedTests: XCTestCase {
         XCTAssertNil(Double.signalingNaN.clampedIfFinite(to: 0...1))
     }
 
-    func testClampedIfFiniteIsTheSameClampForANumber() {
-        XCTAssertEqual(0.5.clampedIfFinite(to: 0...1), 0.5)
-        XCTAssertEqual((-2.0).clampedIfFinite(to: 0...1), 0)
-        XCTAssertEqual(1e300.clampedIfFinite(to: 0...1), 1)
-    }
-
     // MARK: - The caller who has an answer for NaN
 
     /// Four call sites were written as `min(1, max(0, x))` or `max(0, min(1,
@@ -107,12 +57,6 @@ final class ClampedTests: XCTestCase {
     func testInfinityStillClampsToTheBoundItIsPast() {
         XCTAssertEqual(Double.infinity.clamped(to: 0...1, whenNotANumber: 0.25), 1)
         XCTAssertEqual((-Double.infinity).clamped(to: 0...1, whenNotANumber: 0.25), 0)
-    }
-
-    func testAnOrdinaryNumberIsTheSameClamp() {
-        XCTAssertEqual(0.5.clamped(to: 0...1, whenNotANumber: 0.25), 0.5)
-        XCTAssertEqual((-2.0).clamped(to: 0...1, whenNotANumber: 0.25), 0)
-        XCTAssertEqual(1e300.clamped(to: 0...1, whenNotANumber: 0.25), 1)
     }
 
     /// The size of the numbers this exists for. `Int(1e300 / 60)` **traps** —

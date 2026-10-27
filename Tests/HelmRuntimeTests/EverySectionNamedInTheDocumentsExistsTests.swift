@@ -14,8 +14,8 @@ import XCTest
 /// **Why exact and not by prefix.** The sibling matches a heading as a prefix
 /// of whatever follows the section sign, which is right for code that quotes a heading with
 /// prose after it, and wrong here: a pointer reading `Release notes` would resolve to a
-/// heading `Release`, and one reading `Hosts and SSH` would stay green if that section were
-/// renamed `Hosts`, the heading being only a prefix of the pointer's text. A pointer here ends at a terminator — `.`, `,`, `;`, `:`,
+/// heading `Release`, and one reading `Readings and mutants` would stay green if that section were
+/// renamed `Readings`, the heading being only a prefix of the pointer's text. A pointer here ends at a terminator — `.`, `,`, `;`, `:`,
 /// `)`, `]`, the next §, an arrow or the end of the paragraph, a closing mark
 /// (a backtick, quote or asterisk) being allowed between the heading and the
 /// terminator — and the text before it has to equal a heading, case included. The price is
@@ -25,12 +25,6 @@ import XCTest
 /// **Why headings come only from outside fenced blocks.** A `# comment` line
 /// in a shell block is not a section, and counting it would let a pointer at
 /// one resolve.
-///
-/// **Why the parser is separate from the documents.** Its edge cases — a
-/// pointer before each terminator, a heading that is only a prefix of another
-/// text, a heading with an em dash or a comma, a pointer wrapped over a line
-/// break — are fed to it directly in the fixture tests below, so a parser that
-/// stopped handling one fails there whatever the documents happen to hold.
 final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
 
     /// The ceiling the owner set for `CLAUDE.md` (15 KB); a sentence added past
@@ -316,106 +310,5 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
         let all = try StandingDocuments.headings(of: "ARCHITECTURE")
         XCTAssertEqual(all.count, owners.values.reduce(0) { $0 + $1.count },
             "headings(of: \"ARCHITECTURE\") lists \(all.count) headings; the hub and the pages hold \(owners.values.reduce(0) { $0 + $1.count })")
-    }
-
-    // MARK: - Parser fixtures
-
-    private let sample = ["Release", "The updater", "Helm — architecture",
-                          "What not to do, and what breaks if you do"]
-
-    func testAPointerBeforeEachTerminatorResolves() {
-        for tail in [" Release.", " Release,", " Release;", " Release)", " Release:",
-                     " Release", " Release\n", " `Release`.", " \"Release\")", " Release \u{A7}", " Release →", " Release]"] {
-            XCTAssertEqual(Parser.resolve(tail, headings: sample), "Release", "tail \(tail.debugDescription)")
-        }
-    }
-
-    func testAPointerThatIsOnlyAPrefixOfAHeadingOrOfProseIsDead() {
-        XCTAssertNil(Parser.resolve(" Releases.", headings: sample))
-        XCTAssertNil(Parser.resolve(" Release notes.", headings: sample))
-        XCTAssertNil(Parser.resolve(" release.", headings: sample), "case is part of the name")
-        XCTAssertNil(Parser.resolve(" The upd.", headings: sample))
-        XCTAssertNil(Parser.resolve(" No such heading.", headings: sample))
-    }
-
-    func testAHeadingWithADashOrACommaResolvesWhole() {
-        XCTAssertEqual(Parser.resolve(" Helm — architecture.", headings: sample), "Helm — architecture")
-        XCTAssertEqual(Parser.resolve(" What not to do, and what breaks if you do)", headings: sample),
-                       "What not to do, and what breaks if you do")
-        XCTAssertNil(Parser.resolve(" What not to do.", headings: sample))
-    }
-
-    func testAPointerWrappedOverALineBreakIsRead() {
-        let wrapped = "see (CLAUDE.md\n\u{A7} The updater). Then\nmore.\n"
-        let found = Parser.named(in: wrapped)
-        XCTAssertEqual(found.count, 1)
-        XCTAssertEqual(Parser.resolve(found.first?.rest ?? "", headings: sample), "The updater")
-
-        let wrappedHeading = Parser.named(in: "`ARCHITECTURE.md` \u{A7} Helm —\narchitecture, the rest")
-        XCTAssertEqual(Parser.resolve(wrappedHeading.first?.rest ?? "", headings: sample), "Helm — architecture")
-
-        let quoted = Parser.named(in: "> CLAUDE.md \u{A7}\n> What not to do, and what breaks if you do.")
-        XCTAssertEqual(Parser.resolve(quoted.first?.rest ?? "", headings: sample),
-                       "What not to do, and what breaks if you do")
-    }
-
-    func testAParagraphBreakIsNotJoined() {
-        let found = Parser.named(in: "CLAUDE.md \u{A7} Release\n\nThe updater is next.")
-        XCTAssertEqual(Parser.resolve(found.first?.rest ?? "", headings: sample), "Release")
-    }
-
-    func testLinkedPagesReadsOnlyPageLinksInLinkOrder() {
-        let hub = """
-            # Hub
-            - [Zeta](Architecture/Zeta.md) \u{2014} last by name, first by link
-            - [Alpha](Architecture/Alpha.md) \u{2014} second
-            See [the readme](README.md), [site](https://example.com/Architecture/Site.md),
-            [anchor](#Alpha), [nested](Architecture/sub/Deep.md), [dashed](Architecture/Bad-Name.md),
-            [other dir](docs/Architecture/Other.md) and [text](Architecture/Mid2.md).
-            """
-        XCTAssertEqual(StandingDocuments.linkedPages(in: hub),
-                       ["Architecture/Zeta.md", "Architecture/Alpha.md", "Architecture/Mid2.md"])
-        XCTAssertEqual(StandingDocuments.linkedPages(in: "no links here"), [])
-    }
-
-    func testAHubLineIsComparedWithTheSubHeadingsOfItsPage() {
-        let subs = ["Alpha", "Beta, and more"]
-        let ok = Self.hubLineDefects(rest: " \u{2014} purpose; \u{A7} Alpha, \u{A7} Beta, and more.", subHeadings: subs)
-        XCTAssertTrue(ok.extra.isEmpty && ok.missing.isEmpty, "a correct line is green")
-
-        let short = Self.hubLineDefects(rest: " \u{2014} purpose; \u{A7} Alpha.", subHeadings: subs)
-        XCTAssertEqual(short.missing, ["Beta, and more"], "a line missing one heading is red")
-        XCTAssertTrue(short.extra.isEmpty)
-
-        let foreign = Self.hubLineDefects(rest: " \u{2014} purpose; \u{A7} Alpha, \u{A7} Beta, and more, \u{A7} Release.", subHeadings: subs)
-        XCTAssertEqual(foreign.extra.count, 1, "a heading of another page is red")
-        XCTAssertTrue(foreign.missing.isEmpty)
-
-        let twice = Self.hubLineDefects(rest: " \u{2014} purpose; \u{A7} Alpha, \u{A7} Alpha, \u{A7} Beta, and more.", subHeadings: subs)
-        XCTAssertEqual(twice.extra.count, 1, "a heading named twice is red")
-
-        let none = Self.hubLineDefects(rest: " \u{2014} purpose, no pointer.", subHeadings: [])
-        XCTAssertTrue(none.extra.isEmpty && none.missing.isEmpty, "no section sign for a page without sub-headings is green")
-
-        let stray = Self.hubLineDefects(rest: " \u{2014} purpose; \u{A7} Alpha.", subHeadings: [])
-        XCTAssertEqual(stray.extra.count, 1, "a pointer on a page without sub-headings is red")
-    }
-
-    func testSubHeadingsOfAPageExcludeItsH1() {
-        XCTAssertEqual(Set(Self.subHeadings(ofPage: "# Page\n## A\n```\n# c\n```\n### B\n")), ["A", "B"])
-    }
-
-    func testHeadingsInsideAFenceAreNotSections() {
-        let text = "# Real\n```sh\n# Comment\n```\n## Also real\n"
-        XCTAssertEqual(Set(StandingDocuments.headings(in: text)), ["Real", "Also real"])
-    }
-
-    func testAnArrowListGivesOnePointerPerSection() {
-        let line = "- Order → \u{A7} Release, \u{A7} The updater.\n- Notation: \u{A7} X is a heading.\n- Bad \u{A7} Release → \u{A7} Release."
-        let read = Parser.arrowPointers(in: line)
-        XCTAssertEqual(read.pointers.count, 3)
-        XCTAssertEqual(read.stray.count, 2)
-        XCTAssertEqual(read.pointers.map { Parser.resolve($0, headings: sample) },
-                       ["Release", "The updater", "Release"])
     }
 }

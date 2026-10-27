@@ -66,6 +66,12 @@ final class BrewParserShapeTests: XCTestCase {
         let casks = BrewListParser.parse("docker 4.30.0\n", isCask: true)
         XCTAssertEqual(Set((formulae + casks).map { "\($0.isCask ? "c" : "f"):\($0.name)" }).count, 2)
     }
+}
+
+/// The shapes `brew desc` and `brew search` print: the display-name group a cask
+/// description opens with, the sectioned and the headerless search output, and
+/// brew's own prose, which must never become a row.
+final class BrewDescAndSearchShapeTests: XCTestCase {
 
     // MARK: - brew desc
 

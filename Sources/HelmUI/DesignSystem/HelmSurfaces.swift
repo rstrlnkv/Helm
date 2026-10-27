@@ -278,11 +278,10 @@ public struct HelmSignalPlate: View {
 /// and the wheel there moved nothing. It bought nothing either — measured at
 /// 679, 845, 1149 and 1400 pt panes, a bare grouped `Form` puts its card in the
 /// same place, to the point, as a capped one. What is left for this is content
-/// that is not itself a scroller and would otherwise take the whole pane.
-/// `ThePaneTakesTheWheelAtItsEdgesTests` guards it, and reads the modifier
-/// chains as well as the rendered pages, because the other half of the lesson is
-/// that *widening* the scroller is not the repair: SwiftUI hit-tests a scroll
-/// view's content region, so `safeAreaPadding` leaves the sides as dead.
+/// that is not itself a scroller and would otherwise take the whole pane. The
+/// other half of the lesson is that *widening* the scroller is not the repair:
+/// SwiftUI hit-tests a scroll view's content region, so `safeAreaPadding`
+/// leaves the sides as dead.
 public extension View {
     /// …and the content idles while its window is off screen, wherever it is
     /// mounted (`OffScreenIdle` has the numbers). A page whose root is a `Form`
@@ -319,8 +318,8 @@ public enum HelmLayout {
     /// that miss each other by 10 pt is the kind of thing nobody can name and
     /// everybody sees.
     ///
-    /// A number owned by SwiftUI, so `TheConnectionsLineUpWithTheCardsTests`
-    /// photographs both edges and fails if a macOS release moves either.
+    /// A number owned by SwiftUI, which a macOS release
+    /// can move.
     public static let groupedHeaderOutset: CGFloat = 10
 
     /// What a grouped `Form` puts between a section header and the section's
@@ -420,8 +419,7 @@ public enum HelmText {
     ///
     /// It was 0.55, which measured 3.54:1 in light — under the body floor, and
     /// written down as such in this comment for months, because prose is not a
-    /// guard. `RecessedTextIsReadableTests` is, and the floor needs 0.631
-    /// (`Scripts/design/contrast.swift`); 0.65 is the first step past it.
+    /// guard. The floor needs 0.631; 0.65 is the first step past it.
     public static let faint = Color.primary.opacity(0.65)
     /// Marks, never text — breadcrumb chevrons and the like. A chevron carries
     /// meaning, so it answers to the 3:1 non-text threshold rather than to
@@ -477,7 +475,7 @@ public enum HelmText {
     /// wrote the reason down as a sentence — «the same 40 pt light figure Keep
     /// Awake's hero draws, so two pages of this app do not measure their own
     /// heroes differently» — with nothing under it, which is what a token is
-    /// for. `EveryHeroIsSetInOneFontTests` is the rest of that sentence.
+    /// for.
     ///
     /// Held rather than built at the call site for the ordinary reason a value
     /// with no argument is: it is one value and there is one of it. What that
@@ -617,10 +615,10 @@ public enum HelmSignal {
     /// Six stored colours rather than six built on demand, and the reason is
     /// identity rather than cost. `Color` compares by the object inside it, so a
     /// property that builds a fresh `NSColor(name:)` on every access is a colour
-    /// that is never equal to itself: `ChannelInkTests` caught it comparing two
-    /// reads of `warning`, and SwiftUI compares the same way when it decides
-    /// whether a view's input changed. The **flag** above stays computed, which
-    /// is what the setting needs; these do not move.
+    /// that is never equal to itself: two reads of `warning` compared unequal,
+    /// and SwiftUI compares the same way when it decides whether a view's input
+    /// changed. The **flag** above stays computed, which is what the setting
+    /// needs; these do not move.
     private static let warningOrdinary = adaptive(
         light: NSColor(srgbRed: 0.700, green: 0.380, blue: 0.097, alpha: 1), dark: .systemOrange)
     private static let warningIncreased = adaptive(
@@ -672,7 +670,7 @@ public struct HelmSectionTitle: View {
             .font(.system(size: 11, weight: .semibold))
             .foregroundStyle(HelmText.quiet)
             // A heading over rows is a heading to the rotor, said once here so a
-            // call site cannot forget it (`AHeadingIsAHeadingToTheRotorTests`).
+            // call site cannot forget it.
             // The trait is a set: a site or a `Section(header:)` that says it
             // again changes nothing.
             .accessibilityAddTraits(.isHeader)

@@ -50,7 +50,7 @@ comment, not on a page.
 - [The menu-bar panel](Architecture/TheMenuBarPanel.md) — the window, chrome and card of the panel, and the pure grid and drag rules beneath them.
 - [The status item](Architecture/TheStatusItem.md) — the rule that picks what the menu-bar item shows: a countdown, a spin, a tint or a title.
 - [The Settings window](Architecture/TheSettingsWindow.md) — the card shell, the sidebar on the glass and the hosting controllers the window is built from.
-- [The page header](Architecture/ThePageHeader.md) — the page bar that carries a page's header and controls; § The bar's zones, § Toolbar actions, § The tabs and the search field, § The bar's menu and style, § The header strip.
+- [The page header](Architecture/ThePageHeader.md) — the window's toolbar that carries a page's header and controls; § The bar's zones, § Toolbar actions, § The tabs and the search field, § The bar's menu and style, § The header strip.
 - [The sidebar is an arrangement](Architecture/TheSidebarIsAnArrangement.md) — the sidebar as a stored value in which every module appears exactly once, shared with the status item's menu.
 - [A window a module needs and the host owns](Architecture/AWindowAModuleNeedsAndTheHostOwns.md) — the base class for a host-owned window: activation policy, the closed flag and release on close.
 - [Revealing a path](Architecture/RevealingAPath.md) — how a path is shown in Finder without launching or mounting a bundle.
@@ -63,7 +63,6 @@ One page per module, in the order `ls Sources/Modules` prints.
 - [Disk](Architecture/Disk.md) — reading where the space went on an APFS volume group without leaving the largest folder out.
 - [Duplicates](Architecture/Duplicates.md) — the keep policies that decide which of several identical files is the extra one.
 - [Homebrew](Architecture/Homebrew.md) — how another program's package manager is run, with read-only queries and other runs governed differently; § Operations, § Installing Homebrew, § Install counts, § Searching for a package, § The Health tab.
-- [Hosts](Architecture/Hosts.md) — editing `/etc/hosts` and managing SSH keys with the bytes as the canonical form.
 - [KeepAwake](Architecture/KeepAwake.md) — holding sleep off through pure logic units orchestrated by one engine; § The closed lid, § Vetoes and the notice, § State a person asked for outlives the process.
 - [Layout](Architecture/Layout.md) — the four limits on a module that reads every keystroke and types into other applications.
 - [Leftovers](Architecture/Leftovers.md) — what it will offer to remove: login items and plug-in files whose owner is gone.
@@ -74,7 +73,7 @@ One page per module, in the order `ls Sources/Modules` prints.
 ## Across modules
 
 - [Permissions](Architecture/Permissions.md) — how Full Disk Access is probed.
-- [The gates](Architecture/TheGates.md) — the five types that answer where a path may be reached, read or written, and how a walk asks them.
+- [The gates](Architecture/TheGates.md) — the four types that answer where a path may be reached, and how a walk asks them.
 - [Removal](Architecture/Removal.md) — the one batch every removal goes through and the refusals it reports; § One removal at a time.
 - [Giving everything back](Architecture/GivingEverythingBack.md) — what a reset hands back outside Helm's own folders, what it cannot, and the order of its steps.
 - [Running other programs](Architecture/RunningOtherPrograms.md) — launching a tool, bounding how many are out, reading what it prints, and running one as root.
@@ -84,12 +83,12 @@ One page per module, in the order `ls Sources/Modules` prints.
 - [Localization](Architecture/Localization.md) — the English key, the eight tables, the guards that watch them, and the helpers that keep the language the app's own.
 - [State and lifetime](Architecture/StateAndLifetime.md) — what outlives a page or a thing it points at, and a value read back whole; § State that outlives a page and ends with its module, § An observer outlives the thing it points at, § A value read back whole.
 - [Stored settings](Architecture/StoredSettings.md) — a stored value nobody else may write, and a number that came from a file; § Sealed settings, § A number that came from a file.
-- [Design system](Architecture/DesignSystem.md) — what `Sources/HelmUI/DesignSystem/` holds and the rules for its surfaces, ladders, type, ink and motion; § Surfaces, § Ladders, § Type, § Ink and contrast, § Motion, § The visual language, § The record, § Widths.
+- [Design system](Architecture/DesignSystem.md) — what `Sources/HelmUI/DesignSystem/` holds and the rules for its surfaces, ladders, type, ink and motion; § Surfaces, § Ladders, § Type, § Ink and contrast, § Motion, § The visual language, § Widths.
 
 ## Shipping and checking
 
 - [Release](Architecture/Release.md) — where the version lives, how a build is numbered, signed and shipped, the updater and the disk image window; § Channels and publishing, § Signing and grants, § The updater, § What shipped, § The disk image window.
-- [Tests and measurement](Architecture/TestsAndMeasurement.md) — what makes a check a check, and how measuring tests are written; § What makes a check, § Readings and mutants, § Fakes, § Shared test plumbing, § Harnesses, § Measuring motion, § Why the commands are run.
+- [Tests and measurement](Architecture/TestsAndMeasurement.md) — what makes a check a check, what proves which defect, what a removal takes with it, and how measuring tests are written; § What makes a check, § What proves what, § Removal takes its traces, § Readings and mutants, § Fakes, § Shared test plumbing, § Harnesses, § Measuring motion, § Why the commands are run.
 
 ## What else to read
 

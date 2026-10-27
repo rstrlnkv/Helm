@@ -17,8 +17,8 @@ import XCTest
 /// names that do not — until the app is restarted, which is the one thing the
 /// in-app language picker exists to avoid.
 ///
-/// **Per module, not over the nine of them together.** A single descriptor left
-/// frozen is invisible to a reading that joins all nine: the other eight still
+/// **Per module, not over all of them together.** A single descriptor left
+/// frozen is invisible to a reading that joins them all: the others still
 /// differ between two languages and the blob differs with them.
 @MainActor
 final class AModuleNamesItselfInTodaysLanguageTests: XCTestCase {
@@ -76,7 +76,7 @@ final class AModuleNamesItselfInTodaysLanguageTests: XCTestCase {
         for language in AppLanguage.allCases.reversed() {
             AppLanguage.override = language
             XCTAssertEqual(ModuleRegistry.all.map(spoken), first[language], """
-                the nine modules read differently in \(language.rawValue) depending on which \
+                the modules read differently in \(language.rawValue) depending on which \
                 language was asked for before it
                 """)
         }

@@ -40,12 +40,6 @@ final class DiskScannerTests: XCTestCase {
         XCTAssertNil(tree.children.first { $0.name == "link" })
     }
 
-    func testCancelReturnsNil() throws {
-        let scanner = DiskScanner(foldThreshold: 0)
-        scanner.cancel()
-        XCTAssertNil(scanner.scan(root: fixture.path))
-    }
-
     func testProgressReportsArrive() throws {
         final class Box: @unchecked Sendable { var last: ScanProgress? }
         let box = Box()

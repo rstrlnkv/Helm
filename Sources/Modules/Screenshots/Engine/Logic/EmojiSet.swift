@@ -1,7 +1,7 @@
 import Foundation
 
 /// The emoji the editor's grid offers, and what `isOne` takes for one: one grapheme that leaves ink. The grid draws `all` in this order, left to right and down;
-/// every entry is one grapheme that draws in colour, and a test holds the set to both.
+/// every entry is one grapheme that draws in colour.
 public enum EmojiSet {
     /// Marks a person puts on a picture: yes and no, look here, praise, a warning, a face for what is funny, odd or wrong. One emoji
     /// presentation each, no skin tone and no joined family, so the set draws alike on every Mac that has the font.

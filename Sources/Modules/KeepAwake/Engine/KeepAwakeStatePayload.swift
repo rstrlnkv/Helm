@@ -65,8 +65,6 @@ extension KeepAwakeEngine {
         /// The three non-optional ones stay required, because a payload without
         /// `isActive` is not an older payload, it is not this payload; the two
         /// dates are `nil` in every version of it.
-        /// `APayloadFromTheLastReleaseDecodesTests` fails on the next field that
-        /// arrives without a default, so the list is checked rather than read.
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             isActive = try c.decode(Bool.self, forKey: .isActive)

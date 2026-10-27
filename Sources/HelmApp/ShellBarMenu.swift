@@ -1,23 +1,20 @@
 import AppKit
 import HelmUI
 
-/// **The bar's one right-click menu, for the toolbar and the page bar alike.** `SettingsToolbar` hands
-/// `menu(delegate:)`'s menu to each centre switcher and pops it up over the window's frame; `ShellPageBar` hands
-/// it to its own view. Each calls `fill(_:showing:)` from its own `menuNeedsUpdate(_:)`, so what the menu
+/// **The bar's one right-click menu.** `SettingsToolbar` hands
+/// `menu(delegate:)`'s menu to each centre switcher and pops it up over the window's frame. It calls
+/// `fill(_:showing:)` from its own `menuNeedsUpdate(_:)`, so what the menu
 /// offers, in what order and what each item writes is said here once.
 ///
 /// **What it offers, top to bottom**: the page header on every page; the tabs' label style only where the page
 /// has tabs; Appearance (Flat, Liquid Glass) on every page; Always Collapse Search only where the page has a
 /// search field, even one disabled right now. Absent rather than dimmed where it does not apply — a context
 /// menu hides what cannot act (HIG, context menus). The Appearance section is the mirror of General's
-/// "Toolbar style" row (`BarAppearanceRow`); `ShellPageBar` hands `AppSettings.barAppearance` to its zones
-/// (`ShellBarZoneState.appearance`), which `ShellBarTabs`, `ShellBarActions` and `ShellBarSearch` conform to
-/// `ShellBarZone` to receive; the window the app builds makes no page bar and draws by the look through
-/// `SettingsToolbar` (its `ShapeSignature` reads `AppSettings.barAppearance`), the `.pageBar` build of
-/// `SettingsWindow` through `ShellPageBar`.
+/// "Toolbar style" row (`BarAppearanceRow`); `SettingsToolbar` draws by the look
+/// (its `ShapeSignature` reads `AppSettings.barAppearance`).
 ///
-/// **Every item's target is `actions`**, for either bar: `NSMenuItem.target` is weak, so the one object is a
-/// `static let`. Each action only writes the setting; the setting's own notification is what reaches a bar and
+/// **Every item's target is `actions`**: `NSMenuItem.target` is weak, so the one object is a
+/// `static let`. Each action only writes the setting; the setting's own notification is what reaches the bar and
 /// General's row, the same path General's Appearance rows take.
 @MainActor
 enum ShellBarMenu {
@@ -31,8 +28,7 @@ enum ShellBarMenu {
         return menu
     }
 
-    /// `tabLabels` and `alwaysCollapseSearch` are nil for a page without that part. `static` so a test reads
-    /// the items without raising a menu.
+    /// `tabLabels` and `alwaysCollapseSearch` are nil for a page without that part.
     static func items(pageBarStyle: PageBarStyle, tabLabels: ToolbarSwitcherStyle?,
                       appearance: HelmBarAppearance, alwaysCollapseSearch: Bool?) -> [NSMenuItem] {
         var items: [NSMenuItem] = [NSMenuItem.sectionHeader(title: AppStr.pageBar)]

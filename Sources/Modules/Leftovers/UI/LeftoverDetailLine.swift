@@ -12,8 +12,7 @@ import SwiftUI
 /// So the path has a floor: the width of «…» and its own last component at
 /// the detail size. Below it no cut — head, middle or tail — can show even
 /// *which file* the row is about, so the line drops the path entirely rather
-/// than drawing its dead weight. `AnUnreadablePathIsNotDrawnTests` holds the
-/// arithmetic and the line that reads it.
+/// than drawing its dead weight.
 enum LeftoverPathFloor {
 
     /// What the path must be able to say, measured: an ellipsis and the last

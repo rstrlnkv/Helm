@@ -6,12 +6,12 @@ import Foundation
 /// scale: a **total** with a delta against the last reading for the same label, in
 /// whole megabytes, silent below 8 MB. That was right for the hunt it was built
 /// for, where the figures were hundreds of megabytes. Building a module is single
-/// digits — rendered by that formatter every one of the nine would print `0 MB`,
+/// digits — rendered by that formatter every module would print `0 MB`,
 /// and thresholded by it none of them would print at all.
 ///
 /// So this one takes a delta measured *around* a scope rather than against a
 /// previous sighting of the same label, keeps a decimal in megabytes, drops to
-/// kilobytes below one, and has no threshold: nine modules switching on twice each
+/// kilobytes below one, and has no threshold: switching each module on twice
 /// is not a stream, and the figure being small is the answer, not a reason to
 /// withhold it.
 enum ScopeCost {

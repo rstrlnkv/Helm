@@ -58,7 +58,6 @@ import Module_VPN_Engine
     private var dropNoticeForTesting: VPNNotice?
     private var bannerAuthorizedForTesting: Bool?
     private var spinForTesting: Bool?
-    private var spinTintsForTesting: [VPNAutomation.Kind: String]?
     private var eventsTask: Task<Void, Never>?
     private var expiryTask: Task<Void, Never>?
     /// The announcement of the last firing, while it is still in flight.
@@ -125,7 +124,7 @@ import Module_VPN_Engine
     }
 
     func spinTint(for kind: VPNAutomation.Kind, on name: String) -> String {
-        guard spinTintsForTesting == nil, let settings, let id = connectionID(named: name)
+        guard let settings, let id = connectionID(named: name)
         else { return spinTint(for: kind) }
         return settings.spinTint(for: kind, connectionID: id)
     }
@@ -139,8 +138,7 @@ import Module_VPN_Engine
 
     /// The colour that firing turns in.
     func spinTint(for kind: VPNAutomation.Kind) -> String {
-        spinTintsForTesting?[kind]
-            ?? settings?.spinTint(for: kind)
+        settings?.spinTint(for: kind)
             ?? (kind == .connected ? "green" : "orange")
     }
 
@@ -230,13 +228,11 @@ import Module_VPN_Engine
                        dropNotice: VPNNotice? = nil,
                        bannerAuthorized: Bool = false,
                        notices: AutomationNoticePort? = nil,
-                       spin: Bool = false,
-                       spinTints: [VPNAutomation.Kind: String]? = nil) {
+                       spin: Bool = false) {
         noticeForTesting = notice
         dropNoticeForTesting = dropNotice
         bannerAuthorizedForTesting = bannerAuthorized
         spinForTesting = spin
-        spinTintsForTesting = spinTints
         if let notices { self.notices = notices }
         if let automation { adopt(automation) } else { lastAutomation = nil }
     }

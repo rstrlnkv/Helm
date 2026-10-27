@@ -218,9 +218,8 @@ public enum HelmDates {
     ///
     /// So the third case is not offered. This is a switch over something the
     /// app defines, exhaustive on purpose: a caller cannot choose the answer
-    /// that is wrong, and the mapping below is what
-    /// `AnAgeIsNotASignedDeltaTests` holds — the enum stops a caller picking it
-    /// and cannot stop the enum being wired to it.
+    /// that is wrong. The enum stops a caller picking it and cannot stop the
+    /// enum being wired to it; nothing checks the mapping below.
     public enum AgeStyle {
         /// «1 минуту назад» — for a line that has the width for it.
         case full
@@ -239,7 +238,7 @@ public enum HelmDates {
     /// stamp that has none.
     ///
     /// Every caller of this draws how old something is: «Checked …»,
-    /// «Measured …», «Last scan …», a key file's date, a speed reading's date.
+    /// «Measured …», «Last scan …», a speed reading's date.
     /// Not one of them ever wants a time still to come, and there are two ways
     /// the system formatter writes one:
     ///
@@ -251,9 +250,8 @@ public enum HelmDates {
     ///    `RelativeDateTimeFormatter` rounds the interval to the nearest second
     ///    and renders a rounded zero in the *future* voice — 0.9 s ago comes
     ///    back «через 0 секунд», "in 0 seconds", "0秒钟后", and only at a full
-    ///    second does it say «1 секунду назад». A key file `ssh-keygen` has
-    ///    just written, and a scan row redrawn the moment its scan comes back,
-    ///    both sit inside that first second.
+    ///    second does it say «1 секунду назад». A scan row redrawn the moment
+    ///    its scan comes back sits inside that first second.
     ///
     /// **`nil`, and never a clamp.** «Just now» for a file dated next March is
     /// wrong in a way nothing on screen can show and no test can catch, because
@@ -263,28 +261,16 @@ public enum HelmDates {
     /// `.unknown`, `UpdateCheck.lastChecked` answers `nil`, and the VPN tile
     /// leaves the unit standing alone.
     ///
-    /// `style` defaults to what the four callers that predate it already drew:
-    /// a scan row, the update check, Disk's «measured» line and the key table
-    /// each have a full row's width, and only the VPN speed tile — 143 pt at the
-    /// default window and 91 at the narrowest — asks for the short form.
+    /// `style` defaults to what the three callers that predate it already drew:
+    /// a scan row, the update check and Disk's «measured» line each have a full
+    /// row's width, and only the VPN speed tile — 143 pt at the default window
+    /// and 91 at the narrowest — asks for the short form.
     public static func age(_ date: Date, to now: Date = Date(),
                            style: AgeStyle = .full,
                            language: String = AppLanguage.current.rawValue) -> String? {
         guard now.timeIntervalSince(date) >= youngestAgeWrittenAsPast else { return nil }
         return cache.relative(language: language, style: style)
             .localizedString(for: date, relativeTo: now)
-    }
-
-    /// The same age with the refusal flattened to an empty string.
-    ///
-    /// `age` is what a screen draws — all five of them already have an `if let`
-    /// to hang the absence on, and `DkStr.measured("")` draws «Измерено » with
-    /// nothing after it. This is for a comparison that has already established
-    /// the stamp is a real age and wants the spelling of it.
-    public static func relative(_ date: Date, to now: Date = Date(),
-                                style: AgeStyle = .full,
-                                language: String = AppLanguage.current.rawValue) -> String {
-        age(date, to: now, style: style, language: language) ?? ""
     }
 
     /// The seam, measured rather than assumed: below a full second every one of
@@ -294,7 +280,7 @@ public enum HelmDates {
 
     /// A **span** in the person's language — «1 ч 14 мин», "1h 14m".
     ///
-    /// Beside `relative` rather than in the module that wanted it first: how a
+    /// Beside `age` rather than in the module that wanted it first: how a
     /// language writes a length of time is `HelmUI`'s business, the same as how
     /// it writes a size or a date, and the second module to draw an uptime
     /// would otherwise write this again with its own idea of which units to

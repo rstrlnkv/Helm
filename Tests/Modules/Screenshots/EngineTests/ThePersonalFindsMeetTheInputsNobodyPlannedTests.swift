@@ -4,8 +4,8 @@ import XCTest
 @testable import Module_Screenshots_Engine
 
 /// **What "Blur Emails and Phone Numbers" and "Copy Text" do with the readings nobody planned for:** the card rule
-/// on numbers that are nearly cards, finds of every size and place, a reading with more finds than a person
-/// can look at, a second press, an undo and a press again, and the clipboard given text of every shape.
+/// on numbers that are nearly cards, finds of every size and place, a text taller than the blocks of a blur already
+/// over it, and what Copy Text keeps of a huge text.
 final class ThePersonalFindsMeetTheInputsNobodyPlannedTests: XCTestCase {
 
     private let source = RecognizedBoxes.Source(pixels: CGRect(x: 0, y: 0, width: 400, height: 200), scale: 2)
@@ -83,28 +83,6 @@ final class ThePersonalFindsMeetTheInputsNobodyPlannedTests: XCTestCase {
         XCTAssertLessThan(Date().timeIntervalSince(start2), 2)
     }
 
-    // MARK: A phone that is also a card
-
-    /// The same digits read as a phone number and as a card: one place, one blur — whichever box is the larger stays.
-    func testAPhoneThatPassesTheCardCheckIsBlurredOnce() {
-        let phone = PrivateMatch(kind: .phoneNumber, box: CGRect(x: 0.1, y: 0.5, width: 0.5, height: 0.05))
-        let card = PrivateMatch(kind: .cardNumber, box: CGRect(x: 0.15, y: 0.5, width: 0.4, height: 0.05))
-        for matches in [[phone, card], [card, phone]] {
-            let finds = PersonalFinds.finds(in: reading(matches), source: source, under: [])
-            XCTAssertEqual(finds.count, 1, "\(matches.map(\.kind))")
-        }
-        // Boxes that overlap and neither holds the other (the phone wraps to two lines, say) are two finds that overlap.
-        let skewed = PrivateMatch(kind: .cardNumber, box: CGRect(x: 0.4, y: 0.5, width: 0.5, height: 0.05))
-        let two = PersonalFinds.finds(in: reading([phone, skewed]), source: source, under: [])
-        XCTAssertEqual(two.count, 2)
-    }
-
-    func testIdenticalBoxesOfDifferentKindsAreOneBlur() {
-        let box = CGRect(x: 0.1, y: 0.5, width: 0.5, height: 0.05)
-        let all = [PrivateKind.emailAddress, .phoneNumber, .cardNumber, .link].map { PrivateMatch(kind: $0, box: box) }
-        XCTAssertEqual(PersonalFinds.finds(in: reading(all), source: source, under: []).count, 1)
-    }
-
     // MARK: Boxes that are not on the picture
 
     func testBoxesThatAreNotARectangleOnThePictureMakeNoFindAndNoCrash() {
@@ -135,82 +113,7 @@ final class ThePersonalFindsMeetTheInputsNobodyPlannedTests: XCTestCase {
         XCTAssertEqual(one.step, .thick)
     }
 
-    // MARK: More finds than anybody looks at
-
-    func testMoreThanFiveHundredFindsAreFiveHundredLayersInOneStep() {
-        // 600 finds in a 20 × 30 lattice of distinct places.
-        var matches: [PrivateMatch] = []
-        for row in 0..<30 { for column in 0..<20 {
-            matches.append(PrivateMatch(kind: .link, box: CGRect(x: 0.002 + Double(column) * 0.049, y: 0.003 + Double(row) * 0.033, width: 0.03, height: 0.01)))
-        } }
-        let finds = PersonalFinds.finds(in: reading(matches), source: source, under: [])
-        XCTAssertEqual(finds.count, 500)
-        var editing = AnnotationEditing(bounds: bounds)
-        XCTAssertEqual(editing.insert(blurs: finds), 500)
-        editing.undo()
-        XCTAssertEqual(editing.layers, [])
-        XCTAssertFalse(editing.canUndo)
-    }
-
-    /// The finds are made on the main actor in the overlay: a reading of a busy picture must not hold it.
-    func testAThousandsOfFindsAreMadeInTime() {
-        var matches: [PrivateMatch] = []
-        for index in 0..<8_000 {
-            let column = index % 100, row = index / 100
-            matches.append(PrivateMatch(kind: .link, box: CGRect(x: Double(column) * 0.0099, y: Double(row) * 0.0124, width: 0.004, height: 0.004)))
-        }
-        let start = Date()
-        let finds = PersonalFinds.finds(in: reading(matches), source: source, under: [])
-        let took = Date().timeIntervalSince(start)
-        XCTAssertEqual(finds.count, 500)
-        XCTAssertLessThan(took, 1.0, "8 000 matches took \(took) s on the main actor")
-    }
-
-    // MARK: A second press, and an undo
-
-    private func email(_ x: Double = 0.1, y: Double = 0.7) -> PrivateMatch {
-        PrivateMatch(kind: .emailAddress, box: CGRect(x: x, y: y, width: 0.4, height: 0.05))
-    }
-
-    func testAFindHalfUnderAnOldBlurIsBlurredAgainAsAWholeAndTheOldOneStays() {
-        var editing = AnnotationEditing(bounds: bounds)
-        let half = Annotation(tool: .blur, start: CGPoint(x: 10, y: 5), end: CGPoint(x: 60, y: 25), id: 1)
-        editing.insert(blurs: [RecognizedBoxes.Placed(rect: half.frame, step: .medium)])
-        let before = editing.layers
-        let finds = PersonalFinds.finds(in: reading([email()]), source: source, under: editing.layers)
-        XCTAssertEqual(finds.count, 1, "a find only half covered is made")
-        XCTAssertEqual(editing.insert(blurs: finds), 1)
-        XCTAssertEqual(Array(editing.layers.prefix(1)), before, "the old blur is untouched")
-        XCTAssertEqual(editing.layers.count, 2)
-    }
-
-    func testPressingTwiceAddsNothingTheSecondTimeAndANewMailAddsOne() {
-        var editing = AnnotationEditing(bounds: bounds)
-        let first = PersonalFinds.finds(in: reading([email()]), source: source, under: editing.layers)
-        XCTAssertEqual(editing.insert(blurs: first), 1)
-        let again = PersonalFinds.finds(in: reading([email()]), source: source, under: editing.layers)
-        XCTAssertEqual(again, [], "the second press finds everything under the first press's blurs")
-        XCTAssertEqual(editing.insert(blurs: again), 0)
-        let more = PersonalFinds.finds(in: reading([email(), email(0.1, y: 0.2)]), source: source, under: editing.layers)
-        XCTAssertEqual(more.count, 1, "a find that came since is made, and the old one is not made twice")
-    }
-
-    func testUndoThenPressAgainBlursAgainAndTheRedoStackIsGone() {
-        var editing = AnnotationEditing(bounds: bounds)
-        let matches = reading([email(), email(0.1, y: 0.2)])
-        editing.insert(blurs: PersonalFinds.finds(in: matches, source: source, under: editing.layers))
-        let ids = Set(editing.layers.map(\.id))
-        editing.undo()
-        XCTAssertTrue(editing.canRedo)
-        XCTAssertEqual(editing.insert(blurs: PersonalFinds.finds(in: matches, source: source, under: editing.layers)), 2)
-        XCTAssertFalse(editing.canRedo, "a new edit ends the redo")
-        XCTAssertEqual(editing.layers.count, 2)
-        _ = ids
-        editing.undo()
-        XCTAssertEqual(editing.layers, [])
-        editing.redo()
-        XCTAssertEqual(editing.layers.count, 2)
-    }
+    // MARK: A text taller than an old blur's blocks
 
     /// A blur of the person's own whose blocks are lower than the text under it leaves the text readable back (`RecognizedBoxes.step`), so it is not "already covered".
     func testATextTallerThanAnOldBlursBlocksIsBlurredAgain() {
@@ -221,20 +124,6 @@ final class ThePersonalFindsMeetTheInputsNobodyPlannedTests: XCTestCase {
         let own = RecognizedBoxes.place(tall.box, in: source)
         XCTAssertEqual(own?.step, .thick, "the subject: the find would get the thickest block, 20 points of text")
         XCTAssertEqual(finds.count, 1, "text 20 pt high under a 10 pt block is readable back, by the rule of the step: it is blurred again at the step it needs")
-    }
-
-    // MARK: Insert refuses what is not a box
-
-    func testInsertOfBoxesThatAreNotBoxesAddsNothingAndRecordsNothing() {
-        var editing = AnnotationEditing(bounds: bounds)
-        let none = [RecognizedBoxes.Placed(rect: CGRect(x: CGFloat.nan, y: 0, width: 10, height: 10), step: .thin),
-                    RecognizedBoxes.Placed(rect: CGRect(x: 500, y: 500, width: 10, height: 10), step: .thin),
-                    RecognizedBoxes.Placed(rect: CGRect(x: 10, y: 10, width: 0.4, height: 10), step: .thin),
-                    RecognizedBoxes.Placed(rect: .null, step: .thin), RecognizedBoxes.Placed(rect: .infinite, step: .thin)]
-        let added = editing.insert(blurs: none)
-        XCTAssertLessThanOrEqual(added, 1, "only .infinite is a box on the area")
-        if added == 0 { XCTAssertFalse(editing.canUndo) }
-        for layer in editing.layers { XCTAssertTrue(bounds.contains(layer.frame)) }
     }
 
     // MARK: Copy

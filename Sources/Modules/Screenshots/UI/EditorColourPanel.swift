@@ -2,15 +2,6 @@ import AppKit
 import HelmUI
 import Module_Screenshots_Engine
 
-/// What opens the system's colour panel for the overlay, and puts it away: a protocol so that a test hands the overlay a fake and
-/// no test opens the real `NSColorPanel`.
-@MainActor protocol ColourPanelOpening: AnyObject {
-    /// Shows the panel on `ink`; each colour it sends back, in sRGB, goes to `onPick`.
-    func open(showing ink: AnnotationInk, onPick: @escaping (AnnotationInk) -> Void)
-    /// Orders the panel out, drops its target and action, and gives back what `open` changed but the colour, which stays as picked.
-    func close()
-}
-
 /// The colour wheel's panel: `NSColorPanel.shared`, raised over the overlay.
 ///
 /// **Measured (macOS 27.2, a probe over the overlay):** with its defaults the panel does not show over the overlay; with
@@ -26,12 +17,13 @@ import Module_Screenshots_Engine
 /// The panel's target is held here, by the object that opens it (`ColorPanelBridge`'s reason: the panel holds it weakly). The panel is shared
 /// with the settings window's pickers, so what `open` changes besides the colour is remembered and put back by `close`, which drops the target and
 /// the action and leaves the colour as picked; the colour panel is never kept on the screen by anything but the overlay.
-@MainActor final class EditorColourPanel: ColourPanelOpening {
+@MainActor final class EditorColourPanel {
     private let bridge = ColorPanelBridge()
     /// What the panel was before `open` raised it, and who was frontmost; nil while it is not open.
     private var saved: (level: NSWindow.Level, hides: Bool, behaviour: NSWindow.CollectionBehavior, alpha: Bool, continuous: Bool,
                         previous: NSRunningApplication?)?
 
+    /// Shows the panel on `ink`; each colour it sends back, in sRGB, goes to `onPick`.
     func open(showing ink: AnnotationInk, onPick: @escaping (AnnotationInk) -> Void) {
         let panel = NSColorPanel.shared
         if saved == nil {
@@ -51,6 +43,7 @@ import Module_Screenshots_Engine
         panel.orderFrontRegardless()
     }
 
+    /// Orders the panel out, drops its target and action, and gives back what `open` changed but the colour, which stays as picked.
     func close() {
         guard let saved else { return }
         self.saved = nil

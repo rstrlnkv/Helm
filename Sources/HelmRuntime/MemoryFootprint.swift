@@ -28,20 +28,16 @@ public enum MemoryFootprint {
 }
 
 /// Keeps the last footprint per label and decides whether the change is worth a
-/// line. Pure, so the accounting is a unit test rather than a guess against a
-/// running app.
-public struct FootprintTracker: Sendable {
+/// line.
+struct FootprintTracker: Sendable {
 
     /// Below this, a change is noise: SwiftUI redraws, a formatter cache, an
-    /// icon. Named rather than inlined so a test can state it.
-    public static let defaultThreshold = 8 * 1024 * 1024
+    /// icon.
+    private static let threshold = 8 * 1024 * 1024
 
     private var last: [String: Int] = [:]
-    private let threshold: Int
 
-    public init(threshold: Int = FootprintTracker.defaultThreshold) {
-        self.threshold = threshold
-    }
+    init() {}
 
     /// A reading worth logging, or nil.
     ///
@@ -50,25 +46,25 @@ public struct FootprintTracker: Sendable {
     /// log would be a delta against nothing. Every reading, reported or silent,
     /// becomes the baseline of the next, so a climb made of steps under the
     /// threshold never reports.
-    public mutating func report(_ label: String, bytes: Int) -> Report? {
+    mutating func report(_ label: String, bytes: Int) -> Report? {
         defer { last[label] = bytes }
         guard let previous = last[label] else {
             return Report(label: label, bytes: bytes, delta: nil)
         }
         let delta = bytes - previous
-        guard abs(delta) >= threshold else { return nil }
+        guard abs(delta) >= Self.threshold else { return nil }
         return Report(label: label, bytes: bytes, delta: delta)
     }
 
-    public struct Report: Equatable, Sendable {
-        public let label: String
-        public let bytes: Int
+    struct Report: Equatable, Sendable {
+        let label: String
+        let bytes: Int
         /// nil on the first reading for a label.
-        public let delta: Int?
+        let delta: Int?
 
         /// "84 MB" / "84 MB (+38 MB)" / "46 MB (-12 MB)". Whole megabytes: a
         /// tenth of one is below what any of this can act on.
-        public var line: String {
+        var line: String {
             let mb = { (b: Int) in "\(b / (1024 * 1024)) MB" }
             guard let delta else { return mb(bytes) }
             let sign = delta >= 0 ? "+" : "-"

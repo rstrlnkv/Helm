@@ -1,13 +1,13 @@
 import XCTest
 @testable import HelmUI
 
+private func layout(_ widgets: [(String, PanelWidgetSize)]) -> PanelLayout {
+    PanelLayout(tabs: [.init(id: "t", seed: "main", name: nil,
+                             widgets: widgets.map { .init(widget: $0.0, size: $0.1) })])
+}
+
 /// What the panel remembers, and what it must never forget by accident.
 final class PanelLayoutTests: XCTestCase {
-
-    private func layout(_ widgets: [(String, PanelWidgetSize)]) -> PanelLayout {
-        PanelLayout(tabs: [.init(id: "t", seed: "main", name: nil,
-                                 widgets: widgets.map { .init(widget: $0.0, size: $0.1) })])
-    }
 
     // MARK: - Seeding
 
@@ -113,6 +113,101 @@ final class PanelLayoutTests: XCTestCase {
         let decoded = try JSONDecoder().decode(PanelLayout.self, from: Data(json.utf8))
         XCTAssertEqual(decoded.allSlots.first?.size, .tall)
     }
+
+    /// A tab written before glyphs existed decodes with none rather than
+    /// taking the layout with it.
+    func testATabFromBeforeGlyphsDecodes() throws {
+        let json = """
+        {"tabs":[{"id":"t","widgets":[{"widget":"vpn","size":"wide"}]}]}
+        """
+        let decoded = try JSONDecoder().decode(PanelLayout.self, from: Data(json.utf8))
+        XCTAssertNil(decoded.tabs.first?.glyph)
+    }
+
+    // MARK: - A widget that was taken off stays off
+
+    /// The bug this was written for: removing a widget was undone by the next
+    /// read. `reconciled` adds any id this build can draw that the layout does
+    /// not hold — which is how a new module joins — and a widget just removed
+    /// is exactly that. It came back at every launch.
+    func testARemovedWidgetDoesNotComeBackOnTheNextRead() {
+        let after = layout([("vpn", .wide), ("disk", .wide)])
+            .removing("disk")
+            .reconciled(arriving: ["vpn", "disk"])
+        XCTAssertEqual(after.allSlots.map(\.widget), ["vpn"])
+    }
+
+    /// And it does not come back on the tenth read either — the note is part
+    /// of what gets written, not something recomputed from what is on screen.
+    func testItStaysOffAcrossManyReads() {
+        var l = layout([("vpn", .wide), ("disk", .wide)]).removing("disk")
+        for _ in 0..<10 { l = l.reconciled(arriving: ["vpn", "disk"]) }
+        XCTAssertEqual(l.allSlots.map(\.widget), ["vpn"])
+    }
+
+    /// The control, and the thing that must not break: a module that has
+    /// genuinely never been on the panel still arrives.
+    func testAModuleNobodyRemovedStillArrives() {
+        let after = layout([("vpn", .wide)])
+            .removing("vpn")
+            .reconciled(arriving: ["vpn", "homebrew"])
+        XCTAssertEqual(after.allSlots.map(\.widget), ["homebrew"],
+                       "dismissing one widget silenced the others")
+    }
+
+    /// Putting it back answers the removal, so an update does not make somebody
+    /// add it again.
+    func testAddingItBackClearsTheNote() {
+        let back = layout([("vpn", .wide)])
+            .removing("vpn")
+            .adding("vpn", toTab: 0)
+        XCTAssertTrue(back.dismissed.isEmpty)
+        XCTAssertEqual(back.reconciled(arriving: ["vpn"]).allSlots.map(\.widget), ["vpn"])
+    }
+
+    /// A panel arranged before this build has no `dismissed` key, and the
+    /// synthesised decoder would have thrown on it — taking the whole layout
+    /// with it, because `JSONDecoder` gives up on the document rather than the
+    /// field.
+    func testALayoutFromBeforeThisBuildStillDecodes() throws {
+        let json = """
+        {"tabs":[{"id":"t","widgets":[{"widget":"vpn","size":"tall"}]}]}
+        """
+        let decoded = try JSONDecoder().decode(PanelLayout.self, from: Data(json.utf8))
+        XCTAssertEqual(decoded.allSlots.map(\.widget), ["vpn"])
+        XCTAssertTrue(decoded.dismissed.isEmpty)
+    }
+
+    func testTheNoteSurvivesTheRoundTrip() throws {
+        let before = layout([("vpn", .wide), ("disk", .wide)]).removing("disk")
+        let data = try JSONEncoder().encode(before)
+        XCTAssertEqual(try JSONDecoder().decode(PanelLayout.self, from: data).dismissed, ["disk"])
+    }
+
+    /// Neither the dismissed list nor the hidden one re-adds a tile on the next read.
+    func testNeitherRefusalIsUndoneByAReread() {
+        var l = layout([("layout", .wide), ("vpn", .wide)]).removing("layout").hiding("homebrew")
+        for _ in 0..<5 { l = l.reconciled(arriving: ["layout", "vpn", "homebrew"]) }
+        XCTAssertEqual(l.allSlots.map(\.widget), ["vpn"])
+        XCTAssertTrue(l.isHidden("homebrew"))
+    }
+
+    /// A layout written before `dismissed` or `hidden` existed still decodes — the
+    /// synthesised decoder throws on a missing key and takes the document with
+    /// it.
+    func testALayoutFromBeforeEitherListDecodes() throws {
+        let json = """
+        {"tabs":[{"id":"t","widgets":[{"widget":"vpn","size":"wide"}]}]}
+        """
+        let decoded = try JSONDecoder().decode(PanelLayout.self, from: Data(json.utf8))
+        XCTAssertTrue(decoded.dismissed.isEmpty)
+        XCTAssertTrue(decoded.hidden.isEmpty)
+    }
+}
+
+/// The arithmetic of rearranging the panel: moves, sizes, adding and removing,
+/// tabs and the drawer. Losing an arrangement is PanelLayoutTests'.
+final class PanelLayoutArithmeticTests: XCTestCase {
 
     // MARK: - Rearranging
 
@@ -243,66 +338,6 @@ final class PanelLayoutTests: XCTestCase {
         XCTAssertEqual(before.removingTab("nope"), before)
     }
 
-    // MARK: - A widget that was taken off stays off
-
-    /// The bug this was written for: removing a widget was undone by the next
-    /// read. `reconciled` adds any id this build can draw that the layout does
-    /// not hold — which is how a new module joins — and a widget just removed
-    /// is exactly that. It came back at every launch.
-    func testARemovedWidgetDoesNotComeBackOnTheNextRead() {
-        let after = layout([("vpn", .wide), ("disk", .wide)])
-            .removing("disk")
-            .reconciled(arriving: ["vpn", "disk"])
-        XCTAssertEqual(after.allSlots.map(\.widget), ["vpn"])
-    }
-
-    /// And it does not come back on the tenth read either — the note is part
-    /// of what gets written, not something recomputed from what is on screen.
-    func testItStaysOffAcrossManyReads() {
-        var l = layout([("vpn", .wide), ("disk", .wide)]).removing("disk")
-        for _ in 0..<10 { l = l.reconciled(arriving: ["vpn", "disk"]) }
-        XCTAssertEqual(l.allSlots.map(\.widget), ["vpn"])
-    }
-
-    /// The control, and the thing that must not break: a module that has
-    /// genuinely never been on the panel still arrives.
-    func testAModuleNobodyRemovedStillArrives() {
-        let after = layout([("vpn", .wide)])
-            .removing("vpn")
-            .reconciled(arriving: ["vpn", "homebrew"])
-        XCTAssertEqual(after.allSlots.map(\.widget), ["homebrew"],
-                       "dismissing one widget silenced the others")
-    }
-
-    /// Putting it back answers the removal, so an update does not make somebody
-    /// add it again.
-    func testAddingItBackClearsTheNote() {
-        let back = layout([("vpn", .wide)])
-            .removing("vpn")
-            .adding("vpn", toTab: 0)
-        XCTAssertTrue(back.dismissed.isEmpty)
-        XCTAssertEqual(back.reconciled(arriving: ["vpn"]).allSlots.map(\.widget), ["vpn"])
-    }
-
-    /// A panel arranged before this build has no `dismissed` key, and the
-    /// synthesised decoder would have thrown on it — taking the whole layout
-    /// with it, because `JSONDecoder` gives up on the document rather than the
-    /// field.
-    func testALayoutFromBeforeThisBuildStillDecodes() throws {
-        let json = """
-        {"tabs":[{"id":"t","widgets":[{"widget":"vpn","size":"tall"}]}]}
-        """
-        let decoded = try JSONDecoder().decode(PanelLayout.self, from: Data(json.utf8))
-        XCTAssertEqual(decoded.allSlots.map(\.widget), ["vpn"])
-        XCTAssertTrue(decoded.dismissed.isEmpty)
-    }
-
-    func testTheNoteSurvivesTheRoundTrip() throws {
-        let before = layout([("vpn", .wide), ("disk", .wide)]).removing("disk")
-        let data = try JSONEncoder().encode(before)
-        XCTAssertEqual(try JSONDecoder().decode(PanelLayout.self, from: data).dismissed, ["disk"])
-    }
-
     // MARK: - Not a tile is not the same as not here
 
     /// The report that produced this distinction, in one test: «I want to take
@@ -348,14 +383,6 @@ final class PanelLayoutTests: XCTestCase {
         XCTAssertEqual(after.allSlots.map(\.widget), ["layout"])
     }
 
-    /// Neither list re-adds a tile on the next read.
-    func testNeitherRefusalIsUndoneByAReread() {
-        var l = layout([("layout", .wide), ("vpn", .wide)]).removing("layout").hiding("homebrew")
-        for _ in 0..<5 { l = l.reconciled(arriving: ["layout", "vpn", "homebrew"]) }
-        XCTAssertEqual(l.allSlots.map(\.widget), ["vpn"])
-        XCTAssertTrue(l.isHidden("homebrew"))
-    }
-
     /// The control: refusing one thing refuses one thing, and the two lists do
     /// not answer for each other.
     func testTheTwoListsAreNotOneList() {
@@ -366,18 +393,6 @@ final class PanelLayoutTests: XCTestCase {
         XCTAssertTrue(gone.isDismissed("layout"), "hidden must also stop being a tile")
     }
 
-    /// A layout written before either list existed still decodes — the
-    /// synthesised decoder throws on a missing key and takes the document with
-    /// it.
-    func testALayoutFromBeforeEitherListDecodes() throws {
-        let json = """
-        {"tabs":[{"id":"t","widgets":[{"widget":"vpn","size":"wide"}]}]}
-        """
-        let decoded = try JSONDecoder().decode(PanelLayout.self, from: Data(json.utf8))
-        XCTAssertTrue(decoded.dismissed.isEmpty)
-        XCTAssertTrue(decoded.hidden.isEmpty)
-    }
-
     /// A tab whose id is already taken is not added. `ForEach` keyed on that id
     /// draws one row for two tabs and puts the second one's widgets where
     /// nobody can reach them — the panel looks like it lost a tab.
@@ -385,26 +400,5 @@ final class PanelLayoutTests: XCTestCase {
         let once = layout([]).addingTab(id: "t2")
         XCTAssertEqual(once.addingTab(id: "t2"), once)
         XCTAssertEqual(once.tabs.count, 2)
-    }
-
-    /// New tabs are marked with different glyphs, so a strip showing only
-    /// glyphs is a strip you can tell apart.
-    func testNewTabsGetDifferentGlyphs() {
-        // The helper's tab carries none — a layout from before glyphs — so the
-        // count is of the ones that were handed out, not of the tabs.
-        let two = layout([]).addingTab(id: "a").addingTab(id: "b")
-        let handed = two.tabs.compactMap(\.glyph)
-        XCTAssertEqual(handed.count, 2)
-        XCTAssertEqual(Set(handed).count, 2, "two tabs were marked the same")
-    }
-
-    /// A tab written before glyphs existed decodes with none rather than
-    /// taking the layout with it.
-    func testATabFromBeforeGlyphsDecodes() throws {
-        let json = """
-        {"tabs":[{"id":"t","widgets":[{"widget":"vpn","size":"wide"}]}]}
-        """
-        let decoded = try JSONDecoder().decode(PanelLayout.self, from: Data(json.utf8))
-        XCTAssertNil(decoded.tabs.first?.glyph)
     }
 }

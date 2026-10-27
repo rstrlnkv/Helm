@@ -43,7 +43,7 @@ public extension View {
     ///
     /// **`.animation(_:value:)` on the frame this feeds does not rescue it.**
     /// Measured against the real view it is indistinguishable from no animation
-    /// at all — `DisclosureProbe` holds both variants and the control.
+    /// at all.
     ///
     /// **`nil` is «nothing has measured this yet», and it is not a change.**
     /// Animating the first measurement plays the view collapsing from whatever

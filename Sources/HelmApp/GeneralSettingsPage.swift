@@ -144,13 +144,10 @@ struct MenuBarSettingsView: View {
     /// stamp this side of a second old, or one an NTP step has left ahead of
     /// the clock, is only a stamp `HelmDates.age` will not word. Saying «never»
     /// there would contradict the switch on the same row.
-    ///
-    /// Static and beside `scanRows` for the same reason that one is: a decision
-    /// with three answers, reachable without a window.
-    static func scanCaption(lastRun: Date?, now: Date = Date(),
-                            language: AppLanguage = AppLanguage.current) -> String? {
+    private static func scanCaption(lastRun: Date?) -> String? {
+        let language = AppLanguage.current
         guard let lastRun else { return AppStr.scanNeverRun(language: language) }
-        return HelmDates.age(lastRun, to: now, language: language.rawValue)
+        return HelmDates.age(lastRun, language: language.rawValue)
             .map { AppStr.scanLastRun($0, language: language) }
     }
 
@@ -469,7 +466,7 @@ struct MenuBarSettingsView: View {
         // The `Form` is this page's scroll view, so nothing here caps it: a
         // capped scroller leaves the pane either side of it dead to the wheel,
         // and the 704 pt column is the grouped form style's own anyway
-        // (`helmSettingsColumn`, and `ThePaneTakesTheWheelAtItsEdgesTests`).
+        // (`helmSettingsColumn`).
         // What the page does still want is the idling, which is the half of that
         // modifier this call is.
         .helmIdlesOffScreen()
@@ -490,7 +487,7 @@ struct MenuBarSettingsView: View {
         // reads, and both of those run on the thread that draws — the `.task`
         // continuation is drained by the very layout pass that builds the first
         // frame. The trackers do the same «once, and again when Helm comes back»
-        // off the cooperative pool, and let a reading name the grants instead.
+        // off the cooperative pool.
         .helmTracksFullDiskAccess($diskAccess)
         .helmTracksAccessibility($accessibility)
         .helmTracksScreenRecording($screenRecording)

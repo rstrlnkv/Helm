@@ -29,8 +29,8 @@ import HelmRuntime
 /// thing left that knows anything went wrong.
 ///
 /// The module already has a word for "could not answer" and it is nil: zero
-/// bytes on the wire, the view model keeps its last answer, Refresh stays live
-/// (`ATimedOutQueryKeepsTheLastAnswerTests`). These tests ask for that word
+/// bytes on the wire, the view model keeps its last answer, Refresh stays live.
+/// These tests ask for that word
 /// where today there is a confident empty list.
 ///
 /// **`search` is deliberately excluded, and the last test says why.** Measured

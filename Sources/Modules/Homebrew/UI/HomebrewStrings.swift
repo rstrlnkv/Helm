@@ -24,7 +24,7 @@ enum HbStr {
     /// **The Spanish value carries a word joiner (`\u{2060}`) after each slash of
     /// `/opt/homebrew`**: the typesetter may break a line after a slash, and at
     /// the page's column it did, leaving `/opt/` at the end of one line and
-    /// `homebrew.` alone on the next (`ThePathInTheInstallSentenceStaysWholeTests`);
+    /// `homebrew.` alone on the next;
     /// a joiner after the second slash alone only moved the break to the first.
     /// The mark draws nothing. The sentence is not selectable — `HelmEmptyState`
     /// draws its message without `textSelection` — so no path is copied out of
@@ -51,9 +51,7 @@ enum HbStr {
     /// included. Without
     /// the article, because the article agrees with the sentence the phrase sits
     /// in and the sentences here add their own. `zh.lproj` and `pt.lproj` stand
-    /// for Apple's `zh_CN` and `pt_BR` (Simplified script, Brazilian wording —
-    /// `TheToolsAreNamedAsAppleNamesThemTests` reads Apple's bundle and holds
-    /// the eight to it).
+    /// for Apple's `zh_CN` and `pt_BR` (Simplified script, Brazilian wording).
     static func appleTools(language: AppLanguage = AppLanguage.current) -> String {
         L("command line developer tools", language: language)
     }
@@ -191,8 +189,7 @@ enum HbStr {
     /// Its last sentence holds only while the wait does: a press on «Stop
     /// waiting» ends it, and `toolsWaitStoppedConsole` is the line that says so.
     /// **Apple's «Install» is `install` above, quoted**: it is the same word in
-    /// all eight languages (`TheToolsAreNamedAsAppleNamesThemTests` holds both
-    /// to Apple's bundle), so it is interpolated and never typed into a sentence.
+    /// all eight languages, so it is interpolated and never typed into a sentence.
     static func toolsWaitingConsole(language: AppLanguage = AppLanguage.current) -> String {
         let tools = appleTools(language: language)
         let button = Quoted(L("Install", language: language), language: language)
@@ -301,8 +298,7 @@ enum HbStr {
     /// (`HomebrewEngine.installBrewLabel`), which is not a brew run, the label
     /// is a state's name and not a word of any language, so quoting it inside a
     /// translated sentence put English in the middle of every translation: it has a
-    /// whole sentence of its own and a `.lproj` key, with no label in it
-    /// (`AnInterruptedInstallIsSaidInThePersonsLanguageTests`).
+    /// whole sentence of its own and a `.lproj` key, with no label in it.
     static func interruptedAtQuit(_ label: String,
                                   language: AppLanguage = AppLanguage.current) -> String {
         if label == HomebrewEngine.installBrewLabel {
@@ -369,8 +365,7 @@ enum HbStr {
 
     /// The same line before `brew outdated` has ever answered: the two counts
     /// that have arrived, and silence about the one that has not. A zero there
-    /// would be a statement about a question nobody asked —
-    /// `AStatusLineDoesNotInventZeroUpdatesTests` holds the pairing.
+    /// would be a statement about a question nobody asked.
     static func packagesStatusNoUpdates(_ total: Int, _ casks: Int) -> String { L("Packages: \(total) · Casks: \(casks)", [.ru: "Пакетов: \(total) · Пакетов cask: \(casks)", .es: "Paquetes: \(total) · casks: \(casks)", .fr: "Paquets\u{00A0}: \(total) · casks\u{00A0}: \(casks)", .de: "Pakete: \(total) · Casks: \(casks)", .ja: "パッケージ \(total)・cask \(casks)", .zh: "软件包 \(total) · cask \(casks)", .pt: "Pacotes: \(total) · casks: \(casks)"]) }
 
     /// Shown instead of the Upgrade button. Not "cannot be upgraded": it is

@@ -33,35 +33,6 @@ import Foundation
 /// matter there.
 public enum PrivateFile {
 
-    /// **What a symlink at the destination means to this write**, which is a
-    /// question the caller owns and no default can answer for both kinds of
-    /// file this app writes.
-    ///
-    /// An atomic write is a temporary file `rename`d over the destination, and
-    /// `rename` replaces the *name*. For Helm's own caches and journals that is
-    /// exactly right — a link planted where a cache goes is not an arrangement
-    /// to honour, and replacing the name is what stops a write being redirected
-    /// out of the support folder. For a file that belongs to the person it is
-    /// wrong in a way nothing reports: `~/.ssh/config` is very often a link
-    /// into a dotfiles checkout, and the first Apply turned it into an ordinary
-    /// file — the checkout kept the old text, `git status` said nothing, and
-    /// every later edit there silently stopped reaching `ssh`.
-    ///
-    /// **A hard link is the other half of the same question and answers the
-    /// other way.** A second name for one inode is not a redirection anybody
-    /// arranged and no resolution can see it, so the rename stays a rename:
-    /// `.theName` and `.whatItLeadsTo` both write through a new inode at the
-    /// name they end on, and neither ever writes into a file a hard link
-    /// reaches out of the home directory.
-    public enum Destination: Sendable {
-        /// The name is the file. A symlink there is replaced by this write.
-        case theName
-        /// The name may only point at the file, and then the file is the
-        /// target. Every symlink in the path is resolved first, so the link
-        /// survives the write and what it points at receives it.
-        case whatItLeadsTo
-    }
-
     /// Encode, and write it the way `write(_ data:to:)` below does: into a file
     /// created 0600, renamed into place.
     ///
@@ -101,15 +72,9 @@ public enum PrivateFile {
         return directory(at: url.deletingLastPathComponent()) && write(data, to: url)
     }
 
-    /// The same for bytes that are not JSON — the log's redaction salt, and the
-    /// two files in `~/.ssh` that may be links into somebody's dotfiles.
-    public static func write(_ data: Data, to url: URL,
-                             destination: Destination = .theName) -> Bool {
-        let path: String
-        switch destination {
-        case .theName: path = url.path
-        case .whatItLeadsTo: path = PathCanonical.resolvingWholePath(url.path)
-        }
+    /// The same for bytes that are not JSON — the log's redaction salt among them.
+    public static func write(_ data: Data, to url: URL) -> Bool {
+        let path = url.path
         guard let scratch = bornPrivate(beside: path) else { return false }
         do {
             let file = FileHandle(fileDescriptor: scratch.descriptor, closeOnDealloc: true)

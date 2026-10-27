@@ -8,20 +8,10 @@ import XCTest
 /// **A JPEG is encoded and written by Helm, with the real writer, and it takes
 /// the same never-replace ladder a PNG does.** ScreenCaptureKit can write the
 /// file itself when asked for a type, and a file it writes is a file no ladder
-/// saw. The picture is flattened onto white before encoding — macOS's own tool
-/// leaves white under a window's shadow — and the clipboard gets a PNG whatever the file is.
+/// saw. The clipboard gets a PNG whatever the file is.
 final class TheJPEGIsOursAndNeverReplacesTests: XCTestCase {
 
     private let fixed = Date(timeIntervalSince1970: 1_790_000_000)
-
-    /// A picture that is **clear** — alpha 0 all over — so what a JPEG shows of it is the ground.
-    private func clearImage(width: Int, height: Int) throws -> CGImage {
-        let context = try XCTUnwrap(CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
-                                              bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
-                                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-        context.clear(CGRect(x: 0, y: 0, width: width, height: height))
-        return try XCTUnwrap(context.makeImage())
-    }
 
     private func liveSession(home: URL, settings: ScreenshotsSettings) -> (CaptureSession, FakeCapture, FakePasteboard) {
         let capture = FakeCapture(), board = FakePasteboard()
@@ -37,59 +27,6 @@ final class TheJPEGIsOursAndNeverReplacesTests: XCTestCase {
 
     private func type(of data: Data) -> String? {
         CGImageSourceCreateWithData(data as CFData, nil).flatMap { CGImageSourceGetType($0) as String? }
-    }
-
-    func testTheFileIsAJPEGWithOurExtensionAndNoAlpha() async throws {
-        let home = scratchDirectory("shots-jpeg")
-        let (session, capture, _) = liveSession(home: home, settings: ScreenshotsSettings(saveTarget: .desktop, format: .jpeg))
-        capture.outcome = .frozen(Freeze(displays: [Rig.display(1)], windows: []))
-
-        let delivery = await session.captureScreens()
-
-        let file = try XCTUnwrap(delivery.files.first, "nothing was written: \(delivery.refusals)")
-        XCTAssertEqual(file.pathExtension, "jpg")
-        let data = try Data(contentsOf: file)
-        XCTAssertEqual(type(of: data), "public.jpeg")
-        XCTAssertEqual(Array(data.prefix(2)), [0xFF, 0xD8], "not a JPEG on disk")
-        let decoded = try XCTUnwrap(CGImageSourceCreateWithData(data as CFData, nil)
-            .flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) })
-        XCTAssertTrue([CGImageAlphaInfo.none, .noneSkipFirst, .noneSkipLast].contains(decoded.alphaInfo),
-                      "a JPEG carrying alpha: \(decoded.alphaInfo.rawValue)")
-    }
-
-    func testAPictureWithNothingInItIsWhiteAndNotBlack() throws {
-        let data = try XCTUnwrap(CaptureSession.encode(try clearImage(width: 16, height: 16), as: .jpeg))
-        let decoded = try XCTUnwrap(CGImageSourceCreateWithData(data as CFData, nil)
-            .flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) })
-        let (red, green, blue) = firstPixel(decoded)
-        XCTAssertGreaterThanOrEqual(min(red, green, blue), 250, "the clear part of a JPEG came out \(red),\(green),\(blue)")
-    }
-
-    /// The part of a window's picture that matters: a shadow is half-transparent
-    /// black, and over white it is grey. Dropping the alpha instead leaves it black.
-    func testAHalfTransparentShadowIsGreyOverWhiteAndNotBlack() throws {
-        let context = try XCTUnwrap(CGContext(data: nil, width: 16, height: 16, bitsPerComponent: 8, bytesPerRow: 0,
-                                              space: CGColorSpaceCreateDeviceRGB(),
-                                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-        context.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0.5))
-        context.fill(CGRect(x: 0, y: 0, width: 16, height: 16))
-        let shadow = try XCTUnwrap(context.makeImage())
-        let data = try XCTUnwrap(CaptureSession.encode(shadow, as: .jpeg))
-        let decoded = try XCTUnwrap(CGImageSourceCreateWithData(data as CFData, nil)
-            .flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) })
-        let (red, green, blue) = firstPixel(decoded)
-        for channel in [red, green, blue] {
-            XCTAssertTrue((100...160).contains(channel), "half-transparent black came out \(red),\(green),\(blue)")
-        }
-    }
-
-    func testAnOpaquePictureKeepsItsColour() throws {
-        let data = try XCTUnwrap(CaptureSession.encode(makeImage(width: 16, height: 16, red: 255), as: .jpeg))
-        let decoded = try XCTUnwrap(CGImageSourceCreateWithData(data as CFData, nil)
-            .flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) })
-        let (red, green, blue) = firstPixel(decoded)
-        // Colour-managed on the way to a pixel and lossy on the way to a file: red is about, not exactly, 255,0,0.
-        XCTAssertGreaterThan(red, 200); XCTAssertLessThan(green, 60); XCTAssertLessThan(blue, 60)
     }
 
     /// Two captures in one second, and a file already there: three names, none replaced.

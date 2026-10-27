@@ -34,12 +34,12 @@ or one that disagrees, is never installed silently: the release page opens inste
 | **Keep Awake** | Prevent sleep manually, by timer (menu-bar countdown ring + remaining time), or automatically (external display, power, chosen apps). Closed-lid mode, battery guard, pointer jiggle, global hotkey. |
 | **VPN** | Connect/disconnect system VPNs, per-app auto-connect rules, silent L2TP/IPSec connect. |
 | **Uninstaller** | Remove apps together with their leftovers (caches, preferences, containers, …) — everything goes to the Trash. A Leftovers tab finds files from apps that are already gone. |
+| **Screenshots** | Freezes the screen, then you pick the whole screen, a window or an area out of the frozen picture, with a timer if you want one. Drag an area and it becomes an editor over the picture — arrows, shapes, pen, highlighter, text, blur, crop — that can also copy the text it shows or blur the emails and phone numbers macOS finds in it. Saved as PNG or JPEG, or copied; Edit on a saved shot replaces its file and the original goes to the Trash. macOS's own screenshot shortcuts are read, never changed. Needs Screen & System Audio Recording. |
 | **Homebrew** | Installed formulae/casks with descriptions, updates (per-package and all), search & install, live console for long operations, in-app Homebrew installer. |
 | **Login Items & Extensions** | Everything that loads with the system — launch agents, settings files, plug-ins — marked In use / System / Leftover; leftovers removable. |
 | **Disk** | What is taking up room: a sunburst ring over the volume, firmlink-aware so an APFS volume group is not counted twice; folders open under the names Finder gives them, and anything you want gone collects in one list before it goes to the Trash. |
 | **Duplicates** | Files that exist more than once, from 1 MB up, matched by content rather than by name. The copy that stays is the one that was there first — by the Date Added the Finder shows — not the one an alphabetical sort happened to put on top. Hard links are one file and are never offered. |
 | **Autopilot** | Folders that keep themselves in order. Rules on name, extension, kind, size, dates, Finder tag and where a file was downloaded from; actions to move, sort into subfolders by kind or by month, rename by pattern, tag, or trash. A rule is shown against the folder's real files before it is switched on, nothing is ever overwritten, and no file is acted on twice. No script action, deliberately — the rules live in a plist any process can write. |
-| **Hosts & Keys** | The SSH config as a list: hosts from `~/.ssh/config` with the identity each uses, keys with their type and fingerprint, and which of them the agent is holding. The file's own text stays canonical — anything Helm does not parse, comments and `Include` lines among it, is written back byte for byte. |
 | **Keyboard** | Fixes a word typed in the wrong keyboard layout — `ghbdtn` becomes `привет` — and moves the input source with it. Only when the word is not a word as typed and is one once swapped; terminals and password managers are left alone. Abbreviations expand at the same boundary. Needs Accessibility. |
 
 Everything is localized in eight languages: English, 中文, Español, Français,
@@ -81,12 +81,13 @@ the version scheme and the shape of a tag are described in ARCHITECTURE.md § Re
 Requires Xcode with the macOS 26 SDK and a Swift 6 toolchain.
 
 ```bash
-bash Scripts/test.sh            # the unit suite, read for you
+bash Scripts/test.sh            # the suite less its optional classes, read for you
 bash Scripts/package-app.sh     # build + sign → $TMPDIR/helm-package/Helm.app
 ```
 
-`bash Scripts/test.sh` runs `swift test`, keeps the whole log and reads it for
-you — the closing lines of a run speak for its last bundle and not for the suite;
+`bash Scripts/test.sh` runs `swift test` less the classes `Tests/optional-tests.txt` names
+(`HELM_FULL_SUITE=1` runs them all), keeps the whole log and reads it for you — the
+closing lines of a run speak for its last bundle and not for the suite;
 [CLAUDE.md](CLAUDE.md) says everything else.
 
 ## Licence

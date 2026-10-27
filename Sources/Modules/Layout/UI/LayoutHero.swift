@@ -104,8 +104,7 @@ struct LayoutHero: View {
     /// month · ≈ 48 s not spent typing again».
     ///
     /// Every state is still one string and therefore one height, which is what
-    /// the reserved line used to buy. `LayoutHeroIsOneHeightTests` measures it
-    /// in all eight languages rather than trusting this comment.
+    /// the reserved line used to buy.
     private var caption: String {
         switch state {
         case .deaf: return LyStr.heroNotWatchingWhy

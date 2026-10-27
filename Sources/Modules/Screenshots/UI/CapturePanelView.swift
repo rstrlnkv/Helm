@@ -175,11 +175,10 @@ struct CapturePanelView: View {
 
 /// The empty glass as a handle. A backing view under the cells that takes a press nothing above it took and hands it to
 /// the window to drag (`performDrag`), so a cell's press stays a press and is never the start of a drag.
-struct WindowDragHandle: NSViewRepresentable {
+private struct WindowDragHandle: NSViewRepresentable {
     func makeNSView(context: Context) -> DragView { DragView() }
     func updateNSView(_ view: DragView, context: Context) {}
 
-    /// Not private: a test asks which view answers at a point.
     final class DragView: NSView {
         override var mouseDownCanMoveWindow: Bool { true }
         override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }

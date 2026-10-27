@@ -14,8 +14,7 @@ Each guard faces a direction the others are blind to, and each file's header say
 - `Tests/HelmUITests/StringsCoverageTests.swift` — a key missing from one of the eight files.
 - `Tests/HelmUITests/NoOrphanTranslationsTests.swift` — a translation nothing asks for.
 - `Tests/HelmUITests/StringsLiveInLprojTests.swift` — a literal that reached no table.
-- `Tests/HelmUITests/OneEntryPerKeyTests.swift` and
-  `Tests/HelmUITests/NoKeyIsWrittenTwiceTests.swift` — a key written twice in one file.
+- `Tests/HelmUITests/OneEntryPerKeyTests.swift` — a key written twice in one file.
 - `Tests/HelmUITests/PunctuationIsTerminologyTests.swift` — a mark or a space a language
   does not use.
 

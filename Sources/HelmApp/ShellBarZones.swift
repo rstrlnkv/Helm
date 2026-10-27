@@ -9,7 +9,7 @@ import HelmUI
 /// stands at the bar's trailing edge (2026-09-28), even though the two are
 /// separate hosted views with nothing to composite together: each reads the
 /// same four numbers (`helmNameZoneInactiveOpacity`) and is handed `appearsActive` from the one
-/// `ShellPageBar.Snapshot`, so they move on exactly the same call.
+/// `NameSnapshot` of `SettingsToolbar`'s `patchName(_:)`, so they move on exactly the same call.
 @MainActor func helmNameZoneInactiveOpacity(dark: Bool, titlebarIsTransparent: Bool) -> Double {
     switch (dark, titlebarIsTransparent) {
     case (true, true): NameZoneView.inactiveOpacityDark
@@ -21,7 +21,7 @@ import HelmUI
 
 extension HelmToolbarActionsCapsule.InactiveInk {
     /// The numbers a flat capsule dims by in an inactive window: the name zone's, for the title bar the
-    /// window wears. `ShellBarActions` and `SettingsToolbar` hand the capsule these.
+    /// window wears. `SettingsToolbar` hands the capsule these.
     @MainActor static func nameZone(titlebarIsTransparent: Bool) -> Self {
         Self(dark: helmNameZoneInactiveOpacity(dark: true, titlebarIsTransparent: titlebarIsTransparent),
              light: helmNameZoneInactiveOpacity(dark: false, titlebarIsTransparent: titlebarIsTransparent))
@@ -50,7 +50,7 @@ struct NameZoneView: View {
     /// (`HelmToolbarActionsCapsule`'s own header). `appearsActive` costs no
     /// rebuild the capsule's own glass needs — every ink below is a plain
     /// SwiftUI value read at draw time, not Liquid Glass, so reassigning this
-    /// view's `rootView` (`ShellPageBar.draw`) is enough to move it.
+    /// view's `rootView` (`SettingsToolbar`'s `patchName(_:)`) is enough to move it.
     let appearsActive: Bool
     /// Which title bar the zone sits in — `window.titlebarAppearsTransparent`,
     /// which the band decision sets (`HelmBandChoice.titlebarAppearsTransparent`).
@@ -88,11 +88,7 @@ struct NameZoneView: View {
     /// 0.399, Dark 0.279 — against 0.329 and 0.296 under the transparent
     /// title bar in the same run, which the pair above answers. Whether
     /// macOS 26 itself dims its title by the same amount is for the owner's
-    /// 26 virtual machine to confirm; `TheCapsuleDrawsWhatAppKitsPlatterDrawsTests`
-    /// holds the zone's shares to AppKit's title under both title bars. The zone's
-    /// S1 ink under this one is not held to the title's:
-    /// `testTheNameZoneDrawsAppKitsTitleInkUnderTheOpaqueTitleBar` there compares
-    /// the two and says what each reads.
+    /// 26 virtual machine to confirm.
     static let inactiveOpacityOpaqueDark: Double = 0.28
     static let inactiveOpacityOpaqueLight: Double = 0.40
 
@@ -127,7 +123,7 @@ struct NameZoneView: View {
 /// **The status word or badge, at the bar's trailing
 /// edge** — the owner, 2026-09-28: «Давай вернем его в правую часть». A
 /// sibling of `NameZoneView` rather than a branch inside it, because the two
-/// are separate hosted views (`ShellPageBar.drawIdentity`; in `SettingsToolbar`, separate `NSToolbarItem`s),
+/// are separate hosted views (in `SettingsToolbar`, separate `NSToolbarItem`s),
 /// drawing the two shapes a status has always had — a badge for active,
 /// quiet text for idle, nothing for a module with no notion of running — and
 /// dimming by the same four numbers (`helmNameZoneInactiveOpacity`) so the
@@ -140,16 +136,16 @@ struct NameZoneView: View {
 /// window's top edge to the drawn top of the badge's fill (or of the quiet
 /// word's ink) is what AppKit's vertical centring leaves in a bar
 /// `barHeight` tall, and the same distance is put between the drawn right
-/// edge and the window's. The actions capsule stands `ShellBarLayout.trailing`
-/// from the bar's edge, 8 pt: it is 36 pt tall in a 52 pt bar, so its top gap
-/// is that 8 already, and only this view is shorter than the bar by enough to
-/// matter.
+/// edge and the window's. The actions capsule, where no search follows it, stands
+/// 8 pt from the bar's edge (AppKit's 4 and `HelmToolbarActionsCapsule.edgeMargin`, 4):
+/// it is 36 pt tall in a 52 pt bar, so its top gap is that 8 already, and only this
+/// view is shorter than the bar by enough to matter.
 ///
 /// **A nil status is passed, and the body marks it hidden from accessibility** —
 /// `SettingsToolbar` makes this view for the shared name-only bar's status
 /// item (`makeStatusItem`) and re-roots it with the status of the page on
 /// screen (`patchName`): nil wherever `pageIdentity()` has none, and then it
-/// draws nothing. `ShellPageBar` mounts it only with a status.
+/// draws nothing.
 /// `accessibilityHidden(status == nil)` is on what this body draws; nothing
 /// in `SettingsToolbar` sets accessibility on the hosting view or on the
 /// item, whose `label` is then empty.
@@ -190,8 +186,7 @@ extension StatusZoneView {
     /// **The distance AppKit left between an `isBordered = false` last
     /// item's own box and the window's trailing edge**, kept as a number: the
     /// 8 pt of a bordered item less `HelmToolbarActionsCapsule.edgeMargin`.
-    /// No row measures it now, and `ShellPageBar` passes its own margin
-    /// (`ShellBarLayout.statusTrailing`) instead of this default.
+    /// No row measures it now.
     static let boxMargin: CGFloat = 8 - HelmToolbarActionsCapsule.edgeMargin
 
     /// Where the drawing lies inside its own box, in points from the box's
@@ -245,19 +240,16 @@ extension StatusZoneView {
     /// AppKit's centring leaves: `(barHeight - box) / 2` above the box, plus
     /// the ink's own offset inside it (`Ink.top`); `barHeight` is the height
     /// of the bar the box is centred in: the window frame less its content
-    /// layout rect for the toolbar (`SettingsToolbar.barHeight`),
-    /// `ShellBarLayout.height` for the shell's bar. The right gap is
+    /// layout rect for the toolbar (`SettingsToolbar.barHeight`). The right gap is
     /// `boxMargin` (AppKit's own margin), this inset and the ink's own
-    /// trailing bearing, so the inset is the top gap less the other two. A host that sits flush against its bar's edge, with no AppKit margin
-    /// between, passes `boxMargin: 0`.
+    /// trailing bearing, so the inset is the top gap less the other two.
     ///
     /// A not-a-number bar height (no window yet reads as none at all) and an
     /// unreadable render both keep `HelmToolbarActionsCapsule.edgeMargin`,
     /// the inset this item had before it followed the top; a result outside
     /// `0…barHeight` is clamped, a not-a-number to 0 — no inset is the
     /// nearer of the two wrong answers, an inset that eats the bar is not.
-    static func trailingInset(for status: (word: String, active: Bool)?, barHeight: CGFloat?,
-                              boxMargin: CGFloat = StatusZoneView.boxMargin) -> CGFloat {
+    static func trailingInset(for status: (word: String, active: Bool)?, barHeight: CGFloat?) -> CGFloat {
         guard let status, let barHeight, barHeight.isFinite, barHeight > 0,
               let ink = ink(of: status) else { return HelmToolbarActionsCapsule.edgeMargin }
         let topGap = (barHeight - ink.boxHeight) / 2 + ink.top

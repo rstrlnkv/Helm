@@ -160,7 +160,7 @@ public struct WelcomeView: View {
                     .foregroundStyle(HelmText.quiet)
                 // **The one thing a step can do besides keeping its module.**
                 // A tour that only describes leaves everybody at the end of it
-                // with nine descriptions and nothing set up; a module with
+                // with the descriptions and nothing set up; a module with
                 // something ready to hand over says so here, in its own words,
                 // and the button goes straight to it. Under the switch, and
                 // only while the module is on: taking somebody to a page for a

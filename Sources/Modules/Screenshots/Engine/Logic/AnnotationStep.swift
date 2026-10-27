@@ -14,7 +14,7 @@ import Foundation
 /// circle by the ink of its glyphs and not by the line's room. The count goes on past 99 and the font shrinks instead: a number
 /// wider than 0.8 of the diameter is set smaller until it is, so three digits and more stay inside the circle and the count is
 /// never cut. Two digits are set at the full size from 10 on in every circle but for 99 in the 16 and 20 pt ones, which is a little smaller
-/// (`digitSize(of:diameter:)`, measured by `TheStepsAreNumberedByTheirOrderTests`); the 20 pt circle shows 10 at 12 pt. Its colour is the one of the two, white or black, that reads on the ink (`digitColor(on:)`).
+/// (`digitSize(of:diameter:)`); the 20 pt circle shows 10 at 12 pt. Its colour is the one of the two, white or black, that reads on the ink (`digitColor(on:)`).
 public enum AnnotationStep {
     /// The digit's size as a share of the circle's diameter, and the widest share of the diameter the number may take.
     static let digitShare: CGFloat = 0.6
@@ -55,7 +55,7 @@ public enum AnnotationStep {
     }
 
     /// The font size the number is set at in a circle of `diameter`: `digitShare` of it, or smaller where the number set so would be wider than
-    /// `widestShare`. The one place the size is decided, which the drawing and a test both ask.
+    /// `widestShare`. The one place the size is decided, which the drawing asks.
     static func digitSize(of number: Int, diameter: CGFloat) -> CGFloat {
         let size = diameter * digitShare
         let width = CTLineGetTypographicBounds(line(of: number, size: size, color: CGColor(gray: 0, alpha: 1)), nil, nil, nil)

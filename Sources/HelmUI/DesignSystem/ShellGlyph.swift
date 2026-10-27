@@ -16,7 +16,7 @@ import SwiftUI
 /// another colour, so a glyph needs no second colour and reads on whatever
 /// background it is given.
 public enum ShellGlyph: CaseIterable, Hashable, Sendable {
-    case disk, duplicates, trash, leftovers, homebrew, hosts, keepAwake, layout, vpn, screenshots, autopilot
+    case disk, duplicates, trash, leftovers, homebrew, keepAwake, layout, vpn, screenshots, autopilot
     case settings, expand
 
     /// The side of the square every shape is drawn in. Paths are in these units
@@ -47,7 +47,6 @@ public enum ShellGlyph: CaseIterable, Hashable, Sendable {
             star.closeSubpath()
             return star
         case .homebrew: return Self.box(4.5, 6, 11.5, 13.5, 3.5)
-        case .hosts: return Self.circle(12, 12, 8.5)
         case .keepAwake: return Self.circle(11, 13, 8.5).subtracting(Self.circle(16.5, 7.5, 7.3))
         case .layout: return Self.box(2.5, 6, 19, 12, 3.5)
         case .vpn:
@@ -109,17 +108,13 @@ public enum ShellGlyph: CaseIterable, Hashable, Sendable {
             bump.addLine(to: Self.pt(15.5, 7.5))
             return bump
         case .expand: return Self.lines([[Self.pt(10, 7), Self.pt(15, 12), Self.pt(10, 17)]])
-        case .disk, .leftovers, .hosts, .keepAwake, .layout, .vpn, .autopilot, .settings: return Path()
+        case .disk, .leftovers, .keepAwake, .layout, .vpn, .autopilot, .settings: return Path()
         }
     }
 
     var detail: Path {
         switch self {
         case .disk: return Self.lines([[Self.pt(12, 3.5), Self.pt(12, 12), Self.pt(19.2, 16.4)]])
-        case .hosts:
-            var meridians = Path(ellipseIn: CGRect(x: 8.2, y: 3.5, width: 7.6, height: 17))
-            meridians.addPath(Self.lines([[Self.pt(3.5, 12), Self.pt(20.5, 12)]]))
-            return meridians
         case .layout:
             return Self.lines([Self.dot(7.5, 10.3), Self.dot(12, 10.3), Self.dot(16.5, 10.3),
                                [Self.pt(9, 13.9), Self.pt(15, 13.9)]])

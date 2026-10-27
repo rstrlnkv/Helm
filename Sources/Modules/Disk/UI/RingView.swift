@@ -47,7 +47,7 @@ struct RingView: View {
     private let geometry = RingGeometry(innerRadius: 0.34, thickness: 0.155, gap: 0.012)
 
     /// How many levels the ring shows. The layout carries one more — see
-    /// `DiskViewModel.recomputeSegments` and `RingUnfold.opacity(isSpare:)`:
+    /// `DiskViewModel.recomputeSegments`:
     /// the spare is what the new outermost ring slides in from during a drill,
     /// and it is drawn only while that is happening.
     static let visibleRings = 3
@@ -187,8 +187,7 @@ struct RingView: View {
     /// cannot be made seamless: folding into "other" is decided against the
     /// parent's total in one layout and the folder's own total in the other, so
     /// the last transformed frame held arcs the destination did not have, and
-    /// every boundary moved in the single frame between them. The measurement,
-    /// before the fix, is in `RingSeamTests`' doc comment.
+    /// every boundary moved in the single frame between them.
     private func open(_ hit: RingSegment) {
         leaving = segments
         pivot = hit

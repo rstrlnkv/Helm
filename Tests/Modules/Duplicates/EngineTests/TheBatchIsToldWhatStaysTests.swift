@@ -7,9 +7,9 @@ import XCTest
 /// What the batch is removed *around* is every copy that stays, and the engine
 /// has to be told which those are.
 ///
-/// `EveryCopyThatStaysSeedsTheLedgerTests` states the harm: an extra the person
+/// The harm: an extra the person
 /// left unticked goes on holding its family's blocks, so a clone of it that goes
-/// frees nothing, while the banner promised the whole allocation. What that test
+/// frees nothing, while the banner promised the whole allocation. What that
 /// asks of the engine is the one thing no engine can answer — `staying.bin` is
 /// named in no plan, and `HelmTrash`'s own doc says why it cannot be worked out
 /// from the disk: "there is no reverse lookup from a family to its members". So
@@ -17,9 +17,8 @@ import XCTest
 /// what is tested here is that the engine seeds the ledger with them and with
 /// everything else in the batch that is not going.
 ///
-/// Real `clonefile`, for the reason the two suites above give: a fixture where a
-/// clone's bytes are zero cannot see any of this, because a clone reports its
-/// whole allocated size.
+/// Real `clonefile`: a fixture where a clone's bytes are zero cannot see any of
+/// this, because a clone reports its whole allocated size.
 final class TheBatchIsToldWhatStaysTests: XCTestCase {
 
     private var root: URL!

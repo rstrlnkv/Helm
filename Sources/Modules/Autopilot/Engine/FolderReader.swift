@@ -205,12 +205,10 @@ struct FolderReader: Sendable {
     /// same order, and `TheWatcherAndTheSweepAskOneQuestionTests` pins the two
     /// answers to each other over a real tree at three depths; an agreement
     /// proven by a test is what makes them one question rather than a sentence
-    /// saying they are. **Known gap F-Y2:** the walk stops at `deepest` and this
-    /// question does not know it, so for a depth past 64 — which the UI never
-    /// writes and the sealed property list does not take by hand — the watcher
-    /// admits files the sweep never reads
-    /// (`TheDescriptorWalkHoldsItsGroundTests.testPastTheCeilingTheWatcherAndTheSweepAgree`,
-    /// skipped until it is decided).
+    /// saying they are. **Known defect F-Y2, in the defect log:** the walk stops
+    /// at `deepest` and this question does not know it, so for a depth past 64 —
+    /// which the UI never writes and the sealed property list does not take by
+    /// hand — the watcher admits files the sweep never reads.
     func admits(_ url: URL, under folder: WatchedFolder) -> Bool {
         let file = url.standardizedFileURL
         var root = URL(fileURLWithPath: folder.path).standardizedFileURL

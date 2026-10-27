@@ -8,9 +8,7 @@ import HelmTestSupport
 /// anything, a walk apiece for a folder, and only Disk wrapped its call in a
 /// phase: Disk was not the outlier, it was the one that got audited. The phase
 /// lives in the loop now, named `"\(module).trash"`, so Uninstaller, Leftovers
-/// and Duplicates carry a name beside their memory readings for free — and
-/// Disk's own guard (`TheRemovalNamesItselfWhileItRunsTests`) still proves the
-/// engine's path arrives here.
+/// and Duplicates carry a name beside their memory readings for free.
 ///
 /// Caught **during** the move rather than read off the source: `trashing` is a
 /// synchronous injection point inside the loop, so what `HelmActivity.running`

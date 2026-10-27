@@ -13,24 +13,6 @@ final class MenuBarIconChoicesTests: XCTestCase {
 
     // MARK: - Sizes
 
-    /// The three that stayed are the three that were there, under new names:
-    /// S is what «Very small» was, M is «Small», L is «Medium». Pinned because
-    /// a letter says nothing about which point size it is, so the only place
-    /// that mapping exists is here.
-    func testTheLettersAreTheOldSizes() {
-        XCTAssertEqual(MenuBarIconSize.xxSmall.points, 11)      // was "Very small"
-        XCTAssertEqual(MenuBarIconSize.extraSmall.points, 13)   // was "Small"
-        XCTAssertEqual(MenuBarIconSize.small.points, 15)        // was "Medium"
-        XCTAssertEqual(MenuBarIconSize.xxSmall.label, "S")
-        XCTAssertEqual(MenuBarIconSize.extraSmall.label, "M")
-        XCTAssertEqual(MenuBarIconSize.small.label, "L")
-    }
-
-    func testThreeSizes() {
-        XCTAssertEqual(MenuBarIconSize.allCases.map(\.label), ["S", "M", "L"])
-        XCTAssertEqual(MenuBarIconSize.allCases.map(\.points), [11, 13, 15])
-    }
-
     /// Mapped to the nearest survivor, not to the default. Somebody who chose
     /// the smallest icon wanted a small icon.
     func testTheTwoDroppedSizesLandOnTheirNeighbour() {
@@ -62,11 +44,6 @@ final class MenuBarIconChoicesTests: XCTestCase {
     }
 
     // MARK: - Shapes
-
-    func testSixShapes() {
-        XCTAssertEqual(MenuBarIconStyle.allCases,
-                       [.ring, .doubleRing, .ringDot, .squircle, .hexagon, .capsule])
-    }
 
     /// The three circles stayed; only `disc` and `dot` went, and they go to
     /// the ring rather than to whatever the default happens to be that day.

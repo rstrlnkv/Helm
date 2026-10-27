@@ -8,7 +8,7 @@ import SwiftUI
 /// wrong, so neither is hard-coded.
 ///
 /// The colour it selects between is the module's own — see `ModuleDescriptor`.
-/// Until that landed the plate took `ModuleCategory.tint`, which four «files»
+/// Until that landed the plate took its category's colour, which four «files»
 /// modules share, and a choice between "four things in one blue" and "grey" is
 /// not a choice worth offering.
 public enum SidebarStyle: String, CaseIterable, Sendable {

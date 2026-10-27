@@ -69,8 +69,7 @@ struct DuplicatesSettingsPage: View {
                     // threshold, which the window never reaches — so the only
                     // honest figure was drawn at no width the app opens at.
                     // Measured 2026-08-15: 324 pt in German, the widest, in a
-                    // 540 pt worst-case pane; `TheHonestTotalIsDrawnAtEveryWidthTests`
-                    // keeps the fit against the shipped strings.
+                    // 540 pt worst-case pane.
                     Text(DupStr.found(dvm.groups.count, Bytes(dvm.wastedBytes)))
                         .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                         .fixedSize(horizontal: false, vertical: true)
@@ -211,8 +210,7 @@ struct DuplicatesSettingsPage: View {
     /// options are the only two halves that finish the sentence.
     ///
     /// Nothing here narrows: `DuplicatesLayout.policyPickerWidth` is measured
-    /// from the labels themselves, and `ThePolicyRowFitsThePaneTests` holds the
-    /// whole row against the narrowest pane in all eight languages.
+    /// from the labels themselves.
     private var policyRow: some View {
         HStack(spacing: 8) {
             Text(DupStr.extraCopyIs)
@@ -386,7 +384,6 @@ struct DuplicatesSettingsPage: View {
     /// the toolbar's ladder: the count is `fixedSize` and nothing here gave
     /// anything up, so at the narrowest pane the *prominent* button truncated
     /// to «In den Papierkorb l…» — on the control that deletes.
-    /// `TheBasketRowFitsThePaneTests` holds the rung.
     private func basketRow(_ layout: DuplicatesLayout) -> some View {
         HStack(spacing: HelmSpace.s5) {
             // A count is not a list. Everything about to be trashed can be

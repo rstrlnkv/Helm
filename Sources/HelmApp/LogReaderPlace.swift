@@ -11,16 +11,15 @@ import HelmUI
 /// A scroll view keeps its offset while the content under it changes, and the
 /// line the person was reading is somewhere else: the oldest line leaves the top
 /// of a full tail as a new one arrives, a fold opens, a narrower window wraps
-/// every row above. `TheLogKeepsAReaderWhereTheyWereTests` puts each of those
-/// under a reader in a window on screen.
+/// every row above.
 ///
 /// So the page remembers the line at the top of the view and how far from the
 /// top it was (`anchor`), is told every time a drawn row's place in the content
 /// changes (`rowMoved`), and when it is that line that moved while the view did
 /// not, moves the view by the difference (`holdLine`). Where the rows above are
 /// measured the line stays where it was on screen, with one exception: a line
-/// taller than the room below it is moved by the hold itself (300 pt to 200 pt in
-/// `TheReadersLineLandsWhereItWasTests`, the known gap `log-tall-line`).
+/// taller than the room below it is moved by the hold itself (`log-tall-line` in
+/// the defect log).
 ///
 /// **What it can hold, and what it cannot.** A row's place is a reading only
 /// where the rows above it are measured. A card's rows are plain up to
@@ -65,9 +64,8 @@ import HelmUI
 /// every launch is drawn.
 ///
 /// A plain reference type, held by the page and never read by a body — in its
-/// `@State`, or handed in (`LogView.readerPlace`): what it remembers changes on
-/// every scroll, and a body that read it would be redrawn by the thing it is
-/// trying to keep still.
+/// `@State`: what it remembers changes on every scroll, and a body that read it
+/// would be redrawn by the thing it is trying to keep still.
 @MainActor
 final class LogReaderPlace {
     /// What the scroll view reports, in the content's own coordinates.
@@ -126,12 +124,6 @@ final class LogReaderPlace {
     var drawEarlier: () -> Void = {}
 
     private var isAtEnd: Bool { metrics.gap <= Self.endTolerance }
-
-    /// How many rows stand drawn: those that have reported a place and have not
-    /// left. A reading of the record the place already keeps, not a count of its
-    /// own; it exists so that what the page draws can be read from outside by the
-    /// one object every row reports to (`LogView.readerPlace`).
-    var drawnRows: Int { frames.count }
 
     /// Follow asked for the end (a filter changed, Follow was pressed, a new
     /// line came, the page opened): hold nothing until it has been reached.
@@ -271,7 +263,7 @@ final class LogReaderPlace {
 
     /// The first drawn row whose top is in the view, and how far that top is from
     /// the view's top. Only the top is tested: a row taller than the view's remaining
-    /// room is chosen too, which is the known gap `log-tall-line`.
+    /// room is chosen too, which is a known defect, `log-tall-line` in the defect log.
     private func capture() {
         let top = metrics.top
         var best: (id: LogEntry.ID, frame: CGRect)?

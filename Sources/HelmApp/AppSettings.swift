@@ -38,8 +38,7 @@ extension Notification.Name {
 
     /// Whether the sidebar draws each module on its own colour or as a plain
     /// glyph. Defaulted through `SidebarStyle(stored:)` rather than a literal
-    /// here, so the fallback for an unknown value is written once and tested
-    /// once — see `SidebarStyleTests`.
+    /// here, so the fallback for an unknown value is written once.
     static var sidebarStyle: SidebarStyle {
         get { SidebarStyle(stored: store.string(SidebarStyle.storageKey, default: "")) }
         set {
@@ -80,9 +79,9 @@ extension Notification.Name {
     }
 
     /// The stored look of the window's bar (`HelmBarAppearance`): flat unless Liquid Glass is stored. The
-    /// page bar and the toolbar both read it (`ShellPageBar`; `SettingsToolbar`'s `ShapeSignature`).
+    /// toolbar reads it (`SettingsToolbar`'s `ShapeSignature`).
     /// Nothing unattended reads it, so it is not sealed; the two functions
-    /// take the store so a test reads and writes a scratch one.
+    /// take the store the property hands them.
     static var barAppearance: HelmBarAppearance {
         get { barAppearance(in: store) }
         set { setBarAppearance(newValue, in: store) }
@@ -100,7 +99,7 @@ extension Notification.Name {
     /// **Whether the settings window's sidebar is folded to the rail**, as a person last left it
     /// (`SettingsShellViewController.flipSidebar`). A stored string, or a number other than 0 and 1, reads as
     /// expanded; a stored number 1 reads as folded. Read once, when a window is built, and nothing unattended reads it, so it is not
-    /// sealed; the two functions take the store so a test reads and writes a scratch one.
+    /// sealed; the two functions take the store `SettingsShellViewController` holds (`AppSettings.store`).
     static func sidebarCollapsed(in store: NamespacedStore) -> Bool {
         store.bool("sidebarCollapsed", default: false)
     }

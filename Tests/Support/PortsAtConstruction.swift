@@ -6,7 +6,7 @@ import XCTest
 ///
 /// An engine's `init` gives every port a default, because the app builds one with
 /// no arguments — and every one of those defaults is the real thing: the Mac's own
-/// keychain, its `/etc/hosts`, its `~/.ssh`, its `launchctl`. A test that leaves a
+/// keychain, its `~/Library`, its `launchctl`. A test that leaves a
 /// label off therefore asks the owner's machine a question and reports the answer
 /// as a fact about a fixture. Autopilot is the case that makes this concrete:
 /// eleven engine tests took the keychain default and rolled the owner's real rules
@@ -19,7 +19,7 @@ import XCTest
 /// string insides first, which is what lets a guard mention the very shape it
 /// forbids — including this documentation — without reporting itself.
 ///
-/// **The floor is not decoration.** The first version of the Hosts scan this was
+/// **The floor is not decoration.** The first version of the scan this was
 /// lifted from matched nothing and reported every file clean; a scan that can
 /// match zero and pass is not a scan. So the count of constructions found is a
 /// parameter with no default: a caller has to say how many it expects to see.
@@ -34,10 +34,12 @@ import XCTest
 /// this should derive its subjects the same way and stop taking a list. The walk
 /// underneath is one — `misses(of:under:)`, which both call.
 ///
-/// Only Leftovers is wired to this today. `Tests/Modules/Hosts/EngineTests/EveryEngineNamesItsPortsTests.swift`
-/// still carries the hand-rolled copy this was lifted out of, and the other
-/// eight modules have no guard at all — not because their engines are safer, but
-/// because those test directories had other writers in them when this landed.
+/// Leftovers is the only module wired to `check(…)` today, and the guard next
+/// door holds Autopilot's and Duplicates' keychain ports through `misses`.
+/// VPN keeps a hand-rolled guard of its own (`NoTestTakesAProductionPortTests`),
+/// and no other module has a guard of this kind — not because their engines are
+/// safer, but because those test directories had other writers in them when this
+/// landed.
 /// Wiring one is a `check(…)` call and a fake at each site it names.
 public enum PortsAtConstruction {
 

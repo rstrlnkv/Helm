@@ -638,7 +638,7 @@ import Module_Disk_Engine
             ? (scanIsNewer ? (result?.freeBytes ?? live) : live) ?? 0 : 0
         // One level deeper than the ring draws: the spare is invisible until a
         // drill starts, and it is what the new outermost ring slides in from.
-        // See `RingUnfold.opacity(isSpare:)`.
+        // See `RingView.visibleRings`.
         segments = RingLayout.layout(focus: Self.node(from: focus), path: focus.path,
                                      depthLevels: RingView.visibleRings + 1, freeBytes: free)
     }

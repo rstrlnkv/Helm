@@ -2,15 +2,11 @@ import XCTest
 import HelmTestSupport
 @testable import HelmRuntime
 
-/// The stronger half of
-/// `HelmTrashNestedBatchTests.testTheOutcomeIsTheSameWhicheverOrderTheBatchArrivesIn`.
+/// Either order of a nested batch, asserted absolutely.
 ///
-/// That test builds two trees, trashes one parent-first and the other
-/// child-first, and compares the two results' *counts* to each other. Two
-/// wrongs of equal size satisfy it: a run where both orders removed one path
-/// and refused one path passes, and so does a run where both orders freed zero.
-/// It never says what the right answer is, only that the two agree — and they
-/// agree by construction, because `remove` sorts the batch before it starts.
+/// Comparing a parent-first run with a child-first run proves nothing: `remove`
+/// sorts the batch before it starts, so the two agree by construction, and two
+/// wrongs of equal size agree too.
 ///
 /// So the assertion that a person actually cares about is absolute, not
 /// comparative: whichever order the basket arrives in, both paths are gone,

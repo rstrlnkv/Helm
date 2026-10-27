@@ -3,7 +3,10 @@ import HelmTestSupport
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
-final class KeepAwakeEngineTests: XCTestCase {
+/// The engine under test and every fake it takes, built fresh for each test.
+/// It has no tests of its own: `KeepAwakeEngineTests` and `KeepAwakeToggleTests`
+/// inherit it.
+class KeepAwakeEngineRig: XCTestCase {
     var backing: InMemoryKeyValueStore!
     var store: NamespacedStore!
     var settings: KeepAwakeSettings!
@@ -35,6 +38,9 @@ final class KeepAwakeEngineTests: XCTestCase {
                                   power: power, apps: apps, pointer: pointer,
                                   clamshell: clamshell, clock: clock)
     }
+}
+
+final class KeepAwakeEngineTests: KeepAwakeEngineRig {
 
     func test_startSession_indefinite_activates_and_prevents_sleep() {
         engine.startSession(minutes: 0)
@@ -172,6 +178,9 @@ final class KeepAwakeEngineTests: XCTestCase {
         clock.fire(after: 600)
         XCTAssertFalse(engine.isActive)
     }
+}
+
+final class KeepAwakeToggleTests: KeepAwakeEngineRig {
 
     // MARK: - The one entrance the hotkey and the panel switch both use
 

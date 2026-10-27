@@ -15,7 +15,7 @@ import HelmTestSupport
 ///   the reading half against the owner's real login items, and the writing half
 ///   holding `launchctl disable`.
 ///
-/// `home:` is on the list for the reason Hosts gives about its own: it defaults
+/// `home:` is on the list because it defaults
 /// to this Mac's home directory and it is the reference `RemovableScope` judges
 /// every removal against, so a construction that forgets it asks the gate about
 /// the owner's folders while claiming to be about a scratch directory.

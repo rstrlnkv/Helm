@@ -6,9 +6,7 @@ import CoreGraphics
 /// The panel's drag is a third architecture and every rule in it was paid for
 /// (the doc comment of `gridDrag` in `HelmPanel.swift`). They lived inside the `DragGesture`
 /// closure, where the only way to try one was to press a tile and watch — so
-/// they are here for the same reason `SidebarLayoutDrag` is here: a drag
-/// landing in the wrong place is a failing test, not a thing somebody notices
-/// after the layout has been written to disk.
+/// they are here as arithmetic, as `SidebarLayoutDrag`'s are.
 ///
 /// The view keeps every piece of `@State`. What moved is the arithmetic.
 public enum PanelDrag {

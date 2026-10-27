@@ -201,12 +201,12 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     // MARK: - Search
 
     func testSearchIgnoresCaseAndAccentsAndReadsTheModuleAndTheSite() {
-        let entry = line(0, .warn, "Hosts", "Résumé refused",
-                         site: LogSite(file: "HostsEngine.swift", line: 88, function: "refuse(_:)"))
+        let entry = line(0, .warn, "Layout", "Résumé refused",
+                         site: LogSite(file: "LayoutEngine.swift", line: 88, function: "refuse(_:)"))
         XCTAssertTrue(LogSearch.matches(entry, "resume"))
         XCTAssertTrue(LogSearch.matches(entry, "REFUSED"))
-        XCTAssertTrue(LogSearch.matches(entry, "hosts"))
-        XCTAssertTrue(LogSearch.matches(entry, "HostsEngine.swift:88"))
+        XCTAssertTrue(LogSearch.matches(entry, "layout"))
+        XCTAssertTrue(LogSearch.matches(entry, "LayoutEngine.swift:88"))
         XCTAssertTrue(LogSearch.matches(entry, "refuse(_:)"))
         XCTAssertFalse(LogSearch.matches(entry, "vpn"))
     }

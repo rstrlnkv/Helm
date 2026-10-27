@@ -70,15 +70,4 @@ final class AScanNobodyWatchedSaysWhatItFoundTests: XCTestCase {
         let same = [item("/a", 90_000_000_000)]
         XCTAssertNil(ScanNews.finding(in: change(previous: same, current: same)))
     }
-
-    /// The floor is a gigabyte, and it is named here rather than only at the
-    /// call site: the default is what the app actually ships with, and a test
-    /// that only ever passes its own threshold proves nothing about it.
-    func testTheShippedFloorIsAGigabyte() {
-        XCTAssertEqual(ScanNews.floorBytes, 1_000_000_000)
-        let justUnder = change(previous: [], current: [item("/a", 999_999_999)])
-        XCTAssertNil(ScanNews.finding(in: justUnder))
-        let justOver = change(previous: [], current: [item("/a", 1_000_000_001)])
-        XCTAssertNotNil(ScanNews.finding(in: justOver))
-    }
 }

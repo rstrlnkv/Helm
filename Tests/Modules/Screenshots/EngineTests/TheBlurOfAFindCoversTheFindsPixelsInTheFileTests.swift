@@ -4,7 +4,7 @@ import XCTest
 @testable import Module_Screenshots_Engine
 
 /// **A blur that "Blur Emails and Phone Numbers" puts over a find leaves none of the find's pixels in the file.**
-/// The geometry tests (`TheRecognizedBoxesLandOnTheFramesPixelsTests`) assert rectangles; this one asserts the
+/// It asserts the
 /// file: a picture in which every pixel is its own colour, a reader that finds what it is told to, the whole way
 /// through `readText`, `PersonalFinds`, `AnnotationEditing.insert(blurs:)` and `annotated`, and then each pixel the
 /// find stood on is compared with the same pixel of the unblurred cut. A pixel the mosaic left as it was is

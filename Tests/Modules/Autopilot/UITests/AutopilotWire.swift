@@ -1,6 +1,5 @@
 import Foundation
 import HelmContract
-import HelmRuntime
 import Module_Autopilot_Engine
 
 /// The wire the page in this target is drawn against: the four things the engine
@@ -14,10 +13,10 @@ import Module_Autopilot_Engine
 /// them apart. A fake that could not be in the refused state would make that a
 /// question no test here could ask.
 ///
-/// A throw and an empty reply are kept apart for the reason `LeftoversWire` gives
-/// one target over: `TransportClient.request` folds both to `nil`, and this
-/// module's engine reaches the empty one through `guard let self` and through a
-/// command name it cannot parse.
+/// A throw and an empty reply are kept apart, though `TransportClient.request`
+/// folds both to `nil`: `EngineTransport.send` is declared `throws`, and this
+/// module's engine answers empty `Data` through `guard let self` and through a
+/// command name it cannot parse (`AutopilotEngine.wireTransport`).
 final class AutopilotWire: EngineTransport, @unchecked Sendable {
 
     /// What the engine behind this wire does with a request.
@@ -33,14 +32,11 @@ final class AutopilotWire: EngineTransport, @unchecked Sendable {
     private let lock = NSLock()
     private var folders: [WatchedFolder]
     private var status: AutopilotStatus
-    private var history: [ActionRecord]
-    private var preview: [PreviewRow]
+    private let history: [ActionRecord] = []
+    private let preview: [PreviewRow]
     private var report: SweepReport?
-    /// What a return comes back with. A whole report rather than a flag,
-    /// because a pass is not atomic: the state this has to be able to be in is
-    /// "three went back and two did not", which is exactly what the page has to
-    /// say out loud and what a Bool could not describe.
-    private var undoReport = UndoReport(lines: [])
+    /// What a return comes back with: an empty report.
+    private let undoReport = UndoReport(lines: [])
     private var answer: Answer
     private var seen: [AutopilotCommand] = []
     /// The folder list the page last sent, so a test can ask what a gesture
@@ -54,34 +50,15 @@ final class AutopilotWire: EngineTransport, @unchecked Sendable {
     /// *asks* is as much the subject of a test as what it draws with the answer.
     private(set) var previewed: WatchedFolder?
 
-    /// The engine speaking without being asked. A wire whose stream could
-    /// never yield made every test of "the page heard" unwritable — the fake
-    /// being simpler than the thing it stands for. The channel is a real
-    /// `LocalTransport`, not a hand-rolled subscriber map: the mechanics under
-    /// test — replay of the last event per name included — are the production
-    /// ones.
-    private let eventChannel = LocalTransport()
-
-    var events: AsyncStream<EngineEvent> { eventChannel.events }
-
-    /// Whether anybody is listening yet, so a test can announce *after* the
-    /// subscription exists instead of racing it.
-    var eventReaderCount: Int { eventChannel.subscriberCount }
-
-    /// What the engine would announce.
-    func announce<E: RawRepresentable>(_ event: E) where E.RawValue == String {
-        eventChannel.emit(EngineEvent(name: event.rawValue, payload: Data()))
-    }
+    var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
 
     init(folders: [WatchedFolder] = [],
          status: AutopilotStatus = AutopilotStatus(refusal: nil),
-         history: [ActionRecord] = [],
          preview: [PreviewRow] = [],
          report: SweepReport? = nil,
          answering answer: Answer = .reply) {
         self.folders = folders
         self.status = status
-        self.history = history
         self.preview = preview
         self.report = report
         self.answer = answer
@@ -93,10 +70,7 @@ final class AutopilotWire: EngineTransport, @unchecked Sendable {
     /// being fixed at init.
     func answers(_ next: AutopilotStatus) { lock.withLock { status = next } }
     func holds(_ next: [WatchedFolder]) { lock.withLock { folders = next } }
-    func holds(_ next: [ActionRecord]) { lock.withLock { history = next } }
-    func offers(_ next: [PreviewRow]) { lock.withLock { preview = next } }
     func answers(_ next: Answer) { lock.withLock { answer = next } }
-    func answers(_ next: UndoReport) { lock.withLock { undoReport = next } }
 
     /// Which commands reached the wire, in order, so a test can assert that the
     /// act it is about really was attempted before asserting what was said about

@@ -70,16 +70,6 @@ public extension View {
     /// Synchronous, unlike the disk probe: `AXIsProcessTrusted()` is one
     /// non-blocking call and needs no hop, so the answer is there on the first
     /// frame rather than one later.
-    ///
-    /// **A page that draws a different screen per grant needs a reading that can
-    /// name the grant.** `helmGrants` is that, and it is nil everywhere in the
-    /// app: the probe is asked, as it always was. Keyboard replaced its banner
-    /// with an empty state, so the *content* of its page — not a 45 pt notice on
-    /// it — now depends on whether the process running the measurement holds
-    /// Accessibility, and every ratchet built on the offscreen render became a
-    /// fact about somebody's terminal. This is the same discipline
-    /// `ModulePageRender` applies to the appearance: a reading says which screen
-    /// it is of, rather than inheriting whatever this Mac happens to be.
     func helmTracksAccessibility(_ state: Binding<PermissionState>,
                                  alsoOn extra: Notification.Name? = nil) -> some View {
         modifier(HelmAccessibilityTracker(state: state, extra: extra))
@@ -97,11 +87,6 @@ public extension View {
     /// The probe is `PermissionCheck.fullDiskAccess()`, which is four blocking
     /// file reads and says at its own declaration why it does them off the
     /// cooperative pool.
-    ///
-    /// `helmGrants` comes in front of that probe, for the reason
-    /// `helmTracksAccessibility` states: five pages draw a 61 pt banner off this
-    /// answer, so without a reading a measurement of any of them is a fact about
-    /// the grants of whichever process drew it.
     func helmTracksFullDiskAccess(_ state: Binding<PermissionState>,
                                   alsoOn extra: Notification.Name? = nil) -> some View {
         modifier(HelmFullDiskTracker(state: state, extra: extra))
@@ -114,48 +99,15 @@ public extension View {
     ///
     /// Synchronous like Accessibility's, for the same reason: the probe is
     /// `CGPreflightScreenCaptureAccess`, one non-blocking call that answers from
-    /// the process's own grant and raises no dialog. A reading in the environment
-    /// goes in front of it, so a page that draws a different screen per grant
-    /// can be measured without the measuring process's own grant deciding.
+    /// the process's own grant and raises no dialog.
     func helmTracksScreenRecording(_ state: Binding<PermissionState>,
                                    alsoOn extra: Notification.Name? = nil) -> some View {
         modifier(HelmScreenRecordingTracker(state: state, extra: extra))
     }
 }
 
-/// What a reading of a page says about the grants it was taken under, or nil for
-/// «ask the machine», which is every path in the running app.
-///
-/// A `PermissionState` per grant rather than one flag: a page can depend on more
-/// than one, and «tell me about Accessibility» must not silently answer for Full
-/// Disk Access as well.
-public struct HelmGrants: Sendable, Equatable {
-    public var accessibility: PermissionState?
-    public var fullDisk: PermissionState?
-    public var screenRecording: PermissionState?
-
-    public init(accessibility: PermissionState? = nil, fullDisk: PermissionState? = nil,
-                screenRecording: PermissionState? = nil) {
-        self.accessibility = accessibility
-        self.fullDisk = fullDisk
-        self.screenRecording = screenRecording
-    }
-}
-
-public extension EnvironmentValues {
-    /// Set by a measurement, never by the app. It changes what a view *draws*
-    /// about a grant and nothing about what the app is allowed to do — the
-    /// engines ask macOS for themselves, and a refusal comes from macOS.
-    @Entry var helmGrants = HelmGrants()
-}
-
-/// The `.task` and the «Helm came back to the front» re-read, in one place, with
-/// the override in front of the probe.
-///
-/// A `ViewModifier` rather than the two modifiers inline: the override lives in
-/// the environment, and a `View` extension function cannot read it.
+/// The `.task` and the «Helm came back to the front» re-read, in one place.
 private struct HelmAccessibilityTracker: ViewModifier {
-    @Environment(\.helmGrants) private var grants
     let state: Binding<PermissionState>
     let extra: Notification.Name?
 
@@ -167,12 +119,11 @@ private struct HelmAccessibilityTracker: ViewModifier {
     }
 
     private var answer: PermissionState {
-        grants.accessibility ?? PermissionCheck.currentAccessibility()
+        PermissionCheck.currentAccessibility()
     }
 }
 
 private struct HelmScreenRecordingTracker: ViewModifier {
-    @Environment(\.helmGrants) private var grants
     let state: Binding<PermissionState>
     let extra: Notification.Name?
 
@@ -184,19 +135,15 @@ private struct HelmScreenRecordingTracker: ViewModifier {
     }
 
     private var answer: PermissionState {
-        grants.screenRecording ?? PermissionCheck.currentScreenRecording()
+        PermissionCheck.currentScreenRecording()
     }
 }
 
-/// The same three lines for the other grant, and a `ViewModifier` for the same
-/// reason: the reading lives in the environment, and a `View` extension function
-/// cannot read it — which is why this grant stayed machine weather for as long as
-/// it did while its twin had already been named.
+/// The same three lines for the other grant.
 ///
 /// The probe stays asynchronous, unlike Accessibility's: four blocking file reads
-/// belong off the cooperative pool, and a reading skips them altogether.
+/// belong off the cooperative pool.
 private struct HelmFullDiskTracker: ViewModifier {
-    @Environment(\.helmGrants) private var grants
     let state: Binding<PermissionState>
     let extra: Notification.Name?
 
@@ -215,12 +162,8 @@ private struct HelmFullDiskTracker: ViewModifier {
             }
     }
 
-    /// Not `grants.fullDisk ?? await …`: Swift refuses an `await` on the right of
-    /// `??`, since the autoclosure it builds is synchronous. Written out, the
-    /// reading also short-circuits the four file reads rather than racing them.
     private func answer() async -> PermissionState {
-        if let named = grants.fullDisk { return named }
-        return await PermissionCheck.fullDiskAccess()
+        await PermissionCheck.fullDiskAccess()
     }
 }
 

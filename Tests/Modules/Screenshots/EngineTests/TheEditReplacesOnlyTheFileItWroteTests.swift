@@ -3,7 +3,6 @@ import Darwin
 import Foundation
 import HelmRuntime
 import HelmTestSupport
-import ImageIO
 import XCTest
 @testable import Module_Screenshots_Engine
 
@@ -125,7 +124,7 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
     /// A session over the real folder, and the original already written into it by the module's own writer.
     func scene(_ label: String, base: String = TheEditReplacesOnlyTheFileItWroteTests.name, pathExtension: String = "png",
                originalBytes: Data? = nil, settings: ScreenshotsSettings = ScreenshotsSettings(saveTarget: .desktop),
-               desktop: URL? = nil, trashItems: ShotTrashing? = nil, file: StaticString = #filePath, line: UInt = #line) throws -> Scene {
+               desktop: URL? = nil, file: StaticString = #filePath, line: UInt = #line) throws -> Scene {
         let folder = scratchDirectory(label)
         let aside = scratchDirectory(label + "-trash")
         let moves = ShotMoves()
@@ -135,7 +134,7 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
         capture.outcome = .frozen(Freeze(displays: [Rig.display(1)], windows: []))
         let pasteboard = FakePasteboard()
         let fixed = Date(timeIntervalSince1970: 1_790_000_000)
-        let session = CaptureSession(capture: capture, writer: disk, trash: trashItems ?? trash, pasteboard: pasteboard,
+        let session = CaptureSession(capture: capture, writer: disk, trash: trash, pasteboard: pasteboard,
                                      preferences: FakePreferences(), shutter: FakeShutter(), textReader: FakeTextReader(),
                                      settings: { settings }, naming: { .english }, now: { fixed },
                                      locations: ScreenshotsLocations(home: folder, desktop: desktop ?? folder))
@@ -831,22 +830,7 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
         XCTAssertEqual(shown.picture.width, 40)
     }
 
-    // MARK: 17. The real Trash
-
-    /// `SystemShotTrash` on a file of this test's own, whose leaf carries a UUID so that its cleanup can only remove
-    /// what this test put in the Trash. The file is really moved to the owner's Trash, and is taken out again.
-    func testTheRealTrashTakesTheOriginalAndTheEditTakesItsName() async throws {
-        let unique = Self.name + " " + UUID().uuidString
-        reclaimFromTrash(unique + ".png")
-        let s = try scene("edit-real-trash", base: unique, trashItems: SystemShotTrash())
-        let delivery = await s.session.deliver(blue, saves: true, copies: false, replacing: s.original)
-        assertTold(delivery, [], replaced: true)
-        XCTAssertEqual(contents(s.folder), [unique + ".png": blueBytes])
-        let trash = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".Trash/" + unique + ".png")
-        XCTAssertEqual(try? Data(contentsOf: trash), redBytes, "the original is not in the Trash under its own name")
-    }
-
-    // MARK: 18. A shot in a folder that is not the person's, and someone else's encoding
+    // MARK: 18. A shot in a folder that is not the person's
 
     /// A file of the system's, in a folder the module cannot write to: its reading is the file's, so the editor opens;
     /// and no edit can be written beside it, so the edit goes where the settings save and nothing of the system's is moved.
@@ -863,47 +847,6 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
         XCTAssertEqual(s.trash.asked, [], "a file of the system was offered to the Trash")
         XCTAssertEqual(FileShotWriter().reading(of: system), shot.reading, "a file of the system was touched")
         XCTAssertEqual(Array(contents(desktop).values), [blueBytes])
-    }
-
-    /// A picture in a wide colour space is edited and saved in the space it was in, and the pixels away from the mark
-    /// are the pixels it had: the replacement is made of the original's picture, not of a copy converted on the way.
-    func testTheReplacementKeepsTheColourSpaceAndThePixelsOfAWideGamutOriginal() async throws {
-        let p3 = try XCTUnwrap(CGColorSpace(name: CGColorSpace.displayP3))
-        let context = try XCTUnwrap(CGContext(data: nil, width: 120, height: 80, bitsPerComponent: 8, bytesPerRow: 0, space: p3,
-                                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-        context.setFillColor(CGColor(colorSpace: p3, components: [1, 0.2, 0, 1])!)
-        context.fill(CGRect(x: 0, y: 0, width: 120, height: 80))
-        let wide = try XCTUnwrap(context.makeImage())
-        let bytes = try XCTUnwrap(CaptureSession.encode(wide, as: .png))
-        let s = try scene("edit-p3", originalBytes: bytes)
-        // From the bytes, not the path: an image made from a file reads it when it is drawn, and this one is gone by then.
-        func decoded(_ url: URL) throws -> CGImage {
-            let source = try XCTUnwrap(CGImageSourceCreateWithData(try Data(contentsOf: url) as CFData, nil))
-            return try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil))
-        }
-        let before = try decoded(s.path)
-        guard case .ready(let shown) = await opened(s) else { return XCTFail("did not open") }
-        let layer = Annotation(tool: .rectangle, start: CGPoint(x: shown.rect.minX + 2, y: shown.rect.minY + 2),
-                               end: CGPoint(x: shown.rect.minX + 10, y: shown.rect.minY + 8), style: AnnotationStyle(thickness: .thin))
-        let marked = await s.session.annotated(shown, local: shown.rect, layers: [layer])
-        let out = try XCTUnwrap(marked)
-        let delivery = await s.session.deliver(out, saves: true, copies: false, replacing: s.original)
-        assertTold(delivery, [], replaced: true)
-        let after = try decoded(s.path)
-        XCTAssertEqual(after.colorSpace?.name as String?, before.colorSpace?.name as String?, "the replacement is in another colour space than the shot")
-        XCTAssertEqual(after.width, before.width)
-        XCTAssertEqual(after.height, before.height)
-        func pixel(_ image: CGImage, _ x: Int, _ y: Int) -> [UInt8] {
-            let c = CGContext(data: nil, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4, space: p3,
-                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-            c.draw(image, in: CGRect(x: -x, y: y - image.height + 1, width: image.width, height: image.height))
-            let d = c.data!.assumingMemoryBound(to: UInt8.self)
-            return [d[0], d[1], d[2]]
-        }
-        for (x, y) in [(60, 40), (100, 70), (119, 79)] {
-            let a = pixel(before, x, y), b = pixel(after, x, y)
-            XCTAssertEqual(a.map(Int.init), b.map(Int.init), "pixel (\(x), \(y)) was changed away from the mark: \(a) became \(b)")
-        }
     }
 
     // MARK: 19. The reading is of the object that was written, and not of what stands at its name a moment later
@@ -971,5 +914,31 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
         XCTAssertEqual(s.trash.asked, trashedBefore, "the Trash was asked for the stranger's file")
         XCTAssertEqual(try Data(contentsOf: url), strangerBytes, "the stranger's file was moved or replaced")
         XCTAssertEqual(contents(s.aside).count, 1, "only the original is in the Trash")
+    }
+}
+
+/// `SystemShotTrash` on a file of this test's own, whose leaf carries a UUID so that its cleanup can only remove
+/// what this test put in the Trash. The file is really moved to the owner's Trash, and is taken out again.
+final class TheRealTrashTakesTheEditedShotsOriginalTests: XCTestCase {
+    func testTheRealTrashTakesTheOriginalAndTheEditTakesItsName() async throws {
+        let unique = TheEditReplacesOnlyTheFileItWroteTests.name + " " + UUID().uuidString
+        reclaimFromTrash(unique + ".png")
+        let folder = scratchDirectory("edit-real-trash")
+        let redBytes = CaptureSession.encode(makeImage(width: 40, height: 30, red: 255), as: .png)!
+        let blue = makeImage(width: 40, height: 30, blue: 255)
+        guard case .written(let original) = FileShotWriter().write(redBytes, into: folder, base: unique, pathExtension: "png") else {
+            throw XCTSkip("the original could not be written")
+        }
+        let session = CaptureSession(capture: FakeCapture(), writer: FileShotWriter(), trash: SystemShotTrash(), pasteboard: FakePasteboard(),
+                                     preferences: FakePreferences(), shutter: FakeShutter(), textReader: FakeTextReader(),
+                                     settings: { ScreenshotsSettings(saveTarget: .desktop) }, naming: { .english },
+                                     locations: ScreenshotsLocations(home: folder, desktop: folder))
+        let delivery = await session.deliver(blue, saves: true, copies: false, replacing: original)
+        XCTAssertEqual(delivery.refusals, [], "what the person is told")
+        XCTAssertTrue(delivery.replaced)
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: folder.path), [unique + ".png"])
+        XCTAssertEqual(try? Data(contentsOf: folder.appendingPathComponent(unique + ".png")), CaptureSession.encode(blue, as: .png))
+        let trash = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".Trash/" + unique + ".png")
+        XCTAssertEqual(try? Data(contentsOf: trash), redBytes, "the original is not in the Trash under its own name")
     }
 }

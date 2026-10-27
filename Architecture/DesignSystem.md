@@ -5,6 +5,12 @@
 which every module's UI target depends on and no engine does. A reason that is about one
 file is on that file's doc comment; this page keeps the rules that cross files.
 
+The look is rebuilt one module at a time. For that work the shell, this kit and the pages
+as they stand are no model: a copy carries forward exactly what the rebuild replaces. One
+module's look is finished before the next one's is started, because a page is judged
+beside finished neighbours, and two modules in flight change the same kit and the same
+string tables at once.
+
 ## Surfaces
 
 `Sources/HelmUI/DesignSystem/HelmSurfaces.swift` holds `HelmSurface` — a small set of
@@ -34,9 +40,6 @@ command grep -cE '^\s+public static let' Sources/HelmUI/DesignSystem/HelmLadders
 ```
 
 counts the steps. A number off the ladder is a number somebody has to argue for.
-`Tests/HelmUITests/LaddersAreTheStepsTheyClaimTests.swift` holds both halves of the
-ladders' shape, and `Tests/HelmUITests/SpaceLadderRatchetTests.swift` counts what the tree
-still spells by hand and only ever goes down — landing a ladder is not adopting it.
 
 ## Type
 
@@ -52,10 +55,9 @@ system font, not this one. The reasons are on the doc comments of `HelmText` and
 
 ## Ink and contrast
 
-Ink that means something comes from `HelmSignal` rather than the system palette,
-and `Tests/HelmUITests/SignalInkTests.swift` scans `Sources/HelmUI` and `Sources/HelmApp`
-for a raw `.orange` / `.green` / `.red` handed to something that paints with it. A *tint*
-is not ink and is deliberately uncaught: `HelmBadge.swift` takes one and draws it behind
+Ink that means something comes from `HelmSignal` rather than the system palette, never a raw
+`.orange` / `.green` / `.red` handed to something that paints with it. A *tint* is not ink:
+`HelmBadge.swift` takes one and draws it behind
 `Color.primary` text. A tinted figure is darkened in the light appearance by a fraction
 measured against a contrast floor rather than chosen, and the blend is resolved *inside*
 the light appearance, because `NSColor(Color)` returns a dynamic colour that resolves
@@ -76,12 +78,10 @@ photographable before it is chosen for a surface this house verifies by photogra
 
 A segmented control wears Helm's flat cell (`HelmFlatSegmentedCell`) unless the environment value
 `helmSwitcherCell` asks for AppKit's `NSSegmentedCell`, and only `SettingsToolbar.swift` asks, and only under Liquid Glass: on the tabs,
-on the actions capsule and on the switchers it measures them by, so the switcher measured wears the cell the switcher drawn wears. Under Flat it sets
-the same four to Helm's cell, so the toolbar's switchers wear it too.
+and on the switcher it measures them by, so the switcher measured wears the cell the switcher drawn wears. Under Flat it sets
+both to Helm's cell, so the toolbar's tabs wear it too.
 A control that wears AppKit's cell outside a toolbar selects with the system's accent colour in a key
-window, which no segmented control in the page bar draws (`TheBarDrawsNoAccentInAKeyWindowTests`, in that family's stand-in for a key window), so the default
-is flat, and `TheWindowWearsTheToolbarTests.testNothingButTheToolbarsFileAsksForTheSystemsCell` reads the
-sources for any other asker. The cell is chosen when the control is made. That AppKit's cell draws no accent
+window, so the default is flat. The cell is chosen when the control is made. That AppKit's cell draws no accent
 inside the window's toolbar is not stated here: no one has seen it in a key window.
 
 ## Motion
@@ -112,9 +112,8 @@ is on — `HelmMotion.reduceMotion` is read fresh on each access, since stored i
 would freeze at launch — because SwiftUI does not honour that setting for us. A curve
 written inline is therefore not a token somebody forgot to use; it is an animation that
 plays for a person who asked the operating system for none.
-`Tests/HelmUITests/MotionTokensAreTheOnlyCurvesTests.swift` holds all three halves of that:
-no curve constructor outside the token file, every `Animation`-returning token consulting
-the flag, and the flag still being computed.
+So no curve is built outside the token file, every `Animation`-returning token consults the
+flag, and the flag stays computed.
 
 Three laws sit under the tokens. Identity decides whether anything can animate: SwiftUI
 interpolates between two states of *one* view and not between two views, so a `ForEach`
@@ -164,24 +163,8 @@ beside it, its ink measured against its own fill rather than against the card.
 `HelmWrappingRow.swift` is a `Layout` because an `HStack` compresses its children instead
 of moving one down. Every control carries a name and a glyph is not one, and an empty page
 is drawn by `HelmEmptyState` or `HelmBusyState` inside `HelmCenteredContent` rather than
-by a hand-rolled `VStack` with two bare `Spacer()`s;
-`Tests/HelmUITests/NamedControlsTests.swift` scans for both, since each describes a defect
-nobody sees at runtime unless they are the person it locks out.
-
-## The record
-
-The design system is published outside this repository, so nothing in a
-build can reach it, and what it publishes is a copy of values —
-`Resources/DesignSystem/design-tokens.json` is what this tree resolves to, kept beside the
-tree so that copy can be checked against something.
-`Tests/HelmUITests/PublishedTokensAreTheTreesTests.swift` compares the two and fails when
-they part; every value is resolved from the live type in a named appearance rather than
-read out of the source. The mode that regenerates the file
-(`HELM_WRITE_DESIGN_TOKENS=1`) never passes, because a mode that rewrites its own
-expectation and then reports success is a check that cannot fail; and what the design
-system published outside this repository is built from the record, so a change here is
-only half a change until that is republished. What the test does not cover, and why, is
-on its doc comment.
+by a hand-rolled `VStack` with two bare `Spacer()`s, since each describes a defect nobody
+sees at runtime unless they are the person it locks out.
 
 ## Widths
 

@@ -17,9 +17,9 @@ import HelmTestSupport
 /// guard for exactly this ("already gone … is not a failure"); the shared loop
 /// the other three modules were moved onto does not.
 ///
-/// Both orders are checked because `DiskEngine.trash` feeds this
-/// `Array(Set(paths))`, so which order the batch arrives in is decided by a
-/// hash seed — the same basket produces a different screen on a different run.
+/// The order a batch arrives in is a hash seed's (`DiskEngine.trash` feeds this
+/// `Array(Set(paths))`), and `HelmTrashBatchOutcomeTests` holds both orders to one
+/// absolute answer.
 final class HelmTrashNestedBatchTests: XCTestCase {
 
     private var roots: [URL] = []
@@ -64,21 +64,5 @@ final class HelmTrashNestedBatchTests: XCTestCase {
         XCTAssertEqual(result.refused, [],
                        "a path that is gone is not something the person can act on")
         XCTAssertEqual(Set(result.removed), [parent, child])
-    }
-
-    /// The other order, which the same basket can produce, has to agree with it.
-    func testTheOutcomeIsTheSameWhicheverOrderTheBatchArrivesIn() throws {
-        let (parentA, childA) = try makeTree()
-        let (parentB, childB) = try makeTree()
-
-        let parentFirst = HelmTrash.remove(allowed: [parentA, childA], module: "test")
-        let childFirst = HelmTrash.remove(allowed: [childB, parentB], module: "test")
-
-        XCTAssertEqual(parentFirst.removed.count, childFirst.removed.count,
-                       "how many moved must not depend on hash order")
-        XCTAssertEqual(parentFirst.refused.count, childFirst.refused.count,
-                       "whether the screen shows a failure must not depend on hash order")
-        XCTAssertEqual(parentFirst.freedBytes, childFirst.freedBytes,
-                       "what was freed must not depend on hash order")
     }
 }

@@ -113,21 +113,6 @@ final class LayoutEngineLaunchTests: XCTestCase {
         return engine
     }
 
-    // MARK: - The key the gesture is bound to
-
-    /// The field with no initialiser parameter, which is why it was the one
-    /// that broke. A stored key must be in force at launch.
-    func testTheStoredTapKeyIsBoundAtLaunch() {
-        let engine = engine(settings: store { $0.set(TapKey.globe.rawValue, for: LayoutKey.tapKey) })
-        XCTAssertEqual(engine.boundTapKey, .globe)
-    }
-
-    /// …and `off` means off, so the reload cannot be faked by a constant.
-    func testAKeyTurnedOffStaysOffAtLaunch() {
-        let engine = engine(settings: store { $0.set(TapKey.off.rawValue, for: LayoutKey.tapKey) })
-        XCTAssertEqual(engine.boundTapKey, .off)
-    }
-
     // MARK: - Every other cached field
 
     /// Automatic conversion switched off in a previous session stays off.
@@ -170,26 +155,6 @@ final class LayoutEngineLaunchTests: XCTestCase {
         tap.type("ghbdtn")
         tap.send(.space)
         XCTAssertEqual(typing.performed.count, 1, "the user allowed this app and it was refused")
-        withExtendedLifetime(engine) {}
-    }
-
-    func testTheSoundChoiceIsReadAtLaunch() {
-        let engine = engine(settings: store { $0.set(true, for: LayoutKey.audible) },
-                            audible: false)
-        tap.type("ghbdtn")
-        tap.send(.space)
-        XCTAssertEqual(typing.performed.count, 1, "precondition: the word converted")
-        XCTAssertEqual(sound.played, 1, "the sound the user asked for was not played")
-        withExtendedLifetime(engine) {}
-    }
-
-    func testTheCapitalCorrectionIsReadAtLaunch() {
-        let engine = engine(settings: store { $0.set(true, for: LayoutKey.fixCapitals) },
-                            fixCapitals: false)
-        tap.type("HEllo")
-        tap.send(.space)
-        XCTAssertEqual(typing.performed.first?.insert, "Hello ",
-                       "the held-capital correction was off on a launch that had it on")
         withExtendedLifetime(engine) {}
     }
 
@@ -261,5 +226,76 @@ final class LayoutEngineLaunchTests: XCTestCase {
         tap.type("ghbdtn")
         tap.send(.space)
         XCTAssertTrue(typing.performed.isEmpty, "automatic was switched off while it was off")
+    }
+}
+
+/// The tap key, the sound choice and the capital correction are read at launch,
+/// arranged as in `LayoutEngineLaunchTests`: the store and the initialiser
+/// disagree, and the tap key has no initialiser parameter at all.
+final class TheKeySoundAndCapitalsAreReadAtLaunchTests: XCTestCase {
+    private var typing = LaunchTyping()
+    private var context = LaunchContext()
+    private var tap = LaunchTap()
+    private var sources = LaunchSources()
+    private var sound = LaunchSound()
+
+    private func store(_ write: (NamespacedStore) -> Void = { _ in }) -> NamespacedStore {
+        let store = NamespacedStore(namespace: "layout", backing: InMemoryKeyValueStore())
+        write(store)
+        return store
+    }
+
+    /// The initialiser arguments here are deliberately the *opposite* of what
+    /// each test writes to the store.
+    private func engine(settings: NamespacedStore,
+                        fixCapitals: Bool = false,
+                        rules: [String: Bool] = [:],
+                        exceptions: [String] = [],
+                        automatic: Bool = true,
+                        audible: Bool = false) -> LayoutEngine {
+        typing = LaunchTyping(); context = LaunchContext()
+        tap = LaunchTap(); sources = LaunchSources(); sound = LaunchSound()
+        let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
+                                  translation: LaunchTranslation(), spell: LaunchSpell(),
+                                  secure: context, sound: sound,
+                                  fixCapitals: fixCapitals,
+                                  rules: rules, exceptions: exceptions,
+                                  automatic: automatic,
+                                  audible: audible, settings: settings)
+        engine.activate()
+        return engine
+    }
+
+    /// The field with no initialiser parameter, which is why it was the one
+    /// that broke. A stored key must be in force at launch.
+    func testTheStoredTapKeyIsBoundAtLaunch() {
+        let engine = engine(settings: store { $0.set(TapKey.globe.rawValue, for: LayoutKey.tapKey) })
+        XCTAssertEqual(engine.boundTapKey, .globe)
+    }
+
+    /// …and `off` means off, so the reload cannot be faked by a constant.
+    func testAKeyTurnedOffStaysOffAtLaunch() {
+        let engine = engine(settings: store { $0.set(TapKey.off.rawValue, for: LayoutKey.tapKey) })
+        XCTAssertEqual(engine.boundTapKey, .off)
+    }
+
+    func testTheSoundChoiceIsReadAtLaunch() {
+        let engine = engine(settings: store { $0.set(true, for: LayoutKey.audible) },
+                            audible: false)
+        tap.type("ghbdtn")
+        tap.send(.space)
+        XCTAssertEqual(typing.performed.count, 1, "precondition: the word converted")
+        XCTAssertEqual(sound.played, 1, "the sound the user asked for was not played")
+        withExtendedLifetime(engine) {}
+    }
+
+    func testTheCapitalCorrectionIsReadAtLaunch() {
+        let engine = engine(settings: store { $0.set(true, for: LayoutKey.fixCapitals) },
+                            fixCapitals: false)
+        tap.type("HEllo")
+        tap.send(.space)
+        XCTAssertEqual(typing.performed.first?.insert, "Hello ",
+                       "the held-capital correction was off on a launch that had it on")
+        withExtendedLifetime(engine) {}
     }
 }

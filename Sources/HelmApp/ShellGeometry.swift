@@ -30,7 +30,7 @@ enum ShellGeometry {
     /// The sidebar's width when it is folded to the rail.
     nonisolated static let railWidth: CGFloat = 56
 
-    /// The widths a stored or dragged sidebar width is brought into; nothing in the window drags it.
+    /// The widths a stored sidebar width is brought into; nothing in the window drags it.
     nonisolated static let sidebarRange: ClosedRange<CGFloat> = 150...320
 
     /// The width a stored value that is not a number reads as.
@@ -56,8 +56,7 @@ enum ShellGeometry {
     nonisolated static let buttonShift: CGFloat = 6
 
     /// How far right and down AppKit puts the window's three buttons when the window wears a toolbar, against
-    /// where it puts them with none (19 against 9 on both axes). One reading in a window never shown; the rows hold
-    /// the lift's arithmetic over a home fed in and pin the constant, and one row over the real window the app builds, which wears a toolbar, holds that its buttons stand where the `.pageBar` window's do; none reads AppKit's 19 or 9.
+    /// where it puts them with none (19 against 9 on both axes). One reading in a window never shown, held by no row.
     nonisolated static let toolbarLift = CGSize(width: 10, height: 10)
 
     /// Whether a sidebar of `sidebarWidth` is the rail. Not-a-number is not the
@@ -79,7 +78,7 @@ enum ShellGeometry {
     /// 0 — for x as well as for the width the card loses to it — because a
     /// frame whose origin is not a number cannot be placed; a finite width is
     /// used as given, also past the window's edge or below zero, since the width
-    /// is clamped where it is stored or dragged (`sidebarWidth(stored:)`) and
+    /// is clamped where it is stored (`sidebarWidth(stored:)`) and
     /// bending it here would put x and the sidebar in two places.
     nonisolated static func cardFrame(in size: CGSize, sidebarWidth: CGFloat) -> CGRect {
         let sidebar = sidebarWidth.isFinite ? sidebarWidth : 0
@@ -106,16 +105,6 @@ enum ShellGeometry {
         stored.clamped(to: sidebarRange, whenNotANumber: defaultSidebarWidth)
     }
 
-    /// **The width after a drag of `translation` that began at `origin`:** the
-    /// sum, brought into `sidebarRange`. The origin is not clamped before the
-    /// sum, so a drag that starts outside the range and comes back into it
-    /// lands where the pointer is, not where the nearer bound would have
-    /// taken it. A sum that is not a number (infinity and its opposite) reads
-    /// `defaultSidebarWidth`, as a stored width does.
-    nonisolated static func sidebarWidth(draggedFrom origin: CGFloat, by translation: CGFloat) -> CGFloat {
-        sidebarWidth(stored: origin + translation)
-    }
-
     // MARK: - the window's buttons
 
     /// **How far the buttons stand from where AppKit puts them (`home`, the
@@ -131,7 +120,7 @@ enum ShellGeometry {
     /// rail's drop, so the buttons stand where they stand in the window with no
     /// toolbar. The rail's x needs none: it is the capsule's edge less `home`'s,
     /// and `home` already carries the lift.
-    nonisolated static func buttonsOffset(home: CGRect, rail: Bool, lift: CGSize = .zero) -> CGSize {
+    nonisolated static func buttonsOffset(home: CGRect, rail: Bool, lift: CGSize) -> CGSize {
         let drop = buttonDrop - lift.height
         guard rail else { return CGSize(width: buttonShift - lift.width, height: drop) }
         return CGSize(width: capsuleClosedFrame(buttons: home).minX + capsulePad.width - home.minX,

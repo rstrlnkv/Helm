@@ -12,8 +12,7 @@ import Foundation
 /// first press that fails.
 ///
 /// Here rather than in the view for the reason `LeftoversEmpty` is: it is the
-/// module's rule about what its screen may claim, and a `switch` inside a `body`
-/// is a rule no test can reach.
+/// module's rule about what its screen may claim.
 public enum LeftoversSilence {
 
     /// Which sentence the foot of the page owes.

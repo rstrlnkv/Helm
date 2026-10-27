@@ -24,11 +24,6 @@ final class LoupeLayer: CALayer {
     private let ring = CAShapeLayer()
     private let plate = LabelLayer()
 
-    /// What the plate says, nil while the loupe is hidden: a test reads it.
-    var reading: String? { isHidden ? nil : plate.string }
-    /// Where the round window stands, in the view's layer space.
-    private(set) var disc: CGRect = .zero
-
     override init() {
         super.init()
         let side = Self.diameter
@@ -102,7 +97,6 @@ final class LoupeLayer: CALayer {
         frame = bounds
         let text = "\(loupe.hex) · \(loupe.pixel.x), \(loupe.pixel.y)"
         let placed = Self.place(pointer: pointer, plate: LabelLayer.size(of: text), within: bounds)
-        disc = placed.disc
         picture.contents = loupe.image
         picture.frame = placed.disc
         ring.frame = placed.disc

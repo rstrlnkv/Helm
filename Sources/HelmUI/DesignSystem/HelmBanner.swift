@@ -49,8 +49,7 @@ public struct HelmBanner<Action: View>: View {
     ///   296 it has in English, 293 in Russian and 303 in Portuguese — so two of
     ///   the eight wrapped, on the first thing anybody opens when something is
     ///   wrong. Measured at 11 pt the widest is Portuguese at 278, which leaves
-    ///   every language a line to itself. `ThePanelsPermissionPlateFitsOneLineTests`
-    ///   holds it.
+    ///   every language a line to itself.
     public init(_ text: String, symbol: String = "exclamationmark.triangle.fill",
                 tone: Tone = .warning, fillsWidth: Bool = true, compact: Bool = false,
                 @ViewBuilder action: () -> Action) {
@@ -105,7 +104,6 @@ public struct HelmBanner<Action: View>: View {
             // said the action must not lose to the words — so a sentence long
             // enough to need two lines took its width out of the button, and
             // Leftovers' note drew «Выдать…» 10 pt wide against the 69 it needs.
-            // `TheGrantButtonKeepsItsWordsTests` holds it in all eight languages.
             action
                 .fixedSize()
         }

@@ -7,8 +7,7 @@ import Module_KeepAwake_Engine
 /// A view of its own rather than two members of the settings page, because the
 /// only way to review motion is to measure it, and a `private var` on a page
 /// that needs a transport, a store and a running engine cannot be hosted in a
-/// window and photographed. `HeroMotionProbe` mounts this exact type; nothing
-/// stands in for it.
+/// window and photographed.
 ///
 /// **Why a cross-fade and not a reveal.** The house rule is that reveals grow —
 /// a measured height and `.clipped()`, never a fade — and it does not apply
@@ -111,15 +110,6 @@ struct KeepAwakeHero: View {
     let start: (Int) -> Void
     let stop: () -> Void
     let resume: () -> Void
-    /// How the veto is said out loud, once, when it arrives.
-    ///
-    /// Substitutable because an announcement leaves nothing behind that a test
-    /// could read: `AccessibilityNotification.Announcement.post()` returns
-    /// nothing, records nothing and does nothing at all with VoiceOver off, so
-    /// the alternative is the promise this file's own notes warn about — a rule
-    /// written in prose with nothing under it. `HelmA11y.announce` is the one
-    /// that ships.
-    let announce: (String) -> Void
 
     /// Natural height of whichever state is showing, so the block can ramp
     /// between two of them instead of snapping. `nil` until the first one
@@ -178,8 +168,7 @@ struct KeepAwakeHero: View {
          batteryStopped: Bool, batteryFloor: Int,
          timedNote: @escaping (Date) -> String,
          start: @escaping (Int) -> Void, stop: @escaping () -> Void,
-         resume: @escaping () -> Void,
-         announce: @escaping (String) -> Void = HelmA11y.announce) {
+         resume: @escaping () -> Void) {
         self.state = state
         self.now = now
         self.anyRuleOn = anyRuleOn
@@ -194,7 +183,6 @@ struct KeepAwakeHero: View {
         self.start = start
         self.stop = stop
         self.resume = resume
-        self.announce = announce
         _shownState = State(initialValue: state)
         _shownSuppressed = State(initialValue: suppressed || batteryStopped)
     }
@@ -226,8 +214,7 @@ struct KeepAwakeHero: View {
             // Written into each branch, it made `.timed` a line taller than
             // `.idle` — and those two are the same height *by design*, so that
             // the form below does not move when somebody presses «15 min».
-            // `HeroMotionProbe` caught it at three distinct heights where one
-            // is the whole point. Out here the caption belongs to the block,
+            // Out here the caption belongs to the block,
             // not to a state, so every state stays the height it was.
             stopNote
             // The Mac is asleep, a rule that applies is on screen saying
@@ -268,7 +255,7 @@ struct KeepAwakeHero: View {
         // again, which is what pressing one will say. Said with the long form,
         // because the way out is the whole point of speaking at all.
         .onChange(of: batteryStopped) { _, stopped in
-            if stopped { announce(KAStr.stoppedByBattery(batteryFloor)) }
+            if stopped { HelmA11y.announce(KAStr.stoppedByBattery(batteryFloor)) }
         }
     }
 
@@ -534,12 +521,6 @@ struct KeepAwakeHero: View {
     /// the outgoing copy of a cross-fade carries the new word, at an opacity on
     /// its way to nothing; what the other spelling would cost is a button that
     /// says one thing and does another for exactly as long.
-    ///
-    /// Internal rather than private, and so is the caption's flag above: both
-    /// are read by `TheStopButtonSaysWhatThePressWillDoTests`, which cannot ask
-    /// the render which word is on a button. The pixel checks in the same file
-    /// are the other half — this seam says what the block decided, they say
-    /// what it drew.
     var stopPress: StopPress {
         StopPress.next(sessionRunning: state.sessionRunning, ruleHolds: ruleHolds,
                        timerEndsAutomation: timerEndsAutomation)

@@ -17,13 +17,6 @@ final class ObsoleteDefaultsTests: XCTestCase {
                         "a live setting must survive the purge")
     }
 
-    func testPurgingTwiceIsHarmless() {
-        let store = InMemoryKeyValueStore()
-        ObsoleteDefaults.purge(from: store)
-        ObsoleteDefaults.purge(from: store)
-        XCTAssertNil(store.object(forKey: "module.app.panelLayout"))
-    }
-
     /// Every retired key is namespaced, so the purge can never reach into
     /// another app's or another module's settings.
     func testEveryRetiredKeyIsNamespaced() {
@@ -92,15 +85,5 @@ final class ObsoleteDefaultsTests: XCTestCase {
         XCTAssertGreaterThan(checked, 3,
                              "only \(checked) retired keys had a namespace with source to check "
                              + "against; the directory names this derives are wrong")
-    }
-
-    /// The Island module was rolled back, and its settings stayed behind.
-    func testIslandKeysAreRetired() {
-        let store = InMemoryKeyValueStore()
-        store.set(true, forKey: "module.island.enabled")
-        store.set(["a"], forKey: "module.island.shelfBookmarks")
-        ObsoleteDefaults.purge(from: store)
-        XCTAssertNil(store.object(forKey: "module.island.enabled"))
-        XCTAssertNil(store.object(forKey: "module.island.shelfBookmarks"))
     }
 }

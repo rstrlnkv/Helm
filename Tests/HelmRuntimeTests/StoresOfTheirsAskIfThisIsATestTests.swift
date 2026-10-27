@@ -17,8 +17,7 @@ import XCTest
 /// a store that already exists, from a target that can see it — nine engine
 /// targets, and a guard per store is a guard somebody has to remember to write.
 /// The rule is one line of source per site, so the source is where it can be
-/// held for the whole tree at once. `KeyboardReachableControlsTests` is the
-/// precedent and gives the same reason.
+/// held for the whole tree at once.
 ///
 /// The rule is coarse on purpose: it asks that the file *mentions* the question,
 /// not that it answers it correctly. A file that names `TestProcess` and ignores
@@ -82,8 +81,7 @@ final class StoresOfTheirsAskIfThisIsATestTests: XCTestCase {
     /// This has to be a fixture. No comment in `Sources/` spells one of these
     /// five today, so a test phrased as "the scan did not report a comment"
     /// passes whether or not the strip is wired in at all, and would go on
-    /// passing after somebody removed it — the shape
-    /// `testTheRuleRecognisesARadiusChosenByEye` exists for one ladder over.
+    /// passing after somebody removed it.
     func testTheReaderSeesCodeAndNotProse() {
         XCTAssertEqual(folders(in: "  let base = fm.urls(for: .cachesDirectory, in: .userDomainMask)"),
                        [".cachesDirectory"])

@@ -4,14 +4,14 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Screenshots_Engine
 
-/// **A mosaic and a lens in the file of an edited picture are made of the picture's own pixels, wherever on it they stand.**
+/// **A mosaic in the file of an edited picture is made of the picture's own pixels, wherever on it the blur stands.**
 /// `CaptureSession.annotated(_:local:layers:)` draws the layers over a cut and hands `draw` the *whole picture* as `display`:
-/// a blur's blocks and a lens's contents are cut out of it by pixel (`Pixelate`, `Magnifier`), and a picture that is not the whole one
-/// (a half of it, the cut itself) has no pixels under a layer in the other part, where the mosaic is skipped and the lens shows nothing.
+/// a blur's blocks are cut out of it by pixel (`Pixelate`), and a picture that is not the whole one
+/// (a half of it, the cut itself) has no pixels under a layer in the other part, where the mosaic is skipped.
 ///
-/// Measured off the file, on a picture of a gradient (a mosaic and a magnified part both differ from it): the pixels under a
-/// blur in the lower right of the picture are not the picture's own, and neither are those inside a lens there; the pixels
-/// away from either layer are. Total failure of the subject prints a file equal to the picture under the layer.
+/// Measured off the file, on a picture of a gradient (a mosaic differs from it): the pixels under a
+/// blur in the lower right of the picture are not the picture's own; the pixels
+/// away from the blur are. Total failure of the subject prints a file equal to the picture under the layer.
 final class TheEditExportBlursAndMagnifiesThePictureNotAPartOfItTests: XCTestCase {
 
     private let srgb = CGColorSpace(name: CGColorSpace.sRGB)!
@@ -75,7 +75,7 @@ final class TheEditExportBlursAndMagnifiesThePictureNotAPartOfItTests: XCTestCas
         return box.result
     }
 
-    func testABlurAndALensInTheLowerRightAreMadeOfThePicturesPixels() throws {
+    func testABlurInTheLowerRightIsMadeOfThePicturesPixels() throws {
         for (w, h) in [(400, 300), (1200, 700)] {
             let picture = gradient(w, h)
             let shown = try placed(picture)
@@ -87,12 +87,8 @@ final class TheEditExportBlursAndMagnifiesThePictureNotAPartOfItTests: XCTestCas
                        width: (rect.width / r.width * CGFloat(w)).rounded(), height: (rect.height / r.height * CGFloat(h)).rounded())
             }
             let box = CGRect(x: r.minX + 0.55 * r.width, y: r.minY + 0.55 * r.height, width: 0.3 * r.width, height: 0.3 * r.height)
-            let side = min(0.35 * r.width, 0.35 * r.height)
-            let lensBox = CGRect(x: r.minX + 0.55 * r.width, y: r.minY + 0.55 * r.height, width: side, height: side)
             let layers: [(String, Annotation, CGRect)] = [
                 ("blur", Annotation(tool: .blur, start: box.origin, end: CGPoint(x: box.maxX, y: box.maxY)), pixels(box)),
-                ("lens", Annotation(tool: .magnifier, start: lensBox.origin, end: CGPoint(x: lensBox.maxX, y: lensBox.maxY)),
-                 pixels(lensBox.insetBy(dx: side * 0.3, dy: side * 0.3))),   // the inside of the circle, away from its ring
             ]
             for (name, layer, region) in layers {
                 XCTAssertTrue(layer.isUsable, "the control: the \(name) is usable")

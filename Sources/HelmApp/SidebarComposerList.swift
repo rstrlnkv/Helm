@@ -11,7 +11,7 @@ import HelmUI
 /// the first module rounds the top corners, the last rounds the bottom. Then
 /// `.onMove` hands over flat indices, which is exactly what
 /// `SidebarLayout.applyingDrag(of:toFlatIndex:)` has always taken: the same
-/// pure function, with the same tests, that the table's `acceptDrop` called.
+/// pure function that the table's `acceptDrop` called.
 ///
 /// What it buys is one renderer for the whole block, which is what the version
 /// before the redesign had and what made its transition smooth without anything
@@ -61,10 +61,6 @@ struct SidebarComposerList: View {
     /// which put the sheet at its 360 pt floor while its content wanted 631 —
     /// title, Done, both footer buttons and the last two modules outside the
     /// window, and Escape the only way out.
-    ///
-    /// Pinned by `SidebarComposerHeightTests`, which draws the real list in a
-    /// real window and compares. That test is the reason this is allowed to be
-    /// a second opinion about a height rather than a number that drifts.
     static func estimate(of row: SidebarLayout.Row, in layout: SidebarLayout,
                          editing: Bool) -> CGFloat {
         switch row {

@@ -16,8 +16,8 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// `DuplicatesEngine`, `LeftoversEngine` and `UninstallerEngine` already
     /// follow. It was a literal in the descriptor while the engine side had no
     /// name at all, so nothing in `Engine/` could say which store it was
-    /// reading. `StoreNamespacesAreModuleIdsTests` records the ids that
-    /// shipped and fails on a rename: this is stored-settings data, and a
+    /// reading. `StoreNamespacesAreModuleIdsTests` records the registered ids
+    /// and fails on a rename: this is stored-settings data, and a
     /// rename orphans everything anybody has configured.
     public static let moduleID = "keep-awake"
 
@@ -861,16 +861,9 @@ extension KeepAwakeEngine {
 // MARK: - The one notification
 
 /// An extension rather than more of the class above, because this is a concern
-/// of its own: the two members here are the whole of what the engine does about
+/// of its own: the member here is the whole of what the engine does about
 /// a person who is not at the screen.
 extension KeepAwakeEngine {
-
-    /// Whether the battery veto can reach anybody who is not looking.
-    ///
-    /// Exists to be *asked*: every test of the posting itself hands in a fake, so
-    /// a `makeEngine` that forgot the real channel would leave the feature
-    /// switched off in the app behind a green suite.
-    var reachesBanners: Bool { batteryVeto != nil }
 
     /// One system notification, on the arrival of the veto that ended something
     /// — the only event this module has that happens with nobody in front of the

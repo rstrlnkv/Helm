@@ -53,7 +53,7 @@ final class TheModeBelongsToTheWriteTests: XCTestCase {
     /// place is still there and still the only one.
     func testTheOnePlaceThatWritesPrivateFilesIsStillThere() throws {
         let text = try RepoSource.text(of: Self.theOnePlace)
-        XCTAssertTrue(text.contains("public static func write(_ data: Data, to url: URL,"),
+        XCTAssertTrue(text.contains("public static func write(_ data: Data, to url: URL)"),
                       "\(Self.theOnePlace) no longer writes bytes, so the scan above is "
                       + "guarding an empty rule")
     }

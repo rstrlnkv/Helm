@@ -11,9 +11,7 @@ import HelmRuntime
 /// hidden on a machine with no display of its own, and the switch is still in
 /// the file: a Studio whose plist was written while it was a laptop indented all
 /// five visible rows for a mark column that nothing could put a mark in. The
-/// hardware is asked here rather than in the page, so the rule is a function
-/// with a test — this Mac has a built-in display, so there is nothing to
-/// photograph.
+/// hardware is asked here rather than in the page, so the rule is a function.
 ///
 /// **And the lid is the second source.** Its row carries a mark of its own once
 /// sleep is off, so `isEmpty` cannot be read off the rules alone; a second

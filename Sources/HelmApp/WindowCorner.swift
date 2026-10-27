@@ -39,10 +39,6 @@ import HelmRuntime
 /// The line `logLine` builds is how a machine that was not measured reports what
 /// its window answered.
 ///
-/// The window is an object for the main thread: the statics are `nonisolated`
-/// so that they can be called from tests, not because another thread may call
-/// them.
-///
 /// `ShellContentView` reads the corner in its `layout()` and writes the line.
 /// Whoever writes the line owns one `Journal` for the window it is in, and
 /// starts a new one when it moves to another window object.

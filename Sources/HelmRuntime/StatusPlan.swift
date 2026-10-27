@@ -48,7 +48,7 @@ public enum StatusPlan {
     ///
     /// When two spins overlap the **newest** wins, which is why that tier is a
     /// `max` and not a `first`. Taking the first would settle the question by
-    /// `ModuleOrder` — a module's own feedback would sit invisible behind an
+    /// module order — a module's own feedback would sit invisible behind an
     /// unrelated module that happened to sort earlier, which is the failure a
     /// spin borrowing the icon at all exists to prevent, one level up. The
     /// newest spin also ends last, so deferring to it truncates nothing.

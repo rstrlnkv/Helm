@@ -53,8 +53,7 @@ import Module_KeepAwake_Engine
     /// well as ending the session.
     public var ruleHolds: Bool { !triggeredConditions.isEmpty }
     /// What the lid row's note says, from the three facts the engine publishes
-    /// about it. The rule is `LidRowNote`'s, out in the engine's logic where a
-    /// test can reach it, for the same reason `RuleNote` is.
+    /// about it. The rule is `LidRowNote`'s, out in the engine's logic.
     public var lidRowNote: LidRowNote {
         LidRowNote.of(refused: lidRefused, grantRemains: lidGrantRemains,
                       holding: clamshellActive)

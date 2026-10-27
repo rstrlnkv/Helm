@@ -49,19 +49,17 @@ struct LogTail: Sendable {
     /// count.
     static let standardLimit = 1000
 
-    let limit: Int
     private var buffer: [LogEntry] = []
 
-    init(limit: Int = LogTail.standardLimit) {
-        self.limit = limit
-        buffer.reserveCapacity(limit)
+    init() {
+        buffer.reserveCapacity(Self.standardLimit)
     }
 
     var entries: [LogEntry] { buffer }
 
     mutating func append(_ entry: LogEntry) {
         buffer.append(entry)
-        if buffer.count > limit { buffer.removeFirst(buffer.count - limit) }
+        if buffer.count > Self.standardLimit { buffer.removeFirst(buffer.count - Self.standardLimit) }
     }
 
     mutating func clear() { buffer.removeAll(keepingCapacity: true) }
@@ -70,7 +68,7 @@ struct LogTail: Sendable {
     /// session's are one list, computed together, and appending them one by one
     /// would trim the oldest of them against a bound they are already inside.
     mutating func replace(with entries: [LogEntry]) {
-        buffer = Array(entries.suffix(limit))
+        buffer = Array(entries.suffix(Self.standardLimit))
     }
 }
 

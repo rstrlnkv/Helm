@@ -26,8 +26,7 @@ public enum UndoOutcome: Codable, Equatable, Sendable {
 /// with none, but "the folder you took it from is gone" and "that is not the
 /// file any more" ask for different next moves. The `rawValue` is storage and
 /// nothing else — every one of these is spoken in the reader's language from
-/// the day it ships, which is the lesson `ARefusalSpeaksTheLanguageTests` was
-/// written for after a row read «refused changedSinceCheck» in eight languages.
+/// the day it ships.
 public enum UndoRefusal: String, Codable, CaseIterable, Equatable, Sendable {
     /// Nothing is at the path the record says the file went to.
     case notThere

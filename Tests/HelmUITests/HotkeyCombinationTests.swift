@@ -82,8 +82,32 @@ final class HotkeyCombinationTests: XCTestCase {
         XCTAssertNotNil(HotkeyCombination(keyCode: 0xFF, modifiers: cmdKey))
         XCTAssertNotNil(HotkeyCombination(keyCode: kVK_ANSI_B, modifiers: 0xFFFF))
         // The top bit of the mask, beside a modifier. On its own it is no
-        // shortcut (`HotkeyCombinationLabelTests`): it used to be pinned here as
-        // accepted, which was the bare-letter defect the owner decided to fix.
+        // shortcut (`testAMaskHoldingNoneOfTheFourIsNotDrawnAsABareKey`, below):
+        // it used to be pinned here as accepted, which was the bare-letter
+        // defect the owner decided to fix.
         XCTAssertNotNil(HotkeyCombination(keyCode: kVK_ANSI_B, modifiers: cmdKey | rightControlKey))
+    }
+
+    // MARK: - A mask holding none of the four
+
+    /// A mask with bits set and none of them one of the four — the side-specific
+    /// and lock bits Carbon's `EventModifiers` also carries — is no combination:
+    /// accepted, it would be spelled as a bare key, «A», the one shape the
+    /// recorder refuses to record because a shortcut with no modifier swallows an
+    /// ordinary letter everywhere in the system.
+    func testAMaskHoldingNoneOfTheFourIsNotDrawnAsABareKey() {
+        let others: [(String, Int)] = [
+            ("rightShiftKey", rightShiftKey), ("rightOptionKey", rightOptionKey),
+            ("rightControlKey", rightControlKey), ("alphaLock", alphaLock),
+        ]
+        for (name, mask) in others {
+            XCTAssertNil(HotkeyCombination(keyCode: kVK_ANSI_A, modifiers: mask),
+                         "\(name) alone: accepted as a shortcut, and drawn as the bare letter")
+            XCTAssertFalse(HotkeyCombination.carriesAModifier(mask), "\(name) alone: the recorder's predicate says yes")
+        }
+        // Not a blanket refusal of the odd bits: beside one of the four they are
+        // ignored by the label and the combination stands.
+        let mixed = HotkeyCombination(keyCode: kVK_ANSI_A, modifiers: cmdKey | rightShiftKey | alphaLock)
+        XCTAssertEqual(mixed?.label, "⌘A")
     }
 }

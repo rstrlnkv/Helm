@@ -67,8 +67,7 @@ enum VPNInterfaceCounters {
     /// every re-read news: the poll behind one connect re-reads 26 times, and a
     /// live tunnel has carried another packet by each of them, so 26 payloads go
     /// out where one used to and every mounted page re-renders for a figure
-    /// nobody can see change (`AnUnchangedStateIsSaidOnceTests`, and
-    /// `HiddenPageEventChurnBenchmark` for the price of each).
+    /// nobody can see change.
     ///
     /// A kilobyte is the granularity the strip is drawn at: `HelmBytes` writes
     /// bytes exactly below one kilobyte and whole kilobytes above it, so nothing

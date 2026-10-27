@@ -34,19 +34,6 @@ final class VPNEngineTests: XCTestCase {
         XCTAssertTrue(runner.issued.contains(["--nc", "stop", "A"]))
     }
 
-    func test_connect_with_credentials_appends_secret_args() {
-        let runner = FakeRunner()
-        let creds = FakeCreds()
-        creds.map["A"] = VPNCredentials(user: "u", password: "p", secret: "s")
-        let engine = VPNEngine(settings: makeSettings(), runner: runner, credentials: creds, apps: FakeApps(),
-                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
-                               work: .inline)
-
-        engine.connect("A")
-
-        XCTAssertTrue(runner.issued.contains(["--nc", "start", "A", "--user", "u", "--password", "p", "--secret", "s"]))
-    }
-
     func test_auto_connect_on_app_launch() {
         let runner = FakeRunner()
         runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""

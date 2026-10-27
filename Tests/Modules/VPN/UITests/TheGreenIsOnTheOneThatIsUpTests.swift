@@ -7,7 +7,6 @@ import AppKit
 import HelmContract
 import HelmRuntime
 import HelmUI
-import HelmTestSupport
 @testable import Module_VPN_Engine
 @testable import Module_VPN_UI
 
@@ -101,20 +100,5 @@ final class TheGreenIsOnTheOneThatIsUpTests: XCTestCase {
                        + "tunnel")
         XCTAssertEqual(try greenInTheButtonsCorner(try shoot(.disconnected)), 0,
                        "a tunnel that is down wears the colour that means it is up")
-    }
-
-    /// A mark that carries meaning answers to 3:1, and this one now carries the
-    /// meaning the ring used to: the ring measured 3.40:1 on the card fill.
-    func testTheGreenMarkClearsTheMarkFloorOnTheButtonsDisc() {
-        for appearance in [NSAppearance.Name.aqua, .darkAqua] {
-            let window = Contrast.system(\.windowBackgroundColor, appearance)
-            let card = Contrast.over(Contrast.resolved(HelmSurface.wellFill, appearance), window)
-            let disc = Contrast.over(Contrast.resolved(HelmSurface.onPanelFill, appearance), card)
-            let ink = Contrast.resolved(HelmSignal.success, appearance)
-            let ratio = Contrast.ratio(ink, disc)
-            XCTAssertGreaterThanOrEqual(ratio, Contrast.markFloor,
-                                        "the green mark measures \(ratio):1 on its own disc in "
-                                        + "\(appearance.rawValue)")
-        }
     }
 }

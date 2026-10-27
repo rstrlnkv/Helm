@@ -141,40 +141,6 @@ final class LayoutEngineEdgeTests: XCTestCase {
                        "undo puts back what was replaced, ending and all")
     }
 
-    /// The stored default and the documented default are the same default.
-    ///
-    /// `ConversionTriggers` says Return is off, and says why at length:
-    /// in a chat Return sends the message and empties the field, so the
-    /// backspaces delete nothing, the replacement is typed into an empty box
-    /// and the newline sends it — the other person gets the mistyped word and
-    /// then a second message correcting it. Every place that reads the setting
-    /// out of the store asks for `default: true`, so on a machine where nobody
-    /// has touched the switch, Return converts.
-    func testTheStoredDefaultsMatchTheDocumentedOnes() async throws {
-        let store = NamespacedStore(namespace: "layout", backing: InMemoryKeyValueStore())
-        let engine = engine(settings: store, table: ["ghbdtn": "привет"])
-        // Nothing has been written to the store: this is a fresh install
-        // reading its own defaults.
-        _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
-
-        tap.type("ghbdtn")
-        tap.send(.newline)
-        XCTAssertTrue(typing.performed.isEmpty,
-                      "Return converted on a store nobody has written to")
-
-        // …and the two that are documented as on stay on, so the answer is not
-        // "switch everything off". Counted as increments, so these two stand on
-        // their own whatever Return did above.
-        var seen = typing.performed.count
-        tap.type("ghbdtn")
-        tap.send(.space)
-        XCTAssertEqual(typing.performed.count, seen + 1, "a space still confirms by default")
-        seen = typing.performed.count
-        tap.type("ghbdtn")
-        tap.send(.punctuation("."))
-        XCTAssertEqual(typing.performed.count, seen + 1, "punctuation still confirms by default")
-    }
-
     /// A word abandoned by clicking somewhere else is not the word under the
     /// caret any more, and the hotkey must not go looking for it.
     ///
@@ -229,25 +195,6 @@ final class LayoutEngineEdgeTests: XCTestCase {
         XCTAssertEqual(typing.performed.count, seen,
                        "and it must not undo into an app either")
     }
-
-    /// A choice the user made stays made across a settings reload — the store
-    /// is the source of truth once it has been written to.
-    ///
-    /// It used to be asserted over `onSpace`, one of three trigger switches
-    /// that no longer exist: the engine takes `ConversionTriggers` and
-    /// reads no key for them, precisely so a value stored by an older build
-    /// cannot outlive the control that could change it. «Fix as I type» carries
-    /// the same claim and is a setting the page still has.
-    func testAStoredChoiceSurvivesTheReload() async throws {
-        let backing = InMemoryKeyValueStore()
-        let store = NamespacedStore(namespace: "layout", backing: backing)
-        store.set(false, for: LayoutKey.automatic)
-        let engine = engine(settings: store, table: ["ghbdtn": "привет"])
-        _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
-        tap.type("ghbdtn")
-        tap.send(.space)
-        XCTAssertTrue(typing.performed.isEmpty, "the user switched fixing as you type off")
-    }
 }
 
 /// The engine has to read its own settings when it starts.
@@ -296,5 +243,75 @@ final class SettingsAtStartTests: XCTestCase {
                           "the engine never read its own settings at start")
         tap.tapKey(TapKey.rightCommand.keyCode!)
         withExtendedLifetime(engine) {}
+    }
+}
+
+/// What the store holds against what the engine does with it: the defaults a
+/// fresh install runs on, and a choice that survives a reload.
+final class LayoutEngineStoredSettingsTests: XCTestCase {
+    private var typing = EdgeTyping()
+    private var tap = EdgeTap()
+
+    private func engine(settings: NamespacedStore, table: [String: String]) -> LayoutEngine {
+        typing = EdgeTyping(); tap = EdgeTap()
+        let engine = LayoutEngine(tap: tap, typing: typing, sources: EdgeSources(),
+                                  translation: EdgeTranslation(table: table),
+                                  spell: EdgeSpell(), secure: EdgeContext(),
+                                  settings: settings)
+        engine.activate()
+        return engine
+    }
+
+    /// The stored default and the documented default are the same default.
+    ///
+    /// `ConversionTriggers` says Return is off, and says why at length:
+    /// in a chat Return sends the message and empties the field, so the
+    /// backspaces delete nothing, the replacement is typed into an empty box
+    /// and the newline sends it — the other person gets the mistyped word and
+    /// then a second message correcting it. Every place that reads the setting
+    /// out of the store asks for `default: true`, so on a machine where nobody
+    /// has touched the switch, Return converts.
+    func testTheStoredDefaultsMatchTheDocumentedOnes() async throws {
+        let store = NamespacedStore(namespace: "layout", backing: InMemoryKeyValueStore())
+        let engine = engine(settings: store, table: ["ghbdtn": "привет"])
+        // Nothing has been written to the store: this is a fresh install
+        // reading its own defaults.
+        _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
+
+        tap.type("ghbdtn")
+        tap.send(.newline)
+        XCTAssertTrue(typing.performed.isEmpty,
+                      "Return converted on a store nobody has written to")
+
+        // …and the two that are documented as on stay on, so the answer is not
+        // "switch everything off". Counted as increments, so these two stand on
+        // their own whatever Return did above.
+        var seen = typing.performed.count
+        tap.type("ghbdtn")
+        tap.send(.space)
+        XCTAssertEqual(typing.performed.count, seen + 1, "a space still confirms by default")
+        seen = typing.performed.count
+        tap.type("ghbdtn")
+        tap.send(.punctuation("."))
+        XCTAssertEqual(typing.performed.count, seen + 1, "punctuation still confirms by default")
+    }
+
+    /// A choice the user made stays made across a settings reload — the store
+    /// is the source of truth once it has been written to.
+    ///
+    /// It used to be asserted over `onSpace`, one of three trigger switches
+    /// that no longer exist: the engine takes `ConversionTriggers` and
+    /// reads no key for them, precisely so a value stored by an older build
+    /// cannot outlive the control that could change it. «Fix as I type» carries
+    /// the same claim and is a setting the page still has.
+    func testAStoredChoiceSurvivesTheReload() async throws {
+        let backing = InMemoryKeyValueStore()
+        let store = NamespacedStore(namespace: "layout", backing: backing)
+        store.set(false, for: LayoutKey.automatic)
+        let engine = engine(settings: store, table: ["ghbdtn": "привет"])
+        _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
+        tap.type("ghbdtn")
+        tap.send(.space)
+        XCTAssertTrue(typing.performed.isEmpty, "the user switched fixing as you type off")
     }
 }

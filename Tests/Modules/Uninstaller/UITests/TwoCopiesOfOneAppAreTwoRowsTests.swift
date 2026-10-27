@@ -59,22 +59,6 @@ final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
 
     // MARK: -
 
-    /// The picker. Two installed copies, one row.
-    func testTheAppPickerGivesEachInstalledCopyItsOwnIdentity() {
-        let direct = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
-                                  path: "/Applications/Tool.app", sizeBytes: 40_000)
-        let setapp = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
-                                  path: "/Users/ann/Applications/Setapp/Tool.app",
-                                  sizeBytes: 900_000)
-
-        XCTAssertEqual(Set([direct, setapp].map(\.id)).count, 2, """
-            two installed copies of one app carry one identity into the picker's ForEach, \
-            which SwiftUI answers with «undefined results». The review screen behind it \
-            already identifies them by path (`UninstallGroup.id`) and removes both, so the \
-            list that queues them is the one place that cannot tell them apart.
-            """)
-    }
-
     /// The unprompted window, end to end: the engine really does hand back two
     /// groups for two copies of one app in the Trash, so this is not a fact
     /// invented in a fixture.
@@ -103,8 +87,9 @@ final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
             """)
     }
 
-    /// The control. Two different apps were always two rows, so neither
-    /// assertion above passes by identifying everything as itself.
+    /// The control. Two different apps were always two rows, so the assertion
+    /// above, and the picker's in `TheAppPickerGivesEachCopyItsOwnIdentityTests`,
+    /// cannot pass by identifying everything as itself.
     func testTwoDifferentAppsAreStillTwoRows() {
         let one = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
                                path: "/Applications/Tool.app", sizeBytes: 1)
@@ -117,5 +102,27 @@ final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
         let second = TrashedAppLeftovers(bundleID: "com.acme.other", name: "Other",
                                          appPath: "/Users/ann/.Trash/Other.app", leftovers: [])
         XCTAssertEqual(Set([first, second].map(\.id)).count, 2)
+    }
+}
+
+/// The picker's half of the same rule: two installed copies of one app share a
+/// bundle id, and the picker still has to tell them apart.
+@MainActor
+final class TheAppPickerGivesEachCopyItsOwnIdentityTests: XCTestCase {
+
+    /// The picker. Two installed copies, one row.
+    func testTheAppPickerGivesEachInstalledCopyItsOwnIdentity() {
+        let direct = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
+                                  path: "/Applications/Tool.app", sizeBytes: 40_000)
+        let setapp = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
+                                  path: "/Users/ann/Applications/Setapp/Tool.app",
+                                  sizeBytes: 900_000)
+
+        XCTAssertEqual(Set([direct, setapp].map(\.id)).count, 2, """
+            two installed copies of one app carry one identity into the picker's ForEach, \
+            which SwiftUI answers with «undefined results». The review screen behind it \
+            already identifies them by path (`UninstallGroup.id`) and removes both, so the \
+            list that queues them is the one place that cannot tell them apart.
+            """)
     }
 }

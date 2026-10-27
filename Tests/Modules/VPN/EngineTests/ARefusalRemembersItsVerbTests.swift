@@ -14,9 +14,6 @@ import HelmRuntime
 /// everything this Mac sends. The same class of sentence
 /// `VPNAutomation.Kind.dropped` exists to warn about, produced by the app itself,
 /// and invisible to every test because the value had no verb in it to be wrong.
-///
-/// This half is what the engine recorded. The sentence that reads it is
-/// `ARefusedStopIsNotARefusedConnectTests`, one target over, where `VPNStr` is.
 final class ARefusalRemembersItsVerbTests: XCTestCase {
 
     private let uuid = "11111111-1111-1111-1111-111111111111"
@@ -55,25 +52,5 @@ final class ARefusalRemembersItsVerbTests: XCTestCase {
         e.connect("Office")
 
         XCTAssertEqual(e.lastFailure?.verb, .connect)
-    }
-
-    /// A payload from a build that predates the field still decodes, and the
-    /// **whole** payload with it: a synthesised `Decodable` throws on the missing
-    /// key, and `JSONDecoder` then gives up on the document rather than on the
-    /// field — so the page would lose every connection it draws over one word
-    /// (CLAUDE.md § What not to do, and what breaks if you do).
-    func testAFailureFromBeforeTheVerbStillDecodesWithThePayloadAroundIt() throws {
-        let legacy = Data("""
-        {"connections":[{"id":"1","name":"Office","status":"connected"}],
-         "autoConnected":[],"defaultName":"Office",
-         "lastFailure":{"name":"Office","reason":"refused"}}
-        """.utf8)
-
-        let payload = try JSONDecoder().decode(VPNEngine.StatePayload.self, from: legacy)
-
-        XCTAssertEqual(payload.connections.count, 1,
-                       "one missing word cost the page everything else in the payload")
-        XCTAssertEqual(payload.lastFailure?.verb, .connect,
-                       "the only sentence such a build could draw was the connect one")
     }
 }

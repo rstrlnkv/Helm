@@ -72,7 +72,7 @@ no threshold (`ScopeCost`).
 the allocator's own books — `malloc_zone_statistics`' `size_in_use`. Every walk with a
 budget carries its ceiling as a file rather than as a paragraph, per entry or per item:
 `Tests/Modules/Disk/EngineTests/ScanFootprintTests.swift`,
-`Tests/Modules/Leftovers/EngineTests/LeftoversScanFootprintTests.swift`,
+`Tests/Modules/Leftovers/EngineTests/AScanKeepsWhatItFoundTests.swift`,
 `Tests/Modules/Duplicates/EngineTests/WalkFootprintTests.swift` and
 `Tests/HelmRuntimeTests/ReleaseDigestFootprintTests.swift`, with
 `Tests/HelmRuntimeTests/MemoryTrailCoverageTests.swift` holding the list of phases
@@ -98,13 +98,12 @@ Each launch is **a card** (under a filter, one with nothing to show has none), a
 launch is comes out of the lines themselves, in pure functions in
 `Sources/HelmApp/LogSessions.swift` and not in the view, so a fixture can be handed to them.
 Nothing is dropped or reordered on the way: the cards joined are the tail. Which of them the
-page draws is a separate matter, below. Two gaps are decided and deferred, and are skipped
-in `Tests/HelmAppTests/TheLogsHeadingsAndMarksHoldInEveryLanguageAndAppearanceTests.swift`:
-no query finds a card by «Earlier launch», and a day span across midnight is written by the
-system's interval formatter, which in Chinese and Japanese is numerals beside long-form day
-headings.
+page draws is a separate matter, below. Two known defects are in the defect log:
+`log-earlier-launch-search`, no query finds a card by «Earlier launch», and
+`log-span-zh-ja`, a day span across midnight is written by the system's interval
+formatter, which in Chinese and Japanese is numerals beside long-form day headings.
 
-`Sources/HelmRuntime/LogTail.swift` is the in-memory tail, bounded by `limit` and trimmed
+`Sources/HelmRuntime/LogTail.swift` is the in-memory tail, bounded by `LogTail.standardLimit` and trimmed
 from the front. It is filled from the parts a file line is spelled from rather than by
 parsing the line back apart. `Sources/HelmRuntime/LogSeed.swift` is the one exception and
 says so in its own first line: a seed has no parts to hold, so it parses — once, in a
@@ -118,10 +117,9 @@ the end the scroll view holds it (`defaultScrollAnchor`), and `LogReaderPlace` a
 the end again when it has been missed; a card's rows are plain up to `LogView.lazyAbove`
 and lazy above it, so the height of a large card is an estimate until its rows are drawn.
 A reader who is not at the end is held by the line at the top of the view and not by the
-scroll offset (`LogReaderPlace`), with one known exception: a line taller than the room
-below it, `log-tall-line`, skipped unless `HELM_KNOWN_GAPS=1` in
-`Tests/HelmAppTests/TheReadersLineLandsWhereItWasTests.swift`; a reader inside a larger
-card is held no better than the lazy estimate allows.
+scroll offset (`LogReaderPlace`), with one known exception, a line taller than the room
+below it, which the hold itself moves; a reader inside a larger card is held no better
+than the lazy estimate allows.
 
 Which launches are drawn is bounded, because a stack lays out every row it is given: the
 rows laid out at open are those of the newest launches, not of the whole tail. At open the
@@ -143,12 +141,11 @@ at least one launch more whenever one is not drawn: the page keeps a count of do
 `drawnAtOpen` and the ask raises it to the nearest count that adds a launch
 (`LogView.earlierAfterAsk`), building the presentation once for it. What is drawn never
 shrinks because of an ask. Once every launch is drawn an ask writes no state, so the page is
-not redrawn and the toolbar not declared again. A tail at its cap is wholly drawn at
-`LogView.earlierCeiling` doublings, so at most that many asks write anything; the next finds
-nothing to draw. A launch that is not drawn is not in the content and takes no height, so
+not redrawn and the toolbar not declared again. A tail at its cap is wholly drawn after
+as many doublings of `drawnAtOpen` as it takes to reach `HelmLog.tailLimit`, so at most that many
+asks write anything; the next finds nothing to draw. A launch that is not drawn is not in the content and takes no height, so
 the place of a drawn line is still a measurement where its rows are plain (a card over
 `lazyAbove` rows is lazy and its height an estimate), and the hold above is as exact as it
-was. The count of what is drawn is `LogReaderPlace.drawnRows`, and
-`Tests/HelmAppTests/TheLogDrawsTheNewestLaunchesFirstTests.swift` holds, in rows, that four
-times the log does not draw four times the rows. «Copy log» and the footer's counts are
+was.
+«Copy log» and the footer's counts are
 over the whole presentation, not over the cards drawn.

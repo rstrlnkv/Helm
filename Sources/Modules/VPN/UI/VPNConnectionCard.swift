@@ -69,8 +69,7 @@ struct VPNConnectionCard: View {
     /// preview is drawn at (104 : 66). It was derived from the popover's width
     /// when three of them stood in a row; there is one per question now, and a
     /// picture that grows with the popover is a picture that takes the room the
-    /// question needs. `TheNoticeLabelsFitTheCardTests` measures the mode labels
-    /// against `modeWidth` instead.
+    /// question needs.
     static let noticeThumbnail = CGSize(width: 104, height: 66)
 
     /// The width both mode pop-ups take, in one language.
@@ -79,11 +78,8 @@ struct VPNConnectionCard: View {
     /// and the plain arithmetic is a whole symbol column short: at 150 the
     /// control asks for 152 in Russian and 170 in French, and a pop-up narrower
     /// than its own words does not say what it is set to.
-    /// `TheNoticeLabelsFitTheCardTests` measures every language against a real
-    /// control, so a wrong allowance fails there rather than truncating
-    /// «Notification» on somebody else's Mac.
     ///
-    /// Language-taking for the reason `DuplicatesLayout.policyPickerWidth` is:
+    /// Language-taking:
     /// a width read through `AppLanguage.current` is this machine's width eight
     /// times over. 150 is the column the popover was drawn at, and the terse
     /// languages keep it.
@@ -339,8 +335,6 @@ struct VPNConnectionCard: View {
 
     // MARK: - The notices popover
 
-    /// Mounted directly by a bench, for the reason `rulesPopover` gives.
-    ///
     /// **Two questions, two pictures, one right edge.** It used to ask each
     /// question with a row of three previews — six pictures for three modes,
     /// 288 pt of the 483 it stood at, and three of them a repeat of the other
@@ -348,7 +342,7 @@ struct VPNConnectionCard: View {
     /// question is *set to*, beside the control that sets it; the other two
     /// modes are words in the pop-up, which is where macOS puts a choice of
     /// three.
-    var noticesPopover: some View {
+    private var noticesPopover: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s5) {
             popoverTitle(VPNStr.noticesFor(connection.name))
                 .padding(.horizontal, -HelmSpace.s5)
@@ -441,9 +435,8 @@ struct VPNConnectionCard: View {
                 // asks for 152 pt here against this width's 156 — near enough
                 // that the frame is not what keeps the two pop-ups in one
                 // column (a pop-up sizes to its widest *item*, so both would
-                // agree anyway). What the frame buys is a number with a name:
-                // `modeWidth` is what the eight-language guard measures, and a
-                // width nobody can name is a width nobody can check.
+                // agree anyway). What the frame buys is a number with a name,
+                // `modeWidth`.
                 //
                 // Trailing, for the reason the rules row gives: a pop-up hugs
                 // its title inside the width it is given, and centred in it the

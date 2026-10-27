@@ -20,7 +20,7 @@ import HelmRuntime
     ///
     /// Deliberately not defaulted. A default would let a module ship without a
     /// colour of its own and inherit one silently — which is the defect this
-    /// replaces, where `ModuleCategory.tint` gave four «files» modules one
+    /// replaces, where a colour per category gave four «files» modules one
     /// blue. The compiler asking is better than a test noticing.
     static var tint: ModuleTint { get }
     /// The shape this module is known by, beside its colour.

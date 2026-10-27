@@ -44,8 +44,7 @@ public enum SaveLocation {
     /// The folder is judged against the disk as it is at this call: it exists,
     /// it is a directory, and it is writable. A volume that was unplugged since
     /// the preference was set is `missing`, and the Desktop takes the picture.
-    public static func resolve(raw: Any?, desktop: URL, home: URL,
-                               writable: (String) -> Bool = { FileManager.default.isWritableFile(atPath: $0) }) -> SaveFolder {
+    public static func resolve(raw: Any?, desktop: URL, home: URL) -> SaveFolder {
         let shaped = shape(raw: raw, desktop: desktop, home: home)
         guard shaped.refused == nil, raw != nil else { return shaped }
         let url = shaped.url
@@ -53,7 +52,7 @@ public enum SaveLocation {
         guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
         else { return SaveFolder(url: desktop, refused: .missing) }
         guard isDirectory.boolValue else { return SaveFolder(url: desktop, refused: .notAFolder) }
-        guard writable(url.path) else { return SaveFolder(url: desktop, refused: .notWritable) }
+        guard FileManager.default.isWritableFile(atPath: url.path) else { return SaveFolder(url: desktop, refused: .notWritable) }
         return SaveFolder(url: url, refused: nil)
     }
 
@@ -90,10 +89,9 @@ public enum SaveLocation {
     /// folder stored is a refusal (`empty`) and not a quiet Desktop: somebody
     /// chose something and it is not there.
     public static func folder(for settings: ScreenshotsSettings, macOS: Any?,
-                              locations: ScreenshotsLocations,
-                              writable: (String) -> Bool = { FileManager.default.isWritableFile(atPath: $0) }) -> SaveFolder? {
+                              locations: ScreenshotsLocations) -> SaveFolder? {
         guard let raw = rawValue(for: settings, macOS: macOS, locations: locations) else { return nil }
-        return resolve(raw: raw.value, desktop: locations.desktop, home: locations.home, writable: writable)
+        return resolve(raw: raw.value, desktop: locations.desktop, home: locations.home)
     }
 
     /// The same folder as `folder(for:)` names, without asking the disk.

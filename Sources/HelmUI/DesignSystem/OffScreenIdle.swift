@@ -14,7 +14,7 @@ import AppKit
 /// `PropertyList.prependValue` — a fresh `PropertyList.Element` chained in
 /// front of the ones before it, none of which can be freed while the tree
 /// lives. ~3–6 KB per event, sustained over six benchmark laps with no decay,
-/// hidden window and visible window alike (`HiddenPageEventChurnBenchmark`),
+/// hidden window and visible window alike,
 /// and the installed build's heap showed the same signature at rest: 3 766
 /// live ObservationTracking dictionaries and a ~3 MB/hour ratchet.
 ///
@@ -29,7 +29,7 @@ import AppKit
 /// keep hearing.
 ///
 /// A view with **no window at all** counts as seen: the offscreen render
-/// harnesses (`ModulePageRender`, geometry probes) drive bare hosting views
+/// harnesses drive bare hosting views
 /// and windows that are never ordered in, and a measurement of a page that
 /// declined to draw would be a measurement of nothing. A harness whose window
 /// exists but never shows opts in through `helmTreatsWindowAsSeen` — an
@@ -90,12 +90,6 @@ public extension View {
 
 /// Reports whether the window this view sits in is on screen. Zero-size,
 /// draws nothing.
-///
-/// Internal, not private: `Tests/HelmUITests/WindowSeenReaderRaceTests.swift`
-/// and `Tests/HelmUITests/TheWindowReaderAnswersAtDeliveryTests.swift`
-/// construct `Reader` directly to drive the race `report()` guards against,
-/// and `@testable import` does not reach `private`. Nothing outside `HelmUI`
-/// uses either type.
 struct WindowSeenReader: NSViewRepresentable {
     @Binding var seen: Bool
 
@@ -129,9 +123,7 @@ struct WindowSeenReader: NSViewRepresentable {
                 // is not the window server's client: it is sent this
                 // notification zero times and its windows report
                 // `occlusionState` `.visible` throughout, ordered out or not.
-                // So do not "correct" the two lines above from a test run —
-                // a test drives this reader through `viewDidMoveToWindow` and
-                // `report()` instead, which is what both test files do.
+                // So do not "correct" the two lines above from a test run.
                 observer = NotificationCenter.default.addObserver(
                     forName: NSWindow.didChangeOcclusionStateNotification,
                     object: window, queue: .main

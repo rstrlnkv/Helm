@@ -4,15 +4,13 @@ import XCTest
 /// Every directory the map in `ARCHITECTURE.md` names must be a directory.
 ///
 /// **Why this is a test.** `DocumentsNameTheTreeTests` reads the backticked
-/// names in the standing documents, but only those shaped like a symbol or a
-/// `.swift` file — a path with slashes in it falls straight through, and so does
-/// a row of a table. The map moved out of `CLAUDE.md` into `ARCHITECTURE.md`
-/// when the documents were split by mood: a table saying where a thing lives
-/// describes how Helm is built, and that is the other document's genre. Moving
-/// it did not make it checkable — `TheDocumentsDoNotDriftTests` drops the block a
-/// table sits in whenever the block's first line begins with `|`, before it
-/// reads a word — so this is still the only thing standing between a renamed
-/// directory and the next reader being sent to it.
+/// paths in the standing documents, but only file paths, a span ending in an
+/// extension it knows — a directory has none and falls through. The map moved
+/// out of `CLAUDE.md` into `ARCHITECTURE.md` when the documents were split by
+/// mood: a table saying where a thing lives describes how Helm is built, and
+/// that is the other document's genre. Moving it did not make it checkable, so
+/// this is still the only thing standing between a renamed directory and the
+/// next reader being sent to it.
 ///
 /// **`<Module>` is expanded, not skipped.** A row naming a per-module
 /// directory is a claim about *every* module, and the manifest already requires

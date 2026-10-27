@@ -30,18 +30,7 @@ import SwiftUI
 /// belonged to the control: Homebrew's search and the Uninstaller's app filter
 /// were the same omission twice, and the third one would have been too.
 ///
-/// `NamedControlsTests` cannot see this and is not the guard for it — it scans
-/// for a `Picker` or a `TextField` whose first argument is an empty string
-/// literal, and for a `Button` or `Toggle` whose whole label is an image, and an
-/// `NSViewRepresentable` is none of those. **The literal is deliberately not
-/// written out here**: that scan reads source lines without blanking comments, so
-/// prose quoting the shape it forbids is reported as an offence — which is what
-/// this paragraph did on its first draft.
-/// The toolbar's own field is read back off its mounted control instead
-/// (`TheSearchFieldsNameSurvivesEmptyTypedFoldedAndAPageChangeTests`,
-/// `TheSearchFieldsNameFollowsALanguageChangeThroughTheNewToolbarTests`) —
-/// the **toolbar's** field, which is the one a person actually meets, so
-/// nothing in this file is under guard while nothing mounts it.
+/// Nothing in the suite reads this name back: no test mounts the field.
 public struct HelmSearchField: NSViewRepresentable {
     @Binding var text: String
     let placeholder: String

@@ -156,7 +156,7 @@ public enum OpFailureReason: String, Codable, Sendable, CaseIterable {
     /// argv no entry on `DoctorFix.Allowed` admits, and a Cellar the engine
     /// could not read at all, which is not a Cellar the name is in. A refusal
     /// is an outcome and it is named: a press that answered nothing at all is
-    /// the defect `AVanishedBrewIsNotASilentPressTests` was written against.
+    /// the defect this case exists against.
     case fixRefused
     /// Homebrew's installer needs Apple's Command Line Tools and they never
     /// arrived: the person closed Apple's window without installing (Cancel,
@@ -280,8 +280,7 @@ public struct ConfigLine: Codable, Equatable, Sendable, Identifiable {
 /// could not make a `key: value` of. `text` is the document, byte for byte as
 /// brew printed it, and it is what «Copy for a bug report» puts on the
 /// pasteboard: a bug report asks for what the tool said, not for Helm's reading
-/// of it. The same rule `HostsFile` carries — a parse is a reading and never
-/// the document.
+/// of it: a parse is a reading and never the document.
 public struct BrewConfig: Codable, Equatable, Sendable {
     public let lines: [ConfigLine]
     public let text: String

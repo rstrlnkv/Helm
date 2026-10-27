@@ -254,8 +254,7 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { appPath } 
 struct TrashedLeftoversView: View {
     @ObservedObject var model: TrashedLeftoversModel
     let onClose: () -> Void
-    /// The window's width, named so `TheTrashOfferFooterFitsTheWindowTests`
-    /// measures the number that ships rather than a copy of it.
+    /// The window's width.
     ///
     /// 560, not the 460 the group header needed: that comment said outright
     /// the footer was never measured, and the footer's two verbs are the wide
@@ -412,7 +411,6 @@ struct TrashedLeftoversView: View {
     }
 
     private var footer: some View {
-        // The spacing is what `TheTrashOfferFooterFitsTheWindowTests` mirrors.
         // The verbs are `fixedSize` and the count is not: when the figures
         // outgrow the room, the count truncates and the buttons stay whole.
         HStack(spacing: 8) {

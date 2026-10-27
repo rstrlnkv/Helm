@@ -396,8 +396,7 @@ struct KeepAwakeSettingsPage: View {
     /// have to move on one clock. Three went on reading the live value after the
     /// marked ones moved to the drawn one, and that was worse than no animation:
     /// the row gaining a tick ramped while the three beside it jumped, so the card
-    /// came apart down the middle on every press. `MarkColumnHasOneClockTests`
-    /// fails on a second reader.
+    /// came apart down the middle on every press.
     ///
     /// The two rules and the lid can be marked; the timer setting and the battery
     /// guard never are. With none of them countable the column is not drawn at
@@ -425,8 +424,8 @@ struct KeepAwakeSettingsPage: View {
         // that is still sliding.
         let enabled = shownEnabled.contains(condition)
         let satisfied = shownConditions.contains(condition)
-        // The four cases live in `RuleNote`, out in the engine's logic where a
-        // test can reach them. Written here as nested ternaries there was no
+        // The four cases live in `RuleNote`, out in the engine's logic. Written
+        // here as nested ternaries there was no
         // room for the fourth — a rule that is on, whose trigger holds, and
         // which is paused — so it read as «Not applying right now» directly
         // under a banner saying it was paused.

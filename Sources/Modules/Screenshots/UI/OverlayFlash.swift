@@ -13,9 +13,6 @@ final class FlashLayer: CAShapeLayer {
     /// How white it is at its brightest.
     static let peak: Float = 0.55
 
-    /// The rectangle being lit, in the layer's own space; nil while none is.
-    private(set) var lit: CGRect?
-
     override init() {
         super.init()
         fillColor = NSColor.white.cgColor
@@ -25,8 +22,7 @@ final class FlashLayer: CAShapeLayer {
     override init(layer: Any) { super.init(layer: layer) }
     @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
 
-    func play(over frame: CGRect, shape: CGPath) {
-        lit = frame
+    func play(shape: CGPath) {
         path = shape
         opacity = 0
         let fade = CABasicAnimation(keyPath: "opacity")

@@ -96,9 +96,6 @@ enum LfStr {
     /// titled «Delete X?» whose own destructive button said «Move to Trash», with
     /// a report afterwards saying «Moved to the Trash»: three names for one act,
     /// and the wrong one was on the control a person reads last.
-    /// `OneActHasOneNameTests` holds it to `removeSelected` plus an ellipsis in
-    /// all eight, because the English being right is how this hid in the other
-    /// seven.
     static var deleteItem: String { L("Move to Trash…") }
     /// The question the row asks before deleting — or nil for a row it deletes
     /// without asking.

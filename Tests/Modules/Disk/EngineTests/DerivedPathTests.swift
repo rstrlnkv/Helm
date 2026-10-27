@@ -22,34 +22,6 @@ final class DerivedPathTests: XCTestCase {
         [entry.path] + entry.children.flatMap(paths(of:))
     }
 
-    // MARK: - The field itself
-
-    /// The saving is a stored field that is not there, so this asserts on the
-    /// shape of the node rather than on a measurement.
-    ///
-    /// `ScanFootprintTests` cannot do it, and no tightening of its ceiling
-    /// would: that test measures a fixture of **empty** files, which fold into
-    /// a bucket and make no node at all, precisely so its reading is about the
-    /// path arithmetic and about nothing else. The cost of a stored path scales
-    /// with the node count rather than the file count — 597 bytes per file
-    /// against 442–457 without it on this machine, measured over a real home
-    /// directory, and far too machine-dependent to assert. Whether the field
-    /// exists is neither.
-    func testANodeStoresNoPath() {
-        let mirror = Mirror(reflecting: DiskNode(name: "x", bytes: 1, isDirectory: false))
-        let labels = mirror.children.compactMap(\.label)
-
-        XCTAssertFalse(labels.contains("path"), """
-            DiskNode is storing a path again. It holds \(labels).
-            A full path per node cost 155 bytes per file walked here (597 against \
-            442) and scales with the node count, not the file count: on a 1.5M-node \
-            volume the pair measured 437.6 MB against 92 MB for the name alone. \
-            Compose the path in the traversal that needs it, as the snapshot, \
-            DiskAdvisor and RingLayout do.
-            """)
-        XCTAssertTrue(labels.contains("name"), "the name is what a path is composed from")
-    }
-
     // MARK: - The volume root
 
     /// `/` is the case `ScanPath` was written for: joining a child onto it with
@@ -110,7 +82,7 @@ final class DerivedPathTests: XCTestCase {
     /// from a real file called `…` by appending a NUL, which is only needed
     /// *because* the two paths are equal. If composition ever gave the bucket a
     /// different string, the collision would disappear and so would the reason
-    /// for the NUL — quietly, with `FoldedBucketWireTests` still green.
+    /// for the NUL — quietly.
     func testTheInventedBucketGetsThePathARealFileOfThatNameWouldHave() {
         let builder = TreeBuilder(root: "/r", foldThreshold: 1_000)
         builder.addFile(path: "/r/…", bytes: 100_000, fileID: 1)   // a real file
@@ -137,5 +109,37 @@ final class DerivedPathTests: XCTestCase {
 
         XCTAssertEqual(all.sorted(), ["/", "/…"],
                        "the bucket beside a volume root: \(all)")
+    }
+}
+
+/// A node carries a name and no path; the field is checked by its absence.
+final class ANodeStoresNoPathTests: XCTestCase {
+
+    // MARK: - The field itself
+
+    /// The saving is a stored field that is not there, so this asserts on the
+    /// shape of the node rather than on a measurement.
+    ///
+    /// `ScanFootprintTests` cannot do it, and no tightening of its ceiling
+    /// would: that test measures a fixture of **empty** files, which fold into
+    /// a bucket and make no node at all, precisely so its reading is about the
+    /// path arithmetic and about nothing else. The cost of a stored path scales
+    /// with the node count rather than the file count — 597 bytes per file
+    /// against 442–457 without it on this machine, measured over a real home
+    /// directory, and far too machine-dependent to assert. Whether the field
+    /// exists is neither.
+    func testANodeStoresNoPath() {
+        let mirror = Mirror(reflecting: DiskNode(name: "x", bytes: 1, isDirectory: false))
+        let labels = mirror.children.compactMap(\.label)
+
+        XCTAssertFalse(labels.contains("path"), """
+            DiskNode is storing a path again. It holds \(labels).
+            A full path per node cost 155 bytes per file walked here (597 against \
+            442) and scales with the node count, not the file count: on a 1.5M-node \
+            volume the pair measured 437.6 MB against 92 MB for the name alone. \
+            Compose the path in the traversal that needs it, as the snapshot, \
+            DiskAdvisor and RingLayout do.
+            """)
+        XCTAssertTrue(labels.contains("name"), "the name is what a path is composed from")
     }
 }

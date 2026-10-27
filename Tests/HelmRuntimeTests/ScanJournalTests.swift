@@ -24,21 +24,6 @@ final class ScanJournalTests: XCTestCase {
         XCTAssertNil(journal.list(module: "duplicates", .previous))
     }
 
-    func testAnEntryRoundTrips() {
-        let one = entry(2_480_000_000, 184)
-        journal.record(one, items: [ScanItem(path: "/a", bytes: 10)], module: "duplicates")
-        XCTAssertEqual(journal.entries(module: "duplicates"), [one])
-        XCTAssertEqual(journal.list(module: "duplicates", .current),
-                       [ScanItem(path: "/a", bytes: 10)])
-    }
-
-    /// Newest first, because that is the order the page reads them in.
-    func testEntriesComeBackNewestFirst() {
-        journal.record(entry(1, 1, at: 0), items: [], module: "disk")
-        journal.record(entry(2, 2, at: 60), items: [], module: "disk")
-        XCTAssertEqual(journal.entries(module: "disk").map(\.bytes), [2, 1])
-    }
-
     /// The current list becomes the previous one, and the one before that is
     /// gone — two lists is the whole storage budget.
     func testTheCurrentListBecomesThePrevious() {
@@ -53,19 +38,6 @@ final class ScanJournalTests: XCTestCase {
                        module: "disk")
         XCTAssertEqual(journal.list(module: "disk", .current)?.map(\.path), ["/third"])
         XCTAssertEqual(journal.list(module: "disk", .previous)?.map(\.path), ["/second"])
-    }
-
-    /// Thirty entries, so a module scanned twice a day keeps a fortnight. The
-    /// oldest goes; the file does not grow without end.
-    func testTheJournalIsBounded() {
-        for i in 0...(ScanJournal.limit + 4) {
-            journal.record(entry(i, 1, at: TimeInterval(i) * 60), items: [], module: "disk")
-        }
-        let kept = journal.entries(module: "disk")
-        XCTAssertEqual(kept.count, ScanJournal.limit)
-        // The newest survived and the oldest did not.
-        XCTAssertEqual(kept.first?.bytes, ScanJournal.limit + 4)
-        XCTAssertFalse(kept.contains { $0.bytes == 0 })
     }
 
     /// Two modules do not share a journal.
@@ -119,5 +91,50 @@ final class ScanJournalTests: XCTestCase {
             .appendingPathComponent("Helm", isDirectory: true).path
         XCTAssertNotEqual(ScanJournal.defaultDirectory.path, real)
         XCTAssertFalse(ScanJournal.defaultDirectory.path.hasPrefix(real + "/"))
+    }
+}
+
+final class ScanJournalOrderAndBoundTests: XCTestCase {
+
+    private var directory: URL!
+    private var journal: ScanJournal!
+
+    override func setUp() {
+        super.setUp()
+        directory = scratchDirectory("scan-journal")
+        journal = ScanJournal(directory: directory)
+    }
+
+    private func entry(_ bytes: Int, _ count: Int, at seconds: TimeInterval = 0) -> ScanEntry {
+        ScanEntry(at: Date(timeIntervalSince1970: 1_785_600_000 + seconds),
+                  bytes: bytes, count: count, seconds: 1.5)
+    }
+
+    func testAnEntryRoundTrips() {
+        let one = entry(2_480_000_000, 184)
+        journal.record(one, items: [ScanItem(path: "/a", bytes: 10)], module: "duplicates")
+        XCTAssertEqual(journal.entries(module: "duplicates"), [one])
+        XCTAssertEqual(journal.list(module: "duplicates", .current),
+                       [ScanItem(path: "/a", bytes: 10)])
+    }
+
+    /// Newest first, because that is the order the page reads them in.
+    func testEntriesComeBackNewestFirst() {
+        journal.record(entry(1, 1, at: 0), items: [], module: "disk")
+        journal.record(entry(2, 2, at: 60), items: [], module: "disk")
+        XCTAssertEqual(journal.entries(module: "disk").map(\.bytes), [2, 1])
+    }
+
+    /// Thirty entries, so a module scanned twice a day keeps a fortnight. The
+    /// oldest goes; the file does not grow without end.
+    func testTheJournalIsBounded() {
+        for i in 0...(ScanJournal.limit + 4) {
+            journal.record(entry(i, 1, at: TimeInterval(i) * 60), items: [], module: "disk")
+        }
+        let kept = journal.entries(module: "disk")
+        XCTAssertEqual(kept.count, ScanJournal.limit)
+        // The newest survived and the oldest did not.
+        XCTAssertEqual(kept.first?.bytes, ScanJournal.limit + 4)
+        XCTAssertFalse(kept.contains { $0.bytes == 0 })
     }
 }

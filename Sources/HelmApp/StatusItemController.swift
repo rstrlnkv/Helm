@@ -165,8 +165,8 @@ import HelmUI
         // to be told it is disabled is a dead end. The panel already did this.
         let live = Set(host.enabledModules.map { type(of: $0.descriptor).id.rawValue })
         // The person's own arrangement, not the category enum's: they compose
-        // the sidebar, and a menu of the same nine modules that disagreed with
-        // it would make the arrangement a setting that only half applies.
+        // the sidebar, and a menu of the same modules that disagreed with it
+        // would make the arrangement a setting that only half applies.
         let layout = SidebarLayoutStore.read(from: AppSettings.store,
                                              registry: SidebarLayoutStore.registry())
         let groups = layout.sections.map { section in
