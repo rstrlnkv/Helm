@@ -73,11 +73,8 @@ struct UninstallerSettingsPage: View {
             }
     }
 
-    /// **The page's switcher and Refresh, in the window's own `NSToolbar`**
-    /// (`SettingsToolbar`), through the contract every module page shares
-    /// (`HelmWindowToolbar.swift` in `HelmUI`) — the switcher as Helm's own
-    /// capsule centred over this page, Refresh in the toolbar's one action
-    /// capsule at the trailing edge.
+    /// **The page's switcher and Refresh, in the header row of the window's card**, through the contract every
+    /// module page shares (`HelmWindowToolbar.swift` in `HelmUI`).
     ///
     /// They were one row of the page with the search field between them, and
     /// before that a SwiftUI `ToolbarContent` bridged into the window's own
@@ -89,7 +86,7 @@ struct UninstallerSettingsPage: View {
     /// icon and changed nothing the user could see.
     ///
     /// **Dims rather than disables per tab.** `tabsEnabled: step != .review`
-    /// dims the whole switcher, its folded menu and its overflow menu while a
+    /// dims the whole tab strip while a
     /// removal is being reviewed, when switching tabs would abandon it —
     /// per-tab disabling was never asked for, and `HelmPageToolbarContent`
     /// has no way to disable one tab and not the other.
@@ -158,24 +155,11 @@ struct UninstallerSettingsPage: View {
             }
         }
         // **Declared unconditionally, on every tab and every step, and not
-        // only under `tab == .apps && step == .pick`.** This field lives in
-        // the window's own `NSToolbar` now, and that toolbar lays its items
-        // out itself: adding or dropping one shifts every other item sharing
-        // it, Refresh included. Measured on a real screen recording
-        // (2026-09-21, `un-leave`, against the earlier SwiftUI-bridged bar):
-        // Refresh's glyph moved 175 pt inside a single frame — 41.7-50 ms at
-        // this clip's dropped-frame rate — right when this condition flipped
-        // leaving Приложения, while the very same tab change then sat
-        // under a page-wide `.animation(value: tab)` (removed since: it
-        // cross-faded the two tabs) and still snapped, because that transaction is SwiftUI's and the
-        // toolbar's own relayout is AppKit's, which no curve in this file
-        // reaches (ARCHITECTURE.md § The bar's zones: the tabs
-        // and the actions both live in `NSToolbar`'s own layout, not
-        // SwiftUI's, for the identical reason). Keeping the
-        // field declared keeps the toolbar's item count constant, which is
-        // the only thing that keeps its relayout from running at all —
-        // `filtered` still only narrows the Apps tab's list at `step ==
-        // .pick`, exactly as it did before.
+        // only under `tab == .apps && step == .pick`.** Measured against the earlier SwiftUI-bridged bar
+        // (2026-09-21, a screen recording, `un-leave`): dropping the field shifted every other item sharing the
+        // bar, Refresh included — 175 pt inside a single frame. The header row keeps the declared width of every
+        // action (`HelmHeaderActions`), but the declaration stays as it was: `filtered` still only narrows the
+        // Apps tab's list at `step == .pick`.
         .helmWindowToolbar(toolbarContent, token: UninstallerDescriptor.id.rawValue)
         .animation(HelmMotion.interface, value: step)
     }

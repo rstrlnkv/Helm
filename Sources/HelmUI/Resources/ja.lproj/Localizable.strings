@@ -629,7 +629,6 @@
 "What is taking up space" = "ディスクを占めているもの";
 "What to check" = "確認する項目";
 "What to do" = "実行する処理";
-"What to show" = "表示する内容";
 "What would happen" = "何が起きるか";
 "What’s New" = "新機能";
 "When" = "条件";
@@ -1119,13 +1118,6 @@
 "Machine" = "マシン";
 "Tools" = "ツール";
 "Copy for a bug report" = "バグ報告用にコピー";
-"Page header" = "ページのヘッダ";
-"With Icon" = "アイコンあり";
-"Without Icon" = "アイコンなし";
-"Always Collapse Search" = "検索を常に折りたたむ";
-"Text Only" = "テキストのみ";
-"Icon Only" = "アイコンのみ";
-"Icon and Text" = "アイコンとテキスト";
 
 "Homebrew is a list of packages with the one you picked open beside it, rather than a page that replaces itself." = "Homebrew はパッケージの一覧になり、選んだパッケージは隣に開きます。ページ自体が入れ替わることはなくなりました。";
 "A package says what it takes up on this Mac — brew will not say, so Helm measures the folder itself." = "パッケージがこの Mac で占めている容量を表示します。brew は教えてくれないため、Helm が自分でフォルダを測ります。";

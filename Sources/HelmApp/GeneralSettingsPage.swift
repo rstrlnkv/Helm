@@ -25,7 +25,6 @@ struct MenuBarSettingsView: View {
     @State private var appearance: AppAppearance = AppSettings.appearance
     @State private var language: String? = AppSettings.language?.rawValue
     @State private var sidebarStyle: SidebarStyle = AppSettings.sidebarStyle
-    @State private var pageBarStyle: PageBarStyle = AppSettings.pageBarStyle
     @State private var tabLabels = AppSettings.tabLabelStyle
     @State private var showPanelEditButton = AppSettings.showPanelEditButton
     @State private var showSettingsButton = AppSettings.showSettingsButton
@@ -347,16 +346,6 @@ struct MenuBarSettingsView: View {
                 }
                 .pickerStyle(.segmented)
                 .onChange(of: sidebarStyle) { _, choice in AppSettings.sidebarStyle = choice }
-                // The window toolbar's header: the module's plate and name at
-                // the leading edge, or the name alone — the
-                // owner's choice is the first, and this is where a person who
-                // prefers the other drafted shape can still reach it
-                // (`PageBarStyle`).
-                Picker(AppStr.pageBar, selection: $pageBarStyle) {
-                    Text(AppStr.pageBarWithIcon).tag(PageBarStyle.moduleName)
-                    Text(AppStr.pageBarWithoutIcon).tag(PageBarStyle.windowTitle)
-                }
-                .onChange(of: pageBarStyle) { _, choice in AppSettings.pageBarStyle = choice }
                 BarAppearanceRow()
                 // No `LabeledContent`: the picker carries its own title now,
                 // and a labelled control inside a labelled row says it twice.

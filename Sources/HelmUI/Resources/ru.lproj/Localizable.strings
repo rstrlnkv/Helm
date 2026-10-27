@@ -629,7 +629,6 @@
 "What is taking up space" = "Что занимает место на диске";
 "What to check" = "Что проверять";
 "What to do" = "Что сделать";
-"What to show" = "Что показывать";
 "What would happen" = "Что произойдёт";
 "What’s New" = "Что нового";
 "When" = "Когда";
@@ -1119,13 +1118,6 @@
 "Machine" = "Машина";
 "Tools" = "Инструменты";
 "Copy for a bug report" = "Скопировать для отчёта об ошибке";
-"Page header" = "Шапка страницы";
-"With Icon" = "Со значком";
-"Without Icon" = "Без значка";
-"Always Collapse Search" = "Всегда сворачивать поиск";
-"Text Only" = "Только текст";
-"Icon Only" = "Только значок";
-"Icon and Text" = "Значок и текст";
 
 "Homebrew is a list of packages with the one you picked open beside it, rather than a page that replaces itself." = "Homebrew — это список пакетов, а выбранный открыт рядом, вместо страницы, которая подменяет саму себя.";
 "A package says what it takes up on this Mac — brew will not say, so Helm measures the folder itself." = "Пакет показывает, сколько он занимает на этом Mac: brew этого не сообщает, поэтому Helm измеряет папку сам.";

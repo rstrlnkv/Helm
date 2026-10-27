@@ -37,19 +37,7 @@ public enum HelmA11y {
         L("More Info")
     }
 
-    /// A segmented picker that narrows what a list is showing. Three modules
-    /// have one and none of them labelled it, because on screen the segments
-    /// say everything — "Installed / Updates / Search" needs no heading above
-    /// it. Read aloud it was a tab group with no name.
-    public static var whatToShow: String {
-        L("What to show")
-    }
-    /// The search field, which had no name at all. `SettingsToolbar` builds it
-    /// directly now, in the window's toolbar, and names it from the app layer
-    /// — `makeSearchItem` sets this word once and `patchSearch` re-reads it on
-    /// every refresh, including a language change; `HelmSearchField` set the
-    /// same word for the `NSViewRepresentable` that came before it, and
-    /// nothing mounts that type any more.
+    /// The search field, which had no name at all. The header row's field (`HelmHeaderSearch`) sets this word.
     ///
     /// **A placeholder is not a name**, and this one is the house rule read from
     /// the other end: «Search formulae and casks» disappears the moment there is

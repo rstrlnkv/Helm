@@ -278,34 +278,13 @@ struct HomebrewSettingsPage: View {
         // reaches the pane as a cut even when it changes what is selected.
         .transaction(value: hb.segment) { $0.animation = nil }
         .animation(HelmMotion.interface, value: hb.selected == nil)
-        // **The page's controls, in the window's own `NSToolbar`
-        // (`SettingsToolbar`), through the contract every module page shares**
-        // (`HelmWindowToolbar.swift` in `HelmUI`). The SwiftUI-bridge-era
-        // `ToolbarContent` this replaced, and the `switcherFits`/`paneWidth`
-        // machinery it decided a narrower shape from, are gone — deleted
-        // 2026-09-23 together with `TheSwitcherGivesWayBeforeRefreshTests`,
-        // the test that was their only remaining reader. **Which zone gives
-        // way first when the bar is tight is no longer left to AppKit's own
-        // overflow order**: `SettingsToolbar`'s own fold mechanism collapses
-        // the tabs to a one-item capsule with a menu (`HelmToolbarSwitcher`'s
-        // `compact`) before a search field opening would otherwise squeeze
-        // the whole strip into the toolbar's «»» menu, and only the
-        // near-simultaneous-overflow floor still falls back to that menu at
-        // all.
+        // **The page's controls, in the header row of the window's card**, through the contract every module
+        // page shares (`HelmWindowToolbar.swift` in `HelmUI`).
         //
-        // **Upgrade all leaves the actions capsule off Обновления rather than
-        // being dimmed on every segment** (`isVisible`) — the owner's revised
-        // order, 2026-09-22: it used to enter and leave the old bridged
-        // `ToolbarItemGroup` and move the segmented control the person had
-        // just pressed (measured at 37 pt in one frame), which mounting it
-        // disabled on every segment was written to avoid. The capsule
-        // (`HelmToolbarActionsCapsule`, `HelmUI/DesignSystem/HelmToolbarActions.swift`)
-        // replaced a per-action `NSToolbarItem` with one custom-view item
-        // reserving the full width of every declared action: Refresh, always
-        // visible, stays exactly still while Upgrade All's own glass morphs
-        // in and out of it, which is what closed the smaller jump a reviewer
-        // had measured — Refresh and the search field still shifting by the
-        // hidden item's own width — that hiding a *separate* item left open.
+        // **Upgrade all leaves the actions off Обновления rather than being dimmed on every segment**
+        // (`isVisible`) — the owner's revised order, 2026-09-22. The row reserves the full width of every
+        // declared action (`HelmHeaderActions`), so Refresh, always visible, stays exactly still while
+        // Upgrade All comes and goes.
         .helmWindowToolbar(HelmPageToolbarContent(
             tabs: HomebrewViewModel.Segment.allCases.map {
                 HelmToolbarTab(id: $0.rawValue, title: $0.label, symbol: $0.symbol)

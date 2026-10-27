@@ -85,22 +85,15 @@ import HelmUI
         titleWatch = model.$pageTitle.sink { [weak self] title in
             self?.applyTitle(title)
         }
-        NotificationCenter.default.addObserver(
-            forName: .helmPageBarStyleChanged, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.applyTitle(self?.model.pageTitle) }
-        }
     }
 
     private var titleWatch: AnyCancellable?
 
-    /// Writes what the page published as the window's title, and under `.windowTitle` its subtitle too (empty
-    /// under `.moduleName`). `titleVisibility` is `.hidden` under both styles, written once by the initialiser: the
-    /// name zone draws the name, with the module's plate under `.moduleName` and without it under
-    /// `.windowTitle`, and the title stays the window's (the Window menu and Mission Control name the window by it).
+    /// Writes what the page published as the window's title. `titleVisibility` is `.hidden`, written once by the
+    /// initialiser: the card's header row draws the name, and the title stays the window's (the Window menu and
+    /// Mission Control name the window by it).
     private func applyTitle(_ title: HelmPageTitle?) {
-        let style = AppSettings.pageBarStyle
         window.title = title?.title ?? AppStr.settingsWindowTitle
-        window.subtitle = style == .windowTitle ? (title?.subtitle ?? "") : ""
     }
 
     /// `selecting` opens the window on that module's page (used by panel utility rows).
@@ -198,9 +191,8 @@ enum SettingsSelection: Hashable {
     /// `didSet` announces the change a second time, after the value is stored. `@Published` announces in
     /// `willSet`, and a view that redraws synchronously inside that announcement reads the old selection.
     /// Assumed, not measured since the window lost its toolbar (the redraw it was written for was the
-    /// toolbar's, in `SettingsToolbar`'s `selectionWatch`): that without this `didSet` the pane's update
-    /// runs against the old selection, so a selection that leaves the log for a module page leaves the pane's
-    /// page title the log's.
+    /// toolbar's): that without this `didSet` the pane's update runs against the old selection, so a selection
+    /// that leaves the log for a module page leaves the pane's page title the log's.
     @Published var selection: SettingsSelection? = .general {
         didSet { objectWillChange.send() }
     }
@@ -350,7 +342,7 @@ enum SettingsSelection: Hashable {
                 .onPreferenceChange(HelmPageTitleKey.self) { [model] title in
                     model.pageTitle = title
                 }
-                .helmTracksPageBarStyle { AppSettings.pageBarStyle }
+                .environment(\.helmHeaderInCard, true)
                 .modifier(RebuiltOnLanguageChange(model: model))
                 // The pane as well as the sidebar: a module page's header plate
                 // and its empty state are module icons too, and «Module icons»
@@ -367,7 +359,7 @@ enum SettingsSelection: Hashable {
         detail.safeAreaRegions = []
         addChild(sidebar)
         addChild(detail)
-        return ShellContentView(sidebar: sidebar.view, pane: detail.view) { _ in }
+        return ShellContentView(sidebar: sidebar.view, pane: detail.view)
     }
 }
 
@@ -393,8 +385,8 @@ private struct SidebarInTheShell: View {
 private struct SettingsDetail: View {
     @ObservedObject var model: SettingsModel
 
-    /// Bumped when the module on screen says its state moved; the status word is read off an object this
-    /// view does not observe (`ModuleDetailView.activityRevision` has the measurement).
+    /// Bumped when the module on screen says its state moved; the status is read off an object this view does
+    /// not observe, so without this it is right once per visit and stale after.
     @State private var activityRevision = 0
     @State private var activityWatch: AnyCancellable?
 
@@ -487,33 +479,6 @@ private struct ModuleDetailView: View {
     let descriptor: any ModuleDescriptor
     let id: String
 
-    /// `statusWord`'s own reason to redraw — the badge that used to sit
-    /// beside the name here is gone (the owner, 2026-09-28: «Давай вернем
-    /// его в правую часть»; the header row draws it, `SettingsDetail`).
-    ///
-    /// `activity` reads a `@Published` on the module's view model — an object
-    /// this view holds and does not observe — so measured, the badge this
-    /// once fed changed exactly once per visit to the page: start a session
-    /// from the hero, and the countdown ran while the badge two inches above
-    /// it still said «Not active», until you left the page and came back.
-    /// `statusWord` inherits the same publisher for the same reason, now
-    /// feeding only the subtitle the window is given under `.windowTitle`, where `titleVisibility` is `.hidden`.
-    ///
-    /// `statusChanges` is the publisher for exactly this and already existed
-    /// before this view subscribed — `command grep -rn 'statusChanges(live.vm)'
-    /// Sources | command grep -v '///'` finds every subscriber.
-    @State private var activityRevision = 0
-
-    /// The module's own «my state moved» signal, or nothing for a module that
-    /// publishes none — in which case `statusWord` stays nil below.
-    private var activityChanges: AnyPublisher<Void, Never> {
-        guard let live = host.liveModule(id),
-              let changes = descriptor.statusChanges(live.vm) else {
-            return Empty().eraseToAnyPublisher()
-        }
-        return changes
-    }
-
     var body: some View {
         // The header lies **over** the page, and the page scrolls under it —
         // which is where the strip's material and its scroll-edge rule come
@@ -533,21 +498,7 @@ private struct ModuleDetailView: View {
             .helmPageHeader(symbol: descriptor.moduleMetadata.sfSymbol,
                             tint: descriptor.moduleTint.colour,
                             title: descriptor.moduleMetadata.name,
-                            subtitle: statusWord,
                             bleeds: descriptor.pageBleeds)
-            // `statusWord` reads a value off an object this view does not
-            // observe, so without this it is right once per visit and stale
-            // after.
-            .onReceive(activityChanges) { _ in activityRevision &+= 1 }
-    }
-
-    /// The module's status said in words: what the page publishes as its
-    /// subtitle, which `SettingsWindow.applyTitle` gives the window under
-    /// `.windowTitle`, where `titleVisibility` is `.hidden`. nil for a module
-    /// with no notion of running.
-    private var statusWord: String? {
-        _ = activityRevision
-        return ShellPageIdentity.status(id, descriptor, host: host)?.word
     }
 
     /// The module's own page. A module that is off never gets here: the detail

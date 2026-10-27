@@ -43,12 +43,12 @@ public enum HelmMotion {
 
     /// `interface`'s duration alone, in seconds, for a caller that animates
     /// through AppKit — `NSAnimationContext` takes a number and has nowhere to
-    /// put an `Animation`, so `HelmToolbarSwitcher`'s fill group would
+    /// put an `Animation`, so such a caller would
     /// otherwise carry the number as a literal of its own, which is the
     /// duplicate-constant shape nothing goes red on.
     ///
-    /// **Not the same curve.** `interface` is a spring and the switcher's fill group
-    /// runs AppKit's own timing function; what is shared here is the length, so
+    /// **Not the same curve.** `interface` is a spring and an AppKit caller
+    /// runs a timing function; what is shared here is the length, so
     /// the two move for the same time and not along the same path. A caller
     /// using this is responsible for its own `reduceMotion` branch, because a
     /// bare number cannot collapse the way a token does.
@@ -243,9 +243,9 @@ public enum HelmMotion {
         !reduceMotion
     }
 
-    /// Whether a Liquid Glass capsule may morph — an item's glass sliding and
-    /// resizing into or out of a neighbour's, rather than the two simply
-    /// appearing and disappearing in place.
+    /// Whether the window buttons' plate may morph between its closed shape (the
+    /// dots) and its open one (the buttons) (`ShellWindowButtons.show(animated:)`,
+    /// its one caller), rather than the two simply swapping in place.
     ///
     /// The same shape as `spins` and `swaps`, and for the same reason: a
     /// decision made of an argument can be asserted, a decision that reads
@@ -256,8 +256,8 @@ public enum HelmMotion {
 
     /// Whether a chosen object may travel up to its raised place, rather than
     /// standing there at once — the screenshot editor's palette lifts the picked
-    /// pen, marker, pencil, eraser or ruler by `PaletteObject.lift`, the bar's
-    /// switcher slides its pick to a pressed segment (`HelmFlatSegmentedCell.slide`), and the
+    /// pen, marker, pencil, eraser or ruler by `PaletteObject.lift`, the header row's
+    /// tabs slide their pick to a pressed tab (`HelmHeaderTabs`), and the
     /// settings window's sidebar travels to the rail or back (`ShellContentView.fold(to:animated:)`).
     ///
     /// The same shape as `spins`, `swaps` and `morphs`, and for the same reason:

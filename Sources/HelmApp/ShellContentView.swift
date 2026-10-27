@@ -16,10 +16,8 @@ import HelmUI
 /// (`ShellWindowButtons`), above everything and hit by nothing.
 /// The card carries the fill and the shadow and never masks, so the shadow is
 /// not cut; the clip masks, so the pane's band does not run square to the
-/// window's corner. The sidebar and the pane are handed in, and so is `cardMoved`, called each time the card moves or the buttons change between the rail's
-/// placement and the other (`buttonsStandInRail`); the settings window hands it `{ _ in }`, since it has no
-/// toolbar to place any more (to go with the toolbar code). This view names no page and builds no toolbar; of the
-/// window's toolbar it asks only whether there is one, and there is none.
+/// window's corner. The sidebar and the pane are handed in. This view names no page and builds no toolbar; the settings window has none,
+/// so the corner is read as a window without one (`WindowCorner.Chrome.hasToolbar`).
 ///
 /// **The clip holds the pane alone, and the pane starts where AppKit's strip ends:** this view adds nothing
 /// to the pane's top safe-area inset; the pane's own hosting controller takes none from the title bar
@@ -29,7 +27,7 @@ import HelmUI
 /// **One reader.** `layout()` reads the corner, whoever asked for the layout:
 /// AppKit on a resize, the probe on macOS 27 when its radii change,
 /// `viewDidMoveToWindow`, the window's occlusion notification,
-/// `sidebarWidth`'s setter (every write), `barWasAttached()` (no caller now) and `ShellWindowButtons` (full screen, a button's frame). Events only ask (`needsLayout = true`).
+/// `sidebarWidth`'s setter (every write), and `ShellWindowButtons` (full screen, a button's frame). Events only ask (`needsLayout = true`).
 ///
 /// **The fold is the width travelling.** `fold(to:animated:)` starts a travel and writes no frame: it keeps
 /// the fold it was asked for, asks for a layout and starts `foldLink`. The first call of the
@@ -90,7 +88,7 @@ final class ShellContentView: NSView {
 
     /// Whether `layout()` gives the window's buttons the rail's placement: a fold is travelling (`foldTarget`) or
     /// the width standing is the rail's (`ShellGeometry.isRail(sidebarWidth:)`). The one expression `layout()`
-    /// places the buttons by and tells `cardMoved` by.
+    /// places the buttons by.
     var buttonsStandInRail: Bool { foldTarget != nil || ShellGeometry.isRail(sidebarWidth: sidebarWidth) }
 
     /// Carries the fill, the radius and the shadow; never masks.
@@ -101,15 +99,7 @@ final class ShellContentView: NSView {
 
     private let sidebar: NSView
     private let pane: NSView
-    private let cardMoved: (CGRect) -> Void
 
-    /// What `cardMoved` was last called for: the card's frame and the placement of the buttons then.
-    private struct Told: Equatable {
-        let card: CGRect
-        let rail: Bool
-    }
-
-    private var lastTold: Told?
     private let glass = NSGlassEffectView()
     private let buttons = ShellWindowButtons()
     private var applied: WindowCorner?
@@ -131,15 +121,10 @@ final class ShellContentView: NSView {
 
     override var isFlipped: Bool { true }
 
-    /// The views and the closure are held for as long as this view lives: a receiver that owns this
-    /// view captures itself weakly. `cardMoved` is called from `layout()` itself, in the turn that moved the card or
-    /// changed `buttonsStandInRail`, after the card is placed and before the buttons are, so a receiver that
-    /// reads `buttonsStandInRail` reads the placement this layout gives them; what it does must not assign
-    /// `window.toolbar`. A layout in which both stand as they did calls nothing.
-    init(sidebar: NSView, pane: NSView, cardMoved: @escaping (CGRect) -> Void) {
+    /// The views are held for as long as this view lives.
+    init(sidebar: NSView, pane: NSView) {
         self.sidebar = sidebar
         self.pane = pane
-        self.cardMoved = cardMoved
         super.init(frame: .zero)
 
         glass.style = .regular
@@ -223,15 +208,6 @@ final class ShellContentView: NSView {
             journal = WindowCorner.Journal()
             journalWindow = window
         }
-        needsLayout = true
-    }
-
-    /// Asks for a layout, so the corner is read again and the buttons are placed again. Written for
-    /// whoever gave the window a toolbar; nothing calls it since the window lost its toolbar. Whether the request is needed is not measured: in a window never ordered in, on
-    /// macOS 27.2, this view's `needsLayout` was true right after an assignment with this call left out, and
-    /// what set it is not found. Assumed, not measured: that an assignment moves the window buttons. Below
-    /// macOS 27 there is no probe to notice the corner moved.
-    func barWasAttached() {
         needsLayout = true
     }
 
@@ -330,15 +306,10 @@ final class ShellContentView: NSView {
         pane.frame = clip.bounds
         sidebar.frame = CGRect(x: 0, y: 0, width: max(frame.minX, 0), height: bounds.height)
         let rail = buttonsStandInRail
-        let told = Told(card: frame, rail: rail)
-        if told != lastTold {
-            lastTold = told
-            cardMoved(frame)
-        }
         buttons.place(rail: rail)
 
         let reading = publicReading
-        let chrome = WindowCorner.Chrome(hasToolbar: window?.toolbar != nil, systemMajor: system.majorVersion)
+        let chrome = WindowCorner.Chrome(hasToolbar: false, systemMajor: system.majorVersion)
         let corner = WindowCorner.read(publicReading: reading, from: window, chrome: chrome)
         apply(corner)
         writeLine(corner, publicReading: reading, chrome: chrome)

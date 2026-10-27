@@ -113,10 +113,8 @@ struct LeftoversSettingsPage: View {
             }
             Button(LfStr.cancelAction, role: .cancel) { pendingDeletion = nil }
         }
-        // The page's controls, in the window's own `NSToolbar`
-        // (`SettingsToolbar`), through the contract every module page shares
-        // (`HelmWindowToolbar.swift` in `HelmUI`) — see `toolbarContent`
-        // below for what each zone carries and why.
+        // The page's controls, in the header row of the window's card, through the contract every module page
+        // shares (`HelmWindowToolbar.swift` in `HelmUI`) — see `toolbarContent` below for what each carries.
         .helmWindowToolbar(toolbarContent, token: LeftoversDescriptor.id.rawValue)
         // **No curve on the page, on the tab or on the count.** «Leftovers» and
         // «All» are one `List` whose rows `visibleItems` changes, and a rescan or
@@ -281,10 +279,8 @@ struct LeftoversSettingsPage: View {
     /// window's toolbar** (`toolbarContent` above) — drawn only on the
     /// empty-state screens `LeftoversEmpty.invites` names, where the
     /// invitation is the call to action and the toolbar's own Scan is
-    /// hidden by `invitationCarriesTheScan`. It used to also stand for the
-    /// toolbar's own button, at the end of a bar this page drew itself,
-    /// before that bar moved into `SettingsToolbar`; the two are drawn in one
-    /// place each now, never both, so `scanRefused` and `scanTitle` above
+    /// hidden by `invitationCarriesTheScan`. The header row's own button and
+    /// this one are drawn in one place each, never both, so `scanRefused` and `scanTitle` above
     /// are shared rather than restated here.
     private var scanButton: some View {
         Button {

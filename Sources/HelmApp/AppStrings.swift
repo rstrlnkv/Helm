@@ -20,26 +20,12 @@ enum AppStr {
     static var interfaceLanguageNote: String {
         L("Dev builds only, for reading the app in a language this Mac is not set to.")
     }
-    /// The Appearance row choosing how a page's header sits in the window's
-    /// toolbar, and its two answers (`PageBarStyle`) — the same three words
-    /// head the toolbar's own right-click menu (`ShellBarMenu.items`).
-    /// The owner's own words for the two shapes: the module's plate and name,
-    /// or AppKit's plain window title — with its icon or without it. Title
-    /// case, like AppKit's own items beside them ("Icon Only").
-    static var pageBar: String { L("Page header") }
-    static var pageBarWithIcon: String { L("With Icon") }
-    static var pageBarWithoutIcon: String { L("Without Icon") }
     /// The names of `HelmBarAppearance`'s two cases; "Liquid Glass" is
     /// macOS's own name for its material, spelled as System Settings spells it.
     static var barAppearanceFlat: String { L("Flat") }
     static var barAppearanceLiquidGlass: String { L("Liquid Glass") }
-    /// The General row choosing between them (`BarAppearanceRow`); the bar's menu heads the same two
-    /// answers with `appearance`.
+    /// The General row choosing between them (`BarAppearanceRow`).
     static var barAppearanceTitle: String { L("Toolbar style") }
-    /// The toolbar menu's switch for resting the search as its magnifier at
-    /// every width (`AppSettings.alwaysCollapseSearch`) — shaped like Music's
-    /// own "Always Show Artwork"; "Search" is AppKit's own word for the field.
-    static var alwaysCollapseSearch: String { L("Always Collapse Search") }
 
     /// The badge beside a module's name in its page header.
     ///

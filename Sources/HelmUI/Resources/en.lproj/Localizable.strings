@@ -629,7 +629,6 @@
 "What is taking up space" = "What is taking up space";
 "What to check" = "What to check";
 "What to do" = "What to do";
-"What to show" = "What to show";
 "What would happen" = "What would happen";
 "What’s New" = "What’s New";
 "When" = "When";
@@ -1119,13 +1118,6 @@
 "Machine" = "Machine";
 "Tools" = "Tools";
 "Copy for a bug report" = "Copy for a bug report";
-"Page header" = "Page header";
-"With Icon" = "With Icon";
-"Without Icon" = "Without Icon";
-"Always Collapse Search" = "Always Collapse Search";
-"Text Only" = "Text Only";
-"Icon Only" = "Icon Only";
-"Icon and Text" = "Icon and Text";
 
 "Homebrew is a list of packages with the one you picked open beside it, rather than a page that replaces itself." = "Homebrew is a list of packages with the one you picked open beside it, rather than a page that replaces itself.";
 "A package says what it takes up on this Mac — brew will not say, so Helm measures the folder itself." = "A package says what it takes up on this Mac — brew will not say, so Helm measures the folder itself.";

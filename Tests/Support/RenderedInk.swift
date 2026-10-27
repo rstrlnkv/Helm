@@ -25,18 +25,13 @@ public final class MountedRender {
     public private(set) var window: NSWindow?
 
     public init<V: View>(_ view: V, width: CGFloat, height: CGFloat,
-                         appearance: NSAppearance.Name, channel: HelmWindowToolbarChannel? = nil) {
+                         appearance: NSAppearance.Name) {
         self.appearance = appearance
         let named = NSAppearance(named: appearance)
         // The window below is never ordered in, and a page that idles off
         // screen (`helmIdlesOffScreen`) would hand every reading an empty pane.
-        var rootView = AnyView(VStack(spacing: 0) { view }.frame(width: width)
+        let rootView = AnyView(VStack(spacing: 0) { view }.frame(width: width)
             .helmMeasuringBench())
-        // `channel` is the old window toolbar's: `helmWindowToolbar` sets a preference and reads no channel
-        // any more, so a value here reaches nothing and `nil` is the only case in use. It goes with the channel.
-        if let channel {
-            rootView = AnyView(rootView.environment(\.helmWindowToolbarChannel, channel))
-        }
         host = NSHostingView(rootView: rootView)
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: height),
                               styleMask: [.titled], backing: .buffered, defer: false)

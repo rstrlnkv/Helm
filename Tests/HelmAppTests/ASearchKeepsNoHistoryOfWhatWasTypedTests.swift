@@ -34,7 +34,7 @@ import XCTest
 /// list this control keeps regardless of persistence.
 ///
 /// **`recentsAutosaveName` is the load-bearing reading, and the in-memory list
-/// is not.** `field.recentsAutosaveName = nil` (`makeSearchItem`) is what
+/// is not.** `field.recentsAutosaveName = nil` (`HelmHeaderSearch.makeNSView`) is what
 /// there is no key for AppKit to persist under — measured nil at mount, after
 /// typing and after the commit that populates `recentSearches` — and the
 /// defaults-domain sweep at the end of the same test is what actually answers

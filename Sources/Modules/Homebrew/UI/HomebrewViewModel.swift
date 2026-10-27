@@ -222,11 +222,10 @@ import Module_Homebrew_Engine
 
     // MARK: - The search field, on every tab
 
-    /// **The window toolbar's own search field, on all three tabs.** Moved
+    /// **The header row's search field, on all three tabs.** Moved
     /// here from the page's `@State` 2026-09-24, so the query survives leaving
-    /// and returning to the page: today, hiding or
-    /// occluding the window unmounts the page, its `@State` is lost, and
-    /// `SettingsToolbar.patchSearch` writes "" back into the field. Kept here
+    /// and returning to the page: hiding or occluding the window unmounts the
+    /// page and its `@State` is lost, so the field would be written back as "". Kept here
     /// instead, that visible change is a cost the owner judges rather than an
     /// engineering slip.
     @Published var query = "" {

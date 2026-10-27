@@ -629,7 +629,6 @@
 "What is taking up space" = "磁盘空间被什么占用";
 "What to check" = "检查什么";
 "What to do" = "做什么";
-"What to show" = "显示内容";
 "What would happen" = "会发生什么";
 "What’s New" = "新增内容";
 "When" = "当";
@@ -1119,13 +1118,6 @@
 "Machine" = "本机";
 "Tools" = "工具";
 "Copy for a bug report" = "复制以用于问题报告";
-"Page header" = "页面标题栏";
-"With Icon" = "带图标";
-"Without Icon" = "不带图标";
-"Always Collapse Search" = "始终折叠搜索";
-"Text Only" = "仅文本";
-"Icon Only" = "仅图标";
-"Icon and Text" = "图标和文本";
 
 "Homebrew is a list of packages with the one you picked open beside it, rather than a page that replaces itself." = "Homebrew 现在是一份软件包列表，选中的包在旁边打开，而不再整页替换。";
 "A package says what it takes up on this Mac — brew will not say, so Helm measures the folder itself." = "软件包会显示它在这台 Mac 上占用的空间：brew 不会告诉你，所以 Helm 自己测量。";

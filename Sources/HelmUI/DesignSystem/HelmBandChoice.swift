@@ -13,9 +13,7 @@ import SwiftUI
 /// its pane through the environment (`helmBandChoice`), where `HelmPageHeader` reads `pageHeaderBand`. It no
 /// longer sets its title bar from it: the title bar is transparent on every system
 /// (`titlebarAppearsTransparent = true`, `SettingsWindow.init`), so the owner's 26 decision that the title bar
-/// stays opaque there is not carried out; that is open with the owner. `toolbarBand` is read only
-/// by `ToolbarBackdrop` (`helmToolbarBackdrop`, which no page applies); `titlebarAppearsTransparent` has no
-/// code reader at all. Both go with the page bar's code.
+/// stays opaque there is not carried out; that is open with the owner.
 ///
 /// **On 26 the whole is inference, not measurement.** This Mac runs 27; whether macOS 26 looks as described
 /// is checked by the owner in a 26 virtual machine, not by anything in this tree.
@@ -23,30 +21,20 @@ import SwiftUI
 /// **One value, read in one place.** `running` is the only reading of the system's version; a flag set from
 /// one reading and a band drawn from another is a page with two bands or none.
 public struct HelmBandChoice: Equatable, Sendable {
-    /// Helm's own band under the window's toolbar (`helmToolbarBackdrop`).
-    public let toolbarBand: Bool
-    /// The same light on a header drawn in the page (`HelmPageHeader`), where
-    /// the window has no toolbar to put the header in.
+    /// Helm's own light on the header row (`HelmPageHeader`).
     public let pageHeaderBand: Bool
-
-    /// **Half of the toolbar band's decision, never a separate one.** The
-    /// transparent title bar is what withholds the system's effect from the
-    /// pane, so it goes with Helm's band and goes when the band goes.
-    public var titlebarAppearsTransparent: Bool { toolbarBand }
 
     /// **The owner's answer (2026-09-27): on macOS 26 the system's edge
     /// everywhere** — the header drawn in the page gives up Helm's band there
-    /// as well, so on 26 no `HeaderEdgeLight` is drawn in either page-bar
-    /// style; 27 keeps it in both. `true` would keep the in-page header's band
+    /// too, so on 26 no `HeaderEdgeLight` is drawn; 27 keeps it. `true` would keep the in-page header's band
     /// on 26; this line is the whole switch.
     static let pageHeaderBandOn26 = false
 
     /// The decision for a system's major version: Helm's band from 27 on, the
     /// system's below it — 26 is the oldest system Helm ships to.
     public static func onMacOS(_ major: Int) -> HelmBandChoice {
-        let helmsToolbarBand = major >= 27
-        return HelmBandChoice(toolbarBand: helmsToolbarBand,
-                              pageHeaderBand: helmsToolbarBand || pageHeaderBandOn26)
+        let helmsBand = major >= 27
+        return HelmBandChoice(pageHeaderBand: helmsBand || pageHeaderBandOn26)
     }
 
     /// The running system's decision.

@@ -10,11 +10,6 @@ extension Notification.Name {
     /// every read, so what needs telling is not the values but the views: a
     /// window already drawn keeps whatever it built.
     static let helmLanguageChanged = Notification.Name("helmLanguageChanged")
-    /// Posted when `AppSettings.alwaysCollapseSearch` changes, so
-    /// `SettingsToolbar` rests every bar's search field again. Declared here
-    /// rather than beside `helmPageBarStyleChanged` in `HelmUI`: nothing
-    /// outside the host listens for it.
-    static let helmAlwaysCollapseSearchChanged = Notification.Name("helmAlwaysCollapseSearchChanged")
 }
 
 /// App-level (not per-module) settings, e.g. the menu-bar icon shape.
@@ -47,39 +42,7 @@ extension Notification.Name {
         }
     }
 
-    /// How the switchers in the settings window's toolbar label their segments
-    /// (`ToolbarSwitcherStyle`), chosen from the toolbar's own right-click
-    /// menu (`ShellBarMenu.items`). One answer for every page: a
-    /// switcher that read as words on one page and as glyphs on the next
-    /// would be two controls.
-    static var toolbarSwitcherStyle: ToolbarSwitcherStyle {
-        get { ToolbarSwitcherStyle(stored: store.string(ToolbarSwitcherStyle.storageKey, default: "")) }
-        set {
-            store.set(newValue.rawValue, for: ToolbarSwitcherStyle.storageKey)
-            NotificationCenter.default.post(name: .helmToolbarSwitcherStyleChanged, object: nil)
-        }
-    }
-
-    /// Which of the two shapes the page header takes in the window's toolbar
-    /// (`PageBarStyle`) — a real setting now, and no longer gated to dev
-    /// builds: the owner has chosen `moduleName`'s shape (the plate and name
-    /// at the toolbar's leading edge) for the shipping layout, and
-    /// `PageBarStyle.init(stored:)` defaults an empty store to it, so this
-    /// answers `moduleName` on every Mac that has never touched the row. The
-    /// other shape stays reachable — a Mac that already has `windowTitle`
-    /// written keeps reading it, and the two drafts are still what
-    /// `GeneralSettingsPage`'s picker offers, in Appearance rather than in the
-    /// developer section it used to sit in.
-    static var pageBarStyle: PageBarStyle {
-        get { PageBarStyle(stored: store.string(PageBarStyle.storageKey, default: "")) }
-        set {
-            store.set(newValue.rawValue, for: PageBarStyle.storageKey)
-            NotificationCenter.default.post(name: .helmPageBarStyleChanged, object: nil)
-        }
-    }
-
-    /// The stored look of the window's bar (`HelmBarAppearance`): flat unless Liquid Glass is stored. The
-    /// toolbar reads it (`SettingsToolbar`'s `ShapeSignature`).
+    /// The stored look of the window's bar (`HelmBarAppearance`): flat unless Liquid Glass is stored. 
     /// Nothing unattended reads it, so it is not sealed; the two functions
     /// take the store the property hands them.
     static var barAppearance: HelmBarAppearance {
@@ -115,22 +78,6 @@ extension Notification.Name {
     /// sidebar), and a refused read writes nothing back. Read once, when a window is built; not sealed.
     static func sidebarWidth(in store: NamespacedStore) -> CGFloat {
         ShellGeometry.sidebarWidth(stored: CGFloat(store.double("sidebarWidth", default: .nan)))
-    }
-
-    /// **Whether the settings window's search rests as AppKit's magnifier at
-    /// every width**, rather than as a field wherever the bar has room for
-    /// one — chosen from the toolbar's own right-click menu
-    /// (`ShellBarMenu.items`). Off unless somebody turns it on, so
-    /// a Mac that never opens that menu keeps today's bar. A `Bool` is bounded
-    /// by its type, and nothing unattended reads it, so it is not sealed.
-    /// "Always" means "whenever the field is empty and nobody is editing it":
-    /// a query left in the field keeps it open (`SettingsToolbar.restSearch`).
-    static var alwaysCollapseSearch: Bool {
-        get { store.bool("alwaysCollapseSearch", default: false) }
-        set {
-            store.set(newValue, for: "alwaysCollapseSearch")
-            NotificationCenter.default.post(name: .helmAlwaysCollapseSearchChanged, object: nil)
-        }
     }
 
     /// The language the interface is drawn in, or nil for the Mac's own.

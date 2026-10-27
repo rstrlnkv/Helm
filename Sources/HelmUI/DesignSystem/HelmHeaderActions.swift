@@ -6,9 +6,6 @@ import SwiftUI
 /// every declared one is kept, so the ones that stay do not slide when another comes or goes. Under
 /// `.liquidGlass` each button wears the system's glass, joined into one group; under `.flat` the glyphs
 /// stand bare. Pressing runs the action's own closure — there is no model between.
-///
-/// The glyph, its size and its dimming are `HelmToolbarActionsCapsule`'s, the toolbar's own capsule, and the
-/// numbers are read from it until that capsule is deleted and they move here.
 struct HelmHeaderActions: View {
     let actions: [HelmToolbarAction]
 
@@ -16,7 +13,13 @@ struct HelmHeaderActions: View {
     @Environment(\.helmBarAppearance) private var appearance
     @Environment(\.colorScheme) private var colorScheme
 
-    private static let side = HelmToolbarActionsCapsule.side
+    /// 36 pt — AppKit's own bordered toolbar button's height, measured against a live window. The tab strip beside them is 32 pt
+    /// (`HelmHeaderTabs`); the row's `HStack` centres both on one line.
+    private static let side = CGFloat(36)
+    /// A disabled glyph's dimming, fit to what AppKit's own disabled toolbar glyph reads back on screen (a
+    /// measurement of the old toolbar's capsule, taken per appearance; the display moves it by a few hundredths).
+    private static let disabledGlyphOpacityDark = 0.49
+    private static let disabledGlyphOpacityLight = 0.60
 
     var body: some View {
         ZStack(alignment: .trailing) {
@@ -53,8 +56,7 @@ struct HelmHeaderActions: View {
     /// nothing here answers to it.
     private func opacity(disabled: Bool) -> Double {
         guard disabled else { return 1 }
-        return colorScheme == .dark ? HelmToolbarActionsCapsule.disabledGlyphOpacityDark
-                                    : HelmToolbarActionsCapsule.disabledGlyphOpacityLight
+        return colorScheme == .dark ? Self.disabledGlyphOpacityDark : Self.disabledGlyphOpacityLight
     }
 
     private func glyph(_ action: HelmToolbarAction, symbol: String? = nil) -> some View {

@@ -149,8 +149,8 @@ struct AboutHelmView: View {
         // The name of the page this one is a tab of, for the window's title.
         // Without it nothing publishes a title, and
         // `SettingsWindow.applyTitle(_:)` falls back to the window's own name
-        // («Настройки Helm» for the Window menu), the name zone drawing
-        // the pane's name. A no-op where no bar is set.
+        // («Настройки Helm» for the Window menu). A no-op where the card does not
+        // draw the header (`helmHeaderInCard` false).
         .helmPageBar(title: AppStr.settingsPane)
         .sheet(isPresented: $showWhatsNew) {
             WhatsNewView(onClose: { showWhatsNew = false })

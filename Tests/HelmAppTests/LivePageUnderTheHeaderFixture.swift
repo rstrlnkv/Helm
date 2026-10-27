@@ -8,7 +8,7 @@ import HelmUI
 /// search field the row draws.
 ///
 /// The row is the one the settings window draws (`helmCardHeader`, `HelmPageHeader.swift`), with
-/// `helmPageBar` set the way `makeShell` sets it, so a page declares into the preference the row reads
+/// `helmHeaderInCard` set the way `makeShell` sets it, so a page declares into the preference the row reads
 /// (`helmWindowToolbar`) and the row draws what it declared, in the mount's own hosting view. The families that use it
 /// live in `HelmAppTests` because the fixture needs the host's own types (`ShellPageIdentity`; `CLAUDE.md`:
 /// app-layer checks in `Tests/HelmAppTests`).
@@ -24,7 +24,7 @@ struct LivePageUnderTheHeaderFixture {
                   appearance: NSAppearance.Name = .aqua) {
         let identity = ShellPageIdentity.of(selection, host: ModuleHost.shared)
         mount = MountedRender(view.frame(maxWidth: .infinity, maxHeight: .infinity)
-                                  .environment(\.helmPageBar, .moduleName)
+                                  .environment(\.helmHeaderInCard, true)
                                   .helmCardHeader(symbol: identity.symbol, tint: identity.tint,
                                                   title: identity.title, status: identity.status),
                               width: width, height: height, appearance: appearance)

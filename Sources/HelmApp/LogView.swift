@@ -38,7 +38,7 @@ import HelmUI
 struct LogView: View {
     /// Set by the settings window, where the page's header is the card's row
     /// (`helmCardHeader`) instead of one in this stack.
-    @Environment(\.helmPageBar) private var pageBar
+    @Environment(\.helmHeaderInCard) private var inCard
 
     /// The Settings page's tabs, when the page is shown as one of them. They
     /// take the bar's one switcher slot, and the level filter that stands there
@@ -103,7 +103,7 @@ struct LogView: View {
             //
             // In the settings window the header is the card's row
             // (`helmCardHeader`), and this row is not drawn at all.
-            if pageBar == nil {
+            if !inCard {
                 HelmPageHeader(symbol: "text.alignleft", tint: .gray,
                                title: AppStr.logPane,
                                bleeds: true, standsOnStillContent: true)
@@ -125,8 +125,7 @@ struct LogView: View {
         // the card's row is drawn at the pane's root, a view away, and a preference is how it hears.
         .helmPageStandsOnStillContent()
         .helmPageBar(title: AppStr.settingsPane)
-        // The token is the page's own key, the one `SettingsToolbar`'s `pageKey`
-        // answers for `.log`. Declared unconditionally: this page's shape never changes.
+        // The token is the page's own key. Declared unconditionally: this page's shape never changes.
         .helmWindowToolbar(toolbarContent(page), token: "log")
         .onAppear {
             refresh()
@@ -183,7 +182,7 @@ struct LogView: View {
             })
     }
 
-    /// The level as the centred tabs, then the capsule — module filter, Follow,
+    /// The level as the tabs, then the actions — module filter, Follow,
     /// Copy and the «More actions» menu — and the search.
     ///
     /// Follow is a toggle with a face: its state is its glyph (an open eye when

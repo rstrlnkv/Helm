@@ -629,7 +629,6 @@
 "What is taking up space" = "Ce qui occupe l’espace disque";
 "What to check" = "Quoi vérifier";
 "What to do" = "Quoi faire";
-"What to show" = "Ce qui est affiché";
 "What would happen" = "Ce qui se passerait";
 "What’s New" = "Nouveautés";
 "When" = "Quand";
@@ -1119,13 +1118,6 @@
 "Machine" = "Machine";
 "Tools" = "Outils";
 "Copy for a bug report" = "Copier pour un rapport de bogue";
-"Page header" = "En-tête de page";
-"With Icon" = "Avec icône";
-"Without Icon" = "Sans icône";
-"Always Collapse Search" = "Toujours réduire la recherche";
-"Text Only" = "Texte seulement";
-"Icon Only" = "Icône seulement";
-"Icon and Text" = "Icône et texte";
 
 "Homebrew is a list of packages with the one you picked open beside it, rather than a page that replaces itself." = "Homebrew est une liste de paquets, celui que vous choisissez s’ouvrant à côté, au lieu d’une page qui se remplace elle-même.";
 "A package says what it takes up on this Mac — brew will not say, so Helm measures the folder itself." = "Un paquet indique la place qu’il occupe sur ce Mac : brew ne le dit pas, Helm mesure donc le dossier lui-même.";

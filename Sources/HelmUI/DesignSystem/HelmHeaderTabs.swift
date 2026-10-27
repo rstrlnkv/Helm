@@ -61,8 +61,7 @@ struct HelmHeaderTabs: View {
     private func label(_ tab: HelmToolbarTab) -> some View {
         HStack(spacing: 5) {
             // Never cut: a tab keeps its whole word, and `SettingsWindow.minSize` is measured with it. The
-            // selected tab reads by its ink as well as by its pick, as `HelmToolbarSwitcher`'s cell does
-            // (`.labelColor` over `.secondaryLabelColor`); one weight for both, so a pick does not change a width.
+            // selected tab reads by its ink as well as by its pick, (`.labelColor` over `.secondaryLabelColor`); one weight for both, so a pick does not change a width.
             Text(tab.title).font(.system(size: 13, weight: .medium)).lineLimit(1).fixedSize()
                 .foregroundStyle(tab.id == shown ? Color(nsColor: .labelColor) : Color(nsColor: .secondaryLabelColor))
             if tab.needsAttention {
