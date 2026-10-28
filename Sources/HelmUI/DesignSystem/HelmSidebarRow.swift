@@ -53,6 +53,7 @@ public struct HelmSidebarRow: View {
     private let action: () -> Void
     @State private var hover = false
     @Environment(\.helmWindowAppearsActive) private var active
+    @Environment(\.helmTraits) private var traits
 
     public init(title: String, glyph: ShellGlyph, selected: Bool, collapsed: Bool,
                 warning: Warning? = nil, position: Position? = nil, action: @escaping () -> Void) {
@@ -116,7 +117,7 @@ public struct HelmSidebarRow: View {
     /// is fixed.
     private func mark(_ warning: Warning) -> some View {
         Circle()
-            .fill(HelmSignal.warning)
+            .fill(HelmSignal.warning(increased: traits.increasedContrast))
             .frame(width: Self.dotSide, height: Self.dotSide)
             .help(warning.mark)
             .accessibilityLabel(warning.mark)

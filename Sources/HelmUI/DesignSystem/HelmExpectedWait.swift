@@ -53,6 +53,8 @@ import SwiftUI
 /// over twenty seconds is less motion than the indicator it replaces, and it
 /// still answers the question.
 public struct HelmExpectedWait: View {
+    @Environment(\.helmTraits) private var traits
+
 
     /// **What may honestly be said about a wait, given a clock and nothing
     /// else.**
@@ -123,7 +125,7 @@ public struct HelmExpectedWait: View {
         // Paused when there is nothing to count: an unknown start draws one
         // still spinner and has no reason to wake the display for the rest of
         // the run.
-        TimelineView(.animation(minimumInterval: Self.tick(reduceMotion: HelmMotion.reduceMotion),
+        TimelineView(.animation(minimumInterval: Self.tick(reduceMotion: traits.reducedMotion),
                                 paused: started == nil)) { context in
             face(Claim.at(context.date, started: started, expected: expected))
         }

@@ -291,6 +291,7 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// Whether this header wears Helm's band at all — on macOS 26 it does
     /// not, by the owner's answer (`HelmBandChoice.pageHeaderBandOn26`).
     @Environment(\.helmBandChoice) private var band
+    @Environment(\.helmTraits) private var traits
 
     let symbol: String
     let tint: Color
@@ -413,7 +414,7 @@ public struct HelmPageHeader<Trailing: View>: View {
                 .fixedSize(horizontal: true, vertical: false)
             if let status {
                 if status.active {
-                    HelmBadge(status.word, tint: HelmSignal.success)
+                    HelmBadge(status.word, tint: HelmSignal.success(increased: traits.increasedContrast))
                 } else {
                     Text(status.word).font(.system(size: 11)).foregroundStyle(HelmText.quiet)
                 }

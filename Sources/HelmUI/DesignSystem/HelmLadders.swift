@@ -36,23 +36,17 @@ public enum HelmSpace {
     public static let s8: CGFloat = 40
 }
 
-/// **A corner has one ladder: 4 · 6 · 10 · 14 · 16 · 26 pt.**
+/// **A corner has one ladder: 6 · 10 · 14 · 16 · 26 pt.**
 ///
 /// Sixteen distinct radii were counted against three declared tokens on the
 /// mockup side.
 ///
-/// Six steps, and each names the thing it belongs to rather than a size: the
+/// Five steps, and each names the thing it belongs to rather than a size: the
 /// call site should say what it is drawing, not how round it wants it.
 ///
-/// **Two of the six are already what the app draws**, spelled as numbers: the
-/// panel's glass is `.rect(cornerRadius: 26)` and the shape a panel card and a
-/// panel well share is 14. Those literals are not swept here — this commit lands
-/// the vocabulary — so until they are, `frame` and `panel` are names for numbers
-/// typed somewhere else, which is the state a `periphery` run will report as
-/// unused and which is not a defect.
+/// Two of the five, `frame` (14) and `panel` (26), are what the app drew as
+/// numbers before this ladder existed.
 public enum HelmRadius {
-    /// A swatch, a tag, anything smaller than a control.
-    public static let tiny: CGFloat = 4
     /// A control: a button, a field, a segment.
     public static let ctl: CGFloat = 6
     /// The one card. It replaces `HelmSurface.cardRadius`, which was 12 — on no

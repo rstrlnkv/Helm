@@ -69,6 +69,8 @@ public enum HelmRowMark: Equatable, Sendable {
 /// title, not `.combine` on the stack, which would fold the ⓘ in too); the
 /// trailing control stays its own, because that is the part a person navigates to.
 public struct HelmSettingRow<Trailing: View>: View {
+    @Environment(\.helmTraits) private var traits
+
 
     private let title: String
     private let note: String?
@@ -200,7 +202,7 @@ public struct HelmSettingRow<Trailing: View>: View {
     }
 
     private var markInk: Color {
-        mark == .waiting ? HelmText.faint : HelmSignal.success
+        mark == .waiting ? HelmText.faint : HelmSignal.success(increased: traits.increasedContrast)
     }
 
 }

@@ -11,7 +11,7 @@ struct HelmHeaderActions: View {
 
     @Namespace private var glassSpace
     @Environment(\.helmBarAppearance) private var appearance
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.helmTraits) private var traits
 
     /// 36 pt — AppKit's own bordered toolbar button's height, measured against a live window. The tab strip beside them is 32 pt
     /// (`HelmHeaderTabs`); the row's `HStack` centres both on one line.
@@ -56,7 +56,7 @@ struct HelmHeaderActions: View {
     /// nothing here answers to it.
     private func opacity(disabled: Bool) -> Double {
         guard disabled else { return 1 }
-        return colorScheme == .dark ? Self.disabledGlyphOpacityDark : Self.disabledGlyphOpacityLight
+        return traits.scheme == .dark ? Self.disabledGlyphOpacityDark : Self.disabledGlyphOpacityLight
     }
 
     private func glyph(_ action: HelmToolbarAction, symbol: String? = nil) -> some View {

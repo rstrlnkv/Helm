@@ -24,7 +24,7 @@ import AppKit
 /// light value, a dark value *and* an increased-contrast option for each; a
 /// system colour carries those already, and these are literals precisely
 /// because the system palette failed the light appearance. So there is a second
-/// solved set against a higher floor, and `HelmContrast` explains why the switch
+/// solved set against a higher floor, and `HelmAccessibility` explains why the switch
 /// has to be read as a flag rather than asked of the appearance.
 ///
 /// Keyboard is not a system colour at all, and neither is Screenshots' olive. `.pink` sits 0,107
@@ -34,7 +34,7 @@ import AppKit
 public enum ModuleTint: String, CaseIterable, Sendable {
     case keepAwake, vpn, uninstaller, disk, duplicates, autopilot, homebrew, leftovers, keyboard, screenshots
 
-    public var colour: Color { colour(increased: HelmContrast.increased) }
+    public var colour: Color { colour(increased: HelmAccessibility.system.increasedContrast) }
 
     /// The setting as an argument rather than a reading, so the rule can be
     /// measured without the machine's own switch — `HelmMotion.spins(requested:
@@ -108,7 +108,7 @@ public enum ModuleTint: String, CaseIterable, Sendable {
     ///
     /// The increased-contrast question is answered *before* this, in `colour`,
     /// rather than inside the handler: the appearance cannot be asked about it
-    /// (`HelmContrast` records the measurement), and a handler that read the flag
+    /// (`HelmAccessibility` records the measurement), and a handler that read the flag
     /// would be answering from inside a colour AppKit is free to resolve once.
     private func adaptive(light: Component, dark: Component) -> Color {
         Color(nsColor: NSColor(name: nil) { appearance in

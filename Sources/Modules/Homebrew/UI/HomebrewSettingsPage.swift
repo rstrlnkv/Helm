@@ -815,12 +815,9 @@ struct HomebrewSettingsPage: View {
             .padding(Self.consoleInset)
             .frame(height: Self.consoleHeight)
             // `card` and not `ctl`: this page's own choice for a block-sized
-            // well, not a rule of the design system, which draws its own
-            // multi-line well (`helmFieldWell()`) with the control corner.
-            // The fix command's one-line field takes the control corner
-            // here too. The well's fill,
-            // `HelmSurface.wellFill`, is the token whose own doc comment names
-            // console output.
+            // well, not a rule of the design system.
+            // The well's fill, `HelmSurface.wellFill`, is the token whose own
+            // doc comment names console output.
             .background(RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
                 .fill(HelmSurface.wellFill))
         }

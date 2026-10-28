@@ -23,10 +23,10 @@ public enum HelmMotion {
     /// change itself.
     private static var reduced: Bool { reduceMotion }
 
-    /// The system setting, read fresh. Public only so the view modifier below
-    /// can hand it to `spins` as a value.
+    /// The system setting, read fresh through `HelmAccessibility.system`: for AppKit code and
+    /// pages that are not yet on `\.helmTraits`.
     public static var reduceMotion: Bool {
-        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        HelmAccessibility.system.reducedMotion
     }
     private static let instant = Animation.linear(duration: 0.01)
 
@@ -283,9 +283,7 @@ public extension View {
     /// `.symbolEffect(.rotate, options: .repeating)` on its own does not honour
     /// Reduce Motion; SwiftUI leaves that to us, and these two spun regardless.
     func helmSteadySpin(_ active: Bool) -> some View {
-        symbolEffect(.rotate, options: .repeating,
-                     isActive: HelmMotion.spins(requested: active,
-                                                reduceMotion: HelmMotion.reduceMotion))
+        modifier(SteadySpin(active: active))
     }
 
     /// The one way a glyph becomes a different glyph.
@@ -309,9 +307,30 @@ public extension View {
     /// 0.01 s cut on its own, and the transition goes to `.identity` as well,
     /// so the glyph changes without the layers being taken apart first.
     func helmSymbolSwap(_ symbol: String) -> some View {
-        contentTransition(HelmMotion.swaps(reduceMotion: HelmMotion.reduceMotion)
-                          ? .symbolEffect(.replace.magic(fallback: .downUp))
-                          : .identity)
+        modifier(SymbolSwap(symbol: symbol))
+    }
+}
+
+private struct SteadySpin: ViewModifier {
+    let active: Bool
+    @Environment(\.helmTraits) private var traits
+
+    func body(content: Content) -> some View {
+        content.symbolEffect(.rotate, options: .repeating,
+                             isActive: HelmMotion.spins(requested: active,
+                                                        reduceMotion: traits.reducedMotion))
+    }
+}
+
+private struct SymbolSwap: ViewModifier {
+    let symbol: String
+    @Environment(\.helmTraits) private var traits
+
+    func body(content: Content) -> some View {
+        content
+            .contentTransition(HelmMotion.swaps(reduceMotion: traits.reducedMotion)
+                               ? .symbolEffect(.replace.magic(fallback: .downUp))
+                               : .identity)
             .animation(HelmMotion.interface, value: symbol)
     }
 }

@@ -142,6 +142,8 @@ public extension Notification.Name {
 /// combination that does nothing is the switch-that-looks-like-it-works defect
 /// in another costume.
 public struct HelmHotkeyRow: View {
+    @Environment(\.helmTraits) private var traits
+
     @ObservedObject private var recorder: HelmHotkeyRecorder
     private let title: String
     private let taken: Bool
@@ -193,11 +195,11 @@ public struct HelmHotkeyRow: View {
             }
             if let note, !recorder.label.isEmpty {
                 Text(note)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmSignal.warning)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmSignal.warning(increased: traits.increasedContrast))
                     .fixedSize(horizontal: false, vertical: true)
             } else if taken, !recorder.label.isEmpty {
                 Text(Self.takenNote)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmSignal.warning)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmSignal.warning(increased: traits.increasedContrast))
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

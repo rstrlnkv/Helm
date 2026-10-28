@@ -13,9 +13,13 @@ string tables at once.
 
 ## Surfaces
 
-`Sources/HelmUI/DesignSystem/HelmSurfaces.swift` holds `HelmSurface` — a small set of
-fills over `Color.primary`, no border among them — `HelmLayout`, `HelmText`, `HelmSignal`,
-`HelmIconPlate`, `HelmSignalPlate` and `HelmMetricStrip`. `helmCard()` is the one card
+The tokens live one family to a file in `Sources/HelmUI/DesignSystem`: `HelmFills.swift`
+holds `HelmSurface` — a small set of fills over `Color.primary`, no border among them —
+`HelmLayout.swift` `HelmLayout`, `HelmText.swift` `HelmText`, `HelmSignal.swift`
+`HelmSignal`, and `HelmTraits.swift` what a kit view reads of the light or dark appearance
+and the accessibility settings. `HelmSurfaces.swift` holds the components: `HelmIconPlate`,
+`HelmSignalPlate`, `HelmSectionTitle` and `HelmMetricStrip`, and the two view
+modifiers `helmPreviewEdge(chosen:)` and `helmCard(padding:)`. `helmCard()` is the one card
 treatment: a fill, continuous corners at `HelmRadius.card`, and no border, because half of
 Helm's pages are grouped `Form` sections the system draws and nothing can restyle. A
 surface that floats over content takes `.glassEffect` rather than an edge, because glass
@@ -64,7 +68,7 @@ the light appearance, because `NSColor(Color)` returns a dynamic colour that res
 again against whatever appearance is current.
 
 `ModuleTint` and `HelmSignal` carry a third and fourth value for Increase Contrast:
-`Sources/HelmUI/DesignSystem/HelmContrast.swift` is the switch, a flag rather than an
+`Sources/HelmUI/DesignSystem/HelmTraits.swift` is the switch (`HelmAccessibility.system`, the one reader), a flag rather than an
 appearance, and `ModuleTint.colour(increased:)` and `HelmSignal.warning(increased:)` take
 it as an argument the way `HelmMotion.spins(requested:reduceMotion:)` does, which is what
 lets the floors be measured without the machine's own switch. The second set is the same

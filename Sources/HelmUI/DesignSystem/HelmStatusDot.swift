@@ -8,10 +8,11 @@ import SwiftUI
 /// dot 8 pt across whose colour *is* its entire message.
 public struct HelmStatusDot: View {
     let active: Bool
+    @Environment(\.helmTraits) private var traits
     public init(active: Bool) { self.active = active }
     public var body: some View {
         Circle()
-            .fill(active ? HelmSignal.success : Color.secondary.opacity(0.4))
+            .fill(active ? HelmSignal.success(increased: traits.increasedContrast) : Color.secondary.opacity(0.4))
             .frame(width: 8, height: 8)
             .accessibilityHidden(true)
     }

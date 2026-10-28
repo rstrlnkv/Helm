@@ -16,6 +16,7 @@ struct HelmHeaderTabs: View {
     @State private var shown: String
     @Namespace private var space
     @Environment(\.helmBarAppearance) private var appearance
+    @Environment(\.helmTraits) private var traits
 
     init(tabs: [HelmToolbarTab], selection: Binding<String>, enabled: Bool) {
         self.tabs = tabs
@@ -65,7 +66,7 @@ struct HelmHeaderTabs: View {
             Text(tab.title).font(.system(size: 13, weight: .medium)).lineLimit(1).fixedSize()
                 .foregroundStyle(tab.id == shown ? Color(nsColor: .labelColor) : Color(nsColor: .secondaryLabelColor))
             if tab.needsAttention {
-                Circle().fill(HelmSignal.warning).frame(width: 6, height: 6).accessibilityHidden(true)
+                Circle().fill(HelmSignal.warning(increased: traits.increasedContrast)).frame(width: 6, height: 6).accessibilityHidden(true)
             }
         }
         .padding(.horizontal, 12)
@@ -81,7 +82,7 @@ struct HelmHeaderTabs: View {
     }
 
     private func press(_ tab: HelmToolbarTab) {
-        if HelmMotion.travels(reduceMotion: HelmMotion.reduceMotion) {
+        if HelmMotion.travels(reduceMotion: traits.reducedMotion) {
             withAnimation(HelmMotion.interface) { shown = tab.id }
         } else {
             shown = tab.id

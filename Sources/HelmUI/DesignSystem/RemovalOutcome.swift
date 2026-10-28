@@ -43,6 +43,8 @@ public struct HelmRemovalFailure: Identifiable, Equatable, Sendable {
 }
 
 public struct HelmRemovalOutcome: View {
+    @Environment(\.helmTraits) private var traits
+
     private let succeededText: String
     private let removed: Int
     private let failures: [HelmRemovalFailure]
@@ -161,7 +163,7 @@ public struct HelmRemovalOutcome: View {
             VStack(alignment: .leading, spacing: HelmSpace.s3) {
                 HStack(spacing: HelmSpace.s4) {
                     Image(systemName: "exclamationmark.circle.fill")
-                        .foregroundStyle(HelmSignal.warning)
+                        .foregroundStyle(HelmSignal.warning(increased: traits.increasedContrast))
                     Text(Self.heading(succeeded: removed > 0 ? succeededText : nil,
                                       failed: failures.count))
                         .font(HelmText.rowDetail)

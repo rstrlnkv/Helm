@@ -109,7 +109,7 @@ public struct IconShapePicker: View {
 /// on their own terms: 42.5 pt of row against the segmented control's 41.0,
 /// a track at 1.08:1 against the card where the system's reads 1.15:1, and
 /// white on that accent fill at **3.22:1** — the one piece of text on the page
-/// under the 4.5:1 floor every colour in `HelmSurfaces` was solved against.
+/// under the 4.5:1 floor the text colours in `HelmText` and the signal colours in `HelmSignal` were solved against (`HelmText.separator`, a rule and not text, answers 3:1).
 public struct IconSizePicker: View {
     @Binding private var selection: String
 
