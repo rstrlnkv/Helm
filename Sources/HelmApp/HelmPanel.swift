@@ -678,7 +678,7 @@ struct HelmPanelContent: View {
         // actually looks at, and until this it drew colour plates whatever they
         // chose — the setting reached the settings sidebar and nothing else.
         .helmTracksModuleIconStyle { AppSettings.sidebarStyle }
-        .helmTracksAccessibilityDisplay()
+        .helmRoot()
         // Above everything and clipped by nothing. It used to live inside the
         // scroll view, whose bounds cut the carried tile off at the grid's
         // edge — a thing in your hand disappearing behind the furniture it is

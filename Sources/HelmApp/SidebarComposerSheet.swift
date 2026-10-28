@@ -159,6 +159,7 @@ struct SidebarComposerSheet: View {
                 Spacer()
                 Button(AppStr.done) { dismiss() }
                     .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
             }
             .padding(.horizontal, HelmLayout.formInset)
             .padding(.top, 18)

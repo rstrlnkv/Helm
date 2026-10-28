@@ -33,8 +33,9 @@ final class TheHostPutsAModulesOwnItemInTheMenuBarTests: XCTestCase {
         static let metadata = ModuleMetadata(id: id, name: "Recorder", summary: "",
                                              sfSymbol: "gear", permissions: [])
         static let category: ModuleCategory = .utilities
-        static let tint: ModuleTint = .keyboard
-        static let glyph: ShellGlyph = .disk
+        static let tint = ModuleTint(ordinary: ((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                                     increasedContrast: ((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)))
+        static let glyph = ShellGlyph.settings
 
         var attached = 0
         var detached = 0

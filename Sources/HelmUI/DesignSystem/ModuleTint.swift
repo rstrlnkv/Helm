@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-/// The colour a module is known by, and the only place they are written.
+/// The colour a module is known by; the values are written in each module's descriptor, the method here.
 ///
 /// **Why not a colour per category.** That gave one colour to a category, so
 /// Uninstaller, Disk, Duplicates and Autopilot were one blue and Homebrew,
@@ -15,7 +15,7 @@ import AppKit
 /// close, one class of colour over: the system palette is tuned for a dark
 /// background and fails on a light one.
 ///
-/// So the values below are **solved, not chosen**. Each but two is the system colour
+/// So the values in the descriptors are **solved, not chosen**. Each but two is the system colour
 /// blended toward black by the smallest fraction that lets white clear 3:1,
 /// per appearance — the same shape `HelmSignal` uses — and then checked pairwise
 /// so no two are closer than 0,15 in sRGB; do not hand-edit one and trust the eye.
@@ -31,46 +31,20 @@ import AppKit
 /// from `.red`, which Uninstaller keeps because red on the tool that deletes
 /// things is worth more than red anywhere else. Magenta at 320° is 0,237 away
 /// and reads at 4,33:1.
-public enum ModuleTint: String, CaseIterable, Sendable {
-    case keepAwake, vpn, uninstaller, disk, duplicates, autopilot, homebrew, leftovers, keyboard, screenshots
+public struct ModuleTint: Sendable {
+    public typealias Component = (Double, Double, Double)
+    public typealias Pair = (light: Component, dark: Component)
 
-    public var colour: Color { colour(increased: HelmAccessibility.system.increasedContrast) }
-
-    /// The setting as an argument rather than a reading, so the rule can be
-    /// measured without the machine's own switch — `HelmMotion.spins(requested:
-    /// reduceMotion:)`'s shape, and for its reason: a value this file cannot be
-    /// asked about is a value nothing can check.
-    func colour(increased: Bool) -> Color {
-        let pair = increased ? increasedContrast : ordinary
-        return adaptive(light: pair.light, dark: pair.dark)
-    }
-
-    private typealias Component = (Double, Double, Double)
-    private typealias Pair = (light: Component, dark: Component)
-
-    /// White clears 3:1 on every one of these, and no two are closer than 0,15.
-    private var ordinary: Pair {
-        switch self {
-        case .keepAwake:   return (light: (0.871, 0.478, 0.131), dark: (0.854, 0.486, 0.155))
-        case .vpn:         return (light: (0.380, 0.333, 0.961), dark: (0.427, 0.486, 1.000))
-        case .uninstaller: return (light: (1.000, 0.220, 0.235), dark: (1.000, 0.259, 0.271))
-        case .disk:        return (light: (0.796, 0.208, 0.878), dark: (0.859, 0.227, 0.949))
-        case .duplicates:  return (light: (0.000, 0.645, 0.688), dark: (0.000, 0.646, 0.690))
-        case .autopilot:   return (light: (0.000, 0.533, 1.000), dark: (0.000, 0.569, 1.000))
-        case .homebrew:    return (light: (0.168, 0.665, 0.293), dark: (0.145, 0.664, 0.274))
-        case .leftovers:   return (light: (0.675, 0.498, 0.369), dark: (0.718, 0.541, 0.400))
-        case .keyboard:    return (light: (0.850, 0.150, 0.650), dark: (0.850, 0.150, 0.650))
-        // Olive, the one hue the others left open: 0,34 from the nearest of them in
-        // sRGB, where the floor is 0,15, and white reads 4,86:1 on it — past the
-        // higher floor as well, so the two sets and the two appearances share one
-        // value. Found by a search over the hue wheel for the largest distance
-        // at a contrast of at least 4,55:1.
-        case .screenshots: return (light: (0.384, 0.480, 0.000), dark: (0.384, 0.480, 0.000))
-        }
-    }
-
-    /// The same solve against a higher floor: the smallest blend toward black at
-    /// which white clears **4,5:1** rather than 3:1, per appearance.
+    /// Each module declares its own pair of pairs in its descriptor. A new one is
+    /// solved against all of `ModuleRegistry.all`, not alone: white clears 3:1 on
+    /// `ordinary` and 4,5:1 on `increasedContrast`, and no two modules' values are
+    /// closer than 0,15 in sRGB.
+    ///
+    /// `ordinary`: white clears 3:1 on it, and no two modules' values are closer than 0,15.
+    ///
+    /// `increasedContrast`: the same solve against a higher floor, the smallest
+    /// blend toward black at which white clears **4,5:1** rather than 3:1, per
+    /// appearance.
     ///
     /// Not every value moves, and that is the method working rather than a gap.
     /// VPN's light already reads 5,09:1, so the blend that clears the higher
@@ -84,23 +58,27 @@ public enum ModuleTint: String, CaseIterable, Sendable {
     /// the wrong side of it. A value that is short because of how it was written
     /// down is the worst kind: it looks measured.
     ///
-    /// The pairwise check is re-run on this set rather than inherited: blending
-    /// colours toward one point moves them toward each other. The closest
-    /// pair here is Disk and Keyboard, at 0,213 in light and 0,215 in dark, both
+    /// The pairwise check is re-run on the blended values rather than inherited: blending
+    /// colours toward one point moves them toward each other. When it was run, the closest
+    /// pair was Disk and Keyboard, at 0,213 in light and 0,215 in dark, both
     /// past the 0,15 floor.
-    private var increasedContrast: Pair {
-        switch self {
-        case .keepAwake:   return (light: (0.699, 0.384, 0.105), dark: (0.687, 0.391, 0.125))
-        case .vpn:         return (light: (0.380, 0.333, 0.961), dark: (0.371, 0.422, 0.869))
-        case .uninstaller: return (light: (0.878, 0.193, 0.206), dark: (0.859, 0.222, 0.233))
-        case .disk:        return (light: (0.754, 0.197, 0.831), dark: (0.752, 0.199, 0.831))
-        case .duplicates:  return (light: (0.000, 0.516, 0.550), dark: (0.000, 0.516, 0.551))
-        case .autopilot:   return (light: (0.000, 0.464, 0.870), dark: (0.000, 0.472, 0.830))
-        case .homebrew:    return (light: (0.135, 0.533, 0.235), dark: (0.117, 0.535, 0.221))
-        case .leftovers:   return (light: (0.587, 0.433, 0.321), dark: (0.579, 0.436, 0.322))
-        case .keyboard:    return (light: (0.838, 0.148, 0.641), dark: (0.838, 0.148, 0.641))
-        case .screenshots: return (light: (0.384, 0.480, 0.000), dark: (0.384, 0.480, 0.000))
-        }
+    public init(ordinary: Pair, increasedContrast: Pair) {
+        self.ordinary = ordinary
+        self.increasedContrast = increasedContrast
+    }
+
+    private let ordinary: Pair
+    private let increasedContrast: Pair
+
+    public var colour: Color { colour(increased: HelmAccessibility.system.increasedContrast) }
+
+    /// The setting as an argument rather than a reading, so the rule can be
+    /// measured without the machine's own switch — `HelmMotion.spins(requested:
+    /// reduceMotion:)`'s shape, and for its reason: a value this file cannot be
+    /// asked about is a value nothing can check.
+    func colour(increased: Bool) -> Color {
+        let pair = increased ? increasedContrast : ordinary
+        return adaptive(light: pair.light, dark: pair.dark)
     }
 
     /// One colour that answers for itself in either appearance, so no call site

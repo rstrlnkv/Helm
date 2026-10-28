@@ -20,8 +20,12 @@ import SwiftUI
         sfSymbol: "location.north.circle", permissions: [.fullDisk],
         welcomeOffer: ApStr.tourOffer) }
     public static let category: ModuleCategory = .files
-    public static let tint: ModuleTint = .autopilot
-    public static let glyph: ShellGlyph = .autopilot
+    public static let tint = ModuleTint(
+        ordinary: (light: (0.000, 0.533, 1.000), dark: (0.000, 0.569, 1.000)),
+        increasedContrast: (light: (0.000, 0.464, 0.870), dark: (0.000, 0.472, 0.830)))
+    public static let glyph = ShellGlyph(
+        body: ShellGlyph.rounded([ShellGlyph.pt(4.5, 5), ShellGlyph.pt(20.5, 12), ShellGlyph.pt(4.5, 19), ShellGlyph.pt(8, 12)], 1.5),
+        detail: ShellGlyph.lines([[ShellGlyph.pt(8, 12), ShellGlyph.pt(13.5, 12)]]))
     /// Folders and their rules span the pane; the header must not centre itself
     /// on the 744 pt form column.
     public var pageBleeds: Bool { true }

@@ -80,6 +80,7 @@ public struct WelcomeView: View {
                     if flow.isLastStep { onClose() } else { flow.next() }
                 }
                 .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
             }
             .padding(HelmSpace.s6)
         }

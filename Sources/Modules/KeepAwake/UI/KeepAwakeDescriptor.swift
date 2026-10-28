@@ -29,8 +29,11 @@ import Module_KeepAwake_Engine
     }
 
     public static let category: ModuleCategory = .power
-    public static let tint: ModuleTint = .keepAwake
-    public static let glyph: ShellGlyph = .keepAwake
+    public static let tint = ModuleTint(
+        ordinary: (light: (0.871, 0.478, 0.131), dark: (0.854, 0.486, 0.155)),
+        increasedContrast: (light: (0.699, 0.384, 0.105), dark: (0.687, 0.391, 0.125)))
+    public static let glyph = ShellGlyph(
+        body: ShellGlyph.circle(11, 13, 8.5).subtracting(ShellGlyph.circle(16.5, 7.5, 7.3)))
 
     private var store: NamespacedStore?
     public init() {}

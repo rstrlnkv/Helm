@@ -44,7 +44,7 @@ public struct HelmAccessibility: Equatable, Sendable {
     /// `let` it freezes at launch, and the person who notices is the one who turned
     /// the setting on. Every token that reads it is computed too, so a view's next
     /// body evaluation is meant to pick up the change, and a view under
-    /// `helmTracksAccessibilityDisplay()` to be told the moment the switch is flipped —
+    /// `helmRoot()` (its tracker) to be told the moment the switch is flipped —
     /// intent, untried: the tracker has not been seen to fire, and whether SwiftUI
     /// caches the `@Entry` default is unchecked.
     public static var system: HelmAccessibility {
@@ -73,8 +73,8 @@ public extension EnvironmentValues {
     var helmTraits: HelmTraits { HelmTraits(scheme: colorScheme, accessibility: helmAccessibility) }
 }
 
-public extension View {
-    /// Put at a hosting root: the views under it are told when the person
+extension View {
+    /// Reached through `helmRoot()`, which a hosting root carries: the views under it are told when the person
     /// changes an accessibility display setting.
     func helmTracksAccessibilityDisplay() -> some View { modifier(HelmAccessibilityDisplayTracker()) }
 }

@@ -80,7 +80,7 @@ import SwiftUI
             open.makeKeyAndOrderFront(nil)
             return
         }
-        let window = NSWindow(contentViewController: NSHostingController(rootView: view.helmTracksAccessibilityDisplay()))
+        let window = NSWindow(contentViewController: NSHostingController(rootView: view.helmRoot()))
         window.styleMask = styleMask
         window.title = title
         if transparentTitlebar {

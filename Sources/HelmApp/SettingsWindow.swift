@@ -339,7 +339,7 @@ enum SettingsSelection: Hashable {
             rootView: SidebarInTheShell(model: model, fold: fold) { [weak self] in self?.flipSidebar() }
                 .modifier(RebuiltOnLanguageChange(model: model))
                 // Its own hosting controller, its own root: the pane's environment stops at the pane.
-                .helmTracksAccessibilityDisplay()
+                .helmRoot()
                 // The window survives closing (`isReleasedWhenClosed = false`),
                 // so without this both panes went on re-rendering — and keeping
                 // memory — for every engine event for as long as the app ran.
@@ -364,7 +364,7 @@ enum SettingsSelection: Hashable {
                 // page's header plate and its empty state are module icons, and
                 // «Module icons» is what the switch says.
                 .helmTracksModuleIconStyle { AppSettings.sidebarStyle }
-                .helmTracksAccessibilityDisplay()
+                .helmRoot()
                 // Same reason as the sidebar's, and this pane is the expensive
                 // one: it holds whichever module page was open, and LogView's
                 // live tail, when the window was closed.

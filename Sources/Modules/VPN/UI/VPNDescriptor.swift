@@ -11,8 +11,23 @@ import Module_VPN_Engine
         id: id, name: "VPN", summary: VPNStr.summary,
         sfSymbol: "lock.shield", permissions: []) }
     public static let category: ModuleCategory = .network
-    public static let tint: ModuleTint = .vpn
-    public static let glyph: ShellGlyph = .vpn
+    public static let tint = ModuleTint(
+        ordinary: (light: (0.380, 0.333, 0.961), dark: (0.427, 0.486, 1.000)),
+        increasedContrast: (light: (0.380, 0.333, 0.961), dark: (0.371, 0.422, 0.869)))
+    public static let glyph = ShellGlyph(
+        body: {
+            var shield = Path()
+            shield.move(to: ShellGlyph.pt(12, 3.5))
+            shield.addLine(to: ShellGlyph.pt(18.5, 6))
+            shield.addQuadCurve(to: ShellGlyph.pt(19.5, 7.5), control: ShellGlyph.pt(19.5, 6.4))
+            shield.addLine(to: ShellGlyph.pt(19.5, 11.5))
+            shield.addCurve(to: ShellGlyph.pt(12, 20.8), control1: ShellGlyph.pt(19.5, 16), control2: ShellGlyph.pt(16.5, 19))
+            shield.addCurve(to: ShellGlyph.pt(4.5, 11.5), control1: ShellGlyph.pt(7.5, 19), control2: ShellGlyph.pt(4.5, 16))
+            shield.addLine(to: ShellGlyph.pt(4.5, 7.5))
+            shield.addQuadCurve(to: ShellGlyph.pt(5.5, 6), control: ShellGlyph.pt(4.5, 6.4))
+            shield.closeSubpath()
+            return shield
+        }())
 
     private var store: NamespacedStore?
     private var cached: (vm: ModuleViewModel, model: VPNViewModel)?

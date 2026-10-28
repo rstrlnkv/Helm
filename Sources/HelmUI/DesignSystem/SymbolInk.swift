@@ -31,7 +31,7 @@ import CoreGraphics
 /// Correcting each symbol towards the mean makes them the same size to the eye,
 /// which is what "the same size" is supposed to mean. The table is measured
 /// rather than tuned; re-run the script when a symbol changes or one is added.
-public enum SymbolInk {
+enum SymbolInk {
 
     /// Ink measured at 100 pt, divided by 100.
     static let ratios: [String: CGFloat] = [
@@ -60,7 +60,7 @@ public enum SymbolInk {
 
     /// The factor to multiply a point size by so this symbol paints the same
     /// amount as the rest. 1 for anything not in the table.
-    public static func correction(for symbol: String) -> CGFloat {
+    static func correction(for symbol: String) -> CGFloat {
         guard let ratio = ratios[symbol] else { return 1 }
         return mean / ratio
     }

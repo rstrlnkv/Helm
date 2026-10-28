@@ -10,8 +10,12 @@ import Module_Disk_Engine
         id: id, name: DkStr.moduleName, summary: DkStr.summary,
         sfSymbol: "chart.pie", permissions: [.fullDisk]) }
     public static let category: ModuleCategory = .files
-    public static let tint: ModuleTint = .disk
-    public static let glyph: ShellGlyph = .disk
+    public static let tint = ModuleTint(
+        ordinary: (light: (0.796, 0.208, 0.878), dark: (0.859, 0.227, 0.949)),
+        increasedContrast: (light: (0.754, 0.197, 0.831), dark: (0.752, 0.199, 0.831)))
+    public static let glyph = ShellGlyph(
+        body: ShellGlyph.circle(12, 12, 8.5),
+        detail: ShellGlyph.lines([[ShellGlyph.pt(12, 3.5), ShellGlyph.pt(12, 12), ShellGlyph.pt(19.2, 16.4)]]))
     /// The page draws across the pane; its header must not centre itself.
     public var pageBleeds: Bool { true }
 

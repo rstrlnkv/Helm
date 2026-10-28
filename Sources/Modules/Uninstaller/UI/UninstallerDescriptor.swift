@@ -10,8 +10,31 @@ import Module_Uninstaller_Engine
         id: id, name: UnStr.moduleName, summary: UnStr.summary,
         sfSymbol: "trash", permissions: [.fullDisk]) }
     public static let category: ModuleCategory = .files
-    public static let tint: ModuleTint = .uninstaller
-    public static let glyph: ShellGlyph = .trash
+    public static let tint = ModuleTint(
+        ordinary: (light: (1.000, 0.220, 0.235), dark: (1.000, 0.259, 0.271)),
+        increasedContrast: (light: (0.878, 0.193, 0.206), dark: (0.859, 0.222, 0.233)))
+    public static let glyph = ShellGlyph(
+        body: {
+            var bin = Path()
+            bin.move(to: ShellGlyph.pt(6.2, 8))
+            bin.addLine(to: ShellGlyph.pt(7, 18.3))
+            bin.addQuadCurve(to: ShellGlyph.pt(9.4, 20.5), control: ShellGlyph.pt(7.2, 20.5))
+            bin.addLine(to: ShellGlyph.pt(14.6, 20.5))
+            bin.addQuadCurve(to: ShellGlyph.pt(17, 18.3), control: ShellGlyph.pt(16.8, 20.5))
+            bin.addLine(to: ShellGlyph.pt(17.8, 8))
+            bin.closeSubpath()
+            return bin
+        }(),
+        extra: {
+            var lid = ShellGlyph.lines([[ShellGlyph.pt(4, 8), ShellGlyph.pt(20, 8)]])
+            lid.move(to: ShellGlyph.pt(9.5, 8))
+            lid.addLine(to: ShellGlyph.pt(9.5, 6))
+            lid.addQuadCurve(to: ShellGlyph.pt(11, 4.5), control: ShellGlyph.pt(9.5, 4.5))
+            lid.addLine(to: ShellGlyph.pt(13, 4.5))
+            lid.addQuadCurve(to: ShellGlyph.pt(14.5, 6), control: ShellGlyph.pt(14.5, 4.5))
+            lid.addLine(to: ShellGlyph.pt(14.5, 8))
+            return lid
+        }())
     /// The page draws across the pane; its header must not centre itself.
     public var pageBleeds: Bool { true }
 

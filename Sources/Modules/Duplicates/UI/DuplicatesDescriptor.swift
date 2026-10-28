@@ -10,8 +10,20 @@ import SwiftUI
         id: id, name: DupStr.moduleName, summary: DupStr.summary,
         sfSymbol: "doc.on.doc", permissions: [.fullDisk]) }
     public static let category: ModuleCategory = .files
-    public static let tint: ModuleTint = .duplicates
-    public static let glyph: ShellGlyph = .duplicates
+    public static let tint = ModuleTint(
+        ordinary: (light: (0.000, 0.645, 0.688), dark: (0.000, 0.646, 0.690)),
+        increasedContrast: (light: (0.000, 0.516, 0.550), dark: (0.000, 0.516, 0.551)))
+    public static let glyph = ShellGlyph(
+        body: ShellGlyph.box(8, 8, 12.5, 12.5, 3.5),
+        extra: {
+            var back = Path()
+            back.move(to: ShellGlyph.pt(7.5, 16))
+            back.addArc(tangent1End: ShellGlyph.pt(3.5, 16), tangent2End: ShellGlyph.pt(3.5, 3.5), radius: 3.5)
+            back.addArc(tangent1End: ShellGlyph.pt(3.5, 3.5), tangent2End: ShellGlyph.pt(16, 3.5), radius: 3.5)
+            back.addArc(tangent1End: ShellGlyph.pt(16, 3.5), tangent2End: ShellGlyph.pt(16, 16), radius: 3.5)
+            back.addLine(to: ShellGlyph.pt(16, 7.5))
+            return back
+        }())
     /// The page draws across the pane; its header must not centre itself.
     public var pageBleeds: Bool { true }
 

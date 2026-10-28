@@ -14,8 +14,13 @@ import Module_Layout_Engine
         // `no accessibility grant — not watching` and no other way to work.
         inertWithout: [.accessibility]) }
     public static let category: ModuleCategory = .utilities
-    public static let tint: ModuleTint = .keyboard
-    public static let glyph: ShellGlyph = .layout
+    public static let tint = ModuleTint(
+        ordinary: (light: (0.850, 0.150, 0.650), dark: (0.850, 0.150, 0.650)),
+        increasedContrast: (light: (0.838, 0.148, 0.641), dark: (0.838, 0.148, 0.641)))
+    public static let glyph = ShellGlyph(
+        body: ShellGlyph.box(2.5, 6, 19, 12, 3.5),
+        detail: ShellGlyph.lines([ShellGlyph.dot(7.5, 10.3), ShellGlyph.dot(12, 10.3), ShellGlyph.dot(16.5, 10.3),
+                                  [ShellGlyph.pt(9, 13.9), ShellGlyph.pt(15, 13.9)]]))
 
     private var store: NamespacedStore?
     /// Readable so a test can tell «attached» from «not attached» without the
