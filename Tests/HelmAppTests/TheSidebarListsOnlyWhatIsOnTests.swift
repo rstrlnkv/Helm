@@ -1,6 +1,7 @@
 import HelmContract
 import HelmRuntime
 import HelmUI
+import SwiftUI
 import XCTest
 @testable import HelmApp
 
@@ -11,7 +12,8 @@ import XCTest
 ///
 /// No view, no window: `ShellSidebarRows` is built from a `SidebarLayout` and a
 /// set of ids, and every question about it, which row a selection selects, which
-/// row an arrow key lands on, whether a module is blocked, what a selection
+/// row an arrow key lands on, where a row stands (`position(of:)`), which row typed
+/// letters select (`row(typed:title:)`), whether a module is blocked, what a selection
 /// becomes, is answered from values. This class is deliberately not
 /// `@MainActor`, so a type bound to the main actor would not compile here.
 ///
@@ -162,6 +164,76 @@ final class TheSidebarListsOnlyWhatIsOnTests: XCTestCase {
         let rows = rows(on: Self.allOn)
         XCTAssertEqual(rows.neighbour(of: .module("beta"), moving: .down), .module("gamma"))
         XCTAssertEqual(rows.neighbour(of: .module("gamma"), moving: .up), .module("beta"))
+    }
+
+    func testPositionCountsFromOneAndTheFootRowIsInTheCount() {
+        let rows = rows(on: ["alpha", "gamma"])
+        XCTAssertEqual(rows.position(of: .module("gamma"))?.index, 2)
+        XCTAssertEqual(rows.position(of: .foot)?.index, 3)
+        XCTAssertEqual(rows.position(of: .foot)?.count, 3)
+        XCTAssertNil(rows.position(of: .module("beta")))
+    }
+
+    func testTypingTakesTheFirstRowWhoseNameBeginsWithItWhateverTheCaseOrAccent() {
+        let rows = rows(on: Self.allOn)
+        let names: [Rows.Row: String] = [.module("alpha"): "Kéep", .module("beta"): "Ke Two", .module("gamma"): "Zed",
+                                          .module("delta"): "Dock", .foot: "Settings"]
+        let title: (Rows.Row) -> String = { names[$0] ?? "" }
+        XCTAssertEqual(rows.row(typed: "ke", title: title), .module("alpha"))
+        XCTAssertEqual(rows.row(typed: "KE T", title: title), .module("beta"))
+        XCTAssertEqual(rows.row(typed: "set", title: title), .foot)
+        XCTAssertNil(rows.row(typed: "eep", title: title), "anchored at the start")
+        XCTAssertNil(rows.row(typed: "", title: title))
+    }
+
+    func testTypedTextRefusesTheFunctionKeysAndControlsAndALeadingSpace() {
+        for arrow in ["\u{F700}", "\u{F701}", "\u{F702}", "\u{F703}", "\u{F728}", "a\u{F700}"] {
+            XCTAssertNil(ShellSidebar.typeSelectText(arrow, buffer: ""), "U+F7xx is a function key, not text")
+            XCTAssertNil(ShellSidebar.typeSelectText(arrow, buffer: "ke"))
+        }
+        XCTAssertNil(ShellSidebar.typeSelectText("\u{1B}", buffer: ""))
+        XCTAssertNil(ShellSidebar.typeSelectText("", buffer: ""))
+        XCTAssertNil(ShellSidebar.typeSelectText(" ", buffer: ""), "a space does not start a buffer")
+        XCTAssertEqual(ShellSidebar.typeSelectText(" ", buffer: "ke"), " ")
+        XCTAssertEqual(ShellSidebar.typeSelectText("é", buffer: ""), "é")
+    }
+
+    func testTypeSelectAcceptsShiftAndCapsLockAndRefusesTheShortcutModifiers() {
+        XCTAssertTrue(ShellSidebar.acceptsModifiers([]))
+        XCTAssertTrue(ShellSidebar.acceptsModifiers(.capsLock))
+        XCTAssertTrue(ShellSidebar.acceptsModifiers([.shift, .capsLock]))
+        for refused: EventModifiers in [.command, .control, .option, [.capsLock, .command]] {
+            XCTAssertFalse(ShellSidebar.acceptsModifiers(refused))
+        }
+    }
+
+    func testTypingMeetsOtherScriptsAndALaterRowForALongerPrefix() {
+        let rows = rows(on: Self.allOn)
+        let names: [Rows.Row: String] = [.module("alpha"): "Ítems de inicio", .module("beta"): "Не спать",
+                                          .module("gamma"): "Keep", .module("delta"): "Ke Two", .foot: "Настройки"]
+        let title: (Rows.Row) -> String = { names[$0] ?? "" }
+        XCTAssertEqual(rows.row(typed: "i", title: title), .module("alpha"), "Ítems by an unaccented i")
+        XCTAssertEqual(rows.row(typed: "í", title: title), .module("alpha"))
+        XCTAssertEqual(rows.row(typed: "н", title: title), .module("beta"), "Cyrillic, small letter for a capital")
+        XCTAssertEqual(rows.row(typed: "НЕ С", title: title), .module("beta"))
+        XCTAssertEqual(rows.row(typed: "на", title: title), .foot, "a second Cyrillic letter leaves beta")
+        XCTAssertEqual(rows.row(typed: "\u{FF2B}\u{FF45}", title: title), .module("gamma"), "full-width Ke")
+        XCTAssertEqual(rows.row(typed: "k", title: title), .module("gamma"))
+        XCTAssertEqual(rows.row(typed: "ke ", title: title), .module("delta"),
+                       "the two-letter-and-space prefix is a later row than the one-letter prefix")
+        XCTAssertNil(rows.row(typed: "q", title: title), "a prefix matching nothing selects nothing")
+        XCTAssertNil(rows.row(typed: "Ke Two and more", title: title), "a prefix longer than the name")
+    }
+
+    func testPositionOfEachRowInTheFullListAndTheCountIsConstant() {
+        let rows = rows(on: Self.allOn)
+        let all = rows.rows
+        XCTAssertEqual(all.count, 5, "four modules and the foot")
+        for (offset, row) in all.enumerated() {
+            let p = rows.position(of: row)
+            XCTAssertEqual(p?.index, offset + 1)
+            XCTAssertEqual(p?.count, 5)
+        }
     }
 
     func testNeighbourStopsAtBothEnds() {

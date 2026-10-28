@@ -31,8 +31,8 @@ extension Notification.Name {
         }
     }
 
-    /// Whether the sidebar draws each module on its own colour or as a plain
-    /// glyph. Defaulted through `SidebarStyle(stored:)` rather than a literal
+    /// Whether a module's icon is drawn on its own colour or as a plain glyph
+    /// (read by `HelmIconPlate`; the settings pane's root and the menu-bar panel's set it for it). Defaulted through `SidebarStyle(stored:)` rather than a literal
     /// here, so the fallback for an unknown value is written once.
     static var sidebarStyle: SidebarStyle {
         get { SidebarStyle(stored: store.string(SidebarStyle.storageKey, default: "")) }

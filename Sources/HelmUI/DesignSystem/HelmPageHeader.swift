@@ -421,7 +421,7 @@ public struct HelmPageHeader<Trailing: View>: View {
             Spacer(minLength: 12)
             trailing
         }
-        .opacity(dimmed ? 0.6 : 1)
+        .opacity(dimmed ? HelmText.inactiveOpacity : 1)
         // **20 across, not the redesign's 18.** The mockups draw this strip and
         // the pane below it at one gutter, and moving only the header to 18
         // breaks the rule that matters more: a bleeding page's content starts
@@ -653,7 +653,7 @@ private struct HelmHeaderControls: View {
 public extension EnvironmentValues {
     /// Whether the window draws its chrome active — the window's own reading (`SettingsWindow`'s header above
     /// `windowDidBecomeKey`), not `\.controlActiveState`, which reads `.inactive` under a sheet where the
-    /// window is still the active one. The header row dims by it; a view outside the settings window reads true.
+    /// window is still the active one. The header row and the sidebar's rows dim by it; a view outside the settings window reads true.
     @Entry var helmWindowAppearsActive = true
 }
 

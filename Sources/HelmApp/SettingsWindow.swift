@@ -211,7 +211,7 @@ enum SettingsSelection: Hashable {
     }
     /// What the page on screen calls itself, for the window's title bar.
     @Published var pageTitle: HelmPageTitle?
-    /// `SettingsWindow.updateWindowAppearsActive()`'s reading, for the header row's dimming
+    /// `SettingsWindow.updateWindowAppearsActive()`'s reading, for the header row's and the sidebar rows' dimming
     /// (`\.helmWindowAppearsActive`). True until the window is first brought forward, which reads it
     /// (`SettingsWindow.bringForward()`); the window is built to be shown.
     @Published var windowAppearsActive = true
@@ -358,9 +358,9 @@ enum SettingsSelection: Hashable {
                 }
                 .environment(\.helmHeaderInCard, true)
                 .modifier(RebuiltOnLanguageChange(model: model))
-                // The pane as well as the sidebar: a module page's header plate
-                // and its empty state are module icons too, and «Module icons»
-                // is what the switch says.
+                // The pane, not the sidebar (its rows draw one look): a module
+                // page's header plate and its empty state are module icons, and
+                // «Module icons» is what the switch says.
                 .helmTracksModuleIconStyle { AppSettings.sidebarStyle }
                 // Same reason as the sidebar's, and this pane is the expensive
                 // one: it holds whichever module page was open, and LogView's
@@ -391,6 +391,9 @@ private struct SidebarInTheShell: View {
 
     var body: some View {
         ShellSidebar(model: model, collapsed: fold.collapsed, toggleCollapsed: flip)
+            // The sidebar is a hosting controller of its own: an environment set on the pane's root
+            // does not reach it, so it tells the rows the window's state itself.
+            .modifier(TellsWindowActivity(model: model))
     }
 }
 
@@ -536,7 +539,7 @@ private struct ModuleDetailView: View {
     }
 }
 
-/// Hands the window's key or main state to the header row, which dims with it.
+/// Hands the window's key or main state to the header row and the sidebar's rows, which dim with it.
 private struct TellsWindowActivity: ViewModifier {
     @ObservedObject var model: SettingsModel
 

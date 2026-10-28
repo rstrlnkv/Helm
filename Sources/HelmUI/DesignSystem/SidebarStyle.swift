@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// How the sidebar draws a module: on its own colour, or as a plain glyph.
+/// How a module's icon is drawn: on its own colour, or as a plain glyph — what `HelmIconPlate` draws, with
+/// the style set at the settings pane's root and the menu-bar panel's. The settings sidebar's rows draw one look and do not read it.
 ///
 /// A preference rather than a decision, because the two answer different
 /// people. A colour plate is faster to find by eye once you know the app; a
@@ -15,7 +16,7 @@ public enum SidebarStyle: String, CaseIterable, Sendable {
     case colour, plain
 
     /// The key this is stored under, named once so the control that writes it
-    /// and the sidebar that reads it cannot be renamed apart.
+    /// and what reads it cannot be renamed apart.
     public static let storageKey = "sidebarStyle"
 
     /// A value read back from disk, including one this build has never heard

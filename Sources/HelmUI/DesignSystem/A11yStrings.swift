@@ -57,6 +57,44 @@ public enum HelmA11y {
         L("Search")
     }
 
+    /// Where a row stands in a column of buttons, which VoiceOver does not say by itself ("1 of 5"). The
+    /// sidebar's rows read it as their value. `language` is explicit for the reason `HelmBasket` gives.
+    ///
+    /// Read out of the system's own table, as `expanded` and `collapsed` below are: the `%ld of %ld`
+    /// entry of `SCRGeneral.loctable` in VoiceOver's ScreenReader.framework; zh is `zh_CN`, pt is `pt_BR`.
+    /// The note variant below is not the system's `%@, %ld of %ld` (note first; ja `%1$@、%2$ld / %3$ld`):
+    /// it keeps the position first, as the plain form does.
+    public static func position(_ n: Int, of m: Int,
+                                language: AppLanguage = AppLanguage.current) -> String {
+        let table: [AppLanguage: String] = [
+            .ru: "\(n) из \(m)",
+            .es: "\(n) de \(m)",
+            .fr: "\(n) sur \(m)",
+            .de: "\(n) von \(m)",
+            .ja: "\(m)の\(n)",
+            .zh: "\(n)项（共\(m)项）",
+            .pt: "\(n) de \(m)",
+        ]
+        let english = "\(n) of \(m)"
+        return language == .en ? english : table[language] ?? english
+    }
+
+    /// The same with a note after it — a row that cannot act says why. `note` arrives already localized.
+    public static func position(_ n: Int, of m: Int, after note: String,
+                                language: AppLanguage = AppLanguage.current) -> String {
+        let table: [AppLanguage: String] = [
+            .ru: "\(n) из \(m), \(note)",
+            .es: "\(n) de \(m), \(note)",
+            .fr: "\(n) sur \(m), \(note)",
+            .de: "\(n) von \(m), \(note)",
+            .ja: "\(m)の\(n)、\(note)",
+            .zh: "\(n)项（共\(m)项），\(note)",
+            .pt: "\(n) de \(m), \(note)",
+        ]
+        let english = "\(n) of \(m), \(note)"
+        return language == .en ? english : table[language] ?? english
+    }
+
     /// Whether a disclosure is open. SwiftUI has no trait for it on macOS — the
     /// rotor gets `.isButton` and nothing else — so the state has to be said,
     /// and a control whose whole purpose is to open and close must say it.

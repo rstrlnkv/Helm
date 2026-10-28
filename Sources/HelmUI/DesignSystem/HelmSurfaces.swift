@@ -25,6 +25,11 @@ public enum HelmSurface {
     public static let barPlate = Color.primary.opacity(0.05)
     /// The pick on `barPlate`.
     public static let barPick = Color.primary.opacity(0.10)
+    /// The selected row of the sidebar (`HelmSidebarRow`). The owner's value; `barPick` holds the same
+    /// number, and `wellFill` and `barPlate` hold `rowHover`'s, so they move independently.
+    public static let rowSelection = Color.primary.opacity(0.10)
+    /// The hovered row of the sidebar: half of `rowSelection`.
+    public static let rowHover = Color.primary.opacity(0.05)
 }
 
 public extension View {
@@ -124,14 +129,15 @@ public extension View {
 /// to see the end of, and small enough (7 pt of blur, 4 pt down at the default
 /// size) to sit inside the header's own padding rather than reaching past it.
 ///
-/// This is also the small tile in the panel, the sidebar and the order list —
-/// the same drawing at 20, 22 and 26 pt, which had been copy-pasted at three
-/// sites with their own radii and glyph sizes.
+/// This is also the small tile in the panel and the order list — the same
+/// drawing at several sizes, which had been copy-pasted at three sites with
+/// their own radii and glyph sizes. The settings sidebar draws `ShellGlyphView`,
+/// not this.
 public struct HelmIconPlate: View {
     /// How the person asked for module icons to be drawn. Read from the
     /// environment rather than taken as a parameter: this is the app's one
-    /// module icon, drawn at nine call sites, and a preference passed at each of
-    /// them is a preference eight of them can forget.
+    /// module icon, drawn at many call sites, and a preference passed at each of
+    /// them is a preference one of them can forget.
     @Environment(\.helmModuleIconStyle) private var style
     let symbol: String
     let tint: Color
@@ -414,6 +420,10 @@ public enum HelmText {
     /// `faint` was raised to 0.65 to clear its own floor and had quietly become
     /// the darker of the two.
     public static let quiet = Color.primary.opacity(0.66)
+    /// What a window that is not the active one draws its text and glyphs at (`\.helmWindowAppearsActive`):
+    /// the header row and the sidebar's rows. Not a reading floor — it says "this window is not in
+    /// front", as System Settings' sidebar does; the fill under it stays.
+    public static let inactiveOpacity = 0.6
     /// Captions that must recede and stay readable — short, and never the only
     /// place a fact appears. 4.77:1 / 5.92:1.
     ///
