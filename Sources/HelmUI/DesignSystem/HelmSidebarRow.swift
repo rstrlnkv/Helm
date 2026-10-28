@@ -54,6 +54,7 @@ public struct HelmSidebarRow: View {
     @State private var hover = false
     @Environment(\.helmWindowAppearsActive) private var active
     @Environment(\.helmTraits) private var traits
+    @Environment(\.helmShownInteraction) private var shown
 
     public init(title: String, glyph: ShellGlyph, selected: Bool, collapsed: Bool,
                 warning: Warning? = nil, position: Position? = nil, action: @escaping () -> Void) {
@@ -91,7 +92,7 @@ public struct HelmSidebarRow: View {
             .frame(height: Self.height)
             .background(
                 RoundedRectangle(cornerRadius: Self.selectionRadius, style: .continuous)
-                    .fill(selected ? HelmSurface.rowSelection : hover ? HelmSurface.rowHover : Color.clear)
+                    .fill(selected ? HelmSurface.rowSelection : (hover || shown == .hover) ? HelmSurface.rowHover : Color.clear)
             )
             .contentShape(Rectangle())
         }

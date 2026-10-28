@@ -28,7 +28,7 @@ comment, not on a page.
 |---|---|
 | a module's pure logic | `Sources/Modules/<Module>/Engine/Logic/` |
 | its engine, its command enum, its store | `Sources/Modules/<Module>/Engine/` |
-| its screen | `Sources/Modules/<Module>/UI/` |
+| its screen, and its descriptor with the module's tint and glyph | `Sources/Modules/<Module>/UI/` |
 | its tests, both halves | `Tests/Modules/<Module>/EngineTests/`, `Tests/Modules/<Module>/UITests/` |
 | what crosses the engine/host boundary | `Sources/HelmContract/` |
 | plumbing two modules both want | `Sources/HelmRuntime/` |
@@ -38,6 +38,7 @@ comment, not on a page.
 | the window, panel, status item, settings, changelog | `Sources/HelmApp/` |
 | plumbing a test target wants | `Tests/Support/` |
 | what a screen reads as, in numbers | `Sources/HelmReadout/` |
+| the kit's components in every state, to look at | `Sources/HelmShowcase/` |
 | build, sign, package, disk image, screen stills (`shoot.sh`) | `Scripts/` |
 
 ## Shape
@@ -84,7 +85,7 @@ One page per module, in the order `ls Sources/Modules` prints.
 - [Localization](Architecture/Localization.md) — the English key, the eight tables, the guards that watch them, and the helpers that keep the language the app's own.
 - [State and lifetime](Architecture/StateAndLifetime.md) — what outlives a page or a thing it points at, and a value read back whole; § State that outlives a page and ends with its module, § An observer outlives the thing it points at, § A value read back whole.
 - [Stored settings](Architecture/StoredSettings.md) — a stored value nobody else may write, and a number that came from a file; § Sealed settings, § A number that came from a file.
-- [Design system](Architecture/DesignSystem.md) — what `Sources/HelmUI/DesignSystem/` holds and the rules for its surfaces, ladders, type, ink and motion; § Surfaces, § Ladders, § Type, § Ink and contrast, § Motion, § The visual language, § Widths.
+- [Design system](Architecture/DesignSystem.md) — what `Sources/HelmUI/DesignSystem/` holds and the rules for its tokens, surfaces, ladders, type, ink, motion and the showcase; § Tokens, § Surfaces, § Ladders, § Type, § Ink and contrast, § Own look over system behaviour, § What a page may use, § Motion, § The visual language, § Widths, § The showcase, § Apple's rules in three grades.
 
 ## Shipping and checking
 

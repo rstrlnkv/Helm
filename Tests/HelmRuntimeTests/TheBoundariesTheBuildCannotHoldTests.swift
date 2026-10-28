@@ -99,6 +99,17 @@ final class TheBoundariesTheBuildCannotHoldTests: XCTestCase {
         XCTAssertTrue(offences.isEmpty, "the host imports an engine:\n" + offences.joined(separator: "\n"))
     }
 
+    /// `HelmShowcase` depends on `HelmUI` alone, and the build's import check passes an import of a
+    /// target reached through a declared one — `HelmRuntime` is behind `HelmUI` — so the showcase's imports are read from the lines: the system's SwiftUI and
+    /// AppKit, and the kit.
+    func testTheShowcaseImportsOnlyTheKit() throws {
+        let showcase = try Self.found { $0.count > 2 && $0[0] == "Sources" && $0[1] == "HelmShowcase" }
+        XCTAssertTrue(showcase.contains { $0.module == "HelmUI" },
+                      "the reader found no import of HelmUI in the showcase — the check below is over nothing there")
+        let offences = showcase.filter { !["SwiftUI", "AppKit", "HelmUI"].contains($0.module) }.map(\.place)
+        XCTAssertTrue(offences.isEmpty, "the showcase imports past the kit:\n" + offences.joined(separator: "\n"))
+    }
+
     /// `@_exported import Module_Disk_Engine` in Disk's UI would hand the
     /// engine to the host with no import line for the check above to read.
     func testNothingReExportsAModule() throws {

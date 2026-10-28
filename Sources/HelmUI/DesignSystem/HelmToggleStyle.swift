@@ -7,9 +7,10 @@ import SwiftUI
 /// VoiceOver, the space key and the inactive-window grey stay the system's. What the style owns is the
 /// row: label and switch on one line, the label spread to the free width.
 ///
-/// **Where each value comes from.** Label font `HelmText.rowTitle`, ink `Color.primary`, gap between
-/// label and switch `HelmSpace.s4`. The style adds no look of its own for a window that is not the
-/// active one. `\.labelsVisibility` and `\.controlSize` are honoured: a hidden label is not drawn, and
+/// **Where each value comes from.** Label font `HelmText.rowTitle`, ink `Color.primary`. Between label and
+/// switch stand at least 3 × `HelmSpace.s4` (24 pt): the stack's own spacing on each side of the `Spacer` that spreads
+/// the label, and the spacer's minimum length. The style adds no look of its own for a window that is not
+/// the active one. `\.labelsVisibility` and `\.controlSize` are honoured: a hidden label is not drawn, and
 /// the switch takes the size.
 struct HelmToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View { Rendered(configuration: configuration) }

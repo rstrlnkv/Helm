@@ -48,9 +48,9 @@ public enum HelmSignal {
     /// The setting as an argument rather than a reading, so each floor can be
     /// measured without the machine's own switch — `HelmMotion.spins(requested:
     /// reduceMotion:)`'s shape.
-    static func warning(increased: Bool) -> Color { increased ? warningIncreased : warningOrdinary }
-    static func success(increased: Bool) -> Color { increased ? successIncreased : successOrdinary }
-    static func danger(increased: Bool) -> Color { increased ? dangerIncreased : dangerOrdinary }
+    public static func warning(increased: Bool) -> Color { increased ? warningIncreased : warningOrdinary }
+    public static func success(increased: Bool) -> Color { increased ? successIncreased : successOrdinary }
+    public static func danger(increased: Bool) -> Color { increased ? dangerIncreased : dangerOrdinary }
 
     /// Six stored colours rather than six built on demand, and the reason is
     /// identity rather than cost. `Color` compares by the object inside it, so a

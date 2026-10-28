@@ -76,7 +76,7 @@ public struct ModuleTint: Sendable {
     /// measured without the machine's own switch — `HelmMotion.spins(requested:
     /// reduceMotion:)`'s shape, and for its reason: a value this file cannot be
     /// asked about is a value nothing can check.
-    func colour(increased: Bool) -> Color {
+    public func colour(increased: Bool) -> Color {
         let pair = increased ? increasedContrast : ordinary
         return adaptive(light: pair.light, dark: pair.dark)
     }

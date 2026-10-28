@@ -12,7 +12,7 @@ import HelmRuntime
 /// The exception is anything whose height is measured and clipped. A bouncy
 /// spring overshoots its target, and an overshooting height clips its own
 /// content for a frame or two — exactly the class of panel glitch
-/// ARCHITECTURE.md § Motion warns about. Those use `disclosure`, which is a spring with
+/// Architecture/DesignSystem.md § Motion warns about. Those use `disclosure`, which is a spring with
 /// the bounce set to zero: physical timing, no overshoot.
 public enum HelmMotion {
     /// "Reduce motion" is a medical setting, not a preference: springs that
@@ -23,8 +23,10 @@ public enum HelmMotion {
     /// change itself.
     private static var reduced: Bool { reduceMotion }
 
-    /// The system setting, read fresh through `HelmAccessibility.system`: for AppKit code and
-    /// pages that are not yet on `\.helmTraits`.
+    /// The system setting, read fresh through `HelmAccessibility.system`: for AppKit code, for pages
+    /// that are not yet on `\.helmTraits`, and for the kit's own hover animation (`hover(entering:)`, which
+    /// `HelmButtonStyle` and `HelmPageHeader` call), so a kit view takes Reduce Motion from here and not
+    /// from `\.helmTraits`.
     public static var reduceMotion: Bool {
         HelmAccessibility.system.reducedMotion
     }

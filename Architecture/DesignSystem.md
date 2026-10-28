@@ -11,15 +11,24 @@ module's look is finished before the next one's is started, because a page is ju
 beside finished neighbours, and two modules in flight change the same kit and the same
 string tables at once.
 
+## Tokens
+
+Tokens live one family to a file in `Sources/HelmUI/DesignSystem`: `HelmFills.swift` holds
+`HelmSurface` — a small set of fills over `Color.primary`, and `hairline`, which Helm's own panel and About page draw as an outline (`PanelChrome.swift`, `AboutPage.swift`), though no card is given one —
+`HelmLadders.swift` `HelmSpace` and `HelmRadius`, `HelmLayout.swift` `HelmLayout`,
+`HelmText.swift` `HelmText`, `HelmSignal.swift` `HelmSignal`, `HelmMotion.swift` the curves,
+and `HelmTraits.swift` the one entry a kit view reads the look through: `\.helmTraits`, the
+colour scheme and the three accessibility settings in one value (`HelmAccessibility.system`
+is the one place that asks the workspace for them). Motion is the exception: `HelmButtonStyle` and
+`HelmPageHeader` take Reduce Motion through `HelmMotion.hover(entering:)`, which reads
+`HelmAccessibility.system` statically, so the showcase cannot force it. A kit view reads it rather than asking
+the workspace itself.
+
 ## Surfaces
 
-The tokens live one family to a file in `Sources/HelmUI/DesignSystem`: `HelmFills.swift`
-holds `HelmSurface` — a small set of fills over `Color.primary`, no border among them —
-`HelmLayout.swift` `HelmLayout`, `HelmText.swift` `HelmText`, `HelmSignal.swift`
-`HelmSignal`, and `HelmTraits.swift` what a kit view reads of the light or dark appearance
-and the accessibility settings. `HelmSurfaces.swift` holds the components: `HelmIconPlate`,
-`HelmSignalPlate`, `HelmSectionTitle` and `HelmMetricStrip`, and the two view
-modifiers `helmPreviewEdge(chosen:)` and `helmCard(padding:)`. `helmCard()` is the one card
+`HelmSurfaces.swift` holds the components: `HelmIconPlate`, `HelmSignalPlate`,
+`HelmSectionTitle` and `HelmMetricStrip`, and the two view modifiers
+`helmPreviewEdge(chosen:)` and `helmCard(padding:)`. `helmCard()` is the one card
 treatment: a fill, continuous corners at `HelmRadius.card`, and no border, because half of
 Helm's pages are grouped `Form` sections the system draws and nothing can restyle. A
 surface that floats over content takes `.glassEffect` rather than an edge, because glass
@@ -67,18 +76,45 @@ measured against a contrast floor rather than chosen, and the blend is resolved 
 the light appearance, because `NSColor(Color)` returns a dynamic colour that resolves
 again against whatever appearance is current.
 
-`ModuleTint` and `HelmSignal` carry a third and fourth value for Increase Contrast:
-`Sources/HelmUI/DesignSystem/HelmTraits.swift` is the switch (`HelmAccessibility.system`, the one reader), a flag rather than an
-appearance, and `ModuleTint.colour(increased:)` and `HelmSignal.warning(increased:)` take
-it as an argument the way `HelmMotion.spins(requested:reduceMotion:)` does, which is what
-lets the floors be measured without the machine's own switch. The second set is the same
-solve against a higher floor, and each is solved against the *rounded* literal.
+`ModuleTint` and `HelmSignal` carry a third and fourth value for Increase Contrast, chosen by
+the flag `\.helmTraits` carries (`HelmTraits.swift`), a flag rather than an appearance.
+A module's `ModuleTint` is declared by its descriptor, through the init that takes the
+ordinary pair and the increased-contrast pair (`Sources/Modules/KeepAwake/UI/KeepAwakeDescriptor.swift`
+is one). `ModuleTint.colour(increased:)` and `HelmSignal.warning(increased:)` take the flag as
+an argument the way `HelmMotion.spins(requested:reduceMotion:)` does, so that a caller that
+holds the flag from `\.helmTraits` passes it, and `HelmShowcase` can draw either. The second
+set is the same solve against a higher floor, and each is solved against the *rounded* literal.
 
 A menu swatch is drawn already coloured and left a non-template image. The colour panel's
 target is held from the view. A colour is converted to sRGB on the way in, and a stored
 case is retired and never removed. A component's contrast is measured against what it
 actually draws on rather than against the page, and a control is checked for being
 photographable before it is chosen for a surface this house verifies by photograph.
+
+## Own look over system behaviour
+
+A hosting root carries `helmRoot()` (`HelmRoot.swift`): the accessibility tracker, `HelmButtonStyle`
+and `HelmToggleStyle`. The Settings window's roots, `HostWindow.present` and the menu-bar panel carry it;
+the environment stops at each root, so a root without it draws plain `Button`s and `Toggle`s in the system's
+look. A page writes a plain `Button` or `Toggle` and gets the kit's. A style set on the control itself wins.
+
+The kit owns the look and leaves the behaviour to the system. `HelmButtonStyle` is a `ButtonStyle`, not a
+`PrimitiveButtonStyle`, so the press, the keyboard shortcut and the button trait stay the system's; the price is
+that `ButtonStyleConfiguration` carries no default-action flag, so **a default-action button names
+`.borderedProminent` itself** (`.keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)`), or it
+loses the system's accent. `HelmToggleStyle` lays the row out and puts the system's own switch at the edge.
+What stays the system's: the switch, the focus ring, and the grey of an inactive window — the styles draw no
+inactive look of their own. A kit view that does dim there reads `\.helmWindowAppearsActive`
+(`HelmSidebarRow`; the page header through `helmCardHeader`, which hands it `dimmed:`).
+
+## What a page may use
+
+A page uses a system control under `helmRoot()` or a component of the kit (`ls Sources/HelmUI/DesignSystem/`),
+and takes a colour, a font size, a spacing or a curve from a token: `HelmText` faces, `HelmSpace` and `HelmRadius`
+steps, `HelmSurface` fills, `HelmSignal` ink, `HelmMotion` curves. One typed into a page is a token somebody has
+not written yet, and a size or a number off the ladders is one somebody argues for (§ Ladders, § Type).
+`HelmInteraction`
+(`\.helmShownInteraction`) is not for a page: only `HelmShowcase` sets anything but `.live`.
 
 ## Motion
 
@@ -169,3 +205,47 @@ reports what the row demanded, and a threshold fed by it latches upward and cann
 back down. A threshold is measured against the widest the string can become in every
 language, and then the question is what window ever crosses it, because a control gated
 above every reachable width is a deleted control that still costs a constant and a test.
+
+## The showcase
+
+`Sources/HelmShowcase` is an executable that depends on `HelmUI` alone and draws the kit's components
+in the states they can be drawn in: rest, hover, pressed, focus, disabled, selected and a window that is not
+the active one, each with a long Russian label where a label can be long.
+
+```bash
+swift build --product HelmShowcase
+.build/debug/HelmShowcase --board buttons --appearance dark
+```
+
+`--board` is one of `buttons`, `toggles`, `rows`, `header`, `surfaces`, `palette`, `ladders`, `present`;
+`--appearance` one of `light`, `dark`, `light-contrast`, `dark-contrast` (without it the machine's own);
+`--present sheet|popover|alert|dialog` opens one presentation on the `present` board at launch. An
+unknown argument prints the usage and exits 64. It stores nothing: arguments only, no defaults, no autosaved
+frame, and its window is not restored. Its sample text is plain `String`s in `enum Sample`, outside the
+eight tables on purpose.
+
+Hover and pressed are forced by `\.helmShownInteraction` (`HelmInteraction.swift`), which the button style, the
+sidebar row and the page header read and which defaults to `.live`; the inactive column sets
+`\.helmWindowAppearsActive`. What cannot be forced is named on each board: the system switch's hover and
+pressed, the focus ring (it needs the key window and Full Keyboard Access, so the focus column is drawn live), the
+open content of a `Menu`, and a real inactive window for a system control. `HotkeyRecorder` is not on a board,
+because it writes to a store. A still of it is taken of the window's region (`screencapture -R`, not `-l`; the window is centred when SwiftUI has sized it, so the region is whole), as
+`Architecture/TestsAndMeasurement.md` § Two screen instruments says; `Scripts/shoot.sh` launches Helm Dev
+and does not take it.
+
+## Apple's rules in three grades
+
+Followed as written: Increased Contrast and Reduce Motion change what is drawn (`HelmTraits.swift`,
+`HelmMotion.swift`), `ModuleTint` and `HelmSignal` have light, dark and increased-contrast variants (the wallpaper and the
+app mark do not, and the inks, the separator and the fills do not follow Increased Contrast), and the
+switch, the focus ring and the inactive grey are the system's.
+
+Followed with a measured change: secondary copy is `HelmText.quiet`, because the system's `.secondary` measured
+3.95:1 in light (`HelmText.swift`); ink that means something is `HelmSignal`, because the system palette fails
+the light appearance (`HelmTraits.swift`).
+
+Departed from, on purpose: a card has no border (`helmCard`), and macOS 26 draws no band under a page header by
+the owner's answer (`HelmBandChoice.swift`). Two departures are open for the owner and the showcase is where they
+are looked at: the kit's vertical padding (`HelmSpace.s3`, `s4` at `.large`) makes its regular button 27 pt tall against the system's 23, and `.large` 31 against 27; the kit's fill to
+the window is 1.10:1 against the system's 1.18:1 in light and 1.13 against 1.25 in dark (measured at 2 px/pt from the buttons board: launch `.build/debug/HelmShowcase --board buttons --appearance light`
+for the light figures and `--appearance dark` for the dark ones, shoot its region, then `HelmReadout contrast <shot> …`).

@@ -286,7 +286,9 @@ public struct HelmPageHeader<Trailing: View>: View {
         scrolled || (hovering && active == .key)
     }
 
-    @State private var hovering = false
+    @State private var pointerOver = false
+    @Environment(\.helmShownInteraction) private var shown
+    private var hovering: Bool { pointerOver || shown == .hover }
     @Environment(\.controlActiveState) private var activeState
     /// Whether this header wears Helm's band at all — on macOS 26 it does
     /// not, by the owner's answer (`HelmBandChoice.pageHeaderBandOn26`).
@@ -376,7 +378,7 @@ public struct HelmPageHeader<Trailing: View>: View {
     }
 
     public var body: some View {
-        lit(row).onHover { hovering = $0 }
+        lit(row).onHover { pointerOver = $0 }
     }
 
     @ViewBuilder

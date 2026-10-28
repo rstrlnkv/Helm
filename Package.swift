@@ -145,6 +145,15 @@ let instruments: [Target] = [
     .executableTarget(name: "HelmReadout"),
 ]
 
+/// The kit on show: `swift build --product HelmShowcase`. Listed in no product (SwiftPM synthesises one for
+/// an executable target) and no dependency of `HelmApp`, so `--product HelmApp` never builds it. It depends
+/// on `HelmUI` alone, so the build refuses an engine (not reached through `HelmUI`); it cannot refuse
+/// `HelmRuntime`, which is reached through `HelmUI`, and `TheBoundariesTheBuildCannotHoldTests` reads the
+/// import lines for that.
+let showcase: [Target] = [
+    .executableTarget(name: "HelmShowcase", dependencies: ["HelmUI"]),
+]
+
 /// The host and the tests that belong to no module.
 let host: [Target] = [
     .executableTarget(
@@ -186,6 +195,7 @@ let package = Package(
         + modules.flatMap(\.sourceTargets)
         + support
         + instruments
+        + showcase
         + host
         + modules.flatMap(\.testTargets)
 )
