@@ -85,35 +85,13 @@ struct MenuBarSettingsView: View {
     }
 
     var body: some View {
-        // Over the form, not above it: the form is the scroll view, so this is
-        // what gives the strip's material something to blur and its rule
-        // something to be the edge of. The inset the header costs is the
-        // header's own height — `safeAreaInset` reserves it — so the form's
-        // first section starts exactly where it used to.
-        settingsForm
-            .helmPageHeader(symbol: "gearshape", tint: .gray, title: AppStr.settingsPane)
-    }
-
-    private func permissionRow(_ title: String, detail: String, granted: Bool,
-                               action: @escaping () -> Void) -> some View {
-        // The two share their circle, so the mark inside it is what changes
-        // and the ring stays put — the swap is worth having here rather than a
-        // cut precisely because the grant arriving is news.
-        let symbol = granted ? "checkmark.circle.fill" : "exclamationmark.circle.fill"
-        return HStack(alignment: .top, spacing: HelmSpace.s5) {
-            Image(systemName: symbol)
-                .helmSymbolSwap(symbol)
-                .foregroundStyle(granted ? HelmSignal.success : HelmSignal.warning)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                Text(detail).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer()
-            if !granted {
-                Button(AppStr.grant, action: action).controlSize(.small)
-            }
-        }
+        // Over the scroll view, not above it: that is what gives the strip's
+        // material something to blur and its rule something to be the edge of.
+        // The inset the header costs is the header's own height —
+        // `safeAreaInset` reserves it — so the first section starts exactly
+        // under it.
+        settingsPage
+            .helmPageHeader(symbol: "gearshape", tint: ModuleTint.hostColour, title: AppStr.settingsPane)
     }
 
     /// One scan, named by its module and captioned with when it last came back.
@@ -123,16 +101,12 @@ struct MenuBarSettingsView: View {
     /// answer to "what has Helm read".
     private func scanRow(_ row: ScanConsent.Row) -> some View {
         let module = ModuleRegistry.descriptor(row.id)
-        return Toggle(isOn: Binding(get: { row.isOn },
-                                    set: { setScan(row.id, on: $0) })) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(module?.moduleMetadata.name ?? row.id)
-                if let caption = Self.scanCaption(lastRun: row.lastRun) {
-                    Text(caption)
-                        .font(HelmText.rowDetail)
-                        .foregroundStyle(HelmText.quiet)
-                }
-            }
+        let caption = Self.scanCaption(lastRun: row.lastRun)
+        let name = module?.moduleMetadata.name ?? row.id
+        return HelmSettingRow(name, note: caption) {
+            Toggle(name, isOn: Binding(get: { row.isOn },
+                                       set: { setScan(row.id, on: $0) }))
+                .labelsHidden()
         }
     }
 
@@ -189,9 +163,10 @@ struct MenuBarSettingsView: View {
         }
     }
 
-    private var settingsForm: some View {
+    private var settingsPage: some View {
         ScrollViewReader { scroll in
-        Form {
+        ScrollView {
+        VStack(alignment: .leading, spacing: HelmSpace.s7) {
             // Above everything, because it is the only thing on this page that
             // is *wrong right now* — and because the section that answers it
             // was 919 pt down a form in a 587 pt viewport, entirely below the
@@ -201,53 +176,43 @@ struct MenuBarSettingsView: View {
             // Only when something is withheld. A row saying everything is
             // granted is a row teaching people to ignore this space.
             //
-            // **A `HelmBanner`, and it was the app's third spelling of one.**
-            // It was a bare `HStack` of a mark, a sentence and a button in a
-            // section of its own — which is `HelmBanner`'s description word for
-            // word, and is what `HelmPermissionNote` was rebuilt on for exactly
-            // this reason. Drawn by hand it had no field: sampled at 845 × 700
-            // in light, the ground behind it was rgb 0.975 — *identical* to the
-            // ordinary card 93 pt below, so the one statement on this page that
-            // says something is wrong looked like a row of settings. The same
-            // class of statement on the VPN page has sat on a signal field at
-            // 13 % all along.
+            // A `HelmBanner`: it carries its own field, which a bare row of a
+            // mark, a sentence and a button lacked — the one statement on this
+            // page that says something is wrong looked like a row of settings.
             //
             // The circle rather than the banner's default triangle, because a
             // withheld grant is the one notice macOS itself draws and this is
-            // the glyph it uses — the reason `HelmPermissionNote` gives, and
-            // the glyph this row already had.
+            // the glyph it uses — the reason `HelmPermissionNote` gives.
             if !withheldPermissions.isEmpty {
-                Section {
-                    HelmBanner(AppStr.permissionsWithheld(count: withheldPermissions.count,
-                                                          modules: affectedModuleCount),
-                               symbol: "exclamationmark.circle.fill") {
-                        // One withheld grant has one place to go, so go there.
-                        // Several do not, and a button that picks one of them
-                        // for you is a button that lies about what it opened.
-                        if withheldPermissions.count == 1, let only = withheldPermissions.first {
-                            Button(AppStr.grant) { only.openSettings() }
-                                .controlSize(.small)
-                        } else {
-                            Button(AppStr.showPermissions) {
-                                // A token, and the only bare `withAnimation`
-                                // left in the app. The default is a spring
-                                // nobody chose, and — the reason this one
-                                // matters more than most — it does not stop
-                                // under Reduce Motion, which is a 900 pt
-                                // scroll flung past somebody who asked the
-                                // machine not to do that.
-                                withAnimation(HelmMotion.interface) {
-                                    scroll.scrollTo(Self.permissionsAnchor, anchor: .top)
-                                }
-                            }
+                HelmBanner(AppStr.permissionsWithheld(count: withheldPermissions.count,
+                                                      modules: affectedModuleCount),
+                           symbol: "exclamationmark.circle.fill") {
+                    // One withheld grant has one place to go, so go there.
+                    // Several do not, and a button that picks one of them
+                    // for you is a button that lies about what it opened.
+                    if withheldPermissions.count == 1, let only = withheldPermissions.first {
+                        Button(AppStr.grant) { only.openSettings() }
                             .controlSize(.small)
+                    } else {
+                        Button(AppStr.showPermissions) {
+                            // A token, and the only bare `withAnimation`
+                            // left in the app. The default is a spring
+                            // nobody chose, and — the reason this one
+                            // matters more than most — it does not stop
+                            // under Reduce Motion, which is a 900 pt
+                            // scroll flung past somebody who asked the
+                            // machine not to do that.
+                            withAnimation(HelmMotion.interface) {
+                                scroll.scrollTo(Self.permissionsAnchor, anchor: .top)
+                            }
                         }
+                        .controlSize(.small)
                     }
                 }
             }
 
             // What Helm does on its own.
-            Section(header: HelmSectionTitle(HelmSectionName.behaviour)) {
+            HelmSettingsSection(HelmSectionName.behaviour) {
                 // The switch draws what macOS says, and the write answers with
                 // what macOS says afterwards: `register()` can throw, and the
                 // person can take the registration away in System Settings
@@ -257,11 +222,8 @@ struct MenuBarSettingsView: View {
                                      set: { launchAtLogin = LoginItem.setEnabled($0) }))
                 if let note = AppStr.loginItemNote(launchAtLogin) {
                     HStack(alignment: .top, spacing: HelmSpace.s5) {
-                        Text(note)
-                            .font(HelmText.rowDetail)
-                            .foregroundStyle(HelmText.quiet)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Spacer(minLength: 12)
+                        HelmSettingsNote(note)
+                        Spacer(minLength: HelmSpace.s5)
                         // A door, not only a sentence: this state is finished
                         // by one press in a pane nobody navigates to by name.
                         if launchAtLogin == .needsApproval {
@@ -285,30 +247,19 @@ struct MenuBarSettingsView: View {
             // below rather than on the way in: nothing is claimed about a scan
             // whose switch nobody has looked up yet.
             if let scanRows, !scanRows.isEmpty {
-                Section(header: HelmSectionTitle(AppStr.backgroundScansSection)) {
+                HelmSettingsSection(AppStr.backgroundScansSection) {
                     ForEach(scanRows, id: \.id) { row in scanRow(row) }
-                    Text(AppStr.backgroundScansNote)
-                        .font(HelmText.rowDetail)
-                        .foregroundStyle(HelmText.quiet)
-                        .fixedSize(horizontal: false, vertical: true)
+                    HelmSettingsNote(AppStr.backgroundScansNote)
                 }
             }
 
             // Which modules there are and how they are grouped, which is not
             // behaviour — it was under that heading and did not belong to it.
-            //
-            // The composing happens in a sheet. As a block it was the largest
-            // thing on this page by a distance and 10 pt wider than everything
-            // around it, because it was drawn as a section *header* to avoid a
-            // card inside a card.
-            Section(header: HelmSectionTitle(AppStr.modulesSection)) {
+            // The composing happens in a sheet.
+            HelmSettingsSection(AppStr.modulesSection) {
                 SidebarComposerRow(host: ModuleHost.shared, composing: $composing)
             }
 
-            // Everything that decides how Helm looks, in one list. It was
-            // three: the theme and the module icons under «General», the
-            // menu-bar glyph under «Menu Bar» — so choosing how the app looks
-            // meant visiting two headings and knowing which held what.
             // Dev builds only. This is a tool for reading the app in a
             // language this Mac is not set to — eight of them, where the only
             // other way to see the seventh is to change the system preference
@@ -316,23 +267,30 @@ struct MenuBarSettingsView: View {
             // language, and a second answer in Helm's own settings would be
             // two places to look on a shipping build.
             if AppBuild.isDev {
-                Section(header: HelmSectionTitle(AppStr.developerSection)) {
-                    Picker(AppStr.interfaceLanguage, selection: $language) {
-                        Text(AppStr.systemLanguage).tag(String?.none)
-                        ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
-                            Text(lang.endonym).tag(String?.some(lang.rawValue))
+                HelmSettingsSection(AppStr.developerSection) {
+                    HelmSettingRow(AppStr.interfaceLanguage) {
+                        Picker(AppStr.interfaceLanguage, selection: $language) {
+                            Text(AppStr.systemLanguage).tag(String?.none)
+                            ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
+                                Text(lang.endonym).tag(String?.some(lang.rawValue))
+                            }
+                        }
+                        .labelsHidden()
+                        .fixedSize()
+                        .helmSectionMenu()
+                        .onChange(of: language) { _, code in
+                            AppSettings.language = code.flatMap(AppLanguage.init(rawValue:))
                         }
                     }
-                    .onChange(of: language) { _, code in
-                        AppSettings.language = code.flatMap(AppLanguage.init(rawValue:))
-                    }
-                    Text(AppStr.interfaceLanguageNote)
-                        .font(.system(size: 11))
-                        .foregroundStyle(HelmText.quiet)
+                    HelmSettingsNote(AppStr.interfaceLanguageNote)
                 }
             }
 
-            Section(header: HelmSectionTitle(AppStr.appearance)) {
+            // Everything that decides how Helm looks, in one list. It was
+            // three: the theme and the module icons under «General», the
+            // menu-bar glyph under «Menu Bar» — so choosing how the app looks
+            // meant visiting two headings and knowing which held what.
+            HelmSettingsSection(AppStr.appearance) {
                 // Three pictures, the way System Settings asks the same
                 // question. It was a pop-up of three accurate words that are
                 // not what anybody is choosing between.
@@ -340,35 +298,44 @@ struct MenuBarSettingsView: View {
                     .onChange(of: appearance) { _, choice in AppSettings.appearance = choice }
                 // Worth offering only because the tint is the module's own: a
                 // choice between four modules in one blue and grey is not one.
-                Picker(AppStr.moduleIcons, selection: $sidebarStyle) {
-                    Text(AppStr.moduleIconsColour).tag(SidebarStyle.colour)
-                    Text(AppStr.moduleIconsPlain).tag(SidebarStyle.plain)
-                }
-                .pickerStyle(.segmented)
-                .onChange(of: sidebarStyle) { _, choice in AppSettings.sidebarStyle = choice }
-                BarAppearanceRow()
-                // No `LabeledContent`: the picker carries its own title now,
-                // and a labelled control inside a labelled row says it twice.
-                // Given the chosen size, so its glyph is the icon as it will
-                // be drawn in the bar rather than a sample at a fixed size.
-                IconShapePicker(selection: $style, title: AppStr.menuBarIconShape, size: size)
-                    .onChange(of: style) { _, v in
-                        AppSettings.menuBarIconStyle = MenuBarIconStyle(stored: v)
+                HelmSettingRow(AppStr.moduleIcons) {
+                    Picker(AppStr.moduleIcons, selection: $sidebarStyle) {
+                        Text(AppStr.moduleIconsColour).tag(SidebarStyle.colour)
+                        Text(AppStr.moduleIconsPlain).tag(SidebarStyle.plain)
                     }
-                LabeledContent(AppStr.menuBarIconSize) {
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                    .onChange(of: sidebarStyle) { _, choice in AppSettings.sidebarStyle = choice }
+                }
+                BarAppearanceRow()
+                // The picker carries its own title for VoiceOver, hidden here
+                // because the row beside it says it: a labelled control inside
+                // a labelled row says it twice. Given the chosen size, so its
+                // glyph is the icon as it will be drawn in the bar rather than
+                // a sample at a fixed size.
+                HelmSettingRow(AppStr.menuBarIconShape) {
+                    IconShapePicker(selection: $style, title: AppStr.menuBarIconShape, size: size)
+                        .labelsHidden()
+                        .fixedSize()
+                        .helmSectionMenu()
+                        .onChange(of: style) { _, v in
+                            AppSettings.menuBarIconStyle = MenuBarIconStyle(stored: v)
+                        }
+                }
+                HelmSettingRow(AppStr.menuBarIconSize) {
                     IconSizePicker(selection: $size)
                         .onChange(of: size) { _, v in
                             AppSettings.menuBarIconSize = MenuBarIconSize(stored: v)
                         }
                 }
-                Text(AppStr.menuBarNote)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                HelmSettingsNote(AppStr.menuBarNote)
             }
 
             // The panel keeps its own arrangement, so what is decided here is
             // how it is dressed: which of the three ways out are on it, and how
             // its tabs are labelled.
-            Section(header: HelmSectionTitle(AppStr.panel)) {
+            HelmSettingsSection(AppStr.panel) {
                 Toggle(AppStr.showSettingsButton, isOn: $showSettingsButton)
                     .onChange(of: showSettingsButton) { _, v in
                         AppSettings.showSettingsButton = v
@@ -385,28 +352,28 @@ struct MenuBarSettingsView: View {
                 // the footer's Settings button and this menu are the whole set
                 // of doors — and this sentence is one of exactly two places the
                 // app says the menu exists.
-                Text(AppStr.panelFooterNote)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                HelmSettingsNote(AppStr.panelFooterNote)
                 // Here rather than in the panel's own edit mode: it is how the
                 // panel *looks*, decided once, and that mode is about which
                 // widgets are on it.
-                Picker(AppStr.tabLabels, selection: $tabLabels) {
-                    ForEach(TabLabelStyle.allCases, id: \.self) { style in
-                        Text(AppStr.tabLabelStyle(style)).tag(style)
+                HelmSettingRow(AppStr.tabLabels) {
+                    Picker(AppStr.tabLabels, selection: $tabLabels) {
+                        ForEach(TabLabelStyle.allCases, id: \.self) { style in
+                            Text(AppStr.tabLabelStyle(style)).tag(style)
+                        }
                     }
+                    .labelsHidden()
+                    .fixedSize()
+                    .helmSectionMenu()
+                    .onChange(of: tabLabels) { _, chosen in AppSettings.tabLabelStyle = chosen }
                 }
-                .onChange(of: tabLabels) { _, chosen in AppSettings.tabLabelStyle = chosen }
             }
 
             // Only when there is one. `neededPermissions` filters to what the
             // *enabled* modules declare, so switching off the five that ask for
-            // something emptied it — and a `Section` with an empty body still
-            // draws its heading. The result was a heading with no card under
-            // it, 71.5 pt of gap instead of the page's uniform 56, and «Сброс»
-            // 7.5 pt below it reading as its subtitle: the destructive card
-            // looked like what Permissions contained.
+            // something emptied it — and a section with an empty body still
+            // draws its heading over no card.
             if !neededPermissions.isEmpty {
-                Section(header: HelmSectionTitle(AppStr.permissions)) {
                 // Driven by the table, so a new permission shows up here
                 // without anyone remembering to add a row — but only the ones
                 // an enabled module actually uses. Listing all of them asked
@@ -414,51 +381,54 @@ struct MenuBarSettingsView: View {
                 // Accessibility for nothing, which is how people learn to grant
                 // everything without reading. `PermissionAudit.run()` already
                 // filters this way; the two disagreed.
-                ForEach(neededPermissions, id: \.self) { need in
-                    let granted = need.state(accessibility: accessibility,
-                                             fullDisk: diskAccess,
-                                             screenRecording: screenRecording) == .granted
-                    permissionRow(AppStr.permissionTitle(need),
-                                  // Both, never one instead of the other: the
-                                  // ad-hoc caveat used to replace the sentence
-                                  // saying what the grant is for, and every build
-                                  // anybody runs is ad-hoc — so the Accessibility
-                                  // decision was made without the words "every
-                                  // keystroke in every app" ever being shown.
-                                  detail: !granted && adHocBuild
-                                      ? AppStr.permissionWhy(need) + "\n"
-                                          + AppStr.fullDiskAccessAdHoc
-                                      : AppStr.permissionWhy(need),
-                                  granted: granted) { need.openSettings() }
-                }
+                HelmSettingsSection(AppStr.permissions) {
+                    ForEach(neededPermissions, id: \.self) { need in
+                        let granted = need.state(accessibility: accessibility,
+                                                 fullDisk: diskAccess,
+                                                 screenRecording: screenRecording) == .granted
+                        // The mark is the row's own: the circle changes what it
+                        // says and the ring stays put, so the grant arriving is
+                        // news rather than a cut (`helmSymbolSwap`).
+                        HelmSettingRow(AppStr.permissionTitle(need),
+                                       // Both, never one instead of the other: the
+                                       // ad-hoc caveat used to replace the sentence
+                                       // saying what the grant is for, and every build
+                                       // anybody runs is ad-hoc — so the Accessibility
+                                       // decision was made without the words "every
+                                       // keystroke in every app" ever being shown.
+                                       note: !granted && adHocBuild
+                                           ? AppStr.permissionWhy(need) + "\n"
+                                               + AppStr.fullDiskAccessAdHoc
+                                           : AppStr.permissionWhy(need),
+                                       mark: granted ? .holding : .attention,
+                                       // Not granted is spoken by the Grant button beside it.
+                                       markSpoken: granted ? AppStr.permissionGranted : nil) {
+                            if !granted {
+                                Button(AppStr.grant) { need.openSettings() }
+                                    .controlSize(.small)
+                            }
+                        }
+                    }
                 }
                 .id(Self.permissionsAnchor)
             }
-            Section(header: HelmSectionTitle(AppStr.resetSection)) {
-                // `role: .destructive` alone draws as an ordinary link in a
-                // grouped Form on macOS — the role reaches menus and dialogs,
-                // not form rows. The token, not SwiftUI's `.red`: HelmSignal
-                // exists because literal colours measured under the 4.5:1
-                // floor in light mode.
+            HelmSettingsSection(AppStr.resetSection) {
+                // `HelmButtonStyle` inks `.destructive` itself; the role alone
+                // drew as an ordinary link in a grouped Form.
                 Button(AppStr.resetAll, role: .destructive) { confirmingReset = true }
-                    .foregroundStyle(HelmSignal.danger)
-                Text(AppStr.resetNote)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
+                HelmSettingsNote(AppStr.resetNote)
             }
+        }
+        .padding(.horizontal, HelmLayout.formInset)
+        .padding(.vertical, HelmSpace.s6)
+        // Caps the column, centres it, and idles the page while its window is
+        // off screen — the part of `helmSettingsColumn` a `Form` page called by
+        // itself.
+        .helmSettingsColumn()
         }
         .sheet(isPresented: $composing) {
             SidebarComposerSheet(host: ModuleHost.shared)
         }
-        .formStyle(.grouped)
-        // The `Form` is this page's scroll view, so nothing here caps it: a
-        // capped scroller leaves the pane either side of it dead to the wheel,
-        // and the 704 pt column is the grouped form style's own anyway
-        // (`helmSettingsColumn`).
-        // What the page does still want is the idling, which is the half of that
-        // modifier this call is.
-        .helmIdlesOffScreen()
         .onReceive(NotificationCenter.default.publisher(
             for: NSApplication.didBecomeActiveNotification)) { _ in
             // A background scan runs when the person is away, which is exactly
@@ -511,14 +481,18 @@ struct BarAppearanceRow: View {
     @State private var choice = AppSettings.barAppearance
 
     var body: some View {
-        Picker(AppStr.barAppearanceTitle, selection: $choice) {
-            Text(AppStr.barAppearanceFlat).tag(HelmBarAppearance.flat)
-            Text(AppStr.barAppearanceLiquidGlass).tag(HelmBarAppearance.liquidGlass)
-        }
-        .pickerStyle(.segmented)
-        .onChange(of: choice) { _, new in
-            guard new != AppSettings.barAppearance else { return }
-            AppSettings.barAppearance = new
+        HelmSettingRow(AppStr.barAppearanceTitle) {
+            Picker(AppStr.barAppearanceTitle, selection: $choice) {
+                Text(AppStr.barAppearanceFlat).tag(HelmBarAppearance.flat)
+                Text(AppStr.barAppearanceLiquidGlass).tag(HelmBarAppearance.liquidGlass)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+            .onChange(of: choice) { _, new in
+                guard new != AppSettings.barAppearance else { return }
+                AppSettings.barAppearance = new
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .helmBarAppearanceChanged)) { _ in
             choice = AppSettings.barAppearance

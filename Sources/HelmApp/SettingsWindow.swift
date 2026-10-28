@@ -475,7 +475,7 @@ struct ShellPageIdentity {
 
     /// `selection` is the settled one (`ShellSidebarRows.settled`).
     @MainActor static func of(_ selection: SettingsSelection?, host: ModuleHost) -> ShellPageIdentity {
-        let settings = ShellPageIdentity(symbol: "gearshape", tint: .gray, title: AppStr.settingsPane, status: nil)
+        let settings = ShellPageIdentity(symbol: "gearshape", tint: ModuleTint.hostColour, title: AppStr.settingsPane, status: nil)
         guard case .module(let id) = selection, let descriptor = ModuleRegistry.descriptor(id) else {
             return settings
         }

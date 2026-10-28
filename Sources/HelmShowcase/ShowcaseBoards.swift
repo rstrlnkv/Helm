@@ -185,6 +185,30 @@ private struct ButtonsBoard: View {
 
 // MARK: - Toggles
 
+/// `HelmPillChoice`: each option chosen in turn, a long Russian pair, and one disabled.
+private struct PillChoiceSamples: View {
+    @State private var first = 0
+    @State private var second = 1
+    @State private var third = 0
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: HelmSpace.s5) {
+            pills(Sample.title, $first, [Sample.short, Sample.title])
+            pills(Sample.title, $second, [Sample.short, Sample.title])
+            pills(Sample.russian, $third, [Sample.russian, Sample.russianNote])
+            pills(Sample.title, $first, [Sample.short, Sample.title]).disabled(true)
+        }
+    }
+
+    private func pills(_ title: String, _ selection: Binding<Int>, _ labels: [String]) -> some View {
+        HelmPillChoice(title, selection: selection, items: labels.enumerated().map { index, label in
+            .init(index, label: label,
+                  chosenFill: HelmSurface.chosenWash(index == 0 ? .accentColor : HelmSignal.warning),
+                  help: label)
+        })
+    }
+}
+
 private struct TogglesBoard: View {
     var body: some View {
         Board(name: "Toggles", caption: """
@@ -193,6 +217,7 @@ private struct TogglesBoard: View {
             window that is not the key window the switch on loses its accent fill and its track differs from the off \
             one only slightly (1.12:1 in light), and the focus column is the rest look.
             """) {
+            VStack(alignment: .leading, spacing: HelmSpace.s6) {
             Matrix(rows: [
                 row("kit"),
                 row("long Russian label", label: Sample.russian),
@@ -203,6 +228,8 @@ private struct TogglesBoard: View {
                         .accessibilityLabel(Sample.title)
                 },
             ], columns: Self.switchStates, cellWidth: 220)
+            PillChoiceSamples()
+            }
         }
     }
 
@@ -245,7 +272,7 @@ private struct RowsBoard: View {
                     },
                 ])
                 VStack(spacing: 0) {
-                    ForEach([HelmRowMark.none, .space, .holding, .waiting], id: \.self) { mark in
+                    ForEach([HelmRowMark.none, .space, .holding, .waiting, .attention], id: \.self) { mark in
                         HelmSettingRow(Sample.title, note: Sample.note, mark: mark) {
                             Toggle(Sample.title, isOn: .constant(true)).labelsHidden()
                         }
@@ -257,6 +284,37 @@ private struct RowsBoard: View {
                     .padding(.vertical, HelmSpace.s3)
                 }
                 .helmCard()
+                .frame(width: 560)
+                HelmSettingsSection(Sample.title) {
+                    Toggle(Sample.short, isOn: .constant(true))
+                    HelmSettingRow(Sample.title) {
+                        Picker(Sample.title, selection: .constant(1)) {
+                            Text(verbatim: "A").tag(1)
+                            Text(verbatim: "B").tag(2)
+                        }
+                        .pickerStyle(.segmented).labelsHidden().fixedSize()
+                    }
+                    HelmSettingRow(Sample.title) {
+                        Picker(Sample.title, selection: .constant(1)) {
+                            Text(verbatim: "A").tag(1)
+                            Text(verbatim: "B").tag(2)
+                        }
+                        .labelsHidden().fixedSize().helmSectionMenu()
+                    }
+                    AppearancePicker(selection: .constant(.light), title: Sample.title)
+                    HelmSettingsNote(Sample.note)
+                }
+                .frame(width: 560)
+                HelmSettingsSection {
+                    Toggle(Sample.short, isOn: .constant(false))
+                    HelmSettingsNote(Sample.russianNote)
+                }
+                .frame(width: 560)
+                HelmSettingsSection(Sample.russian) {
+                    HelmSettingRow(Sample.russian, note: Sample.russianNote, mark: .attention) {
+                        Button(Sample.short) {}
+                    }
+                }
                 .frame(width: 560)
                 HelmBanner(Sample.long) { Button(Sample.short) {} }.frame(width: 560)
                 HelmBanner(Sample.russian, compact: true) { Button(Sample.short) {} }.frame(width: 320)
@@ -333,6 +391,15 @@ private struct SurfacesBoard: View {
             --appearance.
             """) {
             VStack(alignment: .leading, spacing: HelmSpace.s6) {
+                HStack(alignment: .top, spacing: HelmSpace.s6) {
+                    HelmAppHero(active: false, tagline: Sample.note, spoken: Sample.title) {
+                        HelmBadge(Sample.short, tint: warning, emphasis: .prominent)
+                    }
+                    HelmAppHero(active: true, tagline: Sample.russianNote, spoken: Sample.title) {
+                        HelmBadge(Sample.short, tint: tint, emphasis: .prominent)
+                    }
+                    .frame(width: 300)
+                }
                 HStack(alignment: .top, spacing: HelmSpace.s6) {
                     Text(verbatim: Sample.note).helmCard().frame(width: 200)
                     Text(verbatim: Sample.note).helmCard().helmPreviewEdge(chosen: true).frame(width: 200)

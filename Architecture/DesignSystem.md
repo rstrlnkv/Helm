@@ -14,9 +14,10 @@ string tables at once.
 ## Tokens
 
 Tokens live one family to a file in `Sources/HelmUI/DesignSystem`: `HelmFills.swift` holds
-`HelmSurface` — a small set of fills over `Color.primary`, and `hairline`, which Helm's own panel and About page draw as an outline (`PanelChrome.swift`, `AboutPage.swift`), though no card is given one —
-`HelmLadders.swift` `HelmSpace` and `HelmRadius`, `HelmLayout.swift` `HelmLayout`,
-`HelmText.swift` `HelmText`, `HelmSignal.swift` `HelmSignal`, `HelmMotion.swift` the curves,
+`HelmSurface` — a small set of fills over `Color.primary` (and `rowWashOpacity`, `chosenWash(_:)`), and `hairline`, which Helm's own panel draws as an outline (`PanelChrome.swift`) and `HelmPillChoice.swift` as a pill's rim, though no card is given one —
+`HelmLadders.swift` `HelmSpace` and `HelmRadius`, `HelmLayout.swift` `HelmLayout` (with `markColumn`, the 14 pt column a row's mark and a log row's glyph share),
+`HelmText.swift` `HelmText` (with the faces `statusGlyph`, `smallPrint` and `entryHeading`), `HelmSignal.swift` `HelmSignal`, `HelmMotion.swift` the curves,
+`ModuleTint.swift` the method, and with it `hostColour` (General, Log, About) and `whatsNewColour`,
 and `HelmTraits.swift` the one entry a kit view reads the look through: `\.helmTraits`, the
 colour scheme and the three accessibility settings in one value (`HelmAccessibility.system`
 is the one place that asks the workspace for them). Motion is the exception: `HelmButtonStyle` and
@@ -29,8 +30,8 @@ the workspace itself.
 `HelmSurfaces.swift` holds the components: `HelmIconPlate`, `HelmSignalPlate`,
 `HelmSectionTitle` and `HelmMetricStrip`, and the two view modifiers
 `helmPreviewEdge(chosen:)` and `helmCard(padding:)`. `helmCard()` is the one card
-treatment: a fill, continuous corners at `HelmRadius.card`, and no border, because half of
-Helm's pages are grouped `Form` sections the system draws and nothing can restyle. A
+treatment: a fill, continuous corners at `HelmRadius.card`, and no border, because a grouped
+`Form` section is drawn by the system and nothing can restyle it (`command grep -rln 'Form {' Sources` lists the views still built on one). A
 surface that floats over content takes `.glassEffect` rather than an edge, because glass
 carries its own edge and its own shadow and a hairline on top is a second silhouette;
 `command grep -rn '\.glassEffect(' Sources` lists the sites. The one striped list is
@@ -42,6 +43,13 @@ header is the one part of such a form drawn on the bare pane that still scrolls 
 why a hero or a block of cards lives in one. `HelmLayout.groupedHeaderOutset`, negated
 onto the block, is right for a grid the page draws itself and wrong for a filled field,
 which is a row that has not been written yet.
+
+A page that is not a grouped `Form` groups its rows with `HelmSettingsSection` (heading, one
+`helmCard`, a hairline between rows) and `HelmSettingsNote` (`HelmSettingsSection.swift`); its gaps are
+`HelmLayout.groupedHeaderGap` and `groupedHeaderOutset`, the form's own, so a kit page and a `Form` page
+keep one rhythm. Outside a `Form` a `Picker`, a segmented control and a `LabeledContent` no longer lay out
+"label left, control right" by themselves — that was the form's layout, not the controls': the section
+sets a `LabeledContent` style, and a `Picker` goes in a `HelmSettingRow` with `labelsHidden()`.
 
 ## Ladders
 
@@ -184,8 +192,9 @@ rows it summarizes. `Sources/HelmUI/DesignSystem/HelmAppMark.swift` draws the ma
 copied in by `Scripts/package-app.sh:269` — rather than reading the icon back, because macOS
 26 resolves `.icon` variants at the system level and the light variant's white slab reads
 as a hole inside Helm's surfaces. `Sources/HelmUI/DesignSystem/HelmBadge.swift` is the one
-pill, its tint colouring the fill and nothing else. The About page's bezel rotates only
-while an update check is in flight: motion means work rather than decoration. The menu-bar
+pill, its tint colouring the fill and nothing else. `HelmAppHero.swift` is About's mark in its bezel over the wordmark, whose bezel rotates only
+while an update check is in flight: motion means work rather than decoration.
+`HelmPillChoice.swift` is a choice whose options differ in kind, each inked by its own option. The menu-bar
 panel stands outside this language — it is a transient surface with its own layout rules.
 
 `HelmSettingRow.swift` is mark, title, note, control; the mark reports *the world*

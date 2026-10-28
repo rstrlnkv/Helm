@@ -1,7 +1,8 @@
+import AppKit
 import SwiftUI
 
 /// The fills a Helm surface is drawn with: a small set over `Color.primary`, no
-/// border among them.
+/// border among them, and what a tint is blended into (`rowWashOpacity`, `chosenWash(_:)`).
 public enum HelmSurface {
     /// Measured against a real `Form` section on the same background: at 0.05
     /// the card sat 10 L from the panel where the system's section sits 7, in
@@ -29,4 +30,28 @@ public enum HelmSurface {
     public static let rowSelection = Color.primary.opacity(0.10)
     /// The hovered row of the sidebar: half of `rowSelection`.
     public static let rowHover = Color.primary.opacity(0.05)
+    /// The wash under a log row that carries a signal: the row's own signal colour at this opacity.
+    public static let rowWashOpacity = 0.06
+
+    /// What a chosen pill (`HelmPillChoice`) is filled with: `tint` blended 0.22 of the way into the window
+    /// background, opaque.
+    ///
+    /// Blended **inside** the appearance rather than drawn as `tint.opacity(0.22)`: `NSColor(Color)` returns a
+    /// dynamic colour, so a blend made one line outside the block resolves against whatever appearance happens
+    /// to be current — the same trap `HelmMetricStrip` documents. It also means the fill is a colour that can
+    /// be measured, rather than one that depends on what it lands on. Build it once and keep it: each call
+    /// allocates a colour and a provider closure.
+    public static func chosenWash(_ tint: Color) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            var out = NSColor.windowBackgroundColor
+            appearance.performAsCurrentDrawingAppearance {
+                guard let ink = NSColor(tint).usingColorSpace(.sRGB),
+                      let base = NSColor.windowBackgroundColor.usingColorSpace(.sRGB),
+                      let blended = base.blended(withFraction: 0.22, of: ink)
+                else { return }
+                out = blended
+            }
+            return out
+        })
+    }
 }

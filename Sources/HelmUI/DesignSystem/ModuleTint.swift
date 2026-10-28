@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-/// The colour a module is known by; the values are written in each module's descriptor, the method here.
+/// The colour a module is known by; a module's value is written in its descriptor, the method here, with the two the host owns (`hostColour`, `whatsNewColour`).
 ///
 /// **Why not a colour per category.** That gave one colour to a category, so
 /// Uninstaller, Disk, Duplicates and Autopilot were one blue and Homebrew,
@@ -69,6 +69,12 @@ public struct ModuleTint: Sendable {
 
     private let ordinary: Pair
     private let increasedContrast: Pair
+
+    /// The page that belongs to no module — General, Log and About — is known by this (`ShellPageIdentity.of`,
+    /// `Sources/HelmApp/SettingsWindow.swift`).
+    public static let hostColour = Color.gray
+    /// The What's New sheet's.
+    public static let whatsNewColour = Color.indigo
 
     public var colour: Color { colour(increased: HelmAccessibility.system.increasedContrast) }
 

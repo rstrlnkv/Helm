@@ -176,6 +176,12 @@ public enum HelmText {
     /// The heading of a group *inside* a list — the sidebar's own section
     /// labels, and the copies of them the composer draws.
     public static let groupLabel = Font.subheadline.weight(.semibold)
+    /// The state glyph at the start of a status line (About's update card): `.title3`, 15 pt at the default.
+    public static let statusGlyph = Font.title3
+    /// The fine print at the foot of a page: `.caption2`, 10 pt at the default.
+    public static let smallPrint = Font.caption2
+    /// The version over a changelog entry: `.title3` bold, 15 pt at the default.
+    public static let entryHeading = Font.title3.weight(.bold)
 }
 
 public extension View {

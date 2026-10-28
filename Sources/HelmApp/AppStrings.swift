@@ -128,6 +128,7 @@ enum AppStr {
     static var fullDiskAccessWhy: String { L("Needed to remove app containers and to read every folder when scanning the disk.") }
     static var fullDiskAccessAdHoc: String { L("Access is tied to one exact copy of Helm, so grant it again after every update: remove Helm with “−”, then add it with “+”.") }
     static var grant: String { L("Grant…") }
+    static var permissionGranted: String { L("Granted") }
     /// Beside `grant`, and never a bare "Show": Login Items already labels its
     /// filter menu that way, where the word is a standing choice rather than an
     /// action — Russian tells the two apart («Показывать» against «Показать»)

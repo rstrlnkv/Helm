@@ -104,7 +104,7 @@ struct LogView: View {
             // In the settings window the header is the card's row
             // (`helmCardHeader`), and this row is not drawn at all.
             if !inCard {
-                HelmPageHeader(symbol: "text.alignleft", tint: .gray,
+                HelmPageHeader(symbol: "text.alignleft", tint: ModuleTint.hostColour,
                                title: AppStr.logPane,
                                bleeds: true, standsOnStillContent: true)
             }
@@ -597,7 +597,7 @@ struct LogView: View {
             HStack(spacing: HelmSpace.s4) {
                 Image(systemName: open ? "chevron.down" : "chevron.right")
                     .font(HelmText.rowDetail.weight(.semibold))
-                    .frame(width: 14)
+                    .frame(width: HelmLayout.markColumn)
                     .accessibilityHidden(true)
                 Text(AppStr.logStartup(lines))
                     .font(HelmText.rowDetail)
@@ -755,7 +755,7 @@ struct LogRowView: View, Equatable {
             Image(systemName: glyph(for: entry.level) ?? "circle")
                 .foregroundStyle(signal ?? .clear)
                 .font(HelmText.rowDetail)
-                .frame(width: 14)
+                .frame(width: HelmLayout.markColumn)
                 .opacity(signal == nil ? 0 : 1)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
@@ -780,18 +780,18 @@ struct LogRowView: View, Equatable {
             }
             Spacer(minLength: 0)
             if row.repeats > 1 {
-                HelmBadge("×\(Count(row.repeats))", tint: signal ?? .secondary)
+                HelmBadge("×\(Count(row.repeats))", tint: signal ?? HelmBadge.neutralTint)
                     .help(Self.repeatedUntilNote(row))
             }
         }
-        .padding(.vertical, 3)
+        .padding(.vertical, HelmSpace.s1)
         .padding(.horizontal, HelmSpace.s5)
         // The wash fills the row and reaches its edges; nothing stands at the
         // left edge in a colour of its own (the owner took the direction without
         // the bar: the fill says it, the glyph says it, and the bar was a third,
         // louder voice down every warning card).
         .background {
-            if let signal { signal.opacity(0.06) }
+            if let signal { signal.opacity(HelmSurface.rowWashOpacity) }
         }
         .accessibilityElement(children: .combine)
         // The row's marks of severity are a wash and a glyph, and a combined

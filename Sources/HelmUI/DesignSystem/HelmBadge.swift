@@ -24,11 +24,14 @@ public struct HelmBadge: View {
     /// one pill, and the difference between these is emphasis, not kind.
     public enum Emphasis: Sendable { case quiet, prominent }
 
+    /// The tint of a badge that says nothing by colour.
+    public static let neutralTint = Color.secondary
+
     private let text: String
     private let tint: Color
     private let emphasis: Emphasis
 
-    public init(_ text: String, tint: Color = .secondary, emphasis: Emphasis = .quiet) {
+    public init(_ text: String, tint: Color = HelmBadge.neutralTint, emphasis: Emphasis = .quiet) {
         self.text = text
         self.tint = tint
         self.emphasis = emphasis

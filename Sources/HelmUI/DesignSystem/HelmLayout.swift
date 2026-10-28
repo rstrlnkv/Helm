@@ -40,6 +40,10 @@ public enum HelmLayout {
     /// typed: the card row's width, and the widest a card in it may grow.
     public static let formInset: CGFloat = 20
 
+    /// The column a row's mark (and a log row's severity glyph) is drawn in: 14, from `.rspace { flex: 0 0 14px }`.
+    /// A card of mixed rows keeps one left edge for its labels because every mark column is this wide.
+    public static let markColumn: CGFloat = 14
+
     /// The width a section card actually gets.
     public static var cardWidth: CGFloat { settingsColumn - formInset * 2 }
 

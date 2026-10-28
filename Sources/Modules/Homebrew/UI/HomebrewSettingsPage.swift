@@ -1311,9 +1311,8 @@ private extension View {
 /// bordered button 12 pt away, exactly `#303030` at exactly 11.49:1. On this
 /// macOS the role changes what a button *does* in a menu and nothing at all
 /// about what it draws, so the only marked thing about it was the source.
-/// `GeneralSettingsPage` had already found this out for a form row — "the role
-/// reaches menus and dialogs, not form rows" — and this is the same sentence
-/// about a bordered button.
+/// `GeneralSettingsPage` met the same thing on its Reset row — "the role alone drew as an
+/// ordinary link in a grouped Form" — and this is that sentence about a bordered button.
 ///
 /// **On the label, and deliberately not on the button.** The same token handed
 /// to the *button* is SwiftUI's tint channel and macOS fills the whole control
