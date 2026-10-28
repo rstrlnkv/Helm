@@ -33,7 +33,7 @@ import HelmRuntime
         // A stand-in engine would not give back what the real one holds, and the
         // reset would forget the real settings that say the module ran.
         guard !ModuleHost.shared.anyStandsIn else {
-            HelmLog.shared.warn("host", "refused: samples shown, reset everything not run")
+            HelmLog.shared.warn("host", "refused: a stand-in engine is live, reset everything not run")
             return
         }
         for step in ResetPlan.order {

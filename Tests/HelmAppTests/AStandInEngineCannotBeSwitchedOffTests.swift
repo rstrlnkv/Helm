@@ -6,10 +6,10 @@ import SwiftUI
 import XCTest
 @testable import HelmApp
 
-/// **A picture of a module must not be able to write the module's real "off".**
+/// **An engine that stands in for a module's real one must not be able to write the module's real "off".**
 ///
-/// `-HelmKeepAwakeSample <name>` runs an engine that is a stand-in
-/// (`ModuleEngine.standsIn`): it holds no assertion and installed no `sudoers` rule.
+/// A stand-in (`ModuleEngine.standsIn`) is an engine that replaces the real one while
+/// something else is shown or run: it holds no assertion and installed no `sudoers` rule.
 /// If the person's switch reached the host's own store while it ran, the real
 /// `enabled` key would say "off" and `willDisable()` would ask the stand-in to give
 /// back what the real engine took — nothing — so the next ordinary launch would find

@@ -59,7 +59,7 @@ import HelmUI
 
     func setEnabled(_ d: any ModuleDescriptor, _ on: Bool) {
         if !on, standsInLive(type(of: d).id.rawValue) {
-            HelmLog.shared.warn("host", "refused: samples shown, \(type(of: d).id.rawValue) stays on")
+            HelmLog.shared.warn("host", "refused: a stand-in engine is live, \(type(of: d).id.rawValue) stays on")
             return
         }
         store(for: d).set(on, for: "enabled")

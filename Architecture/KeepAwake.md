@@ -65,57 +65,44 @@ what it cannot repair.
 
 ## Its states
 
-`-HelmKeepAwakeSample <name>` puts one of the states in the table below on screen without the Mac being in
-it (`KeepAwakeSamples.swift`). The descriptor builds `KeepAwakeSampleEngine` instead of the
-engine: no port exists, so no assertion, `pmset` or sudoers step is reachable, and the page and
-tile read an in-memory store seeded with the sample's settings, so nothing is written to the
-defaults. The name is read from the argument domain only, and an unknown or missing one builds
-no real engine either and logs a refusal. The engine says `standsIn` (`ModuleEngine`), so while
-it is live the host refuses to switch Keep Awake off and refuses Reset everything, one warn line
-beginning "refused: samples shown" for each: either would write the real `enabled` flag and skip the engine's
-hand-back. A built sample logs `samples built: <name>` when the engine is made, which is before
-`LaunchPage` may refuse the page; `launch page: keep-awake` is what proves the page opened. Keep
-Awake must be switched on in Helm Dev, or the launch page is refused. The names are matched,
-never drawn; app names come from the system, the sample rules being Apple's own bundle ids,
-except that one row of `worst` is the sample's own non-existent bundle id, drawn as it is on
-purpose.
+The states below are the module's checklist. Each is reached on a real Mac by what a person does or by real
+use; only `worst` and the unreadable half of `left-behind` need a stored value put there by an argument (`--arg module.keep-awake.<key> <value>`, a number written `'<integer>N</integer>'`: a bare number reaches the store as a string and the default is shown). A page is shot as it stands, with `Scripts/shoot.sh`, after
+Keep Awake is switched on in Helm Dev (the launch page is refused otherwise).
 
 The page id is the module id, `keep-awake`, not `keepawake`. A state is shot with its file
 `keep-awake-<state>-<light|dark>[-<ru|de>][-s025|-s050|-s100|-panel].png`, position 0 without a suffix:
 
-    bash Scripts/shoot.sh keep-awake --arg HelmKeepAwakeSample <name> \
+    bash Scripts/shoot.sh keep-awake \
+      [--press "<control name>"]... \
       --arg module.app.barAppearance flat --arg module.app.appearance <light|dark> \
-      --name <name>-<light|dark> [--scroll <0...1>] [--panel] --out <dir>
+      --name <state>-<light|dark> [--scroll <0...1>] [--panel] --out <dir>
 
-`--scroll <fraction>` sets the page's vertical scroll bar to that fraction of its range, for
+`--press` brings the state about by the page's own controls, as a person would; `--scroll <fraction>` sets the page's vertical scroll bar to that fraction of its range, for
 the part below the fold; `--panel` shoots the panel tile (the status item pressed in
 `MenuBarAgent`'s tree, found by Helm Dev's pid). A panel frame also shows the other modules'
 live tiles (VPN profile names, disk): it is proof for the owner's eyes, never kept in the tree.
 
-| state | the Mac is shown as | seen in |
+| state | the Mac is in | reached by |
 |---|---|---|
-| `idle-no-rules` | off, no rule | hero off, tile |
-| `idle-waiting` | off, power and display rules on, none fired | hero, rule notes |
-| `timed-long` | a session one second short of the longest | hero, tile, menu-bar ring |
-| `timed-then-held` | 47 minutes left, a power rule holding after it | hero's "held by" tail |
-| `indefinite` | on, no end | hero, tile |
-| `automatic-apps` | held by three app rules, two apps running | hero names, Stop caption, rules list |
-| `stop-two-step` | 30 minutes, a rule holds, timer ends automation | hero's Stop word |
-| `suppressed` | rule applies and is paused | Paused/Resume, rule note, tile |
-| `battery-veto` | stopped by the battery guard | the notice, rule note, battery row |
-| `lid-refused` | closed-lid option on, macOS refused | lid row note |
-| `left-behind` | lid option off, its sudoers rule still there; an unreadable rules value | lid note, rules banner |
-| `worst` | three conditions, eight app rules (one not installed), lid held, longest numbers | everything |
+| `idle-no-rules` | off, no rule | switched off with every rule off: a person, or `--press` |
+| `idle-waiting` | off, power and display rules on, none fired | a person turns the rules on while on battery with no external display (on mains the power rule fires at once); `--press` for the switches, the power source is real use |
+| `timed-long` | a session one second short of the longest | a person starts the longest timed session; `--press` |
+| `timed-then-held` | 47 minutes left, a power rule holding after it | a timed session with a power rule that holds; the rule's condition is real use |
+| `indefinite` | on, no end | a person starts a session with no end; `--press` |
+| `automatic-apps` | held by three app rules, two apps running | app rules for apps that are running; the apps are real use |
+| `stop-two-step` | 30 minutes, a rule holds, timer ends automation | a timed session while a rule holds; the rule's condition is real use |
+| `suppressed` | rule applies and is paused | a person pauses a rule that holds; `--press` |
+| `battery-veto` | stopped by the battery guard | the battery falling below the guard, or a person on battery raising the floor slider (5...50) above the charge |
+| `lid-refused` | closed-lid option on, macOS refused | real use only: a sudoers rule that answers `disablesleep 0` but not `disablesleep 1` (not what Helm wrote), or the administrator dialog accepted and the call still failing |
+| `left-behind` | lid option off, its sudoers rule still there; an unreadable rules value | the rule: real use, left by an earlier run that could not withdraw it; the unreadable rules value: a stored value that does not parse (`--arg module.keep-awake.autoAppRules garbage`, or a damaged settings file) |
+| `worst` | three conditions, eight app rules (one not installed), lid held, longest numbers | a person sets the largest numbers the page offers and the most app rules; the clamp maximum (1440 minutes) is reached only by a stored value, e.g. `--arg module.keep-awake.jiggleIntervalMinutes '<integer>1440</integer>'`; the app not installed is real use: an app removed after its rule was added |
 
-`worst` is the one with the worst data: the largest numbers the clamps allow (jiggle interval,
-default duration) and the most app rules. Its longest strings come from the language, not the
-sample: add `--arg module.app.interfaceLanguage ru`, and once with `de` for the German wrap.
+Longest strings come from the language: add `--arg module.app.interfaceLanguage ru`, and once with `de` for the German wrap.
 
 Shoot each state at position 0 (no suffix), `--scroll 0.5` and `1` (suffixes `-s050`, `-s100`);
 when none of the three shows the part a state is for whole, add `--scroll 0.25` (`-s025`). The panel tile (`--panel`)
 for `idle-no-rules`, `timed-long`, `indefinite`, `automatic-apps`, `suppressed`, `battery-veto`
 and `worst`.
 
-Samples cannot cover what is read from the machine itself: a Mac without a battery, a lid or a
+Rows read from the machine itself are shown or hidden by the Mac the shot is taken on: a Mac without a battery, a lid or a
 built-in display (`MacHardware`), and the pointer row's reading of the real Accessibility grant.
-Those rows are shown or hidden by the Mac the shot is taken on.
