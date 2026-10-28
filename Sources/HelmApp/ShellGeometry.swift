@@ -15,8 +15,8 @@ import HelmRuntime
 /// it open.
 ///
 /// **The window's corner radius is not held here.** `cardRadius(windowRadius:)`
-/// takes it as a parameter, so the card stays concentric with whatever corner
-/// the window really has instead of with a number written down once.
+/// takes it as a parameter, so the card stays concentric with the corner it is
+/// handed: on macOS 27 the token `HelmRadius.window`, on 26 what `WindowCorner` read.
 ///
 /// `inset` is the owner's fixed gap. `railWidth`, `defaultSidebarWidth`,
 /// `sidebarRange`, `capsuleSize`, `capsuleShift`, `capsulePad` and `hoverMargin`

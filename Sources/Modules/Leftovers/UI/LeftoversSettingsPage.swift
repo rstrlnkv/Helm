@@ -126,14 +126,14 @@ struct LeftoversSettingsPage: View {
         // Narrowing the list drops the ticks it hides, the way the kind filter
         // and a fresh scan already do. Without this the switcher was the one
         // way a selection could outlive its row. Moved here from the switcher
-        // view itself once that view moved into the window's toolbar, which
+        // view itself once that view moved into the header row, which
         // owns no state of the page's to hang a change handler on
         // (`HomebrewSettingsPage` does the same for its own segment).
         .onChange(of: lvm.showAll) { _, _ in lvm.dropHiddenSelections() }
     }
 
     /// **What is left of the page's bar once its controls are in the
-    /// window's toolbar: what the scan found.** The filter, the kind menu and
+    /// window's header row: what the scan found.** The filter, the kind menu and
     /// Scan moved to `toolbarContent`; the captions stay in the page because
     /// they describe the list under them rather than act on it, and a count
     /// is not a control to put glass behind.
@@ -145,7 +145,7 @@ struct LeftoversSettingsPage: View {
         .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
     }
 
-    /// **The page's controls, in the window's toolbar.**
+    /// **The page's controls, in the window's header row.**
     ///
     /// Tabs are declared only while there is a list — an empty tab array
     /// leaves the switcher out of the bar entirely, the same guard the old
@@ -264,21 +264,21 @@ struct LeftoversSettingsPage: View {
         !lvm.items.isEmpty || removalOutcome != nil || silence == .listLost
     }
 
-    /// Whether the screen under the toolbar is drawing a Scan button of its own.
+    /// Whether the screen under the header row is drawing a Scan button of its own.
     ///
     /// `LeftoversEmpty.invites` and nothing beside it: the empty state asks the
     /// same question to decide whether it draws a verb, so the two answers cannot
     /// come apart. A statement — «no leftovers found», «everything is hidden by the
-    /// filter» — draws none, and there the toolbar's is the only way to scan again.
+    /// filter» — draws none, and there the header row's is the only way to scan again.
     private var invitationCarriesTheScan: Bool {
         guard let nothing = lvm.nothingToShow else { return false }
         return LeftoversEmpty.invites(nothing)
     }
 
     /// **The invitation's own verb, now that Scan has moved into the
-    /// window's toolbar** (`toolbarContent` above) — drawn only on the
+    /// window's header row** (`toolbarContent` above) — drawn only on the
     /// empty-state screens `LeftoversEmpty.invites` names, where the
-    /// invitation is the call to action and the toolbar's own Scan is
+    /// invitation is the call to action and the header row's own Scan is
     /// hidden by `invitationCarriesTheScan`. The header row's own button and
     /// this one are drawn in one place each, never both, so `scanRefused` and `scanTitle` above
     /// are shared rather than restated here.

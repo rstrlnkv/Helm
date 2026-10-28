@@ -2,9 +2,13 @@
 
 `Sources/HelmApp/SettingsWindow.swift` builds a window whose content is
 `SettingsShellViewController`, a plain view controller that shows a
-`ShellContentView` (`Sources/HelmApp/ShellContentView.swift`): glass at the bottom, the
-sidebar on it, and an opaque card inset from the window's edge that holds the page. Every
-frame comes from `ShellGeometry`. The sidebar and the page are each an `NSHostingController` with
+`ShellContentView` (`Sources/HelmApp/ShellContentView.swift`): the ground of the stored look
+at the bottom, the sidebar on it, and an opaque card inset from the window's edge that holds
+the page. Every frame comes from `ShellGeometry`. The ground is the look's: Flat is an
+`NSVisualEffectView` with `.sidebar`, `.behindWindow` and `.followsWindowActiveState`, Glass is
+`NSGlassEffectView`; one is visible, and a live change of the look swaps them at once
+(`.helmBarAppearanceChanged`). The window's corner is the token `HelmRadius.window` on macOS 27
+and the card is cut from it; on macOS 26 `WindowCorner` reads it (and nobody has run that here). The sidebar and the page are each an `NSHostingController` with
 `sizingOptions = []`, so a pane fills what the window gives it and never sizes the
 window; the comment above `sidebar.sizingOptions` says why.
 

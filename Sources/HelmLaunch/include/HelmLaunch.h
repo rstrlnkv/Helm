@@ -71,8 +71,8 @@ BOOL HelmLaunchTask(NSTask *task, NSError * _Nullable * _Nullable error);
 /// from the accessor passes a Swift `catch`. For the return-type half of the
 /// shape test, for the methods that are not invoked, for the catch-all and for
 /// the answer coming from the examined method rather than a `get<Key>` variant
-/// the evidence in this tree is the test family of `WindowCorner`, run against
-/// stand-in objects; the argument count is tested by nothing. Not measured
+/// it is tested by nothing in this tree, whatever stand-in objects
+/// one might run it against; the argument count likewise. Not measured
 /// against any system class's private accessor.
 NSNumber * _Nullable HelmReadNumber(NSObject *object, NSString *key);
 

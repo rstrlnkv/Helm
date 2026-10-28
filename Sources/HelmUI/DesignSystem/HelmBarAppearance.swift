@@ -9,6 +9,9 @@ import SwiftUI
 /// - `liquidGlass` — the system's own glass under a group. What nothing says
 ///   is this look.
 ///
+/// The look also picks the window's ground (`ShellContentView`): flat is the system's flat sidebar material,
+/// `liquidGlass` is `NSGlassEffectView`.
+///
 /// The header row in the card reads the look from the environment, and the window sets it at the root of
 /// the detail pane from the stored value (`helmTracksBarAppearance`): under `flat` its tabs sit on a plate
 /// of `HelmSurface.barPlate` with the pick `HelmSurface.barPick` (`HelmHeaderTabs`) and its actions stand
@@ -27,7 +30,8 @@ import SwiftUI
 /// `flat`: it is the value read back for a person who chose nothing. The
 /// environment's, below, is `liquidGlass`: it is what a view mounted with
 /// nobody having set a look gets: for a bare actions row `liquidGlass`
-/// is the plate that existed before the setting did. The settings window is the one place that sets a look on it.
+/// is the plate that existed before the setting did. The settings window is the one place that sets a look on it,
+/// so no user sees the environment's default: only `LivePageUnderTheHeaderFixture` mounts a view without one.
 ///
 /// **Not sealed:** nothing unattended reads it (`AppSettings.barAppearance`).
 public enum HelmBarAppearance: String, CaseIterable, Sendable {

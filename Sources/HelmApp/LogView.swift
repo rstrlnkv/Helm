@@ -76,7 +76,7 @@ struct LogView: View {
 
     /// Read once per body: the split, the filters and the folds are one pass
     /// over at most a thousand lines, and every part of the page below — the
-    /// cards, the toolbar's Copy, the footer, the Follow key — must see the
+    /// cards, the header row's Copy, the footer, the Follow key — must see the
     /// same one.
     private var presented: LogPresentation {
         LogPresentation.build(entries, minimumLevel: minimumLevel, categories: chosen, query: query)
@@ -144,7 +144,7 @@ struct LogView: View {
 
     // MARK: - The header row's controls
 
-    /// The three levels by id. One declaration, so the toolbar's segments, the
+    /// The three levels by id. One declaration, so the header row's segments, the
     /// level menu's items and the filter they set cannot disagree.
     private static var levelTabs: [(id: String, level: LogLevel, title: String, symbol: String)] {
         [("all", .info, AppStr.logLevelAll, "list.bullet"),
@@ -540,7 +540,7 @@ struct LogView: View {
     }
 
     /// The launch's time and version, and its errors and warnings as badges.
-    /// Two arrangements, the way the toolbar's own rows fold: on one line where
+    /// Two arrangements: on one line where
     /// the pane has the room, and the badges on a line of their own where a
     /// longer language does not.
     private func cardHeader(_ card: LogPresentation.Card) -> some View {

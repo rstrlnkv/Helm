@@ -2,32 +2,38 @@ import AppKit
 import HelmRuntime
 import HelmUI
 
-/// **The shell's content view: glass at the bottom, the sidebar on it, and the
-/// opaque card inset from the window's edge, with the pane clipped inside the
-/// card to the card's corners.** Every frame comes from `ShellGeometry`; the
-/// view holds no radius of its own, it cuts the card from the corner
-/// `WindowCorner` read and applies it to the card and to the clip in one place,
-/// `apply(_:)`.
+/// **The shell's content view: the window's ground by the look, the sidebar on it,
+/// and the opaque card inset from the window's edge, with the pane clipped inside
+/// the card to the card's corners.** Every frame comes from `ShellGeometry`; the
+/// view holds no radius of its own, it cuts the card from the window's corner and
+/// applies it to the card and to the clip in one place, `apply(_:)`.
 ///
-/// Subviews, bottom to top: the glass (regular, full bleed, no content view);
-/// on macOS 27 a full-bleed probe whose only job is to report the window's
-/// corner; the sidebar, as wide as the card's x so the two cannot part; the card,
-/// and inside it the clip, and inside that the pane; last, the window buttons' capsule
+/// **The ground is the look's** (`HelmBarAppearance`): Flat is the system's flat
+/// sidebar material behind the window, `.sidebar` and `.followsWindowActiveState`,
+/// Glass is `NSGlassEffectView`. Both are full bleed and one is visible
+/// (`showGround(_:)`); a live change of the look swaps them at once, without an
+/// animation, as the header row's look does.
+///
+/// **The corner.** On macOS 27 it is the token `HelmRadius.window`, decided once
+/// in `init`: nothing is read and no line is written. On macOS 26 it is
+/// `WindowCorner`'s reading in `layout()` (not testable here, no such machine).
+///
+/// Subviews, bottom to top: the flat ground, the glass ground, the sidebar, as
+/// wide as the card's x so the two cannot part; the card, and inside it the clip,
+/// and inside that the pane; last, the window buttons' capsule
 /// (`ShellWindowButtons`), above everything and hit by nothing.
 /// The card carries the fill and the shadow and never masks, so the shadow is
 /// not cut; the clip masks, so the pane's band does not run square to the
-/// window's corner. The sidebar and the pane are handed in. This view names no page and builds no toolbar; the settings window has none,
-/// so the corner is read as a window without one (`WindowCorner.Chrome.hasToolbar`).
+/// window's corner. The sidebar and the pane are handed in. This view names no page and builds no toolbar; the settings window has none.
 ///
 /// **The clip holds the pane alone, and the pane starts where AppKit's strip ends:** this view adds nothing
 /// to the pane's top safe-area inset; the pane's own hosting controller takes none from the title bar
 /// (`safeAreaRegions = []`, `SettingsWindow`). It neither writes the
 /// window buttons' frames nor reads them; `ShellWindowButtons` does.
 ///
-/// **One reader.** `layout()` reads the corner, whoever asked for the layout:
-/// AppKit on a resize, the probe on macOS 27 when its radii change,
-/// `viewDidMoveToWindow`, the window's occlusion notification,
-/// `sidebarWidth`'s setter (every write), and `ShellWindowButtons` (full screen, a button's frame). Events only ask (`needsLayout = true`).
+/// **One reader on macOS 26.** `layout()` reads the corner, whoever asked for the layout:
+/// AppKit on a resize, `viewDidMoveToWindow`, `sidebarWidth`'s setter (every write), and
+/// `ShellWindowButtons` (full screen, a button's frame). Events only ask (`needsLayout = true`).
 ///
 /// **The fold is the width travelling.** `fold(to:animated:)` starts a travel and writes no frame: it keeps
 /// the fold it was asked for, asks for a layout and starts `foldLink`. The first call of the
@@ -39,8 +45,8 @@ import HelmUI
 ///
 /// **Not-a-number.** A sidebar width that is not a number is `ShellGeometry`'s
 /// business (`cardFrame` reads it as 0), and the sidebar's frame is cut from the
-/// card's x, so it is finite whenever the card's is. A radius the probe or the
-/// window answers as not-a-number is a rung that did not answer
+/// card's x, so it is finite whenever the card's is. A radius the window
+/// answers as not-a-number is a rung that did not answer
 /// (`WindowCorner.read`), never a radius.
 @MainActor
 final class ShellContentView: NSView {
@@ -100,9 +106,15 @@ final class ShellContentView: NSView {
     private let sidebar: NSView
     private let pane: NSView
 
+    /// The Flat look's ground: the system's flat material behind the window (probe: it follows the window's
+    /// activity by itself).
+    private let flat = NSVisualEffectView()
     private let glass = NSGlassEffectView()
+    /// The look the ground wears, read when it changes (`.helmBarAppearanceChanged`), never kept.
+    private let look: () -> HelmBarAppearance
     private let buttons = ShellWindowButtons()
-    private var applied: WindowCorner?
+    /// The card's radius as last applied.
+    private var applied: CGFloat?
     private var journal = WindowCorner.Journal()
 
     /// The window the journal was started for. Weak, so a freed window cannot be
@@ -110,29 +122,34 @@ final class ShellContentView: NSView {
     /// back into the same window keeps its journal and its bound, and only a
     /// different window starts a new one.
     private weak var journalWindow: NSWindow?
-    /// Asks for a layout when the window's occlusion state changes; removed
-    /// whenever the view leaves a window, and in `deinit`. Read in `deinit`,
-    /// which Swift 6 treats as nonisolated even on a `@MainActor` class.
-    nonisolated(unsafe) private var shownObserver: NSObjectProtocol?
+    /// Swaps the ground when the look changes; removed in `deinit`, which Swift 6 treats as nonisolated
+    /// even on a `@MainActor` class.
+    nonisolated(unsafe) private var lookObserver: NSObjectProtocol?
     private let system = ProcessInfo.processInfo.operatingSystemVersion
 
-    /// Nil below macOS 27, where there is no public reading.
-    private var probe: NSView?
+    /// Whether the corner is the token's (macOS 27 and later) and not read.
+    private var cornerIsTheToken: Bool { system.majorVersion >= 27 }
 
     override var isFlipped: Bool { true }
 
     /// The views are held for as long as this view lives.
-    init(sidebar: NSView, pane: NSView) {
+    init(sidebar: NSView, pane: NSView, look: @escaping () -> HelmBarAppearance) {
         self.sidebar = sidebar
         self.pane = pane
+        self.look = look
         super.init(frame: .zero)
 
+        flat.material = .sidebar
+        flat.blendingMode = .behindWindow
+        flat.state = .followsWindowActiveState
         glass.style = .regular
+        addSubview(flat)
         addSubview(glass)
-        if #available(macOS 27.0, *) {
-            let probe = CornerProbe()
-            self.probe = probe
-            addSubview(probe)
+        showGround(look())
+        lookObserver = NotificationCenter.default.addObserver(
+            forName: .helmBarAppearanceChanged, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { if let self { self.showGround(self.look()) } }
         }
         addSubview(sidebar)
 
@@ -160,13 +177,29 @@ final class ShellContentView: NSView {
         card.addSubview(clip)
         clip.addSubview(pane)
 
+        if cornerIsTheToken { apply(ShellGeometry.cardRadius(windowRadius: HelmRadius.window)) }
         resolveFill()
     }
 
     required init?(coder: NSCoder) { fatalError("ShellContentView is built in code") }
 
     deinit {
-        if let shownObserver { NotificationCenter.default.removeObserver(shownObserver) }
+        if let lookObserver { NotificationCenter.default.removeObserver(lookObserver) }
+    }
+
+    // MARK: - the ground
+
+    /// One ground is visible: the look's. An instant swap; the cases are named so a third look cannot be
+    /// forgotten here.
+    private func showGround(_ look: HelmBarAppearance) {
+        switch look {
+        case .flat:
+            flat.isHidden = false
+            glass.isHidden = true
+        case .liquidGlass:
+            flat.isHidden = true
+            glass.isHidden = false
+        }
     }
 
     // MARK: - fill
@@ -190,20 +223,6 @@ final class ShellContentView: NSView {
         super.viewDidMoveToWindow()
         buttons.attach(to: window)
         if let foldTarget { fold(to: foldTarget, animated: false) }
-        if let shownObserver { NotificationCenter.default.removeObserver(shownObserver) }
-        shownObserver = nil
-        if let window {
-            // Assumed, not measured: that ordering a window in posts this
-            // notification. It is listened for because a borderless window's
-            // corner is 0 before and after it is shown, so the probe's radii do
-            // not change and nothing else would ask for the layout that takes
-            // its zero.
-            shownObserver = NotificationCenter.default.addObserver(
-                forName: NSWindow.didChangeOcclusionStateNotification, object: window, queue: .main
-            ) { [weak self] _ in
-                MainActor.assumeIsolated { self?.needsLayout = true }
-            }
-        }
         if let window, window !== journalWindow {
             journal = WindowCorner.Journal()
             journalWindow = window
@@ -211,33 +230,14 @@ final class ShellContentView: NSView {
         needsLayout = true
     }
 
-    /// Sets the card's and the clip's radius from the window's corner, only when
-    /// the corner differs from the one applied. It writes no line: the journal is
-    /// written in `layout()`, after this, and only for a view that has a window,
-    /// so a layout in a window writes once per change, up to `WindowCorner.Journal.cap` lines.
-    private func apply(_ corner: WindowCorner) {
-        guard corner != applied else { return }
-        applied = corner
-        let radius = ShellGeometry.cardRadius(windowRadius: corner.radius)
+    /// Sets the card's and the clip's radius, only when it differs from the one applied. It writes no line:
+    /// the journal is written in `layout()`, after this, and only for a view that has a window, so a layout
+    /// in a window writes once per change, up to `WindowCorner.Journal.cap` lines.
+    private func apply(_ radius: CGFloat) {
+        guard radius != applied else { return }
+        applied = radius
         card.layer?.cornerRadius = radius
         clip.layer?.cornerRadius = radius
-    }
-
-    /// The probe's largest corner, nil where there is no probe, no window or no
-    /// answer. Outside a window the probe answers 0.0, measured on 27.2, which
-    /// is not a corner: it must not reach `read` as one. A window built and laid
-    /// out and not shown answered 0.0 too, so a zero from it is dropped
-    /// (`WindowCorner.publicAnswer`) and a lower rung answers while it is not
-    /// shown. The window's occlusion notification asks for a layout, which reads
-    /// again; that showing the window posts one is assumed, not measured.
-    /// Not-a-number is read as "did not answer" by `read`.
-    private var publicReading: CGFloat? {
-        guard let window else { return nil }
-        if #available(macOS 27.0, *), let probe, let radii = probe.effectiveCornerRadii {
-            return WindowCorner.publicAnswer(max(radii.topLeft, radii.topRight, radii.bottomLeft, radii.bottomRight),
-                                             windowIsShown: window.isVisible || window.isMiniaturized)
-        }
-        return nil
     }
 
     // MARK: - the fold
@@ -297,8 +297,8 @@ final class ShellContentView: NSView {
     override func layout() {
         super.layout()
 
+        flat.frame = bounds
         glass.frame = bounds
-        probe?.frame = bounds
 
         let frame = ShellGeometry.cardFrame(in: bounds.size, sidebarWidth: sidebarWidth)
         card.frame = frame
@@ -308,11 +308,10 @@ final class ShellContentView: NSView {
         let rail = buttonsStandInRail
         buttons.place(rail: rail)
 
-        let reading = publicReading
-        let chrome = WindowCorner.Chrome(hasToolbar: false, systemMajor: system.majorVersion)
-        let corner = WindowCorner.read(publicReading: reading, from: window, chrome: chrome)
-        apply(corner)
-        writeLine(corner, publicReading: reading, chrome: chrome)
+        guard !cornerIsTheToken else { return }
+        let corner = WindowCorner.read(from: window, systemMajor: system.majorVersion)
+        apply(ShellGeometry.cardRadius(windowRadius: corner.radius))
+        writeLine(corner)
     }
 
     /// Hands the window's activity to the buttons' capsule, whose dots are coloured only while it is active
@@ -321,29 +320,17 @@ final class ShellContentView: NSView {
         buttons.setWindowAppearsActive(active)
     }
 
-    private func writeLine(_ corner: WindowCorner, publicReading: CGFloat?, chrome: WindowCorner.Chrome) {
+    private func writeLine(_ corner: WindowCorner) {
         guard let window else { return }
         let system = system
         guard let line = journal.line(for: corner, {
-            WindowCorner.logLine(corner, publicReading: publicReading, chrome: chrome, window: window,
+            WindowCorner.logLine(corner, window: window,
                                  override: UserDefaults.standard.object(forKey: WindowCorner.overrideKey),
                                  system: system)
         }) else { return }
         switch corner.rung {
-        case .publicAPI, .windowSelector: HelmLog.shared.info(WindowCorner.logCategory, line)
+        case .windowSelector: HelmLog.shared.info(WindowCorner.logCategory, line)
         case .guess, .none: HelmLog.shared.warn(WindowCorner.logCategory, line)
         }
-    }
-}
-
-/// Reports the window's corner: a view with a concentric corner, full bleed,
-/// that answers no click. When its radii change it asks the shell for a layout.
-@available(macOS 27.0, *)
-private final class CornerProbe: NSView {
-    override var cornerConfiguration: NSViewCornerConfiguration? { .corners(radius: .containerConcentric) }
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
-    override func viewDidChangeEffectiveCornerRadii() {
-        super.viewDidChangeEffectiveCornerRadii()
-        superview?.needsLayout = true
     }
 }

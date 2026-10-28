@@ -42,7 +42,7 @@ struct HomebrewSplit {
     /// nothing here should be trusted as a number that stays true on its own.
     ///
     /// It was also folded into the page's own header bar, whose width had to
-    /// agree with it; the page's controls are in the window's toolbar now,
+    /// agree with it; the page's controls are in the header row in the card now,
     /// through `helmWindowToolbar`, and this is the one boundary there is.
     static let masterAndInspector: CGFloat = 560
 

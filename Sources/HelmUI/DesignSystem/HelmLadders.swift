@@ -36,15 +36,15 @@ public enum HelmSpace {
     public static let s8: CGFloat = 40
 }
 
-/// **A corner has one ladder: 4 · 6 · 10 · 14 · 26 pt.**
+/// **A corner has one ladder: 4 · 6 · 10 · 14 · 16 · 26 pt.**
 ///
 /// Sixteen distinct radii were counted against three declared tokens on the
 /// mockup side.
 ///
-/// Five steps, and each names the thing it belongs to rather than a size: the
+/// Six steps, and each names the thing it belongs to rather than a size: the
 /// call site should say what it is drawing, not how round it wants it.
 ///
-/// **Two of the five are already what the app draws**, spelled as numbers: the
+/// **Two of the six are already what the app draws**, spelled as numbers: the
 /// panel's glass is `.rect(cornerRadius: 26)` and the shape a panel card and a
 /// panel well share is 14. Those literals are not swept here — this commit lands
 /// the vocabulary — so until they are, `frame` and `panel` are names for numbers
@@ -61,6 +61,10 @@ public enum HelmRadius {
     public static let card: CGFloat = 10
     /// A frame around cards: the panel's own card and the well inside it.
     public static let frame: CGFloat = 14
+    /// The settings window's corner on macOS 27, which Helm no longer reads from the system. It matches the
+    /// corner of System Settings' window as read pixel by pixel on this Mac's screenshots. The card is cut from it
+    /// (`ShellGeometry.cardRadius(windowRadius:)`), 12 pt.
+    public static let window: CGFloat = 16
     /// The panel. Big because it hangs off the menu bar with nothing around it.
     public static let panel: CGFloat = 26
 }
