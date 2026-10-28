@@ -125,14 +125,27 @@ import HelmUI
         bringForward()
     }
 
+    /// Whether this window is in `HostWindow`'s count of open windows. A flag, not `isVisible`: `show` is
+    /// called again while the window is open, and a miniaturised window is not visible and still open.
+    private var counted = false
+
     private func bringForward() {
-        NSApp.setActivationPolicy(.regular)
+        if !counted {
+            counted = true
+            HostWindow.windowOpened()
+        }
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
+        // A window ordered front without the app's activation gets no key or main notification until
+        // one comes, so its chrome would not dim: read it now.
+        updateWindowAppearsActive()
     }
 
     func windowWillClose(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory)
+        if counted {
+            counted = false
+            HostWindow.windowClosed()
+        }
     }
 
     // MARK: - Whether AppKit draws this window's chrome active
@@ -199,7 +212,8 @@ enum SettingsSelection: Hashable {
     /// What the page on screen calls itself, for the window's title bar.
     @Published var pageTitle: HelmPageTitle?
     /// `SettingsWindow.updateWindowAppearsActive()`'s reading, for the header row's dimming
-    /// (`\.helmWindowAppearsActive`). True until the first window notification: the window is built to be shown.
+    /// (`\.helmWindowAppearsActive`). True until the window is first brought forward, which reads it
+    /// (`SettingsWindow.bringForward()`); the window is built to be shown.
     @Published var windowAppearsActive = true
     /// Bumped when the module order changes, so the sidebar redraws with it —
     /// the order is read from settings, which SwiftUI cannot observe.

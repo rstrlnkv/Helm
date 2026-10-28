@@ -23,11 +23,16 @@ import SwiftUI
 ///
 /// Three things it owns, each of which the copies had to get right separately:
 ///
-/// - **The activation policy round trip.** Helm is an accessory app: no Dock
+/// - **The activation policy, by a count of open windows.** Helm is an accessory app: no Dock
 ///   icon and no menu bar, so a window ordered front without `.regular` comes up
 ///   *behind* whatever the person is looking at — and a window nobody asked for
 ///   that opens behind something else is a window never seen. Back to
-///   `.accessory` when it goes, or Helm keeps a Dock icon it did not earn.
+///   `.accessory` when the last one goes, or Helm keeps a Dock icon it did not earn.
+///   The policy is one process-wide state, so once the app is up it has one owner:
+///   `windowOpened()` and `windowClosed()` (the launch sites in `main.swift` and `AppDelegate.swift` set
+///   `.accessory` while the count is 0), called by every host-owned window, the Settings window too. Each window
+///   writing the policy itself made the last to close win, and the app turned `.accessory`
+///   under a window still open.
 /// - **The `closed` flag.** Every way out is one answer, and there are two paths
 ///   to it: the view calls `close()`, which makes AppKit call `windowWillClose`.
 ///   Without the guard `onClose` runs twice — and for the Trash offer that is
@@ -41,6 +46,8 @@ import SwiftUI
 @MainActor open class HostWindow: NSObject, NSWindowDelegate {
     private(set) var window: NSWindow?
     private let onClose: () -> Void
+    /// Host-owned windows open now, Settings included (`windowOpened()`).
+    private static var open = 0
     /// Guards `onClose` against the second call — see the note above.
     private var closed = false
 
@@ -48,10 +55,31 @@ import SwiftUI
         self.onClose = onClose
     }
 
-    /// Puts `view` up in a window this object owns and comes forward with it.
+    /// A host-owned window opened: Helm is a regular app while one is open, so it can come forward.
+    public static func windowOpened() {
+        open += 1
+        NSApp.setActivationPolicy(.regular)
+    }
+
+    /// A host-owned window closed: back to `.accessory` when it was the last. A close without an open
+    /// leaves the count at 0.
+    public static func windowClosed() {
+        open = max(open - 1, 0)
+        if open == 0 { NSApp.setActivationPolicy(.accessory) }
+    }
+
+    /// Puts `view` up in a window this object owns and comes forward with it. When the window is
+    /// already open it only comes forward: a second `NSWindow` would call `windowOpened()` again, the count
+    /// would go to 2, and the `closed` guard in `windowWillClose` answers only one close, so the count
+    /// would stay above 0 after both windows are gone.
     public func present(_ view: some View, title: String,
                  styleMask: NSWindow.StyleMask = [.titled, .closable],
                  transparentTitlebar: Bool = false) {
+        if let open = window {
+            NSApp.activate()
+            open.makeKeyAndOrderFront(nil)
+            return
+        }
         let window = NSWindow(contentViewController: NSHostingController(rootView: view))
         window.styleMask = styleMask
         window.title = title
@@ -62,9 +90,10 @@ import SwiftUI
         window.isReleasedWhenClosed = false
         window.center()
         window.delegate = self
+        closed = false  // a window built after a close counts again, so its close can be counted out
+        Self.windowOpened()
         self.window = window
 
-        NSApp.setActivationPolicy(.regular)
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
     }
@@ -79,7 +108,7 @@ import SwiftUI
     public func windowWillClose(_ notification: Notification) {
         guard !closed else { return }
         closed = true
-        NSApp.setActivationPolicy(.accessory)
+        Self.windowClosed()
         window = nil
         onClose()
     }

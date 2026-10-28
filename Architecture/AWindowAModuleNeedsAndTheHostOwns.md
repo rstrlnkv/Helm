@@ -2,7 +2,7 @@
 
 `Sources/HelmUI/HostWindow.swift` is the base class for a window the host owns on
 a module's behalf; `command grep -rn ': HostWindow' Sources/` lists the
-subclasses. It owns three things — the activation-policy round trip, a `closed`
+subclasses. It owns three things — the activation policy by a count of open windows, which the Settings window joins too, a `closed`
 flag and `isReleasedWhenClosed = false` — and its doc comment holds the reason for
 each.
 
