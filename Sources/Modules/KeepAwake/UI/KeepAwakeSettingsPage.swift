@@ -9,9 +9,8 @@ import Module_KeepAwake_Engine
 /// observable, so values are seeded into local `@State` and written through
 /// on every change, notifying the engine via `settingsChanged`.
 struct KeepAwakeSettingsPage: View {
-    // Observed, not held: the state strip reads isActive and the live
-    // conditions, and a plain `let` means SwiftUI never hears them change —
-    // the figures froze at whatever they were when the page opened.
+    // Observed, not held: the hero reads isActive and the live conditions, and
+    // a plain `let` means SwiftUI never hears them change.
     @ObservedObject var vm: KeepAwakeViewModel
     let store: NamespacedStore
 
@@ -51,10 +50,9 @@ struct KeepAwakeSettingsPage: View {
     ///
     /// Press-driven rather than engine-driven, and it needs the same treatment
     /// for the same reason: a `Toggle` writes its binding outside any animation,
-    /// so a mark decided by `binding.wrappedValue` flips in one frame. That was
-    /// the last thing on this card still jumping — and it was the *pressed* row,
-    /// the one being looked at, whose own tick appeared instantly while its
-    /// column slid under it.
+    /// so a mark decided by `binding.wrappedValue` flips in one frame — and it
+    /// would be the *pressed* row, the one being looked at, whose own tick
+    /// appeared instantly while its column slid under it.
     ///
     /// The switch itself keeps the live binding: one that lagged behind the finger
     /// would be a worse fault than this. What waits for the curve is what the row
@@ -94,9 +92,8 @@ struct KeepAwakeSettingsPage: View {
         _shownConditions = State(initialValue: live.activeConditions)
         _shownTriggered = State(initialValue: live.triggeredConditions)
         _shownSuppressed = State(initialValue: live.suppressed)
-        // The function `enabledRules` reads, not a second copy: the seed spelled
-        // the two `insert`s again, and was the half that never learned the
-        // hardware.
+        // The function `enabledRules` reads, not a second copy: a copy of the
+        // two `insert`s would be the half that never learns the hardware.
         _shownEnabled = State(initialValue: MarkableRules.onThisMac(
             autoExternalDisplay: settings.autoExternalDisplay,
             autoPower: settings.autoPower, lidHolding: live.clamshellActive))
@@ -109,30 +106,37 @@ struct KeepAwakeSettingsPage: View {
     }
 
     var body: some View {
-        keepAwakeForm
+        keepAwakePage
             .helmTracksAccessibility($accessibility)
     }
 
-    /// Seven sections, each its own fragment.
+    /// The hero and five sections, each its own fragment: one expression of
+    /// all of them is more than anyone can hold at once and more than SwiftUI's
+    /// type-checker enjoys. Each is one `HelmSettingsSection` (or the hero), a
+    /// direct child of the stack. The column's padding and cap sit on the stack
+    /// inside the scroller (a cap on the scroller leaves dead sides,
+    /// `HelmLayout.swift`); every modifier after the `ScrollView` stays on it,
+    /// including the store observer that keeps this page and the panel agreeing.
     ///
-    /// This was one 123-line expression: more than anyone can hold at once and
-    /// more than SwiftUI's type-checker enjoys. `Section` stays the outermost
-    /// view of every fragment — a `Form` groups by what its direct children
-    /// are, so wrapping one in anything would change the layout — and every
-    /// modifier below stays on the `Form` itself, including the store observer
-    /// that keeps this page and the panel agreeing.
-    private var keepAwakeForm: some View {
-        Form {
-            automationSection
-            appsSection
-
-            behaviourSection
-
-            menuBarIconSection
-            shortcutSection
+    /// The hero is the stack's first child so that it scrolls with the page:
+    /// pinned above it, it would hold a fifth of the window for a sentence however
+    /// far down the settings somebody has scrolled.
+    private var keepAwakePage: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: HelmSpace.s7) {
+                sessionHero
+                automationSection
+                appsSection
+                behaviourSection
+                menuBarIconSection
+                shortcutSection
+            }
+            .padding(.horizontal, HelmLayout.formInset)
+            .padding(.vertical, HelmSpace.s6)
+            // Caps the column, centres it, and idles the page while its window
+            // is off screen.
+            .helmSettingsColumn()
         }
-        .formStyle(.grouped)
-        .helmIdlesOffScreen()
         // Where the engine's values land, and the only place they are animated.
         .onChange(of: vm.activeConditions) { _, arrived in
             withAnimation(HelmMotion.disclosure) { shownConditions = arrived }
@@ -158,15 +162,11 @@ struct KeepAwakeSettingsPage: View {
 
     /// What is happening, and the verbs for it.
     ///
-    /// It was `HelmMetricStrip` — «ВЫКЛ · — · 0» before anything is configured.
-    /// Two of those three figures are the unreadable kind this house does not
-    /// draw at all, and above twenty controls there was not one that could
-    /// begin or end a session: the screen whose whole job is to say what is
-    /// happening was the only screen that could not change it. Every command
-    /// here was already on the wire; the panel tile sends the same ones.
+    /// Every command here is one the panel tile sends too: the page that says
+    /// what is happening is also the one that can begin or end a session.
     @ViewBuilder private var sessionHero: some View {
         // A countdown needs a tick of its own: the engine emits state on
-        // change, not once a second, so a figure drawn from it froze at
+        // change, not once a second, so a figure drawn from it would freeze at
         // whatever it read when the page opened. The panel tile solves it the
         // same way. The tick goes *into* the hero rather than being read off
         // the clock inside it, so the figure is a function of the tick.
@@ -179,7 +179,7 @@ struct KeepAwakeSettingsPage: View {
                 defaultDurationMinutes: defaultDurationMinutes,
                 suppressed: vm.suppressed,
                 ruleHolds: vm.ruleHolds,
-                // The switch three cards down, because the same setting decides
+                // The switch in the Automation card, because the same setting decides
                 // what pressing Stop does — see `StopPress`. The mirrored
                 // `@State`, so a change made on this page reaches the button on
                 // the same frame it reaches the row.
@@ -189,11 +189,10 @@ struct KeepAwakeSettingsPage: View {
                 // per tick for a string that changes when an app launches is
                 // work nobody asked for.
                 appNames: vm.holdingApps.map { AppInfo.resolve($0).name },
-                // Both defaulted in the hero's initialiser and neither was ever
-                // passed, so «Stopped below 20 %» sat in a branch nothing could
-                // reach: pressing «15 min» at 5 % was silence here while the panel
-                // said why. The floor is the drawn one, so the sentence names the
-                // number the row below shows.
+                // Both are passed, or «Stopped below 20 %» sits in a branch
+                // nothing can reach: pressing «15 min» at 5 % would be silence
+                // here while the panel said why. The floor is the drawn one, so
+                // the sentence names the number the row below shows.
                 batteryStopped: vm.batteryStopped,
                 batteryFloor: batteryGuardPercent,
                 timedNote: timedNote,
@@ -201,18 +200,6 @@ struct KeepAwakeSettingsPage: View {
                 stop: { vm.send(KeepAwakeCommand.stop) },
                 resume: { vm.send(KeepAwakeCommand.resumeAutomation) })
         }
-        // **18 and 12, and neither is what anybody sees.** This block rides on a
-        // section header inside a grouped `Form`, which adds 20 pt of its own, so
-        // 12 draws as 32 against a page rhythm of 30. Measured on the render at
-        // 810 pt, ink to ink because a pill's box reaches past its label: 48 pt of
-        // air over the figure, 34 from the buttons down to «Automation». The bottom
-        // was 31 — 19 pt more than that, under the tallest block on the page. Of
-        // the two steps the ladder offers above, 28 takes the figure's air to 58
-        // while the gap below stays 34, and the window has a strip for the traffic
-        // lights over that again: it would spend the most air on the page at the
-        // very top of it. 18 is the hero's own rhythm as well.
-        .padding(.bottom, 12)
-        .helmSettingsColumn()
     }
 
     /// «Таймер до 15:42 · дальше держит внешний дисплей». The second clause is
@@ -231,8 +218,8 @@ struct KeepAwakeSettingsPage: View {
     /// True when anything is configured that *could* hold the Mac — which is
     /// the difference between «nothing is set up» and «nothing applies now».
     /// Through `enabledRules`, so the hardware is in the answer: off the raw flags
-    /// it counted the display rule on a desktop, whose row is not drawn and whose
-    /// engine refuses it. `.rules`, because the lid is not one.
+    /// it would count the display rule on a desktop, whose row is not drawn and
+    /// whose engine refuses it. `.rules`, because the lid is not one.
     private var anyRuleOn: Bool {
         !enabledRules.rules.isEmpty || !appTriggers.isEmpty
     }
@@ -241,21 +228,11 @@ struct KeepAwakeSettingsPage: View {
 
     /// Four rules, and every row answers two questions at once: the mark on the
     /// left is what is happening now — a condition off the wire — and the
-    /// control on the right is what is configured, out of the store. The second
-    /// edition put those 268 pt apart, so a person reading the page saw that a
-    /// rule was holding the Mac and could not see what to change about it.
+    /// control on the right is what is configured, out of the store. Kept close
+    /// together, so a person who sees that a rule is holding the Mac sees what to
+    /// change about it.
     @ViewBuilder private var automationSection: some View {
-        // The hero rides on this section's header.
-        //
-        // It has to be inside the form to scroll with the page — pinned above
-        // it, it held a fifth of the window for a sentence however far down the
-        // settings you had gone. But a *row* of a grouped form is drawn inside
-        // the section's card, and `listRowBackground(.clear)` does not take
-        // that fill away on macOS: measured, the block came back in a card
-        // either way. A section **header** is the one part of a grouped form
-        // that is drawn on the bare pane and still scrolls, which is exactly
-        // the two things this block needs.
-        Section(header: heroAndTitle) {
+        HelmSettingsSection(KAStr.automation) {
             // Hidden on a Mac that has no display of its own. «Keep awake with
             // an external display» is a rule about being docked, and a mini or
             // a Studio has no notion of docked: every display it has is
@@ -274,11 +251,10 @@ struct KeepAwakeSettingsPage: View {
             ruleRow(KAStr.onPower, on: $autoPower, satisfiedBy: .power) { v in
                 vm.save(in: store) { $0.setAutoPower(v) }
             }
-            // **The one thing this module does that outlives the process, and no
-            // window said so.** `clamshellActive` was published, crossed the wire,
-            // and was read by the panel tile's subtitle alone — so this row was
-            // nailed to `.spacer`, and somebody who shut the lid saw the switch
-            // they had set and nothing of what it was doing.
+            // **The one thing this module does that outlives the process.**
+            // `clamshellActive` crosses the wire and the panel tile's subtitle
+            // reads it; this row reads it too, so somebody who shut the lid sees
+            // what the switch they set is doing and not only the switch.
             //
             // `.holding` or nothing, and no `.waiting` between: the switch on with
             // the lid open is what the control says, and a clock there would be the
@@ -310,9 +286,8 @@ struct KeepAwakeSettingsPage: View {
 
             // Between the conditions and the guard that ends a session: this is
             // about the end of one too, and it means nothing to somebody who
-            // has no conditions above it. v3 does not draw this row — the
-            // setting was written after the mockup, and here is where it
-            // belongs: beside the rules whose end it changes.
+            // has no conditions above it. It belongs beside the rules whose end
+            // it changes.
             HelmSettingRow(KAStr.timerEndsAutomation, note: KAStr.timerEndsAutomationNote,
                            mark: .spacer(inCardWithMarks: shownMarksPossible)) {
                 Toggle(KAStr.timerEndsAutomation, isOn: $timerEndsAutomation)
@@ -327,11 +302,11 @@ struct KeepAwakeSettingsPage: View {
             // Mac with no battery for the guard to watch.
             if MacHardware.hasBattery {
                 // A slider with stops, the way Battery's own charge limit is
-                // set. The menu it replaces made a *quantity* into a list of
-                // words — ten rows of «At 30 % or less» to compare by reading —
-                // where the thing being chosen is a point on a scale and reads
-                // as one. The floor's own row carries the figure, so the number
-                // is on screen without opening anything.
+                // set. A menu would make a *quantity* into a list of words — ten
+                // rows of «At 30 % or less» to compare by reading — where the
+                // thing being chosen is a point on a scale and reads as one. The
+                // floor's own row carries the figure, so the number is on screen
+                // without opening anything.
                 HelmSettingRow(KAStr.turnOffLowBattery,
                                note: batteryGuardEnabled ? KAStr.belowPercent(batteryGuardPercent)
                                                          : nil,
@@ -358,7 +333,6 @@ struct KeepAwakeSettingsPage: View {
         }
     }
 
-    /// Five per cent to fifty, as the stepper this replaced stepped.
     /// The floor, as a range with a step rather than a list of choices.
     ///
     /// Five to fifty in fives: below five the guard cannot act before the Mac
@@ -382,21 +356,14 @@ struct KeepAwakeSettingsPage: View {
                 })
     }
 
-    private var heroAndTitle: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            sessionHero
-            HelmSectionTitle(KAStr.automation)
-        }
-    }
-
     /// Which rows of the card can carry a mark — the live answer, read in exactly
     /// one place: the `onChange` that gives it a transaction.
     ///
     /// Every row is indented by the mark column, marked or not, so all of them
-    /// have to move on one clock. Three went on reading the live value after the
-    /// marked ones moved to the drawn one, and that was worse than no animation:
-    /// the row gaining a tick ramped while the three beside it jumped, so the card
-    /// came apart down the middle on every press.
+    /// have to move on one clock. A row reading the live value while the marked
+    /// ones read the drawn one is worse than no animation: the row gaining a tick
+    /// ramps while the rows beside it jump, so the card comes apart down the
+    /// middle on every press.
     ///
     /// The two rules and the lid can be marked; the timer setting and the battery
     /// guard never are. With none of them countable the column is not drawn at
@@ -424,11 +391,10 @@ struct KeepAwakeSettingsPage: View {
         // that is still sliding.
         let enabled = shownEnabled.contains(condition)
         let satisfied = shownConditions.contains(condition)
-        // The four cases live in `RuleNote`, out in the engine's logic. Written
-        // here as nested ternaries there was no
-        // room for the fourth — a rule that is on, whose trigger holds, and
-        // which is paused — so it read as «Not applying right now» directly
-        // under a banner saying it was paused.
+        // The four cases live in `RuleNote`, out in the engine's logic. Nested
+        // ternaries here have no room for the fourth — a rule that is on, whose
+        // trigger holds, and which is paused — and would read «Not applying
+        // right now» directly under a banner saying it was paused.
         let note = RuleNote.of(enabled: enabled, satisfied: satisfied,
                                batteryStopped: vm.batteryStopped,
                                suppressed: shownSuppressed,
@@ -444,10 +410,10 @@ struct KeepAwakeSettingsPage: View {
     }
 
     @ViewBuilder private var appsSection: some View {
-        Section(header: HelmSectionTitle(KAStr.appsSection)) {
+        HelmSettingsSection(KAStr.appsSection) {
             // A rules string nothing can read answers as «no rules» — safe, the
-            // Mac sleeps — and is indistinguishable from having chosen none. One
-            // line in the log at launch was the whole account of it.
+            // Mac sleeps — and is indistinguishable from having chosen none, so
+            // the page says it.
             //
             // Asked of the store on every pass rather than mirrored into `@State`:
             // the way out of this state is adding an app, which rewrites the string
@@ -461,7 +427,7 @@ struct KeepAwakeSettingsPage: View {
     }
 
     @ViewBuilder private var behaviourSection: some View {
-        Section(header: HelmSectionTitle(HelmSectionName.behaviour)) {
+        HelmSettingsSection(HelmSectionName.behaviour) {
             HelmSettingRow(KAStr.keepDisplayOn) {
                 Toggle(KAStr.keepDisplayOn, isOn: $keepDisplayOn)
                     .labelsHidden()
@@ -471,7 +437,7 @@ struct KeepAwakeSettingsPage: View {
             }
             // The interval means nothing with the switch off, so it shares the
             // row rather than floating below it — and it is a pop-up, because
-            // the stepper offered every minute from 1 to 60 for a question with
+            // a stepper over every minute from 1 to 60 is a question with
             // about seven answers.
             HelmSettingRow(KAStr.movePointer, note: KAStr.movePointerNote) {
                 Picker(KAStr.movePointer, selection: $jiggleIntervalMinutes) {
@@ -483,6 +449,7 @@ struct KeepAwakeSettingsPage: View {
                 .pickerStyle(.menu)
                 .labelsHidden()
                 .fixedSize()
+                .helmSectionMenu()
                 .disabled(!jiggleEnabled)
                 .onChange(of: jiggleIntervalMinutes) { _, v in
                     vm.save(in: store) { $0.setJiggleIntervalMinutes(v) }
@@ -502,14 +469,15 @@ struct KeepAwakeSettingsPage: View {
             }
             HelmSettingRow(KAStr.defaultDuration, note: KAStr.defaultDurationNote) {
                 Picker(KAStr.defaultDuration, selection: $defaultDurationMinutes) {
-                    Text(KAStr.duration(15)).tag(15)
-                    Text(KAStr.oneHour).tag(60)
-                    Text(KAStr.twoHours).tag(120)
-                    Text(KAStr.indefinite).tag(0)
+                    ForEach(Self.durationChoices(including: defaultDurationMinutes),
+                            id: \.self) { minutes in
+                        Text(Self.durationLabel(minutes)).tag(minutes)
+                    }
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
                 .fixedSize()
+                .helmSectionMenu()
                 .onChange(of: defaultDurationMinutes) { _, v in
                     vm.save(in: store) { $0.setDefaultDurationMinutes(v) }
                 }
@@ -517,31 +485,46 @@ struct KeepAwakeSettingsPage: View {
         }
     }
 
+    /// The timed lengths in order, a stored length off the list among them,
+    /// «Indefinite» (0) last: `HelmChoices.including` alone would sort 0 to the
+    /// top, and the setting holds anything from 0 to a day.
+    private static func durationChoices(including stored: Int) -> [Int] {
+        let timed = [15, 60, 120]
+        return (stored == 0 ? timed : HelmChoices.including(stored, in: timed)) + [0]
+    }
+
+    private static func durationLabel(_ minutes: Int) -> String {
+        switch minutes {
+        case 0: KAStr.indefinite
+        case 60: KAStr.oneHour
+        case 120: KAStr.twoHours
+        default: KAStr.duration(minutes)
+        }
+    }
+
     /// The intervals a pointer nudge is worth asking for; a stored value
     /// outside this list is kept by `HelmChoices`.
     private static let jiggleMinutes = [1, 2, 5, 10, 15, 30, 60]
 
-    /// One section, where there were two.
-    ///
-    /// «Menu-bar icon» and «Timer» were two headings about one subject — what
-    /// the icon looks like — and being two is how the app came to ship two
-    /// palettes that disagreed with each other: the active colour ringed on
-    /// orange under one heading, the countdown ringed on red under the other,
-    /// and no way to see that it was one question asked twice.
+    /// «Menu-bar icon» and «Timer» are one section because they are one
+    /// question — what the icon looks like — and two headings would let the
+    /// active colour and the countdown's disagree unseen.
     @ViewBuilder private var menuBarIconSection: some View {
-        Section(header: HelmSectionTitle(KAStr.menuBarIcon)) {
+        HelmSettingsSection(KAStr.menuBarIcon) {
             HelmSettingRow(KAStr.activeIconColor, note: KAStr.ringColorNote) {
                 colorSwatches
             }
             HelmSettingRow(KAStr.customActiveIcon) {
-                // Disabled, never absent. Taken away when the switch went off,
-                // the row lost its tallest control and became visibly shorter
-                // than its neighbours — the card twitched on a setting that had
-                // nothing to do with its height. The two paired rows above do
-                // it this way too, and the shape you chose stays readable.
+                // Disabled, never absent. Taken away when the switch goes off,
+                // the row would lose its tallest control and become visibly
+                // shorter than its neighbours — the card would twitch on a
+                // setting that has nothing to do with its height. The two paired
+                // rows above do it this way too, and the shape you chose stays
+                // readable.
                 IconShapePicker(selection: $activeIconShape, tintToken: activeTintColor)
                     .labelsHidden()
                     .fixedSize()
+                    .helmSectionMenu()
                     .disabled(!customActiveIcon)
                     .onChange(of: activeIconShape) { _, v in
                         writeLook(v, MenuBarLook.Key.iconShape)
@@ -571,7 +554,7 @@ struct KeepAwakeSettingsPage: View {
     }
 
     @ViewBuilder private var shortcutSection: some View {
-        Section(header: HelmSectionTitle(KAStr.globalShortcut)) {
+        HelmSettingsSection(KAStr.globalShortcut) {
             HelmHotkeyRow(KAStr.toggleAction, recorder: recorder,
                           taken: HotkeyStatus.isTaken("keep-awake.toggle"))
         }
@@ -594,20 +577,21 @@ struct KeepAwakeSettingsPage: View {
             activeTintColor = token
             writeLook(token, MenuBarLook.Key.activeTint)
         }
+        .helmSectionMenu()
     }
 
     /// Timer palette: the countdown can stand out from the active colour.
     ///
     /// Both palettes open on orange, which is the same answer twice rather than
-    /// a disagreement — the timer's own default used to be red, so the page
-    /// showed two rings on two different colours and neither had been chosen.
-    /// The `isEmpty` branch survives for a store that answers nothing at all;
-    /// it is not a fallback the defaults can reach.
+    /// a disagreement: two rings on two different colours, neither chosen, would
+    /// read as a fault. The `isEmpty` branch is for a store that answers nothing
+    /// at all; it is not a fallback the defaults can reach.
     private var timerColorSwatches: some View {
         HelmPaletteSwatches(KAStr.timerColor,
                             selection: timerTintColor.isEmpty ? activeTintColor : timerTintColor) { token in
             timerTintColor = token
             writeLook(token, MenuBarLook.Key.timerTint)
         }
+        .helmSectionMenu()
     }
 }

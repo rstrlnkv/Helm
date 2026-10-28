@@ -28,7 +28,7 @@ hosting `SettingsDetail`, the pane that holds whichever module page is open, so 
 inherits the idling without asking for it. `helmSettingsColumn()` ends on the same
 modifier, so a block that takes the column takes the idling with it; a page whose root
 is a `Form` takes no column and calls `helmIdlesOffScreen()` on its own
-(`Sources/Modules/KeepAwake/UI/KeepAwakeSettingsPage.swift`). A harness that leaves its window
+(`Sources/Modules/Layout/UI/LayoutSettingsPage.swift`). A harness that leaves its window
 unordered declares itself with `helmMeasuringBench()` — a declaration the app itself
 does not make. The panel window is not gated this way.
 

@@ -27,9 +27,11 @@ One size serves every page: the reasons are the doc comments of `defaultSize` an
 Both detail frames, `SettingsDetail`'s and `ModuleDetailView`'s, are pinned
 `.topLeading`; the comment on `ModuleDetailView`'s says why.
 
-A grouped `Form` groups by what its direct children are, so rows wrapped in a view
-change the card they are drawn in (`Sources/Modules/KeepAwake/UI/KeepAwakeAppRules.swift`,
-file doc comment).
+`HelmSettingsSection` lays out its content's subviews as the card's rows: a stack
+wrapped round rows makes them one row, while `Group`, `ForEach` and a view of its
+own are flattened (`Sources/Modules/KeepAwake/UI/KeepAwakeAppRules.swift`, file doc
+comment). A grouped `Form` groups by what its direct children are, so rows wrapped
+in a view change the card they are drawn in.
 
 `SettingsSelection` has one case that is a module, `.module(String)`; `.general`,
 `.about` and `.log` are not, which keeps their pages out of `ModuleRegistry.all`.

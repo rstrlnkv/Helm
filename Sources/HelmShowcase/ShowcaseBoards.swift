@@ -9,6 +9,10 @@ enum Sample {
     static let long = "Restore every module to its defaults"
     static let russian = "Восстановить параметры по умолчанию для всех модулей"
     static let note = "A note under a title, quieter than it."
+    static let russianTitle = "Своё время"
+    static let russianVerb = "Начать"
+    static let russianHour = "ч"
+    static let russianMinute = "мин"
     static let russianNote = "Пояснение под названием, тише него и длиннее одной строки в узком столбце."
     static let delete = "Delete"
     static let cancel = "Cancel"
@@ -20,8 +24,8 @@ enum Sample {
     static let dialog = "dialog"
     static let menu = "menu"
 
-    /// A module's tint for the boards that need one: the numbers copied from `KeepAwakeDescriptor` when
-    /// this was written, not read from it (the showcase depends on `HelmUI` alone), so a change to that
+    /// A module's tint for the boards that need one: the numbers are a copy of `KeepAwakeDescriptor`'s,
+    /// not read from it (the showcase depends on `HelmUI` alone), so a change to that
     /// descriptor does not reach this.
     static let tint = ModuleTint(
         ordinary: (light: (0.871, 0.478, 0.131), dark: (0.854, 0.486, 0.155)),
@@ -447,7 +451,7 @@ private struct PaletteBoard: View {
     var body: some View {
         Board(name: "Palette", caption: """
             Fills over the window ground, the three inks, the signal colours and one sample module tint \
-            (sample values copied from KeepAwake's descriptor when this was written, not read from it; the real \
+            (sample values a copy of KeepAwake's descriptor, not read from it; the real \
             ones are declared by each descriptor). Signal and tint \
             follow Increase Contrast through --appearance light-contrast and dark-contrast.
             """) {
@@ -542,6 +546,8 @@ private struct PresentBoard: View {
     @State private var popover: Bool
     @State private var alert: Bool
     @State private var dialog: Bool
+    @State private var zeroMinutes = 0
+    @State private var setMinutes = 90
 
     init(initial: ShowcaseOptions.Presentation?) {
         _sheet = State(initialValue: initial == .sheet)
@@ -555,7 +561,8 @@ private struct PresentBoard: View {
             Sheet, popover, alert and confirmation dialog; --present opens one at launch (one per launch), \
             and each button opens it again. A presentation opens its own root, which does not carry the \
             kit's button and toggle styles, so the sheet and the popover show the system's controls here. \
-            A Menu's open content cannot be forced on a screen: click it.
+            A Menu's open content cannot be forced on a screen: click it. Under the buttons, the content of a «for how long» \
+            popover twice: at zero, where its verb is disabled, and at 90 minutes.
             """) {
             HStack(spacing: HelmSpace.s5) {
                 Button(Sample.sheet) { sheet = true }
@@ -579,7 +586,16 @@ private struct PresentBoard: View {
                 Button(Sample.delete, role: .destructive) {}
                 Button(Sample.cancel, role: .cancel) {}
             } message: { Text(verbatim: Sample.note) }
+            HStack(alignment: .top, spacing: HelmSpace.s7) {
+                prompt($zeroMinutes)
+                prompt($setMinutes)
+            }
         }
+    }
+
+    private func prompt(_ minutes: Binding<Int>) -> some View {
+        HelmDurationPrompt(Sample.russianTitle, minutes: minutes, ceiling: 1440,
+                           hourLabel: Sample.russianHour, minuteLabel: Sample.russianMinute, verb: Sample.russianVerb) {}
     }
 
     private var content: some View {

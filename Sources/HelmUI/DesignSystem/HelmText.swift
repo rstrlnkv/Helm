@@ -5,24 +5,23 @@ import SwiftUI
 ///
 /// SwiftUI's `.tertiary` measures **1.88:1** against the window in light and
 /// 2.26:1 in dark; `.quaternary` measures 1.25:1 and 1.34:1. Both are below
-/// every readability threshold there is, and both were in use at sixteen
-/// sites. `HelmMetricStrip` found this once and fixed it in place — the
-/// comment at its label style records 1.87:1 at 9 pt — and the fix was never
-/// generalised. These are literal colours, which also keeps them out of the
+/// every readability threshold there is. `HelmMetricStrip`'s label style
+/// records the same finding in place (1.87:1 at 9 pt); these tokens are the
+/// general fix. They are literal colours, which also keeps them out of the
 /// hierarchical-style hazard that the Motion rules warn about inside animated
 /// blocks.
 ///
-/// The ratios below replace the ones this comment used to carry, which were
-/// arithmetic done against pure black on pure white. Neither is what the app
-/// draws: `Color.primary` is `labelColor`, which is 85% black, and it lands on
-/// `windowBackgroundColor`. Measured properly (`Scripts/design/contrast.swift`)
-/// the old 0.60 was 4.09:1 rather than the 5.74:1 written here, and 0.45 was
-/// 2.69:1 rather than 3.35:1 — the second one below the threshold it claimed
-/// to clear. The opacities are now solved for the target in the worse of the
-/// two appearances rather than chosen and described afterwards.
+/// The ratios below are measured (`Scripts/design/contrast.swift`) against
+/// what the app draws, not against pure black on pure white: `Color.primary`
+/// is `labelColor`, which is 85% black, and it lands on
+/// `windowBackgroundColor`. Arithmetic against pure black on pure white is too
+/// generous — 0.60 measures 4.09:1 rather than 5.74:1, and 0.45 measures
+/// 2.69:1 rather than 3.35:1, below the threshold it would claim to clear. The
+/// opacities are solved for the target in the worse of the two appearances
+/// rather than chosen and described afterwards.
 ///
-/// **Four settings sizes, because the window had more.** Its text sizes and
-/// weights were chosen a call site at a time. The ones under "The settings type
+/// **Four settings sizes, not more.** Text sizes and weights chosen a call
+/// site at a time drift apart. The ones under "The settings type
 /// scale" are what macOS's own settings use for the same jobs, so a Helm page
 /// and a System Settings pane read at the same rhythm — and a size that is not
 /// there is a decision somebody has to argue for rather than type.
@@ -31,7 +30,7 @@ public enum HelmText {
     /// quieter, so it answers to the body threshold. 4.92:1 light, 6.06:1 dark
     /// — where the platform's own `.secondary` is 3.95:1 light.
     ///
-    /// **It was 0.64, and 0.64 is not enough on a tinted field.** The four
+    /// **0.66, because 0.64 is not enough on a tinted field.** The four
     /// surfaces this token was solved against are the page's — window, control,
     /// and Helm's card and well on top of them — and there is a fifth that
     /// belongs to a component: `HelmBanner` writes this ink on its own signal
@@ -45,9 +44,8 @@ public enum HelmText {
     /// field stops reading as a field, a card still measures 4.45:1. So the ink
     /// moved, and 0.66 is the ladder step that clears all six banner readings
     /// (worst 4.60:1 light, 4.88:1 dark) while taking the four page surfaces up
-    /// with it. It also puts `quiet` back above `faint`, which it had not been:
-    /// `faint` was raised to 0.65 to clear its own floor and had quietly become
-    /// the darker of the two.
+    /// with it. It also keeps `quiet` above `faint`, which 0.64 would not:
+    /// `faint` at 0.65 would be the darker of the two.
     public static let quiet = Color.primary.opacity(0.66)
     /// What a window that is not the active one draws its text and glyphs at (`\.helmWindowAppearsActive`):
     /// the header row and the sidebar's rows. Not a reading floor — it says "this window is not in
@@ -56,9 +54,8 @@ public enum HelmText {
     /// Captions that must recede and stay readable — short, and never the only
     /// place a fact appears. 4.77:1 / 5.92:1.
     ///
-    /// It was 0.55, which measured 3.54:1 in light — under the body floor, and
-    /// written down as such in this comment for months, because prose is not a
-    /// guard. The floor needs 0.631; 0.65 is the first step past it.
+    /// 0.55 measures 3.54:1 in light — under the body floor. The floor needs
+    /// 0.631; 0.65 is the first step past it.
     public static let faint = Color.primary.opacity(0.65)
     /// Marks, never text — breadcrumb chevrons and the like. A chevron carries
     /// meaning, so it answers to the 3:1 non-text threshold rather than to
@@ -68,20 +65,19 @@ public enum HelmText {
     /// A figure: a byte size, a count, a version — anything whose digits a
     /// reader compares down a column rather than reads as a word.
     ///
-    /// Sizes were drawn in four faces across lists that sit next to each other
-    /// in the same sidebar. Measured, "1,24 ГБ" at SF Mono 11 renders 27% wider
+    /// Sizes drawn in four faces across lists that sit next to each other in
+    /// the same sidebar disagree. Measured, "1,24 ГБ" at SF Mono 11 renders 27% wider
     /// than at SF Pro 10 with tabular figures, so two such columns cannot be
     /// made to agree by choosing a width — they disagree about the glyphs.
     ///
-    /// **SF Pro with tabular figures since 2026-08-20, not SF Mono.** The old
-    /// note argued a mono face keeps a number and its unit at one rhythm, and it
-    /// does — but so does the interface face with `monospacedDigit()`, which is
-    /// what macOS itself sets a size in, and SF Mono then reads as what it
-    /// is everywhere else in this app: code. A byte size in a settings row is
-    /// not code. The digits still do not jump as they change, which was the
-    /// whole requirement; `.monospacedDigit()` is **on the token**, so a caller
-    /// that spells `.font(HelmText.figureFont)` without reaching for
-    /// `helmFigure()` gets it too — seven call sites do exactly that.
+    /// **SF Pro with tabular figures, not SF Mono.** A mono face keeps a number
+    /// and its unit at one rhythm — but so does the interface face with
+    /// `monospacedDigit()`, which is what macOS itself sets a size in, and SF
+    /// Mono reads as what it is everywhere else in this app: code. A byte size
+    /// in a settings row is not code. The digits still do not jump as they
+    /// change, which is the whole requirement; `.monospacedDigit()` is **on the
+    /// token**, so a caller that spells `.font(HelmText.figureFont)` without
+    /// reaching for `helmFigure()` gets it too.
     ///
     /// 11 pt is the size the strip's own figures scale from, one step under
     /// body, and it is named rather than numbered for the reason the scale below
@@ -94,31 +90,27 @@ public enum HelmText {
     /// step above body, and the face is `figureFont`'s for the same reason —
     /// a number and its unit at one rhythm.
     ///
-    /// A token because it was spelled twice: the metric strip that rides every
+    /// A token because it is used twice: the metric strip that rides every
     /// module page, and VPN's tile strip. Both also cap the line and let it
     /// shrink, which is why the whole treatment is `helmMetricFigure()` rather
     /// than this size alone.
     ///
-    /// **The tabular digits are on the token and were never on the modifier.**
-    /// `helmMetricFigure()` capped the line and let it shrink and did not ask
-    /// for `monospacedDigit()` at all — which cost nothing while the face was
-    /// SF Mono and would have cost a headline figure that jumps as it counts
-    /// the moment it stopped being.
+    /// **The tabular digits are on the token, not on the modifier.**
+    /// `helmMetricFigure()` caps the line and lets it shrink and does not ask
+    /// for `monospacedDigit()` at all; a headline figure that jumps as it counts
+    /// is what that would cost on a face that is not already tabular.
     public static let metricFont = Font.system(size: 16, weight: .medium).monospacedDigit()
 
     /// The scale's top step: the one line a page leads with, whatever it says.
     ///
     /// Keep Awake's four states, VPN's verdict and its empty slot, Layout's
-    /// count — three modules, seven sites, each of which typed
-    /// `.system(size: 40, weight: .light)` where it stood. `LayoutSettingsPage`
-    /// wrote the reason down as a sentence — «the same 40 pt light figure Keep
-    /// Awake's hero draws, so two pages of this app do not measure their own
-    /// heroes differently» — with nothing under it, which is what a token is
-    /// for.
+    /// count — three modules share one 40 pt light line, so two pages of this
+    /// app do not measure their own heroes differently. A reason like that
+    /// belongs on a token, not in a sentence at a call site.
     ///
     /// Held rather than built at the call site for the ordinary reason a value
     /// with no argument is: it is one value and there is one of it. What that
-    /// saves is small and was measured rather than assumed — 330 ns and no
+    /// saves is small, and measured rather than assumed — 330 ns and no
     /// retained bytes per build, so this is a duplication fix and not a
     /// performance one.
     ///
@@ -131,9 +123,11 @@ public enum HelmText {
     ///
     /// Tabular digits for the reason `figureFont` has them — a figure redrawn
     /// once a second must not shuffle the digits beside it as they change
-    /// width. It was a monospaced *face* until 2026-08-20, which bought the
-    /// same thing and made a countdown look like code.
+    /// width. Not a monospaced *face*, which buys the same thing and makes a
+    /// countdown look like code.
     public static let heroFigureFont = heroFont.monospacedDigit()
+    /// The tracking a hero figure takes; a sentence in the same slot takes none.
+    public static let heroFigureTracking: CGFloat = -2
 
     // MARK: - The settings type scale
 
@@ -141,15 +135,15 @@ public enum HelmText {
     ///
     /// **And a sentence on a page, which is the same decision.** 13 is what
     /// macOS resolves `.body` to, so a paragraph, a hint and a row's name are
-    /// one size — and the app had been reaching for `.callout` (12) at thirty
-    /// sites to mean «body, but a little quieter», which is a fifth size on a
-    /// window the scale gives four and a distinction nobody can see. Quieter is
+    /// one size — and `.callout` (12) to mean «body, but a little quieter» is a
+    /// fifth size on a window the scale gives four and a distinction nobody can
+    /// see. Quieter is
     /// what `HelmText.quiet` is for. A *fifth token* spelling 13 a second time
     /// would be a synonym, and a scale exists to have fewer of those.
-    /// **Named, not numbered, since 2026-08-20.** These were `.system(size: 13)`
-    /// and `.system(size: 11)`, which is the same face at a size that never
-    /// moves — so a Mac whose owner had raised the interface text size got a
-    /// Helm window that did not. The styles below resolve to the very same
+    ///
+    /// **Named, not numbered.** `.system(size: 13)` and `.system(size: 11)` are
+    /// the same face at a size that never moves — so a Mac whose owner raised
+    /// the interface text size would get a Helm window that does not follow. The styles below resolve to the very same
     /// points at the default setting (measured on macOS 27: `.body` 13 regular,
     /// `.subheadline` 11 regular), and to larger ones when the system says so.
     ///
@@ -166,10 +160,10 @@ public enum HelmText {
     /// `rowDetail` as AppKit sees it, for the two places that measure text
     /// rather than draw it (`LeftoverPathFloor`, `TabStripFit`).
     ///
-    /// A font rather than the number it used to be. The two sides have to agree
-    /// about the *same* text style now: a bare 11 would keep measuring 11 while
-    /// the drawn line grew with the system's setting, and the floor would be
-    /// under the thing it was holding up.
+    /// A font rather than a number: the two sides have to agree about the *same*
+    /// text style — a bare 11 would keep measuring 11 while the drawn line grows
+    /// with the system's setting, and the floor would be under the thing it holds
+    /// up.
     public static var rowDetailNSFont: NSFont { .preferredFont(forTextStyle: .subheadline) }
     /// The heading over a card, on the page rather than inside it.
     public static let sectionHeading = Font.body.weight(.semibold)
@@ -178,7 +172,7 @@ public enum HelmText {
     public static let groupLabel = Font.subheadline.weight(.semibold)
     /// The state glyph at the start of a status line (About's update card): `.title3`, 15 pt at the default.
     public static let statusGlyph = Font.title3
-    /// The fine print at the foot of a page: `.caption2`, 10 pt at the default.
+    /// The fine print at the foot of a page and a group heading on a panel card: `.caption2`, 10 pt at the default.
     public static let smallPrint = Font.caption2
     /// The version over a changelog entry: `.title3` bold, 15 pt at the default.
     public static let entryHeading = Font.title3.weight(.bold)

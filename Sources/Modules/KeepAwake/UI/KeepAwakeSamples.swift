@@ -1,7 +1,7 @@
-// Removed in step 13 of the rework, with `-HelmKeepAwakeSample` and the branch in
-// `KeepAwakeDescriptor.makeEngine`: the argument exists so each state of this
-// module can be put on screen and photographed before and after the page is
-// redrawn.
+// Removed after the design review and before the next release, with
+// `-HelmKeepAwakeSample` and the branch in `KeepAwakeDescriptor.makeEngine`:
+// the argument exists so each state of this module can be put on screen and
+// photographed before and after the page is redrawn.
 //
 // A sample is a picture, not a state the Mac is in. It builds no `KeepAwakeEngine`
 // and no port, so no assertion, `pmset` or sudoers rule is reachable; it writes only

@@ -263,9 +263,10 @@ struct VPNTunnelStrip {
 /// solved the same problem one module over: what is happening, in the type size
 /// of a headline, above the settings rather than after them.
 ///
-/// **No card of its own.** It rides on the first section's header with
-/// `.helmSettingsColumn()`, the way `KeepAwakeSettingsPage.sessionHero` does —
-/// a hero inside a card would be a card above the cards.
+/// **No card of its own.** It rides on the first section's header
+/// (`VPNSettingsPage.heroAndTitle`), drawn out to the cards' column by
+/// `-groupedHeaderOutset` — a hero inside a card would be a card above the
+/// cards.
 ///
 /// **And no wells.** The four columns were recessed fills
 /// (`HelmSurface.wellFill`), which drew four boxes where the page wanted one

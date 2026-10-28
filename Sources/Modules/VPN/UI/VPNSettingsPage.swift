@@ -72,7 +72,7 @@ struct VPNSettingsPage: View {
     ///
     /// All three ride on one section's header, which is what puts the hero
     /// above the page's first card rather than inside it — the same
-    /// construction `KeepAwakeSettingsPage.heroAndTitle` uses, and for the same
+    /// construction `LayoutSettingsPage.heroAndTitle` uses, and for the same
     /// reason: a grouped `Form` draws a section's header outside its card, and
     /// a hero is not a row.
     private var heroAndTitle: some View {

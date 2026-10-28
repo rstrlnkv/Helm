@@ -112,8 +112,7 @@ default duration) and the most app rules. Its longest strings come from the lang
 sample: add `--arg module.app.interfaceLanguage ru`, and once with `de` for the German wrap.
 
 Shoot each state at position 0 (no suffix), `--scroll 0.5` and `1` (suffixes `-s050`, `-s100`);
-add a position where the 0.5 frame cuts the part to be shown: `0.25` (`-s025`) for `lid-refused`
-and `left-behind`, whose lid row the header cuts at 0.5. The panel tile (`--panel`)
+when none of the three shows the part a state is for whole, add `--scroll 0.25` (`-s025`). The panel tile (`--panel`)
 for `idle-no-rules`, `timed-long`, `indefinite`, `automatic-apps`, `suppressed`, `battery-veto`
 and `worst`.
 

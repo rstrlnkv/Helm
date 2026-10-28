@@ -23,9 +23,8 @@ struct KeepAwakePanelTile: View {
     /// carries neither a transition nor a layout change. Measured in
     /// `KeepAwakeHero`, whose comment has the table: the swap under
     /// `.animation(_:value:)` is **one** distinct frame, the same swap written
-    /// inside `withAnimation` is eleven. Both animations in this file were the
-    /// first spelling, and the comment below claiming a cross-fade described
-    /// something that never happened.
+    /// inside `withAnimation` is eleven, so both animations in this file are
+    /// written inside `withAnimation`.
     ///
     /// Seeded from the engine rather than from a constant: the first value is
     /// not a change, and a panel opened while a timer is already running must
@@ -64,9 +63,8 @@ struct KeepAwakePanelTile: View {
             header
             // The swap the tile is for. The rows are different view types, so
             // there is nothing to interpolate — a cross-fade on one clock is
-            // the honest answer, and it took two attempts to actually get one:
-            // this comment described a cross-fade for months while the modifier
-            // under it carried nothing at all.
+            // the honest answer, written inside `withAnimation` because the
+            // modifier carries nothing for a swap (see `shownActive`).
             Group {
                 if shownActive, let end = vm.endDate {
                     countdownRow(end).transition(.opacity)
@@ -74,7 +72,7 @@ struct KeepAwakePanelTile: View {
                     presetRow.transition(.opacity)
                 }
             }
-            .padding(.top, 10)
+            .padding(.top, HelmSpace.s4)
             // Above the ⋯ block, never inside it. The whole point of this row
             // is that nothing else on any screen says the rule has stopped
             // working, so putting it behind a disclosure would leave it exactly
@@ -87,11 +85,10 @@ struct KeepAwakePanelTile: View {
                 .helmAccordion(open: shownSuppressed, height: $suppressedHeight)
             // The accordion, and **available in both states**: the block is
             // mounted whether or not a session is running, so the ⋯ button
-            // opens the same automation controls either way. Its «no `.opacity`
-            // here on purpose» is the modifier's now — this is the block whose
-            // "Automation" heading snapped colour when the fade's layer was
-            // dropped, and whose divider and switches washed out under a
-            // compositing group.
+            // opens the same automation controls either way. Why there is no
+            // `.opacity` is on the modifier (`HelmAccordion.swift`): a fade here
+            // snaps the «Automation» heading's colour when its layer is dropped,
+            // and a compositing group washes out the divider and switches.
             moreControls
                 .helmAccordion(open: showMore, height: $moreHeight)
         }
@@ -115,9 +112,9 @@ struct KeepAwakePanelTile: View {
         // The shared widget header, not a fourth arrangement of a plate and a
         // name: five widgets in one panel, one heading.
         // The token, not `.orange`. The 1×1 widget draws the module's own
-        // #DE7A21 and this drew the system colour, so resizing a tile between
-        // the two repainted its plate in place — which is the very defect
-        // `HelmWidgetHeader` was written to end.
+        // #DE7A21, and the system colour would repaint the plate in place when
+        // a tile is resized between the two — the very defect
+        // `HelmWidgetHeader` exists to end.
         HelmWidgetHeader(symbol: "moon.zzz.fill", tint: KeepAwakeDescriptor.tint.colour,
                          name: KAStr.moduleName,
                          subtitle: activeSubtitle, active: vm.isActive) {
@@ -127,11 +124,11 @@ struct KeepAwakePanelTile: View {
                 .controlSize(.small)
                 // Orange switch = an automation rule (display/power/app) is
                 // holding the session, so flipping it off may not stick.
-                .tint(autoDriven ? .orange : nil)
+                .tint(autoDriven ? KeepAwakeDescriptor.tint.colour : nil)
                 // Live but dead while the battery guard vetoes: the engine
                 // refuses the session instantly and the switch springs back, so
-                // the one control in the menu bar that starts a session was a
-                // control that visibly did nothing. The notice below it is on
+                // the one control in the menu bar that starts a session would be
+                // a control that visibly does nothing. The notice below it is on
                 // screen saying why, which is what makes disabling honest rather
                 // than mute.
                 .disabled(vm.batteryStopped)
@@ -152,9 +149,9 @@ struct KeepAwakePanelTile: View {
         if !vm.activeConditions.isEmpty {
             parts.append(vm.activeConditions.map(KAStr.condition).sorted().joined(separator: ", "))
         }
-        // **What is true of the machine, not what is true of the lid.** This said
-        // «Lid closed — staying awake», in a list of what was holding the Mac —
-        // and the lid is not holding anything: sleep is off for the whole Mac,
+        // **What is true of the machine, not what is true of the lid.** «Lid
+        // closed — staying awake» in a list of what is holding the Mac would be
+        // wrong — the lid is not holding anything: sleep is off for the whole Mac,
         // through a rule that outlives this process, and the lid being closed is
         // merely the reason somebody asked for that. The settings row says the
         // same sentence, with the way back out of it after it.
@@ -165,7 +162,7 @@ struct KeepAwakePanelTile: View {
     // MARK: - Presets + more
 
     private var presetRow: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: HelmSpace.s3) {
             presetPill(KAStr.duration(15, compact: true), 15)
             presetPill(KAStr.duration(60, compact: true), 60)
             presetPill(KAStr.duration(120, compact: true), 120)
@@ -179,9 +176,9 @@ struct KeepAwakePanelTile: View {
 
     /// Every one of these asks the engine for a session, and while the battery
     /// guard vetoes, the engine refuses instantly — `releaseForBattery` is
-    /// reached before anything is held. Pressing one was silence with a banner
-    /// beside it explaining a state the person had no reason to connect to the
-    /// press. Disabled, not hidden: a row of pills that came and went would take
+    /// reached before anything is held. Pressing one would be silence with a
+    /// banner beside it explaining a state the person has no reason to connect
+    /// to the press. Disabled, not hidden: a row of pills that came and went would take
     /// the card's height with it, and the notice is the sentence.
     private func presetPill(_ label: String, _ minutes: Int,
                             spoken: String? = nil) -> some View {
@@ -205,7 +202,7 @@ struct KeepAwakePanelTile: View {
         .accessibilityLabel(HelmA11y.moreActions)
         // Which of the two things this button does it has just done. The block
         // below is hidden from the tree while collapsed, so without this the
-        // only feedback for pressing it was silence.
+        // only feedback for pressing it would be silence.
         // `HelmA11y`'s, not a second pair in this module: the panel and the
         // settings row's ⓘ answer the same question, and the shared one is read
         // out of macOS's own tables rather than translated (`HelmA11y.expanded`).
@@ -214,9 +211,12 @@ struct KeepAwakePanelTile: View {
 
     private func pillLabel(_ content: some View, active: Bool = false) -> some View {
         content
-            .font(.subheadline.weight(.medium))
+            .font(HelmText.rowDetail.weight(.medium))
+            // A glyph-only pill (∞, ⋯) as tall as a worded one.
             .frame(maxWidth: .infinity, minHeight: 16)
-            .padding(.vertical, 6)
+            .padding(.vertical, HelmSpace.s3)
+            // The open ⋯ pill: the accent at a quarter, a literal because the
+            // panel has no kit fill for «pressed in».
             .background(Capsule().fill(active ? Color.accentColor.opacity(0.25) : HelmSurface.onPanelFill))
             .contentShape(Capsule())
     }
@@ -234,7 +234,7 @@ struct KeepAwakePanelTile: View {
     /// fires again — and a timer that ends automation does the same when it
     /// runs out. Both are correct and neither is visible: the switch reads off,
     /// the rule reads on, and the Mac sleeps with the app that should be
-    /// holding it still on screen. The settings page grew a line for it; this
+    /// holding it still on screen. The settings page has a line for it; this
     /// is the panel, which is where somebody actually looks when the Mac
     /// slept and they did not expect it to.
     ///
@@ -242,13 +242,10 @@ struct KeepAwakePanelTile: View {
     /// dismiss — only a way to say «no, keep going».
     /// The same shape the settings page draws, from the same component.
     ///
-    /// This was a hand-built `HStack` — a mark, `.caption` text, a button, no
-    /// fill — while the hero drew the identical sentence through `HelmBanner`
-    /// as a tinted field at 13 pt. One statement, two appearances, decided by
-    /// which window you happened to open. `HelmBanner` was extracted for the
-    /// hero and this copy simply outlived the extraction; the wrapping and the
-    /// literal colours it needed are both already in there, for the same two
-    /// reasons they were written here.
+    /// Through `HelmBanner`, not a hand-built `HStack` of a mark, `.caption`
+    /// text and a button: one statement in two appearances, decided by which
+    /// window you happened to open. The wrapping and the literal colours it
+    /// needs are in the component.
     @ViewBuilder private var suppressedRow: some View {
         Group {
             // The battery wins. Both can be true — a rule is paused *and* the
@@ -262,24 +259,27 @@ struct KeepAwakePanelTile: View {
                 // the way out; here there is no room for a second clause beside a
                 // symbol in a 320 pt card, and the presets going grey above it
                 // are what says the panel cannot help.
-                HelmBanner(KAStr.stoppedByBatteryShort(batteryFloor), symbol: "battery.25")
+                HelmBanner(KAStr.stoppedByBatteryShort(batteryFloor), symbol: "battery.25", compact: true) {
+                    EmptyView()
+                }
             } else {
                 // The short form. In a 320 pt card beside a button the long
-                // sentence wrapped to four lines — a paragraph where everything
+                // sentence wraps to four lines — a paragraph where everything
                 // else is a row.
-                HelmBanner(KAStr.automationPausedShort, symbol: "pause.circle.fill") {
+                HelmBanner(KAStr.automationPausedShort, symbol: "pause.circle.fill", compact: true) {
                     Button(KAStr.resume) { vm.send(KeepAwakeCommand.resumeAutomation) }
                         .controlSize(.small)
                         .fixedSize()
                 }
             }
         }
-        .padding(.top, 10)
+        .padding(.top, HelmSpace.s4)
     }
 
     /// Quick automation toggles + a custom timer, revealed inline under the
     /// presets — same disclosure language as the panel's Utilities section
-    /// (rows fade in cascading, the card grows downward).
+    /// (the accordion: the card grows by the block's measured height, clipped,
+    /// no fade).
     private var moreControls: some View {
         // The top gap lives INSIDE the measured block: with stack spacing at 0
         // it must not exist while collapsed, and it should animate in with the
@@ -288,13 +288,13 @@ struct KeepAwakePanelTile: View {
         // it (same action, arbitrary length), then the automation rules — which
         // are standing settings, not actions — sit under their own heading so
         // their labels read as conditions.
-        VStack(alignment: .leading, spacing: 8) {
-            Divider().padding(.top, 10)
+        VStack(alignment: .leading, spacing: HelmSpace.s4) {
+            Divider().padding(.top, HelmSpace.s4)
 
             settingRow(KAStr.timer) {
-                HStack(spacing: 6) {
+                HStack(spacing: HelmSpace.s3) {
                     // A menu of sensible durations beats nudging a stepper five
-                    // minutes at a time in a 300pt panel.
+                    // minutes at a time in a 320 pt panel.
                     Menu {
                         ForEach(Self.timerOptions, id: \.self) { minutes in
                             Button(KAStr.duration(minutes)) { setMinutes(minutes) }
@@ -322,9 +322,9 @@ struct KeepAwakePanelTile: View {
             }
 
             Text(KAStr.automation)
-                // 10, and the panel's own scale rather than the settings
-                // window's — this tile is drawn inside the menu-bar panel.
-                .font(.caption)
+                // `smallPrint`, the settings scale's fine print, which is also
+                // the panel card's group heading.
+                .font(HelmText.smallPrint)
                 // A literal colour, not `.secondary`. Hierarchical styles are
                 // resolved against the rendering context, and this block gets
                 // its own layer while its height animates (that is what
@@ -333,14 +333,14 @@ struct KeepAwakePanelTile: View {
                 // primary-with-alpha tracks light and dark on its own and does
                 // not depend on the layer.
                 .foregroundStyle(HelmText.quiet)
-                .padding(.top, 2)
+                .padding(.top, HelmSpace.s1)
 
             // Hidden on a Mac with no display of its own, the way the settings
             // page hides the same rule and the engine refuses it: every display a
             // mini or a Studio has is external, so the rule would mean «never
-            // sleep». This was the **writer** — the page hid its row and the panel
-            // went on offering the switch, so a desktop could be put into a state
-            // whose only control was on the screen that does not draw it.
+            // sleep». The panel is a writer too: offering the switch here while
+            // the page hides its row would let a desktop be put into a state
+            // whose only control is on the screen that does not draw it.
             //
             // The row's visible Text is a sibling, not the toggle's label, so
             // the title goes into the Toggle itself and labelsHidden keeps it
@@ -363,16 +363,16 @@ struct KeepAwakePanelTile: View {
         }
     }
 
-    // Round durations only: a compound label ("1 ч 30 мин") forced the menu wide
-    // enough to push Start out of the card.
+    // Round durations only: a compound label ("1 ч 30 мин") would force the menu
+    // wide enough to push Start out of the card.
     private static let timerOptions = [5, 10, 15, 20, 30, 45, 60, 120, 180, 240]
 
     /// Label on the left, trailing control(s) pinned to the right edge.
     private func settingRow<Control: View>(_ title: String,
                                            @ViewBuilder control: () -> Control) -> some View {
-        HStack(spacing: 8) {
-            Text(title).font(.subheadline).lineLimit(1)
-            Spacer(minLength: 8)
+        HStack(spacing: HelmSpace.s4) {
+            Text(title).font(HelmText.rowDetail).lineLimit(1)
+            Spacer(minLength: HelmSpace.s4)
             control()
                 .toggleStyle(.switch)
                 .controlSize(.mini)
@@ -385,7 +385,7 @@ struct KeepAwakePanelTile: View {
     static let panelTimerMinutes = "panelTimerMinutes"
 
     /// What the countdown's one button adds, in its label and in what it asks
-    /// for — the two were the same literal twice, one of them inside a string.
+    /// for: one number, so the two cannot drift apart.
     private static let extraMinutes = 15
 
     /// The longest timer this tile offers, for the typed entry and for the
@@ -425,35 +425,22 @@ struct KeepAwakePanelTile: View {
         store.set(minutes, for: Self.panelTimerMinutes)
     }
 
-    /// Free-form duration entry, opened from the menu's "Custom…" entry.
-    ///
-    /// The same field the settings page draws — a shape two surfaces draw
-    /// belongs to `HelmUI`, and this was the older of the two: one box asking
-    /// for minutes, so «two hours» was a sum the person had to do and `120`
-    /// read the same as `12`.
+    /// Free-form duration entry, opened from the menu's «Other…» entry: the
+    /// field the settings page draws, in the prompt both surfaces share.
     private var customTimeEditor: some View {
-        VStack(spacing: 12) {
-            Text(KAStr.customTimeTitle)
-                .font(.subheadline.weight(.semibold))
-            HelmDurationField(minutes: $editedMinutes,
-                              ceiling: Self.maxCustomMinutes,
-                              hourLabel: KAStr.hoursUnitShort,
-                              minuteLabel: KAStr.minutesUnitShort)
-            Button(KAStr.done, action: applyCustomTime)
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
-                // Unlike the page's, this number is a *setting* — what the
-                // switch starts next time — so zero is not «Indefinite» here,
-                // it is a duration the tile could not act on.
-                .disabled(editedMinutes == 0)
-        }
-        .padding(14)
-        .frame(width: 226)
+        // Unlike the page's, this number is a *setting* — what the switch
+        // starts next time — so zero is not «Indefinite» here, it is a
+        // duration the tile could not act on; the prompt disables its verb at 0,
+        // so `applyCustomTime` is never reached with it.
+        HelmDurationPrompt(KAStr.customTimeTitle, minutes: $editedMinutes,
+                           ceiling: Self.maxCustomMinutes,
+                           hourLabel: KAStr.hoursUnitShort,
+                           minuteLabel: KAStr.minutesUnitShort,
+                           verb: KAStr.done, apply: applyCustomTime)
     }
 
     private func applyCustomTime() {
         showCustomTime = false
-        guard editedMinutes > 0 else { return }
         // `HelmDurationField` clamps to the ceiling it was handed, which is
         // this one — so the value only has to be stored.
         setMinutes(editedMinutes)
@@ -464,14 +451,14 @@ struct KeepAwakePanelTile: View {
     private func countdownRow(_ end: Date) -> some View {
         TimelineView(.periodic(from: .now, by: 1)) { ctx in
             let remaining = max(0, end.timeIntervalSince(ctx.date))
-            HStack(spacing: 8) {
+            HStack(spacing: HelmSpace.s3) {
                 Image(systemName: "timer").foregroundStyle(HelmText.quiet)
                     // Decoration beside a figure that already says what it is;
                     // read aloud it announced «timer» before the time.
                     .accessibilityHidden(true)
                 Text(TimerProgress.label(remaining: remaining))
-                    .font(.subheadline.weight(.semibold))
-                    .monospacedDigit()
+                    .font(HelmText.figureFont.weight(.semibold))
+                    .layoutPriority(1)
                     .contentTransition(.numericText(countsDown: true))
                     .animation(HelmMotion.interface, value: remaining)
                     // Once a second, this row is rebuilt. Without the trait
@@ -481,12 +468,16 @@ struct KeepAwakePanelTile: View {
                     .accessibilityLabel(KAStr.a11yRemaining(
                         TimerProgress.label(remaining: remaining)))
                     .accessibilityAddTraits(.updatesFrequently)
-                Spacer()
+                // No minimum: every sibling is rigid and the figure is the one
+                // thing that can give, so the default gap here truncated
+                // «23:59:56» beside the longer Russian and German captions.
+                Spacer(minLength: 0)
                 Button("+" + KAStr.duration(Self.extraMinutes, compact: true)) {
                     vm.start(minutes: TimerPolicy.extendedMinutes(
                         remaining: remaining, adding: Self.extraMinutes))
                 }
                 .controlSize(.small)
+                .fixedSize()
                 // Ends the timed session; the header toggle is the all-or-nothing
                 // switch, this stops just the countdown.
                 //
@@ -499,6 +490,7 @@ struct KeepAwakePanelTile: View {
                 // outlives the countdown; this one does not.
                 Button(KAStr.stop) { vm.send(KeepAwakeCommand.stop) }
                     .controlSize(.small)
+                    .fixedSize()
                 // The automation controls must stay reachable while a timer runs.
                 // A fixed width, not fixedSize(): the pill stretches inside the
                 // preset row, so left to itself here it shrank to the glyph.

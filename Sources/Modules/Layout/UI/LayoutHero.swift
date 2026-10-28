@@ -6,16 +6,15 @@ import Module_Layout_Engine
 /// The page's one figure: what the module has put right, over a period somebody
 /// chooses, and what that came to in time.
 ///
-/// Built to the shape the two finished pages of this app already use — Keep
-/// Awake's and VPN's — because those are the ones that have been measured and
-/// argued over. Centred like Keep Awake's, which is why it takes no
+/// Built to the shape Keep Awake's and VPN's pages use, because those are the
+/// ones that have been measured and argued over. Centred like Keep Awake's, which is why it takes no
 /// `groupedHeaderOutset`: the 10 pt is for a block that draws a surface, and
 /// centred text needs none of it.
 ///
 /// **Every state is the same height.** The figure changes, the caption changes,
 /// and the line under them changes what it says rather than coming and going —
 /// a hero that grows a line when somebody presses a segment moves the whole
-/// form under it on an act that was not about the form.
+/// page under it on an act that was not about the page.
 struct LayoutHero: View {
 
     let totals: ConversionTotals
@@ -34,7 +33,7 @@ struct LayoutHero: View {
                 // `tracking(-2)`, measured, and Spanish 13.9 %. Keep Awake
                 // draws the same distinction for the same reason.
                 .font(hasFigure ? HelmText.heroFigureFont : HelmText.heroFont)
-                .tracking(hasFigure ? -2 : 0)
+                .tracking(hasFigure ? HelmText.heroFigureTracking : 0)
                 // A figure that changes rolls rather than cuts — and the keyed
                 // animation is the half that makes the transition an animation
                 // rather than an instruction for one.
@@ -72,7 +71,7 @@ struct LayoutHero: View {
 
     /// Nothing put right is not «0». A module that has been watching all day and
     /// had nothing to correct is working perfectly, and a zero reads as a fault
-    /// — the state no edition of the redesign ever drew.
+    /// — so that state is drawn as a sentence.
     private var hasFigure: Bool { figures.words > 0 }
 
     private var state: HeroSentence {
@@ -96,15 +95,13 @@ struct LayoutHero: View {
 
     /// What the figure is, over what, and what it came to in typing.
     ///
-    /// **One line, not two.** The estimate had a line of its own under the
-    /// period buttons — always drawn, at `.opacity(0)` half the time, so that
-    /// pressing a glyph could not move the form. The glyph is gone (§ the
-    /// metric switch), so the line was reserved against nothing, and a figure's
-    /// scale and a figure's consequence are one thought: «23 · words put right ·
-    /// month · ≈ 48 s not spent typing again».
+    /// **One line, not two.** A figure's scale and a figure's consequence are
+    /// one thought: «23 · words put right · month · ≈ 48 s not spent typing
+    /// again». A line of its own for the estimate would be reserved against
+    /// nothing, or drawn at `.opacity(0)` half the time so that pressing a
+    /// segment could not move the page.
     ///
-    /// Every state is still one string and therefore one height, which is what
-    /// the reserved line used to buy.
+    /// Every state is one string and therefore one height.
     private var caption: String {
         switch state {
         case .deaf: return LyStr.heroNotWatchingWhy
@@ -126,9 +123,8 @@ struct LayoutHero: View {
     ///
     /// **The filling is ours, not `.borderedProminent`'s.** That style takes
     /// `NSColor.controlAccentColor`, which macOS greys the moment the window
-    /// stops being key — so all five drew identically and the only surviving
-    /// cue was the period's name inside the caption. It is why this row briefly
-    /// became a menu. An explicit fill has no key-state variant, so the choice
+    /// stops being key — so all five would draw identically, leaving the period's name in the caption the only cue.
+    /// An explicit fill has no key-state variant, so the choice
     /// is visible whatever the window's focus, and the row stays a row.
     ///
     /// The shape is Keep Awake's panel tile's — a capsule filled at 0.25 for
