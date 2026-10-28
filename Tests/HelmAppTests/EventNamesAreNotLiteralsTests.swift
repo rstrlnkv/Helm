@@ -9,8 +9,8 @@ import XCTest
 ///     for await event in events where event.name == "trashChanged"
 ///
 /// under a comment explaining that the transport boundary left it no choice. It
-/// did not: a descriptor re-exports its engine's enum the way `KeepAwakeCommand`
-/// and `LayoutCommand` are already re-exported for the hotkeys, so the host can
+/// did not: a descriptor re-exports its engine's enum, the way
+/// `UninstallerDescriptor.swift` re-exports `UninstallerEvent`, so the host can
 /// say the name instead of spelling it.
 ///
 /// **The failure has no symptom at the seam.** Rename the case in the engine and
@@ -69,7 +69,7 @@ final class EventNamesAreNotLiteralsTests: XCTestCase {
         XCTAssertTrue(offenders.isEmpty,
                       "an event name was written as a string. Put it in the module's "
                       + "`<Module>Event` enum and re-export that through its descriptor, "
-                      + "the way the hotkeys re-export their command enums — a renamed "
+                      + "the way UninstallerDescriptor re-exports UninstallerEvent — a renamed "
                       + "case is then a build error rather than a feature going quiet:\n"
                       + offenders.joined(separator: "\n"))
     }

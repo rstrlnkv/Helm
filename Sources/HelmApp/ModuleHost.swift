@@ -29,6 +29,7 @@ import SwiftUI
         let panelWidgetSizes: @MainActor () -> Set<PanelWidgetSize>
         let backgroundScan: @MainActor () async -> ScanReport?
         let stop: @MainActor () -> Void
+        let hotkeyPressed: @MainActor (ModuleHotkey) -> Void
     }
 
     /// Keyed by `ModuleID.rawValue`.
@@ -155,7 +156,31 @@ import SwiftUI
                     panelWidget: { d.panelWidget($0, model) },
                     panelWidgetSizes: { d.panelWidgetSizes(model) },
                     backgroundScan: { await d.backgroundScan(parts) },
-                    stop: { d.stop(model) })
+                    stop: { d.stop(model) },
+                    hotkeyPressed: { d.hotkeyPressed($0, model) })
+    }
+
+    /// Every module's declared shortcuts, one loop. A key is held only while its
+    /// module is live: `isLive` reads `live`, and `HotkeyManager` asks again on
+    /// every module switch.
+    func registerHotkeys() {
+        for d in ModuleRegistry.all {
+            let id = type(of: d).id.rawValue
+            for hotkey in type(of: d).hotkeys {
+                HotkeyManager.shared.register(
+                    hotkey.slot, store: store(for: d), prefix: hotkey.prefix,
+                    fallback: hotkey.fallback,
+                    isLive: { [weak self] in self?.live[id] != nil },
+                    action: { [weak self] in
+                        guard let running = self?.live[id] else {
+                            HelmLog.shared.info("hotkey", "pressed \(hotkey.slot): module not running")
+                            return
+                        }
+                        HelmLog.shared.info("hotkey", "pressed \(hotkey.slot)")
+                        running.hotkeyPressed(hotkey)
+                    })
+            }
+        }
     }
 
     private func disable(_ d: any ModuleDescriptor) {

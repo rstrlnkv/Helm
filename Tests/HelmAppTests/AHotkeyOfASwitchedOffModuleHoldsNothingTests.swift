@@ -6,7 +6,7 @@ import Module_Screenshots_Engine
 @testable import HelmApp
 
 /// **A registered combination that does nothing is a key taken from every other
-/// program for no reason.** The host registers the screenshot shortcuts at
+/// program for no reason.** The host registers every module's declared shortcuts at
 /// launch, whether or not the module is on, and the manager is asked at every
 /// reload whether the module that owns one is running: a switched-off module
 /// holds no combination, even one somebody recorded and even one it ships with.
@@ -32,8 +32,8 @@ final class AHotkeyOfASwitchedOffModuleHoldsNothingTests: XCTestCase {
     }
 
     /// **Every screenshot shortcut, the panel's included, goes through the same
-    /// four answers.** The loop in the host takes every case, so a case added to
-    /// the enum is registered; this asks the manager what each holds: nothing
+    /// four answers.** `ScreenshotsDescriptor.hotkeys` maps every case and the host's loop registers
+    /// what it declares, so a case added to the enum is registered; this asks the manager what each holds: nothing
     /// while the module is off, its shipped combination when nothing was
     /// recorded (⇧⌘8 for the panel), nothing when the person cleared it, and
     /// what they recorded otherwise.
@@ -68,13 +68,26 @@ final class AHotkeyOfASwitchedOffModuleHoldsNothingTests: XCTestCase {
     /// The other half: the manager must actually ask. A pure function that nobody
     /// asks is a check that cannot fail, so the host's registration is read for
     /// the question — and the manager for the reloads that follow a switch.
-    func testTheHostAsksWhetherTheModuleIsRunning() throws {
-        let host = try RepoSource.text(of: "Sources/HelmApp/AppDelegate.swift")
-        let loop = try XCTUnwrap(host.range(of: "for hotkey in ScreenshotsHotkey.allCases"))
-        let body = String(host[loop.lowerBound...].prefix(900))
-        XCTAssertTrue(body.contains("isLive:") && body.contains("liveModule(screenshotsID)"),
-                      "the screenshot shortcuts are registered without asking whether the module is live")
-        XCTAssertTrue(body.contains("fallback: hotkey.fallback"), "the shortcuts ship with no default")
+    /// Every combination is registered in one place, the loop over the registry
+    /// in `ModuleHost`, which hands each one `isLive:` reading the host's `live`.
+    func testEveryDeclaredHotkeyAsksWhetherItsModuleIsRunning() throws {
+        let call = "HotkeyManager.shared.register("
+        let delegate = try RepoSource.text(of: "Sources/HelmApp/AppDelegate.swift")
+        XCTAssertFalse(delegate.contains(call),
+                       "AppDelegate.swift registers a combination itself: registration belongs to the one loop in ModuleHost.registerHotkeys(), which every module's declared hotkeys go through and which asks isLive: of each")
+
+        let host = try RepoSource.text(of: "Sources/HelmApp/ModuleHost.swift")
+        let registrations = host.components(separatedBy: call).count - 1
+        XCTAssertEqual(registrations, 1,
+                       "ModuleHost.swift must hold exactly one \(call) (found \(registrations)); if the call was renamed, look for the single registration loop in registerHotkeys()")
+        if let at = host.range(of: call) {
+            let before = String(host[..<at.lowerBound].suffix(600))
+            let after = String(host[at.upperBound...].prefix(900))
+            XCTAssertTrue(before.range(of: #"for\s+[^\n]+\s+in\s+ModuleRegistry\.all"#, options: .regularExpression) != nil,
+                          "the registration is not inside a `for … in ModuleRegistry.all` loop: a module added to the registry would hold no key; if the loop was renamed, look for the iteration over ModuleRegistry.all above the register call")
+            XCTAssertTrue(after.range(of: #"isLive:[^\n]*live\["#, options: .regularExpression) != nil,
+                          "the registration's arguments carry no `isLive:` reading `live[`: the manager is not asked whether the module is running; if renamed, look for isLive: closure reading the host's live[id]")
+        }
 
         let manager = try RepoSource.text(of: "Sources/HelmApp/HotkeyManager.swift")
         for name in [".helmModuleEnabled", ".helmModuleDisabled"] {

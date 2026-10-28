@@ -123,6 +123,10 @@ names the model's type. A descriptor that says nothing about `Model` gets the
 `ModuleViewModel` on the engine's transport. On the person's switch and on quit the host
 calls the module's `stop(_:)` before the engine's `deactivate()`; the model goes with
 the `Live`.
+A module declares its global shortcuts as `hotkeys` and answers a press in
+`hotkeyPressed(_:_:)`; `ModuleHost.registerHotkeys` registers every module's in one loop
+over `ModuleRegistry.all`, each held only while its module is live, and `HotkeyManager`
+re-reads on `.helmModuleEnabled` and `.helmModuleDisabled`.
 `Sources/HelmApp/ModuleRegistry.swift` is the single list of descriptors, and
 `Tests/HelmAppTests/ListsAgreeWithTheTreeTests.swift` holds its invariants —
 unique ids, a name and a short name on each, and an `sfSymbol` macOS actually

@@ -46,8 +46,7 @@ public enum UninstallerCommand: String, CaseIterable, Sendable {
 /// changing. It was a `static let` on the engine, which the module's own two
 /// sides could share — but the **host** could not, and wrote `"trashChanged"`
 /// as a string under a comment explaining that the boundary left it no choice.
-/// It did: `UninstallerDescriptor` re-exports this the way the descriptors
-/// already re-export their command enums for the hotkeys, and the host says the
+/// It did: `UninstallerDescriptor` re-exports this, and the host says the
 /// name rather than spelling it.
 ///
 /// What a silent break costs here is a feature going quiet: drag an app to the

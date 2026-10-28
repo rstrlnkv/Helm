@@ -71,7 +71,7 @@ struct KeepAwakeSettingsPage: View {
     init(vm: ModuleViewModel, store: NamespacedStore) {
         self.vm = KeepAwakeViewModel.shared(vm: vm)
         self.store = store
-        _recorder = StateObject(wrappedValue: HelmHotkeyRecorder(store: store))
+        _recorder = StateObject(wrappedValue: HelmHotkeyRecorder(store: store, prefix: KeepAwakeHotkey.storePrefix))
         // Every one of these through the settings struct, not a second literal:
         // the engine's battery-guard default is on, and a toggle drawn off above
         // a guard that is armed would be the page lying about what the Mac will
@@ -556,7 +556,7 @@ struct KeepAwakeSettingsPage: View {
     @ViewBuilder private var shortcutSection: some View {
         HelmSettingsSection(KAStr.globalShortcut) {
             HelmHotkeyRow(KAStr.toggleAction, recorder: recorder,
-                          taken: HotkeyStatus.isTaken("keep-awake.toggle"))
+                          taken: HotkeyStatus.isTaken(KeepAwakeHotkey.toggle))
         }
     }
 

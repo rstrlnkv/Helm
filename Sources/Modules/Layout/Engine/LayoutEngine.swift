@@ -524,7 +524,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// happens here and pins the app it happens in.
     ///
     /// **Not `private`, and not a command.** It answered a `LayoutCommand` case
-    /// nothing in the app ever sent — `AppDelegate` registers `fix` and only
+    /// nothing in the app ever sent — `LayoutDescriptor.hotkeys` declares `fix` and only
     /// `fix` — while six tests reached it by typing the command's name as a
     /// *string*. Rename the case and those five would have gone on passing:
     /// `wireTransport` refuses an unparseable name at the door and returns

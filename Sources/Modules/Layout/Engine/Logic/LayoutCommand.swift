@@ -21,8 +21,7 @@ public enum LayoutCommand: String, CaseIterable, Sendable {
 /// there means somebody's chord is read from keys nothing writes. Both fail the
 /// same way — the row draws a shortcut and pressing it does nothing.
 ///
-/// Beside `LayoutCommand` because it is the same kind of fact, and re-exported
-/// through the descriptor for the same reason.
+/// Beside `LayoutCommand` because it is the same kind of fact.
 public enum LayoutHotkey {
     /// The slot `HotkeyManager` files the binding under, which is this module's
     /// id and the command it sends. Not stored anywhere: it only has to be one

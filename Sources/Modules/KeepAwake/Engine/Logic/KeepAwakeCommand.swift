@@ -16,6 +16,18 @@ public enum KeepAwakeCommand: String, CaseIterable, Sendable {
     case resumeAutomation
 }
 
+/// The global shortcut's two names, in one place for the host's registration
+/// and the page's row. Both fail quietly when they drift: a row draws a
+/// shortcut and pressing it does nothing.
+public enum KeepAwakeHotkey {
+    /// The slot `HotkeyManager` files the binding under. Not stored anywhere.
+    public static let toggle = "\(KeepAwakeEngine.moduleID).\(KeepAwakeCommand.toggle.rawValue)"
+
+    /// Where the recorded combination is kept inside the module's store.
+    /// **Deployed stored data: this name never moves.**
+    public static let storePrefix = "hotkey"
+}
+
 /// Everything the engine says about itself.
 ///
 /// One name, and it was a literal in the engine's `emit` and a literal again in

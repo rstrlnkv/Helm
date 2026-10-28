@@ -194,22 +194,17 @@ import Module_Layout_Engine
             .eraseToAnyPublisher()
     }
 
+    public static var hotkeys: [ModuleHotkey] {
+        [ModuleHotkey(slot: LayoutHotkey.fix, prefix: LayoutHotkey.storePrefix)]
+    }
+
+    public func hotkeyPressed(_ hotkey: ModuleHotkey, _ vm: ModuleViewModel) {
+        vm.send(LayoutCommand.fix)
+    }
+
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
         AnyView(LayoutSettingsPage(
             vm: vm,
             store: store ?? NamespacedStore(namespace: LayoutDescriptor.id.rawValue, backing: UserDefaults.standard)))
     }
 }
-
-/// LayoutCommand, where the host can see it.
-///
-/// The host talks to a module through its descriptor and the transport, and
-/// never links its engine — a direct edge there is a door past the transport.
-/// But the two global shortcuts it registers send the keyboard module's commands, and a
-/// hotkey wired to a misspelt name is silence with no symptom at all. The name
-/// is re-exported here rather than retyped there.
-public typealias LayoutCommand = Module_Layout_Engine.LayoutCommand
-
-/// The chord's two names, where the host can see them — the same reason and the
-/// same direction as `LayoutCommand` above.
-public typealias LayoutHotkey = Module_Layout_Engine.LayoutHotkey

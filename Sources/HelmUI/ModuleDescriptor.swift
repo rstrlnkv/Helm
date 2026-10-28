@@ -54,7 +54,7 @@ import HelmRuntime
     /// stand-in switch or on «Reset all settings» handing the system back. The
     /// model is dropped with the module's `Live` right after.
     func stop(_ model: Model)
-    /// The view model the host's own windows (the screenshot hotkey, the trash
+    /// The view model the host's own windows (the trash
     /// sweep) hand to code that wants the transport-backed one. For a module
     /// whose model is that view model, the model itself.
     func wire(_ parts: ModuleParts<Model>) -> ModuleViewModel
@@ -106,6 +106,14 @@ import HelmRuntime
     /// host cannot watch a shared object for it. Only Keep Awake answers this;
     /// the default is nil, which means "this module never changes the icon".
     func statusChanges(_ model: Model) -> AnyPublisher<Void, Never>?
+    /// The global shortcuts this module owns. Default: none.
+    ///
+    /// Static, so the host reads them in one loop over the registry whether or
+    /// not the module was ever built — a switched-off module never is; each is
+    /// held only while the module is live, and a switched-off module holds no key.
+    static var hotkeys: [ModuleHotkey] { get }
+    /// A declared shortcut was pressed while the module is live.
+    func hotkeyPressed(_ hotkey: ModuleHotkey, _ model: Model)
     /// See the default implementation below.
     var pageBleeds: Bool { get }
     /// The widget this module puts in the panel at a given size, or nil if it
@@ -140,6 +148,8 @@ public extension ModuleDescriptor {
         Self.metadata.permissions
     }
     func statusChanges(_ model: Model) -> AnyPublisher<Void, Never>? { nil }
+    static var hotkeys: [ModuleHotkey] { [] }
+    func hotkeyPressed(_ hotkey: ModuleHotkey, _ model: Model) {}
 
     /// Every module already draws one panel tile the width of the card, and
     /// that is exactly `wide`. So the default answers `wide` with the tile it
@@ -167,6 +177,25 @@ public extension ModuleDescriptor where Model == ModuleViewModel {
         return ModuleParts(engine: engine, model: ModuleViewModel(transport: engine.transport))
     }
     func wire(_ parts: ModuleParts<ModuleViewModel>) -> ModuleViewModel { parts.model }
+}
+
+/// A global shortcut a module declares. The host registers every one at launch;
+/// it is held while the module is live and nothing while it is off.
+public struct ModuleHotkey: Equatable, Sendable {
+    /// The name `HotkeyManager` files the binding under and `HotkeyStatus`
+    /// reports; not stored anywhere.
+    public let slot: String
+    /// `<prefix>KeyCode`, `<prefix>Modifiers`, `<prefix>Label` in the module's
+    /// own store. Deployed data: it never moves, so it has no default here.
+    public let prefix: String
+    /// The combination used only while the store holds no key at all.
+    public let fallback: HotkeyFallback?
+
+    public init(slot: String, prefix: String, fallback: HotkeyFallback? = nil) {
+        self.slot = slot
+        self.prefix = prefix
+        self.fallback = fallback
+    }
 }
 
 /// What `makeModule` builds: the engine and the model drawn from it.

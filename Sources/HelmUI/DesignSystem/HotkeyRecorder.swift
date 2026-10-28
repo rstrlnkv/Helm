@@ -28,7 +28,7 @@ public extension Notification.Name {
     /// keeps the empty row they asked for, and a person who never touched it
     /// sees the one that is live. `HotkeyManager` makes the same distinction when
     /// it registers, from the same `HotkeyFallback`.
-    public init(store: NamespacedStore, prefix: String = "hotkey", fallbackLabel: String? = nil) {
+    public init(store: NamespacedStore, prefix: String, fallbackLabel: String? = nil) {
         self.store = store
         self.prefix = prefix
         if store.object("\(prefix)KeyCode") == nil, let fallbackLabel {

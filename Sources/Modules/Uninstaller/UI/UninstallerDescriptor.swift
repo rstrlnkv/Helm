@@ -59,8 +59,7 @@ import Module_Uninstaller_Engine
     // statusAppearance: default (.inactive) — not a toggle, never tints the menu bar.
 }
 
-/// The same, for the uninstaller.
+/// UninstallerCommand, where HelmAppTests can see it.
 public typealias UninstallerCommand = Module_Uninstaller_Engine.UninstallerCommand
-/// So the host can say the event name instead of spelling it — the same
-/// re-export the hotkeys already rely on for their command enums.
+/// So the host can say the event name instead of spelling it.
 public typealias UninstallerEvent = Module_Uninstaller_Engine.UninstallerEvent

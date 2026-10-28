@@ -46,6 +46,20 @@ import Module_Screenshots_Engine
 
     public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
 
+    public static var hotkeys: [ModuleHotkey] {
+        ScreenshotsHotkey.allCases.map {
+            ModuleHotkey(slot: $0.slot, prefix: $0.storePrefix, fallback: $0.fallback)
+        }
+    }
+
+    /// Not through the transport: a capture is tens of megabytes of frame, and
+    /// the action lands in this target, which holds the overlay.
+    public func hotkeyPressed(_ hotkey: ModuleHotkey, _ vm: ModuleViewModel) {
+        guard let shot = ScreenshotsHotkey.allCases.first(where: { $0.slot == hotkey.slot }),
+              let store else { return }
+        ScreenshotsCapture.begin(shot, vm: vm, store: store)
+    }
+
     public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
         AnyView(ScreenshotsSettingsPage(
             vm: vm,
@@ -53,8 +67,3 @@ import Module_Screenshots_Engine
                                             backing: UserDefaults.standard)))
     }
 }
-
-/// The shortcuts' names, where the host can see them — the host talks to a
-/// module through its descriptor and never links its engine, and a hotkey wired
-/// to a misspelt slot is a row that draws a shortcut pressing which does nothing.
-public typealias ScreenshotsHotkey = Module_Screenshots_Engine.ScreenshotsHotkey

@@ -6,7 +6,7 @@ It needs a grant no other module does — Screen & System Audio Recording, the t
 `PermissionNeed` — and it is the one module whose work does **not** go through the
 transport. A 5K display's frozen frame is some sixty megabytes and the wire is `Data` in both
 directions, so a capture that crossed it would be copied at least twice for nothing:
-the host's shortcut action calls `ScreenshotsCapture.begin`
+the module's `hotkeyPressed` calls `ScreenshotsCapture.begin`
 (`Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`) directly, and that
 builds a `CaptureSession` (`Sources/Modules/Screenshots/Engine/CaptureSession.swift`)
 out of the engine's own ports. The engine's wire carries what the settings page
@@ -415,5 +415,4 @@ replaced, does. Nothing about a pin is stored.
 
 The shortcuts carry a default (`HotkeyFallback`, `Sources/HelmRuntime/HotkeyFallback.swift`)
 that applies only while the store holds no key at all, so a cleared shortcut stays
-cleared, and `HotkeyManager` asks whether the module is live at every reload: a
-switched-off module holds no combination.
+cleared; a switched-off module holds no combination (ARCHITECTURE.md § The transport and the store).

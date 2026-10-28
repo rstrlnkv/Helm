@@ -2,9 +2,6 @@ import AppKit
 import HelmContract
 import HelmRuntime
 import HelmUI
-import Module_KeepAwake_UI
-import Module_Layout_UI
-import Module_Screenshots_UI
 import Module_Uninstaller_UI
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -61,52 +58,11 @@ import Module_Uninstaller_UI
         // status item until first activation; kick it once (accessory = no Dock icon).
         NSApp.activate()
 
-        // Global shortcuts. Each one sends a command to a module's engine, so
-        // the host never reaches past the transport into a module.
-        func send(_ command: String, to module: String) -> () -> Void {
-            { [weak host] in
-                guard let engine = host?.liveModule(module)?.engine else { return }
-                let transport = engine.transport
-                Task { _ = try? await transport.send(EngineCommand(name: command)) }
-            }
-        }
-        HotkeyManager.shared.register(
-            "keep-awake.toggle",
-            store: NamespacedStore(namespace: KeepAwakeDescriptor.id.rawValue, backing: UserDefaults.standard),
-            action: send(KeepAwakeCommand.toggle.rawValue, to: KeepAwakeDescriptor.id.rawValue))
-        // One chord for the whole module, doing whatever the tap key does — for
-        // keyboards with no right-hand modifier to tap. There were five: convert
-        // the last word, undo, and one for each of three selection actions. The
-        // engine already decided between converting and undoing on its own, and
-        // now it decides between the selection and the last word too, so the
-        // other four were rows asking the user to assemble a gesture the app
-        // could assemble itself.
-        HotkeyManager.shared.register(
-            LayoutHotkey.fix,
-            store: NamespacedStore(namespace: LayoutDescriptor.id.rawValue, backing: UserDefaults.standard),
-            prefix: LayoutHotkey.storePrefix,
-            action: send(LayoutCommand.fix.rawValue, to: LayoutDescriptor.id.rawValue))
-        // The screenshot shortcuts. Not through the transport: a capture is tens
-        // of megabytes of frame, and the action lands in the module's own UI
-        // target, which holds the overlay. `isLive` is what makes a switched-off
-        // module hold no key at all, and `fallback` is what makes a switched-on
-        // one work before anybody has recorded anything.
-        let screenshotsID = ScreenshotsDescriptor.id.rawValue
-        for hotkey in ScreenshotsHotkey.allCases {
-            HotkeyManager.shared.register(
-                hotkey.slot,
-                store: NamespacedStore(namespace: screenshotsID, backing: UserDefaults.standard),
-                prefix: hotkey.storePrefix,
-                fallback: hotkey.fallback,
-                isLive: { [weak host] in host?.liveModule(screenshotsID) != nil },
-                action: { [weak host] in
-                    guard let live = host?.liveModule(screenshotsID) else { return }
-                    ScreenshotsCapture.begin(hotkey, vm: live.wire, store: live.store)
-                })
-        }
         // Keeps the frontmost-app snapshot current, so every thread that asks
         // reads a value rather than reaching into AppKit for it.
         FrontmostApp.shared.startObserving()
+        // Every module's declared shortcuts, held while it is live.
+        host.registerHotkeys()
         HotkeyManager.shared.start()
 
         HelmLog.shared.info("app", "modules: \(ModuleRegistry.all.map(\.idRaw).joined(separator: ", "))")
@@ -240,11 +196,10 @@ import Module_Uninstaller_UI
         guard let live = host.liveModule(UninstallerDescriptor.id.rawValue) else { return }
         let events = live.engine.transport.events
         // A string is what crosses the transport; it is not what the host has
-        // to type. `UninstallerDescriptor` re-exports `UninstallerEvent` the
-        // way the descriptors already re-export their command enums for the
-        // hotkeys two screens up, so this name is one declaration rather than a
-        // literal on each side. Spelled by hand, a rename in the engine would
-        // be an error nowhere and the offer would simply stop appearing.
+        // to type. `UninstallerDescriptor` re-exports `UninstallerEvent`, so this
+        // name is one declaration rather than a literal on each side. Spelled by
+        // hand, a rename in the engine would be an error nowhere and the offer would
+        // simply stop appearing.
         trashEventsTask = Task { [weak self] in
             for await event in events where event.name == UninstallerEvent.trashChanged.rawValue {
                 self?.offerTrashLeftovers()

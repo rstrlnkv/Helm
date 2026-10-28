@@ -99,6 +99,14 @@ import Module_KeepAwake_Engine
         return needs
     }
 
+    public static var hotkeys: [ModuleHotkey] {
+        [ModuleHotkey(slot: KeepAwakeHotkey.toggle, prefix: KeepAwakeHotkey.storePrefix)]
+    }
+
+    public func hotkeyPressed(_ hotkey: ModuleHotkey, _ vm: ModuleViewModel) {
+        vm.send(KeepAwakeCommand.toggle)
+    }
+
     public func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>? {
         KeepAwakeViewModel.shared(vm: vm).objectWillChange
             .map { _ in () }
@@ -136,12 +144,3 @@ import Module_KeepAwake_Engine
                                 title: title)
     }
 }
-
-/// KeepAwakeCommand, where the host can see it.
-///
-/// The host talks to a module through its descriptor and the transport, and
-/// never links its engine — a direct edge there is a door past the transport.
-/// But the two global shortcuts it registers send Keep Awake's commands, and a
-/// hotkey wired to a misspelt name is silence with no symptom at all. The name
-/// is re-exported here rather than retyped there.
-public typealias KeepAwakeCommand = Module_KeepAwake_Engine.KeepAwakeCommand
