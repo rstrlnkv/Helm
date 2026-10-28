@@ -9,7 +9,7 @@ capability are tied by a test: a scanning module conforms its engine to
 
 The clock and the decision are in different targets.
 `Sources/HelmApp/ScanCoordinator.swift` owns the one-minute tick, the notification
-observer, the reading of live system counters and the transport call;
+observer, the reading of live system counters and the call to the live module's `backgroundScan`;
 `Sources/HelmRuntime/ScanSchedule.swift` and `ScanRunner.swift` are pure and decide.
 Every refusal is a named verdict (the cases of `ScanSchedule.Verdict`), and it is logged on
 change only, because a line per module per minute would push everything else out of the

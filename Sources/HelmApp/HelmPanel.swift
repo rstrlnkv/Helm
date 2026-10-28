@@ -180,7 +180,7 @@ struct HelmPanelContent: View {
         /// module is in this list and not in the other.
         var choosable: [ModuleHost.Live] = []
         for live in host.enabledModules {
-            guard let contribution = live.descriptor.menuBar(live.vm) else { continue }
+            guard let contribution = live.menuBar() else { continue }
             let id = live.descriptor.idRaw
             // The drawer holds everything that is not a tile — a module with no
             // widget, and a module whose widget was taken off. «Not a tile» and
@@ -259,9 +259,9 @@ struct HelmPanelContent: View {
                               content: .module(AnyView(DisabledModuleWidget(descriptor: descriptor))),
                               size: slot.size)
             }
-            let offered = live.descriptor.panelWidgetSizes(live.vm)
+            let offered = live.panelWidgetSizes()
             guard let size = PanelGrid.resolve(slot.size, offered: offered),
-                  let view = live.descriptor.panelWidget(size, live.vm) else { return nil }
+                  let view = live.panelWidget(size) else { return nil }
             return Widget(id: slot.widget, content: .module(view), size: size,
                           offered: PanelWidgetSize.allCases.filter { offered.contains($0) })
         }

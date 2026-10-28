@@ -70,7 +70,7 @@ import HelmUI
         moduleCancellables.removeAll()
         for live in host.enabledModules {
             // Only a module that tints the icon has anything to say here.
-            guard let changes = live.descriptor.statusChanges(live.vm) else { continue }
+            guard let changes = live.statusChanges() else { continue }
             changes
                 // objectWillChange fires BEFORE the property is written, so
                 // refreshing inline read the previous state — the countdown tick
@@ -101,7 +101,7 @@ import HelmUI
         // with a countdown, else the newest running spin, else the first tint,
         // else the first title.
         let appearance = StatusPlan.choose(
-            host.enabledModules.map { $0.descriptor.statusAppearance($0.vm) }, now: now)
+            host.enabledModules.map { $0.statusAppearance() }, now: now)
         let token = appearance.tintToken
         let globalStyle = AppSettings.menuBarIconStyle
         let style = appearance.iconStyle.flatMap(MenuBarIconStyle.init(rawValue:)) ?? globalStyle

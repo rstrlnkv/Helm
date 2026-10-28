@@ -429,8 +429,8 @@ private struct SettingsDetail: View {
     /// `body` reads `activityRevision`, so writing it asks for the status again.
     private func watchActivity() {
         activityWatch = nil
-        guard case .module(let id) = settled, let descriptor = ModuleRegistry.descriptor(id),
-              let live = model.host.liveModule(id), let changes = descriptor.statusChanges(live.vm) else { return }
+        guard case .module(let id) = settled,
+              let live = model.host.liveModule(id), let changes = live.statusChanges() else { return }
         activityWatch = changes.sink { _ in activityRevision &+= 1 }
     }
 
@@ -481,13 +481,12 @@ struct ShellPageIdentity {
         }
         return ShellPageIdentity(symbol: descriptor.moduleMetadata.sfSymbol, tint: descriptor.moduleTint.colour,
                                  title: descriptor.moduleMetadata.name,
-                                 status: status(id, descriptor, host: host))
+                                 status: status(id, host: host))
     }
 
     /// nil where the module answers nil, which is most of them.
-    @MainActor static func status(_ id: String, _ descriptor: any ModuleDescriptor,
-                                  host: ModuleHost) -> HelmHeaderStatus? {
-        guard let live = host.liveModule(id), let activity = descriptor.activity(live.vm) else { return nil }
+    @MainActor static func status(_ id: String, host: ModuleHost) -> HelmHeaderStatus? {
+        guard let live = host.liveModule(id), let activity = live.activity() else { return nil }
         switch activity {
         case .active: return HelmHeaderStatus(word: AppStr.moduleActive, active: true)
         case .idle: return HelmHeaderStatus(word: AppStr.moduleIdle, active: false)
@@ -535,7 +534,7 @@ private struct ModuleDetailView: View {
     /// window after it.
     @ViewBuilder private var page: some View {
         if let live = host.liveModule(id) {
-            descriptor.settingsPage(live.vm)
+            live.page()
         } else {
             Color.clear
         }

@@ -21,9 +21,10 @@ public enum DuplicatesCommand: String, CaseIterable, Sendable {
     /// stopping a removal must not silently kill a search they started after
     /// it — one command, one act.
     case stopRemoval
-    /// Shares its spelling with `ScanCommand.backgroundScan`, which is what the
-    /// coordinator sends — pinned by a test, because the two live in different
-    /// targets and neither compiler sees both.
+    /// Shares its spelling with `ScanCommand.backgroundScan`, which is what
+    /// the descriptor's default `backgroundScan(_:)` sends
+    /// (`Sources/HelmUI/ModuleDescriptor.swift`) — pinned by a test, because the
+    /// two live in different targets and neither compiler sees both.
     case backgroundScan
 }
 

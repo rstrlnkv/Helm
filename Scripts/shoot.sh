@@ -216,7 +216,7 @@ if [ "$INACTIVE" = yes ]; then open -a Finder; sleep 1; fi
 read_window || { echo "the window is gone" >&2; exit 75; }
 B1="${WIN#* }"
 x="${B1%%,*}"; r="${B1#*,}"; y="${r%%,*}"; r="${r#*,}"; w="${r%%,*}"; h="${r#*,}"
-# -R, not -l: -l mis-renders an active behind-window material (measured by the rework's step 5 window probes).
+# -R, not -l: -l mis-renders an active behind-window material (measured by window probes).
 FILE="$OUTDIR/$PAGE${STEM:+-$STEM}.png"
 screencapture -x -R"$x,$y,$w,$h" "$FILE" || { echo "screencapture failed" >&2; exit 69; }
 FRONT_ABOVE="$ABOVE"

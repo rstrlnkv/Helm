@@ -257,10 +257,6 @@ final class ScanCoordinator {
         // for both is what made the day's second run unreachable.
         AppSettings.lastScanAttemptAt[id] = started
 
-        // The transport is lifted out of the closure rather than reached through
-        // `live` inside it: this type is `@MainActor` and the request is not, so
-        // capturing the view model would carry actor-isolated state across.
-        let transport = live.vm.transport
         // `begin` with a `defer`, not the `phase` scope: that one takes a
         // synchronous closure, and wrapping an `await` in it hands a
         // non-`Sendable` async function across an isolation boundary. The
@@ -268,8 +264,7 @@ final class ScanCoordinator {
         // closes on every path out, return and cancellation alike.
         HelmActivity.begin("scan.\(id)")
         defer { HelmActivity.end("scan.\(id)") }
-        let report = await TransportClient(transport)
-            .request(ScanCommand.backgroundScan, as: ScanReport.self)
+        let report = await live.backgroundScan()
         let seconds = Date().timeIntervalSince(started)
 
         guard let report else {

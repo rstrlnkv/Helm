@@ -101,7 +101,7 @@ import Module_Uninstaller_UI
                 isLive: { [weak host] in host?.liveModule(screenshotsID) != nil },
                 action: { [weak host] in
                     guard let live = host?.liveModule(screenshotsID) else { return }
-                    ScreenshotsCapture.begin(hotkey, vm: live.vm, store: live.store)
+                    ScreenshotsCapture.begin(hotkey, vm: live.wire, store: live.store)
                 })
         }
         // Keeps the frontmost-app snapshot current, so every thread that asks
@@ -225,7 +225,7 @@ import Module_Uninstaller_UI
         Task { [weak self] in
             // Nothing to offer: drop the holder, or the next sweep finds it
             // occupied and stays quiet for the rest of the run.
-            if await window.showIfAnything(vm: live.vm) == false { self?.trashWindow = nil }
+            if await window.showIfAnything(vm: live.wire) == false { self?.trashWindow = nil }
         }
     }
 

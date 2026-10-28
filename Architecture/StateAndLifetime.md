@@ -7,6 +7,9 @@ every sidebar visit, so the view models are cached; the cache is dropped by modu
 through `ModuleUICache.dropWhenDisabled` (`Sources/HelmUI/DesignSystem/ModuleUICache.swift`),
 driven by `.helmModuleDisabled`, posted from `Sources/HelmApp/ModuleHost.swift`. The
 on-disk scan cache is untouched by this: the copy in memory goes, the answer stays.
+A module that owns its model ends it in `stop(_:)` (`Sources/HelmUI/ModuleDescriptor.swift`),
+which `Sources/HelmApp/ModuleHost.swift` calls before the engine's `deactivate()`; the model
+then goes with the module's `Live`.
 
 Dropping the cache is only one of two owners. A subscriber task started as
 `Task { [weak self] in await self?.observeEvents() }` resolves its weak capture once, and

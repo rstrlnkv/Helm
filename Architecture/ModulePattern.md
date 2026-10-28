@@ -38,7 +38,9 @@ engines' handlers switch over them with no `default` arm. A global
 `EngineCommand` enum was the obvious idea and is the wrong one: each engine
 handles its own subset of the names, so no switch over it could be exhaustive.
 
-The one place a string still crosses is the host, which links no engine:
+The one place a string still crosses is the descriptor's default `backgroundScan(_:)`
+(`Sources/HelmUI/ModuleDescriptor.swift`), which the host reaches through the live
+module's `backgroundScan`, and which a module that owns its model may override to answer from the model instead:
 `ScanCommand` (`Sources/HelmRuntime/ScanReport.swift:39`) is the constant both
 sides read, and the modules `ScanRunner.scannableModules`
 (`Sources/HelmRuntime/ScanRunner.swift:30`) names have their own command files
@@ -114,8 +116,13 @@ is the guard, and it asserts it entered the window at all, because a race test
 that failed to race proves nothing.
 
 **Lifecycle and the store.** `Sources/HelmApp/ModuleHost.swift` reads the enabled
-flag from the module's `NamespacedStore`, builds the engine, activates it and
-wraps the transport in a `ModuleViewModel`.
+flag from the module's `NamespacedStore`, builds the module with `makeModule(store:)`
+(the engine and the model, nothing started), activates the engine and keeps both in a
+`Live` of closures that `makeLive` closes over the descriptor's `Model`, so no caller
+names the model's type. A descriptor that says nothing about `Model` gets the
+`ModuleViewModel` on the engine's transport. On the person's switch and on quit the host
+calls the module's `stop(_:)` before the engine's `deactivate()`; the model goes with
+the `Live`.
 `Sources/HelmApp/ModuleRegistry.swift` is the single list of descriptors, and
 `Tests/HelmAppTests/ListsAgreeWithTheTreeTests.swift` holds its invariants —
 unique ids, a name and a short name on each, and an `sfSymbol` macOS actually

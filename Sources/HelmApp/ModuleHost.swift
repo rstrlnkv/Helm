@@ -1,18 +1,34 @@
+import Combine
 import Foundation
 import HelmContract
 import HelmRuntime
 import HelmUI
+import SwiftUI
 
 /// Owns module lifecycle: per-module namespaced store, enabled flag, and
-/// lazily-created engine + view model for every enabled module.
+/// lazily-created engine + model for every enabled module.
 @MainActor final class ModuleHost: ObservableObject {
     static let shared = ModuleHost()
 
     struct Live {
         let descriptor: any ModuleDescriptor
         let engine: any ModuleEngine
-        let vm: ModuleViewModel
+        /// The module's own model, held so it lives and dies with this entry;
+        /// everything that draws from it goes through the closures below.
+        let model: AnyObject
+        /// The transport-backed view model, for the host's windows that talk to
+        /// the engine themselves.
+        let wire: ModuleViewModel
         let store: NamespacedStore
+        let page: @MainActor () -> AnyView
+        let menuBar: @MainActor () -> MenuBarContribution?
+        let activity: @MainActor () -> ModuleActivity?
+        let statusAppearance: @MainActor () -> StatusAppearance
+        let statusChanges: @MainActor () -> AnyPublisher<Void, Never>?
+        let panelWidget: @MainActor (PanelWidgetSize) -> AnyView?
+        let panelWidgetSizes: @MainActor () -> Set<PanelWidgetSize>
+        let backgroundScan: @MainActor () async -> ScanReport?
+        let stop: @MainActor () -> Void
     }
 
     /// Keyed by `ModuleID.rawValue`.
@@ -83,6 +99,7 @@ import HelmUI
     /// the notification that act carries.
     func shutdown() {
         for key in live.keys.sorted() {
+            live[key]?.stop()
             live[key]?.engine.deactivate()
             live[key]?.descriptor.detachMenuBarPresence()
             live[key] = nil
@@ -110,19 +127,35 @@ import HelmUI
         HelmLog.shared.info("host", "enable \(key)")
         let before = MemoryFootprint.current()
         let s = store(for: d)
-        let engine = d.makeEngine(store: s)
-        engine.activate()
+        live[key] = makeLive(d, store: s)
+        if let before, let after = MemoryFootprint.current() {
+            HelmLog.shared.memory("module.\(key).enable", grewBy: after - before)
+        }
+    }
+
+    /// Generic so the descriptor's `Model` is known for the whole of the build:
+    /// everything that takes the model is closed over it here, and nothing
+    /// outside this function has to name its type or cast to it.
+    private func makeLive<D: ModuleDescriptor>(_ d: D, store s: NamespacedStore) -> Live {
+        let parts = d.makeModule(store: s)
+        let model = parts.model
+        parts.engine.activate()
         // After the engine is running, and from here rather than from
-        // `makeEngine`: a module's own menu-bar item is part of it running, not
+        // `makeModule`: a module's own menu-bar item is part of it running, not
         // part of it being constructed. Keyboard's indicator was built inside
         // `makeEngine`, so every process that asked a descriptor for an engine —
         // the offscreen render harness included — got a status item on its Mac.
         d.attachMenuBarPresence()
-        let vm = ModuleViewModel(transport: engine.transport)
-        live[key] = Live(descriptor: d, engine: engine, vm: vm, store: s)
-        if let before, let after = MemoryFootprint.current() {
-            HelmLog.shared.memory("module.\(key).enable", grewBy: after - before)
-        }
+        return Live(descriptor: d, engine: parts.engine, model: model, wire: d.wire(parts), store: s,
+                    page: { d.settingsPage(model) },
+                    menuBar: { d.menuBar(model) },
+                    activity: { d.activity(model) },
+                    statusAppearance: { d.statusAppearance(model) },
+                    statusChanges: { d.statusChanges(model) },
+                    panelWidget: { d.panelWidget($0, model) },
+                    panelWidgetSizes: { d.panelWidgetSizes(model) },
+                    backgroundScan: { await d.backgroundScan(parts) },
+                    stop: { d.stop(model) })
     }
 
     private func disable(_ d: any ModuleDescriptor) {
@@ -134,6 +167,7 @@ import HelmUI
         // `shutdown()` — quitting — deliberately does not call it
         // (`ModuleEngine.willDisable` has the story).
         live[key]?.engine.willDisable()
+        live[key]?.stop()
         live[key]?.engine.deactivate()
         // The module's own menu-bar item goes with the module. Nothing used to
         // take Keyboard's indicator away here at all: it sat in the menu bar

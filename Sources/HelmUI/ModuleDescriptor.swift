@@ -4,6 +4,11 @@ import HelmContract
 import HelmRuntime
 
 @MainActor public protocol ModuleDescriptor {
+    /// What this module's pages, menu-bar contribution and panel tiles are drawn
+    /// from, and what the module itself ends in `stop(_:)`. Defaults to the
+    /// shared `ModuleViewModel`, which talks to the engine over the transport:
+    /// a module that has not taken its model over says nothing and keeps it.
+    associatedtype Model: AnyObject = ModuleViewModel
     static var id: ModuleID { get }
     /// **Computed on every read, never stored.** `ModuleMetadata` is a struct of
     /// finished strings, so a `static let` calls `L()` once — the first time
@@ -38,6 +43,25 @@ import HelmRuntime
     /// measurement that built an engine against a configured store put a status
     /// item on somebody's Mac.
     func makeEngine(store: NamespacedStore) -> any ModuleEngine
+    /// The engine and the model drawn from it, built together. Starts nothing,
+    /// for the reason `makeEngine` starts nothing.
+    ///
+    /// The default is `makeEngine` and the shared view model on its transport;
+    /// `makeEngine` has no default of its own, since that one would call this one.
+    func makeModule(store: NamespacedStore) -> ModuleParts<Model>
+    /// The model's own deactivation: the host calls it on the person's switch
+    /// and on quit, before the engine's `deactivate()`, and never on a refused
+    /// stand-in switch or on «Reset all settings» handing the system back. The
+    /// model is dropped with the module's `Live` right after.
+    func stop(_ model: Model)
+    /// The view model the host's own windows (the screenshot hotkey, the trash
+    /// sweep) hand to code that wants the transport-backed one. For a module
+    /// whose model is that view model, the model itself.
+    func wire(_ parts: ModuleParts<Model>) -> ModuleViewModel
+    /// One scan, as the host's scheduler asks for it: nil is no answer, not an
+    /// empty report. Takes the parts so one default reaches the wire for every
+    /// module; a module that has taken its model over answers from it here.
+    func backgroundScan(_ parts: ModuleParts<Model>) async -> ScanReport?
     /// A presence in the menu bar this module owns outright, apart from Helm's
     /// own status item — Keyboard's language indicator is the only one today.
     ///
@@ -47,8 +71,8 @@ import HelmRuntime
     /// says so by not overriding them.
     func attachMenuBarPresence()
     func detachMenuBarPresence()
-    func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution?
-    func settingsPage(_ vm: ModuleViewModel) -> AnyView
+    func menuBar(_ model: Model) -> MenuBarContribution?
+    func settingsPage(_ model: Model) -> AnyView
     /// Whether this module is doing something right now — for the badge beside
     /// its name in the page header.
     ///
@@ -59,7 +83,7 @@ import HelmRuntime
     /// a badge drawn from it would tell the person their scan was not running.
     /// A module answers this when it has a running/not-running of its own, and
     /// gets no badge until it does.
-    func activity(_ vm: ModuleViewModel) -> ModuleActivity?
+    func activity(_ model: Model) -> ModuleActivity?
     /// The permissions this module needs **as it is configured right now**.
     ///
     /// `metadata.permissions` answers a different question — what a module
@@ -74,14 +98,14 @@ import HelmRuntime
     /// Defaults to the declared list, so a module that has nothing conditional
     /// says nothing new.
     func currentPermissions() -> [ModulePermission]
-    /// Desired host status-icon appearance for the current vm state. Default = inactive (white ring).
-    func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance
+    /// Desired host status-icon appearance for the model's current state. Default = inactive (white ring).
+    func statusAppearance(_ model: Model) -> StatusAppearance
     /// Fires when the value `statusAppearance` reads has changed.
     ///
     /// A module that tints the menu-bar icon keeps its own view state, so the
     /// host cannot watch a shared object for it. Only Keep Awake answers this;
     /// the default is nil, which means "this module never changes the icon".
-    func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>?
+    func statusChanges(_ model: Model) -> AnyPublisher<Void, Never>?
     /// See the default implementation below.
     var pageBleeds: Bool { get }
     /// The widget this module puts in the panel at a given size, or nil if it
@@ -92,22 +116,30 @@ import HelmRuntime
     /// that much. A module that only knows the middle answer says so by
     /// returning nil for the other two, and the panel clamps somebody's stored
     /// choice to what is actually offered rather than dropping the widget.
-    func panelWidget(_ size: PanelWidgetSize, _ vm: ModuleViewModel) -> AnyView?
+    func panelWidget(_ size: PanelWidgetSize, _ model: Model) -> AnyView?
     /// Which sizes the above answers for. See the default.
-    func panelWidgetSizes(_ vm: ModuleViewModel) -> Set<PanelWidgetSize>
+    func panelWidgetSizes(_ model: Model) -> Set<PanelWidgetSize>
 }
 public extension ModuleDescriptor {
+    func stop(_ model: Model) {}
+    func wire(_ parts: ModuleParts<Model>) -> ModuleViewModel {
+        ModuleViewModel(transport: parts.engine.transport)
+    }
+    func backgroundScan(_ parts: ModuleParts<Model>) async -> ScanReport? {
+        await TransportClient(parts.engine.transport)
+            .request(ScanCommand.backgroundScan, as: ScanReport.self)
+    }
     /// True when the page draws across the whole pane instead of inside the
     /// 744 pt form column, so its header knows not to centre itself.
     var pageBleeds: Bool { false }
-    func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance { .inactive }
+    func statusAppearance(_ model: Model) -> StatusAppearance { .inactive }
     func attachMenuBarPresence() {}
     func detachMenuBarPresence() {}
-    func activity(_ vm: ModuleViewModel) -> ModuleActivity? { nil }
+    func activity(_ model: Model) -> ModuleActivity? { nil }
     func currentPermissions() -> [ModulePermission] {
         Self.metadata.permissions
     }
-    func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>? { nil }
+    func statusChanges(_ model: Model) -> AnyPublisher<Void, Never>? { nil }
 
     /// Every module already draws one panel tile the width of the card, and
     /// that is exactly `wide`. So the default answers `wide` with the tile it
@@ -115,17 +147,35 @@ public extension ModuleDescriptor {
     /// one-size widgets on the day this lands, identical to what it was, and
     /// each module grows its other two sizes when somebody writes them. No
     /// flag day, and no nine-module commit before anything can be seen.
-    func panelWidget(_ size: PanelWidgetSize, _ vm: ModuleViewModel) -> AnyView? {
+    func panelWidget(_ size: PanelWidgetSize, _ model: Model) -> AnyView? {
         guard size == .wide else { return nil }
-        return menuBar(vm)?.panelTile
+        return menuBar(model)?.panelTile
     }
 
     /// Probed from `panelWidget`, so a module that overrides one gets the
     /// other for free. Worth overriding only where building the view is
     /// expensive enough to matter — answering this is asked once per layout
     /// pass and building a widget is not.
-    func panelWidgetSizes(_ vm: ModuleViewModel) -> Set<PanelWidgetSize> {
-        Set(PanelWidgetSize.allCases.filter { panelWidget($0, vm) != nil })
+    func panelWidgetSizes(_ model: Model) -> Set<PanelWidgetSize> {
+        Set(PanelWidgetSize.allCases.filter { panelWidget($0, model) != nil })
+    }
+}
+
+public extension ModuleDescriptor where Model == ModuleViewModel {
+    func makeModule(store: NamespacedStore) -> ModuleParts<ModuleViewModel> {
+        let engine = makeEngine(store: store)
+        return ModuleParts(engine: engine, model: ModuleViewModel(transport: engine.transport))
+    }
+    func wire(_ parts: ModuleParts<ModuleViewModel>) -> ModuleViewModel { parts.model }
+}
+
+/// What `makeModule` builds: the engine and the model drawn from it.
+public struct ModuleParts<Model: AnyObject> {
+    public let engine: any ModuleEngine
+    public let model: Model
+    public init(engine: any ModuleEngine, model: Model) {
+        self.engine = engine
+        self.model = model
     }
 }
 

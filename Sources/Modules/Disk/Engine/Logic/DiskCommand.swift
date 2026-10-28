@@ -11,8 +11,9 @@ public enum DiskCommand: String, CaseIterable, Sendable {
     case volumes
     case scan
     /// Shares its spelling with `ScanCommand.backgroundScan`, which is what
-    /// the coordinator sends — pinned by a test, because the two live in
-    /// different targets and neither compiler sees both.
+    /// the descriptor's default `backgroundScan(_:)` sends
+    /// (`Sources/HelmUI/ModuleDescriptor.swift`) — pinned by a test, because the
+    /// two live in different targets and neither compiler sees both.
     case backgroundScan
     case cancel
     case trash

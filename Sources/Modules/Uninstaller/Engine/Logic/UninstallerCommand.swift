@@ -23,8 +23,9 @@ public enum UninstallerCommand: String, CaseIterable, Sendable {
     case trashPaths
     case quit
     /// Shares its spelling with `ScanCommand.backgroundScan`, which is what
-    /// the coordinator sends — pinned by a test, because the two live in
-    /// different targets and neither compiler sees both.
+    /// the descriptor's default `backgroundScan(_:)` sends
+    /// (`Sources/HelmUI/ModuleDescriptor.swift`) — pinned by a test, because the
+    /// two live in different targets and neither compiler sees both.
     case backgroundScan
     case trashedAppLeftovers
     case dismissTrashedApp
