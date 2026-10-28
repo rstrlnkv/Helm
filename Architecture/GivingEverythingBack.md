@@ -37,4 +37,6 @@ The steps are `ResetPlan.Step` — `handBackWhatIsOutsideHelm`, `giveBackTheLogi
 order as a value; the doc comments on the first two steps say why they sit where they do,
 and `Sources/HelmApp/ResetEverything.swift` carries them out. `ResetPlan.roots` names the
 two folders: Helm's Application Support directory (`HelmSupport.path`) and
-`~/Library/Logs/Helm`.
+`~/Library/Logs/Helm`. `ResetEverything.run` does nothing, and logs why, while an engine says
+`standsIn` (`ModuleEngine`): a stand-in has nothing to hand back, and the reset would forget the
+settings that say the real module ran.

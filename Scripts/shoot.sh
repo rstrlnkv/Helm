@@ -2,9 +2,18 @@
 set -uo pipefail
 
 # Take a still of one Helm Dev page: launch Helm Dev on it, bring state by
-# pressing controls by accessibility name, capture the window's region.
+# pressing controls by accessibility name, capture the window's region (with --panel, the panel window).
 #
-#   bash Scripts/shoot.sh <page> [--press "<control name>"]... [--inactive] [--out <dir>]
+#   bash Scripts/shoot.sh <page> [--press "<control name>"]... [--arg <key> <value>]...
+#                         [--scroll <fraction>] [--panel] [--name <stem>] [--inactive] [--out <dir>]
+#
+# --arg is a launch argument `-<key> <value>` after `-HelmOpenPage`, which the argument
+# domain answers over defaults and writes nothing. --scroll <fraction> (0 to 1) sets the
+# vertical scroll bar of the window's widest scroll area after the presses, for the part of a
+# page below the fold; absolute, so a rerun gives the same frame. --panel presses the status
+# item and shoots the panel (layer 101) instead of the window: its button's description is "Helm"
+# (StatusItemController; its title is the countdown text while one is shown), hosted on macOS 27 by MenuBarAgent and found by Helm Dev's pid. --name is the file's
+# stem after the page: <page>-<stem>.png.
 #
 # <page> is a Settings tab ("general", "log", "about") or a module id: Helm Dev
 # opens on it by `-HelmOpenPage` (Sources/HelmApp/LaunchPage.swift), the one
@@ -22,9 +31,10 @@ set -uo pipefail
 # stay), and a third export is compared with the copy: "defaults restored: identical|
 # DIFFERENT". Only once the checked pid has ended, only the domain com.helm.app.dev.
 #
-# Exit: 64 usage, 65 a press failed, 69 something missing, 73 another shoot holds
-# the lock (not waited for), 75 the screen is locked, or Helm Dev gave no window
-# in time, or Helm Dev changed identity between a check and a press.
+# Exit: 64 usage, 65 a press, scroll or status-item press failed, 69 something missing
+# (no MenuBarAgent for --panel included), 73 another shoot holds the lock (not waited
+# for), 75 the screen is locked, or Helm Dev gave no window or no panel window in time,
+# or Helm Dev changed identity between a check and a press, a scroll or the panel press.
 # Why it works this way: ARCHITECTURE.md § Two screen instruments.
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -37,16 +47,21 @@ TEMP="$(getconf DARWIN_USER_TEMP_DIR)"
 LOCK="${TEMP}helm-shoot.lock"
 
 PAGE="${1:-}"; [ $# -gt 0 ] && shift
-PRESSES=(); INACTIVE=no; OUT=""
+PRESSES=(); ARGS=(); SCROLL=""; PANEL=no; STEM=""; INACTIVE=no; OUT=""
+USAGE="usage: bash Scripts/shoot.sh <page> [--press \"<name>\"]... [--arg <key> <value>]... [--scroll <fraction>] [--panel] [--name <stem>] [--inactive] [--out <dir>]"
 while [ $# -gt 0 ]; do
   case "$1" in
     --press) [ $# -ge 2 ] || { echo "--press needs a control name" >&2; exit 64; }; PRESSES+=("$2"); shift 2 ;;
+    --arg) [ $# -ge 3 ] || { echo "--arg needs a key and a value" >&2; exit 64; }; ARGS+=("-$2" "$3"); shift 3 ;;
+    --scroll) [ $# -ge 2 ] && [[ "$2" =~ ^(0(\.[0-9]+)?|1(\.0+)?)$ ]] || { echo "--scroll needs a fraction from 0 to 1" >&2; exit 64; }; SCROLL="$2"; shift 2 ;;
+    --panel) PANEL=yes; shift ;;
+    --name) [ $# -ge 2 ] || { echo "--name needs a stem" >&2; exit 64; }; STEM="$2"; shift 2 ;;
     --inactive) INACTIVE=yes; shift ;;
     --out) [ $# -ge 2 ] || { echo "--out needs a directory" >&2; exit 64; }; OUT="$2"; shift 2 ;;
-    *) echo "usage: bash Scripts/shoot.sh <page> [--press \"<name>\"]... [--inactive] [--out <dir>]" >&2; exit 64 ;;
+    *) echo "$USAGE" >&2; exit 64 ;;
   esac
 done
-[ -n "$PAGE" ] || { echo "usage: bash Scripts/shoot.sh <page> [--press \"<name>\"]... [--inactive] [--out <dir>]" >&2; exit 64; }
+[ -n "$PAGE" ] || { echo "$USAGE" >&2; exit 64; }
 
 [ -x "$READOUT" ] || { echo "no $READOUT: run 'swift build --target HelmReadout'" >&2; exit 69; }
 [ -d "$DEVAPP" ] || { echo "no $DEVAPP: run 'bash Scripts/package-dev.sh'" >&2; exit 69; }
@@ -123,7 +138,7 @@ case "$SESSION" in
   *"locked: yes"*|*"on-console: no"*) echo "refused: the screen is locked or this session is not on the console" >&2; exit 75 ;;
 esac
 case "$SESSION" in *"screen-recording: no"*) echo "refused: no Screen Recording grant for this chain" >&2; exit 69 ;; esac
-if [ ${#PRESSES[@]} -gt 0 ]; then
+if [ ${#PRESSES[@]} -gt 0 ] || [ -n "$SCROLL" ] || [ "$PANEL" = yes ]; then
   case "$SESSION" in *"ax-trusted: no"*) echo "refused: no Accessibility grant for this chain" >&2; exit 69 ;; esac
 fi
 
@@ -138,13 +153,13 @@ if [ -n "$old" ]; then echo "Helm Dev already running (pid $old): SIGTERM, wait 
 BEFORE="$OUTDIR/defaults-before.plist"
 defaults export "$DOMAIN" "$BEFORE" 2>/dev/null
 
-open "$DEVAPP" --args -HelmOpenPage "$PAGE"
+open "$DEVAPP" --args -HelmOpenPage "$PAGE" ${ARGS[@]+"${ARGS[@]}"}
 for i in $(seq 1 20); do DEVPID="$(devpid)"; [ -n "$DEVPID" ] && break; sleep 0.5; done
 [ -n "$DEVPID" ] || { echo "Helm Dev did not start" >&2; exit 75; }
 echo "Helm Dev pid $DEVPID ($(ps -o comm= -p "$DEVPID"))"
 
-# The first on-screen layer-0 window of Helm Dev wider than 100 pt: "id x,y,w,h", then its above line.
-WIN=""; ABOVE=""; COUNT=0
+# The first on-screen window at $LAYER (0: the page; 101: the panel) of Helm Dev wider than 100 pt: "id x,y,w,h", then its above line.
+WIN=""; ABOVE=""; COUNT=0; LAYER=0
 read_window() {
   local out; out="$("$READOUT" window "$DEVPID")" || return 1
   COUNT=$(printf '%s\n' "$out" | grep -c 'onscreen yes')
@@ -153,7 +168,7 @@ read_window() {
   while IFS= read -r line; do
     if [ "$next" = yes ]; then ABOVE="${line#above: }"; break; fi
     case "$line" in
-      "window "*" layer 0 onscreen yes bounds "*)
+      "window "*" layer $LAYER onscreen yes bounds "*)
         local id="${line#window }"; id="${id%% *}"; local b="${line##* bounds }"
         local w="${b#*,*,}"; w="${w%%,*}"
         [ "$w" -gt 100 ] && { WIN="$id $b"; next=yes; } ;;
@@ -178,13 +193,31 @@ for name in ${PRESSES[@]+"${PRESSES[@]}"}; do
   sleep 1
 done
 
+if [ -n "$SCROLL" ]; then
+  [ "$(devpid)" = "$DEVPID" ] || { echo "Helm Dev $DEVPID is no longer the Helm Dev process: no scroll" >&2; exit 75; }
+  "$READOUT" scroll "$DEVPID" "$SCROLL" || { echo "scroll to $SCROLL failed" >&2; exit 65; }
+  sleep 1
+fi
+
+if [ "$PANEL" = yes ]; then
+  [ "$(devpid)" = "$DEVPID" ] || { echo "Helm Dev $DEVPID is no longer the Helm Dev process: no panel" >&2; exit 75; }
+  # The status item's button is labelled "Helm" in its description, its title being the countdown text while one is shown (StatusItemController); macOS 27 hosts it in MenuBarAgent's tree.
+  AGENT="$(pgrep -x MenuBarAgent | head -1)"
+  [ -n "$AGENT" ] || { echo "no MenuBarAgent: the status item cannot be found" >&2; exit 69; }
+  "$READOUT" statusitem "$DEVPID" "$AGENT" || { echo "press of the status item failed" >&2; exit 65; }
+  LAYER=101
+  for i in $(seq 1 10); do read_window && break; sleep 0.5; done
+  [ -n "$WIN" ] || { echo "no panel window (layer 101) in 5 s" >&2; exit 75; }
+  sleep 1
+fi
+
 if [ "$INACTIVE" = yes ]; then open -a Finder; sleep 1; fi
 
 read_window || { echo "the window is gone" >&2; exit 75; }
 B1="${WIN#* }"
 x="${B1%%,*}"; r="${B1#*,}"; y="${r%%,*}"; r="${r#*,}"; w="${r%%,*}"; h="${r#*,}"
 # -R, not -l: -l mis-renders an active behind-window material (measured by the rework's step 5 window probes).
-FILE="$OUTDIR/$PAGE.png"
+FILE="$OUTDIR/$PAGE${STEM:+-$STEM}.png"
 screencapture -x -R"$x,$y,$w,$h" "$FILE" || { echo "screencapture failed" >&2; exit 69; }
 FRONT_ABOVE="$ABOVE"
 read_window && B2="${WIN#* }" || B2="gone"

@@ -77,4 +77,62 @@ enum Accessibility {
         print("pressed \(text(hits[0], kAXRoleAttribute)) \"\(args[1])\" frame \(frame(hits[0])) rc \(rc.rawValue)")
         if rc != .success { throw Failure.unavailable("press returned \(rc.rawValue)") }
     }
+
+    /// Sets the vertical scroll bar of the widest scroll area to `fraction` of its range, for what lies
+    /// below the fold: a SwiftUI row offers no scroll-to-visible, and the area's page-down action answers
+    /// -25204. The value is absolute, so a rerun gives the same frame. Prints the bar's value, how far
+    /// the area's first child moved, and the result code; refuses when the app has no area or the area
+    /// has no bar (nothing below the fold).
+    static func scroll(_ args: [String]) throws {
+        guard args.count == 2, let fraction = Double(args[1]), fraction.isFinite, (0...1).contains(fraction) else {
+            throw Failure.usage("scroll <pid> <fraction 0...1>")
+        }
+        let app = try application(args)
+        var best: (area: AXUIElement, width: Int)?
+        walk(app, 0) { e, _ in
+            guard text(e, kAXRoleAttribute) == kAXScrollAreaRole as String else { return }
+            var s = CGSize.zero
+            if let v = attribute(e, kAXSizeAttribute), CFGetTypeID(v) == AXValueGetTypeID() { AXValueGetValue(v as! AXValue, .cgSize, &s) }
+            if Int(s.width) > best?.width ?? -1 { best = (e, Int(s.width)) }
+        }
+        guard let area = best?.area else { throw Failure.data("no scroll area in the app") }
+        guard let bar = attribute(area, kAXVerticalScrollBarAttribute) else { throw Failure.data("nothing below the fold: the scroll area has no vertical scroll bar") }
+        let first = (attribute(area, kAXChildrenAttribute) as? [AXUIElement])?.first
+        let before = first.map(top) ?? 0
+        let rc = AXUIElementSetAttributeValue(bar as! AXUIElement, kAXValueAttribute as CFString, NSNumber(value: fraction))
+        usleep(500_000)
+        let value = attribute(bar as! AXUIElement, kAXValueAttribute).map { "\($0)" } ?? "unreadable"
+        let moved = first.map { Int((top($0) - before).rounded()) } ?? 0
+        print("scrolled to \(fraction) bar value \(value) moved \(moved) pt rc \(rc.rawValue)")
+        if rc != .success { throw Failure.unavailable("scroll returned \(rc.rawValue)") }
+    }
+
+    /// Presses the status item of the app `args[0]` as the system draws it: on macOS 27 the button
+    /// is in the tree of `MenuBarAgent`, `args[1]`, not of the app, so it is found by the pid its element
+    /// answers to. The label "Helm" (`StatusItemController`) is the button's description; its title is the
+    /// countdown text while one is shown, and `name` reads the title first, so the match reads both.
+    /// Not exactly one: refuses and lists them.
+    static func statusItem(_ args: [String]) throws {
+        guard args.count == 2, let pid = Int32(args[0]), Int32(args[1]) != nil else { throw Failure.usage("statusitem <pid> <host-pid>") }
+        let host = try application([args[1]])
+        var hits: [AXUIElement] = []
+        walk(host, 0) { e, _ in
+            var owner: pid_t = 0
+            guard text(e, kAXRoleAttribute) == kAXButtonRole as String, (name(e) == "Helm" || text(e, kAXDescriptionAttribute) == "Helm"), actions(e).contains(kAXPressAction),
+                  AXUIElementGetPid(e, &owner) == .success, owner == pid else { return }
+            hits.append(e)
+        }
+        guard hits.count == 1 else {
+            throw Failure.data("\(hits.count) status items labelled \"Helm\" (title or description) of pid \(pid) under pid \(args[1])" + (hits.isEmpty ? "" : ":\n" + hits.map { "  " + describe($0) }.joined(separator: "\n")))
+        }
+        let rc = AXUIElementPerformAction(hits[0], kAXPressAction as CFString)
+        print("pressed status item pid \(pid) frame \(frame(hits[0])) rc \(rc.rawValue)")
+        if rc != .success { throw Failure.unavailable("press returned \(rc.rawValue)") }
+    }
+
+    private static func top(_ e: AXUIElement) -> CGFloat {
+        var p = CGPoint.zero
+        if let v = attribute(e, kAXPositionAttribute), CFGetTypeID(v) == AXValueGetTypeID() { AXValueGetValue(v as! AXValue, .cgPoint, &p) }
+        return p.y
+    }
 }

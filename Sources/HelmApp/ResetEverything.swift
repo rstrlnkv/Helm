@@ -30,6 +30,12 @@ import HelmRuntime
     /// added to the plan and not carried out here is a build error rather than
     /// a promise nothing keeps.
     static func run() {
+        // A stand-in engine would not give back what the real one holds, and the
+        // reset would forget the real settings that say the module ran.
+        guard !ModuleHost.shared.anyStandsIn else {
+            HelmLog.shared.warn("host", "refused: samples shown, reset everything not run")
+            return
+        }
         for step in ResetPlan.order {
             switch step {
             case .handBackWhatIsOutsideHelm: ModuleHost.shared.handBackSystemState()

@@ -36,9 +36,36 @@ import Module_KeepAwake_Engine
         body: ShellGlyph.circle(11, 13, 8.5).subtracting(ShellGlyph.circle(16.5, 7.5, 7.3)))
 
     private var store: NamespacedStore?
-    public init() {}
+    private let samples: KeepAwakeSample.Verdict
+    public convenience init() { self.init(samples: Self.launchSamples()) }
+    convenience init(argumentDomain: [String: Any], argv: [String]) {
+        self.init(samples: KeepAwakeSample.verdict(argumentDomain: argumentDomain, argv: argv))
+    }
+    private init(samples: KeepAwakeSample.Verdict) { self.samples = samples }
+    private static func launchSamples() -> KeepAwakeSample.Verdict {
+        KeepAwakeSample.verdict(
+            argumentDomain: UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain),
+            argv: ProcessInfo.processInfo.arguments)
+    }
 
     public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
+        // A refused sample name builds no real engine either: a typo must not
+        // restore a session and take an assertion.
+        if samples != .none {
+            let shown = store.over(InMemoryKeyValueStore())
+            self.store = shown
+            switch samples {
+            case .show(let sample):
+                sample.seed(shown)
+                HelmLog.shared.info("keepawake", "samples built: \(sample.rawValue)")
+                return KeepAwakeSampleEngine(payload: sample.payload(now: Date()))
+            case .unknown(let name):
+                HelmLog.shared.warn("keepawake", "samples refused: \"\(name.prefix(64))\" names no sample")
+            case .noName, .none:
+                HelmLog.shared.warn("keepawake", "samples refused: \(KeepAwakeSample.argument) has no name")
+            }
+            return KeepAwakeSampleEngine(payload: nil)
+        }
         self.store = store
         let ports = KeepAwakeSystemPorts()
         return KeepAwakeEngine(

@@ -52,7 +52,16 @@ import HelmUI
         where isEnabled(d) && live[type(of: d).id.rawValue] == nil { enable(d) }
     }
 
+    /// A stand-in engine is live (`ModuleEngine.standsIn`): what is shown is not what
+    /// the Mac is in, and the host's own store is the real one.
+    func standsInLive(_ key: String) -> Bool { live[key]?.engine.standsIn ?? false }
+    var anyStandsIn: Bool { live.values.contains { $0.engine.standsIn } }
+
     func setEnabled(_ d: any ModuleDescriptor, _ on: Bool) {
+        if !on, standsInLive(type(of: d).id.rawValue) {
+            HelmLog.shared.warn("host", "refused: samples shown, \(type(of: d).id.rawValue) stays on")
+            return
+        }
         store(for: d).set(on, for: "enabled")
         if on {
             if live[type(of: d).id.rawValue] == nil { enable(d) }

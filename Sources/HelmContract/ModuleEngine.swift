@@ -16,6 +16,12 @@ public protocol ModuleEngine: AnyObject {
     /// the process ends in `deactivate()`. Defaulted, because most engines have
     /// nothing to say to the difference.
     func willDisable()
+    /// **This engine is a picture of the module, not the module.** The host then
+    /// refuses to switch the module off and refuses «Reset all settings»: it would
+    /// write the real `enabled` flag and ask this engine to give back what the real
+    /// one never took, so the next ordinary launch would find the module off and
+    /// nothing to recover. Defaulted: only a stand-in says yes.
+    var standsIn: Bool { get }
     func deactivate()
     /// Module-specific commands are sent through the typed façade over this
     /// transport (LocalTransport in-process, XPCTransport out-of-process).
@@ -24,4 +30,5 @@ public protocol ModuleEngine: AnyObject {
 
 public extension ModuleEngine {
     func willDisable() {}
+    var standsIn: Bool { false }
 }

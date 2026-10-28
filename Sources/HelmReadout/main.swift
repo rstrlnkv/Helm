@@ -6,7 +6,7 @@ import Foundation
 /// What a screen reads as, in numbers, for `Scripts/shoot.sh` and for a person
 /// looking at a capture: a point's colour, runs of one colour, the contrast of
 /// two, the frame difference over a crop, a process's windows, executable path and accessibility
-/// elements, and the press of a control by its name. It prints and never judges:
+/// elements, the press of a control by its name, the scroll of a page, and the press of a status item. It prints and never judges:
 /// no threshold lives here, so no number can be argued with by a rule written
 /// before the reading (ARCHITECTURE.md § Two screen instruments).
 ///
@@ -36,7 +36,7 @@ enum Failure: Error {
     }
 }
 
-let commands = "point | bands | contrast | diff | window | exe | scale | ax | press | session"
+let commands = "point | bands | contrast | diff | window | exe | scale | ax | press | scroll | statusitem | session"
 let arguments = Array(CommandLine.arguments.dropFirst())
 do {
     guard let command = arguments.first else { throw Failure.usage(commands) }
@@ -51,6 +51,8 @@ do {
     case "scale": try Windows.scale(rest)
     case "ax": try Accessibility.tree(rest)
     case "press": try Accessibility.press(rest)
+    case "scroll": try Accessibility.scroll(rest)
+    case "statusitem": try Accessibility.statusItem(rest)
     case "session": Windows.session()
     default: throw Failure.usage(commands)
     }

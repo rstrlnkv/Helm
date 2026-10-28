@@ -112,15 +112,15 @@ attributes the ask to the responsible process.
 the first prints where and how big, the second prints numbers, and a threshold lives in
 the person or the check that reads them.
 
-`shoot.sh <page>` launches Helm Dev on a page and captures the window. Helm Dev is the
+`shoot.sh <page>` launches Helm Dev on a page and captures the window, or with `--panel` the panel. Helm Dev is the
 process whose executable path, as the kernel holds it (`HelmReadout exe <pid>`), is exactly
 `/Applications/Helm Dev.app/Contents/MacOS/HelmApp`, never one found by name or by `ps`'s
 command column, which is argv[0] and which any process sets: Helm and Helm Dev run one
 executable name, and a SIGTERM must reach only Helm Dev. The pid is checked again before
-every press and before it is ended. The page is opened by `-HelmOpenPage <id>`
+every press, before a scroll or a panel press, and before it is ended. The page is opened by `-HelmOpenPage <id>`
 (`Sources/HelmApp/LaunchPage.swift`), the one thing a press cannot reach, since Helm Dev has
 no window at launch; any other state is brought by pressing a control by its accessibility
-name (`--press`), through the Accessibility C API, so no System Events and no AppleScript
+name (`--press`), by a launch argument (`--arg`), by the scroll bar (`--scroll`) or by the panel (`--panel`), through the Accessibility C API, so no System Events and no AppleScript
 runs. A page that cannot be opened is refused and logged, never replaced by another.
 
 The region is the window's bounds read before and after the capture, both printed:
@@ -148,8 +148,22 @@ never does. A capture carries the display's profile, so `point` prints the file'
 values with the profile name beside the sRGB ones; the other subcommands read sRGB.
 Its subcommands: `point`, `bands`, `contrast`, `diff` over two captures of one size,
 `window <pid>` with the windows in front of each, `exe <pid>`, `scale <x> <y>`, `ax <pid>`,
-`press <pid> <name>`, and `session`, which says whether the screen is locked and which
-grants this chain has.
+`press <pid> <name>`, `scroll <pid> <fraction>`, `statusitem <pid> <host-pid>`, and `session`, which says whether the screen is
+locked and which grants this chain has.
+
+A state that is not on screen at launch is reached by `--press` (above), `--arg`, `--scroll` or
+`--panel`; `--name` only names the file. `--arg <key> <value>` is
+a launch argument after `-HelmOpenPage`, answered from the argument domain, so it overrides
+a default for the run and writes none (`--arg module.app.appearance dark`). `--scroll <fraction>`
+(0 to 1) writes the page's vertical scroll bar value (`HelmReadout scroll`), because a window
+taller than the screen loses its lower part in a shot and a SwiftUI row offers no
+scroll-to-visible; a page-down action answers -25204 on a SwiftUI scroll area. The value is
+absolute, so a rerun gives the same frame, and the tool prints how far the first row moved.
+`--panel` presses the status item and shoots the panel window (layer 101) instead of the page:
+on macOS 27 status items live in `MenuBarAgent`'s tree, so `HelmReadout statusitem` finds the
+button by Helm Dev's own pid (the label "Helm" is the button's description; its title is the countdown text while one is shown, so the match reads both), which leaves the release Helm's button alone; the panel
+frame shows other modules' live tiles, so it is proof and not a file for the tree. `--name <stem>`
+makes the file `<page>-<stem>.png`, so one page can be shot in many states into one folder.
 
 ## Snapshot rules
 
