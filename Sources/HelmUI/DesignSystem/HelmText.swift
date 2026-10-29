@@ -47,6 +47,9 @@ public enum HelmText {
     /// with it. It also keeps `quiet` above `faint`, which 0.64 would not:
     /// `faint` at 0.65 would be the darker of the two.
     public static let quiet = Color.primary.opacity(0.66)
+    /// Ink on a saturated fill — the accent, a signal colour, a module's tint — where `Color.primary`
+    /// would turn dark on the fill in light and lose it.
+    public static let onFill = Color.white
     /// What a window that is not the active one draws its text and glyphs at (`\.helmWindowAppearsActive`):
     /// the header row and the sidebar's rows. Not a reading floor — it says "this window is not in
     /// front", as System Settings' sidebar does; the fill under it stays.

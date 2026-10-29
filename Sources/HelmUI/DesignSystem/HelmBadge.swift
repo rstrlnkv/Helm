@@ -71,7 +71,7 @@ public struct HelmBadge: View {
         Text(text)
             .font(.system(size: 10, weight: .bold))
             .tracking(0.5)
-            .foregroundStyle(.white)
+            .foregroundStyle(HelmText.onFill)
             // 2.5, for the same reason as `quiet`'s 1: the silhouette, not a gap.
             .padding(.horizontal, 6).padding(.vertical, 2.5)
             .background {

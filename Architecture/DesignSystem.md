@@ -14,7 +14,7 @@ string tables at once.
 ## Tokens
 
 Tokens live one family to a file in `Sources/HelmUI/DesignSystem`: `HelmFills.swift` holds
-`HelmSurface` — a small set of fills over `Color.primary` (and `rowWashOpacity`, `chosenWash(_:)`), and `hairline`, which Helm's own panel draws as an outline (`PanelChrome.swift`) and `HelmPillChoice.swift` as a pill's rim, though no card is given one —
+`HelmSurface` — a small set of fills over `Color.primary` (and `rowWashOpacity`, `chosenWash(_:)`), and `hairline`, which `helmPillTrack` (`HelmPillChoice.swift`) draws as the rim of a pill's track — the settings window's channel choice, the panel's size chips and the drawer's choose chip — though no card is given one —
 `HelmLadders.swift` `HelmSpace` and `HelmRadius`, `HelmLayout.swift` `HelmLayout` (with `markColumn`, the 14 pt column a row's mark and a log row's glyph share),
 `HelmText.swift` `HelmText` (with the faces `statusGlyph`, `smallPrint` and `entryHeading`), `HelmSignal.swift` `HelmSignal`, `HelmMotion.swift` the curves,
 `ModuleTint.swift` the method, and with it `hostColour` (General, Log, About) and `whatsNewColour`,
@@ -197,7 +197,7 @@ as a hole inside Helm's surfaces. `Sources/HelmUI/DesignSystem/HelmBadge.swift` 
 pill, its tint colouring the fill and nothing else. `HelmAppHero.swift` is About's mark in its bezel over the wordmark, whose bezel rotates only
 while an update check is in flight: motion means work rather than decoration.
 `HelmPillChoice.swift` is a choice whose options differ in kind, each inked by its own option. The menu-bar
-panel stands outside this language — it is a transient surface with its own layout rules.
+panel is on the kit's tokens and surfaces; what it keeps of its own is listed at the top of `Architecture/TheMenuBarPanel.md`.
 
 `HelmSettingRow.swift` is mark, title, note, control; the mark reports *the world*
 rather than the switch beside it. `HelmBanner.swift` is a statement with at most one verb

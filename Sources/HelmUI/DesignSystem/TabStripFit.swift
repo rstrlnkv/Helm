@@ -3,8 +3,8 @@ import AppKit
 /// Turns the tab-label setting into the face a strip wears.
 ///
 /// Two jobs, and they are one function because both end in the same refusal.
-/// It answers `TabLabelStyle.automatic` by measuring: the panel is a fixed
-/// 320 pt, so «do these names fit» is a question with an answer rather than a
+/// It answers `TabLabelStyle.automatic` by measuring: the panel's width is fixed
+/// (`helmPanelWidth`: two `PanelGrid.minimumTile` tiles, one `PanelGrid.gap`, `PanelGrid.padding` either side), so «do these names fit» is a question with an answer rather than a
 /// taste, and the strip that would have needed a setting is the one already too
 /// full to read. And it stands in front of `.glyph` however that answer arrived
 /// — a strip where one tab has no glyph draws that tab as an empty padded
@@ -15,16 +15,18 @@ import AppKit
 /// fit, or none of them is drawn.
 public enum TabStripFit {
 
-    /// 10 pt of padding either side of a tab's content — `PanelTabStrip`'s own
-    /// `.padding(.horizontal, 10)`.
-    static let padding: CGFloat = 20
-    /// The strip's `HStack(spacing: 2)`.
-    static let gap: CGFloat = 2
+    /// Padding either side of a tab's content. This is the source: `PanelTabStrip` draws with it.
+    public static let tabInset: CGFloat = 10
+    /// Both insets of one tab: what a tab costs beyond its name.
+    static let padding: CGFloat = tabInset * 2
+    /// The space between two tabs. Also the source, drawn by `PanelTabStrip`.
+    public static let gap: CGFloat = 2
+    /// A tab's height, and the «+» square's side.
+    public static let tabHeight: CGFloat = 26
     /// A 13 pt SF Symbol's square, which is what a glyph-only tab holds.
     static let glyph: CGFloat = 15
-    /// The «+» that makes a tab: a 12 pt symbol in a 26 pt square, the tab's
-    /// own height.
-    static let addButton: CGFloat = 26
+    /// The «+» that makes a tab: a 12 pt symbol in a square the tab's own height.
+    static let addButton: CGFloat = tabHeight
 
     /// The face the strip should draw.
     ///

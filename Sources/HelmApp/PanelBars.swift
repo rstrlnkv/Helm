@@ -59,9 +59,9 @@ struct PanelTabStrip: View {
         let named = self.named
         let face = TabStripFit.face(for: labels, tabs: named, editing: editing,
                                     available: helmPanelWidth - PanelGrid.padding * 2)
-        // 2 pt between capsules: a selected capsule's fill is the only edge a
+        // `TabStripFit.gap` between capsules: a selected capsule's fill is the only edge a
         // tab has, so the gap is what keeps two neighbours from reading as one.
-        return HStack(spacing: 2) {
+        return HStack(spacing: TabStripFit.gap) {
             ForEach(Array(layout.tabs.enumerated()), id: \.element.id) { index, tab in
                 tabButton(index, tab, named[index].title, face)
             }
@@ -82,7 +82,7 @@ struct PanelTabStrip: View {
                     Image(systemName: "plus")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(Color.accentColor)
-                        .frame(width: 26, height: 26)
+                        .frame(width: TabStripFit.tabHeight, height: TabStripFit.tabHeight)
                         .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
@@ -120,15 +120,15 @@ struct PanelTabStrip: View {
             withAnimation(HelmMotion.interface) { activeTab = index }
         } label: {
             // The tab as the Liquid Glass mockup drew it (direction B): a
-            // capsule 26 pt tall, 10 pt of padding either side, 4 pt between
-            // glyph and text, and type that does **not** change weight when
+            // capsule `TabStripFit.tabHeight` tall, `TabStripFit.tabInset` either side,
+            // `HelmSpace.s2` between glyph and text, and type that does **not** change weight when
             // selected.
             //
             // Weight was the first thing tried and it is the one thing a tab
             // cannot do: bold is wider than regular, so every tab in the strip
             // moved whenever another was picked. Selection is a fill and a
             // colour.
-            HStack(spacing: 4) {
+            HStack(spacing: HelmSpace.s2) {
                 if face.showsGlyph, let glyph = tab.glyph {
                     Image(systemName: glyph)
                         .font(.system(size: 13, weight: .medium))
@@ -148,17 +148,17 @@ struct PanelTabStrip: View {
                 }
             }
             .foregroundStyle(index == tabIndex ? Color.primary : HelmText.quiet)
-            .padding(.horizontal, 10)
-            .frame(height: 26)
+            .padding(.horizontal, TabStripFit.tabInset)
+            .frame(height: TabStripFit.tabHeight)
             .background {
                 if index == tabIndex {
                     // A fill, not a material. The panel is already Liquid
                     // Glass, and a material under the tab was glass drawn on
                     // glass with a shadow nothing could see. 12% rather than
                     // `wellFill`'s 5%, which measured 1.23:1 over the panel's
-                    // glass and 1.04:1 in light. A capsule, because 13 pt is
-                    // half its height and the panel's 26 pt corner is twice
-                    // that: the selection sits concentric with the card.
+                    // glass and 1.04:1 in light. A capsule, because its radius is half of
+                    // `TabStripFit.tabHeight`, and `HelmRadius.panel` equals that height: the
+                    // selection sits concentric with the card.
                     Capsule()
                         .fill(HelmSurface.panelSelection)
                         // One shape that moves between tabs rather than one
@@ -212,9 +212,9 @@ struct PanelEditBar: View {
     let done: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: HelmSpace.s4) {
             Text(AppStr.panelSetup).font(.subheadline.weight(.semibold))
-            Spacer(minLength: 8)
+            Spacer(minLength: HelmSpace.s4)
             Button(AppStr.done, action: done)
                 .controlSize(.small)
                 .buttonStyle(.borderedProminent)
@@ -236,7 +236,7 @@ struct PanelGallery: View {
     let add: (String) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: HelmSpace.s3) {
             Text(AppStr.addWidget)
                 .font(HelmText.rowDetail)
                 .foregroundStyle(HelmText.quiet)
@@ -260,7 +260,7 @@ struct PanelGallery: View {
         return Button {
             add(id)
         } label: {
-            VStack(spacing: 4) {
+            VStack(spacing: HelmSpace.s2) {
                 if isDrawer {
                     Image(systemName: "wrench.and.screwdriver")
                         .font(.system(size: 15, weight: .semibold))
@@ -307,14 +307,14 @@ struct PanelFooter: View {
     let configure: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: HelmSpace.s4) {
             if showSettings {
                 footerButton(AppStr.settingsPane, "gearshape") {
                     NotificationCenter.default.post(name: .helmOpenSettings,
                                                     object: SettingsWindow.settingsPage)
                 }
             }
-            Spacer(minLength: 8)
+            Spacer(minLength: HelmSpace.s4)
             // Only on the way in. While the setup bar is on screen it carries
             // «Готово», and two of them a hundred points apart is one of them
             // asking whether the other did something else.
@@ -358,7 +358,7 @@ struct PanelFooter: View {
     private func footerButton(_ title: String, _ symbol: String,
                               action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 6) {
+            HStack(spacing: HelmSpace.s3) {
                 Image(systemName: symbol)
                     .font(.system(size: 12, weight: .semibold))
                 Text(title).font(.subheadline.weight(.medium))

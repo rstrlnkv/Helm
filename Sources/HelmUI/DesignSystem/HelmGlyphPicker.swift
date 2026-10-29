@@ -99,7 +99,7 @@ public struct HelmGlyphPicker: View {
                     Button { choose(symbol) } label: {
                         Image(systemName: symbol)
                             .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(symbol == selected ? Color.white : Color.primary)
+                            .foregroundStyle(symbol == selected ? HelmText.onFill : Color.primary)
                             .frame(width: 40, height: 32)
                             .background(RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
                                 .fill(symbol == selected ? AnyShapeStyle(Color.accentColor)

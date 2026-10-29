@@ -446,9 +446,6 @@ struct HelmPanelContent: View {
 
     nonisolated static let gridSpace = "panel.grid"
     nonisolated static let stripSpace = "panel.strip"
-    /// What `EditChrome` pads a tile by while the mode is on — the frames are
-    /// measured outside it, and the drag needs the content rectangle.
-    static let chromeInset: CGFloat = 4
 
     /// Carrying a tile — third architecture, and the reasons each of the first
     /// two failed are what this one is made of.
@@ -483,12 +480,11 @@ struct HelmPanelContent: View {
                           let widget = items.first(where: { $0.id == hit.id })
                     else { return }
                     // The frames are measured outside `EditChrome`, which pads
-                    // every tile by 4 pt in this mode — so the raw frame is the
-                    // tile plus 8 pt each way. The overlay draws the *content*,
-                    // and drawing it at the padded size inflated the carried
+                    // every tile by `EditChrome.overhang` on each side in this
+                    // mode. The overlay draws the *content*, and drawing it at the padded size inflated the carried
                     // tile just enough to be visibly bigger than the slot it
                     // lands in, with a snap down at the handover.
-                    let content = hit.frame.insetBy(dx: Self.chromeInset, dy: Self.chromeInset)
+                    let content = hit.frame.insetBy(dx: EditChrome.overhang, dy: EditChrome.overhang)
                     dragSize = content.size
                     grabOffset = CGSize(width: value.startLocation.x - content.minX,
                                         height: value.startLocation.y - content.minY)
@@ -531,7 +527,7 @@ struct HelmPanelContent: View {
                 // the hand fades instead of being cut — the one exit from a
                 // drag that had no motion at all.
                 guard let home = frames[carried.id]?
-                        .insetBy(dx: Self.chromeInset, dy: Self.chromeInset) else {
+                        .insetBy(dx: EditChrome.overhang, dy: EditChrome.overhang) else {
                     withAnimation(HelmMotion.interface) {
                         dragging = nil
                         dropping = false
@@ -565,7 +561,7 @@ struct HelmPanelContent: View {
                     settle.disablesAnimations = true
                     withTransaction(settle) {
                         if let frame = frames[carried.id] {
-                            let home = frame.insetBy(dx: Self.chromeInset, dy: Self.chromeInset)
+                            let home = frame.insetBy(dx: EditChrome.overhang, dy: EditChrome.overhang)
                             dragLocation = CGPoint(x: home.minX + grabOffset.width,
                                                    y: home.minY + grabOffset.height)
                         }
@@ -789,7 +785,7 @@ struct HelmPanelContent: View {
     }
 
     private func emptyState(_ symbol: String, _ title: String, _ hint: String) -> some View {
-        VStack(spacing: 8) {
+        VStack(spacing: HelmSpace.s4) {
             Image(systemName: symbol)
                 .font(.system(size: 30))
                 .foregroundStyle(HelmText.quiet)
@@ -824,9 +820,9 @@ struct HelmPanelContent: View {
             // of corner controls, which is what pushed the footer off the
             // bottom of the screen.
             // Only when there is something pinned. An empty `VStack` has no
-            // height, but the stack around it still puts its 8 pt gap after it
+            // height, but the stack around it still puts its `PanelGrid.gap` after it
             // — so a panel with one tab and nothing being arranged opened with
-            // 20 pt above its first widget where every other edge has 12.
+            // `PanelGrid.padding` plus `PanelGrid.gap` above its first widget where every other edge has `PanelGrid.padding`.
             if showsTabStrip {
                 PanelTabStrip(layout: layout, tabIndex: tabIndex, editing: editing,
                               labels: tabLabels, selection: tabSelection,
@@ -914,7 +910,7 @@ struct HelmPanelContent: View {
                     PanelFooter(editing: editing, showSettings: showSettingsButton,
                                 showQuit: showQuitButton, showEdit: showEditButton) {
                         // The same curve the card's measured height animates on.
-                        // Entering the mode grows every cell by 8 pt and adds
+                        // Entering the mode grows every cell by twice `EditChrome.overhang` and adds
                         // two controls to each, so the grid's height changes
                         // with it — and on `interface` (0.22 snappy) against
                         // the height's `disclosure` (0.30 smooth) the tiles and
@@ -964,10 +960,10 @@ struct HelmPanelContent: View {
         .helmTracksAccessibility($accessibility, alsoOn: .helmPanelDidShow)
         .helmTracksScreenRecording($screenRecording, alsoOn: .helmPanelDidShow)
         // Liquid Glass, and no border of our own: glass supplies its specular
-        // edge, and a hand-drawn hairline on top of it doubles the line. 26 pt
-        // rather than 20 so the radius is concentric with the 14 pt tile cards
-        // inside at 12 pt of padding — that is what makes them read as nested
-        // rather than merely stacked.
+        // edge, and a hand-drawn hairline on top of it doubles the line. `HelmRadius.panel`,
+        // not 20: it is the tile cards' `HelmRadius.frame` (`helmPanelCard`) plus the
+        // `PanelGrid.padding` they sit in, so the two radii are concentric — that is what
+        // makes them read as nested rather than merely stacked.
         .glassEffect(.regular, in: .rect(cornerRadius: HelmRadius.panel))
         .containerShape(.rect(cornerRadius: HelmRadius.panel))
         // Centred in a strip that is wider than the card, so the glass has

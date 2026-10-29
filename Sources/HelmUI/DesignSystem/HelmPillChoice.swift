@@ -1,7 +1,17 @@
 import SwiftUI
 
+extension View {
+    /// The capsule a row of small choices sits in: a fill (material unless the caller says otherwise) and a
+    /// hairline rim. The fill is an argument, never an `if` at the call site, so the view keeps one identity
+    /// whichever fill it wears.
+    public func helmPillTrack(_ fill: AnyShapeStyle = AnyShapeStyle(.regularMaterial)) -> some View {
+        background(Capsule().fill(fill))
+            .overlay(Capsule().strokeBorder(HelmSurface.hairline))
+    }
+}
+
 /// A choice whose options differ in kind, not in position: a capsule per option, a material capsule under the
-/// group, a hairline rim (the drawing of `sizeControl`, a private member of `EditChrome` in `Sources/HelmApp/PanelChrome.swift`, inside a settings page).
+/// group, a hairline rim (`helmPillTrack`, which the panel's size chips draw with too).
 ///
 /// A segmented control could not carry what the update channel row is for. The channels differ in kind, and the
 /// system draws every segment in the accent whichever is chosen — so the control that asks «how rough a build do
@@ -40,7 +50,7 @@ public struct HelmPillChoice<Option: Hashable>: View {
     }
 
     public var body: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: HelmSpace.s1) {
             ForEach(items.indices, id: \.self) { index in
                 let item = items[index]
                 let chosen = selection == item.option
@@ -62,9 +72,8 @@ public struct HelmPillChoice<Option: Hashable>: View {
                 .accessibilityAddTraits(chosen ? [.isButton, .isSelected] : .isButton)
             }
         }
-        .padding(2)
-        .background(Capsule().fill(.regularMaterial))
-        .overlay(Capsule().strokeBorder(HelmSurface.hairline))
+        .padding(HelmSpace.s1)
+        .helmPillTrack()
         .animation(HelmMotion.interface, value: selection)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(title)

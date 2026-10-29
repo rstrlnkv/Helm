@@ -152,7 +152,7 @@ public struct HelmIconPlate: View {
     private var plated: some View {
         Image(systemName: symbol)
             .font(.system(size: glyphSize, weight: .semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(HelmText.onFill)
             .frame(width: size, height: size)
             .background(
                 RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)

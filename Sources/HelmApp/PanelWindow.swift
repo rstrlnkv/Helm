@@ -40,7 +40,7 @@ private final class KeyablePanel: NSPanel {
 /// 1×1 in the app was 10 pt under a floor the app itself had written down. 320
 /// is the width the mockups always used, and it makes the rule true: two tiles
 /// of exactly 144.
-let helmPanelWidth: CGFloat = 320
+let helmPanelWidth: CGFloat = PanelGrid.minimumTile * 2 + PanelGrid.gap + PanelGrid.padding * 2
 /// Room on each side of the card for the glass to cast into.
 ///
 /// A window shadow is drawn by the window server *outside* the frame, so the
