@@ -111,7 +111,7 @@ final class ASecureFieldIsAskedBeforeItIsReadTests: XCTestCase {
         let engine = LayoutEngine(
             tap: FakeTap(), typing: FakeTyping(), sources: FakeSources(current: "en"),
             translation: Translation(), spell: Spell(),
-            secure: context, selection: selection,
+            secure: context, activation: FakeActivation(), selection: selection,
             ledger: LedgerStore(),
             settings: NamespacedStore(namespace: LayoutEngine.moduleID,
                                       backing: InMemoryKeyValueStore()))

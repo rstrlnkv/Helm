@@ -58,6 +58,20 @@ final class BuildingAnEngineDoesNotDecorateTheMenuBarTests: XCTestCase {
             """)
     }
 
+    /// The host builds through `makeModule`, not `makeEngine`: it must set the store
+    /// the later `attachMenuBarPresence()` builds the indicator from, or the
+    /// indicator silently vanishes from the app.
+    func testMakingTheModuleLeavesTheMenuBarAloneAndAttachStillBuildsIt() {
+        let descriptor = LayoutDescriptor()
+        let parts = descriptor.makeModule(store: store(indicator: false))
+        XCTAssertNil(descriptor.indicator, "`makeModule` built the menu-bar indicator")
+        descriptor.attachMenuBarPresence()
+        XCTAssertNotNil(descriptor.indicator,
+                        "`attachMenuBarPresence()` built nothing after `makeModule`: no store was kept, so the app would draw no indicator")
+        descriptor.detachMenuBarPresence()
+        descriptor.stop(parts.model)
+    }
+
     func testDetachingDropsIt() {
         let descriptor = LayoutDescriptor()
         _ = descriptor.makeEngine(store: store(indicator: false))

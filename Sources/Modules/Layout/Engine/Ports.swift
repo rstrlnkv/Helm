@@ -120,3 +120,21 @@ public protocol SelectionPort: Sendable {
     /// text somebody thinks they changed.
     func replaceSelection(with text: String) -> Bool
 }
+
+/// Two moments the engine asks the system again: Helm itself coming to the
+/// front (the person may have just granted Accessibility, or edited their
+/// layouts, in System Settings) and another application coming to the front
+/// (the layout bound to it).
+///
+/// One port for both, so the engine registers nothing process-wide itself and
+/// deactivation is one call.
+public protocol AppActivationPort: AnyObject, Sendable {
+    /// Starts both observations and replaces any earlier ones: called twice, one
+    /// registration of each is left. Both handlers run on the main thread;
+    /// `frontmostChanged` gets the new bundle id, and only when it differs from
+    /// the last one.
+    func startObserving(helmBecameActive: @escaping @Sendable () -> Void,
+                        frontmostChanged: @escaping @Sendable (String) -> Void)
+    /// Removes both. Idempotent.
+    func stopObserving()
+}

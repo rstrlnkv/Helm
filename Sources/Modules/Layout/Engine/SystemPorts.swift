@@ -595,9 +595,8 @@ public struct SystemSound: SoundPort {
 
     public init(name: String = "Tink") { self.name = name }
 
-    /// On the main thread, wherever it is called from. The engine reaches this
-    /// from the transport as well as from the tap, and AppKit is not a thing to
-    /// touch from whichever queue happened to deliver a command.
+    /// On the main thread, wherever it is called from: AppKit is not a thing to
+    /// touch from whichever queue a caller happens to be on.
     public func playSwitch() {
         if Thread.isMainThread { NSSound(named: name)?.play(); return }
         DispatchQueue.main.async { NSSound(named: self.name)?.play() }
@@ -830,4 +829,52 @@ private func systemFocusedElement() -> AXUIElement? {
           let element = focused, CFGetTypeID(element) == AXUIElementGetTypeID()
     else { return nil }
     return unsafeBitCast(element, to: AXUIElement.self)
+}
+
+// MARK: - AppActivation
+
+/// `AppActivationPort` on the notification centre and `FrontmostApp`.
+///
+/// The frontmost watch goes through `FrontmostApp` rather than an `NSWorkspace`
+/// observer of its own: that type is the app's single observer of the
+/// activation notice and exists because `NSWorkspace` is main-thread-only. A
+/// second one here would be the third in the app.
+///
+/// Tokens are dropped before new ones are taken, not overwritten:
+/// `FrontmostApp.shared` is a process-wide singleton whose watchers are never
+/// pruned, so two starts in a row would leave the first registered, and
+/// unstoppable once its token was lost. A block observer does not remove
+/// itself either, and switching the module off and on would stack another each
+/// time. `deinit` takes them back too.
+public final class AppActivation: AppActivationPort, @unchecked Sendable {
+    private let lock = NSLock()
+    private var activeObserver: NSObjectProtocol?
+    private var frontmostWatch: UUID?
+
+    public init() {}
+
+    deinit { stopObserving() }
+
+    public func startObserving(helmBecameActive: @escaping @Sendable () -> Void,
+                               frontmostChanged: @escaping @Sendable (String) -> Void) {
+        stopObserving()
+        let observer = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { _ in helmBecameActive() }
+        let watch = FrontmostApp.shared.onChange(frontmostChanged)
+        lock.lock()
+        activeObserver = observer
+        frontmostWatch = watch
+        lock.unlock()
+    }
+
+    public func stopObserving() {
+        lock.lock()
+        let observer = activeObserver, watch = frontmostWatch
+        activeObserver = nil
+        frontmostWatch = nil
+        lock.unlock()
+        if let observer { NotificationCenter.default.removeObserver(observer) }
+        if let watch { FrontmostApp.shared.stopWatching(watch) }
+    }
 }

@@ -54,8 +54,8 @@ private struct ConcurrentSources: LayoutSourcePort {
     func select(_ sourceID: String) {}
 }
 
-/// The tap delivers on a run-loop source and the transport on a concurrency
-/// pool, and both touch the same fields behind one `NSLock`.
+/// The tap delivers on a run-loop source and the settings re-read runs on the
+/// engine's serial queue, and both touch the same fields behind one `NSLock`.
 final class LayoutEngineConcurrencyTests: XCTestCase {
 
     private func engine(_ settings: NamespacedStore,
@@ -63,7 +63,7 @@ final class LayoutEngineConcurrencyTests: XCTestCase {
                         typing: ConcurrentTyping) -> LayoutEngine {
         LayoutEngine(tap: tap, typing: typing, sources: ConcurrentSources(),
                      translation: ConcurrentTranslation(), spell: ConcurrentSpell(),
-                     secure: ConcurrentContext(), settings: settings)
+                     secure: ConcurrentContext(), activation: FakeActivation(), settings: settings)
     }
 
     /// Two starts would build two taps and leave the first one enabled on the
@@ -94,7 +94,7 @@ final class LayoutEngineConcurrencyTests: XCTestCase {
 
     /// The storm, then a question with one right answer.
     ///
-    /// Reloads arrive on the transport's pool while keys arrive on the tap's
+    /// Reloads arrive on the engine's serial queue while keys arrive on the tap's
     /// thread. Nothing here asserts on what happened *during* the storm — a
     /// race can satisfy any such claim by luck. What is asserted is the state
     /// afterwards: every task has finished, and the engine must be reporting
@@ -118,8 +118,7 @@ final class LayoutEngineConcurrencyTests: XCTestCase {
             await withTaskGroup(of: Void.self) { group in
                 for _ in 0..<100 {
                     group.addTask {
-                        _ = try? await engine.transport.send(
-                            EngineCommand(name: "settingsChanged"))
+                        await rereadSettings(engine)
                     }
                     group.addTask {
                         // The tap's own stream: presses and releases of every
@@ -157,7 +156,7 @@ final class LayoutEngineUnderTheSanitiserTests: XCTestCase {
                         typing: ConcurrentTyping) -> LayoutEngine {
         LayoutEngine(tap: tap, typing: typing, sources: ConcurrentSources(),
                      translation: ConcurrentTranslation(), spell: ConcurrentSpell(),
-                     secure: ConcurrentContext(), settings: settings)
+                     secure: ConcurrentContext(), activation: FakeActivation(), settings: settings)
     }
 
     /// The same storm, longer, for a thread sanitiser to look at.
@@ -182,7 +181,7 @@ final class LayoutEngineUnderTheSanitiserTests: XCTestCase {
         await withTaskGroup(of: Void.self) { group in
             for _ in 0..<5_000 {
                 group.addTask {
-                    _ = try? await engine.transport.send(EngineCommand(name: "settingsChanged"))
+                    await rereadSettings(engine)
                 }
                 group.addTask {
                     tap.modifiers?(.down(TapKey.globe.keyCode!, at: 0, othersHeld: false))

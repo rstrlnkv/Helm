@@ -45,19 +45,15 @@ final class FakeTap: KeyTapPort, @unchecked Sendable {
     /// How many taps have been asked for — the difference between «it was
     /// rebuilt» and «the engine still believes in the first one».
     var starts = 0
-    /// Fired after each `start`, so a test can wait for the rebuild that the
-    /// `didBecomeActive` observer performs on the main queue.
-    var onStart: (@Sendable () -> Void)?
 
     func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
                onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
                died: @escaping @Sendable () -> Void) -> Bool {
         starts += 1
-        guard grant else { onStart?(); return false }
+        guard grant else { return false }
         handler = onEvent
         modifiers = onModifier
         self.died = died
-        onStart?()
         return true
     }
 
@@ -101,16 +97,20 @@ final class FakeSources: LayoutSourcePort, @unchecked Sendable {
     func select(_ sourceID: String) { selected.append(sourceID); live = sourceID }
 }
 
-/// The newest state the engine published — `LocalTransport` replays the last
-/// event per name to every new subscriber, so this is not racing the emit.
+/// The newest state the engine published — `stream()` hands every new
+/// subscriber the latest one first, so this is not racing the emit.
 /// Beside the shared fakes for the reason they are here: three suites read the
 /// state back and each had spelled this loop for itself.
 func latestLayoutState(_ engine: LayoutEngine) async -> LayoutState? {
-    for await event in engine.transport.events
-    where event.name == LayoutEvent.layoutState.rawValue {
-        return try? JSONDecoder().decode(LayoutState.self, from: event.payload)
-    }
+    for await state in engine.stream() { return state }
     return nil
+}
+
+/// Asks the engine to re-read the store and returns once the re-read is in force.
+func rereadSettings(_ engine: LayoutEngine) async {
+    await withCheckedContinuation { continuation in
+        engine.settingsChanged(then: { continuation.resume() })
+    }
 }
 
 /// The engine's own job is refusing: everything it does that is not a
@@ -142,7 +142,7 @@ final class LayoutEngineTests: XCTestCase {
             translation: FakeTranslation(table: ["ghbdtn": "привет", "ras": "кфы",
                                                  "qqqq": "ййыы"]),
             spell: FakeSpell(valid: ["привет", "ras"]),
-            secure: secure, automatic: automatic,
+            secure: secure, activation: FakeActivation(), automatic: automatic,
             settings: Self.boundStore())
         engine.activate()
         return engine
@@ -249,7 +249,7 @@ extension LayoutEngineTests {
         let engine = LayoutEngine(
             tap: tap, typing: typing, sources: sources,
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
-            spell: FakeSpell(valid: ["привет"]), secure: secure)
+            spell: FakeSpell(valid: ["привет"]), secure: secure, activation: FakeActivation())
         engine.activate()
         tap.type("ghbdtn"); tap.space()
         XCTAssertTrue(sources.selected.isEmpty, "the input source must not follow a failure")
@@ -286,7 +286,7 @@ final class LayoutEngineConversionTests: XCTestCase {
             translation: FakeTranslation(table: ["ghbdtn": "привет", "ras": "кфы",
                                                  "qqqq": "ййыы"]),
             spell: FakeSpell(valid: ["привет", "ras"]),
-            secure: secure, automatic: automatic,
+            secure: secure, activation: FakeActivation(), automatic: automatic,
             settings: Self.boundStore())
         engine.activate()
         return engine

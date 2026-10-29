@@ -42,6 +42,9 @@ handles its own subset of the names, so no switch over it could be exhaustive.
 A module that owns its model needs none: Keep Awake's model calls the engine's methods
 directly and takes the engine's states from its `stream()`, so its engine has no
 command file and no handler (Architecture/KeepAwake.md § How the model reaches the engine).
+Layout's model takes the same stream and calls the same way, except that its re-read of
+the store goes to the engine's own serial queue, because it asks the accessibility server
+(Architecture/Layout.md § How Layout's model reaches its engine).
 Leftovers' model calls its engine the same way and takes every answer by return, with
 no stream, because that engine emits nothing (Architecture/Leftovers.md § How Leftovers'
 model reaches its engine).

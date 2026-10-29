@@ -71,7 +71,7 @@ final class LayoutEngineGestureReachTests: XCTestCase {
         typing = ReachTyping(); context = ReachContext(); tap = ReachTap()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: ReachSources(),
                                   translation: ReachTranslation(), spell: ReachSpell(),
-                                  secure: context)
+                                  secure: context, activation: FakeActivation())
         engine.activate()
         return engine
     }

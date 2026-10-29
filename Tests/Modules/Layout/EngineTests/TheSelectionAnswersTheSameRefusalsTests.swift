@@ -133,7 +133,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
             tap: Tap(), typing: typing, sources: sources,
             translation: Translation(table: table),
             spell: Spell(valid: ["привет", "las["], noDictionary: []),
-            secure: Context(),
+            secure: Context(), activation: FakeActivation(),
             selection: selection,
             ledger: LedgerStore(),
             exceptions: exceptions,

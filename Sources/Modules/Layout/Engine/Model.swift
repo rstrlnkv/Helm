@@ -157,3 +157,13 @@ public struct LayoutState: Codable, Equatable, Sendable {
         self.noDictionary = noDictionary
     }
 }
+
+/// Everything the engine says about itself.
+///
+/// One name, spelled once for the engine's `emit` and the stream that filters
+/// on it: a literal on each side would keep publishing while the `guard` kept
+/// not matching, and the page would show the state it launched with, forever.
+enum LayoutEvent: String, Sendable {
+    /// The language, the badge, and the last conversion.
+    case layoutState
+}

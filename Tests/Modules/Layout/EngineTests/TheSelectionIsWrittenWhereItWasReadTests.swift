@@ -151,7 +151,7 @@ final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
         context = DriftContext(); selection = DriftSelection()
         let engine = LayoutEngine(tap: DriftTap(), typing: DriftTyping(),
                                   sources: DriftSources(), translation: DriftTranslation(),
-                                  spell: DriftSpell(), secure: context, selection: selection)
+                                  spell: DriftSpell(), secure: context, activation: FakeActivation(), selection: selection)
         engine.activate()
         return engine
     }

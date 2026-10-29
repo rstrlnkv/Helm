@@ -95,7 +95,7 @@ final class GestureAfterNavigationTests: XCTestCase {
         store.set(Int(Self.shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
         let engine = LayoutEngine(tap: tap, typing: typing, sources: ArrowSources(),
                                   translation: ArrowTranslation(), spell: ArrowSpell(),
-                                  secure: context, settings: store)
+                                  secure: context, activation: FakeActivation(), settings: store)
         engine.activate()
         return engine
     }

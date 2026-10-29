@@ -67,12 +67,11 @@ private final class LaunchSound: SoundPort, @unchecked Sendable {
 /// Every field the engine caches has to be right on the launch that follows a
 /// setting being changed — not only in the session where it was changed.
 ///
-/// `reloadSettings()` used to run on the transport's `settingsChanged` and
-/// nowhere else, so a launch kept whatever the initialiser held. Most fields
-/// have a sensible initialiser value and the gap never showed; `tapKey` has no
-/// initialiser parameter at all, so the gesture was bound to nothing on every
-/// start, silently, because a key bound to nothing refuses before there is
-/// anything to log.
+/// `reloadSettings()` runs in `activate()`, not only on `settingsChanged`, or a
+/// launch keeps whatever the initialiser holds. Most fields have a sensible
+/// initialiser value and the gap would not show; `tapKey` has no initialiser
+/// parameter at all, so the gesture would be bound to nothing on every start,
+/// silently, because a key bound to nothing refuses before there is anything to log.
 ///
 /// One test per cached field, and each one is arranged so that the value in the
 /// **store** and the value in the **initialiser** disagree. That is the whole
@@ -104,7 +103,7 @@ final class LayoutEngineLaunchTests: XCTestCase {
         tap = LaunchTap(); sources = LaunchSources(); sound = LaunchSound()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
                                   translation: LaunchTranslation(), spell: LaunchSpell(),
-                                  secure: context, sound: sound,
+                                  secure: context, activation: FakeActivation(), sound: sound,
  fixCapitals: fixCapitals,
                                   rules: rules, exceptions: exceptions,
                                   automatic: automatic,
@@ -198,15 +197,15 @@ final class LayoutEngineLaunchTests: XCTestCase {
     }
 
     /// A setting written while the engine is running still takes effect through
-    /// the transport — the launch read is an addition to that path, not a
+    /// `settingsChanged` — the launch read is an addition to that path, not a
     /// replacement for it.
-    func testAChangeStillArrivesThroughTheTransport() async throws {
+    func testAChangeStillArrivesThroughSettingsChanged() async throws {
         let settings = store()
         let engine = engine(settings: settings)
         // Over «Fix as I type» rather than over a trigger switch: the three of
         // those are gone, and the engine reads no key for them any more.
         settings.set(false, for: LayoutKey.automatic)
-        _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
+        await rereadSettings(engine)
         tap.type("ghbdtn")
         tap.send(.space)
         XCTAssertTrue(typing.performed.isEmpty, "the change did not reach the engine")
@@ -257,7 +256,7 @@ final class TheKeySoundAndCapitalsAreReadAtLaunchTests: XCTestCase {
         tap = LaunchTap(); sources = LaunchSources(); sound = LaunchSound()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
                                   translation: LaunchTranslation(), spell: LaunchSpell(),
-                                  secure: context, sound: sound,
+                                  secure: context, activation: FakeActivation(), sound: sound,
                                   fixCapitals: fixCapitals,
                                   rules: rules, exceptions: exceptions,
                                   automatic: automatic,

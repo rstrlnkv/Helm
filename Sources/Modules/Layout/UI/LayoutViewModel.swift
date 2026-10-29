@@ -1,7 +1,18 @@
 import SwiftUI
-import HelmContract
-import HelmUI
 import Module_Layout_Engine
+
+/// What the model asks of the engine: the one door. A fake stands for the engine
+/// in `AStoppedLayoutModelReachesNoWorkTests`.
+protocol LayoutWork: AnyObject, Sendable {
+    /// The latest state, then every later one, in order; registered before it returns.
+    func stream() -> AsyncStream<LayoutState>
+    /// The gesture and the hotkey: fix whatever is in front of the caret.
+    func fix()
+    /// Re-read the store, on the engine's own serial queue; returns at once.
+    func settingsChanged()
+}
+
+extension LayoutEngine: LayoutWork {}
 
 @MainActor public final class LayoutViewModel: ObservableObject {
     @Published public private(set) var state = LayoutState(enabled: false, automatic: true,
@@ -9,41 +20,44 @@ import Module_Layout_Engine
                                                            lastConversion: nil,
                                                            lastConversionUndone: false,
                                                            totals: .none)
-    public let vm: ModuleViewModel
-
+    private let work: any LayoutWork
     private var eventsTask: Task<Void, Never>?
+    private(set) var closed = false
 
-    private static var cached: LayoutViewModel?
-
-    /// Keyed to the host view model: turning the module off and on builds a new
-    /// one, and the old cache would be talking to a deallocated engine.
-    public static func shared(vm: ModuleViewModel) -> LayoutViewModel {
-        if let cached, cached.vm === vm { return cached }
-        let created = LayoutViewModel(vm: vm)
-        cached = created
-        ModuleUICache.dropWhenDisabled(LayoutDescriptor.id.rawValue) { cached = nil }
-        return created
-    }
-
-    private init(vm: ModuleViewModel) {
-        self.vm = vm
-        let events = vm.transport.events
+    /// The stream is taken here, synchronously, before the first suspension:
+    /// `stream()` registers the subscriber and replays the latest state in one
+    /// step, so no state emitted from this line on is missed.
+    init(work: any LayoutWork) {
+        self.work = work
+        let states = work.stream()
         eventsTask = Task { [weak self] in
-            for await event in events {
-                guard let self else { break }
-                self.handle(event)
+            for await state in states {
+                guard let self, !self.closed else { break }
+                self.state = state
             }
         }
     }
 
-    /// Ends the event loop, which unregisters the transport subscriber.
-    deinit { eventsTask?.cancel() }
-
-    private func handle(_ event: EngineEvent) {
-        guard LayoutEvent(rawValue: event.name) == .layoutState,
-              let decoded = try? JSONDecoder().decode(LayoutState.self, from: event.payload)
-        else { return }
-        state = decoded
+    /// Ends the event loop, which unregisters the engine's subscriber, and
+    /// closes the doors to the engine. The host calls it through the
+    /// descriptor's `stop(_:)` before the engine's `deactivate()`.
+    func stop() {
+        closed = true
+        eventsTask?.cancel()
+        eventsTask = nil
     }
 
+    /// The backstop for a model dropped without `stop()`: the loop re-acquires
+    /// `self` per state, so it does not keep the model alive.
+    deinit { eventsTask?.cancel() }
+
+    func fix() {
+        guard !closed else { return }
+        work.fix()
+    }
+
+    func settingsChanged() {
+        guard !closed else { return }
+        work.settingsChanged()
+    }
 }

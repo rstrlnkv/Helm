@@ -37,7 +37,22 @@ import Module_Layout_Engine
 
     public init() {}
 
+    public typealias Model = LayoutViewModel
+
     public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
+        productionEngine(store: store)
+    }
+
+    public func makeModule(store: NamespacedStore) -> ModuleParts<LayoutViewModel> {
+        let engine = productionEngine(store: store)
+        return ModuleParts(engine: engine, model: LayoutViewModel(work: engine))
+    }
+
+    /// The host closes the model before the engine goes: its stream task ends
+    /// and a late press reaches nothing.
+    public func stop(_ model: LayoutViewModel) { model.stop() }
+
+    private func productionEngine(store: NamespacedStore) -> LayoutEngine {
         self.store = store
         return LayoutEngine(tap: CGKeyTap(),
                             typing: SynthesisTyping(),
@@ -45,6 +60,7 @@ import Module_Layout_Engine
                             translation: UCTranslation(),
                             spell: SystemSpell(),
                             secure: AXSecureContext(),
+                            activation: AppActivation(),
                             sound: SystemSound(),
                             announcer: LayoutAnnouncer(store: store),
                             selection: AXSelection(),
@@ -104,28 +120,27 @@ import Module_Layout_Engine
     /// Still `.utility` as well: the row in the utilities list is what a person
     /// who has not added the tile sees, and it is where the module's switch
     /// lives.
-    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
+    public func menuBar(_ model: LayoutViewModel) -> MenuBarContribution? {
         guard let store else { return .utility }
         return MenuBarContribution(panelTile: AnyView(
-            LayoutWidgets.Wide(lvm: LayoutViewModel.shared(vm: vm),
-                               period: Self.storedPeriod(store), onNever: { Self.never($0, store, vm) })))
+            LayoutWidgets.Wide(lvm: model,
+                               period: Self.storedPeriod(store), onNever: { Self.never($0, store, model) })))
     }
 
     /// Three sizes, three questions: how many · how many and what to do · why
     /// that many and whether it goes on happening.
-    public func panelWidget(_ size: PanelWidgetSize, _ vm: ModuleViewModel) -> AnyView? {
+    public func panelWidget(_ size: PanelWidgetSize, _ model: LayoutViewModel) -> AnyView? {
         guard let store else { return nil }
-        let lvm = LayoutViewModel.shared(vm: vm)
         switch size {
         case .compact:
-            return AnyView(LayoutWidgets.Compact(lvm: lvm, period: Self.storedPeriod(store)))
+            return AnyView(LayoutWidgets.Compact(lvm: model, period: Self.storedPeriod(store)))
         case .wide:
-            return AnyView(LayoutWidgets.Wide(lvm: lvm, period: Self.storedPeriod(store),
-                                              onNever: { Self.never($0, store, vm) }))
+            return AnyView(LayoutWidgets.Wide(lvm: model, period: Self.storedPeriod(store),
+                                              onNever: { Self.never($0, store, model) }))
         case .tall:
-            return AnyView(LayoutWidgets.Tall(lvm: lvm, store: store,
-                                              onNever: { Self.never($0, store, vm) },
-                                              onAutomatic: { Self.automatic($0, store, vm) }))
+            return AnyView(LayoutWidgets.Tall(lvm: model, store: store,
+                                              onNever: { Self.never($0, store, model) },
+                                              onAutomatic: { Self.automatic($0, store, model) }))
         }
     }
 
@@ -141,20 +156,20 @@ import Module_Layout_Engine
     /// **That sentence stood over a verb that did only the first half.** The
     /// engine holds `exceptions` in a field and refills it in `reloadSettings`,
     /// which runs on `activate()` and on `settingsChanged` and nowhere else —
-    /// there is no bridge turning a store write into that command. So this
+    /// there is no bridge turning a store write into that call. So this
     /// button wrote the list and the engine went on converting the word until
     /// some *other* setting was saved or the app was relaunched, which is the
     /// panel widget's own headline verb doing nothing.
-    private static func never(_ word: String, _ store: NamespacedStore, _ vm: ModuleViewModel) {
+    private static func never(_ word: String, _ store: NamespacedStore, _ model: LayoutViewModel) {
         guard let words = Exceptions.adding(word, to: store.stringArray(LayoutKey.exceptions))
         else { return }
         store.set(words, for: LayoutKey.exceptions)
-        vm.send(LayoutCommand.settingsChanged)
+        model.settingsChanged()
     }
 
-    private static func automatic(_ on: Bool, _ store: NamespacedStore, _ vm: ModuleViewModel) {
+    private static func automatic(_ on: Bool, _ store: NamespacedStore, _ model: LayoutViewModel) {
         store.set(on, for: LayoutKey.automatic)
-        vm.send(LayoutCommand.settingsChanged)
+        model.settingsChanged()
     }
 
     /// The badge beside the module's name in the page header.
@@ -168,8 +183,8 @@ import Module_Layout_Engine
     /// in words where it can be acted on: an empty state for a missing grant, a
     /// note for the pause secure input causes. What that means for the badge is
     /// below — coarser than the page, never against it.
-    public func activity(_ vm: ModuleViewModel) -> ModuleActivity? {
-        let state = LayoutViewModel.shared(vm: vm).state
+    public func activity(_ model: LayoutViewModel) -> ModuleActivity? {
+        let state = model.state
         return Self.activity(enabled: state.enabled, suspended: state.suspended)
     }
 
@@ -188,8 +203,8 @@ import Module_Layout_Engine
     /// Without this the header reads the badge once and never again: the tap
     /// going live, or macOS taking it away, is exactly the case where nothing
     /// else on screen redraws.
-    public func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>? {
-        LayoutViewModel.shared(vm: vm).objectWillChange
+    public func statusChanges(_ model: LayoutViewModel) -> AnyPublisher<Void, Never>? {
+        model.objectWillChange
             .map { _ in () }
             .eraseToAnyPublisher()
     }
@@ -198,13 +213,13 @@ import Module_Layout_Engine
         [ModuleHotkey(slot: LayoutHotkey.fix, prefix: LayoutHotkey.storePrefix)]
     }
 
-    public func hotkeyPressed(_ hotkey: ModuleHotkey, _ vm: ModuleViewModel) {
-        vm.send(LayoutCommand.fix)
+    public func hotkeyPressed(_ hotkey: ModuleHotkey, _ model: LayoutViewModel) {
+        model.fix()
     }
 
-    public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
+    public func settingsPage(_ model: LayoutViewModel) -> AnyView {
         AnyView(LayoutSettingsPage(
-            vm: vm,
+            lvm: model,
             store: store ?? NamespacedStore(namespace: LayoutDescriptor.id.rawValue, backing: UserDefaults.standard)))
     }
 }

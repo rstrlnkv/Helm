@@ -32,8 +32,8 @@ struct LayoutSettingsPage: View {
     private let builtInBlocked: [String]
     @State private var heroPeriod: ConversionPeriod
 
-    init(vm: ModuleViewModel, store: NamespacedStore) {
-        lvm = LayoutViewModel.shared(vm: vm)
+    init(lvm: LayoutViewModel, store: NamespacedStore) {
+        self.lvm = lvm
         self.store = store
         _automatic = State(initialValue: store.bool(LayoutKey.automatic, default: true))
         _exceptionCount = State(initialValue: store.stringArray(LayoutKey.exceptions).count)
@@ -203,7 +203,7 @@ struct LayoutSettingsPage: View {
     private var tourSection: some View {
         Section {
             LayoutTour(gesture: gestureName, store: store) {
-                lvm.vm.send(LayoutCommand.settingsChanged)
+                lvm.settingsChanged()
             } onDone: {
                 withAnimation(HelmMotion.interface) { showTour = false }
                 write(true, LayoutKey.introSeen)
@@ -595,7 +595,7 @@ struct LayoutSettingsPage: View {
     private var lists: LayoutLists {
         LayoutLists(store: store, builtInBlocked: builtInBlocked,
                     close: { listsWindow?.close() }) {
-            lvm.vm.send(LayoutCommand.settingsChanged)
+            lvm.settingsChanged()
         }
     }
 
@@ -609,6 +609,6 @@ struct LayoutSettingsPage: View {
 
     private func write(_ value: Any, _ key: String) {
         store.set(value, for: key)
-        lvm.vm.send(LayoutCommand.settingsChanged)
+        lvm.settingsChanged()
     }
 }

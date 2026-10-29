@@ -5,7 +5,7 @@ import HelmTestSupport
 ///
 /// `LayoutEngine` does not watch the store. It holds `exceptions`, `automatic`,
 /// `appRules` and the rest in fields and refills them in `reloadSettings`,
-/// which runs on `activate()` and on `LayoutCommand.settingsChanged` and
+/// which runs on `activate()` and on `settingsChanged()` and
 /// nowhere else — there is no bridge anywhere in the app turning a store write
 /// into that command. So a write with no send is a setting the person changed
 /// and the module did not.
@@ -47,7 +47,7 @@ final class AStoreWriteTellsTheEngineTests: XCTestCase {
                                     + "\(file) — it is reading the wrong file or the wrong shape")
 
         for (name, body) in writers {
-            XCTAssertTrue(body.contains("LayoutCommand.settingsChanged"),
+            XCTAssertTrue(body.contains(".settingsChanged()"),
                           "\(name) in \(file) writes a setting and never tells the engine to "
                           + "re-read it, so the person's change does not reach the module")
         }

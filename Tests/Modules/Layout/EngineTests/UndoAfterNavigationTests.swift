@@ -94,7 +94,7 @@ final class UndoAfterNavigationTests: XCTestCase {
         }
         let engine = LayoutEngine(tap: tap, typing: typing, sources: NavSources(),
                                   translation: NavTranslation(), spell: NavSpell(),
-                                  secure: context, settings: store)
+                                  secure: context, activation: FakeActivation(), settings: store)
         engine.activate()
         return engine
     }

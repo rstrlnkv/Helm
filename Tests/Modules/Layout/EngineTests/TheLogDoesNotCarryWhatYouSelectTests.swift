@@ -52,7 +52,7 @@ final class TheLogDoesNotCarryWhatYouSelectTests: XCTestCase {
             tap: FakeTap(), typing: FakeTyping(), sources: FakeSources(current: "en"),
             translation: FakeTranslation(table: table),
             spell: FakeSpell(valid: Set(table.values)),
-            secure: FakeSecure(), selection: selection)
+            secure: FakeSecure(), activation: FakeActivation(), selection: selection)
         engine.activate()
         return engine
     }

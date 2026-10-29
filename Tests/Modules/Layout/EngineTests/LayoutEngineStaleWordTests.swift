@@ -133,7 +133,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         tap = StaleTap(); sources = StaleSources(); selection = StaleSelection()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
                                   translation: StaleTranslation(), spell: StaleSpell(),
-                                  secure: context, selection: selection,
+                                  secure: context, activation: FakeActivation(), selection: selection,
  fixCapitals: fixCapitals,
                                   settings: Self.boundStore(fixCapitals: fixCapitals))
         engine.activate()

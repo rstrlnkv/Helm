@@ -191,7 +191,7 @@ private final class World {
             tap: tap, typing: typing, sources: sources,
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
             spell: FakeSpell(valid: ["привет"]),
-            secure: FieldContext())
+            secure: FieldContext(), activation: FakeActivation())
         engine.activate()
         return engine
     }

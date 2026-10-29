@@ -69,9 +69,6 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
             Cached(module: "Homebrew", id: HomebrewDescriptor.id.rawValue) {
                 _ = HomebrewViewModel.shared(vm: $0)
             },
-            Cached(module: "Layout", id: LayoutDescriptor.id.rawValue) {
-                _ = LayoutViewModel.shared(vm: $0)
-            },
             Cached(module: "Screenshots", id: ScreenshotsDescriptor.id.rawValue) {
                 _ = ScreenshotsPageModel.shared(vm: $0)
             },
@@ -137,6 +134,26 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
                        "`stop(_:)` left the engine's subscriber behind: the model's task was not cancelled")
     }
 
+    /// Layout is built like Keep Awake: the host holds the model, `stop(_:)` ends
+    /// its one event task. The engine is built, never activated, so nothing here
+    /// reaches the keyboard.
+    func testLayoutGivesItsSubscriberBackWhenTheHostStopsItsModel() async throws {
+        let descriptor = LayoutDescriptor()
+        let parts = descriptor.makeModule(store: NamespacedStore(
+            namespace: "test.layout.subscriber", backing: InMemoryKeyValueStore()))
+        let transport = try XCTUnwrap(parts.engine.transport as? LocalTransport)
+        await settle(transport, until: 1)
+        XCTAssertEqual(transport.subscriberCount, 1,
+                       "the model never subscribed, so the count below would pass on nothing")
+        await letTheLoopStart()
+
+        descriptor.stop(parts.model)
+        await settle(transport, until: 0)
+
+        XCTAssertEqual(transport.subscriberCount, 0,
+                       "`stop(_:)` left the engine's subscriber behind: the model's task was not cancelled")
+    }
+
     /// A module that starts caching its view model arrives in the table above,
     /// or the table is a comment.
     ///
@@ -146,9 +163,9 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
     /// the directory the call is in.
     func testEveryModuleThatCachesAViewModelIsCovered() throws {
         let registered = try Self.modulesRegisteringADrop()
-        XCTAssertGreaterThanOrEqual(registered.count, 4, """
+        XCTAssertGreaterThanOrEqual(registered.count, 3, """
             the scan found \(registered.count) modules calling \
-            `ModuleUICache.dropWhenDisabled` — the tree has at least four, so the walk or the \
+            `ModuleUICache.dropWhenDisabled` — the tree has at least three, so the walk or the \
             match has stopped reading Sources and this check is guarding nothing.
             """)
 

@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 import HelmContract
 import HelmRuntime
@@ -9,7 +8,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// The module's own id, where the engine can read it: the log tag, the
     /// store's namespace and the hotkey slot are all this one string, and it
     /// was spelled as a literal a dozen times. The descriptor forwards it
-    /// upward — the same direction the command enums travel.
+    /// upward, from engine to UI.
     public static let moduleID = "layout"
 
 
@@ -19,6 +18,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private let translation: TranslationPort
     private let spell: SpellPort
     private let secure: SecureContextPort
+    /// The two moments the engine asks the system again; stopped in `deactivate`.
+    private let activation: AppActivationPort
     private let sound: SoundPort?
     /// Optional like `sound`, and for the same reason: absent in the tests
     /// that are not about it; the descriptor wires the real one.
@@ -27,9 +28,13 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private let settings: NamespacedStore?
     private let localTransport: LocalTransport
     public let transport: EngineTransport
+    /// Where `settingsChanged` re-reads, in call order: `reloadSettings` ends in
+    /// an accessibility call and must not run on the thread the tap callback
+    /// runs on.
+    private let reloads = DispatchQueue(label: "layout.settings")
 
-    /// The tap delivers on its own run-loop source while the transport delivers
-    /// on a concurrency pool; both touch everything below.
+    /// The tap delivers on its own run-loop source, the gesture on a global
+    /// queue and the settings re-read on `reloads`; all touch everything below.
     private let lock = NSLock()
     private var buffer = TypingBuffer()
     /// The word that most recently ended, kept so "convert the last word" has
@@ -42,9 +47,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// `buffer.wholeWord`, so it says nothing while the buffer is empty — and
     /// empty is the module's «no idea which app», which matches nothing.
     private var typingApp = ""
-    private var activeObserver: NSObjectProtocol?
-    /// The token `FrontmostApp` gives back, so this watcher can be stopped.
-    private var frontmostWatch: UUID?
     private var undo: UndoRecord?
     /// The last conversion as the page shows it, kept apart from `undo`: the
     /// right to a blind edit dies with the caret's next move, but the record —
@@ -84,8 +86,12 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private var tapped = false
     private var starting = false
     /// Set while performing a conversion, so the keystrokes it sends are not
-    /// read back as typing. The marker on the events is the first line of
-    /// defence; this is the second, for anything the marker misses.
+    /// read back as typing. It covers only an echo that arrives while `perform`
+    /// is still running, and no shipping path has one: every `perform` runs on
+    /// main (the automatic path in the tap callback, the gesture and the hotkey
+    /// after `fix()`'s hop back to main), and the tap callback, on the main run
+    /// loop, hears the echo only after `perform` returns. The marker on the
+    /// events (`CGKeyTap.deliver`) is the only guard on every path.
     private var performing = false
     /// Whether the keystrokes arriving right now are a secure-input episode.
     /// Kept only to know its *edges*: the page is told «Paused» at the first
@@ -99,6 +105,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                 translation: TranslationPort,
                 spell: SpellPort,
                 secure: SecureContextPort,
+                activation: AppActivationPort,
                 sound: SoundPort? = nil,
                 announcer: AnnouncePort? = nil,
                 selection: SelectionPort? = nil,
@@ -116,6 +123,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         self.translation = translation
         self.spell = spell
         self.secure = secure
+        self.activation = activation
         self.sound = sound
         self.announcer = announcer
         self.selection = selection
@@ -128,19 +136,15 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         self.settings = settings
         self.localTransport = transport
         self.transport = transport
-        wireTransport()
     }
 
     // MARK: - Module lifecycle
 
     public func activate() {
         lock.lock(); running = true; lock.unlock()
-        // Read the stored settings before the first key arrives. This used to
-        // happen only when the transport announced a change, so a launch kept
-        // whatever the initialiser held — and the tap key, which has no
-        // initialiser parameter, stayed `.off`. The gesture worked only in a
-        // session where the page had been opened, and silently, because `.off`
-        // refuses before there is anything to refuse.
+        // Read the stored settings before the first key arrives: the tap key has
+        // no initialiser parameter, so without this read it is `.off` until
+        // somebody opens the page.
         reloadSettings()
         refreshDictionarySupport()
         startTap()
@@ -149,53 +153,28 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // Without this the tap stayed dead until the next launch, which is the
         // same "switch that looks like it works" defect the note exists to
         // prevent.
-        // Dropped rather than overwritten: `deactivate` removes one observer,
-        // so two activates in a row left the first registered for good.
-        if let activeObserver { NotificationCenter.default.removeObserver(activeObserver) }
-        activeObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
-        ) { [weak self] _ in
-            guard let self else { return }
-            MainActor.assumeIsolated {
-                self.startTap()
-                // **And the layouts, because they change while Helm runs.**
-                // `noDictionary` was a snapshot taken in `activate()` and never
-                // re-asked, so a layout macOS has no spelling for — added in
-                // System Settings and come back from, which is this very
-                // notification — left «Fix as I type» dead for every pair
-                // including it, with the switch on, the badge green, and the
-                // one sentence the page owes for exactly that withheld until
-                // the next launch. Its neighbour `suspended` in the same state
-                // struct is live; this one was not.
-                //
-                // Here rather than on `kTISNotifyEnabledKeyboardInputSources-
-                // Changed`: coming back to the app is when somebody has just
-                // finished changing them, and it costs one `TISCreateInput-
-                // SourceList` per activation rather than a second observer.
-                self.refreshDictionarySupport()
-            }
-        }
-        // **The layout the person bound to this application.**
         //
-        // Through `FrontmostApp` rather than a `NSWorkspace` observer of our
-        // own: that type is the app's single observer of the activation notice
-        // and exists because `NSWorkspace` is main-thread-only. A second one
-        // here would be the third in the app.
+        // **And the layouts, because they change while Helm runs:** a layout
+        // macOS has no spelling for, added in System Settings and come back from,
+        // which is `helmBecameActive` below, must reach `noDictionary`, or
+        // «Fix as I type» is dead for every pair including it while the switch
+        // reads on.
         //
-        // `AppScope` does not gate this. «Do not rewrite my text here» and «I
-        // write English here» are different questions, and the second is more
-        // likely to be wanted in a terminal.
+        // Here rather than on `kTISNotifyEnabledKeyboardInputSourcesChanged`:
+        // coming back to the app is when somebody has just finished changing
+        // them, and it costs one `TISCreateInputSourceList` per activation
+        // rather than a second observer.
         //
-        // Dropped rather than overwritten, same as `activeObserver` three
-        // lines up and for the same reason: `FrontmostApp.shared` is a
-        // process-wide singleton whose `watchers` dictionary is never pruned,
-        // so two activates in a row would leave the first registered — and
-        // unstoppable, because `deactivate()` only has the newest token to
-        // hand back.
-        if let frontmostWatch { FrontmostApp.shared.stopWatching(frontmostWatch) }
-        frontmostWatch = FrontmostApp.shared.onChange { [weak self] app in
-            self?.selectBoundLayout(for: app)
-        }
+        // **The layout the person bound to this application.** `AppScope` does
+        // not gate it. «Do not rewrite my text here» and «I write English here»
+        // are different questions, and the second is more likely to be wanted in
+        // a terminal.
+        activation.startObserving(
+            helmBecameActive: { [weak self] in
+                self?.startTap()
+                self?.refreshDictionarySupport()
+            },
+            frontmostChanged: { [weak self] app in self?.selectBoundLayout(for: app) })
         emitState()
     }
 
@@ -245,12 +224,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     }
 
     public func deactivate() {
-        // Block observers do not remove themselves, and turning the module off
-        // and on again would stack another one each time.
-        if let activeObserver { NotificationCenter.default.removeObserver(activeObserver) }
-        activeObserver = nil
-        if let frontmostWatch { FrontmostApp.shared.stopWatching(frontmostWatch) }
-        frontmostWatch = nil
+        activation.stopObserving()
         tap.stop()
         lock.lock()
         running = false; tapped = false
@@ -523,23 +497,15 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// converted into Mail. Nil means nobody has read anything yet, so the read
     /// happens here and pins the app it happens in.
     ///
-    /// **Not `private`, and not a command.** It answered a `LayoutCommand` case
-    /// nothing in the app ever sent — `LayoutDescriptor.hotkeys` declares `fix` and only
-    /// `fix` — while six tests reached it by typing the command's name as a
-    /// *string*. Rename the case and those five would have gone on passing:
-    /// `wireTransport` refuses an unparseable name at the door and returns
-    /// `Data()`, so `selection.replaced` stayed empty, which is exactly what
-    /// they asserted. The door people actually use is `fix()`, one line below,
-    /// and it calls this.
+    /// **Not `private`, and not a door of its own.** Tests reach it directly; the
+    /// door people use is `fix()`, which calls this from its hop back to main.
     func convertSelection(selected: String? = nil, readIn: String? = nil) {
         guard let selection else { return }
         let bundleID = readIn ?? secure.frontmostBundleID()
         lock.lock()
-        // A module that was turned off types nothing. The word path has always
-        // asked and this one did not — it showed up as nothing because the only
-        // way in is `fix()`, which asks. The transport used to be a second door
-        // (`convertSelection`) and nothing ever sent it; the check stays,
-        // because a door that is not there today is not a door nobody adds.
+        // A module that was turned off types nothing; the check stays though
+        // `fix()` asks first, because a door that is not there today is not a
+        // door nobody adds.
         let live = running
         let allowed = scope.allows(bundleID)
         lock.unlock()
@@ -605,9 +571,10 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             return
         }
 
-        // `performing` for the same reason the word path sets it: the
-        // replacement is typed, the tap sees it, and without this it is read
-        // back as somebody typing a paragraph.
+        // `performing` as the word path sets it; on main it catches nothing, and
+        // the marker on the ⌘V events (`SystemPorts.swift`,
+        // `source.userData = helmEventMarker`) is what keeps the paste from
+        // being read back.
         lock.lock(); performing = true; lock.unlock()
         let done = selection.replaceSelection(with: replacement)
         lock.lock(); performing = false; forgetTheWord(); lock.unlock()
@@ -1015,17 +982,49 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         return done
     }
 
-    // MARK: - Transport
+    // MARK: - What the engine says and hears
 
-    private func wireTransport() {
-        localTransport.setHandler { [weak self] command in
-            guard let self else { return Data() }
-            guard let name = LayoutCommand(rawValue: command.name) else { return Data() }
-            switch name {
-            case .fix: self.fix()
-            case .settingsChanged: self.reloadSettings()
+    /// The state, as a stream: the latest one first, then every later one, in
+    /// order.
+    ///
+    /// **Registered before this returns, in the one hold of the transport's lock
+    /// that replays what it last said** (`LocalTransport.events`). Reading the
+    /// state and then subscribing is two steps with a window between them — an
+    /// emit that lands there is lost — and registering before the replay hands
+    /// over an older state after a newer one. State is level-triggered, so a
+    /// model built after `activate()` still starts from the truth.
+    ///
+    /// Synchronous, so the model takes it in its own synchronous `init`, before
+    /// its first suspension. Ending the iteration ends the pump, which ends the
+    /// transport's stream and removes the subscriber.
+    public func stream() -> AsyncStream<LayoutState> {
+        let events = localTransport.events
+        return AsyncStream { continuation in
+            let pump = Task {
+                for await event in events {
+                    guard LayoutEvent(rawValue: event.name) == .layoutState,
+                          let state = try? JSONDecoder().decode(LayoutState.self,
+                                                                from: event.payload)
+                    else { continue }
+                    continuation.yield(state)
+                }
+                continuation.finish()
             }
-            return Data()
+            continuation.onTermination = { _ in pump.cancel() }
+        }
+    }
+
+    /// Re-read the store, on the engine's own serial queue; returns at once.
+    public func settingsChanged() { settingsChanged(then: {}) }
+
+    /// `done` runs once the re-read is in force.
+    ///
+    /// Serial, so two quick writes read the store in the order they were made
+    /// and the later reload cannot commit before the earlier one.
+    public func settingsChanged(then done: @escaping @Sendable () -> Void) {
+        reloads.async { [self] in
+            reloadSettings()
+            done()
         }
     }
 
