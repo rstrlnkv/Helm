@@ -34,7 +34,6 @@
 "Add folder…" = "添加文件夹…";
 "Add tag" = "添加标签";
 "After an update Helm tells you which permissions stopped working and takes you straight to the right pane. An update always revokes them — the checkbox stays ticked while nothing works." = "更新后，Helm 会说明哪些权限已失效，并直接带你到对应面板。更新总会撤销权限——勾选还在，功能却没了。";
-"All" = "全部";
 "All modules" = "所有模块";
 "All time" = "全部";
 "An app can no longer claim other apps' files as its own leftovers by naming itself unusually." = "应用不能再通过使用异常名称，把其他应用的文件说成自己的残留。";
@@ -51,7 +50,6 @@
 "Application Support" = "应用数据";
 "Apps" = "应用";
 "Archive" = "压缩包";
-"At login" = "登录时";
 "Audio" = "音频";
 "Auto" = "自动";
 "Autopilot" = "自动整理";
@@ -120,19 +118,15 @@
 "Keyboard no longer types into text you had already deleted. Removing a word with Option-Delete left the last change undoable, so the fix key put the old word into whatever the caret was in front of." = "“键盘”不再向你已经删除的文字里输入。用 Option-Delete 删除一个词后，上一次替换仍被当作可撤销，修复键会把旧词插入光标所在处。";
 "Keyboard opens with a four-step tour instead of an introduction. Step two is a real field to try it in, step three is the switches themselves — agreeing with a step is switching the thing on." = "“键盘”以四步导览开场，而不是一段介绍。第二步是可以真的试一试的输入框，第三步就是开关本身——同意这一步就是把它打开。";
 "Last change (undone)" = "最近一次修改（已撤销）";
-"Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "启动代理、设置文件、插件与系统扩展。只有残留项可以移到废纸篓。";
 "Layout name" = "输入法名称";
 "Menu bar" = "菜单栏";
 "Month" = "一月";
-"Move to Trash…" = "移到废纸篓…";
 "No key is assigned — this change can only be put back by hand." = "未指定按键——这次替换只能手动改回。";
 "Nothing fixes the selection or the last word until you pick a key, or record a combination below." = "在选择按键或在下方录制组合键之前，选中的文字和上一个词都不会被修正。";
 "No words yet" = "还没有词";
 "Not watching" = "未在监看";
 "Nothing" = "无";
 "Nothing has needed putting right so far." = "到目前为止还没有需要修正的内容。";
-"Nothing is selected for you: macOS loads every item in this list." = "默认不选择任何项目：这个列表里的每一项都由 macOS 加载。";
-"Only an administrator can move this" = "只有管理员才能移动";
 "Open Disk" = "打开“磁盘”";
 "Option" = "Option";
 "Period" = "时间段";
@@ -174,7 +168,6 @@
 "Delete" = "删除";
 "Dev" = "Dev";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "诊断：Helm 可记录自身操作日志，出问题时随时分享。开发版始终开启。";
-"Disabled" = "已停用";
 "Disconnected" = "已断开连接";
 "Disconnecting…" = "正在断开连接…";
 "Disk" = "磁盘";
@@ -265,7 +258,6 @@
 "If the folder Helm last measured has since been deleted, Disk no longer opens on an empty screen with no explanation — it takes you back to the volume list. An empty folder now says it is empty instead of showing nothing." = "如果上次测量的文件夹已被删除，“磁盘”不再打开一个没有说明的空白页面，而是回到卷列表。空文件夹现在会说明自己是空的。";
 "Image" = "图片";
 "In the light theme the icon shape and size previews were drawn white on a white card — a control the colour of its own background. They are drawn in the appearance they are shown in now, and so are the keyboard badge previews beside them." = "浅色主题下，图标形状与大小的预览在白色卡片上以白色绘制。现在它们按所处的外观绘制。";
-"In use" = "使用中";
 "Include subfolders" = "包含子文件夹";
 "Install" = "安装";
 "Install Homebrew" = "安装 Homebrew";
@@ -288,13 +280,11 @@
 "Last change" = "最近一次修改";
 "Later" = "稍后";
 "Launch agents" = "启动代理";
-"Launch daemons" = "启动守护进程";
 "Layout" = "布局";
 "Left ⇧" = "左 ⇧";
 "Left ⌃" = "左 ⌃";
 "Left ⌘" = "左 ⌘";
 "Left ⌥" = "左 ⌥";
-"Leftover" = "残留";
 "Leftovers" = "残留";
 "Leftovers found by an app’s name rather than its identifier are marked as guesses and are no longer ticked in advance — names collide, and a guess should cost a click to accept." = "凭应用名称（而非标识符）找到的残留会标为推测，且不再预先勾选——不同应用可能同名。";
 "Letters" = "字母";
@@ -304,8 +294,6 @@
 "Liquid Glass" = "Liquid Glass";
 "Toolbar style" = "工具栏样式";
 "Log" = "日志";
-"Login Items" = "登录项";
-"Login Items & Extensions" = "登录项与扩展";
 "Login Items & Extensions now lists system extensions themselves — what they are, whose they are, and which ones outlived the app that installed them." = "“登录项与扩展”现在会列出系统扩展本身：它们是什么、属于谁，以及哪些在原应用被删除后仍然留着。";
 "Login Items & Extensions: see everything that loads with your Mac, marked as in use, system, or leftover — and remove the leftovers." = "登录项与扩展：查看随 Mac 一起加载的所有项目，标记为使用中、系统或残留——并删除残留项。";
 "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "登录项现在可以关闭，而不只是删除。Helm 使用 macOS 自身的列表：重启后依然有效，无需密码，可随时恢复。";
@@ -362,7 +350,6 @@
 "Homebrew did not answer, so the search could not be carried out right now." = "Homebrew 没有回应，因此目前无法执行搜索。";
 "No rules yet" = "还没有规则";
 "None" = "无";
-"Not checked" = "未检查";
 "Not checked yet" = "尚未检查";
 "Not connected" = "未连接";
 "Not modified in months" = "数月未修改";
@@ -409,7 +396,6 @@
 "Pink" = "粉色";
 "Pinned" = "已固定";
 "Play a sound when a word is fixed" = "修正时播放提示音";
-"Plug-ins" = "插件";
 "Point Helm at a folder and give it rules. A file that arrives is checked against them in order and the first match wins — and every watched folder is checked again once an hour, so age rules come round." = "指定一个文件夹并为它设定规则。新到的文件按顺序检查，第一条匹配的生效；每小时还会把文件夹重新过一遍，所以“早于”这类规则也会轮到。";
 "Power" = "电源";
 "Press keys…" = "请按下按键…";
@@ -452,11 +438,9 @@
 "Run now" = "立即运行";
 "Running" = "运行中";
 "Saved windows" = "保存的窗口";
-"Scan" = "扫描";
 "Scan a folder…" = "扫描文件夹…";
 "Scan again" = "重新扫描";
 "Scan for leftovers" = "扫描残留文件";
-"Scan to see what apps left behind." = "扫描以查看应用留下了什么。";
 "Scanning" = "正在扫描";
 "Scanning…" = "扫描中…";
 "Search" = "搜索";
@@ -489,7 +473,6 @@
 "Skip" = "跳过";
 "Smaller items" = "较小的项目";
 "Sort into subfolder" = "整理到子文件夹";
-"Startup items, extensions, and what removed apps left behind" = "启动项、扩展，以及已删除应用的残留";
 "Stop" = "停止";
 "Stop could leave an abandoned scan’s folders sitting in the basket, above the Trash button, on a screen that no longer had anything to do with them — and emptying the basket credited the space to whichever volume you’d since picked." = "点击“停止”后，被放弃扫描的文件夹可能仍留在收纳篮里，出现在与它们已无关的界面上的废纸篓按钮上方——清空收纳篮时，释放的空间还会被计入当时选中的那个宗卷。";
 "Stop removal" = "停止移除";
@@ -510,7 +493,6 @@
 "Switching VPN off and back on could leave the tile and the settings page silently frozen, answering nothing, until Helm was relaunched." = "关闭再打开 VPN 后，图块和设置页面可能会悄悄卡死、毫无响应，直到重启 Helm 才恢复。";
 "Switching to another module and back no longer throws away what you were doing. The Uninstaller used to lose every tick, the whole review step, and the record of what macOS had refused, the moment you left its page; Login Items & Extensions restarted its scan — the slowest one in the app — the same way. Both remember now." = "切换到其他模块再切回来，不会再丢掉你正在做的事情了。以前，卸载器一旦离开页面，就会丢失所有勾选、整个审阅步骤，以及 macOS 拒绝了哪些内容的记录；“登录项与扩展”——应用里最慢的一项扫描——也会以同样的方式重新开始。现在两者都会记住。";
 "System" = "系统";
-"System extensions" = "系统扩展";
 "Tag" = "标签";
 "Tag name" = "标签名称";
 "The Accessibility permission was described as only nudging the pointer for Keep Awake — it’s also what lets the Keyboard module read what you type, in every application, and the caption names both now. The first-launch alert no longer says permissions need granting “again” when none have been granted yet, and Settings no longer asks for a permission none of your enabled modules need." = "此前“辅助功能”权限只被说成是“保持唤醒”移动指针所需——实际上它也是“键盘”模块在任何应用中读取输入内容所需的权限，说明文字现在会同时提及两者。首次启动的提示不会再在从未授权的情况下说需要“重新”授权，“设置”也不会再要求已启用模块都不需要的权限。";
@@ -560,7 +542,6 @@
 "Tools for your Mac" = "给你的 Mac 的一套工具";
 "Try again" = "重试";
 "Try it" = "试一试";
-"Turn off" = "关闭";
 "Turn on" = "打开";
 "Turn on before reporting a problem. The file lives in ~/Library/Logs/Helm." = "报告问题前请开启。文件位于 ~/Library/Logs/Helm。";
 "Turn the rule on" = "开启规则";
@@ -573,7 +554,6 @@
 "Uninstall…" = "卸载…";
 "Uninstaller" = "卸载器";
 "Unknown" = "未知";
-"Unreadable" = "无法读取";
 "Untitled rule" = "未命名规则";
 "Update & Relaunch" = "更新并重启";
 "Update channel" = "更新通道";
@@ -618,7 +598,6 @@
 "Which conditions must match" = "需要满足哪些条件";
 "White" = "白色";
 "Window" = "窗口";
-"Without Full Disk Access Helm cannot check every item, and a short list of leftovers looks exactly like a Mac with none." = "没有完全磁盘访问权限时，Helm 无法检查全部项目；残留项少和没有残留看起来一模一样。";
 "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none." = "没有完全磁盘访问权限时，Helm 无法读取全部文件夹；结果少和没有重复看起来一模一样。";
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "没有完全磁盘访问权限时，受保护的文件夹会被读成空的：没有规则匹配，而这看起来和一个无事可做的文件夹一模一样。";
 "A rule can watch folders inside your home folder, but not the Library and not a whole volume." = "规则可以监视个人文件夹内的文件夹，但不能监视资源库或整个宗卷。";
@@ -760,7 +739,6 @@
 "A timer can end automation too. Set one while an app is holding the Mac awake and it releases that as well, until the app is launched again." = "计时器也可以结束自动化。在某个 App 让 Mac 保持唤醒期间设置计时器，它会一并结束该 App——直到该 App 再次启动。";
 "Keep Awake says which app is holding the Mac, not just “App”." = "Keep Awake 会说出是哪个 App 让 Mac 保持唤醒，而不只是“应用”。";
 "The countdown says what happens at zero when a timer is set to end automation as well." = "当计时器被设为同时结束自动化时，倒计时会说明归零后会发生什么。";
-"Filter" = "筛选";
 "Brown" = "棕色";
 "Other colour…" = "其他…";
 "A colour of your own: the colour menu ends with “Other colour…”, which opens the system colour panel — the way Calendar offers one. The palette is Calendar’s, and follows light and dark the way the system’s colours do." = "自定义颜色：颜色菜单末尾是“其他…”，会打开系统调色板——和“日历”的做法一致。调色板取自“日历”，并像系统颜色那样跟随浅色与深色。";
@@ -793,8 +771,6 @@
 "Autopilot checks that a file is still where it was right before it moves, renames or bins it, and stops if the folder changed underneath the rule." = "自动整理在移动、重命名或丢进废纸篓之前会确认文件仍在原处；如果规则所在的文件夹已被换掉，就会停下。";
 "Autopilot’s “already done” mark on a file is signed now, so nothing else on your Mac can put one there. Something arriving in a watched folder could mark itself as dealt with and be passed over for ever." = "文件上的“已处理”标记现在带签名，Mac 上的其他东西无法自行加上。以前，进入受监视文件夹的东西可以把自己标成已处理，从此被一直跳过。";
 "Putting an older copy of Helm’s settings back no longer brings your deleted Autopilot rules with it. Helm knows which set is the current one and refuses an earlier one, saying so on the page." = "把 Helm 的设置换回旧的副本，不会再把你删掉的自动整理规则一起带回来。Helm 知道哪一套是当前的，遇到更早的会拒绝，并在页面上说明。";
-"Everything found is hidden by the filter." = "找到的项目已全部被筛选条件隐藏。";
-"Protected by macOS" = "受 macOS 保护";
 "While you are away" = "在你离开时";
 "These modules look through your files on their own — only when the Mac is idle, unlocked and on power, and no more than twice a day each." = "这些模块会自行浏览你的文件——仅在 Mac 闲置、已解锁并接通电源时，每个每天最多两次。";
 "Hasn’t run yet" = "尚未运行";

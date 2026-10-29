@@ -12,10 +12,11 @@ follows for the language it asks in.
 A module that has moved its words keeps them in `Sources/Modules/<Name>/UI/Localizable.xcstrings`
 (`ls Sources/Modules/*/UI/Localizable.xcstrings` lists them): all eight languages in one file, and
 the key is an identifier, not the English — SwiftPM generates an internal `LocalizedStringResource`
-symbol from it, so a mistyped key is a build error and the call site reads `localized(.summary)`
-(`Sources/Modules/KeepAwake/UI/KeepAwakeStrings.swift`, whose helper asks the resource in
-`AppLanguage.current`, since `String(localized:)` alone answers in the language macOS resolves for the
-process, not the one the person picked in Helm). Symbols are
+symbol from it, so a mistyped key is a build error and the call site reads `L(.summary)`
+(`Sources/Modules/KeepAwake/UI/KeepAwakeStrings.swift`; the helper is `L(_:language:)` in
+`Sources/HelmUI/L10n.swift`, which asks the resource in `AppLanguage.current`, since
+`String(localized:)` alone answers in the language macOS resolves for the
+process, not the one the person picked in Helm, and the resource carries its own target's bundle). Symbols are
 internal to their target, so a word that two modules or the kit draw stays in the kit's `.lproj` and
 is read through `L()`; the same English in a catalog and in the kit is a failure
 (`StringsCoverageTests`). The catalog needs no `resources:` entry: SwiftPM processes it on its own and

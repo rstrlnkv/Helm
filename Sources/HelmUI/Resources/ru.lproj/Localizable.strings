@@ -34,7 +34,6 @@
 "Add folder…" = "Добавить папку…";
 "Add tag" = "Поставить тег";
 "After an update Helm tells you which permissions stopped working and takes you straight to the right pane. An update always revokes them — the checkbox stays ticked while nothing works." = "После обновления Helm говорит, какие разрешения перестали действовать, и ведёт прямо в нужную панель. Обновление всегда их сбрасывает: галочка остаётся стоять, а работать перестаёт.";
-"All" = "Все";
 "All modules" = "Все модули";
 "All time" = "Всё время";
 "An app can no longer claim other apps' files as its own leftovers by naming itself unusually." = "Программа больше не может выдать чужие файлы за свои остатки, назвавшись необычным образом.";
@@ -51,7 +50,6 @@
 "Application Support" = "Данные приложения";
 "Apps" = "Приложения";
 "Archive" = "Архив";
-"At login" = "При входе";
 "Audio" = "Аудио";
 "Auto" = "Авто";
 "Autopilot" = "Автопилот";
@@ -120,19 +118,15 @@
 "Keyboard no longer types into text you had already deleted. Removing a word with Option-Delete left the last change undoable, so the fix key put the old word into whatever the caret was in front of." = "Клавиатура больше не печатает в текст, который вы уже удалили. Удаление слова через Option-Delete оставляло последнюю замену отменяемой, и клавиша исправления вставляла старое слово туда, где стояла каретка.";
 "Keyboard opens with a four-step tour instead of an introduction. Step two is a real field to try it in, step three is the switches themselves — agreeing with a step is switching the thing on." = "Клавиатура открывается туром из четырёх шагов вместо вступления. Второй шаг — настоящее поле, где можно попробовать, третий — сами переключатели: согласиться с шагом и значит включить.";
 "Last change (undone)" = "Последняя замена (отменена)";
-"Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "Агенты запуска, файлы настроек, плагины и системные расширения. В Корзину можно отправить только остатки.";
 "Layout name" = "Название раскладки";
 "Menu bar" = "Строка меню";
 "Month" = "Месяц";
-"Move to Trash…" = "Переместить в Корзину…";
 "No key is assigned — this change can only be put back by hand." = "Клавиша не назначена — эту замену можно вернуть только вручную.";
 "Nothing fixes the selection or the last word until you pick a key, or record a combination below." = "Пока клавиша не выбрана, исправить выделенное или последнее слово нечем — выберите клавишу или задайте сочетание ниже.";
 "No words yet" = "Пока ни одного слова";
 "Not watching" = "Не следит";
 "Nothing" = "Ничего";
 "Nothing has needed putting right so far." = "Пока ничего исправлять не понадобилось.";
-"Nothing is selected for you: macOS loads every item in this list." = "Ничего не отмечено заранее: macOS загружает каждый объект из этого списка.";
-"Only an administrator can move this" = "Переместить может только администратор";
 "Open Disk" = "Открыть Диск";
 "Option" = "Option";
 "Period" = "Период";
@@ -174,7 +168,6 @@
 "Delete" = "Удалить";
 "Dev" = "Dev";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "Диагностика: Helm может вести журнал своих действий, чтобы было что прислать, если что-то пошло не так. В Dev-сборках включён всегда.";
-"Disabled" = "Выключено";
 "Disconnected" = "Не подключено";
 "Disconnecting…" = "Отключение…";
 "Disk" = "Диск";
@@ -265,7 +258,6 @@
 "If the folder Helm last measured has since been deleted, Disk no longer opens on an empty screen with no explanation — it takes you back to the volume list. An empty folder now says it is empty instead of showing nothing." = "Если папку, которую Helm мерил в прошлый раз, с тех пор удалили, «Диск» больше не открывается пустым экраном без объяснений — он возвращает к списку томов. А пустая папка теперь так и говорит, вместо того чтобы показывать пустоту.";
 "Image" = "Изображение";
 "In the light theme the icon shape and size previews were drawn white on a white card — a control the colour of its own background. They are drawn in the appearance they are shown in now, and so are the keyboard badge previews beside them." = "В светлой теме превью формы и размера иконки рисовались белым по белой карточке — элемент управления цвета собственного фона. Теперь они рисуются в той теме, в которой показаны, — и превью значков «Клавиатуры» рядом тоже.";
-"In use" = "Используется";
 "Include subfolders" = "Включая подпапки";
 "Install" = "Установить";
 "Install Homebrew" = "Установить Homebrew";
@@ -288,13 +280,11 @@
 "Last change" = "Последняя замена";
 "Later" = "Позже";
 "Launch agents" = "Агенты запуска";
-"Launch daemons" = "Демоны запуска";
 "Layout" = "Раскладка";
 "Left ⇧" = "Левая ⇧";
 "Left ⌃" = "Левая ⌃";
 "Left ⌘" = "Левая ⌘";
 "Left ⌥" = "Левая ⌥";
-"Leftover" = "Остаток";
 "Leftovers" = "Остатки";
 "Leftovers found by an app’s name rather than its identifier are marked as guesses and are no longer ticked in advance — names collide, and a guess should cost a click to accept." = "Остатки, найденные по имени приложения, а не по её идентификатору, помечены как догадки и больше не отмечены заранее: имена совпадают у разных приложений, и согласиться с догадкой должно стоить клика.";
 "Letters" = "Буквы";
@@ -304,8 +294,6 @@
 "Liquid Glass" = "Liquid Glass";
 "Toolbar style" = "Оформление панели инструментов";
 "Log" = "Журнал";
-"Login Items" = "Объекты входа";
-"Login Items & Extensions" = "Объекты входа и расширения";
 "Login Items & Extensions now lists system extensions themselves — what they are, whose they are, and which ones outlived the app that installed them." = "«Объекты входа и расширения» теперь показывает и сами системные расширения: что это, чьё это и какие из них пережили удалённое приложение.";
 "Login Items & Extensions: see everything that loads with your Mac, marked as in use, system, or leftover — and remove the leftovers." = "«Объекты входа и расширения»: видно всё, что грузится вместе с Mac, с пометками «используется», «системный» и «остаток» — остатки можно удалить.";
 "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "Объекты входа теперь можно отключить, а не только удалить. Helm пользуется тем же списком, что и сама macOS: выбор переживает перезагрузку, пароль не нужен, вернуть можно здесь или в Системных настройках.";
@@ -362,7 +350,6 @@
 "Homebrew did not answer, so the search could not be carried out right now." = "Homebrew не ответил, поэтому поиск сейчас выполнить не удалось.";
 "No rules yet" = "Правил пока нет";
 "None" = "Нет";
-"Not checked" = "Не проверено";
 "Not checked yet" = "Ещё не проверялось";
 "Not connected" = "Не подключено";
 "Not modified in months" = "Не изменялся месяцами";
@@ -409,7 +396,6 @@
 "Pink" = "Розовый";
 "Pinned" = "Закреплено";
 "Play a sound when a word is fixed" = "Звук при исправлении слова";
-"Plug-ins" = "Плагины";
 "Point Helm at a folder and give it rules. A file that arrives is checked against them in order and the first match wins — and every watched folder is checked again once an hour, so age rules come round." = "Покажите Helm папку и задайте правила. Появившийся файл сверяется с ними по порядку, срабатывает первое подошедшее — и раз в час Helm обходит папку заново, чтобы правила про возраст тоже доходили до дела.";
 "Power" = "Питание";
 "Press keys…" = "Нажмите клавиши…";
@@ -452,11 +438,9 @@
 "Run now" = "Прогнать сейчас";
 "Running" = "Запущено";
 "Saved windows" = "Сохранённые окна";
-"Scan" = "Сканировать";
 "Scan a folder…" = "Сканировать папку…";
 "Scan again" = "Сканировать заново";
 "Scan for leftovers" = "Найти остатки";
-"Scan to see what apps left behind." = "Сканируйте, чтобы увидеть, что осталось от приложений.";
 "Scanning" = "Сканирование";
 "Scanning…" = "Сканирование…";
 "Search" = "Поиск";
@@ -489,7 +473,6 @@
 "Skip" = "Пропустить";
 "Smaller items" = "Мелкие объекты";
 "Sort into subfolder" = "Разложить по подпапкам";
-"Startup items, extensions, and what removed apps left behind" = "Автозагрузка, расширения и остатки удалённых приложений";
 "Stop" = "Стоп";
 "Stop could leave an abandoned scan’s folders sitting in the basket, above the Trash button, on a screen that no longer had anything to do with them — and emptying the basket credited the space to whichever volume you’d since picked." = "«Стоп» мог оставить папки брошенного скана лежащими в корзине приложения, над кнопкой «Переместить в Корзину», на экране, который уже не имел к ним отношения, — а опустошение корзины засчитывало место тому, который был выбран к этому моменту.";
 "Stop removal" = "Остановить удаление";
@@ -510,7 +493,6 @@
 "Switching VPN off and back on could leave the tile and the settings page silently frozen, answering nothing, until Helm was relaunched." = "Выключение и повторное включение VPN могло оставить плитку и страницу настроек молча замершими, ничего не отвечающими, до перезапуска Helm.";
 "Switching to another module and back no longer throws away what you were doing. The Uninstaller used to lose every tick, the whole review step, and the record of what macOS had refused, the moment you left its page; Login Items & Extensions restarted its scan — the slowest one in the app — the same way. Both remember now." = "Переход на другой модуль и обратно больше не отбрасывает то, чем вы занимались. «Удаление приложений» раньше теряло все отметки, весь шаг проверки и запись о том, что отклонила macOS, в момент ухода со страницы; «Объекты входа и расширения» точно так же перезапускали свой скан — самый медленный в приложении. Теперь оба всё помнят.";
 "System" = "Системный";
-"System extensions" = "Системные расширения";
 "Tag" = "Тег";
 "Tag name" = "Имя тега";
 "The Accessibility permission was described as only nudging the pointer for Keep Awake — it’s also what lets the Keyboard module read what you type, in every application, and the caption names both now. The first-launch alert no longer says permissions need granting “again” when none have been granted yet, and Settings no longer asks for a permission none of your enabled modules need." = "Разрешение «Универсальный доступ» описывалось только как нужное «Не спать» для движения указателя — на самом деле оно же позволяет модулю «Клавиатура» читать всё, что вы набираете, в любом приложении, и теперь подпись называет обе причины. Уведомление при первом запуске больше не говорит, что разрешения нужно выдать «заново», если их ещё не выдавали ни разу, а «Настройки» больше не просят разрешение, которое не нужно ни одному из включённых модулей.";
@@ -560,7 +542,6 @@
 "Tools for your Mac" = "Инструменты для вашего Mac";
 "Try again" = "Повторить";
 "Try it" = "Попробовать";
-"Turn off" = "Выключить";
 "Turn on" = "Включить";
 "Turn on before reporting a problem. The file lives in ~/Library/Logs/Helm." = "Включите перед тем, как сообщить о проблеме. Файл — в ~/Library/Logs/Helm.";
 "Turn the rule on" = "Включить правило";
@@ -573,7 +554,6 @@
 "Uninstall…" = "Удалить…";
 "Uninstaller" = "Удаление приложений";
 "Unknown" = "Неизвестно";
-"Unreadable" = "Не читается";
 "Untitled rule" = "Без названия";
 "Update & Relaunch" = "Обновить и перезапустить";
 "Update channel" = "Канал обновлений";
@@ -618,7 +598,6 @@
 "Which conditions must match" = "Какие условия должны совпасть";
 "White" = "Белый";
 "Window" = "Окна";
-"Without Full Disk Access Helm cannot check every item, and a short list of leftovers looks exactly like a Mac with none." = "Без «Доступа к диску» Helm проверит не все объекты: часть остатков не найдётся, а список будет выглядеть так же, как на чистом Mac.";
 "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none." = "Без «Доступа к диску» Helm прочитает не все папки: часть дубликатов не найдётся, а результат будет выглядеть так же, как чистая папка.";
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "Без «Доступа к диску» защищённая папка читается пустой: ни одно правило не срабатывает — и это выглядит так же, как папка, где нечего делать.";
 "A rule can watch folders inside your home folder, but not the Library and not a whole volume." = "Правило может наблюдать за папками внутри домашней папки, но не за Библиотекой и не за целым томом.";
@@ -760,7 +739,6 @@
 "A timer can end automation too. Set one while an app is holding the Mac awake and it releases that as well, until the app is launched again." = "Таймер может завершать и автоматику. Поставьте его, пока Mac держит приложение, — он завершит заодно и его, до следующего запуска этого приложения.";
 "Keep Awake says which app is holding the Mac, not just “App”." = "Keep Awake говорит, какое приложение держит Mac, а не просто «Приложение».";
 "The countdown says what happens at zero when a timer is set to end automation as well." = "Отсчёт говорит, что произойдёт на нуле, если таймер настроен завершать и автоматику.";
-"Filter" = "Фильтр";
 "Brown" = "Коричневый";
 "Other colour…" = "Другой…";
 "A colour of your own: the colour menu ends with “Other colour…”, which opens the system colour panel — the way Calendar offers one. The palette is Calendar’s, and follows light and dark the way the system’s colours do." = "Свой цвет: меню цвета заканчивается пунктом «Другой…», открывающим системную палитру — как это сделано в Календаре. Палитра тоже из Календаря и следует светлой и тёмной теме, как системные цвета.";
@@ -793,8 +771,6 @@
 "Autopilot checks that a file is still where it was right before it moves, renames or bins it, and stops if the folder changed underneath the rule." = "Автопилот проверяет, что файл всё ещё на месте, прямо перед тем как переместить, переименовать или отправить его в Корзину, и останавливается, если папка изменилась под правилом.";
 "Autopilot’s “already done” mark on a file is signed now, so nothing else on your Mac can put one there. Something arriving in a watched folder could mark itself as dealt with and be passed over for ever." = "Метка «уже сделано» на файле теперь подписана, и поставить её не может ничто другое на вашем Mac. Раньше то, что попало в отслеживаемую папку, могло пометить себя как обработанное и навсегда остаться в стороне.";
 "Putting an older copy of Helm’s settings back no longer brings your deleted Autopilot rules with it. Helm knows which set is the current one and refuses an earlier one, saying so on the page." = "Возврат старой копии настроек Helm больше не воскрешает удалённые правила Автопилота. Helm знает, какой набор сейчас действующий, отказывается от прежнего и говорит об этом на странице.";
-"Everything found is hidden by the filter." = "Всё найденное скрыто фильтром.";
-"Protected by macOS" = "Защищено macOS";
 "While you are away" = "Пока вас нет";
 "These modules look through your files on their own — only when the Mac is idle, unlocked and on power, and no more than twice a day each." = "Эти модули сами просматривают ваши файлы — только когда Mac простаивает, разблокирован и подключён к питанию, и не чаще двух раз в день каждый.";
 "Hasn’t run yet" = "Проверок ещё не было";

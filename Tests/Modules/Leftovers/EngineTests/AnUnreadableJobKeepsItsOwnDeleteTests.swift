@@ -3,31 +3,18 @@ import XCTest
 @testable import Module_Leftovers_Engine
 
 /// A row Helm could not read is still a row somebody may delete on purpose, and
-/// three things hold of it: the question asked first is about what is true of it
-/// (it could not be read, which is not «loaded»), the row keeps its own delete
-/// while the batch does not, and the switch is not offered on a guessed label.
+/// two things hold of it: the row keeps its own delete while the batch does not,
+/// and the switch is not offered on a guessed label.
 ///
 /// `APlistNobodyCouldReadTests` is the finding: an unreadable launchd job was
 /// swept up by «Select all». Keeping it out of the batch leaves the row's own
-/// menu, which asks before deleting anything that is not a leftover — and the one
-/// question this module had says «It is loaded now, and the app that installed it
-/// may put it back», which is a claim about a file whose contents Helm never got
-/// to see. So «why we are asking» is a value the strings switch over, the shape
-/// `NoDelete` already uses for «why there is no delete button».
-final class AnUnreadableJobAsksItsOwnQuestionTests: XCTestCase {
+/// menu. The question that menu asks first is a rule of `Architecture/Leftovers.md`.
+final class AnUnreadableJobKeepsItsOwnDeleteTests: XCTestCase {
 
     private func item(_ status: ItemStatus) -> StaleItem {
         StaleItem(path: "/Users/x/Library/LaunchAgents/com.vendor.updater.plist",
                   identifier: "com.vendor.updater", kind: .launchAgent, sizeBytes: 100,
                   status: status)
-    }
-
-    /// A job whose definition could not be read is asked about *that*, not
-    /// about being loaded — the fact Helm has is that it could not read the file.
-    func testAnUnreadableJobIsAskedAboutBeingUnreadable() {
-        XCTAssertEqual(LeftoverActions.askBeforeDeleting(item(.unreadable)), .cannotBeRead)
-        XCTAssertTrue(LeftoverActions.needsConfirmation(item(.unreadable)),
-                      "deleting a file nobody could read is a decision, not tidying")
     }
 
     /// The bulk tick is the offer being withheld, and the row's own delete is not

@@ -29,6 +29,12 @@ public extension View {
             .frame(maxWidth: .infinity)
             .helmIdlesOffScreen()
     }
+
+    /// A full-width strip of a page that bleeds across the pane: the form inset
+    /// across, one `s5` step down.
+    func helmPageStrip() -> some View {
+        padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+    }
 }
 
 public enum HelmLayout {

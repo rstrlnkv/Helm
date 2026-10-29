@@ -34,7 +34,6 @@
 "Add folder…" = "フォルダを追加…";
 "Add tag" = "タグを付ける";
 "After an update Helm tells you which permissions stopped working and takes you straight to the right pane. An update always revokes them — the checkbox stays ticked while nothing works." = "アップデート後、どの権限が効かなくなったかを伝え、該当の設定画面へ直接案内します。アップデートは必ず権限を失わせます（チェックは付いたままなのに動きません）。";
-"All" = "すべて";
 "All modules" = "すべてのモジュール";
 "All time" = "全期間";
 "An app can no longer claim other apps' files as its own leftovers by naming itself unusually." = "アプリが異常な名前を名乗って他のアプリのファイルを自分の残存物として提示することはできなくなりました。";
@@ -51,7 +50,6 @@
 "Application Support" = "アプリのデータ";
 "Apps" = "アプリ";
 "Archive" = "アーカイブ";
-"At login" = "ログイン時";
 "Audio" = "オーディオ";
 "Auto" = "自動";
 "Autopilot" = "オートパイロット";
@@ -120,19 +118,15 @@
 "Keyboard no longer types into text you had already deleted. Removing a word with Option-Delete left the last change undoable, so the fix key put the old word into whatever the caret was in front of." = "キーボードが、すでに削除した文章に入力することはなくなりました。Option+Deleteで単語を消しても直前の変更が取り消し可能なままで、修正キーがカーソル位置に古い語を入れていました。";
 "Keyboard opens with a four-step tour instead of an introduction. Step two is a real field to try it in, step three is the switches themselves — agreeing with a step is switching the thing on." = "キーボードは説明ではなく4ステップのツアーで始まります。2つめは実際に試せる入力欄、3つめはスイッチそのもの。ステップに同意することが、そのままオンにすることです。";
 "Last change (undone)" = "直近の変更（取り消し済み）";
-"Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash." = "起動エージェント・設定ファイル・プラグイン・システム機能拡張。ゴミ箱に入れられるのは残存物だけです。";
 "Layout name" = "入力ソース名";
 "Menu bar" = "メニューバー";
 "Month" = "1か月";
-"Move to Trash…" = "ゴミ箱に入れる…";
 "No key is assigned — this change can only be put back by hand." = "キーが設定されていないため、この変更は手動でしか戻せません。";
 "Nothing fixes the selection or the last word until you pick a key, or record a combination below." = "キーを選ぶか、下で組み合わせを登録するまで、選択範囲も直前の単語も修正されません。";
 "No words yet" = "まだ単語はありません";
 "Not watching" = "監視していません";
 "Nothing" = "なし";
 "Nothing has needed putting right so far." = "これまで修正が必要なものはありません。";
-"Nothing is selected for you: macOS loads every item in this list." = "既定では何も選択されていません。このリストの項目はすべて macOS が読み込みます。";
-"Only an administrator can move this" = "移動できるのは管理者のみです";
 "Open Disk" = "ディスクを開く";
 "Option" = "Option";
 "Period" = "期間";
@@ -174,7 +168,6 @@
 "Delete" = "削除";
 "Dev" = "Dev";
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "診断：Helm は動作のログを記録でき、問題時にすぐ共有できます。Dev ビルドでは常時オン。";
-"Disabled" = "無効";
 "Disconnected" = "接続解除済み";
 "Disconnecting…" = "接続解除中…";
 "Disk" = "ディスク";
@@ -265,7 +258,6 @@
 "If the folder Helm last measured has since been deleted, Disk no longer opens on an empty screen with no explanation — it takes you back to the volume list. An empty folder now says it is empty instead of showing nothing." = "前回測ったフォルダがその後削除されていた場合、“ディスク”は説明のない空白画面ではなくボリューム一覧に戻ります。空のフォルダは空だと表示します。";
 "Image" = "画像";
 "In the light theme the icon shape and size previews were drawn white on a white card — a control the colour of its own background. They are drawn in the appearance they are shown in now, and so are the keyboard badge previews beside them." = "ライトテーマで、アイコンの形とサイズのプレビューが白いカードの上に白で描かれていました。表示されているテーマに合わせて描くようになりました。";
-"In use" = "使用中";
 "Include subfolders" = "サブフォルダも対象";
 "Install" = "インストール";
 "Install Homebrew" = "Homebrew をインストール";
@@ -288,13 +280,11 @@
 "Last change" = "直近の変更";
 "Later" = "後で";
 "Launch agents" = "起動エージェント";
-"Launch daemons" = "起動デーモン";
 "Layout" = "配列";
 "Left ⇧" = "左 ⇧";
 "Left ⌃" = "左 ⌃";
 "Left ⌘" = "左 ⌘";
 "Left ⌥" = "左 ⌥";
-"Leftover" = "残存";
 "Leftovers" = "残存物";
 "Leftovers found by an app’s name rather than its identifier are marked as guesses and are no longer ticked in advance — names collide, and a guess should cost a click to accept." = "識別子ではなくアプリ名で見つかった残存物は“推測”と表示し、既定では選択しません。名前は他のアプリと重なります。";
 "Letters" = "文字";
@@ -304,8 +294,6 @@
 "Liquid Glass" = "Liquid Glass";
 "Toolbar style" = "ツールバーのスタイル";
 "Log" = "ログ";
-"Login Items" = "ログイン項目";
-"Login Items & Extensions" = "ログイン項目と機能拡張";
 "Login Items & Extensions now lists system extensions themselves — what they are, whose they are, and which ones outlived the app that installed them." = "“ログイン項目と機能拡張”がシステム機能拡張そのものを一覧表示：内容、提供元、そしてインストール元アプリが消えても残っているもの。";
 "Login Items & Extensions: see everything that loads with your Mac, marked as in use, system, or leftover — and remove the leftovers." = "ログイン項目と機能拡張：Mac と一緒に読み込まれるものを“使用中”、“システム”、“残存物”の印付きで一覧表示し、残存物を削除できます。";
 "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "ログイン項目は削除だけでなくオフにできます。macOS 自身と同じ一覧を使うため、再起動後も維持され、パスワード不要で元に戻せます。";
@@ -362,7 +350,6 @@
 "Homebrew did not answer, so the search could not be carried out right now." = "Homebrew が応答しなかったため、検索は今のところ実行できませんでした。";
 "No rules yet" = "まだルールがありません";
 "None" = "なし";
-"Not checked" = "未確認";
 "Not checked yet" = "未確認";
 "Not connected" = "未接続";
 "Not modified in months" = "数か月間変更なし";
@@ -409,7 +396,6 @@
 "Pink" = "ピンク";
 "Pinned" = "固定中";
 "Play a sound when a word is fixed" = "修正時に音を鳴らす";
-"Plug-ins" = "プラグイン";
 "Point Helm at a folder and give it rules. A file that arrives is checked against them in order and the first match wins — and every watched folder is checked again once an hour, so age rules come round." = "フォルダを指定してルールを与えます。届いたファイルは上から順に照合され、最初に一致したルールが実行されます。さらに 1 時間ごとに全体を見直すので、“〜より古い”のルールも働きます。";
 "Power" = "電源";
 "Press keys…" = "キーを押してください…";
@@ -452,11 +438,9 @@
 "Run now" = "今すぐ実行";
 "Running" = "実行中";
 "Saved windows" = "保存されたウインドウ";
-"Scan" = "スキャン";
 "Scan a folder…" = "フォルダをスキャン…";
 "Scan again" = "再スキャン";
 "Scan for leftovers" = "残存ファイルを検索";
-"Scan to see what apps left behind." = "スキャンして、アプリが残したものを確認。";
 "Scanning" = "スキャン中";
 "Scanning…" = "スキャン中…";
 "Search" = "検索";
@@ -489,7 +473,6 @@
 "Skip" = "スキップ";
 "Smaller items" = "小さい項目";
 "Sort into subfolder" = "サブフォルダに整理";
-"Startup items, extensions, and what removed apps left behind" = "起動項目、機能拡張、削除済みアプリの残存物";
 "Stop" = "停止";
 "Stop could leave an abandoned scan’s folders sitting in the basket, above the Trash button, on a screen that no longer had anything to do with them — and emptying the basket credited the space to whichever volume you’d since picked." = "“停止”を押すと、放棄されたスキャンのフォルダがバスケットに残ったまま、もう無関係な画面のゴミ箱ボタンの上に表示され続けることがありました。バスケットを空にすると、その空き容量はその時点で選ばれていたボリュームに加算されていました。";
 "Stop removal" = "削除を停止";
@@ -510,7 +493,6 @@
 "Switching VPN off and back on could leave the tile and the settings page silently frozen, answering nothing, until Helm was relaunched." = "VPN をオフにしてから再度オンにすると、Helm を再起動するまでタイルと設定ページが何も応答しないまま固まってしまうことがありました。";
 "Switching to another module and back no longer throws away what you were doing. The Uninstaller used to lose every tick, the whole review step, and the record of what macOS had refused, the moment you left its page; Login Items & Extensions restarted its scan — the slowest one in the app — the same way. Both remember now." = "別のモジュールに切り替えてから戻っても、作業内容が失われなくなりました。アンインストーラは以前、ページを離れた瞬間にすべてのチェック、確認ステップ全体、macOS が拒否した内容の記録を失っていました。ログイン項目と機能拡張も、アプリの中で最も時間がかかるスキャンを同じように最初からやり直していました。今はどちらも記憶しています。";
 "System" = "システム";
-"System extensions" = "システム機能拡張";
 "Tag" = "タグ";
 "Tag name" = "タグ名";
 "The Accessibility permission was described as only nudging the pointer for Keep Awake — it’s also what lets the Keyboard module read what you type, in every application, and the caption names both now. The first-launch alert no longer says permissions need granting “again” when none have been granted yet, and Settings no longer asks for a permission none of your enabled modules need." = "アクセシビリティ権限は“スリープ防止”がポインタを動かすためだけ、と説明されていました——実際にはキーボードモジュールがあらゆるアプリで入力内容を読み取るためでもあり、説明文は今、両方を挙げます。初回起動時の通知は、まだ一度も許可していないのに“再度”許可が必要と表示しなくなりました。設定も、有効なモジュールのどれも必要としない権限を求めなくなりました。";
@@ -560,7 +542,6 @@
 "Tools for your Mac" = "Mac のための道具";
 "Try again" = "再試行";
 "Try it" = "試す";
-"Turn off" = "オフにする";
 "Turn on" = "オンにする";
 "Turn on before reporting a problem. The file lives in ~/Library/Logs/Helm." = "問題を報告する前にオンにしてください。ファイルは ~/Library/Logs/Helm。";
 "Turn the rule on" = "ルールを有効にする";
@@ -573,7 +554,6 @@
 "Uninstall…" = "アンインストール…";
 "Uninstaller" = "アンインストーラ";
 "Unknown" = "不明";
-"Unreadable" = "読み取り不可";
 "Untitled rule" = "名称未設定のルール";
 "Update & Relaunch" = "更新して再起動";
 "Update channel" = "アップデートチャンネル";
@@ -618,7 +598,6 @@
 "Which conditions must match" = "一致が必要な条件";
 "White" = "ホワイト";
 "Window" = "ウインドウ";
-"Without Full Disk Access Helm cannot check every item, and a short list of leftovers looks exactly like a Mac with none." = "フルディスクアクセスがないとすべての項目を確認できず、残存物が少ないのか無いのか区別できません。";
 "Without Full Disk Access Helm cannot read every folder, and a short list of duplicates looks exactly like a folder that has none." = "フルディスクアクセスがないとすべてのフォルダを読めず、結果が少ないのか重複がないのか区別できません。";
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "フルディスクアクセスがないと、保護されたフォルダは空として読まれます。どのルールも一致せず、片づけるものがないフォルダと見分けがつきません。";
 "A rule can watch folders inside your home folder, but not the Library and not a whole volume." = "ルールはホームフォルダ内のフォルダを監視できますが、ライブラリやボリューム全体は監視できません。";
@@ -760,7 +739,6 @@
 "A timer can end automation too. Set one while an app is holding the Mac awake and it releases that as well, until the app is launched again." = "タイマーで自動処理も終えられます。アプリが Mac を起こしている間にタイマーを設定すると、そのアプリの分もあわせて終了します。次にそのアプリを起動するまでです。";
 "Keep Awake says which app is holding the Mac, not just “App”." = "Keep Awake が“アプリ”ではなく、どのアプリが Mac を起こしているかを表示します。";
 "The countdown says what happens at zero when a timer is set to end automation as well." = "タイマーが自動処理も終える設定のとき、ゼロで何が起きるかを表示します。";
-"Filter" = "フィルタ";
 "Brown" = "ブラウン";
 "Other colour…" = "その他…";
 "A colour of your own: the colour menu ends with “Other colour…”, which opens the system colour panel — the way Calendar offers one. The palette is Calendar’s, and follows light and dark the way the system’s colours do." = "自分の色を。カラーメニューの最後に“その他…”があり、システムのカラーパネルが開きます。カレンダーと同じやり方です。パレットもカレンダーのもので、システムの色と同じくライトとダークに追随します。";
@@ -793,8 +771,6 @@
 "Autopilot checks that a file is still where it was right before it moves, renames or bins it, and stops if the folder changed underneath the rule." = "オートパイロットは、移動・名称変更・ゴミ箱への移動の直前にファイルがまだ同じ場所にあるかを確かめ、ルールの下でフォルダが変わっていれば止まります。";
 "Autopilot’s “already done” mark on a file is signed now, so nothing else on your Mac can put one there. Something arriving in a watched folder could mark itself as dealt with and be passed over for ever." = "ファイルに付く“処理済み”の印に署名が付きました。Mac 上の他の何かがこの印を付けることはできません。以前は、監視対象のフォルダに届いたものが自分に処理済みの印を付け、永遠に見過ごされることがありました。";
 "Putting an older copy of Helm’s settings back no longer brings your deleted Autopilot rules with it. Helm knows which set is the current one and refuses an earlier one, saying so on the page." = "Helm の設定を古いコピーに戻しても、削除したオートパイロットのルールが一緒に戻ることはなくなりました。Helm はどのセットが現行かを把握しており、それより前のものは拒否して、ページ上で知らせます。";
-"Everything found is hidden by the filter." = "見つかった項目はすべてフィルタで非表示です。";
-"Protected by macOS" = "macOS によって保護されています";
 "While you are away" = "離席中の動作";
 "These modules look through your files on their own — only when the Mac is idle, unlocked and on power, and no more than twice a day each." = "これらのモジュールは自動的にファイルを調べます。Mac が操作されておらず、ロックが解除され、電源に接続されているときだけ、それぞれ 1 日 2 回までです。";
 "Hasn’t run yet" = "まだ実行されていません";

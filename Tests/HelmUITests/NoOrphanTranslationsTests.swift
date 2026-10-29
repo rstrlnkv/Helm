@@ -191,7 +191,7 @@ final class NoOrphanTranslationsTests: XCTestCase {
     }
 
     /// The catalog's half of `testNoTranslationIsKeptForAKeyNothingAsksFor`. A module's words are
-    /// asked for by symbol (`localized(.symbol)`), not by a quoted literal, so the kit's scan cannot
+    /// asked for by symbol (`L(.symbol)`), not by a quoted literal, so the kit's scan cannot
     /// see them; this asks the module's own `UI` sources — comments blanked, as above — for each
     /// `.symbol`. A symbol nothing names ships eight translations of a word nobody draws.
     func testNoCatalogSymbolGoesUnnamed() throws {

@@ -127,6 +127,20 @@ public func L(_ english: String, _ table: [AppLanguage: String] = [:],
     return Localized.string(english, language: language)
 }
 
+/// A word from a module's own catalog, in the app's language.
+///
+/// `String(localized:)` alone answers in the language macOS resolves for the
+/// process, not the one the person picked in Helm, so the resource is asked in
+/// `language`. The resource carries its own target's bundle, which is why one
+/// function in the kit can read every module's catalog; the symbol is what
+/// makes a mistyped key a build error.
+public func L(_ resource: LocalizedStringResource,
+              language: AppLanguage = AppLanguage.current) -> String {
+    var resource = resource
+    resource.locale = Locale(identifier: language.rawValue)
+    return String(localized: resource)
+}
+
 /// The `.lproj` tables themselves: one sub-bundle per language, loaded from
 /// `Bundle.module` and cached — the same reasoning `AppLanguage.current`
 /// already carried one level up, one bundle per language rather than one per

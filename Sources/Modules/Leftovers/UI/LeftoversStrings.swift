@@ -8,40 +8,39 @@ import Module_Leftovers_Engine
 enum LfStr {
     // Named after the macOS pane that covers the same ground, so the mapping
     // is obvious: System Settings → General → Login Items & Extensions.
-    static var moduleName: String { L("Login Items & Extensions") }
+    static var moduleName: String { L(.loginItemsAndExtensions) }
 
     /// What the sidebar calls it. macOS carries the same pair: the pane is
     /// "Login Items & Extensions" and a list of panes says "Login Items" —
     /// these are its own words for the short form, language by language.
-    static var moduleNameShort: String { L("Login Items") }
-    static var summary: String { L("Startup items, extensions, and what removed apps left behind") }
-    static var filterAll: String { L("All") }
+    static var moduleNameShort: String { L(.loginItems) }
+    static var summary: String { L(.summary) }
+    static var filterAll: String { L(.all) }
     static var filterLeftovers: String { L("Leftovers") }
-    static var statusInUse: String { L("In use") }
+    static var statusInUse: String { L(.inUse) }
     static var statusProtected: String { L("System") }
-    static var statusOrphaned: String { L("Leftover") }
+    static var statusOrphaned: String { L(.leftover) }
     /// The badge on a row whose plist would not be read. Not «Unknown», which
     /// this app already uses for a VPN whose state it has not been told — one
     /// English key means one thing, and what this one says is that the file
     /// itself could not be read.
-    static var statusUnreadable: String { L("Unreadable") }
+    static var statusUnreadable: String { L(.unreadable) }
     /// The badge on a row whose *file* was read and whose verdict still could not be
     /// reached: the program it points at is somewhere this process may not look, or
     /// the tool that lists what macOS has loaded did not answer. Not
     /// «Unreadable» — that word is about this file, and this file was fine.
-    static var statusUndetermined: String { L("Not checked") }
-    static var scan: String { L("Scan") }
+    static var statusUndetermined: String { L(.notChecked) }
+    static var scan: String { L(.scan) }
     static var scanning: String { L("Scanning…") }
     static var rescan: String { L("Scan again") }
     /// Under the invitation on the first screen, so it is read once and then not
-    /// again — and it was three lines of it in German, Spanish and French. What it
-    /// has to say is what is in the list, and what may leave it.
-    static var intro: String { L("Launch agents, settings files, plug-ins and system extensions. Only leftovers can go to the Trash.") }
-    static var notScannedYet: String { L("Scan to see what apps left behind.") }
+    /// again: what is in the list, and what may leave it.
+    static var intro: String { L(.whatTheListHolds) }
+    static var notScannedYet: String { L(.scanToSeeWhatAppsLeftBehind) }
     /// The one sentence on this screen a person must not miss, and it says why
     /// rather than telling them how to behave: nothing is pre-ticked *because
     /// macOS loads every one of these*.
-    static var reviewNote: String { L("Nothing is selected for you: macOS loads every item in this list.") }
+    static var reviewNote: String { L(.nothingIsSelectedForYou) }
     /// **What the grant buys here is judgement, not removal.**
     /// `PermissionCheck.reason` names Full Disk Access for `/Library/Containers/`
     /// and `/Library/Group Containers/` paths only, and none of the scanner's
@@ -51,7 +50,7 @@ enum LfStr {
     /// `.undetermined`, and a short list of leftovers then looks exactly like a
     /// Mac with none. Duplicates' own note says the same thing about folders.
     static var scanNeedsAccess: String {
-        L("Without Full Disk Access Helm cannot check every item, and a short list of leftovers looks exactly like a Mac with none.")
+        L(.scanNeedsFullDiskAccess)
     }
     /// **The button opens a pane; it manages nothing.** It calls
     /// `PermissionCheck.openExtensionSettings()`, and the Uninstaller's own
@@ -66,30 +65,25 @@ enum LfStr {
     /// inline table can only be read back in the other seven languages if the
     /// language can be named — and because a pair should read as one.
     static func disable(language: AppLanguage = AppLanguage.current) -> String {
-        L("Turn off", language: language)
+        L(.turnOff, language: language)
     }
 
     static func enable(language: AppLanguage = AppLanguage.current) -> String {
         L("Turn on", language: language)
     }
-    static var statusDisabled: String { L("Disabled") }
-    /// The menu that narrows the list, drawn beside a filter glyph — so
-    /// «Filter» is what it is, and «Show» was a verb borrowed for a noun's job.
-    ///
-    /// It moved because a *button* elsewhere needed the word: the panel's
-    /// permissions notice opens the list of them, and «Show» is what that
-    /// button says. One English key means one thing, and these two are not the
-    /// same thing — this one is imperfective in Russian («Показывать: всё»),
-    /// the button perfective («Показать»), and a shared key would have put the
-    /// wrong aspect on one of them in every Slavic language.
-    static var filter: String { L("Filter") }
+    static var statusDisabled: String { L(.disabled) }
+    /// The menu that narrows the list, drawn beside a filter glyph. «Show» is the
+    /// panel's button elsewhere, and the two are not the same thing: this one is
+    /// imperfective in Russian («Показывать: всё»), the button perfective
+    /// («Показать»), so a shared key would put the wrong aspect on one of them in
+    /// every Slavic language.
+    static var filter: String { L(.filter) }
     static var cancelAction: String { L("Cancel") }
     /// **The row's menu names the same act as the bar's button**, plus the
-    /// ellipsis that says a question follows. It said «Delete…», over a dialog
-    /// titled «Delete X?» whose own destructive button said «Move to Trash», with
-    /// a report afterwards saying «Moved to the Trash»: three names for one act,
-    /// and the wrong one was on the control a person reads last.
-    static var deleteItem: String { L("Move to Trash…") }
+    /// ellipsis that says a question follows: the dialog's destructive button says
+    /// «Move to Trash» and the report afterwards «Moved to the Trash», so the
+    /// control a person reads last uses the same name.
+    static var deleteItem: String { L(.moveToTrashAndAsk) }
     /// The question the row asks before deleting — or nil for a row it deletes
     /// without asking.
     ///
@@ -176,13 +170,12 @@ enum LfStr {
     static func noDelete(_ reason: NoDelete) -> String {
         switch reason {
         case .needsAdministrator: return needsAdmin
-        case .protectedByMacOS: return L("Protected by macOS")
+        case .protectedByMacOS: return L(.protectedByMacOS)
         }
     }
 
-    /// Says what the act is, which is moving a file to the Trash — «to delete»
-    /// was the third name for it on this page.
-    static var needsAdmin: String { L("Only an administrator can move this") }
+    /// Says what the act is, which is moving a file to the Trash.
+    static var needsAdmin: String { L(.onlyAnAdministratorCanMoveThis) }
     static var nothingFound: String { L("No leftovers found.") }
     /// The message over the empty list, one per reason there is no list.
     ///
@@ -196,7 +189,7 @@ enum LfStr {
         case .nothingFound: return nothingFound
         // A claim about the filter, not about the Mac — and the filter menu is on
         // screen above this line, which is what makes it worth its own sentence.
-        case .hiddenByFilter: return L("Everything found is hidden by the filter.")
+        case .hiddenByFilter: return L(.everythingHiddenByFilter)
         // **The message, not a note under «No leftovers found».** A headline with
         // a footnote invites the reader to trust the headline, and that headline
         // is exactly the claim this scan cannot back.
@@ -249,7 +242,7 @@ enum LfStr {
     /// pill in German, and against the fourteen real launch-agent labels on this
     /// Mac ten of the fourteen then truncated — seven of fourteen in Russian. What
     /// the row is for is its name; this is the qualifier beside it.
-    static var runsAtLogin: String { L("At login") }
+    static var runsAtLogin: String { L(.atLogin) }
     /// The one line under a row's name: where the file is, and what is wrong with
     /// it if anything is.
     ///
@@ -361,7 +354,7 @@ enum LfStr {
     static func labelClaimedTwice(_ other: String,
                                   language: AppLanguage = AppLanguage.current) -> String {
         L("Another file claims this login item: \(other)",
-          [.ru: "Этот же элемент входа заявляет другой файл: \(other)",
+          [.ru: "Этот объект входа заявлен и в другом файле: \(other)",
            .es: "Otro archivo reclama este elemento de inicio: \(other)",
            .fr: "Un autre fichier revendique cet élément d’ouverture\u{00A0}: \(other)",
            .de: "Eine andere Datei beansprucht dieses Anmeldeobjekt: \(other)",
@@ -439,10 +432,10 @@ enum LfStr {
     static func kindName(_ kind: StaleKind) -> String {
         switch kind {
         case .launchAgent: return L("Launch agents")
-        case .launchDaemon: return L("Launch daemons")
+        case .launchDaemon: return L(.launchDaemons)
         case .preference: return L("Settings files")
-        case .systemExtension: return L("System extensions")
-        case .plugin: return L("Plug-ins")
+        case .systemExtension: return L(.systemExtensions)
+        case .plugin: return L(.plugIns)
         }
     }
 }

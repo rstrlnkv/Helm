@@ -56,7 +56,7 @@ struct LeftoversSettingsPage: View {
             }
             if diskAccess == .denied {
                 HelmPermissionNote(need: .fullDiskAccess, text: LfStr.scanNeedsAccess)
-                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+                    .helmPageStrip()
                 Divider()
             }
             // The safety line, where the thing it is about is: over the list,
@@ -139,7 +139,7 @@ struct LeftoversSettingsPage: View {
             captions
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+        .helmPageStrip()
     }
 
     /// **The page's controls, in the window's header row.**
@@ -284,7 +284,7 @@ struct LeftoversSettingsPage: View {
             Task { await lvm.scan() }
         } label: {
             if lvm.scanning {
-                HStack(spacing: 6) {
+                HStack(spacing: HelmSpace.s3) {
                     ProgressView().controlSize(.small)
                     Text(scanTitle)
                 }
@@ -361,8 +361,8 @@ struct LeftoversSettingsPage: View {
                 HelmCheckboxSlot()
             }
 
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: HelmSpace.s1) {
+                HStack(spacing: HelmSpace.s3) {
                     Text(item.identifier)
                         .lineLimit(1)
                         // Not SwiftUI's `.secondary`: it measures 3.95:1 here,
@@ -403,7 +403,7 @@ struct LeftoversSettingsPage: View {
             Spacer()
             controls(for: item)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, HelmSpace.s1)
     }
 
     /// What a row offers at its trailing edge: the switch, and then either the way
@@ -492,34 +492,32 @@ struct LeftoversSettingsPage: View {
     @ViewBuilder private func badge(_ badge: RowBadge) -> some View {
         switch badge {
         case .status(let status): statusBadge(status)
-        // Grey, like the two facts nobody may tick: what a colour separates in
-        // this list is «ticked by Select all» from «never ticked», and a
-        // switched-off row is neither.
+        // Grey, like protected, unreadable and the unchecked trio, rows nobody may
+        // tick: what the warning colour separates in this list is «ticked by
+        // Select all» from «never ticked», and a switched-off row is neither.
         case .disabled: HelmBadge(LfStr.statusDisabled)
-        case .runsAtLogin: HelmBadge(LfStr.runsAtLogin, tint: .orange)
+        case .runsAtLogin: HelmBadge(LfStr.runsAtLogin, tint: HelmSignal.warning)
         }
     }
 
     private func statusBadge(_ status: ItemStatus) -> some View {
         let (text, color): (String, Color) = switch status {
-        case .orphaned: (LfStr.statusOrphaned, .orange)
-        case .inUse: (LfStr.statusInUse, .green)
-        case .protectedItem: (LfStr.statusProtected, .secondary)
-        // **Grey, read off the render rather than reasoned about.** The first
-        // version used `HelmSignal.warning`, whose 20 % wash at badge size is not
-        // distinguishable from `.orange`'s — so «Остаток» and «Не читается» drew as
-        // the same pill two rows apart, and the colour separating «ticked by Select
-        // all» from «never ticked» said nothing. Grey is what the other two facts
-        // nobody may tick already wear.
-        case .unreadable: (LfStr.statusUnreadable, .secondary)
-        // Grey for the reason above: what separates a colour here is «ticked by
-        // Select all» from «never ticked», and these are the never-ticked. **One
+        case .orphaned: (LfStr.statusOrphaned, HelmSignal.warning)
+        case .inUse: (LfStr.statusInUse, HelmSignal.success)
+        case .protectedItem: (LfStr.statusProtected, HelmBadge.neutralTint)
+        // **Grey, not the warning colour.** «Leftover» wears the warning colour,
+        // and an unreadable row in it would draw as the same pill two rows apart,
+        // so the warning colour separating «ticked by Select all» from «never ticked»
+        // would say nothing. Grey is what `.protectedItem` and the unchecked statuses below wear.
+        case .unreadable: (LfStr.statusUnreadable, HelmBadge.neutralTint)
+        // Grey for the reason above: what the warning colour separates here is
+        // «ticked by Select all» from «never ticked», and these are the never-ticked. **One
         // word for the three of them on purpose**: all three are counted in the
         // «Helm could not check N items» the empty screen draws, and a second
         // word would have the badge and that sentence disagree. Which kind of
         // unchecked a row is, is the sentence under its name.
         case .undetermined, .sourceRedirected, .sourceUnreadable:
-            (LfStr.statusUndetermined, .secondary)
+            (LfStr.statusUndetermined, HelmBadge.neutralTint)
         }
         return HelmBadge(text, tint: color)
     }
@@ -639,6 +637,6 @@ struct LeftoversSettingsPage: View {
                     Button(LfStr.cancelAction, role: .cancel) { }
                 }
         }
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
+        .helmPageStrip()
     }
 }

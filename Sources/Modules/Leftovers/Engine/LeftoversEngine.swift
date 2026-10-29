@@ -27,7 +27,7 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     /// agent folders at the moment of a press, so the engine's refusal rests on
     /// what is there now rather than on what a scan found earlier.
     private let files: LeftoversFilePort
-    public let transport: EngineTransport
+    public let transport: EngineTransport = LocalTransport()
     /// The write half. The scan gets `loaded` and cannot reach this.
     private let switcher: LoginItemSwitchPort
     /// Where the labels this module disabled are recorded, so `willDisable()`
@@ -40,14 +40,12 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
                 loaded: LoadedItemsPort = ActiveExtensions(),
                 switcher: LoginItemSwitchPort = ActiveExtensions(),
                 store: NamespacedStore = NamespacedStore(namespace: LeftoversEngine.moduleID,
-                                                         backing: UserDefaults.standard),
-                transport: LocalTransport = LocalTransport()) {
+                                                         backing: UserDefaults.standard)) {
         self.switcher = switcher
         self.home = home
         self.files = files
         self.store = store
         self.scanner = LeftoversScanner(home: home, files: files, apps: apps, extensions: loaded)
-        self.transport = transport
     }
 
     public func activate() {}
