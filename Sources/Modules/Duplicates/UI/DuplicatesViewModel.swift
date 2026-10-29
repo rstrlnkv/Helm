@@ -678,8 +678,8 @@ public enum KeepGrounds: Equatable, Sendable {
         clearRemovalReport()
     }
 
-    /// Nothing on screen about a removal — the shape `DiskViewModel` and
-    /// `LeftoversViewModel` already keep, and the fields are read as one report:
+    /// Nothing on screen about a removal — the shape `DiskViewModel`
+    /// already keeps, and the fields are read as one report:
     /// clearing three of the four is how a «no answer» came to outlive the press
     /// it was about.
     private func clearRemovalReport() {

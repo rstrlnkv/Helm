@@ -27,7 +27,6 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     /// agent folders at the moment of a press, so the engine's refusal rests on
     /// what is there now rather than on what a scan found earlier.
     private let files: LeftoversFilePort
-    private let localTransport: LocalTransport
     public let transport: EngineTransport
     /// The write half. The scan gets `loaded` and cannot reach this.
     private let switcher: LoginItemSwitchPort
@@ -48,9 +47,7 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
         self.files = files
         self.store = store
         self.scanner = LeftoversScanner(home: home, files: files, apps: apps, extensions: loaded)
-        self.localTransport = transport
         self.transport = transport
-        wireTransport()
     }
 
     public func activate() {}
@@ -134,79 +131,63 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
-    private func wireTransport() {
-        localTransport.setHandler { [weak self] command in
-            guard let self else { return Data() }
-            guard let name = LeftoversCommand(rawValue: command.name) else { return Data() }
-            switch name {
-            case .scan:
-                return EngineReply.encode(await self.scan(), for: command)
-            case .setDisabled:
-                guard let request = EngineReply.decode(LeftoversToggle.self, from: command)
-                else { return Data() }
-                // **The engine has the last word on the label, as it has on a
-                // path.** A label is whatever a `.plist` claims, and a file may
-                // claim another job's: `zz-innocent.plist` saying it is
-                // `com.securityvendor.agent` sends `launchctl disable` at the real
-                // job of that name. `LaunchLabel.mayBeSwitched` is the same
-                // predicate the row's offer reads, so this refuses nothing the page
-                // draws — it refuses whatever else builds a request.
-                guard LaunchLabel.mayBeSwitched(label: request.label, path: request.path) else {
-                    HelmLog.shared.warn(Self.moduleID,
-                                        "refused a switch: the label is not the one that file "
-                                        + "would register")
-                    return Data()
-                }
-                // **And the last word on the label being one file's.** A label two
-                // files register is one switch drawn twice: `launchctl disable
-                // gui/<uid>/<label>` stops whichever of them launchd kept, which
-                // this app cannot read, so a press on the row badged «Leftover» can
-                // stop the job the same scan calls «In use». The page withholds the
-                // switch there (`LeftoverActions.available`); this is the same rule
-                // asked of the two folders as they are now, and it refuses whatever
-                // else builds a request.
-                let reading = await offTheCooperativePool {
-                    LaunchClaims.onDisk(home: self.home, files: self.files)
-                }
-                let claimants = LaunchClaims.claimants(of: request.label, in: reading)
-                // **And a folder that did not open is not a folder with nothing
-                // in it.** Either agent folder can refuse a listing —
-                // `LaunchClaims.Reading` names the reasons, and that listing
-                // `/Library/LaunchAgents` is open to everyone on the Mac this
-                // was written on — and either one going unread turns «two files
-                // claim this switch» into «one does», on the safe-direction
-                // side of a guard whose whole subject is the unsafe direction.
-                guard reading.everyFolderOpened else {
-                    HelmLog.shared.warn(Self.moduleID,
-                                        "refused a switch: an agent folder would not open, so "
-                                        + "the files registering that label were never counted")
-                    return Data()
-                }
-                guard claimants.count <= 1 else {
-                    HelmLog.shared.warn(Self.moduleID,
-                                        "refused a switch: \(claimants.count) files register "
-                                        + "that label, and launchd was not asked which one it "
-                                        + "kept")
-                    return Data()
-                }
-                await self.setDisabled(request.disabled, label: request.label)
-                return Data()
-            case .trash:
-                guard let paths = EngineReply.decode([String].self, from: command)
-                else { return Data() }
-                return EngineReply.encode(await self.trash(paths), for: command)
-            }
+    /// Switches a login item, after the three questions the engine owes it.
+    ///
+    /// **The engine has the last word on the label, as it has on a path.** A label
+    /// is whatever a `.plist` claims, and a file may claim another job's:
+    /// `zz-innocent.plist` saying it is `com.securityvendor.agent` sends
+    /// `launchctl disable` at the real job of that name. `LaunchLabel.mayBeSwitched`
+    /// is the same predicate the row's offer reads, so this refuses nothing the page
+    /// draws — it refuses whatever else builds a request.
+    public func setDisabled(_ request: LeftoversToggle) async {
+        guard LaunchLabel.mayBeSwitched(label: request.label, path: request.path) else {
+            HelmLog.shared.warn(Self.moduleID,
+                                "refused a switch: the label is not the one that file "
+                                + "would register")
+            return
         }
+        // **And the last word on the label being one file's.** A label two
+        // files register is one switch drawn twice: `launchctl disable
+        // gui/<uid>/<label>` stops whichever of them launchd kept, which
+        // this app cannot read, so a press on the row badged «Leftover» can
+        // stop the job the same scan calls «In use». The page withholds the
+        // switch there (`LeftoverActions.available`); this is the same rule
+        // asked of the two folders as they are now, and it refuses whatever
+        // else builds a request.
+        let reading = await offTheCooperativePool {
+            LaunchClaims.onDisk(home: self.home, files: self.files)
+        }
+        let claimants = LaunchClaims.claimants(of: request.label, in: reading)
+        // **And a folder that did not open is not a folder with nothing
+        // in it.** Either agent folder can refuse a listing —
+        // `LaunchClaims.Reading` names the reasons, and that listing
+        // `/Library/LaunchAgents` is open to everyone on the Mac this
+        // was written on — and either one going unread turns «two files
+        // claim this switch» into «one does», on the safe-direction
+        // side of a guard whose whole subject is the unsafe direction.
+        guard reading.everyFolderOpened else {
+            HelmLog.shared.warn(Self.moduleID,
+                                "refused a switch: an agent folder would not open, so "
+                                + "the files registering that label were never counted")
+            return
+        }
+        guard claimants.count <= 1 else {
+            HelmLog.shared.warn(Self.moduleID,
+                                "refused a switch: \(claimants.count) files register "
+                                + "that label, and launchd was not asked which one it "
+                                + "kept")
+            return
+        }
+        await setDisabled(request.disabled, label: request.label)
     }
 }
 
-/// What the trash command answers with — the same value `DiskRemoval` and
+/// What `trash` answers with — the same value `DiskRemoval` and
 /// `DuplicateRemoval` name, and for the same reason.
 ///
 /// It was a field-for-field copy: `failed` for `refused`, and a
 /// `TrashFailureDetail` whose `message` carried `reason.rawValue` so that the
 /// page could hand it back to `TrashReasonText.sentence`. Nothing in the type
-/// said the string was a reason. The engine built the real result and unpacked
-/// it into the copy line by line; both ends of this wire are in one build, and
-/// the UI target imports this one, so one declaration serves both.
+/// said the string was a reason. The engine and the UI target are in one build,
+/// and the UI target imports this one, so one declaration serves both.
 public typealias LeftoversRemoval = HelmTrash.Result

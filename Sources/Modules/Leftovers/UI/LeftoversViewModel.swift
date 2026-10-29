@@ -3,6 +3,16 @@ import HelmRuntime
 import HelmUI
 import Module_Leftovers_Engine
 
+/// What the model asks of the engine. A port, so the model's tests hold the
+/// engine's place without a launch item or a file in reach.
+protocol LeftoversWork: AnyObject, Sendable {
+    func scan() async -> [StaleItem]
+    func trash(_ paths: [String]) async -> LeftoversRemoval
+    func setDisabled(_ request: LeftoversToggle) async
+}
+
+extension LeftoversEngine: LeftoversWork {}
+
 @MainActor public final class LeftoversViewModel: ObservableObject {
     @Published public private(set) var items: [StaleItem] = []
     @Published public private(set) var scanning = false
@@ -29,53 +39,25 @@ import Module_Leftovers_Engine
     /// so the default filter is precisely what hides them: counted over
     /// `visibleItems` it would answer zero in the state it exists to report.
     @Published public private(set) var uncheckedCount = 0
-    /// The last removal's reply never came back.
-    ///
-    /// The fourth thing the report is read as: not a claim that anything moved,
-    /// not a refusal, and not silence. Clearing the other three was the right
-    /// half of the fix and only half of it — `HelmRemovalOutcome.verdict(removed:
-    /// 0, failed: 0)` is `.silent`, so the page said nothing at all about a
-    /// destructive press somebody had made, while the rescan underneath quietly
-    /// changed the list.
-    @Published public private(set) var replyLost = false
-    /// The last scan's reply never came back either.
-    ///
-    /// `reload`'s `guard let found else { return }` is the right thing to do —
-    /// folding an unanswered request to `[]` threw away the list somebody was
-    /// working through — and it was mute: the button dimmed, spun and came back,
-    /// the rows were exactly as they had been, and nothing said the machine never
-    /// replied. It is also what `replyLost` needs beside it, because `trash`
-    /// rescans on its own lost-reply path: the sentence about a lost removal
-    /// points at the list, and whether it may is this.
-    @Published public private(set) var scanReplyLost = false
     /// A removal is running. The page dims what would start a second one — see
     /// `trash`, where the cost of the second is a wrong report about the first.
     @Published public private(set) var busy = false
 
-    private let client: TransportClient
-    let vm: ModuleViewModel
+    private let work: any LeftoversWork
+    /// Set when the module is switched off: the engine is held strongly here, so a
+    /// press after `willDisable` would still write a `launchctl disable` and its
+    /// record; nothing gives that back until the next time the module is
+    /// switched off, when `willDisable` reads the record.
+    private var stopped = false
 
-    /// The scan and every checkbox must outlive the page. Settings rebuilds the
-    /// page on every sidebar visit, and nothing here is pre-ticked: each tick is
-    /// a decision about a file macOS loads, which is not something to make the
-    /// person take twice.
-    private static var cached: LeftoversViewModel?
-    public static func shared(vm: ModuleViewModel) -> LeftoversViewModel {
-        // Keyed to the view model it was built against — see
-        // `DiskViewModel.shared(vm:)`: switching the module off deallocates the
-        // engine, while the transport held here survives and answers every
-        // request with empty Data from then on.
-        if let cached, cached.vm === vm { return cached }
-        let created = LeftoversViewModel(vm: vm)
-        cached = created
-        ModuleUICache.dropWhenDisabled(LeftoversDescriptor.id.rawValue) { cached = nil }
-        return created
+    init(work: any LeftoversWork) {
+        self.work = work
     }
 
-    public init(vm: ModuleViewModel) {
-        self.vm = vm
-        client = TransportClient(vm.transport)
-    }
+    /// Closes the model; the host calls it before the engine's `deactivate()`: on
+    /// the person's switch after `willDisable()` has given the switches back, and
+    /// on quit, where no `willDisable()` runs.
+    public func stop() { stopped = true }
 
     /// Kinds the user has hidden. System extensions are the common case:
     /// they are informational, and someone reviewing login items does not
@@ -197,7 +179,7 @@ import Module_Leftovers_Engine
     /// in the Trash — the inert half of a fix that looks most careful where it does
     /// the most harm, which is the trap `dropHiddenSelections` records.
     public func scan() async {
-        guard !busy else { return }
+        guard !busy, !stopped else { return }
         await reload()
     }
 
@@ -209,29 +191,8 @@ import Module_Leftovers_Engine
         // finishing would otherwise re-enable the button over a scan still
         // running.
         defer { if scans.isLatest(mine) { scanning = false } }
-        let found: [StaleItem]? = await client.request(LeftoversCommand.scan)
+        let found = await work.scan()
         guard scans.isLatest(mine) else { return }
-        // **An unanswered request is not an answer.** `TransportClient.request`
-        // answers nil for a request that threw and for a reply that would not
-        // decode — and this module reaches the second in the tree:
-        // `LeftoversEngine.wireTransport` returns empty `Data` when the engine has
-        // gone under a page that is still up, which is also what `shared(vm:)`
-        // says a cached model outliving its engine gets from then on. Folded to
-        // `[]` that became «No leftovers found» — this page's one claim about the
-        // state of somebody's Mac — and on a rescan it threw away the list they
-        // were working through with every tick on it. `DiskViewModel.scan` keeps
-        // its screen where it was for the same nil.
-        guard let found else {
-            // Said, not only survived. Counts and outcomes are free; nothing here
-            // names a file, and this is the branch a person would be attaching a
-            // log to — the same reason `trash` writes its own line.
-            scanReplyLost = true
-            HelmLog.shared.info(LeftoversEngine.moduleID, "scan reply lost")
-            return
-        }
-        // A scan that answered puts the previous one's silence down, or the
-        // sentence stands over every list from then on.
-        scanReplyLost = false
         items = found
         uncheckedCount = found.count { !$0.status.judged }
         // Nothing is ticked by default: these files are load-bearing, so the
@@ -251,10 +212,9 @@ import Module_Leftovers_Engine
     /// is about to report on. The page dims the button as well — both, or neither
     /// is reliable (ARCHITECTURE.md § One removal at a time).
     public func setDisabled(_ disabled: Bool, item: StaleItem) async {
-        guard !busy else { return }
-        await client.send(LeftoversCommand.setDisabled,
-                          encoding: LeftoversToggle(label: item.identifier, path: item.path,
-                                                    disabled: disabled))
+        guard !busy, !stopped else { return }
+        await work.setDisabled(LeftoversToggle(label: item.identifier, path: item.path,
+                                               disabled: disabled))
         await reload()
     }
 
@@ -291,49 +251,13 @@ import Module_Leftovers_Engine
         // report of the removal that worked. The person is told nothing moved
         // and shown a list of everything that did — in the one place this
         // module ever names a refusal.
-        guard !busy else { return }
+        guard !busy, !stopped else { return }
         busy = true
         defer { busy = false }
-        let result: LeftoversRemoval? = await client.request(LeftoversCommand.trash,
-                                                            encoding: paths)
-        // **A batch nobody answered is not a batch that moved nothing.** Folded
-        // with `??`, «Moved to the Trash — 0 B» stood over an empty refusal list,
-        // and `HelmRemovalOutcome.verdict(removed: 0, failed: 0)` is `.silent` —
-        // so the one thing the person was told about a removal that never
-        // happened is that it did, in a row that draws nothing.
-        //
-        // Nor is it a batch that failed: the engine may have moved the files and
-        // the reply been lost. So the report claims nothing about what moved, and
-        // says instead that it does not know — the rescan below is what puts the
-        // list right, and the sentence points at it. Clearing the three fields
-        // and stopping there left the page silent about a destructive press.
-        guard let result else {
-            clearRemovalReport()
-            replyLost = true
-            // Counts and outcomes are free; nothing here names a file. It was the
-            // one branch in this module that reached the screen without reaching
-            // the log, which is the branch a person would be attaching a log to
-            // ask about.
-            HelmLog.shared.info(LeftoversEngine.moduleID, "trash reply lost")
-            await reload()
-            return
-        }
-        // The four fields are one report, so a round that *was* answered has to
-        // put the previous round's «no answer» down as well — otherwise the
-        // sentence outlives the press it was about.
-        replyLost = false
+        let result = await work.trash(paths)
         failures = result.refused
         removedCount = result.removed.count
         banner = LfStr.movedToTrash(result.removed.count, Bytes(result.freedBytes))
         await reload()
-    }
-
-    /// Nothing on screen about a removal — the shape `DiskViewModel` already
-    /// keeps, and the four fields are read as one report.
-    private func clearRemovalReport() {
-        banner = nil
-        failures = []
-        removedCount = 0
-        replyLost = false
     }
 }

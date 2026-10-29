@@ -1,6 +1,4 @@
 import Foundation
-import HelmContract
-import HelmRuntime
 import XCTest
 @testable import Module_Leftovers_Engine
 
@@ -43,10 +41,8 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
         return files
     }
 
-    private func send(_ toggle: LeftoversToggle, to engine: LeftoversEngine) async throws {
-        _ = try await engine.transport.send(
-            EngineCommand(name: LeftoversCommand.setDisabled.rawValue,
-                          payload: try JSONEncoder().encode(toggle)))
+    private func send(_ toggle: LeftoversToggle, to engine: LeftoversEngine) async {
+        await engine.setDisabled(toggle)
     }
 
     /// **The finding, at the port that acts.** Two files, one label, no switch.
@@ -56,7 +52,7 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
                                      apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
                                      switcher: recorder)
 
-        try await send(LeftoversToggle(label: label, path: path, disabled: true), to: engine)
+        await send(LeftoversToggle(label: label, path: path, disabled: true), to: engine)
 
         XCTAssertEqual(recorder.labels, [], """
             the engine sent `launchctl disable gui/<uid>/\(label)` for a request naming \
@@ -75,7 +71,7 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
                                      apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
                                      switcher: recorder)
 
-        try await send(LeftoversToggle(label: label, path: path, disabled: true), to: engine)
+        await send(LeftoversToggle(label: label, path: path, disabled: true), to: engine)
 
         XCTAssertEqual(recorder.labels, [label])
     }
@@ -88,9 +84,9 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
                                      apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
                                      switcher: recorder)
 
-        try await send(LeftoversToggle(label: label,
-                                       path: "/Library/LaunchAgents/\(label).plist",
-                                       disabled: true), to: engine)
+        await send(LeftoversToggle(label: label,
+                                   path: "/Library/LaunchAgents/\(label).plist",
+                                   disabled: true), to: engine)
 
         XCTAssertEqual(recorder.labels, [])
     }

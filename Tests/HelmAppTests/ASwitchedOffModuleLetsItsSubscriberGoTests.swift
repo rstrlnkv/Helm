@@ -8,7 +8,6 @@ import Module_Duplicates_UI
 import Module_Homebrew_UI
 import Module_KeepAwake_UI
 import Module_Layout_UI
-import Module_Leftovers_UI
 import Module_Screenshots_UI
 import Module_Uninstaller_UI
 // `@testable` for one reason: `VPNDescriptor.viewModel(_:)` is internal, and it
@@ -104,7 +103,7 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
     /// no subscriber for switching them off to give back. They are named rather
     /// than omitted: the coverage check below reads this list, so a module that
     /// grows an event loop later has to be moved rather than forgotten.
-    private let holdingNoSubscriber = ["Leftovers", "Uninstaller"]
+    private let holdingNoSubscriber = ["Uninstaller"]
 
     // MARK: - The rule
 

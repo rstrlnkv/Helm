@@ -19,7 +19,7 @@ public enum BrewKey {
 /// declared **twice** — privately in the engine and privately again in the view
 /// model — so the two could drift apart with nothing to catch it: a renamed
 /// field fails the decode, the handler returns `Data()`, and the button does
-/// nothing at all. `LeftoversToggle` is the shape this follows.
+/// nothing at all.
 public struct PackageRef: Codable, Sendable {
     public let name: String
     public let isCask: Bool

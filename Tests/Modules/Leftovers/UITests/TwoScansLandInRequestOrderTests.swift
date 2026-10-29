@@ -1,6 +1,4 @@
 import XCTest
-import HelmContract
-import HelmRuntime
 import HelmUI
 import Module_Leftovers_Engine
 @testable import Module_Leftovers_UI
@@ -16,14 +14,13 @@ import Module_Leftovers_Engine
 /// over from Autopilot's tampered-rules verdict.
 ///
 /// The fake below is a gate per request rather than one gate, because the state
-/// this is about is *two* requests outstanding at once: a transport that could only
+/// this is about is *two* requests outstanding at once: a fake that could only
 /// hold one open could not represent the moment the defect lives in (CLAUDE.md §
 /// What not to do, and what breaks if you do).
 @MainActor
 final class TwoScansLandInRequestOrderTests: XCTestCase {
 
-    private final class OrderedScans: EngineTransport, @unchecked Sendable {
-        var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
+    private final class OrderedScans: LeftoversWork, @unchecked Sendable {
         private let lock = NSLock()
         private let answers: [[StaleItem]]
         private let gates: [(stream: AsyncStream<Void>, continuation: AsyncStream<Void>.Continuation)]
@@ -43,13 +40,11 @@ final class TwoScansLandInRequestOrderTests: XCTestCase {
             gates = answers.map { _ in AsyncStream<Void>.makeStream() }
         }
 
-        /// How many scans have reached the wire.
+        /// How many scans have reached the fake.
         var requests: Int { lock.withLock { taken } }
 
         /// This request's place in the queue. Synchronous, and the lock is taken
-        /// and released inside it: Swift 6 refuses `NSLock.lock()` in an `async`
-        /// function outright, which is the rule CLAUDE.md records
-        /// `LocalTransport.setHandler` learning.
+        /// and released inside it, so no lock is held across a suspension.
         private func claim() -> Int {
             lock.withLock {
                 let mine = taken
@@ -62,20 +57,17 @@ final class TwoScansLandInRequestOrderTests: XCTestCase {
         /// answered before the first.
         func answer(_ index: Int) { gates[index].continuation.finish() }
 
-        func send(_ command: EngineCommand) async throws -> Data {
-            switch LeftoversCommand(rawValue: command.name) {
-            case .scan:
-                let mine = claim()
-                // Suspends until this request in particular is answered. A
-                // `return` here would make every ordering the same ordering.
-                for await _ in gates[mine].stream {}
-                return (try? JSONEncoder().encode(answers[mine])) ?? Data()
-            case .trash:
-                return (try? JSONEncoder().encode(removal)) ?? Data()
-            case .setDisabled, .none:
-                return Data()
-            }
+        func scan() async -> [StaleItem] {
+            let mine = claim()
+            // Suspends until this request in particular is answered. A
+            // `return` here would make every ordering the same ordering.
+            for await _ in gates[mine].stream {}
+            return answers[mine]
         }
+
+        func trash(_ paths: [String]) async -> LeftoversRemoval { removal }
+
+        func setDisabled(_ request: LeftoversToggle) async {}
     }
 
     private func agent(_ name: String) -> StaleItem {
@@ -86,21 +78,21 @@ final class TwoScansLandInRequestOrderTests: XCTestCase {
     /// Both in flight, the newer answered first: the older reply must be dropped
     /// rather than land on top of it.
     func testAnOlderScansAnswerIsDropped() async {
-        let transport = OrderedScans(answers: [[agent("stale")], [agent("fresh")]])
-        let model = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
+        let work = OrderedScans(answers: [[agent("stale")], [agent("fresh")]])
+        let model = LeftoversViewModel(work: work)
 
         let older = Task { await model.scan() }
-        for _ in 0..<50 where transport.requests < 1 { await Task.yield() }
+        for _ in 0..<50 where work.requests < 1 { await Task.yield() }
         let newer = Task { await model.scan() }
-        for _ in 0..<50 where transport.requests < 2 { await Task.yield() }
-        XCTAssertEqual(transport.requests, 2, "precondition: two scans are in flight at once")
+        for _ in 0..<50 where work.requests < 2 { await Task.yield() }
+        XCTAssertEqual(work.requests, 2, "precondition: two scans are in flight at once")
 
-        transport.answer(1)
+        work.answer(1)
         await newer.value
         XCTAssertEqual(model.items.map(\.identifier), ["fresh"],
                        "precondition: the newest answer reached the list")
 
-        transport.answer(0)
+        work.answer(0)
         await older.value
 
         XCTAssertEqual(model.items.map(\.identifier), ["fresh"],
@@ -111,22 +103,22 @@ final class TwoScansLandInRequestOrderTests: XCTestCase {
     /// And the flag the Scan button reads belongs to the newest request: an older
     /// scan finishing must not report the page idle while a newer one is running.
     func testTheOlderScanFinishingDoesNotSayThePageIsIdle() async {
-        let transport = OrderedScans(answers: [[agent("stale")], [agent("fresh")]])
-        let model = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
+        let work = OrderedScans(answers: [[agent("stale")], [agent("fresh")]])
+        let model = LeftoversViewModel(work: work)
 
         let older = Task { await model.scan() }
-        for _ in 0..<50 where transport.requests < 1 { await Task.yield() }
+        for _ in 0..<50 where work.requests < 1 { await Task.yield() }
         let newer = Task { await model.scan() }
-        for _ in 0..<50 where transport.requests < 2 { await Task.yield() }
+        for _ in 0..<50 where work.requests < 2 { await Task.yield() }
 
-        transport.answer(0)
+        work.answer(0)
         await older.value
 
         XCTAssertTrue(model.scanning,
                       "the page says it is done while a scan is still running, so the button "
                       + "invites a third one")
 
-        transport.answer(1)
+        work.answer(1)
         await newer.value
         XCTAssertFalse(model.scanning, "the flag outlived the work it describes")
     }
@@ -152,36 +144,36 @@ final class TwoScansLandInRequestOrderTests: XCTestCase {
     /// found` without the token check.
     func testAScanInFlightWhenARemovalLandsDoesNotWinTheList() async {
         let before = agent("before-the-removal")
-        let transport = OrderedScans(answers: [[before], [before], [agent("after-the-removal")]],
+        let work = OrderedScans(answers: [[before], [before], [agent("after-the-removal")]],
                                     removal: LeftoversRemoval(removed: [before.path], refused: [],
                                                               freedBytes: 4_096))
-        let model = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
+        let model = LeftoversViewModel(work: work)
 
         // The scan that builds the list, answered.
         let first = Task { await model.scan() }
-        for _ in 0..<50 where transport.requests < 1 { await Task.yield() }
-        transport.answer(0)
+        for _ in 0..<50 where work.requests < 1 { await Task.yield() }
+        work.answer(0)
         await first.value
         model.selected = Set(model.selectablePaths)
         XCTAssertEqual(model.selected.count, 1, "precondition: a row is ticked to remove")
 
-        // The person presses Scan again — it reaches the wire and stays there.
+        // The person presses Scan again — it reaches the fake and stays there.
         let theirs = Task { await model.scan() }
-        for _ in 0..<50 where transport.requests < 2 { await Task.yield() }
-        XCTAssertEqual(transport.requests, 2, "precondition: their scan is in flight")
+        for _ in 0..<50 where work.requests < 2 { await Task.yield() }
+        XCTAssertEqual(work.requests, 2, "precondition: their scan is in flight")
 
         // And then the removal runs to completion, rescan and all.
         let removal = Task { await model.removeSelected() }
-        for _ in 0..<200 where transport.requests < 3 { await Task.yield() }
-        XCTAssertEqual(transport.requests, 3,
+        for _ in 0..<200 where work.requests < 3 { await Task.yield() }
+        XCTAssertEqual(work.requests, 3,
                        "precondition: the removal made its own rescan while theirs was still out")
-        transport.answer(2)
+        work.answer(2)
         await removal.value
         XCTAssertEqual(model.items.map(\.identifier), ["after-the-removal"],
                        "precondition: the removal's own rescan reached the list")
 
         // Their older scan comes back last, with the list as it was before the batch.
-        transport.answer(1)
+        work.answer(1)
         await theirs.value
 
         XCTAssertEqual(model.items.map(\.identifier), ["after-the-removal"], """

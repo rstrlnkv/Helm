@@ -53,13 +53,6 @@ enum LfStr {
     static var scanNeedsAccess: String {
         L("Without Full Disk Access Helm cannot check every item, and a short list of leftovers looks exactly like a Mac with none.")
     }
-    /// A scan nobody answered, said where the list it is about is. Its opening is
-    /// the removal's own lost-reply sentence character for character, because it
-    /// is literally the same nil coming back from `TransportClient.request` — two
-    /// phrasings of one machine fact is a defect this codebase keeps catching.
-    static var rescanLost: String {
-        L("Helm got no answer, so the list above is still from the previous scan.")
-    }
     /// **The button opens a pane; it manages nothing.** It calls
     /// `PermissionCheck.openExtensionSettings()`, and the Uninstaller's own
     /// button drives the identical call — so «Manage…» was a second label for one

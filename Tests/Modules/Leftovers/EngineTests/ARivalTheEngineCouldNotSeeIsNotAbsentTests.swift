@@ -1,6 +1,4 @@
 import Foundation
-import HelmContract
-import HelmRuntime
 import XCTest
 @testable import Module_Leftovers_Engine
 
@@ -72,11 +70,8 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
                         loaded: LeftoversFakeLoaded(), switcher: recorder)
     }
 
-    private func press(_ path: String, on engine: LeftoversEngine) async throws {
-        _ = try await engine.transport.send(
-            EngineCommand(name: LeftoversCommand.setDisabled.rawValue,
-                          payload: try JSONEncoder().encode(
-                            LeftoversToggle(label: label, path: path, disabled: true))))
+    private func press(_ path: String, on engine: LeftoversEngine) async {
+        await engine.setDisabled(LeftoversToggle(label: label, path: path, disabled: true))
     }
 
     /// What `LaunchClaims` reports to the engine, for the failure message: the count
@@ -92,7 +87,7 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
         let files = files(refusing: ["/Library/LaunchAgents"])
         let recorder = LeftoversFakeSwitcher()
 
-        try await press(mine, on: engine(files, recorder))
+        await press(mine, on: engine(files, recorder))
 
         XCTAssertEqual(recorder.labels, [], """
             `/Library/LaunchAgents` answered `.refused` — a folder that would not open \
@@ -122,7 +117,7 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
         let files = files(refusing: ["/Users/x/Library/LaunchAgents"])
         let recorder = LeftoversFakeSwitcher()
 
-        try await press(roots, on: engine(files, recorder))
+        await press(roots, on: engine(files, recorder))
 
         XCTAssertEqual(recorder.labels, [], """
             `~/Library/LaunchAgents` answered `.refused` and the engine switched \
@@ -141,7 +136,7 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
         files.plists[roots] = nil
         let recorder = LeftoversFakeSwitcher()
 
-        try await press(mine, on: engine(files, recorder))
+        await press(mine, on: engine(files, recorder))
 
         XCTAssertEqual(recorder.labels, [], """
             the fixture's `/Library/LaunchAgents` is empty and refused, and the engine \
@@ -164,7 +159,7 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
         files.plists[roots] = nil
         let recorder = LeftoversFakeSwitcher()
 
-        try await press(mine, on: engine(files, recorder))
+        await press(mine, on: engine(files, recorder))
 
         XCTAssertEqual(recorder.labels, [label],
                        "both agent folders opened and only one file registers the label, "
@@ -188,7 +183,7 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
         files.unopenable = ["/Library/LaunchDaemons"]
         let recorder = LeftoversFakeSwitcher()
 
-        try await press(mine, on: engine(files, recorder))
+        await press(mine, on: engine(files, recorder))
 
         XCTAssertEqual(recorder.labels, [label],
                        "a daemon is a different job in a different domain, so "
@@ -202,13 +197,13 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
     ///
     /// Green today and green after the repair. It is here because every assertion
     /// above is an *absence* — `recorder.labels == []` — and an absence passes just
-    /// as well when the press never reached the engine, the command name was wrong,
-    /// or the transport dropped the payload. This is the same press arriving.
+    /// as well when the press never reached the engine, the request was built wrong,
+    /// or the label was dropped on the way. This is the same press arriving.
     func testTheSwitchIsRefusedWhenBothFoldersOpenedAndBothHoldTheLabel() async throws {
         let files = files()
         let recorder = LeftoversFakeSwitcher()
 
-        try await press(mine, on: engine(files, recorder))
+        await press(mine, on: engine(files, recorder))
 
         XCTAssertEqual(recorder.labels, [])
         XCTAssertEqual(claimsSeen(files).count, 2,

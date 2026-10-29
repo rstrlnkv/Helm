@@ -20,6 +20,16 @@ doc comment says why not the system's list), so switching the module off gives b
 exactly those; the edge that record cannot close is in ARCHITECTURE.md § Giving everything back.
 
 Writability is asked of a directory rather than of each item in it
-(`LeftoversFilePort.isWritableDirectory`), and
-`Sources/Modules/Leftovers/Engine/Logic/LeftoversSilence.swift` says the page's
-answer to a request nobody answered once, whichever of the two went unanswered.
+(`LeftoversFilePort.isWritableDirectory`).
+
+## How Leftovers' model reaches its engine
+
+`LeftoversViewModel` is built with the engine by the descriptor's `makeModule` and
+held by the host. It calls `scan`, `trash` and `setDisabled` through its
+`LeftoversWork` port, which the engine conforms to; each is answered by return, and
+there is no stream because the engine emits nothing. The last word on a path and on a
+label stays in the engine: `trash` partitions through `RemovableScope` before
+`HelmTrash.remove`, and `setDisabled(_:)` asks `LaunchLabel.mayBeSwitched` and the
+two agent folders before it reaches the switch, so a caller of the model cannot go
+round them. On the person's switch the host calls the descriptor's `stop(_:)` after
+`willDisable()` has given the switches back, so a press that late writes nothing nobody gives back.

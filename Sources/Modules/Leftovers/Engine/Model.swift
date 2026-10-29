@@ -206,7 +206,7 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
 /// another job's — so the engine, which is the last word on what happens to
 /// somebody's login items, needs the path to ask whether this label is the one that
 /// file would register (`LaunchLabel.mayBeSwitched`).
-public struct LeftoversToggle: Codable, Sendable {
+public struct LeftoversToggle: Sendable {
     public let label: String
     public let path: String
     public let disabled: Bool

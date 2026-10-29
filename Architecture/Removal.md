@@ -24,8 +24,9 @@ itself, so a scope never widens without a test naming the new path
 
 ## One removal at a time
 
-Four modules send a `trash` command — Disk, Duplicates, Leftovers and the
-Uninstaller — and a second press while the first is in flight is not a second
+Disk, Duplicates, the Uninstaller and Leftovers remove a batch the person ticked —
+Disk and Duplicates over a `trash` command, the Uninstaller over `trashPaths`,
+Leftovers by calling its engine's `trash` — and a second press while the first is in flight is not a second
 removal, because the files it would name are already gone: what a repeat can
 only be is a refusal, and the reply that lands second overwrites the model's report
 of the one that landed first. That refusal has to live in the model and not only in a
@@ -35,7 +36,9 @@ dims. Both, or neither is reliable. `DiskViewModel.toggleBasket` declining while
 is the same guard read from the basket's own door.
 
 `Tests/HelmAppTests/OneRemovalAtATimeEverywhereTests.swift` fails on any file under
-`Sources/Modules/` that sends a removal without the guard; the files it finds are the
-output of `command grep -rln "guard !busy" Sources/Modules/`, since the count itself
+`Sources/Modules/` that sends a removal and holds no `guard !busy` anywhere — the file,
+not the removing method, so a guard dropped from one door of a file that keeps it at
+another passes; the files it finds are the
+output of `command grep -rlE 'Command\.trash|uvm\.trashPaths\(|work\.trash\(' Sources/Modules/`, since the count itself
 does not belong in this sentence (CLAUDE.md § Where things go). Its doc comments say
 why it scans by what a file **sends** rather than by what a type is named.

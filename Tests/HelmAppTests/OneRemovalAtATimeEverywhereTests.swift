@@ -4,8 +4,10 @@ import XCTest
 /// Every view model that can put files in the Trash refuses to do it twice at
 /// once.
 ///
-/// Four modules send a `trash` command: Disk, Duplicates, Leftovers and the
-/// Uninstaller. In three of them the destructive button was live for the whole
+/// Four models remove a batch the person ticked — Disk and Duplicates over a
+/// `trash` command, the Uninstaller over `trashPaths`, Leftovers by calling its
+/// engine's `trash` — and in
+/// three of them the destructive button was live for the whole
 /// length of the request, because what dims it — an empty basket, an empty
 /// selection — is not emptied until the answer comes back. A second press is
 /// not a second deletion; the files are already in the Trash. It is a
@@ -23,12 +25,12 @@ import XCTest
 /// is a redraw away and does not cover the row menu. **The model refuses; the
 /// page dims. Both, or neither is reliable.**
 ///
-/// `OneRemovalAtATimeTests` in Leftovers proves the behaviour against a
-/// transport that does not answer until it is told to — a fake that answers
+/// `OneRemovalAtATimeTests` in Leftovers proves the behaviour against a fake
+/// `LeftoversWork` that does not answer until it is told to — a fake that answers
 /// synchronously releases the gate before the call it is gating returns, and a
 /// test built on one passes whether or not the gate exists. This test is the
-/// other half: that nobody drops the guard, in a module that has one today or
-/// in the next module to grow a basket.
+/// other half, and a coarser one: that a file which sends a removal still holds a
+/// `guard !busy` somewhere — it cannot tell which method the guard sits in.
 final class OneRemovalAtATimeEverywhereTests: XCTestCase {
 
     func testEveryFileThatSendsARemovalRefusesASecondPress() throws {
@@ -77,10 +79,12 @@ final class OneRemovalAtATimeEverywhereTests: XCTestCase {
     /// naming the place a removal is usually written rather than the thing that
     /// makes it dangerous.
     ///
-    /// Two spellings, because there are two doors on the wire and the module's
-    /// own `UninstallerCommand` says so at the `trashPaths` case: «`uninstall`
-    /// was `trashPaths` with the app bundle appended — a second door».
+    /// Three spellings: two doors on the wire — the module's own
+    /// `UninstallerCommand` says so in its doc comment: «`uninstall` was
+    /// `trashPaths` with the app bundle appended — a second door» — and
+    /// Leftovers, whose model calls its engine's `trash` through `work`.
     private static func sendsARemoval(_ source: String) -> Bool {
         source.contains("Command.trash") || source.contains("uvm.trashPaths(")
+            || source.contains("work.trash(")
     }
 }

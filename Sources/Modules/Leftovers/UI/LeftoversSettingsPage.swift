@@ -15,8 +15,8 @@ struct LeftoversSettingsPage: View {
     @State private var confirmingBatch = false
     @State private var pendingDeletion: StaleItem?
 
-    init(vm: ModuleViewModel) {
-        lvm = LeftoversViewModel.shared(vm: vm)
+    init(lvm: LeftoversViewModel) {
+        self.lvm = lvm
     }
 
     /// What the row's menu may call this. An ellipsis is a promise that another
@@ -80,9 +80,6 @@ struct LeftoversSettingsPage: View {
             // under it.
             if footHasSomethingToSay {
                 Divider()
-                // Nearest the list, because it is about the list: the report
-                // under it is about the press.
-                staleListNote
                 outcomeRow
                 // Both are about the selection, so both need rows to be about —
                 // and the report above them is not: a removal that emptied the
@@ -261,7 +258,7 @@ struct LeftoversSettingsPage: View {
     /// the report of the removal that emptied it, which is the one thing down here
     /// that is not about the selection.
     private var footHasSomethingToSay: Bool {
-        !lvm.items.isEmpty || removalOutcome != nil || silence == .listLost
+        !lvm.items.isEmpty || removalOutcome != nil
     }
 
     /// Whether the screen under the header row is drawing a Scan button of its own.
@@ -556,19 +553,6 @@ struct LeftoversSettingsPage: View {
         if let outcome = removalOutcome { statement(outcome) }
     }
 
-    /// What a rescan nobody answered says: the rows above are the previous
-    /// scan's, and nothing else about the page changed.
-    ///
-    /// Drawn only where the removal is not already saying it — when both requests
-    /// were lost, `silenceOutcome` draws one sentence that covers both, and two
-    /// phrasings of one machine fact is the defect this pass exists to end.
-    @ViewBuilder private var staleListNote: some View {
-        if silence == .listLost {
-            statement(Text(LfStr.rescanLost)
-                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet))
-        }
-    }
-
     /// A full-width line of prose at the foot of the page, in the shape this row
     /// established and the selection line then needed as well.
     ///
@@ -585,9 +569,7 @@ struct LeftoversSettingsPage: View {
     /// Which of the component's verdicts this round is, or nil for a page nobody
     /// has pressed anything on.
     ///
-    /// Its own member so the frame and the padding above are written once: the
-    /// lost reply has no banner to key off, and drawing it in a branch of its own
-    /// meant that chain twice.
+    /// Its own member so the frame and the padding above are written once.
     ///
     /// **The Grant button is keyed to the refusal, not to the page's own probe.**
     /// Keyed to `diskAccess` it stood beside every refusal on a Mac without the
@@ -596,9 +578,6 @@ struct LeftoversSettingsPage: View {
     /// `PermissionCheck.reason` names Full Disk Access for container paths only,
     /// and this module's sources reach none.
     private var removalOutcome: HelmRemovalOutcome? {
-        // Ahead of the banner, which is nil in this state: a reply that never came
-        // says so rather than nothing.
-        if let unanswered = Self.silenceOutcome(silence) { return unanswered }
         guard let banner = lvm.banner else { return nil }
         return HelmRemovalOutcome(succeededText: banner,
                                   removed: lvm.removedCount,
@@ -606,31 +585,6 @@ struct LeftoversSettingsPage: View {
                                   needsFullDiskAccess: lvm.failures.contains {
                                       $0.reason == .needsFullDiskAccess
                                   })
-    }
-
-    /// Which of this page's two requests went unanswered, if either.
-    private var silence: LeftoversSilence.Note? {
-        LeftoversSilence.note(removalUnanswered: lvm.replyLost,
-                              rescanUnanswered: lvm.scanReplyLost,
-                              scanned: lvm.scanned)
-    }
-
-    /// The report a silence draws, or nil where the silence is not about a
-    /// removal at all.
-    ///
-    /// Its own function, and exhaustive over the note for the reason
-    /// `LfStr.kindName` records: which sentence stands over which silence is the
-    /// whole of this fix.
-    private static func silenceOutcome(_ note: LeftoversSilence.Note?) -> HelmRemovalOutcome? {
-        switch note {
-        case .removalLost: .unanswered
-        // The rescan that would have made «the list above shows where the files
-        // are now» true was lost with it.
-        case .removalAndListLost: .unansweredWithStaleList
-        // Not a removal: the sentence for it is `staleListNote`, and drawing both
-        // would say one silence twice.
-        case .listLost, nil: nil
-        }
     }
 
     /// What is ticked, on a line of its own above the buttons.

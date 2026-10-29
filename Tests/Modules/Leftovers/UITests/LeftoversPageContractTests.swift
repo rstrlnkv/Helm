@@ -1,6 +1,4 @@
 import XCTest
-import HelmContract
-import HelmRuntime
 import HelmUI
 import Module_Leftovers_Engine
 @testable import Module_Leftovers_UI
@@ -20,9 +18,9 @@ final class LeftoversPageContractTests: XCTestCase {
     /// saying 4 КБ: the count was everything found and removable, the size was
     /// the selection, and the middle dot made them look like one measurement.
     func testTheBarsCountAndSizeAreBothAboutTheSelection() async {
-        let transport = LeftoversWire(items: [agent("one", bytes: 4_096),
-                                              agent("two", bytes: 8_192)])
-        let lvm = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
+        let work = LeftoversFakeWork(items: [agent("one", bytes: 4_096),
+                                                  agent("two", bytes: 8_192)])
+        let lvm = LeftoversViewModel(work: work)
         await lvm.scan()
         XCTAssertEqual(lvm.leftoverCount, 2, "precondition: two removable rows were found")
 
@@ -38,9 +36,9 @@ final class LeftoversPageContractTests: XCTestCase {
     /// A tick on a row that is no longer shown counts for neither figure — the
     /// same rule `removeSelected` follows when it decides what may go.
     func testAHiddenTickIsCountedByNeitherFigure() async {
-        let transport = LeftoversWire(items: [agent("kept", bytes: 4_096),
-                                              agent("busy", bytes: 8_192, status: .inUse)])
-        let lvm = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
+        let work = LeftoversFakeWork(items: [agent("kept", bytes: 4_096),
+                                                  agent("busy", bytes: 8_192, status: .inUse)])
+        let lvm = LeftoversViewModel(work: work)
         lvm.showAll = true
         await lvm.scan()
         lvm.selected = Set(lvm.visibleItems.map(\.path))

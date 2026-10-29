@@ -5,6 +5,8 @@ import HelmUI
 import Module_Leftovers_Engine
 
 @MainActor public final class LeftoversDescriptor: ModuleDescriptor {
+    public typealias Model = LeftoversViewModel
+
     public static let id = ModuleID(LeftoversEngine.moduleID)
     public static var metadata: ModuleMetadata { ModuleMetadata(
         id: id, name: LfStr.moduleName, shortName: LfStr.moduleNameShort,
@@ -34,9 +36,22 @@ import Module_Leftovers_Engine
         LeftoversEngine(store: store)
     }
 
-    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
+    /// The engine and the model that calls it, built together. The model holds the
+    /// scan and every checkbox for as long as the module lives, so Settings
+    /// rebuilding the page on each sidebar visit costs neither.
+    public func makeModule(store: NamespacedStore) -> ModuleParts<LeftoversViewModel> {
+        let engine = LeftoversEngine(store: store)
+        return ModuleParts(engine: engine, model: LeftoversViewModel(work: engine))
+    }
 
-    public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
-        AnyView(LeftoversSettingsPage(vm: vm))
+    /// Closes the model; the host calls it before the engine's `deactivate()`: on
+    /// the person's switch after `willDisable()` has given the switches back, and
+    /// on quit, where no `willDisable()` runs.
+    public func stop(_ model: LeftoversViewModel) { model.stop() }
+
+    public func menuBar(_ model: LeftoversViewModel) -> MenuBarContribution? { .utility }
+
+    public func settingsPage(_ model: LeftoversViewModel) -> AnyView {
+        AnyView(LeftoversSettingsPage(lvm: model))
     }
 }
