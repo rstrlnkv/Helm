@@ -6,7 +6,20 @@ import HelmRuntime
 ///
 /// The tap drops anything carrying it. Without this the tap reads its own
 /// replacement back as typing, converts it again, and does so forever.
+///
+/// **It is the only guard, on every path.** Every `perform` runs on main (the
+/// automatic path inside the tap callback, the gesture and the hotkey after
+/// `fix()`'s hop back to main), and the tap, on the main run loop, hears the
+/// echo only after `perform` has returned. A flag set around `perform` would
+/// always be down by then, so there is none.
 private let helmEventMarker: Int64 = 0x48_45_4C_4D   // "HELM"
+
+/// One source for every event this module posts, so the marker is set in one place.
+private func helmEventSource() -> CGEventSource? {
+    guard let source = CGEventSource(stateID: .combinedSessionState) else { return nil }
+    source.userData = helmEventMarker
+    return source
+}
 
 // MARK: - The tap
 
@@ -90,11 +103,7 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
         // Non-prompting: the module says so in its own settings rather than
         // throwing a system dialog at someone who has not asked for one.
         guard AXIsProcessTrusted() else { return false }
-        lock.lock()
-        handler = onEvent
-        modifierHandler = onModifier
-        diedHandler = died
-        lock.unlock()
+        install(onEvent, onModifier: onModifier, died: died)
         // flagsChanged as well: a key bound on its own is recognised from the
         // press and the release, and neither is a keyDown.
         let mask = (1 << CGEventType.keyDown.rawValue)
@@ -118,6 +127,18 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
         return true
+    }
+
+    /// Sets the handlers `deliver` calls, with no tap. `start` calls it; a test
+    /// calls it too, then hands `deliver` events it built and never posted.
+    func install(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
+                 onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
+                 died: @escaping @Sendable () -> Void) {
+        lock.lock()
+        handler = onEvent
+        modifierHandler = onModifier
+        diedHandler = died
+        lock.unlock()
     }
 
     /// Idempotent, because `deinit` runs it again after `deactivate()` already
@@ -209,7 +230,7 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
         }
     }
 
-    private func deliver(_ event: CGEvent) {
+    func deliver(_ event: CGEvent) {
         // Before the marker check, not after: the system's own "I have switched
         // this tap off" carries no source data, and it is the one event that
         // must never be dropped.
@@ -302,14 +323,21 @@ public struct SynthesisTyping: TypingPort {
     /// that promise by name.
     ///
     /// Building first costs one array of at most a word's worth of events. It
-    /// is the shape `send(key:)` in this file already has, for the same reason.
+    /// is the shape `SystemCommandKeys.press` in this file already has, for the same reason.
     ///
     /// **It does not make the plan atomic against the app**, and cannot: the
     /// events go to the HID tap and whatever is in front may stop reading them
     /// halfway. What it removes is the half that is this port's own doing.
     public func perform(_ plan: SwitchPlan) -> Bool {
-        guard let source = CGEventSource(stateID: .combinedSessionState) else { return false }
-        source.userData = helmEventMarker
+        guard let events = Self.events(for: plan) else { return false }
+        for event in events { event.post(tap: .cghidEventTap) }
+        return true
+    }
+
+    /// Every event for the plan, built and none posted; nil when any one could
+    /// not be built.
+    static func events(for plan: SwitchPlan) -> [CGEvent]? {
+        guard let source = helmEventSource() else { return nil }
 
         var events: [CGEvent] = []
         events.reserveCapacity(plan.backspaces * 2 + plan.insert.count * 2)
@@ -319,7 +347,7 @@ public struct SynthesisTyping: TypingPort {
                                      virtualKey: CGKeyCode(kVK_Delete), keyDown: true),
                   let up = CGEvent(keyboardEventSource: source,
                                    virtualKey: CGKeyCode(kVK_Delete), keyDown: false)
-            else { return false }
+            else { return nil }
             // **Cleared, not inherited — this is the one that eats words.**
             // `CGEventSource(stateID: .combinedSessionState)` carries the *live*
             // modifier state, and the gesture is a tap of a modifier: if the
@@ -329,7 +357,7 @@ public struct SynthesisTyping: TypingPort {
             // «it converts the word and deletes one more». ⌘ would be worse: a
             // synthesised ⌘-letter is a menu command in whatever is in front.
             //
-            // `send(key:)` in this file sets `.maskCommand` on purpose, which is
+            // `SystemCommandKeys.press` in this file sets `.maskCommand` on purpose, which is
             // what proves these are inherited rather than empty by default.
             down.flags = []
             up.flags = []
@@ -341,7 +369,7 @@ public struct SynthesisTyping: TypingPort {
             var utf16 = Array(String(character).utf16)
             guard let down = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true),
                   let up = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false)
-            else { return false }
+            else { return nil }
             down.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: &utf16)
             up.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: &utf16)
             // The same reason, and the worse half: a held ⌘ turns each of these
@@ -353,8 +381,7 @@ public struct SynthesisTyping: TypingPort {
             events.append(up)
         }
 
-        for event in events { event.post(tap: .cghidEventTap) }
-        return true
+        return events
     }
 }
 
@@ -642,20 +669,32 @@ public struct AXSecureContext: SecureContextPort {
 /// fallback is ⌘C: it works nearly everywhere and it costs the clipboard, so it
 /// is second and it puts back what it borrowed.
 public struct AXSelection: SelectionPort {
-    public init() {}
+    private let pasteboard: any PasteboardPort
+    private let focus: any FocusedTextPort
+    private let keys: any CommandKeyPort
+
+    public init() {
+        self.init(pasteboard: SystemPasteboard(), focus: SystemFocusedText(), keys: SystemCommandKeys())
+    }
+
+    init(pasteboard: any PasteboardPort, focus: any FocusedTextPort, keys: any CommandKeyPort) {
+        self.pasteboard = pasteboard
+        self.focus = focus
+        self.keys = keys
+    }
 
     public func selectedText() -> String? {
-        if let text = axSelection(), !text.isEmpty { return text }
+        if let text = focus.selectedText(), !text.isEmpty { return text }
         return copySelection()
     }
 
     public func selectedTextWithoutClipboard() -> String? {
-        guard let text = axSelection(), !text.isEmpty else { return nil }
+        guard let text = focus.selectedText(), !text.isEmpty else { return nil }
         return text
     }
 
     public func replaceSelection(with text: String) -> Bool {
-        if setAXSelection(text) { return true }
+        if focus.setSelectedText(text) { return true }
         // The paste route borrows the clipboard and can only give back a
         // string. Anything else on it — an image, RTF, a promised file — does
         // not survive the round trip. That was contained by the shortcuts
@@ -665,7 +704,7 @@ public struct AXSelection: SelectionPort {
         //
         // Declining is a correct outcome. The caller reports it, and the
         // person still has both their selection and their clipboard.
-        let held = NSPasteboard.general.types?.map(\.rawValue) ?? []
+        let held = pasteboard.types
         guard PasteboardSafety.canBorrow(types: held) else {
             HelmLog.shared.warn(LayoutEngine.moduleID,
                                 "selection left alone: the clipboard holds \(held.count) type(s) " +
@@ -674,28 +713,8 @@ public struct AXSelection: SelectionPort {
         }
         // Read before pasting, so the paste route has something to compare
         // against and can tell whether the app took it.
-        let before = axSelection()
+        let before = focus.selectedText()
         return pasteSelection(text, replacing: before)
-    }
-
-    // MARK: The exact route
-
-    private func focusedElement() -> AXUIElement? { systemFocusedElement() }
-
-    private func axSelection() -> String? {
-        guard let element = focusedElement() else { return nil }
-        var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, kAXSelectedTextAttribute as CFString,
-                                            &value) == .success,
-              let text = value as? String
-        else { return nil }
-        return text
-    }
-
-    private func setAXSelection(_ text: String) -> Bool {
-        guard let element = focusedElement() else { return false }
-        return AXUIElementSetAttributeValue(element, kAXSelectedTextAttribute as CFString,
-                                            text as CFTypeRef) == .success
     }
 
     // MARK: The clipboard route
@@ -708,7 +727,6 @@ public struct AXSelection: SelectionPort {
     /// of nothing leaves the pasteboard untouched, and reading it then would
     /// return whatever was already on it and transliterate *that*.
     private func copySelection() -> String? {
-        let pasteboard = NSPasteboard.general
         // The same guard the paste route has, on the route that reads.
         //
         // `restore` puts back a *string*, so a clipboard holding an image, RTF
@@ -717,22 +735,22 @@ public struct AXSelection: SelectionPort {
         // only where Helm writes. The ⌘C below destroys just as thoroughly, and
         // this is the route `fix()` reaches for a selection the accessibility
         // API will not answer for, which is most Electron apps and web views.
-        let held = pasteboard.types?.map(\.rawValue) ?? []
+        let held = pasteboard.types
         guard PasteboardSafety.canBorrow(types: held) else {
             HelmLog.shared.warn(LayoutEngine.moduleID,
                                 "selection left alone: the clipboard holds \(held.count) " +
                                 "type(s) that would not survive being borrowed")
             return nil
         }
-        let saved = pasteboard.string(forType: .string)
+        let saved = pasteboard.string()
         let before = pasteboard.changeCount
 
-        send(key: CGKeyCode(kVK_ANSI_C))
+        keys.press(UInt16(kVK_ANSI_C))
         guard waitForChange(from: before) else {
             restore(saved)
             return nil
         }
-        let copied = pasteboard.string(forType: .string)
+        let copied = pasteboard.string()
         restore(saved)
         return copied
     }
@@ -748,11 +766,10 @@ public struct AXSelection: SelectionPort {
     /// selection does — if the tree still reports exactly what was selected
     /// before, nothing replaced it.
     private func pasteSelection(_ text: String, replacing previous: String?) -> Bool {
-        let pasteboard = NSPasteboard.general
-        let saved = pasteboard.string(forType: .string)
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
-        send(key: CGKeyCode(kVK_ANSI_V))
+        let saved = pasteboard.string()
+        pasteboard.clear()
+        pasteboard.setString(text)
+        keys.press(UInt16(kVK_ANSI_V))
         // Long enough for the paste to have been read, short enough not to be
         // felt. Restoring too early puts the old text back before the app has
         // taken the new one, and the person pastes their own clipboard.
@@ -761,14 +778,13 @@ public struct AXSelection: SelectionPort {
         // Unreadable tree: no evidence either way, so do not claim failure on a
         // paste that probably worked. Claiming success is the bug being fixed;
         // claiming failure here would only trade it for the opposite one.
-        guard let now = axSelection() else { return true }
+        guard let now = focus.selectedText() else { return true }
         return now != previous
     }
 
     private func restore(_ saved: String?) {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        if let saved { pasteboard.setString(saved, forType: .string) }
+        pasteboard.clear()
+        if let saved { pasteboard.setString(saved) }
     }
 
     /// Polled rather than slept: a fast app answers in a few milliseconds and a
@@ -776,16 +792,46 @@ public struct AXSelection: SelectionPort {
     private func waitForChange(from before: Int) -> Bool {
         for _ in 0..<20 {
             usleep(10_000)
-            if NSPasteboard.general.changeCount != before { return true }
+            if pasteboard.changeCount != before { return true }
         }
         return false
     }
+}
 
-    private func send(key: CGKeyCode) {
-        guard let source = CGEventSource(stateID: .combinedSessionState) else { return }
-        source.userData = helmEventMarker
-        guard let down = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: true),
-              let up = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: false)
+/// The general pasteboard, as `AXSelection`'s clipboard route uses it.
+struct SystemPasteboard: PasteboardPort {
+    var types: [String] { NSPasteboard.general.types?.map(\.rawValue) ?? [] }
+    var changeCount: Int { NSPasteboard.general.changeCount }
+    func string() -> String? { NSPasteboard.general.string(forType: .string) }
+    func clear() { NSPasteboard.general.clearContents() }
+    func setString(_ text: String) { NSPasteboard.general.setString(text, forType: .string) }
+}
+
+/// The focused element's selected text, through the accessibility tree.
+struct SystemFocusedText: FocusedTextPort {
+    func selectedText() -> String? {
+        guard let element = systemFocusedElement() else { return nil }
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXSelectedTextAttribute as CFString,
+                                            &value) == .success,
+              let text = value as? String
+        else { return nil }
+        return text
+    }
+
+    func setSelectedText(_ text: String) -> Bool {
+        guard let element = systemFocusedElement() else { return false }
+        return AXUIElementSetAttributeValue(element, kAXSelectedTextAttribute as CFString,
+                                            text as CFTypeRef) == .success
+    }
+}
+
+/// ⌘ plus one key, posted with Helm's marker.
+struct SystemCommandKeys: CommandKeyPort {
+    func press(_ key: UInt16) {
+        guard let source = helmEventSource(),
+              let down = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(key), keyDown: true),
+              let up = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(key), keyDown: false)
         else { return }
         down.flags = .maskCommand
         up.flags = .maskCommand

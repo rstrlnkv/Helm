@@ -85,14 +85,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// that answer is what the settings page shows.
     private var tapped = false
     private var starting = false
-    /// Set while performing a conversion, so the keystrokes it sends are not
-    /// read back as typing. It covers only an echo that arrives while `perform`
-    /// is still running, and no shipping path has one: every `perform` runs on
-    /// main (the automatic path in the tap callback, the gesture and the hotkey
-    /// after `fix()`'s hop back to main), and the tap callback, on the main run
-    /// loop, hears the echo only after `perform` returns. The marker on the
-    /// events (`CGKeyTap.deliver`) is the only guard on every path.
-    private var performing = false
     /// Whether the keystrokes arriving right now are a secure-input episode.
     /// Kept only to know its *edges*: the page is told «Paused» at the first
     /// secure key and «Active» at the first ordinary one, and nothing between —
@@ -323,7 +315,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // rather than stand until something else happens to emit.
         if leftSecureEpisode { emitState() }
         lock.lock()
-        guard !performing else { lock.unlock(); return }
         // Typing, clicking, navigating and leaving end the chance to undo: an
         // undo is a blind edit of a fixed length, and "привет abc" undone
         // becomes "приghbdtn ". A chord is the exception, and not a convenient
@@ -571,13 +562,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             return
         }
 
-        // `performing` as the word path sets it; on main it catches nothing, and
-        // the marker on the ⌘V events (`SystemPorts.swift`,
-        // `source.userData = helmEventMarker`) is what keeps the paste from
-        // being read back.
-        lock.lock(); performing = true; lock.unlock()
         let done = selection.replaceSelection(with: replacement)
-        lock.lock(); performing = false; forgetTheWord(); lock.unlock()
+        lock.lock(); forgetTheWord(); lock.unlock()
 
         guard done else {
             HelmLog.shared.warn(Self.moduleID, "selection refused by \(Redact.app(bundleID))")
@@ -973,10 +959,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
 
     @discardableResult
     private func perform(_ plan: SwitchPlan) -> Bool {
-        lock.lock(); performing = true; lock.unlock()
         let done = typing.perform(plan)
         lock.lock()
-        performing = false
         if done { forgetTheWord() }
         lock.unlock()
         return done
@@ -1021,7 +1005,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// Serial, so two quick writes read the store in the order they were made
     /// and the later reload cannot commit before the earlier one.
-    public func settingsChanged(then done: @escaping @Sendable () -> Void) {
+    func settingsChanged(then done: @escaping @Sendable () -> Void) {
         reloads.async { [self] in
             reloadSettings()
             done()

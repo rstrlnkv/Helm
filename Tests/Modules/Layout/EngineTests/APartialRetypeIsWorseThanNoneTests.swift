@@ -31,7 +31,7 @@ import XCTest
 /// a blind edit measured against text that is no longer there: the gesture then
 /// sends seven backspaces into the middle of somebody's sentence, which is
 /// strictly worse than the defect being fixed. Make the port all-or-nothing —
-/// build every `CGEvent` before posting any of them, as `send(key:)` in the same
+/// build every `CGEvent` before posting any of them, as `SystemCommandKeys.press` in the same
 /// file already does — and only then let the engine believe `false`.
 final class APartialRetypeIsWorseThanNoneTests: XCTestCase {
 

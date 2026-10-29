@@ -1,0 +1,4193 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "aLayoutThatNamesNoCountry": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Belegung ohne Land behält ihre Buchstaben, in einem Rahmen so groß wie eine Flagge."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A layout that names no country keeps its letters, in a frame the same size as a flag."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una distribución sin país conserva sus letras, en un marco del tamaño de una bandera."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une disposition sans pays garde ses lettres, dans un cadre de la taille d’un drapeau."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "国が定まらない配列は文字のまま、旗と同じ大きさの枠に表示されます。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um layout sem país mantém as letras, numa moldura do tamanho de uma bandeira."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Раскладка, не привязанная к стране, остается буквами — в рамке размером с флаг."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有国家归属的布局保持字母显示，边框与旗帜同样大小。"
+          }
+        }
+      }
+    },
+    "aWordToLeaveAlone": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Wort, das bleiben soll"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A word to leave alone"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una palabra que no tocar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un mot à ne pas toucher"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更しない単語"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uma palavra para não mexer"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слово-исключение"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不要改动的词"
+          }
+        }
+      }
+    },
+    "allTime": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gesamt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All time"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全期間"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tudo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все время"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部"
+          }
+        }
+      }
+    },
+    "asTheSystemHasIt": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wie im System"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As the system has it"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Como en el sistema"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comme dans le système"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "システムのまま"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Como no sistema"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Как в системе"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跟随系统"
+          }
+        }
+      }
+    },
+    "dontFix": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht korrigieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Don’t fix"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No corregir"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ne pas corriger"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修正しない"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não corrigir"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не исправлять"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不修正"
+          }
+        }
+      }
+    },
+    "emojiAndSymbols": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emoji & Symbole"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emoji & Symbols"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emojis y símbolos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emoji et symboles"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "絵文字と記号"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emoji e Símbolos"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эмодзи и символы"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "表情与符号"
+          }
+        }
+      }
+    },
+    "everyAppButTheOnesHelm": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Apps außer denen, die Helm in Ruhe lässt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every app but the ones Helm leaves alone"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todas las apps salvo las que Helm no toca"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toutes les apps sauf celles auxquelles Helm ne touche pas"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helmが触らないアプリを除くすべて"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todos os apps exceto os que o Helm não toca"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все приложения, кроме тех, что Helm не трогает"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "除 Helm 不处理的应用之外的全部"
+          }
+        }
+      }
+    },
+    "fix": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Korrigieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fix"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corregir"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corriger"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修正する"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corrigir"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Исправлять"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修正"
+          }
+        }
+      }
+    },
+    "fixAsIType": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beim Tippen korrigieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fix as I type"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corregir mientras escribo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corriger pendant la saisie"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "入力しながら修正"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corrigir enquanto digito"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Исправлять по ходу набора"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入时自动修正"
+          }
+        }
+      }
+    },
+    "fixTwoCapitalsAtTheStart": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zwei Großbuchstaben am Wortanfang korrigieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fix two capitals at the start of a word"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corregir dos mayúsculas al inicio de palabra"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corriger deux majuscules en début de mot"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "単語の先頭 2 文字の大文字を修正"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corrigir duas maiúsculas no início da palavra"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Исправлять две заглавные в начале слова"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修正词首连续两个大写字母"
+          }
+        }
+      }
+    },
+    "fixWith": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Korrigieren mit"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fix with"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corregir con"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corriger avec"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修正するキー"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corrigir com"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Исправлять клавишей"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修正键"
+          }
+        }
+      }
+    },
+    "fixesWordsTypedInTheWrongKeyboardLayout": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Korrigiert Wörter, die in der falschen Belegung getippt wurden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fixes words typed in the wrong keyboard layout"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corrige palabras escritas en la distribución equivocada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corrige les mots tapés dans la mauvaise disposition"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "誤った配列で入力した単語を修正します"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corrige palavras digitadas no layout errado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Исправляет слова, набранные не в той раскладке"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修正用错误键盘布局输入的单词"
+          }
+        }
+      }
+    },
+    "flag": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flagge"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flag"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bandera"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drapeau"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "旗"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bandeira"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Флаг"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "旗帜"
+          }
+        }
+      }
+    },
+    "globe": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🌐︎"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🌐︎"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🌐︎"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🌐︎"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🌐︎"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🌐︎"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🌐︎"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🌐︎"
+          }
+        }
+      }
+    },
+    "gotIt": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verstanden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Got it"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entendido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compris"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "了解"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entendi"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Понятно"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "明白了"
+          }
+        }
+      }
+    },
+    "heldDownOrPressedTogetherWith": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gehalten oder mit einer anderen Taste zusammen gedrückt bleibt sie ein gewöhnlicher Modifier — alles, wofür du sie schon nutzt, funktioniert weiter."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Held down, or pressed together with anything else, it stays an ordinary modifier — everything you already use it for keeps working."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantenida o pulsada junto con otra tecla, sigue siendo un modificador normal: todo lo que ya haces con ella sigue funcionando."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maintenue ou combinée à une autre touche, elle reste un modificateur ordinaire\u00a0: tout ce que vous en faites déjà continue de fonctionner."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "押したままにしたり、他のキーと一緒に押したりしたときは、これまでどおりの修飾キーとして働きます。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantida pressionada, ou junto com outra tecla, continua sendo um modificador comum: tudo o que você já faz com ela segue funcionando."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зажатая или нажатая вместе с чем-то еще, она остается обычным модификатором — все, для чего ее уже используют, работает как прежде."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按住不放，或与其他键一起按时，它仍是普通的修饰键——你原本的用法照旧。"
+          }
+        }
+      }
+    },
+    "helloHelloButOnlyWhenThe": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HAllo → Hallo, aber nur wenn dabei ein Wort herauskommt. IPhone und OSes bleiben, HALLO auch."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEllo → Hello, but only when the result is a word. IPhone and OSes are left alone, and so is HELLO."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HOla → Hola, pero solo si el resultado es una palabra. IPhone y OSes se dejan como están, y HOLA también."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BOnjour → Bonjour, mais seulement si le résultat est un mot. IPhone et OSes restent tels quels, BONJOUR aussi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEllo → Hello。ただし結果が単語になる場合だけです。IPhone や OSes、HELLO はそのままにします。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OLá → Olá, mas só quando o resultado é uma palavra. IPhone e OSes ficam como estão, e OLÁ também."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ПРивет → Привет, но только если получается слово. IPhone и OSes остаются как есть, и ПРИВЕТ тоже."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEllo → Hello，但仅当结果是一个单词时。IPhone、OSes 和 HELLO 都不改。"
+          }
+        }
+      }
+    },
+    "helmIsNotWatchingTheKeyboard": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm überwacht die Tastatur nicht"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm is not watching the keyboard"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm no está observando el teclado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm ne surveille pas le clavier"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm はキーボードを監視していません"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Helm não está observando o teclado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm не следит за клавиатурой"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm 未在监视键盘"
+          }
+        }
+      }
+    },
+    "helmNeverReadsAPasswordA": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm liest niemals ein Passwort: ein vom System als sicher markiertes Feld wird ganz übersprungen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm never reads a password: a field the system marks as secure is skipped whole."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm nunca lee contraseñas: omite por completo un campo que el sistema marca como seguro."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm ne lit jamais un mot de passe\u00a0: un champ marqué comme sécurisé par le système est ignoré en entier."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm はパスワードを読みません。システムが保護対象と示した入力欄は丸ごと飛ばします。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Helm nunca lê senhas: um campo que o sistema marca como seguro é ignorado por inteiro."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm не читает пароли: поле, которое система пометила как защищенное, он не трогает вовсе."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm 从不读取密码：系统标记为安全的输入框会被整体跳过。"
+          }
+        }
+      }
+    },
+    "helmWorksInThisFieldExactly": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm arbeitet in diesem Feld genau so wie überall sonst."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm works in this field exactly as it does anywhere else."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm funciona en este campo igual que en cualquier otra app."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm fonctionne dans ce champ exactement comme partout ailleurs."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この入力欄でも、Helm はほかのアプリとまったく同じように動きます。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Helm funciona neste campo como em qualquer outro app."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В этом поле Helm работает точно так же, как в любом другом приложении."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm 在这个输入框里的行为，和在其他应用中完全一样。"
+          }
+        }
+      }
+    },
+    "howItWorks": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "So funktioniert es"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How it works"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cómo funciona"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comment ça marche"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仕組み"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Como funciona"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Как это работает"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "工作方式"
+          }
+        }
+      }
+    },
+    "keyboard": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tastatur"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keyboard"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Teclado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clavier"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キーボード"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Teclado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Клавиатура"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "键盘"
+          }
+        }
+      }
+    },
+    "languageIndicator": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprachanzeige"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Language indicator"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indicador de idioma"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indicateur de langue"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "入力ソース表示"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indicador de idioma"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Индикатор языка"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "语言指示器"
+          }
+        }
+      }
+    },
+    "lastChange": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letzte Änderung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last change"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Último cambio"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dernier changement"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "直近の変更"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Última alteração"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Последняя замена"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近一次修改"
+          }
+        }
+      }
+    },
+    "lastChangeUndone": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letzte Änderung (widerrufen)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last change (undone)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Último cambio (deshecho)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dernier changement (annulé)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "直近の変更（取り消し済み）"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Última alteração (desfeita)"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Последняя замена (отменена)"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近一次修改（已撤销）"
+          }
+        }
+      }
+    },
+    "layout": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Belegung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Layout"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Distribución"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disposition"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配列"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Layout"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Раскладка"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "布局"
+          }
+        }
+      }
+    },
+    "layoutName": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name des Layouts"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Layout name"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre de la distribución"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nom de la disposition"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "入力ソース名"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nome do layout"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Название раскладки"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入法名称"
+          }
+        }
+      }
+    },
+    "leftCommand": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linke ⌘"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Left ⌘"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌘ izquierda"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌘ gauche"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左 ⌘"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌘ esquerda"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Левая ⌘"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左 ⌘"
+          }
+        }
+      }
+    },
+    "leftControl": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linke ⌃"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Left ⌃"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌃ izquierda"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌃ gauche"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左 ⌃"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌃ esquerda"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Левая ⌃"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左 ⌃"
+          }
+        }
+      }
+    },
+    "leftOption": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linke ⌥"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Left ⌥"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌥ izquierda"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌥ gauche"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左 ⌥"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌥ esquerda"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Левая ⌥"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左 ⌥"
+          }
+        }
+      }
+    },
+    "leftShift": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linke ⇧"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Left ⇧"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⇧ izquierda"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⇧ gauche"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左 ⇧"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⇧ esquerda"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Левая ⇧"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左 ⇧"
+          }
+        }
+      }
+    },
+    "letters": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buchstaben"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letters"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letras"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lettres"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文字"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letras"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Буквы"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "字母"
+          }
+        }
+      }
+    },
+    "lettersInAFrame": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buchstaben in einem Rahmen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letters in a frame"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letras en un marco"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lettres dans un cadre"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文字（枠のみ）"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letras em uma moldura"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Буквы в рамке"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "字母（描边框）"
+          }
+        }
+      }
+    },
+    "lettersOnAFilledBadge": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buchstaben auf einer Fläche"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letters on a filled badge"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letras sobre un fondo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lettres sur un fond"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文字（背景あり）"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letras sobre um fundo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Буквы на плашке"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "字母（实心底）"
+          }
+        }
+      }
+    },
+    "macosIsNotDeliveringKeystrokesTo": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS gibt die Tastenanschläge nicht an Helm weiter"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS is not delivering keystrokes to Helm"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS no le entrega las pulsaciones a Helm"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS ne transmet pas les frappes à Helm"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS が Helm にキー入力を渡していません"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O macOS não entrega as teclas digitadas ao Helm"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS не передает Helm нажатия клавиш"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS 没有把按键传给 Helm"
+          }
+        }
+      }
+    },
+    "macosMayAlreadyUseToSwitch": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS nutzt 🌐︎ vielleicht schon für Eingabequelle, Emoji oder Diktat. Stelle in den Tastatureinstellungen „Beim Drücken der 🌐︎-Taste“ auf „Keine Aktion“, sonst passiert beides. Tastaturen ohne 🌐︎ senden sie nie."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS quizá ya use 🌐︎ para cambiar de idioma, abrir emoji o dictar. Pon “Tecla 🌐︎: no hacer nada” en Ajustes de teclado, o hará las dos cosas. Los teclados sin 🌐︎ nunca la envían."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS utilise peut-être déjà 🌐︎ pour changer de source, ouvrir les emoji ou dicter. Réglez «\u00a0Touche 🌐︎\u00a0: ne rien faire\u00a0» dans les réglages du clavier, sinon les deux se produiront. Les claviers sans 🌐︎ ne l’envoient jamais."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS が 🌐︎ を入力ソース切り替え・絵文字・音声入力に使っている場合があります。キーボード設定で“🌐︎ キーを押して: 何もしない”にしてください。🌐︎ のないキーボードはこのキーを送りません。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O macOS talvez já use 🌐︎ para trocar de idioma, abrir emoji ou ditar. Defina “Tecla 🌐︎: não fazer nada” nos Ajustes de teclado, ou fará as duas coisas. Teclados sem 🌐︎ nunca a enviam."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS может уже использовать 🌐︎ — для смены языка, эмодзи или диктовки. Если в настройках клавиатуры для «Нажатие клавиши\u00a0🌐︎» не выбрано «действие не\u00a0требуется», сработает и то и другое. Клавиатуры без 🌐︎ ее не отправляют."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS 可能已把 🌐︎ 用于切换输入法、打开表情或听写。请在键盘设置中选择“按下 🌐︎ 键时：不执行任何操作”，否则两件事都会发生。没有 🌐︎ 键的键盘不会发送它。"
+          }
+        }
+      }
+    },
+    "macosShowsAnIndicatorOfIts": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS zeigt eine eigene Anzeige. Schalte sie in den Tastatureinstellungen aus, sonst hast du zwei."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS muestra su propio indicador. Desactívalo en Ajustes de teclado o tendrás dos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS affiche son propre indicateur. Désactivez-le dans les réglages du clavier, sinon vous en aurez deux."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS も独自の表示を出します。キーボード設定でオフにしないと2つ並びます。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O macOS mostra um indicador próprio. Desative-o nos Ajustes de teclado, ou você terá dois."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У macOS есть собственный индикатор. Если не выключить его в настройках клавиатуры, индикаторов будет два."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS 也会显示自己的指示器。请在键盘设置中关闭，否则会有两个。"
+          }
+        }
+      }
+    },
+    "month": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monat"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Month"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mes"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mois"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1か月"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mês"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Месяц"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一月"
+          }
+        }
+      }
+    },
+    "neverInAPasswordFieldAnd": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie in einem Passwortfeld und nie in den Terminals und Passwortmanagern, die Helm kennt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Never in a password field, and never in the terminals and password managers Helm knows."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nunca en un campo de contraseña, ni en los terminales y gestores de contraseñas que Helm conoce."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jamais dans un champ de mot de passe, ni dans les terminaux et gestionnaires de mots de passe que Helm connaît."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "パスワード欄では決して動きません。Helm が知っているターミナルとパスワード管理アプリでも動きません。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nunca num campo de senha, nem nos terminais e gerenciadores de senha que o Helm conhece."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В поле пароля — никогда. И не в тех терминалах и менеджерах паролей, которые Helm знает."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在密码框中从不介入，Helm 已知的终端和密码管理器也不介入。"
+          }
+        }
+      }
+    },
+    "neverThisWord": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Wort nie"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Never this word"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nunca esta palabra"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jamais ce mot"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この単語は変更しない"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nunca esta palavra"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не менять это слово"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从不改这个词"
+          }
+        }
+      }
+    },
+    "noKey": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Taste"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No key"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguna tecla"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune touche"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "なし"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhuma tecla"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无"
+          }
+        }
+      }
+    },
+    "noKeyIsAssignedThisChange": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Taste gewählt — diese Änderung lässt sich nur von Hand zurücknehmen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No key is assigned — this change can only be put back by hand."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay tecla asignada: este cambio solo se puede deshacer a mano."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune touche n’est choisie — ce changement ne peut être rétabli qu’à la main."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キーが設定されていないため、この変更は手動でしか戻せません。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhuma tecla definida — esta alteração só pode ser desfeita à mão."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Клавиша не назначена — эту замену можно вернуть только вручную."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未指定按键——这次替换只能手动改回。"
+          }
+        }
+      }
+    },
+    "noWordsYet": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch keine Wörter"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No words yet"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay palabras"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun mot pour l’instant"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まだ単語はありません"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ainda sem palavras"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пока ни одного слова"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还没有词"
+          }
+        }
+      }
+    },
+    "notSpentTypingAgain": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nicht mit Neutippen verbracht"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "not spent typing again"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no gastado en volver a escribir"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "non passé à retaper"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打ち直しに使わずに済んだ時間"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "não gasto redigitando"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "не ушло на перенабор"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "省下的重新输入时间"
+          }
+        }
+      }
+    },
+    "notWatching": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beobachtet nicht"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not watching"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin vigilar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ne surveille pas"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "監視していません"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não observa"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не следит"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未在监看"
+          }
+        }
+      }
+    },
+    "nothingFixesTheSelectionOrThe": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nichts korrigiert die Auswahl oder das letzte Wort, bis du eine Taste wählst oder unten eine Kombination aufnimmst."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing fixes the selection or the last word until you pick a key, or record a combination below."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada corrige la selección ni la última palabra hasta que elijas una tecla o registres una combinación abajo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rien ne corrige la sélection ni le dernier mot tant que vous n’avez pas choisi une touche ou enregistré une combinaison ci-dessous."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キーを選ぶか、下で組み合わせを登録するまで、選択範囲も直前の単語も修正されません。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada corrige a seleção nem a última palavra até você escolher uma tecla ou registrar uma combinação abaixo."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пока не выбрана клавиша и не задано сочетание ниже, исправить выделенное или последнее слово нечем."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在选择按键或在下方录制组合键之前，选中的文字和上一个词都不会被修正。"
+          }
+        }
+      }
+    },
+    "nothingHasNeededPuttingRightSo": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bisher musste nichts korrigiert werden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing has needed putting right so far."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hasta ahora no ha hecho falta corregir nada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rien n’a eu besoin d’être corrigé jusqu’ici."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "これまで修正が必要なものはありません。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Até agora nada precisou ser corrigido."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пока ничего исправлять не понадобилось."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "到目前为止还没有需要修正的内容。"
+          }
+        }
+      }
+    },
+    "onlyWhenWhatYouTypedIs": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur wenn das Getippte kein Wort ist und in der anderen Belegung eines wird. Was schon ein Wort ist, bleibt unberührt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only when what you typed is not a word and becomes one in the other layout. Anything that is already a word is left alone."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo cuando lo escrito no es una palabra y sí lo es en la otra distribución. Lo que ya es una palabra no se toca."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uniquement si ce que vous avez tapé n’est pas un mot et en devient un dans l’autre disposition. Ce qui est déjà un mot reste intact."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "入力どおりでは単語でなく、別の配列にすると単語になる場合だけです。すでに単語であるものには触れません。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Só quando o que você digitou não é palavra e passa a ser no outro layout. O que já é palavra fica intacto."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Только если набранное — не слово, а в другой раскладке становится словом. Все, что и так слово, остается нетронутым."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅当按原样不是单词、换到另一个布局才是单词时才会改。已经是单词的一律不动。"
+          }
+        }
+      }
+    },
+    "openKeyboardSettings": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tastatureinstellungen öffnen\u00a0…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Keyboard Settings…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir ajustes del teclado…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir les réglages Clavier…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キーボード設定を開く…"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir Ajustes de Teclado…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть настройки клавиатуры…"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开键盘设置…"
+          }
+        }
+      }
+    },
+    "orAKeyCombination": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oder eine Tastenkombination"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Or a key combination"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O una combinación de teclas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ou une combinaison de touches"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "またはキーの組み合わせ"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ou uma combinação de teclas"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Или сочетание клавиш"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "或使用组合键"
+          }
+        }
+      }
+    },
+    "pausedAPasswordFieldIsIn": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausiert — vorn ist ein Passwortfeld, und die liest Helm nie."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paused — a password field is in front, and Helm never reads one."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En pausa: delante hay un campo de contraseña, y Helm nunca lee uno."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En pause — un champ de mot de passe est au premier plan, et Helm n’en lit jamais."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一時停止中 — 前面にパスワード欄があります。Helm はパスワード欄を読みません。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausado — há um campo de senha em primeiro plano, e o Helm nunca lê um."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приостановлено — впереди поле пароля, а его Helm не читает."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已暂停——前面是密码框，而 Helm 从不读取密码框。"
+          }
+        }
+      }
+    },
+    "period": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeitraum"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Period"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Periodo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Période"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "期間"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Período"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Период"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "时间段"
+          }
+        }
+      }
+    },
+    "playASoundWhenAWord": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ton bei einer Korrektur"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Play a sound when a word is fixed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonido al corregir una palabra"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Son lors d’une correction"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修正時に音を鳴らす"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Som ao corrigir uma palavra"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Звук при исправлении слова"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修正时播放提示音"
+          }
+        }
+      }
+    },
+    "rightCommand": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechte ⌘"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right ⌘"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌘ derecha"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌘ droite"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右 ⌘"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌘ direita"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Правая ⌘"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右 ⌘"
+          }
+        }
+      }
+    },
+    "rightControl": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechte ⌃"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right ⌃"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌃ derecha"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌃ droite"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右 ⌃"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌃ direita"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Правая ⌃"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右 ⌃"
+          }
+        }
+      }
+    },
+    "rightOption": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechte ⌥"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right ⌥"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌥ derecha"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌥ droite"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右 ⌥"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌥ direita"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Правая ⌥"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右 ⌥"
+          }
+        }
+      }
+    },
+    "rightShift": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechte ⇧"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right ⇧"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⇧ derecha"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⇧ droite"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右 ⇧"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⇧ direita"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Правая ⇧"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右 ⇧"
+          }
+        }
+      }
+    },
+    "rulesForSpecificApps": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regeln für einzelne Apps"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rules for specific apps"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reglas para apps concretas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Règles par app"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アプリごとのルール"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regras para apps específicos"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Правила для отдельных приложений"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "针对特定应用的规则"
+          }
+        }
+      }
+    },
+    "showItInTheMenuBar": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In der Menüleiste anzeigen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show it in the menu bar"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrarlo en la barra de menús"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’afficher dans la barre des menus"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メニューバーに表示"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar na barra de menus"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показывать в строке меню"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在菜单栏中显示"
+          }
+        }
+      }
+    },
+    "style": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stil"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Style"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estilo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Style"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スタイル"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estilo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вид"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "样式"
+          }
+        }
+      }
+    },
+    "tapAgainToPutTheChange": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch einmal antippen, um die Änderung zurückzunehmen, oder den Text erneut auswählen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap again to put the change back, or select the text again to change it back."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Púlsala otra vez para deshacer el cambio, o vuelve a seleccionar el texto para revertirlo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Appuyez de nouveau pour annuler le changement, ou resélectionnez le texte pour le rétablir."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "もう一度押すと変更を元に戻せます。選択し直しても戻せます。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toque de novo para desfazer a alteração, ou selecione o texto outra vez para revertê-la."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повторное нажатие отменяет замену, а выделенный текст возвращается, если выделить его снова."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再按一次即可撤销更改，或重新选中文字以还原。"
+          }
+        }
+      }
+    },
+    "tapItOnItsOwnIt": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allein antippen: korrigiert die Auswahl oder das letzte Wort."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap it on its own: it fixes the selection, or the last word."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Púlsala sola: corrige la selección o la última palabra."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Appuyez dessus seule\u00a0: elle corrige la sélection ou le dernier mot."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "単独で押すと、選択した文字か直前の語を修正します。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toque nela sozinha: corrige a seleção ou a última palavra."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Одиночное нажатие, без других клавиш, исправляет выделенное или последнее слово."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单独按一下：修正选中的文字，或最后一个词。"
+          }
+        }
+      }
+    },
+    "tappingControlOnItsOwnAlso": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein einzelnes Tippen auf die Control-Taste pausiert auch die VoiceOver-Sprachausgabe. Wer VoiceOver nutzt, wählt besser eine andere Taste."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pulsar Control a solas también pausa la voz de VoiceOver. Si usas VoiceOver, elige otra tecla."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Appuyer sur Contrôle seule met aussi en pause la voix de VoiceOver. Si vous utilisez VoiceOver, choisissez une autre touche."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Control キーを単独で押すと VoiceOver の読み上げも一時停止します。VoiceOver をお使いなら別のキーを選んでください。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tocar em Controle sozinha também pausa a fala do VoiceOver. Se você usa o VoiceOver, escolha outra tecla."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Одиночное нажатие Control также приостанавливает речь VoiceOver. С VoiceOver лучше выбрать другую клавишу."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单独按下 Control 也会暂停 VoiceOver 的朗读。如果你使用 VoiceOver，请选择其他按键。"
+          }
+        }
+      }
+    },
+    "terminalsAndPasswordManagersStartSwitched": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In Terminals und Passwortmanagern ist das Korrigieren zunächst aus: dort ist ein Wort, das falsch aussieht, oft genau das richtige."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminals and password managers start switched off: there a word that looks wrong is often exactly right."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En los terminales y gestores de contraseñas la corrección empieza desactivada: allí una palabra que parece mal escrita suele ser exactamente la correcta."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans les terminaux et gestionnaires de mots de passe, la correction est désactivée au départ\u00a0: là, un mot qui semble faux est souvent exactement le bon."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルとパスワード管理アプリでは最初はオフです。そこでは間違って見える語こそ正しいことが多いからです。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Em terminais e gerenciadores de senhas a correção começa desligada: ali, uma palavra que parece errada costuma ser exatamente a certa."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В терминалах и менеджерах паролей исправление по умолчанию выключено: там слово, похожее на ошибку, чаще всего именно то, что нужно."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "终端和密码管理器默认关闭：在那里，看起来写错的词往往正是对的。"
+          }
+        }
+      }
+    },
+    "theLanguageIndicatorBelowWorksWithout": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Sprachanzeige unten funktioniert auch ohne diese Berechtigung."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The language indicator below works without this permission."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El indicador de idioma de abajo funciona sin este permiso."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’indicateur de langue ci-dessous fonctionne sans cette autorisation."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下の言語インジケータはこの許可がなくても動きます。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O indicador de idioma abaixo funciona sem esta permissão."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Индикатор языка ниже работает и без этого разрешения."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下方的语言指示器无需此权限也能使用。"
+          }
+        }
+      }
+    },
+    "theseAreLeftExactlyAsYou": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese bleiben genau so, wie Sie sie getippt haben — ganz gleich, was das Wörterbuch meint."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "These are left exactly as you typed them, whatever the dictionary thinks."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estas se dejan exactamente como las escribiste, piense lo que piense el diccionario."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ces mots restent exactement tels que vous les avez tapés, quoi qu’en pense le dictionnaire."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ここに入れた語は、辞書が何と言おうと入力したままにします。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estas ficam exatamente como você as digitou, pense o dicionário o que pensar."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эти слова остаются ровно такими, как набраны, что бы ни думал словарь."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这些词无论词典怎么判断，都会保持你输入时的样子。"
+          }
+        }
+      }
+    },
+    "thisIsAKeyYouType": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das ist eine Taste, mit der du schreibst. Gehalten oder kombiniert funktioniert sie normal, aber ein versehentlicher einzelner Tipp korrigiert das letzte Wort."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es una tecla que usas al escribir. Mantenida o combinada sigue funcionando igual, pero una pulsación suelta por descuido corregirá la última palabra."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C’est une touche dont vous vous servez en tapant. Maintenue ou combinée elle fonctionne normalement, mais une pression isolée par mégarde corrigera le dernier mot."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "これは入力に使うキーです。押しっぱなしや同時押しでは通常どおりですが、単独でうっかり叩くと直前の単語が修正されます。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta é uma tecla que você usa para digitar. Segurada ou combinada funciona normalmente, mas um toque solto por acidente vai corrigir a última palavra."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этой клавишей печатают. Зажатая или в сочетании она работает как обычно, но случайное одиночное нажатие исправит последнее слово."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这是你打字时会用到的键。按住或组合使用时一切照常，但不小心单独敲一下就会修正上一个词。"
+          }
+        }
+      }
+    },
+    "today": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heute"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoy"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aujourd’hui"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今日"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoje"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сегодня"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天"
+          }
+        }
+      }
+    },
+    "tryIt": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausprobieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try it"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pruébalo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Essayer"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "試す"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Experimente"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Попробовать"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "试一试"
+          }
+        }
+      }
+    },
+    "typeGhbdtnAndPressSpace": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tippe ghbdtn und drücke die Leertaste"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type ghbdtn and press space"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribe ghbdtn y pulsa espacio"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tapez ghbdtn puis espace"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ghbdtn と入力してスペースを押してください"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Digite ghbdtn e aperte espaço"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Например, ghbdtn и пробел"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入 ghbdtn 后按空格"
+          }
+        }
+      }
+    },
+    "typeGhbdtnInTheWrongLayout": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tippe ghbdtn in der falschen Belegung, und daraus wird привет — die Eingabequelle wechselt mit."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribe ghbdtn en la distribución equivocada y se convierte en привет; la fuente de entrada cambia con él."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tapez ghbdtn dans la mauvaise disposition\u00a0: le mot devient привет, et la source de saisie suit."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配列を切り替え忘れて ghbdtn と入力すると、привет に直り、入力ソースも切り替わります。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Digite ghbdtn no layout errado e vira привет, com a fonte de entrada acompanhando."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Если набрать ghbdtn, забыв переключить раскладку, Helm заменит это на «привет» и сам переключит раскладку."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用错布局输入 ghbdtn，它会变成 привет，输入法也随之切换。"
+          }
+        }
+      }
+    },
+    "watchingYourWords": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Achtet auf deine Wörter"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Watching your words"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vigilando tus palabras"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Surveille vos mots"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "単語を見ています"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De olho nas suas palavras"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Следит за набором"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在留意你的输入"
+          }
+        }
+      }
+    },
+    "week": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Woche"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Week"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Semana"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Semaine"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1週間"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Semana"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Неделя"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一周"
+          }
+        }
+      }
+    },
+    "whatItDoes": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Was es tut"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What it does"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qué hace"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce qu’il fait"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "何をするか"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O que faz"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Что он делает"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它做什么"
+          }
+        }
+      }
+    },
+    "whatYouCanSwitchOn": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Was Sie einschalten können"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What you can switch on"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qué puedes activar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce que vous pouvez activer"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オンにできること"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O que pode ativar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Что можно включить"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可以开启什么"
+          }
+        }
+      }
+    },
+    "wordsAndApps": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wörter und Apps"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Words and apps"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Palabras y apps"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mots et apps"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "単語とアプリ"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Palavras e apps"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слова и приложения"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "词与应用"
+          }
+        }
+      }
+    },
+    "wordsToLeaveAlone": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausgenommene Wörter"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Words to leave alone"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Palabras excluidas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mots à ne pas toucher"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更しない単語"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Palavras excluídas"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слова-исключения"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不改动的词"
+          }
+        }
+      }
+    },
+    "year": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jahr"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Year"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Año"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Année"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1年"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ano"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Год"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一年"
+          }
+        }
+      }
+    },
+    "yourLayoutsAsTheyWillLook": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Belegungen, so wie sie aussehen werden:"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your layouts, as they will look:"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus distribuciones, tal como se verán:"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos dispositions, telles qu’elles s’afficheront\u00a0:"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "インストール済みの配列の表示例："
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seus layouts, como vão aparecer:"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Раскладки — как они будут выглядеть:"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的键盘布局，实际显示效果："
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

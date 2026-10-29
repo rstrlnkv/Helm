@@ -121,6 +121,25 @@ public protocol SelectionPort: Sendable {
     func replaceSelection(with text: String) -> Bool
 }
 
+/// The general pasteboard, as `AXSelection`'s clipboard route uses it.
+/// Internal: only `AXSelection` and its test use it.
+protocol PasteboardPort: Sendable {
+    var types: [String] { get }
+    var changeCount: Int { get }
+    func string() -> String?
+    func clear()
+    func setString(_ text: String)
+}
+
+/// The focused element's selected text, through the accessibility tree.
+protocol FocusedTextPort: Sendable {
+    func selectedText() -> String?
+    func setSelectedText(_ text: String) -> Bool
+}
+
+/// ⌘ plus one key, posted with Helm's marker.
+protocol CommandKeyPort: Sendable { func press(_ key: UInt16) }
+
 /// Two moments the engine asks the system again: Helm itself coming to the
 /// front (the person may have just granted Accessibility, or edited their
 /// layouts, in System Settings) and another application coming to the front

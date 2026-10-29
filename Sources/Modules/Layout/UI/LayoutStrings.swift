@@ -1,3 +1,6 @@
+// Every inline table is wrapped, one language per line; the English key, which is
+// never split, is one line.
+
 import HelmRuntime
 import HelmUI
 import Module_Layout_Engine
@@ -5,34 +8,34 @@ import Module_Layout_Engine
 enum LyStr {
     /// Broader than "layout" on purpose: the module id stays `layout`, but the
     /// name has room for whatever else belongs to the keyboard later.
-    static var moduleName: String { L("Keyboard") }
-    static var summary: String { L("Fixes words typed in the wrong keyboard layout") }
-    static var automatic: String { L("Fix as I type") }
+    static var moduleName: String { L(.keyboard) }
+    static var summary: String { L(.fixesWordsTypedInTheWrongKeyboardLayout) }
+    static var automatic: String { L(.fixAsIType) }
     /// The rule, said once. `introWhen` said it again as step 1's second point —
     /// sixteen translated rows for one sentence, both of them drawn inside one
     /// four-card tour. «Once swapped» was also opaque (swapped what?) where «in
     /// the other layout» is the thing itself.
-    static var automaticNote: String { L("Only when what you typed is not a word and becomes one in the other layout. Anything that is already a word is left alone.") }
-    static var suspended: String { L("Paused — a password field is in front, and Helm never reads one.") }
-    static var exceptions: String { L("Words to leave alone") }
+    static var automaticNote: String { L(.onlyWhenWhatYouTypedIs) }
+    static var suspended: String { L(.pausedAPasswordFieldIsIn) }
+    static var exceptions: String { L(.wordsToLeaveAlone) }
     /// **It said «One per line.» until the list stopped being lines.** That was
     /// a description of a `TextEditor` — true of the control, and the control is
     /// gone. A note under a list is the place to say what the list *does*, not
     /// how it is typed into: the shape is visible and the rule is not.
     static var exceptionsHint: String {
-        L("These are left exactly as you typed them, whatever the dictionary thinks.")
+        L(.theseAreLeftExactlyAsYou)
     }
     static var addApp: String { L("Add app…") }
-    static var ruleOn: String { L("Fix") }
-    static var ruleOff: String { L("Don’t fix") }
+    static var ruleOn: String { L(.fix) }
+    static var ruleOff: String { L(.dontFix) }
     /// The layout picker's «leave it alone» value, and the first one offered.
     /// Not «Off»: the row's other picker already uses that shape for a
     /// different question, and this one names what does not happen.
-    static var layoutUnchanged: String { L("As the system has it") }
+    static var layoutUnchanged: String { L(.asTheSystemHasIt) }
 
     /// The picker's own name, which a reader with VoiceOver hears in place of
     /// «pop-up button». Its *value* is the layout's own name, from the system.
-    static var appLayout: String { L("Layout") }
+    static var appLayout: String { L(.layout) }
     /// «Сочетания клавиш» is what macOS calls these — 12 tables to 0 for
     /// `Keyboard shortcut`, and 2 to 0 for the plural. «Горячие клавиши» is a
     /// colloquialism the system never uses, and this file already said the
@@ -44,7 +47,7 @@ enum LyStr {
     /// Russian was already right, because in Russian the compound is the
     /// ordinary name — which is why one English key fixes all five.
     static var shortcuts: String { L("Keyboard shortcuts") }
-    static var apps: String { L("Rules for specific apps") }
+    static var apps: String { L(.rulesForSpecificApps) }
     /// One caption for the list, and it explains the rows above it rather than
     /// describing a rule the page keeps invisible.
     ///
@@ -52,9 +55,9 @@ enum LyStr {
     /// managers are left alone already» and a footer saying almost the same
     /// thing, neither of which named one of them. The apps are drawn now.
     static var appsWhy: String {
-        L("Terminals and password managers start switched off: there a word that looks wrong is often exactly right.")
+        L(.terminalsAndPasswordManagersStartSwitched)
     }
-    static var lastChange: String { L("Last change") }
+    static var lastChange: String { L(.lastChange) }
 
     /// The tile's estimate, without the period on the end: the caption above it
     /// already carries the period, and saying it twice on a 280 pt tile reads as
@@ -64,7 +67,7 @@ enum LyStr {
     /// machine runs in Russian, so a test that reads `.current` exercises exactly
     /// one of eight — CLAUDE.md § What not to do, and what breaks if you do.
     static func notSpentTypingAgain(language: AppLanguage = AppLanguage.current) -> String {
-        L("not spent typing again", language: language)
+        L(.notSpentTypingAgain, language: language)
     }
 
 
@@ -73,7 +76,7 @@ enum LyStr {
     /// setting»: the language indicator reads the input source through TIS and
     /// works without the grant — the page draws it below this message, and a
     /// message claiming otherwise called its own neighbour a lie.
-    static var deniedTitle: String { L("Helm is not watching the keyboard") }
+    static var deniedTitle: String { L(.helmIsNotWatchingTheKeyboard) }
 
     /// The hero's own words without the grant. Short, because the hero is a
     /// figure and not a paragraph — the long sentence lives once, under it.
@@ -81,25 +84,25 @@ enum LyStr {
     /// **«Not watching», not «Not running».** The module is running; the tap is
     /// not. And the window header already says «Not active» in its own words,
     /// so a third spelling of the same fact on one screen is what this avoids.
-    static var heroNotWatching: String { L("Not watching") }
-    static var heroNotWatchingWhy: String { L("macOS is not delivering keystrokes to Helm") }
+    static var heroNotWatching: String { L(.notWatching) }
+    static var heroNotWatchingWhy: String { L(.macosIsNotDeliveringKeystrokesTo) }
 
     /// What the empty state is for once the hero has said the rest: the two
     /// things somebody weighing this permission actually wants to know.
     static var deniedGuarantee: String {
-        L("Helm never reads a password: a field the system marks as secure is skipped whole.")
+        L(.helmNeverReadsAPasswordA)
     }
     static var indicatorWorksAnyway: String {
-        L("The language indicator below works without this permission.")
+        L(.theLanguageIndicatorBelowWorksWithout)
     }
 
-    static var introWhat: String { L("Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match.") }
+    static var introWhat: String { L(.typeGhbdtnInTheWrongLayout) }
     /// **No route at the end.** It said «add any others in Settings» — from
     /// inside Settings, about a list that lives in the «Words and apps» window
     /// now. The 0.9.0 «Configure panel» failure: a string naming a way to
     /// somewhere, translated faithfully into seven languages after the way
     /// moved.
-    static var introWhere: String { L("Never in a password field, and never in the terminals and password managers Helm knows.") }
+    static var introWhere: String { L(.neverInAPasswordFieldAnd) }
     // The two faces of one control, so a reader who opened the points can put
     // them away again — a disclosure that only opens is a disclosure that has
     // stopped being one.
@@ -116,15 +119,17 @@ enum LyStr {
     /// moving it is a sweep of its own rather than a line in a module's polish.
     static var listsDone: String { L("Done") }
 
-    static var tourTitle: String { L("How it works") }
+    static var tourTitle: String { L(.howItWorks) }
     static var tourBack: String { L("Back") }
     static var tourNext: String { L("Next") }
     /// «2 of 4». Interpolated, so it keeps its own table.
     static func tourStep(_ index: Int, of total: Int,
                          language: AppLanguage = AppLanguage.current) -> String {
         L("\(index) of \(total)",
-          [.ru: "\(index) из \(total)", .es: "\(index) de \(total)",
-           .fr: "\(index) sur \(total)", .de: "\(index) von \(total)",
+          [.ru: "\(index) из \(total)",
+           .es: "\(index) de \(total)",
+           .fr: "\(index) sur \(total)",
+           .de: "\(index) von \(total)",
            .pt: "\(index) de \(total)",
            // `\(total)分の\(index)` is the *fraction* — «one quarter» —
            // and not a step counter at all.
@@ -132,9 +137,9 @@ enum LyStr {
            .zh: "第\(index)步，共\(total)步"],
           language: language)
     }
-    static var tourWhatTitle: String { L("What it does") }
-    static var tourSwitchesTitle: String { L("What you can switch on") }
-    static var introStart: String { L("Got it") }
+    static var tourWhatTitle: String { L(.whatItDoes) }
+    static var tourSwitchesTitle: String { L(.whatYouCanSwitchOn) }
+    static var introStart: String { L(.gotIt) }
     /// **The example is Latin now, and the note says what the rule does.**
     /// The old one listed three refusals — never shouting, never a digit, never
     /// three letters — from which the only available conclusion was that
@@ -151,19 +156,19 @@ enum LyStr {
     /// and the key was wrong, so it is one fix rather than seven. The Russian
     /// also borrowed the root of macOS's Sticky Keys («Залипание клавиш»), a
     /// feature that does something else entirely.
-    static var fixCapitals: String { L("Fix two capitals at the start of a word") }
-    static var fixCapitalsNote: String { L("HEllo → Hello, but only when the result is a word. IPhone and OSes are left alone, and so is HELLO.") }
-    static var tryIt: String { L("Try it") }
-    static var tryItPlaceholder: String { L("Type ghbdtn and press space") }
+    static var fixCapitals: String { L(.fixTwoCapitalsAtTheStart) }
+    static var fixCapitalsNote: String { L(.helloHelloButOnlyWhenThe) }
+    static var tryIt: String { L(.tryIt) }
+    static var tryItPlaceholder: String { L(.typeGhbdtnAndPressSpace) }
     /// **Seventeen words doing one job through a colon.** The step above it
     /// said «not a demonstration» too, and so did the placeholder — one idea
     /// across four strings and 32 translated rows. The Russian also leaked the
     /// word «модуль» onto a page the reader knows as «Клавиатура».
-    static var tryItHint: String { L("Helm works in this field exactly as it does anywhere else.") }
-    static var indicator: String { L("Language indicator") }
-    static var indicatorShow: String { L("Show it in the menu bar") }
-    static var indicatorHint: String { L("macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two.") }
-    static var tapKey: String { L("Fix with") }
+    static var tryItHint: String { L(.helmWorksInThisFieldExactly) }
+    static var indicator: String { L(.languageIndicator) }
+    static var indicatorShow: String { L(.showItInTheMenuBar) }
+    static var indicatorHint: String { L(.macosShowsAnIndicatorOfIts) }
+    static var tapKey: String { L(.fixWith) }
     /// «Select it again to change it back», not «tapping again puts it back»:
     /// a fixed selection leaves no undo record — the caret's landing place
     /// after a selection replace is the app's business, so a blind reverse
@@ -176,12 +181,12 @@ enum LyStr {
     /// names a 606-character German caption as the case it was built for, and
     /// this page was not using it. What stays here is what the row does; what
     /// moves is «what happens if I do», which is what an ⓘ answers.
-    static var tapKeyHint: String { L("Tap it on its own: it fixes the selection, or the last word.") }
+    static var tapKeyHint: String { L(.tapItOnItsOwnIt) }
 
     /// The one value that means the control does nothing, which the note used
     /// to describe as if it did.
     static var tapKeyOff: String {
-        L("Nothing fixes the selection or the last word until you pick a key, or record a combination below.")
+        L(.nothingFixesTheSelectionOrThe)
     }
 
     /// Behind the ⓘ beside «Fix with». Assembled from the key in force, so a
@@ -189,8 +194,8 @@ enum LyStr {
     static func tapKeyExplainer(_ key: TapKey) -> HelmExplainer.Content? {
         guard key != .off else { return nil }
         var blocks: [HelmExplainer.Block] = [
-            .text(L("Tap again to put the change back, or select the text again to change it back.")),
-            .text(L("Held down, or pressed together with anything else, it stays an ordinary modifier — everything you already use it for keeps working.")),
+            .text(L(.tapAgainToPutTheChange)),
+            .text(L(.heldDownOrPressedTogetherWith)),
         ]
         if key == .globe { blocks.append(.text(globeNote)) }
         if key.isFrequentlyUsed { blocks.append(.text(leftKeyNote)) }
@@ -201,64 +206,64 @@ enum LyStr {
     /// Shown for either Control. A solo Control tap is VoiceOver's own
     /// «pause speech» gesture, so for a VoiceOver user this binding fires
     /// both at once.
-    static var controlKeyNote: String { L("Tapping Control on its own also pauses VoiceOver speech. If you use VoiceOver, pick another key.") }
+    static var controlKeyNote: String { L(.tappingControlOnItsOwnAlso) }
 
     /// Shown only when 🌐︎ is chosen. macOS may already have that key doing
     /// something, and Helm cannot make it stop — the setting is the person's.
-    static var globeNote: String { L("macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it.") }
+    static var globeNote: String { L(.macosMayAlreadyUseToSwitch) }
 
     /// Shown when a left-hand key is chosen. Not a warning against it — it is
     /// their keyboard — but the trade should be visible at the moment it is
     /// made, not discovered later.
-    static var leftKeyNote: String { L("This is a key you type with. It still works normally when held or combined, but a stray tap on its own will fix the last word.") }
+    static var leftKeyNote: String { L(.thisIsAKeyYouType) }
 
     /// The one chord, for keyboards with no right-hand modifier to tap.
-    static var orShortcut: String { L("Or a key combination") }
+    static var orShortcut: String { L(.orAKeyCombination) }
     static func tapKeyName(_ key: TapKey) -> String {
         switch key {
-        case .off: return L("No key")
-        case .rightCommand: return L("Right ⌘")
-        case .rightOption: return L("Right ⌥")
-        case .rightControl: return L("Right ⌃")
-        case .rightShift: return L("Right ⇧")
-        case .leftCommand: return L("Left ⌘")
-        case .leftOption: return L("Left ⌥")
-        case .leftControl: return L("Left ⌃")
-        case .leftShift: return L("Left ⇧")
-        case .globe: return L("🌐︎")
+        case .off: return L(.noKey)
+        case .rightCommand: return L(.rightCommand)
+        case .rightOption: return L(.rightOption)
+        case .rightControl: return L(.rightControl)
+        case .rightShift: return L(.rightShift)
+        case .leftCommand: return L(.leftCommand)
+        case .leftOption: return L(.leftOption)
+        case .leftControl: return L(.leftControl)
+        case .leftShift: return L(.leftShift)
+        case .globe: return L(.globe)
         }
     }
-    static var badgeStyle: String { L("Style") }
+    static var badgeStyle: String { L(.style) }
     static func badgeStyleName(_ style: BadgeStyle) -> String {
         switch style {
-        case .plain: return L("Letters")
-        case .filled: return L("Letters on a filled badge")
-        case .outlined: return L("Letters in a frame")
-        case .flagDrawn: return L("Flag")
+        case .plain: return L(.letters)
+        case .filled: return L(.lettersOnAFilledBadge)
+        case .outlined: return L(.lettersInAFrame)
+        case .flagDrawn: return L(.flag)
         // **Not the system's «Show Input Source Name», though it draws the same
         // thing.** That is macOS's name for a *switch*, and here it is the value
         // of a «Style» picker, so the row read «Вид: Показывать имя источника
         // ввода» — an instruction sitting where a noun belongs. The rule about
         // reading the system's spelling covers a thing macOS also names; macOS
         // names the switch, not the style, and this is the style.
-        case .sourceName: return L("Layout name")
+        case .sourceName: return L(.layoutName)
         }
     }
-    static var badgePreview: String { L("Your layouts, as they will look:") }
-    static var flagNote: String { L("A layout that names no country keeps its letters, in a frame the same size as a flag.") }
+    static var badgePreview: String { L(.yourLayoutsAsTheyWillLook) }
+    static var flagNote: String { L(.aLayoutThatNamesNoCountry) }
     /// The system's own spelling of its input menu's last item, read from
     /// `TextInputMenuCore.bundle` (key `Open Keyboard Settings`) rather than
     /// translated again — German keeps the table's no-break space before the
     /// ellipsis. This key used to be «Open Keyboard settings…», a near-copy
     /// with four of eight rows retranslated by hand.
-    static var openKeyboardSettings: String { L("Open Keyboard Settings…") }
+    static var openKeyboardSettings: String { L(.openKeyboardSettings) }
     /// The emoji door's full title, built the way the system input menu builds
     /// it: the `Show palette class IM` template (`TextInputMenuCore.bundle`)
     /// around the palette's own name — so the sentence cannot drift from the
     /// palette it opens, the same construction as `VPNStr.secretNeedsAPress`.
     /// Interpolated, so the template keeps its own table.
     static func showEmojiPanel(language: AppLanguage = AppLanguage.current) -> String {
-        let name = L("Emoji & Symbols", language: language)
+        let name = L(.emojiAndSymbols, language: language)
         let table: [AppLanguage: String] = [
             .ru: "Показать панель «\(name)»",
             .es: "Mostrar \(name)",
@@ -273,7 +278,7 @@ enum LyStr {
     /// The window's own title. Not «Settings» and not the module's name — the
     /// window holds two lists and says so, because a window titled «Keyboard»
     /// beside a settings window titled «Keyboard» is two of one thing.
-    static var listsWindowTitle: String { L("Words and apps") }
+    static var listsWindowTitle: String { L(.wordsAndApps) }
     /// The rows on the page that open the window, each carrying its own count
     /// so the page still answers «how many» without it being opened — which is
     /// the one thing a list behind a button owes the person who put a word
@@ -284,7 +289,7 @@ enum LyStr {
     /// is a count where «none» is a state.
     static func exceptionsRow(_ count: Int,
                               language: AppLanguage = AppLanguage.current) -> String {
-        guard count > 0 else { return L("No words yet", language: language) }
+        guard count > 0 else { return L(.noWordsYet, language: language) }
         let table: [AppLanguage: String] = [
             .ru: Plural.russian(count, "слово", "слова", "слов"),
             .es: count == 1 ? "palabra" : "palabras",
@@ -301,19 +306,18 @@ enum LyStr {
 
     static func appsRow(_ count: Int,
                         language: AppLanguage = AppLanguage.current) -> String {
-        guard count > 0 else { return L("Every app but the ones Helm leaves alone",
-                                        language: language) }
+        guard count > 0 else { return L(.everyAppButTheOnesHelm, language: language) }
         return Plural.apps(count, language: language.rawValue)
     }
 
-    static var neverThisWord: String { L("Never this word") }
-    static var noExceptions: String { L("No words yet") }
+    static var neverThisWord: String { L(.neverThisWord) }
+    static var noExceptions: String { L(.noWordsYet) }
     /// The field's placeholder and its VoiceOver name at once — a placeholder
     /// disappears the moment there is a value to read, so it cannot be the only
     /// thing naming the field.
-    static var exceptionPrompt: String { L("A word to leave alone") }
+    static var exceptionPrompt: String { L(.aWordToLeaveAlone) }
     static var addException: String { L("Add") }
-    static var audible: String { L("Play a sound when a word is fixed") }
+    static var audible: String { L(.playASoundWhenAWord) }
     /// Built from the current binding, never spelled by hand — the same
     /// construction as `VPNStr.secretNeedsAPress`, so the sentence cannot
     /// drift from the control it names. `gesture` is the tap key's name or
@@ -321,7 +325,7 @@ enum LyStr {
     /// Interpolated, so it keeps its own table.
     static func undoHint(gesture: String, language: AppLanguage = AppLanguage.current) -> String {
         let table: [AppLanguage: String] = [
-            .ru: "Чтобы отменить, нажмите «\(gesture)» ещё раз — до того, как наберёте что-то ещё, в том приложении, где это произошло.",
+            .ru: "Отменяется повторным нажатием «\(gesture)» — до того, как набрано что-то еще, в том приложении, где это произошло.",
             .es: "Para deshacerlo, pulsa \(gesture) otra vez antes de escribir nada más, en la app donde ocurrió.",
             .fr: "Pour annuler, appuyez de nouveau sur \(gesture) avant de taper autre chose, dans l’app où c’est arrivé.",
             .de: "Zum Widerrufen \(gesture) erneut drücken, bevor du etwas anderes tippst, in der App, in der es passiert ist.",
@@ -336,12 +340,12 @@ enum LyStr {
     /// no chord means no undo exists, and a sentence promising one described
     /// a gesture that could never fire.
     static func undoImpossible(language: AppLanguage = AppLanguage.current) -> String {
-        L("No key is assigned — this change can only be put back by hand.", language: language)
+        L(.noKeyIsAssignedThisChange, language: language)
     }
     /// The row's own label when the change it names was taken back: the record
     /// outlives the rejection (that is when «Never this word» earns its keep),
     /// and it must say which state it is in.
-    static var lastChangeUndone: String { L("Last change (undone)") }
+    static var lastChangeUndone: String { L(.lastChangeUndone) }
     /// Under the triggers when all three are off: no ending ever confirms a
     /// word, so «Fix as I type» is dead however green the badge above is.
     /// The period segment, and the metric the hero is showing.
@@ -353,15 +357,15 @@ enum LyStr {
     static func periodName(_ period: ConversionPeriod,
                            language: AppLanguage = AppLanguage.current) -> String {
         switch period {
-        case .today: return L("Today", language: language)
-        case .week: return L("Week", language: language)
-        case .month: return L("Month", language: language)
-        case .year: return L("Year", language: language)
-        case .allTime: return L("All time", language: language)
+        case .today: return L(.today, language: language)
+        case .week: return L(.week, language: language)
+        case .month: return L(.month, language: language)
+        case .year: return L(.year, language: language)
+        case .allTime: return L(.allTime, language: language)
         }
     }
 
-    static var period: String { L("Period") }
+    static var period: String { L(.period) }
 
 
     /// Under the figure when it is showing words: how many, and over what.
@@ -371,8 +375,10 @@ enum LyStr {
     /// counts of 2, 3 and 4, which is the bucket a light user sees most.
     static func wordsIn(_ period: ConversionPeriod, count: Int,
                         language: AppLanguage = AppLanguage.current) -> String {
-        wordsPutRight(count: count, language: language)
-            + " · " + periodName(period, language: language).lowercased()
+        // German keeps the period name's capital; the other languages write it in lower case.
+        let name = periodName(period, language: language)
+        return wordsPutRight(count: count, language: language)
+            + " · " + (language == .de ? name : name.lowercased())
     }
 
     /// The noun on its own, for a surface where a control beside it already
@@ -402,8 +408,8 @@ enum LyStr {
 
     /// The hero when nothing has been put right yet — the state no edition of
     /// the redesign ever drew, and the one a fresh install sees.
-    static var nothingYet: String { L("Watching your words") }
-    static var nothingYetNote: String { L("Nothing has needed putting right so far.") }
+    static var nothingYet: String { L(.watchingYourWords) }
+    static var nothingYetNote: String { L(.nothingHasNeededPuttingRightSo) }
 
 
     /// Under the same card when macOS has no dictionary for a layout somebody
@@ -421,7 +427,7 @@ enum LyStr {
     static func noDictionary(layouts: String,
                              language: AppLanguage = AppLanguage.current) -> String {
         let table: [AppLanguage: String] = [
-            .ru: "macOS не даёт словаря для \(layouts), поэтому сам Helm на этой раскладке ничего не решает. Исправление клавишей работает.",
+            .ru: "macOS не дает словаря для \(layouts), поэтому сам Helm на этой раскладке ничего не решает. Исправление клавишей работает.",
             .es: "macOS no tiene diccionario para \(layouts), así que Helm no decide por su cuenta en esa distribución. La corrección con la tecla sigue funcionando.",
             .fr: "macOS ne fournit pas de dictionnaire pour \(layouts)\u{00A0}: Helm ne décide donc rien de lui-même sur cette disposition. La correction à la touche fonctionne toujours.",
             .de: "macOS hat kein Wörterbuch für \(layouts), deshalb entscheidet Helm auf dieser Belegung nichts von selbst. Die Korrektur per Taste funktioniert weiterhin.",
@@ -526,7 +532,7 @@ enum LyStr {
         ]
         let tail: [AppLanguage: String] = [
             .en: "Tap the key again to undo, before you type anything else.",
-            .ru: "Нажмите клавишу ещё раз, до того, как наберёте что-то ещё, чтобы отменить.",
+            .ru: "Отменяется повторным нажатием клавиши — до того, как набрано что-то еще.",
             .es: "Pulsa la tecla otra vez antes de escribir nada más para deshacer.",
             .fr: "Appuyez de nouveau sur la touche avant de taper autre chose pour annuler.",
             .de: "Taste erneut antippen, bevor du etwas anderes tippst, um zu widerrufen.",
