@@ -23,8 +23,14 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
     private let scanners = ScanRegistry<DiskScanner>()
     private let capacity: any VolumeCapacityPort
 
-    public init(capacity: any VolumeCapacityPort = SystemVolumeCapacity()) {
+    private let trashing: @Sendable (URL) throws -> Void
+
+    /// - Parameter trashing: the move, `HelmTrash.moveToTrash` in the app. No default: a construction
+    ///   that forgot it would move whatever it was handed into the Trash of whoever runs it.
+    public init(capacity: any VolumeCapacityPort = SystemVolumeCapacity(),
+                trashing: @escaping @Sendable (URL) throws -> Void) {
         self.capacity = capacity
+        self.trashing = trashing
     }
 
     public func activate() {}
@@ -177,7 +183,7 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
             // (ARCHITECTURE.md § The gates).
             let (allowed, refused) = UserFileScope.partition(Array(Set(paths)))
             return HelmTrash.remove(allowed: allowed, outOfScope: refused,
-                                    module: Self.moduleID)
+                                    module: Self.moduleID, trashing: self.trashing)
         }
     }
 }

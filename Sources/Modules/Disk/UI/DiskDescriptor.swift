@@ -23,13 +23,13 @@ import Module_Disk_Engine
 
     public init() {}
 
-    public func makeEngine(store: NamespacedStore) -> any ModuleEngine { DiskEngine() }
+    public func makeEngine(store: NamespacedStore) -> any ModuleEngine { DiskEngine(trashing: HelmTrash.moveToTrash) }
 
     /// The engine and the model that calls it, built together. Nothing is read
     /// here: the model's saved scan and its mount observers wait for the first
     /// draw (`DiskViewModel.appear()`).
     public func makeModule(store: NamespacedStore) -> ModuleParts<DiskViewModel> {
-        let engine = DiskEngine()
+        let engine = DiskEngine(trashing: HelmTrash.moveToTrash)
         return ModuleParts(engine: engine, model: DiskViewModel(work: engine))
     }
 

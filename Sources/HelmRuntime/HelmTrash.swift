@@ -55,6 +55,11 @@ public enum HelmTrash {
         public var failed: [String] { refused.map(\.path) }
     }
 
+    /// The move as macOS makes it: what an engine passes as `trashing` in the app, and what a test replaces.
+    public static let moveToTrash: @Sendable (URL) throws -> Void = {
+        try FileManager.default.trashItem(at: $0, resultingItemURL: nil)
+    }
+
     /// Trash `allowed`, and record `outOfScope` for everything the caller's own
     /// gate turned away — the refusal has to arrive with the rest of the batch
     /// or the count and the list disagree.
@@ -105,10 +110,7 @@ public enum HelmTrash {
                               ancestry: (String) -> PathCanonical.AncestryIdentity? = {
                                   PathCanonical.ancestryIdentity(of: $0)
                               },
-                              trashing: (URL) throws -> Void = {
-                                  try FileManager.default.trashItem(at: $0,
-                                                                    resultingItemURL: nil)
-                              })
+                              trashing: (URL) throws -> Void = HelmTrash.moveToTrash)
         -> Result {
         // One phase for every deleting module, named per module: only Disk
         // wrapped its call, and Disk was not the outlier, it was the one that got

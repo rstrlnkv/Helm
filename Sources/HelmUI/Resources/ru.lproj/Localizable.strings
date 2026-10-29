@@ -64,7 +64,6 @@
 "Opens its own screen" = "Открывает свой экран";
 "Beta" = "Beta";
 "Blue" = "Синий";
-"Cache — apps rebuild it" = "Кеш — приложения создадут заново";
 "Caches" = "Кеши";
 "Cancel" = "Отменить";
 "Check" = "Проверить";
@@ -72,7 +71,6 @@
 "Checking…" = "Проверка…";
 "Changes here are not being noticed" = "Изменения здесь не отслеживаются";
 "Choose another folder" = "Выбрать другую папку";
-"Choose another…" = "Выбрать другое…";
 "Choose apps" = "Выбор приложений";
 "Choose folder" = "Выбрать папку";
 "Choose this app again to confirm which app it is" = "Выберите приложение заново, чтобы подтвердить его подлинность";
@@ -126,7 +124,6 @@
 "Not watching" = "Не следит";
 "Nothing" = "Ничего";
 "Nothing has needed putting right so far." = "Пока ничего исправлять не понадобилось.";
-"Open Disk" = "Открыть Диск";
 "Option" = "Option";
 "Period" = "Период";
 "Putting selected text right works on a whole sentence now. A space, a comma or a digit anywhere in the selection used to leave all of it untouched, so only a single word could ever be fixed that way." = "Исправление выделенного текста теперь работает на целом предложении. Пробел, запятая или цифра где угодно внутри выделения оставляли нетронутым всё, так что исправить удавалось только одно слово.";
@@ -169,13 +166,11 @@
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "Диагностика: Helm может вести журнал своих действий, чтобы было что прислать, если что-то пошло не так. В Dev-сборках включён всегда.";
 "Disconnected" = "Не подключено";
 "Disconnecting…" = "Отключение…";
-"Disk" = "Диск";
 "Disk Space remembers its last scan: reopen Helm and the ring is already there, labelled with when it was measured. Deleting no longer triggers a full rescan — the ring updates in place." = "«Место на диске» помнит последний скан: откройте Helm — кольцо уже на месте, с подписью, когда оно измерено. Удаление больше не запускает полное пересканирование — кольцо обновляется на месте.";
 "Disk Space suggests what to free: bloated caches, old downloads and big files untouched for months — one tap adds them to the basket. The scan result now survives switching modules and is kept for a day." = "«Место на диске» подсказывает, что освободить: разросшиеся кеши, старые загрузки и большие файлы, к которым давно не прикасались — одно нажатие кладёт их в корзину. Результат скана больше не пропадает при переходе между модулями и хранится сутки.";
 "Disk Space: a ring showing what filled your disk. Click a wedge to go deeper, the middle to come back — folders carry the names Finder gives them, and anything you want gone collects in one list before it goes to the Trash." = "«Место на диске»: кольцо показывает, чем занят диск. Клик по сегменту — вглубь, по центру — назад. Папки называются так же, как в Finder, а всё лишнее собирается в один список и разом уходит в Корзину.";
 "Disk and Login Items are quicker to open, and the app stops freezing for a moment while it reads or saves a scan." = "«Диск» и «Объекты входа» открываются быстрее, а приложение больше не подвисает на мгновение, читая или сохраняя результат сканирования.";
 "Disk keeps working after the module is switched off and on again, and Keep Awake stops asking for your password every session." = "«Диск» продолжает работать после выключения и повторного включения модуля, а «Не спать» перестал спрашивать пароль каждый сеанс.";
-"Disk map" = "Карта диска";
 "Disk no longer lets a top-level folder of the disk — Users, Applications, Library — go into the basket. What is inside them still can." = "«Диск» больше не даёт положить в корзину папку верхнего уровня — «Пользователи», «Программы», «Библиотеки». Их содержимое — по-прежнему можно.";
 "Disk takes a second look: a duplicate finder. Point it at the folder the ring is showing and it lists files that exist more than once — content compared, not names. One copy in each group is marked as the one that stays; the extras go to the basket, and deletion runs through the same guarded path as everything else. Hard links are one file and are never offered." = "«Диск» смотрит второй раз: поиск дубликатов. Направьте его на папку, которую показывает кольцо, — он перечислит файлы, существующие больше одного раза. Сравнивается содержимое, а не имена. Одна копия в каждой группе помечена как остающаяся; лишние уходят в корзину, а удаление идёт тем же защищённым путём, что и всё остальное. Жёсткие ссылки — один файл, они не предлагаются.";
 "Document" = "Документ";
@@ -298,7 +293,6 @@
 "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "Объекты входа теперь можно отключить, а не только удалить. Helm пользуется тем же списком, что и сама macOS: выбор переживает перезагрузку, пароль не нужен, вернуть можно здесь или в Системных настройках.";
 "Logs" = "Логи";
 "Look for leftovers automatically when an app goes to the Trash" = "Автоматически искать остатки, если приложение перемещено в Корзину";
-"Look inside" = "Заглянуть внутрь";
 "MB" = "МБ";
 "MODULES" = "МОДУЛИ";
 "Manage Homebrew packages" = "Управление пакетами Homebrew";
@@ -331,7 +325,6 @@
 "New rule" = "Новое правило";
 "Next" = "Далее";
 "No VPNs" = "Нет VPN";
-"No access" = "Нет доступа";
 "No applications found." = "Приложений не найдено.";
 "No applications match this search." = "Под этот поиск не подошло ни одно приложение.";
 "No duplicates here. Every large file under this folder is one of a kind." = "Дубликатов нет. Каждый крупный файл в этой папке существует в единственном экземпляре.";
@@ -351,18 +344,15 @@
 "None" = "Нет";
 "Not checked yet" = "Ещё не проверялось";
 "Not connected" = "Не подключено";
-"Not modified in months" = "Не изменялся месяцами";
 "Not running" = "Не активно";
 "Nothing Helm runs can hang. Homebrew, the VPN list and the power settings could stop forever, taking the screen waiting for them with them." = "Ничто из запускаемого Helm не зависает. Homebrew, список VPN и настройки питания могли остановиться навсегда, забрав с собой ждавший их экран.";
 "Nothing in this folder matches yet." = "Пока ничто в этой папке не подходит.";
-"Nothing in this folder." = "В этой папке ничего нет.";
 "Nothing logged yet." = "Пока ничего не записано.";
 "Nothing matches these filters." = "Под эти фильтры ничего не попало.";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "Ничего на самом деле не «освобождалось» при перемещении в Корзину — файл просто оказывался в Корзине, на том же томе. «Диск», «Дубликаты», «Объекты входа и расширения» и «Удаление приложений» теперь так и говорят («Перемещено в Корзину — 4 КБ»), а «Диск» больше не считает это освобождённым местом, пока Корзина не очищена.";
 "Notification" = "Уведомление";
 "Number of days" = "Число дней";
 "No key" = "Нет";
-"Old download" = "Старая загрузка";
 "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways." = "На широком окне настройки больше не разъезжаются: все страницы начинаются от одного левого края, и переключение между ними не сдвигает содержимое вбок.";
 "On launch and quit" = "При запуске и выходе";
 "On launch only" = "Только при запуске";
@@ -391,7 +381,6 @@
 "Permissions are called what System Settings calls them, so the row Helm points you at is the row you find." = "Разрешения называются так же, как в «Системных настройках», — вы находите именно тот пункт, на который Helm ссылается.";
 "Permissions at a glance: Settings shows whether Helm has Full Disk Access and lists installed system extensions. When a file can’t be removed, Helm names the reason and links to the right setting." = "Разрешения на виду: в настройках видно, есть ли у Helm «Доступ к диску», и перечислены системные расширения. Если файл удалить не удалось, Helm называет причину и ведёт в нужную настройку.";
 "Pick a folder and Helm will read what is in it, comparing content rather than names." = "Выберите папку — Helm прочитает, что в ней, сравнивая содержимое, а не имена.";
-"Pick a volume, or scan any folder." = "Выберите том или просканируйте любую папку.";
 "Pink" = "Розовый";
 "Pinned" = "Закреплено";
 "Play a sound when a word is fixed" = "Звук при исправлении слова";
@@ -407,7 +396,6 @@
 "Quitting an app now disconnects only a VPN Helm itself raised for it — never one you dialled up by hand." = "Закрытие приложения теперь отключает только тот VPN, который Helm сам для неё поднял, — и никогда тот, что вы включили вручную.";
 "Reading files…" = "Чтение файлов…";
 "Reading the package list…" = "Читаем список пакетов…";
-"Recommendations" = "Рекомендации";
 "Red" = "Красный";
 "Redesigned About: the icon sits in a bezel that turns while updates are checked, version and build read as instrument dials, and update controls live in one card." = "Новое окно «О Helm»: иконка в безеле, который вращается во время проверки обновлений, версия и сборка — как показания приборов, управление обновлениями собрано в одну карточку.";
 "Refresh list" = "Перечитать список";
@@ -437,10 +425,8 @@
 "Run now" = "Прогнать сейчас";
 "Running" = "Запущено";
 "Saved windows" = "Сохранённые окна";
-"Scan a folder…" = "Сканировать папку…";
 "Scan again" = "Сканировать заново";
 "Scan for leftovers" = "Найти остатки";
-"Scanning" = "Сканирование";
 "Scanning…" = "Сканирование…";
 "Search" = "Поиск";
 "Search again" = "Искать заново";
@@ -470,7 +456,6 @@
 "Size in megabytes" = "Размер в мегабайтах";
 "Sizes are right where they were nearly right. A file just under a round number was shown with the unit below it — \"1000 KB\" instead of \"1 MB\" — on every screen that names a size. And removing a folder now reports what the folder held, where it used to report nothing at all." = "Размеры верны там, где были почти верны. Файл чуть меньше круглого числа показывался в меньшей единице — «1000 КБ» вместо «1 МБ» — на каждом экране, где есть размер. А удаление папки теперь сообщает, сколько в ней было, а не ноль.";
 "Skip" = "Пропустить";
-"Smaller items" = "Мелкие объекты";
 "Sort into subfolder" = "Разложить по подпапкам";
 "Stop" = "Стоп";
 "Stop could leave an abandoned scan’s folders sitting in the basket, above the Trash button, on a screen that no longer had anything to do with them — and emptying the basket credited the space to whichever volume you’d since picked." = "«Стоп» мог оставить папки брошенного скана лежащими в корзине приложения, над кнопкой «Переместить в Корзину», на экране, который уже не имел к ним отношения, — а опустошение корзины засчитывало место тому, который был выбран к этому моменту.";
@@ -581,8 +566,6 @@
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "Предупреждения читаются в светлой теме, образцы иконок и цветов достижимы с клавиатуры, а размеры и названия совпадают с macOS: байт сокращён до «Б», каждый экран зовёт разрешение так же, как Настройки.";
 "Website data" = "Данные сайтов";
 "Welcome to Helm" = "Добро пожаловать в Helm";
-"What could be deleted" = "Что можно удалить";
-"What is taking up space" = "Что занимает место на диске";
 "What to check" = "Что проверять";
 "What to do" = "Что сделать";
 "What would happen" = "Что произойдёт";
@@ -603,7 +586,6 @@
 "Watch this folder" = "Наблюдать за этой папкой";
 "Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "Без «Доступа к диску» контейнеры приложения останутся на диске, а Корзину Helm не увидит и остатки не найдёт.";
 "Without Full Disk Access an app’s containers stay behind." = "Без «Доступа к диску» контейнеры приложения останутся на диске.";
-"Without Full Disk Access some folders scan as empty." = "Без «Доступа к диску» часть папок будет показана пустыми.";
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "Пересмотрены надписи и размеры по всему приложению: короче формулировки, одно название на одну вещь, размеры на вашем языке — «432,95 ГБ», а не «432,95 GB».";
 "Write a log file" = "Вести журнал";
 "Yellow" = "Желтый";
@@ -621,7 +603,6 @@
 "ends with" = "заканчивается на";
 "expanded" = "развернутая";
 "failed" = "не удалось";
-"free" = "свободно";
 "guess" = "догадка";
 "is" = "равно";
 "larger than" = "больше чем";

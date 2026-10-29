@@ -5,8 +5,8 @@
 // across source lines buys nothing and risks the key. `.swiftlint.yml` already
 // says these lines "are correct at that length"; the exemption is here so the
 // 320-character warning can go on meaning what that comment claims it means —
-// a notice about runaway *code* — instead of firing 61 times on the one case
-// it excuses.
+// a notice about runaway *code* — instead of firing on every line of the one
+// case it excuses.
 
 import SwiftUI
 import HelmUI

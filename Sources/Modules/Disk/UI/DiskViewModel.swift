@@ -1,6 +1,5 @@
 import AppKit
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmUI
 import Module_Disk_Engine

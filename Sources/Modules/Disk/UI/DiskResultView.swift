@@ -52,6 +52,8 @@ struct DiskResultView: View {
                              onFoldConsumed: { dvm.foldingBackFrom = nil },
                              targetLayout: { dvm.ringLayout(forFocusAt: $0) })
                 }
+                // The ring column: the 300 pt frame `DiskLayout` measured it with (its
+                // table's ring-column row), 380 the ceiling a wide pane may stretch it to.
                 .frame(minWidth: 300, idealWidth: 360, maxWidth: 380)
                 .aspectRatio(1, contentMode: .fit)
                 .padding(HelmSpace.s5)
@@ -172,7 +174,7 @@ private struct BreadcrumbBar: View {
     @State private var showingAdvice = false
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: HelmSpace.s4) {
             Button {
                 withAnimation(HelmMotion.emphasis) { dvm.back() }
             } label: {
@@ -189,10 +191,10 @@ private struct BreadcrumbBar: View {
             // gaps between them, which reads as a layout fault rather than as
             // a path. Asking the group for its ideal width makes each maximum
             // behave as the ceiling it was meant to be.
-            HStack(spacing: 8) { crumbs }
+            HStack(spacing: HelmSpace.s4) { crumbs }
                 .fixedSize()
 
-            Spacer(minLength: 12)
+            Spacer(minLength: HelmSpace.s5)
 
             // **Either walk**, not only the volume's. Drilling past the depth the
             // scan reached starts a real walk of that folder, and this pair was
@@ -202,7 +204,7 @@ private struct BreadcrumbBar: View {
             // here by construction: a folder measurement asks for no updates
             // (`measureAndDrill` passes no sink), so nothing of it reaches `tick`.
             if dvm.walking {
-                HStack(spacing: 6) {
+                HStack(spacing: HelmSpace.s3) {
                     ProgressView().controlSize(.small)
                     if let tick = dvm.tick, layout.showsScanStatement {
                         Text(DkStr.liveCount(tick.files))
@@ -236,7 +238,7 @@ private struct BreadcrumbBar: View {
                 }
             }
 
-            HStack(spacing: 8) {
+            HStack(spacing: HelmSpace.s4) {
                 Button(DkStr.scanAgain) { Task { await dvm.rescan() } }
                     .disabled(dvm.live)
                 // The way out. "Scan again" measures the same place forever, so
@@ -247,7 +249,7 @@ private struct BreadcrumbBar: View {
             }
             .controlSize(.small)
         }
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+        .helmPageStrip()
     }
 
     /// What the ring is showing: a stopped walk, a memory of a measurement, or a
@@ -324,6 +326,7 @@ private struct BreadcrumbBar: View {
             Text(dvm.displayName(for: entry))
                 .font(HelmText.sectionHeading)
                 .lineLimit(1).truncationMode(.middle)
+                // A ceiling for a long name, not a width held for a short one.
                 .frame(maxWidth: 150, alignment: .leading)
         } else {
             Button {
@@ -344,7 +347,7 @@ private struct BreadcrumbBar: View {
 
     private var chevron: some View {
         Image(systemName: "chevron.compact.right")
-            .font(.system(size: 11))
+            .font(HelmText.rowDetail)
             .foregroundStyle(HelmText.separator)
     }
 }
@@ -406,7 +409,7 @@ private struct BasketButton: View {
 /// A row mirrors its wedge: same swatch, and a background bar whose width is
 /// the item's share of the focused folder — the list reads as a bar chart.
 private struct ChildRow: View {
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.helmAccessibility) private var accessibility
     /// True when every visible row would carry the same caption — at a volume
     /// root, all ten of them. Homebrew already wrote this lesson down: "46 of 47
     /// rows were 'formula', and a label with one value is an ornament."
@@ -435,13 +438,16 @@ private struct ChildRow: View {
 
     private var isHovered: Bool { hovered == child.path }
 
+    private var increased: Bool { accessibility.increasedContrast }
+
     private func reveal() { HelmReveal.inFinder(child.path) }
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: HelmSpace.s4) {
             Circle()
-                .fill(child.isDirectory ? DiskPalette.base(for: child.path)
-                                        : Color.secondary.opacity(0.5))
+                .fill(child.isDirectory ? DiskPalette.base(for: child.path, increased: increased)
+                                        : DiskPalette.fileDot)
+                // The colour key of the row; the ring's tooltip draws a 7 pt one.
                 .frame(width: 8, height: 8)
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 // The flag, not the name: a person's own file called "…" was
@@ -452,9 +458,9 @@ private struct ChildRow: View {
                     // The token, not `.orange`: the system colour is tuned for
                     // a dark background and measures 2.31:1 on a light window,
                     // which is ten-point body text nobody can read.
-                    Text(DkStr.noAccess).font(.caption2).foregroundStyle(HelmSignal.warning)
+                    Text(DkStr.noAccess).font(HelmText.smallPrint).foregroundStyle(HelmSignal.warning)
                 } else if !removable, !everyRowIsSystem {
-                    Text(DkStr.systemItem).font(.caption2).foregroundStyle(HelmText.faint)
+                    Text(DkStr.systemItem).font(HelmText.smallPrint).foregroundStyle(HelmText.faint)
                 }
             }
             .accessibilityElement(children: .combine)
@@ -492,7 +498,7 @@ private struct ChildRow: View {
                 }
             }
             .buttonStyle(.borderless)
-            .font(.system(size: 11))
+            .font(HelmText.rowDetail)
             .foregroundStyle(HelmText.quiet)
             .frame(width: 13)
             if removable {
@@ -501,25 +507,16 @@ private struct ChildRow: View {
             }
         }
         .padding(.vertical, HelmSpace.s1)
-        .padding(.horizontal, 6)
+        .padding(.horizontal, HelmSpace.s3)
         .background(
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     if isHovered {
                         RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
-                            .fill(DiskPalette.base(for: child.path)
-                                .opacity(colorScheme == .light ? 0.38 : 0.16))
+                            .fill(DiskPalette.rowHover(for: child.path, increased: increased))
                     }
                     RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
-                        // Heavier in light. `DiskPalette` is eight fixed HSB
-                        // constants with no idea what it is drawn on, and one
-                        // opacity does not carry the same weight on both: at
-                        // 0.10 the largest bar measures about 1.10:1 over a
-                        // white list against 1.17:1 over the dark one, and the
-                        // smaller bars simply are not there. Same trick
-                        // `HelmMetricStrip.legible` uses for the same reason.
-                        .fill(DiskPalette.base(for: child.path)
-                            .opacity(colorScheme == .light ? 0.28 : 0.10))
+                        .fill(DiskPalette.rowBar(for: child.path, hovered: isHovered, increased: increased))
                         .frame(width: max(proxy.size.width * fraction, 2))
                 }
             }
@@ -564,15 +561,17 @@ private struct AdviceList: View {
                 .padding(.horizontal, HelmSpace.s5).padding(.top, HelmSpace.s5).padding(.bottom, HelmSpace.s4)
             Divider()
             ScrollView {
-                VStack(spacing: 2) {
+                VStack(spacing: HelmSpace.s1) {
                     ForEach(advice) { item in
                         row(item)
                     }
                 }
-                .padding(8)
+                .padding(HelmSpace.s4)
             }
+            // The tallest the list grows before it scrolls.
             .frame(maxHeight: 320)
         }
+        // The popover's width.
         .frame(width: 380)
     }
 
@@ -582,11 +581,12 @@ private struct AdviceList: View {
         return HStack(spacing: HelmSpace.s5) {
             Image(systemName: icon(item.kind))
                 .foregroundStyle(HelmText.quiet)
+                // The icon column of an advice row.
                 .frame(width: 18)
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 Text(item.name).lineLimit(1).truncationMode(.middle)
                 Text(DkStr.adviceReason(item))
-                    .font(.caption2)
+                    .font(HelmText.smallPrint)
                     .foregroundStyle(HelmText.quiet)
             }
             Spacer()

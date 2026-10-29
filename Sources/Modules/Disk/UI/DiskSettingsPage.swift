@@ -28,7 +28,7 @@ struct DiskSettingsPage: View {
             // screen used to say nothing at all about that.
             if diskAccess == .denied {
                 HelmPermissionNote(need: .fullDiskAccess, text: DkStr.scanNeedsAccess)
-                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+                    .helmPageStrip()
                 Divider()
             }
             switch dvm.phase {
@@ -84,14 +84,14 @@ struct DiskSettingsPage: View {
 
     private var startState: some View {
         ScrollView {
-            VStack(spacing: 12) {
+            VStack(spacing: HelmSpace.s5) {
                 // The same leading pin as the note under it and the cards
                 // below: without a frame the `VStack` centred this one line
                 // over a left-aligned column.
                 Text(DkStr.startHint)
                     .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 4)
+                    .padding(.top, HelmSpace.s2)
                 ForEach(dvm.volumes) { volume in
                     volumeCard(volume)
                 }
@@ -102,7 +102,7 @@ struct DiskSettingsPage: View {
                         .frame(maxWidth: .infinity)
                 }
                 .controlSize(.large)
-                .padding(.top, 4)
+                .padding(.top, HelmSpace.s2)
             }
             // 20, the same inset the header, the permission note, the scanning
             // state and the result all use. The centred 744 pt column belongs
@@ -119,7 +119,7 @@ struct DiskSettingsPage: View {
         Button {
             Task { await dvm.scan(path: volume.path) }
         } label: {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: HelmSpace.s4) {
                 HStack {
                     Image(systemName: "internaldrive")
                         .foregroundStyle(HelmText.quiet)
@@ -129,16 +129,7 @@ struct DiskSettingsPage: View {
                         .font(HelmText.figureFont)
                         .foregroundStyle(HelmText.quiet)
                 }
-                GeometryReader { proxy in
-                    let ratio = volume.totalBytes > 0
-                        ? Double(volume.usedBytes) / Double(volume.totalBytes) : 0
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.primary.opacity(0.10))
-                        Capsule().fill(Color.accentColor.opacity(0.75))
-                            .frame(width: proxy.size.width * ratio)
-                    }
-                }
-                .frame(height: 6)
+                CapacityBar(volume: volume, height: 6)
                 Text(formatted(volume.freeBytes) + " " + DkStr.free)
                     .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
             }
@@ -175,7 +166,7 @@ struct DiskSettingsPage: View {
             basketRow
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
+        .helmPageStrip()
     }
 
     /// What the last press said.

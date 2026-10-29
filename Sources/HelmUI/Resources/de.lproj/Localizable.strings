@@ -64,7 +64,6 @@
 "Opens its own screen" = "Öffnet einen eigenen Bildschirm";
 "Beta" = "Beta";
 "Blue" = "Blau";
-"Cache — apps rebuild it" = "Cache — Apps legen ihn neu an";
 "Caches" = "Caches";
 "Cancel" = "Abbrechen";
 "Check" = "Prüfen";
@@ -72,7 +71,6 @@
 "Checking…" = "Suche…";
 "Changes here are not being noticed" = "Änderungen hier werden nicht bemerkt";
 "Choose another folder" = "Anderen Ordner wählen";
-"Choose another…" = "Anderes wählen…";
 "Choose apps" = "Apps auswählen";
 "Choose folder" = "Ordner wählen";
 "Choose this app again to confirm which app it is" = "Wähle diese App erneut aus, um ihre Identität zu bestätigen";
@@ -126,7 +124,6 @@
 "Not watching" = "Beobachtet nicht";
 "Nothing" = "Nichts";
 "Nothing has needed putting right so far." = "Bisher musste nichts korrigiert werden.";
-"Open Disk" = "Volume öffnen";
 "Option" = "Option-Taste";
 "Period" = "Zeitraum";
 "Putting selected text right works on a whole sentence now. A space, a comma or a digit anywhere in the selection used to leave all of it untouched, so only a single word could ever be fixed that way." = "Ausgewählten Text zu korrigieren funktioniert jetzt für einen ganzen Satz. Ein Leerzeichen, ein Komma oder eine Ziffer irgendwo in der Auswahl ließ alles unverändert — korrigieren ließ sich so nur ein einzelnes Wort.";
@@ -169,13 +166,11 @@
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "Diagnose: Helm kann protokollieren, was es tut — bereit zum Teilen, wenn etwas schiefgeht. In Dev-Builds immer an.";
 "Disconnected" = "Getrennt";
 "Disconnecting…" = "Verbindung trennen …";
-"Disk" = "Festplatte";
 "Disk Space remembers its last scan: reopen Helm and the ring is already there, labelled with when it was measured. Deleting no longer triggers a full rescan — the ring updates in place." = "Speicherplatz merkt sich den letzten Scan: Helm öffnen und der Ring ist schon da, mit dem Zeitpunkt der Messung. Löschen startet keinen kompletten Neuscan mehr — der Ring aktualisiert sich direkt.";
 "Disk Space suggests what to free: bloated caches, old downloads and big files untouched for months — one tap adds them to the basket. The scan result now survives switching modules and is kept for a day." = "Speicherplatz schlägt vor, was Platz freigibt: gewachsene Caches, alte Downloads und große, monatelang unberührte Dateien — ein Klick legt sie in den Korb. Das Scan-Ergebnis übersteht jetzt den Modulwechsel und bleibt einen Tag erhalten.";
 "Disk Space: a ring showing what filled your disk. Click a wedge to go deeper, the middle to come back — folders carry the names Finder gives them, and anything you want gone collects in one list before it goes to the Trash." = "Speicherplatz: Ein Ring zeigt, was die Platte füllt. Segment anklicken für tiefer, Mitte für zurück; Ordner tragen ihre Finder-Namen, und alles Überflüssige sammelt sich in einer Liste und wandert gemeinsam in den Papierkorb.";
 "Disk and Login Items are quicker to open, and the app stops freezing for a moment while it reads or saves a scan." = "Festplatte und Anmeldeobjekte öffnen schneller, und die App friert nicht mehr kurz ein, während sie einen Scan liest oder sichert.";
 "Disk keeps working after the module is switched off and on again, and Keep Awake stops asking for your password every session." = "Festplatte funktioniert weiter, nachdem das Modul aus- und wieder eingeschaltet wurde, und Wach halten fragt nicht mehr in jeder Sitzung nach dem Passwort.";
-"Disk map" = "Festplattenkarte";
 "Disk no longer lets a top-level folder of the disk — Users, Applications, Library — go into the basket. What is inside them still can." = "Festplatte lässt keinen Ordner der obersten Ebene mehr in den Korb legen. Ihr Inhalt schon.";
 "Disk takes a second look: a duplicate finder. Point it at the folder the ring is showing and it lists files that exist more than once — content compared, not names. One copy in each group is marked as the one that stays; the extras go to the basket, and deletion runs through the same guarded path as everything else. Hard links are one file and are never offered." = "Festplatte schaut ein zweites Mal hin: eine Duplikatsuche. Auf den Ordner des Rings gerichtet listet sie Dateien, die mehr als einmal existieren — verglichen wird der Inhalt, nicht der Name. Eine Kopie je Gruppe bleibt; die übrigen wandern in den Korb.";
 "Document" = "Dokument";
@@ -298,7 +293,6 @@
 "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "Anmeldeobjekte lassen sich ausschalten statt nur löschen. Helm nutzt dieselbe Liste wie macOS: die Wahl übersteht einen Neustart, braucht kein Passwort und ist umkehrbar.";
 "Logs" = "Protokolle";
 "Look for leftovers automatically when an app goes to the Trash" = "Automatisch nach Resten suchen, wenn eine App in den Papierkorb kommt";
-"Look inside" = "Hineinsehen";
 "MB" = "MB";
 "MODULES" = "MODULE";
 "Manage Homebrew packages" = "Homebrew-Pakete verwalten";
@@ -331,7 +325,6 @@
 "New rule" = "Neue Regel";
 "Next" = "Weiter";
 "No VPNs" = "Keine VPNs";
-"No access" = "Kein Zugriff";
 "No applications found." = "Keine Apps gefunden.";
 "No applications match this search." = "Keine App entspricht dieser Suche.";
 "No duplicates here. Every large file under this folder is one of a kind." = "Keine Duplikate. Jede große Datei in diesem Ordner gibt es genau einmal.";
@@ -351,18 +344,15 @@
 "None" = "Keiner";
 "Not checked yet" = "Noch nicht geprüft";
 "Not connected" = "Nicht verbunden";
-"Not modified in months" = "Seit Monaten nicht geändert";
 "Not running" = "Nicht aktiv";
 "Nothing Helm runs can hang. Homebrew, the VPN list and the power settings could stop forever, taking the screen waiting for them with them." = "Nichts, was Helm ausführt, kann hängen bleiben. Homebrew, die VPN-Liste und die Energieeinstellungen konnten für immer stehen bleiben und den wartenden Bildschirm mitnehmen.";
 "Nothing in this folder matches yet." = "Derzeit passt nichts in diesem Ordner.";
-"Nothing in this folder." = "In diesem Ordner ist nichts.";
 "Nothing logged yet." = "Noch nichts protokolliert.";
 "Nothing matches these filters." = "Nichts passt zu diesen Filtern.";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "Beim Verschieben in den Papierkorb wurde in Wirklichkeit nichts „freigegeben“ — die Datei landete nur dort, auf demselben Volume. Festplatte, Duplikate, Anmeldeobjekte & Erweiterungen und die Deinstallation sagen das jetzt so („In den Papierkorb gelegt — 4 KB“), und Festplatte zählt es erst als zurückgewonnenen Platz, wenn der Papierkorb geleert wird.";
 "Notification" = "Mitteilung";
 "Number of days" = "Anzahl der Tage";
 "No key" = "Keine Taste";
-"Old download" = "Alter Download";
 "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways." = "In einem breiten Fenster verrutschen die Einstellungen nicht mehr: Alle Seiten beginnen an derselben linken Kante.";
 "On launch and quit" = "Beim Start und Beenden";
 "On launch only" = "Nur beim Start";
@@ -391,7 +381,6 @@
 "Permissions are called what System Settings calls them, so the row Helm points you at is the row you find." = "Berechtigungen heißen wie in den Systemeinstellungen — du findest genau die Zeile, auf die Helm zeigt.";
 "Permissions at a glance: Settings shows whether Helm has Full Disk Access and lists installed system extensions. When a file can’t be removed, Helm names the reason and links to the right setting." = "Berechtigungen im Blick: Die Einstellungen zeigen, ob Helm Festplattenvollzugriff hat, und listen Systemerweiterungen. Lässt sich eine Datei nicht entfernen, nennt Helm den Grund und verlinkt die passende Einstellung.";
 "Pick a folder and Helm will read what is in it, comparing content rather than names." = "Wähle einen Ordner; Helm liest, was darin ist, und vergleicht den Inhalt, nicht die Namen.";
-"Pick a volume, or scan any folder." = "Volume wählen oder einen beliebigen Ordner scannen.";
 "Pink" = "Rosa";
 "Pinned" = "Angeheftet";
 "Play a sound when a word is fixed" = "Ton bei einer Korrektur";
@@ -407,7 +396,6 @@
 "Quitting an app now disconnects only a VPN Helm itself raised for it — never one you dialled up by hand." = "Das Beenden einer App trennt nur das VPN, das Helm dafür aufgebaut hat — nie eines, das du selbst gestartet hast.";
 "Reading files…" = "Dateien werden gelesen…";
 "Reading the package list…" = "Paketliste wird gelesen…";
-"Recommendations" = "Empfehlungen";
 "Red" = "Rot";
 "Redesigned About: the icon sits in a bezel that turns while updates are checked, version and build read as instrument dials, and update controls live in one card." = "Neu gestaltetes Über-Fenster: das Symbol in einer Lünette, die sich während der Update-Prüfung dreht, Version und Build als Instrumentenanzeige, Update-Steuerung in einer Karte.";
 "Refresh list" = "Liste aktualisieren";
@@ -437,10 +425,8 @@
 "Run now" = "Jetzt ausführen";
 "Running" = "Läuft";
 "Saved windows" = "Gespeicherte Fenster";
-"Scan a folder…" = "Ordner scannen…";
 "Scan again" = "Erneut scannen";
 "Scan for leftovers" = "Nach Resten scannen";
-"Scanning" = "Wird gescannt";
 "Scanning…" = "Wird gescannt …";
 "Search" = "Suchen";
 "Search again" = "Erneut suchen";
@@ -470,7 +456,6 @@
 "Size in megabytes" = "Größe in Megabyte";
 "Sizes are right where they were nearly right. A file just under a round number was shown with the unit below it — \"1000 KB\" instead of \"1 MB\" — on every screen that names a size. And removing a folder now reports what the folder held, where it used to report nothing at all." = "Größen stimmen dort, wo sie fast stimmten: „1000 KB“ statt „1 MB“, auf jedem Bildschirm. Und das Löschen eines Ordners meldet, was darin war.";
 "Skip" = "Überspringen";
-"Smaller items" = "Kleinere Objekte";
 "Sort into subfolder" = "In Unterordner einsortieren";
 "Stop" = "Stopp";
 "Stop could leave an abandoned scan’s folders sitting in the basket, above the Trash button, on a screen that no longer had anything to do with them — and emptying the basket credited the space to whichever volume you’d since picked." = "Stopp konnte die Ordner eines verlassenen Scans im Korb liegen lassen, über dem Papierkorb-Knopf, auf einem Bildschirm, der nichts mehr mit ihnen zu tun hatte — und das Leeren des Korbs schrieb den Platz dem gerade gewählten Volume gut.";
@@ -581,8 +566,6 @@
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "Warnungen sind im hellen Erscheinungsbild lesbar, Symbol- und Farbfelder sind per Tastatur erreichbar, und Größen und Namen folgen macOS in jeder Sprache.";
 "Website data" = "Website-Daten";
 "Welcome to Helm" = "Willkommen bei Helm";
-"What could be deleted" = "Was gelöscht werden könnte";
-"What is taking up space" = "Was den Speicherplatz belegt";
 "What to check" = "Was geprüft wird";
 "What to do" = "Was geschehen soll";
 "What would happen" = "Was passieren würde";
@@ -603,7 +586,6 @@
 "Watch this folder" = "Diesen Ordner beobachten";
 "Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "Ohne Festplattenvollzugriff bleiben die Container einer App liegen, und Helm sieht den Papierkorb nicht, um nach Resten zu suchen.";
 "Without Full Disk Access an app’s containers stay behind." = "Ohne Festplattenvollzugriff bleiben die Container der App liegen.";
-"Without Full Disk Access some folders scan as empty." = "Ohne Festplattenvollzugriff erscheinen manche Ordner leer.";
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "Texte und Größen app-weit überarbeitet: kürzere Beschriftungen, ein Name pro Sache, Größen in deiner Sprache.";
 "Write a log file" = "Protokoll schreiben";
 "Yellow" = "Gelb";
@@ -621,7 +603,6 @@
 "ends with" = "endet mit";
 "expanded" = "erweitert";
 "failed" = "fehlgeschlagen";
-"free" = "frei";
 "guess" = "Vermutung";
 "is" = "ist";
 "larger than" = "größer als";

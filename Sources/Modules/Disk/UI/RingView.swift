@@ -32,6 +32,7 @@ struct RingView: View {
     /// will exist rather than towards a transform of the ones that do.
     var targetLayout: (String) -> [RingSegment]
 
+    @Environment(\.helmAccessibility) private var accessibility
     @State private var hoverPoint: CGPoint?
     /// The wedge currently opening (or closing), and how far along it is.
     /// Non-nil only while the animation runs; hit-testing is suspended then, so
@@ -51,6 +52,10 @@ struct RingView: View {
     /// the spare is what the new outermost ring slides in from during a drill,
     /// and it is drawn only while that is happening.
     static let visibleRings = 3
+
+    /// The folder's size in the middle of the ring: 19 pt, where the kit's
+    /// `HelmText.metricFont` is 16 pt.
+    private static let figureFont = Font.system(size: 19, weight: .medium).monospacedDigit()
 
     /// The elements the drawing implies, in the order the eye reads it: where
     /// you are, then what is in it.
@@ -216,7 +221,8 @@ struct RingView: View {
     }
 
     private func tooltip(for segment: RingSegment) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: HelmSpace.s3) {
+            // The tooltip's colour key, 7 pt; the list's dot is 8.
             Circle().fill(color(for: segment)).frame(width: 7, height: 7)
             Text(segment.isOther ? DkStr.otherItems
                                  : (DiskViewModel.folderName(for: segment.path) ?? segment.name))
@@ -238,7 +244,7 @@ struct RingView: View {
                 .foregroundStyle(HelmText.quiet)
                 .lineLimit(1).truncationMode(.middle)
             Text(Bytes(focusBytes))
-                .font(.system(size: 19, weight: .medium).monospacedDigit())
+                .font(RingView.figureFont)
                 .contentTransition(.numericText())
                 // The same curve **and the same length** as the arcs around it.
                 //
@@ -253,12 +259,12 @@ struct RingView: View {
                                                 ? foldingBackLevels : 1),
                            value: focusBytes)
             if growing {
-                Text(DkStr.scanning + "…")
-                    .font(.caption2)
+                Text(DkStr.scanningNow)
+                    .font(HelmText.smallPrint)
                     .foregroundStyle(HelmText.faint)
             }
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, HelmSpace.s4)
     }
 
     // MARK: - Geometry
@@ -277,14 +283,13 @@ struct RingView: View {
     /// Depth fades toward the rim, hover lifts; free space, folded slivers and
     /// unreadable folders stay deliberately quiet so real data reads first.
     private func color(for segment: RingSegment) -> Color {
-        if segment.isFreeSpace { return Color.primary.opacity(0.06) }
-        if segment.noAccess { return Color.orange.opacity(0.22) }
-        if segment.isOther { return Color.primary.opacity(0.10) }
+        if segment.isFreeSpace { return DiskPalette.freeSpace }
+        if segment.noAccess { return DiskPalette.noAccess }
+        if segment.isOther { return DiskPalette.otherItems }
 
-        let base = DiskPalette.base(for: segment.path)
-        let isHovered = hovered == segment.path
-        let recede = 1.0 - Double(segment.ring) * 0.14
-        return base.opacity(isHovered ? 1.0 : recede)
+        let increased = accessibility.increasedContrast
+        if hovered == segment.path { return DiskPalette.base(for: segment.path, increased: increased) }
+        return DiskPalette.wedge(for: segment.path, ring: segment.ring, increased: increased)
     }
 }
 

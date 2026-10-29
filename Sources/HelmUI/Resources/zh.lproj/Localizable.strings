@@ -64,7 +64,6 @@
 "Opens its own screen" = "打开它自己的页面";
 "Beta" = "Beta";
 "Blue" = "蓝色";
-"Cache — apps rebuild it" = "缓存 — 应用会重新生成";
 "Caches" = "缓存";
 "Cancel" = "取消";
 "Check" = "检查";
@@ -72,7 +71,6 @@
 "Checking…" = "检查中…";
 "Changes here are not being noticed" = "这里的更改不会被察觉";
 "Choose another folder" = "选择其他文件夹";
-"Choose another…" = "选择其他…";
 "Choose apps" = "选择应用";
 "Choose folder" = "选择文件夹";
 "Choose this app again to confirm which app it is" = "请重新选择此应用以确认其身份";
@@ -126,7 +124,6 @@
 "Not watching" = "未在监看";
 "Nothing" = "无";
 "Nothing has needed putting right so far." = "到目前为止还没有需要修正的内容。";
-"Open Disk" = "打开“磁盘”";
 "Option" = "Option";
 "Period" = "时间段";
 "Putting selected text right works on a whole sentence now. A space, a comma or a digit anywhere in the selection used to leave all of it untouched, so only a single word could ever be fixed that way." = "修正选中的文字现在可以作用于整句。以前选区中只要有空格、逗号或数字，整段都不会改动，能修正的只有单个词。";
@@ -169,13 +166,11 @@
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "诊断：Helm 可记录自身操作日志，出问题时随时分享。开发版始终开启。";
 "Disconnected" = "已断开连接";
 "Disconnecting…" = "正在断开连接…";
-"Disk" = "磁盘";
 "Disk Space remembers its last scan: reopen Helm and the ring is already there, labelled with when it was measured. Deleting no longer triggers a full rescan — the ring updates in place." = "磁盘空间会记住上次扫描：重新打开 Helm，环形图已在，并标注测量时间。删除不再触发整盘重扫，环形图就地更新。";
 "Disk Space suggests what to free: bloated caches, old downloads and big files untouched for months — one tap adds them to the basket. The scan result now survives switching modules and is kept for a day." = "磁盘空间会建议可释放的内容：膨胀的缓存、旧下载和数月未动的大文件——点一下即可加入收集篮。扫描结果在切换模块后保留，有效期一天。";
 "Disk Space: a ring showing what filled your disk. Click a wedge to go deeper, the middle to come back — folders carry the names Finder gives them, and anything you want gone collects in one list before it goes to the Trash." = "磁盘空间：用环形图显示磁盘被什么占用。点击扇区深入，点击中心返回；文件夹使用访达中的名称，要删的先收进一处再一起移到废纸篓。";
 "Disk and Login Items are quicker to open, and the app stops freezing for a moment while it reads or saves a scan." = "“磁盘”和“登录项”打开更快，读写扫描结果时不再短暂卡顿。";
 "Disk keeps working after the module is switched off and on again, and Keep Awake stops asking for your password every session." = "关闭再开启模块后“磁盘”仍可用，“保持唤醒”也不再每次都要求输入密码。";
-"Disk map" = "磁盘分布图";
 "Disk no longer lets a top-level folder of the disk — Users, Applications, Library — go into the basket. What is inside them still can." = "“磁盘”不再允许把磁盘顶层文件夹放入收集篮，其中的内容仍然可以。";
 "Disk takes a second look: a duplicate finder. Point it at the folder the ring is showing and it lists files that exist more than once — content compared, not names. One copy in each group is marked as the one that stays; the extras go to the basket, and deletion runs through the same guarded path as everything else. Hard links are one file and are never offered." = "“磁盘”再看一眼：重复文件查找。指向环形图当前显示的文件夹，它会列出存在多份的文件——比较内容而非文件名。每组保留一份，多余的放入收集篮，删除仍走同样受保护的路径。硬链接是同一个文件，不会被列出。";
 "Document" = "文稿";
@@ -298,7 +293,6 @@
 "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "登录项现在可以关闭，而不只是删除。Helm 使用 macOS 自身的列表：重启后依然有效，无需密码，可随时恢复。";
 "Logs" = "日志";
 "Look for leftovers automatically when an app goes to the Trash" = "App 移到废纸篓时自动查找残留文件";
-"Look inside" = "查看内部";
 "MB" = "MB";
 "MODULES" = "模块";
 "Manage Homebrew packages" = "管理 Homebrew 软件包";
@@ -331,7 +325,6 @@
 "New rule" = "新建规则";
 "Next" = "下一步";
 "No VPNs" = "无 VPN";
-"No access" = "无访问权限";
 "No applications found." = "未找到应用。";
 "No applications match this search." = "没有与此搜索匹配的应用。";
 "No duplicates here. Every large file under this folder is one of a kind." = "没有重复文件。此文件夹下的每个大文件都只有一份。";
@@ -351,18 +344,15 @@
 "None" = "无";
 "Not checked yet" = "尚未检查";
 "Not connected" = "未连接";
-"Not modified in months" = "数月未修改";
 "Not running" = "未运行";
 "Nothing Helm runs can hang. Homebrew, the VPN list and the power settings could stop forever, taking the screen waiting for them with them." = "Helm 运行的东西不会再卡死。Homebrew、VPN 列表和电源设置此前可能永远停住，并拖住等待它们的界面。";
 "Nothing in this folder matches yet." = "目前这个文件夹里没有匹配的内容。";
-"Nothing in this folder." = "这个文件夹里没有内容。";
 "Nothing logged yet." = "暂无记录。";
 "Nothing matches these filters." = "没有符合这些筛选条件的行。";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "把东西移到废纸篓其实并没有真正“释放”任何空间——它只是移到了同一宗卷上的废纸篓里。“磁盘”“重复文件”“登录项与扩展”和“卸载器”现在都如实显示（“已移到废纸篓 — 4 KB”），“磁盘”也不再把它计入已释放的空间，直到废纸篓真正清空。";
 "Notification" = "通知";
 "Number of days" = "天数";
 "No key" = "无";
-"Old download" = "旧下载";
 "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways." = "窗口拉宽时设置不再错位：所有页面从同一左边缘开始。";
 "On launch and quit" = "启动与退出时";
 "On launch only" = "仅启动时";
@@ -391,7 +381,6 @@
 "Permissions are called what System Settings calls them, so the row Helm points you at is the row you find." = "权限名称与系统设置一致，Helm 指向的那一行就能找到。";
 "Permissions at a glance: Settings shows whether Helm has Full Disk Access and lists installed system extensions. When a file can’t be removed, Helm names the reason and links to the right setting." = "权限一目了然：设置中显示 Helm 是否拥有完全磁盘访问权限，并列出系统扩展。文件无法删除时，Helm 会说明原因并跳转到相应设置。";
 "Pick a folder and Helm will read what is in it, comparing content rather than names." = "选择一个文件夹，Helm 会读取其中内容并比较内容而非文件名。";
-"Pick a volume, or scan any folder." = "选择宗卷，或扫描任意文件夹。";
 "Pink" = "粉色";
 "Pinned" = "已固定";
 "Play a sound when a word is fixed" = "修正时播放提示音";
@@ -407,7 +396,6 @@
 "Quitting an app now disconnects only a VPN Helm itself raised for it — never one you dialled up by hand." = "退出应用时，只会断开 Helm 为它建立的 VPN，绝不会断开你手动连接的。";
 "Reading files…" = "正在读取文件…";
 "Reading the package list…" = "正在读取软件包列表…";
-"Recommendations" = "建议";
 "Red" = "红色";
 "Redesigned About: the icon sits in a bezel that turns while updates are checked, version and build read as instrument dials, and update controls live in one card." = "重新设计“关于”：图标置于检查更新时旋转的表圈中，版本与构建如仪表读数，更新控件集中在一张卡片。";
 "Refresh list" = "刷新列表";
@@ -437,10 +425,8 @@
 "Run now" = "立即运行";
 "Running" = "运行中";
 "Saved windows" = "保存的窗口";
-"Scan a folder…" = "扫描文件夹…";
 "Scan again" = "重新扫描";
 "Scan for leftovers" = "扫描残留文件";
-"Scanning" = "正在扫描";
 "Scanning…" = "扫描中…";
 "Search" = "搜索";
 "Search again" = "重新搜索";
@@ -470,7 +456,6 @@
 "Size in megabytes" = "大小（MB）";
 "Sizes are right where they were nearly right. A file just under a round number was shown with the unit below it — \"1000 KB\" instead of \"1 MB\" — on every screen that names a size. And removing a folder now reports what the folder held, where it used to report nothing at all." = "大小显示修正：本该是“1 MB”的地方显示成“1000 KB”。删除文件夹时也会正确统计释放的空间。";
 "Skip" = "跳过";
-"Smaller items" = "较小的项目";
 "Sort into subfolder" = "整理到子文件夹";
 "Stop" = "停止";
 "Stop could leave an abandoned scan’s folders sitting in the basket, above the Trash button, on a screen that no longer had anything to do with them — and emptying the basket credited the space to whichever volume you’d since picked." = "点击“停止”后，被放弃扫描的文件夹可能仍留在收纳篮里，出现在与它们已无关的界面上的废纸篓按钮上方——清空收纳篮时，释放的空间还会被计入当时选中的那个宗卷。";
@@ -581,8 +566,6 @@
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "浅色主题下的警告清晰可读，图标与颜色色块可用键盘抵达，尺寸和名称在每种语言下都与 macOS 一致。";
 "Website data" = "网站数据";
 "Welcome to Helm" = "欢迎使用 Helm";
-"What could be deleted" = "可删除的内容";
-"What is taking up space" = "磁盘空间被什么占用";
 "What to check" = "检查什么";
 "What to do" = "做什么";
 "What would happen" = "会发生什么";
@@ -603,7 +586,6 @@
 "Watch this folder" = "监视此文件夹";
 "Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "没有完全磁盘访问权限，App 的容器会残留，Helm 也看不到废纸篓、无法查找残留文件。";
 "Without Full Disk Access an app’s containers stay behind." = "没有完全磁盘访问权限时，应用的容器会残留。";
-"Without Full Disk Access some folders scan as empty." = "没有完全磁盘访问权限时，部分文件夹会显示为空。";
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "全应用文案与大小显示梳理：标签更简短、同一事物统一称呼、大小按你的语言显示。";
 "Write a log file" = "记录日志";
 "Yellow" = "黄色";
@@ -621,7 +603,6 @@
 "ends with" = "结尾是";
 "expanded" = "已展开";
 "failed" = "失败";
-"free" = "可用";
 "guess" = "推测";
 "is" = "等于";
 "larger than" = "大于";

@@ -42,7 +42,7 @@ final class FreeSpaceIsWhatFinderShowsTests: XCTestCase {
     }
 
     func testTheEngineReportsImportantUsageAndUsedFollowsIt() {
-        let engine = DiskEngine(capacity: FakeCapacity(volumes: [measured]))
+        let engine = DiskEngine(capacity: FakeCapacity(volumes: [measured]), trashing: neverTrashes)
         let volumes = engine.volumes()
         XCTAssertEqual(volumes.count, 1, "the fake's one volume must reach the list")
         XCTAssertEqual(volumes.first?.freeBytes, 90 * gb)
@@ -52,7 +52,7 @@ final class FreeSpaceIsWhatFinderShowsTests: XCTestCase {
     func testTheEngineUsesTheFallbackWhenTheKeyIsUnreadable() {
         var readout = measured
         readout.importantFree = nil
-        let volumes = DiskEngine(capacity: FakeCapacity(volumes: [readout])).volumes()
+        let volumes = DiskEngine(capacity: FakeCapacity(volumes: [readout]), trashing: neverTrashes).volumes()
         XCTAssertEqual(volumes.first?.freeBytes, 39 * gb)
     }
 
@@ -60,7 +60,7 @@ final class FreeSpaceIsWhatFinderShowsTests: XCTestCase {
         var readout = measured
         readout.importantFree = nil
         readout.plainFree = nil
-        XCTAssertTrue(DiskEngine(capacity: FakeCapacity(volumes: [readout])).volumes().isEmpty)
+        XCTAssertTrue(DiskEngine(capacity: FakeCapacity(volumes: [readout]), trashing: neverTrashes).volumes().isEmpty)
     }
 
     /// The real port, on the boot volume: the key the fix depends on has to be

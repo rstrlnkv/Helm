@@ -64,7 +64,6 @@
 "Opens its own screen" = "Opens its own screen";
 "Beta" = "Beta";
 "Blue" = "Blue";
-"Cache — apps rebuild it" = "Cache — apps rebuild it";
 "Caches" = "Caches";
 "Cancel" = "Cancel";
 "Check" = "Check";
@@ -72,7 +71,6 @@
 "Checking…" = "Checking…";
 "Changes here are not being noticed" = "Changes here are not being noticed";
 "Choose another folder" = "Choose another folder";
-"Choose another…" = "Choose another…";
 "Choose apps" = "Choose apps";
 "Choose folder" = "Choose folder";
 "Choose this app again to confirm which app it is" = "Choose this app again to confirm which app it is";
@@ -126,7 +124,6 @@
 "Not watching" = "Not watching";
 "Nothing" = "Nothing";
 "Nothing has needed putting right so far." = "Nothing has needed putting right so far.";
-"Open Disk" = "Open Disk";
 "Option" = "Option";
 "Period" = "Period";
 "Putting selected text right works on a whole sentence now. A space, a comma or a digit anywhere in the selection used to leave all of it untouched, so only a single word could ever be fixed that way." = "Putting selected text right works on a whole sentence now. A space, a comma or a digit anywhere in the selection used to leave all of it untouched, so only a single word could ever be fixed that way.";
@@ -169,13 +166,11 @@
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds.";
 "Disconnected" = "Disconnected";
 "Disconnecting…" = "Disconnecting…";
-"Disk" = "Disk";
 "Disk Space remembers its last scan: reopen Helm and the ring is already there, labelled with when it was measured. Deleting no longer triggers a full rescan — the ring updates in place." = "Disk Space remembers its last scan: reopen Helm and the ring is already there, labelled with when it was measured. Deleting no longer triggers a full rescan — the ring updates in place.";
 "Disk Space suggests what to free: bloated caches, old downloads and big files untouched for months — one tap adds them to the basket. The scan result now survives switching modules and is kept for a day." = "Disk Space suggests what to free: bloated caches, old downloads and big files untouched for months — one tap adds them to the basket. The scan result now survives switching modules and is kept for a day.";
 "Disk Space: a ring showing what filled your disk. Click a wedge to go deeper, the middle to come back — folders carry the names Finder gives them, and anything you want gone collects in one list before it goes to the Trash." = "Disk Space: a ring showing what filled your disk. Click a wedge to go deeper, the middle to come back — folders carry the names Finder gives them, and anything you want gone collects in one list before it goes to the Trash.";
 "Disk and Login Items are quicker to open, and the app stops freezing for a moment while it reads or saves a scan." = "Disk and Login Items are quicker to open, and the app stops freezing for a moment while it reads or saves a scan.";
 "Disk keeps working after the module is switched off and on again, and Keep Awake stops asking for your password every session." = "Disk keeps working after the module is switched off and on again, and Keep Awake stops asking for your password every session.";
-"Disk map" = "Disk map";
 "Disk no longer lets a top-level folder of the disk — Users, Applications, Library — go into the basket. What is inside them still can." = "Disk no longer lets a top-level folder of the disk — Users, Applications, Library — go into the basket. What is inside them still can.";
 "Disk takes a second look: a duplicate finder. Point it at the folder the ring is showing and it lists files that exist more than once — content compared, not names. One copy in each group is marked as the one that stays; the extras go to the basket, and deletion runs through the same guarded path as everything else. Hard links are one file and are never offered." = "Disk takes a second look: a duplicate finder. Point it at the folder the ring is showing and it lists files that exist more than once — content compared, not names. One copy in each group is marked as the one that stays; the extras go to the basket, and deletion runs through the same guarded path as everything else. Hard links are one file and are never offered.";
 "Document" = "Document";
@@ -298,7 +293,6 @@
 "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings.";
 "Logs" = "Logs";
 "Look for leftovers automatically when an app goes to the Trash" = "Look for leftovers automatically when an app goes to the Trash";
-"Look inside" = "Look inside";
 "MB" = "MB";
 "MODULES" = "MODULES";
 "Manage Homebrew packages" = "Manage Homebrew packages";
@@ -331,7 +325,6 @@
 "New rule" = "New rule";
 "Next" = "Next";
 "No VPNs" = "No VPNs";
-"No access" = "No access";
 "No applications found." = "No applications found.";
 "No applications match this search." = "No applications match this search.";
 "No duplicates here. Every large file under this folder is one of a kind." = "No duplicates here. Every large file under this folder is one of a kind.";
@@ -351,18 +344,15 @@
 "None" = "None";
 "Not checked yet" = "Not checked yet";
 "Not connected" = "Not connected";
-"Not modified in months" = "Not modified in months";
 "Not running" = "Not running";
 "Nothing Helm runs can hang. Homebrew, the VPN list and the power settings could stop forever, taking the screen waiting for them with them." = "Nothing Helm runs can hang. Homebrew, the VPN list and the power settings could stop forever, taking the screen waiting for them with them.";
 "Nothing in this folder matches yet." = "Nothing in this folder matches yet.";
-"Nothing in this folder." = "Nothing in this folder.";
 "Nothing logged yet." = "Nothing logged yet.";
 "Nothing matches these filters." = "Nothing matches these filters.";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied.";
 "Notification" = "Notification";
 "Number of days" = "Number of days";
 "No key" = "No key";
-"Old download" = "Old download";
 "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways." = "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways.";
 "On launch and quit" = "On launch and quit";
 "On launch only" = "On launch only";
@@ -391,7 +381,6 @@
 "Permissions are called what System Settings calls them, so the row Helm points you at is the row you find." = "Permissions are called what System Settings calls them, so the row Helm points you at is the row you find.";
 "Permissions at a glance: Settings shows whether Helm has Full Disk Access and lists installed system extensions. When a file can’t be removed, Helm names the reason and links to the right setting." = "Permissions at a glance: Settings shows whether Helm has Full Disk Access and lists installed system extensions. When a file can’t be removed, Helm names the reason and links to the right setting.";
 "Pick a folder and Helm will read what is in it, comparing content rather than names." = "Pick a folder and Helm will read what is in it, comparing content rather than names.";
-"Pick a volume, or scan any folder." = "Pick a volume, or scan any folder.";
 "Pink" = "Pink";
 "Pinned" = "Pinned";
 "Play a sound when a word is fixed" = "Play a sound when a word is fixed";
@@ -407,7 +396,6 @@
 "Quitting an app now disconnects only a VPN Helm itself raised for it — never one you dialled up by hand." = "Quitting an app now disconnects only a VPN Helm itself raised for it — never one you dialled up by hand.";
 "Reading files…" = "Reading files…";
 "Reading the package list…" = "Reading the package list…";
-"Recommendations" = "Recommendations";
 "Red" = "Red";
 "Redesigned About: the icon sits in a bezel that turns while updates are checked, version and build read as instrument dials, and update controls live in one card." = "Redesigned About: the icon sits in a bezel that turns while updates are checked, version and build read as instrument dials, and update controls live in one card.";
 "Refresh list" = "Refresh list";
@@ -437,10 +425,8 @@
 "Run now" = "Run now";
 "Running" = "Running";
 "Saved windows" = "Saved windows";
-"Scan a folder…" = "Scan a folder…";
 "Scan again" = "Scan again";
 "Scan for leftovers" = "Scan for leftovers";
-"Scanning" = "Scanning";
 "Scanning…" = "Scanning…";
 "Search" = "Search";
 "Search again" = "Search again";
@@ -470,7 +456,6 @@
 "Size in megabytes" = "Size in megabytes";
 "Sizes are right where they were nearly right. A file just under a round number was shown with the unit below it — \"1000 KB\" instead of \"1 MB\" — on every screen that names a size. And removing a folder now reports what the folder held, where it used to report nothing at all." = "Sizes are right where they were nearly right. A file just under a round number was shown with the unit below it — \"1000 KB\" instead of \"1 MB\" — on every screen that names a size. And removing a folder now reports what the folder held, where it used to report nothing at all.";
 "Skip" = "Skip";
-"Smaller items" = "Smaller items";
 "Sort into subfolder" = "Sort into subfolder";
 "Stop" = "Stop";
 "Stop could leave an abandoned scan’s folders sitting in the basket, above the Trash button, on a screen that no longer had anything to do with them — and emptying the basket credited the space to whichever volume you’d since picked." = "Stop could leave an abandoned scan’s folders sitting in the basket, above the Trash button, on a screen that no longer had anything to do with them — and emptying the basket credited the space to whichever volume you’d since picked.";
@@ -581,8 +566,6 @@
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it.";
 "Website data" = "Website data";
 "Welcome to Helm" = "Welcome to Helm";
-"What could be deleted" = "What could be deleted";
-"What is taking up space" = "What is taking up space";
 "What to check" = "What to check";
 "What to do" = "What to do";
 "What would happen" = "What would happen";
@@ -603,7 +586,6 @@
 "Watch this folder" = "Watch this folder";
 "Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers.";
 "Without Full Disk Access an app’s containers stay behind." = "Without Full Disk Access an app’s containers stay behind.";
-"Without Full Disk Access some folders scan as empty." = "Without Full Disk Access some folders scan as empty.";
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”.";
 "Write a log file" = "Write a log file";
 "Yellow" = "Yellow";
@@ -621,7 +603,6 @@
 "ends with" = "ends with";
 "expanded" = "expanded";
 "failed" = "failed";
-"free" = "free";
 "guess" = "guess";
 "is" = "is";
 "larger than" = "larger than";

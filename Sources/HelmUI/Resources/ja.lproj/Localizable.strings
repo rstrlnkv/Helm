@@ -64,7 +64,6 @@
 "Opens its own screen" = "専用の画面を開きます";
 "Beta" = "Beta";
 "Blue" = "青";
-"Cache — apps rebuild it" = "キャッシュ — アプリが作り直します";
 "Caches" = "キャッシュ";
 "Cancel" = "キャンセル";
 "Check" = "確認";
@@ -72,7 +71,6 @@
 "Checking…" = "確認中…";
 "Changes here are not being noticed" = "ここでの変更は検知されていません";
 "Choose another folder" = "別のフォルダを選択";
-"Choose another…" = "別の場所を選択…";
 "Choose apps" = "アプリを選択";
 "Choose folder" = "フォルダを選択";
 "Choose this app again to confirm which app it is" = "このアプリをもう一度選んで、どのアプリかを確認してください";
@@ -126,7 +124,6 @@
 "Not watching" = "監視していません";
 "Nothing" = "なし";
 "Nothing has needed putting right so far." = "これまで修正が必要なものはありません。";
-"Open Disk" = "ディスクを開く";
 "Option" = "Option";
 "Period" = "期間";
 "Putting selected text right works on a whole sentence now. A space, a comma or a digit anywhere in the selection used to leave all of it untouched, so only a single word could ever be fixed that way." = "選択したテキストの修正が文全体で働くようになりました。選択のどこかに空白や読点、数字があると全体がそのまま残り、修正できるのは一語だけでした。";
@@ -169,13 +166,11 @@
 "Diagnostics: Helm can keep a log of what it does, ready to share when something goes wrong. Always on in Dev builds." = "診断：Helm は動作のログを記録でき、問題時にすぐ共有できます。Dev ビルドでは常時オン。";
 "Disconnected" = "接続解除済み";
 "Disconnecting…" = "接続解除中…";
-"Disk" = "ディスク";
 "Disk Space remembers its last scan: reopen Helm and the ring is already there, labelled with when it was measured. Deleting no longer triggers a full rescan — the ring updates in place." = "ディスク容量は前回のスキャンを記憶します。Helm を開けばリングはすでに表示され、計測時刻も表示。削除しても全体の再スキャンは走らず、その場で更新されます。";
 "Disk Space suggests what to free: bloated caches, old downloads and big files untouched for months — one tap adds them to the basket. The scan result now survives switching modules and is kept for a day." = "ディスク容量が空けられるものを提案：肥大化したキャッシュ、古いダウンロード、数か月未使用の大きなファイル。ワンクリックでバスケットへ。スキャン結果はモジュールを切り替えても消えず、1日保持されます。";
 "Disk Space: a ring showing what filled your disk. Click a wedge to go deeper, the middle to come back — folders carry the names Finder gives them, and anything you want gone collects in one list before it goes to the Trash." = "ディスク容量：何が容量を使っているかをリングで表示。セグメントをクリックで深く、中心で戻る。フォルダ名は Finder と同じで、不要なものは一覧にまとめてからゴミ箱へ。";
 "Disk and Login Items are quicker to open, and the app stops freezing for a moment while it reads or saves a scan." = "“ディスク”と“ログイン項目”の表示が速くなり、スキャン結果の読み書き中に一瞬固まることがなくなりました。";
 "Disk keeps working after the module is switched off and on again, and Keep Awake stops asking for your password every session." = "モジュールをオフ→オンしても“ディスク”が動き続け、“スリープ防止”が毎回パスワードを求めなくなりました。";
-"Disk map" = "ディスクマップ";
 "Disk no longer lets a top-level folder of the disk — Users, Applications, Library — go into the basket. What is inside them still can." = "“ディスク”で、ディスク直下のフォルダをバスケットに入れられないようにしました。中身は従来どおり入れられます。";
 "Disk takes a second look: a duplicate finder. Point it at the folder the ring is showing and it lists files that exist more than once — content compared, not names. One copy in each group is marked as the one that stays; the extras go to the basket, and deletion runs through the same guarded path as everything else. Hard links are one file and are never offered." = "“ディスク”がもう一度チェック：重複ファイル検索。リングが示すフォルダを対象に、複数存在するファイルを一覧します。名前ではなく内容を比較。各グループの 1 つは残す印が付き、余分はバスケットへ。ハードリンクは同一ファイルなので提案されません。";
 "Document" = "書類";
@@ -298,7 +293,6 @@
 "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "ログイン項目は削除だけでなくオフにできます。macOS 自身と同じ一覧を使うため、再起動後も維持され、パスワード不要で元に戻せます。";
 "Logs" = "ログ";
 "Look for leftovers automatically when an app goes to the Trash" = "App がゴミ箱に入ったら、残ったファイルを自動で探す";
-"Look inside" = "中を見る";
 "MB" = "MB";
 "MODULES" = "モジュール";
 "Manage Homebrew packages" = "Homebrew パッケージを管理";
@@ -331,7 +325,6 @@
 "New rule" = "新しいルール";
 "Next" = "次へ";
 "No VPNs" = "VPN なし";
-"No access" = "アクセス不可";
 "No applications found." = "アプリが見つかりませんでした。";
 "No applications match this search." = "この検索に一致するアプリはありません。";
 "No duplicates here. Every large file under this folder is one of a kind." = "重複はありません。このフォルダの大きなファイルはすべて 1 つだけです。";
@@ -351,18 +344,15 @@
 "None" = "なし";
 "Not checked yet" = "未確認";
 "Not connected" = "未接続";
-"Not modified in months" = "数か月間変更なし";
 "Not running" = "停止中";
 "Nothing Helm runs can hang. Homebrew, the VPN list and the power settings could stop forever, taking the screen waiting for them with them." = "Helm が実行するものはハングしなくなりました。Homebrew、VPN の一覧、電源設定が永久に停止し、待っている画面を巻き添えにすることがありました。";
 "Nothing in this folder matches yet." = "今のところ、このフォルダに一致するものはありません。";
-"Nothing in this folder." = "このフォルダには何もありません。";
 "Nothing logged yet." = "まだ記録はありません。";
 "Nothing matches these filters." = "この条件に一致する行はありません。";
 "Nothing was actually “freed” by trashing something — it just moved to the Trash, on the same volume. Disk, Duplicates, Login Items & Extensions and the Uninstaller now say so plainly (“Moved to the Trash — 4 KB”), and Disk stopped counting it as space regained until the Trash itself is emptied." = "ゴミ箱に入れても、実際には何も“解放”されていませんでした——同じボリューム上のゴミ箱に移動しただけです。“ディスク”、“重複”、“ログイン項目と機能拡張”、“アンインストーラ”は今、そのとおりに表示します（“ゴミ箱に入れました — 4 KB”）。“ディスク”もゴミ箱を空にするまで空き容量として数えなくなりました。";
 "Notification" = "通知";
 "Number of days" = "日数";
 "No key" = "なし";
-"Old download" = "古いダウンロード";
 "On a wide window the settings no longer drift: every page starts at the same left edge, and switching between them stops shifting the content sideways." = "ウィンドウを広げても設定がずれません。すべてのページが同じ左端から始まります。";
 "On launch and quit" = "起動時と終了時";
 "On launch only" = "起動時のみ";
@@ -391,7 +381,6 @@
 "Permissions are called what System Settings calls them, so the row Helm points you at is the row you find." = "アクセス権の名称をシステム設定に合わせました。案内された項目がそのまま見つかります。";
 "Permissions at a glance: Settings shows whether Helm has Full Disk Access and lists installed system extensions. When a file can’t be removed, Helm names the reason and links to the right setting." = "アクセス権を一目で：設定でフルディスクアクセスの有無とシステム機能拡張の一覧を確認できます。削除できない場合は理由を示し、該当の設定へ案内します。";
 "Pick a folder and Helm will read what is in it, comparing content rather than names." = "フォルダを選ぶと、名前ではなく中身を比較して調べます。";
-"Pick a volume, or scan any folder." = "ボリュームを選ぶか、任意のフォルダをスキャンします。";
 "Pink" = "ピンク";
 "Pinned" = "固定中";
 "Play a sound when a word is fixed" = "修正時に音を鳴らす";
@@ -407,7 +396,6 @@
 "Quitting an app now disconnects only a VPN Helm itself raised for it — never one you dialled up by hand." = "アプリを終了したとき、切断するのは Helm がそのアプリのために接続した VPN だけになりました。手動で接続したものは切りません。";
 "Reading files…" = "ファイルを読み込み中…";
 "Reading the package list…" = "パッケージ一覧を読み込み中…";
-"Recommendations" = "おすすめ";
 "Red" = "赤";
 "Redesigned About: the icon sits in a bezel that turns while updates are checked, version and build read as instrument dials, and update controls live in one card." = "“Helm について”を刷新：アップデート確認中に回転するベゼル内のアイコン、計器のようなバージョンとビルド表示、更新操作を1枚のカードに集約。";
 "Refresh list" = "リストを更新";
@@ -437,10 +425,8 @@
 "Run now" = "今すぐ実行";
 "Running" = "実行中";
 "Saved windows" = "保存されたウインドウ";
-"Scan a folder…" = "フォルダをスキャン…";
 "Scan again" = "再スキャン";
 "Scan for leftovers" = "残存ファイルを検索";
-"Scanning" = "スキャン中";
 "Scanning…" = "スキャン中…";
 "Search" = "検索";
 "Search again" = "もう一度検索";
@@ -470,7 +456,6 @@
 "Size in megabytes" = "サイズ（メガバイト）";
 "Sizes are right where they were nearly right. A file just under a round number was shown with the unit below it — \"1000 KB\" instead of \"1 MB\" — on every screen that names a size. And removing a folder now reports what the folder held, where it used to report nothing at all." = "サイズ表示を修正しました。“1 MB”となるべき場面で“1000 KB”と出ていました。フォルダを削除したときの解放量も正しくなりました。";
 "Skip" = "スキップ";
-"Smaller items" = "小さい項目";
 "Sort into subfolder" = "サブフォルダに整理";
 "Stop" = "停止";
 "Stop could leave an abandoned scan’s folders sitting in the basket, above the Trash button, on a screen that no longer had anything to do with them — and emptying the basket credited the space to whichever volume you’d since picked." = "“停止”を押すと、放棄されたスキャンのフォルダがバスケットに残ったまま、もう無関係な画面のゴミ箱ボタンの上に表示され続けることがありました。バスケットを空にすると、その空き容量はその時点で選ばれていたボリュームに加算されていました。";
@@ -581,8 +566,6 @@
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "ライトテーマで警告が読めるようになり、アイコンと色の見本にキーボードで到達でき、単位や名称は各言語で macOS に合わせました。";
 "Website data" = "Webサイトのデータ";
 "Welcome to Helm" = "Helm へようこそ";
-"What could be deleted" = "削除できる候補";
-"What is taking up space" = "ディスクを占めているもの";
 "What to check" = "確認する項目";
 "What to do" = "実行する処理";
 "What would happen" = "何が起きるか";
@@ -603,7 +586,6 @@
 "Watch this folder" = "このフォルダを監視";
 "Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "フルディスクアクセスがないと App のコンテナが残り、Helm はゴミ箱を見て残存ファイルを探すこともできません。";
 "Without Full Disk Access an app’s containers stay behind." = "フルディスクアクセスがないと、アプリのコンテナが残ります。";
-"Without Full Disk Access some folders scan as empty." = "フルディスクアクセスがないと、一部のフォルダは空として表示されます。";
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "アプリ全体の文言とサイズ表記を見直し：ラベルを簡潔に、名称を統一し、サイズを各言語の単位で表示。";
 "Write a log file" = "ログを記録";
 "Yellow" = "黄";
@@ -621,7 +603,6 @@
 "ends with" = "で終わる";
 "expanded" = "表示されました";
 "failed" = "失敗";
-"free" = "空き";
 "guess" = "推測";
 "is" = "が一致";
 "larger than" = "より大きい";

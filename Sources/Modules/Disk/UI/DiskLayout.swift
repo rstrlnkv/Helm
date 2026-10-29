@@ -14,18 +14,16 @@ import CoreGraphics
 /// | bar: back, path, three controls         |  640 pt |
 /// | bar with the scan statement as well     |  788 pt |
 ///
-/// The settings window is 1060 pt wide by default and 860 at its minimum, and
-/// the sidebar takes 250 of that — so the detail pane is 810 pt normally, where
-/// the full bar (788) fits, and **610 at the minimum, where it does not**.
-/// This paragraph reasoned from a 940 pt window until the Disk screen was the
-/// reason the default grew — and then went on concluding that the full bar
-/// never fits, which was the whole point of growing it.
+/// The settings window is 1100 pt wide by default and 1096 at its minimum
+/// (`SettingsWindow`), and the card takes the window less the sidebar and a 4 pt
+/// inset (`ShellGeometry.cardFrame`). At the default sidebar of 200 the detail
+/// pane is 896 pt, or 892 at the minimum, and the full bar (788) fits in both;
+/// a sidebar stored at its widest, 320 (`ShellGeometry.sidebarRange`), leaves
+/// 776 and 772, **where it does not**.
 ///
-/// The first attempt at this took the scan statement out of the bar
-/// permanently, which paid for the narrow case with the wide one: on a large
-/// window the bar then held a path on the left, three controls on the right
-/// and a void between them, and the statement floated in the empty space
-/// beside the ring.
+/// Leaving the scan statement out of the bar for good would pay for the narrow
+/// case with the wide one: on a large window the bar would hold a path on the
+/// left, three controls on the right and a void between them.
 ///
 /// So the layout adapts instead of compromising. Nothing is dropped that there
 /// is room for, and what goes first is what costs most for what it adds: the
@@ -59,13 +57,12 @@ struct DiskLayout {
     /// took, which changes nothing about what the numbers mean.
     enum ScanStatement: Equatable { case stopped, measured, scanned }
 
-    /// **A warning is not a thing to drop when the window is small.** All three
-    /// sentences used to sit behind `showsScanStatement`, so below 800 pt of pane
-    /// — which is the pane the app opens at its own minimum, 610, and at the
-    /// default window with the sidebar, 645 — a stopped tree was drawn in full
-    /// with nothing saying its figures are floors, and yesterday's map was
-    /// indistinguishable from one measured a second ago. The `stoppedHint` that
-    /// explains it hangs on that same `Text`, so a screen reader lost it too.
+    /// **A warning is not a thing to drop when the window is small.** Behind
+    /// `showsScanStatement` alone, all three sentences would go below 800 pt of
+    /// pane — what a sidebar stored wider than 292 pt leaves in the minimum
+    /// window, 772 at the widest — and a stopped tree would be drawn in full with
+    /// nothing saying its figures are floors. The `stoppedHint` that explains it
+    /// hangs on the same `Text`, so a screen reader would lose it too.
     ///
     /// Stopped comes first because it is the only one of the three that makes the
     /// sizes beside it untrue as totals.

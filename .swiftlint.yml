@@ -18,10 +18,13 @@ disabled_rules:
   - statement_position
 
 # A localized string is one line carrying eight languages; splitting it hurts
-# more than it helps, and those lines are most of the file in the *Strings.swift
-# files — a changelog entry runs past 2000 characters and is correct at that
-# length. The warning is set where it still notices genuinely runaway code; an
-# error threshold here would only report the design.
+# more than it helps, and such lines are correct at that length:
+# `ChangelogData.swift` and the `*Strings.swift` files whose inline tables hold
+# them switch this rule off at their first line, so the warning is left to
+# notice genuinely runaway code, and
+# `swiftlint lint --quiet --only-rule line_length Sources Tests`
+# lists what it notices today. An error threshold here would only report the
+# design.
 line_length:
   warning: 320
   error: 4000
