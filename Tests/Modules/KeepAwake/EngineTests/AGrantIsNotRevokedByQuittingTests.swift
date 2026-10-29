@@ -132,7 +132,7 @@ final class AGrantIsNotRevokedByQuittingTests: XCTestCase {
     func testTheLidOptionGoingOffStillTakesTheGrantOut() async {
         settings.setClamshellEnabled(false)
 
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
 
         // Counted on the withdrawal, not on the dialog: the rule permits its own
         // removal, so the ordinary route asks nobody for anything.

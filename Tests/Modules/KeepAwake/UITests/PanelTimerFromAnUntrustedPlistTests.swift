@@ -9,8 +9,8 @@ import HelmRuntime
 /// panel, and it stays out of the settings type because the engine never reads
 /// it — the same reason `MenuBarLook` keeps the keys the menu bar draws. That
 /// exemption is about *who reads it*, and it was taken as an exemption from the
-/// rest: the number still leaves the tile in a `KeepAwakeStart` payload and
-/// still lands in `startSession`, which does `TimeInterval(minutes * 60)` twice.
+/// rest: the number still leaves the tile through the model's
+/// `start(minutes:)` and still lands in `startSession`, which does `TimeInterval(minutes * 60)` twice.
 ///
 /// `SettingsFromAPlistThatCanSayAnythingTests` states the premise for the two
 /// durations that do live in the settings type. This is the third one, read one

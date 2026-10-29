@@ -50,8 +50,7 @@ import Module_VPN_Engine
     /// One VPNViewModel per module: building a fresh one each call would leak a
     /// permanent transport-events subscriber every time the panel/settings open.
     ///
-    /// Keyed to the host view model, the way `KeepAwakeViewModel.shared(vm:)`
-    /// is. Without the identity check the cache survived a module restart —
+    /// Keyed to the host view model. Without the identity check the cache survived a module restart —
     /// `ModuleHost.enable` builds a new engine and a new `ModuleViewModel`, and
     /// the old model went on talking to the dead engine's transport, whose
     /// handler is `[weak self]` and answers every command with empty `Data`.

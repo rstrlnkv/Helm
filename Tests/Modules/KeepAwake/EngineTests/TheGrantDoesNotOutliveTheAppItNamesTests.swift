@@ -54,7 +54,7 @@ final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
     func testSwitchingTheOptionOffWithdrawsTheGrantWithoutADialog() async {
         settings.setClamshellEnabled(false)
 
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
 
         await waitUntil("the rule came out") { !self.clamshell.isSudoersInstalled() }
         XCTAssertEqual(clamshell.passwordlessRemovals, 1)
@@ -71,7 +71,7 @@ final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
         clamshell.withdrawalIsGranted = false
         settings.setClamshellEnabled(false)
 
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
 
         await waitUntil("the dialog was raised") { self.clamshell.removeCalls == 1 }
         XCTAssertEqual(clamshell.passwordlessRemovals, 1, "the free route is tried first")

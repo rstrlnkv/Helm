@@ -1,5 +1,16 @@
 import Foundation
 
+/// Everything the engine says about itself.
+///
+/// One name, spelled once: the engine's `emit` and the stream's filter both read
+/// it. Another module emits an event of the same name under a different shape,
+/// which is what a literal on each side once decoded wrongly and left five
+/// properties at their defaults with nothing failing.
+enum KeepAwakeEvent: String, Sendable {
+    /// Held or not, why, and until when.
+    case state
+}
+
 /// The state every Keep Awake surface draws, and the one declaration of it.
 ///
 /// Out of `KeepAwakeEngine` and still `KeepAwakeEngine.StatePayload`: an
@@ -8,12 +19,12 @@ import Foundation
 /// is the point — the same type, not a copy — because the defect its own comment
 /// records is what happens when a payload is declared twice.
 extension KeepAwakeEngine {
-    /// Public because the page decodes it. It was typed out again over there,
-    /// matched to this one by field names across a JSON hop with no compiler
-    /// in between — and a field that stops matching does not fail, it silently
-    /// decodes to nothing and the screen keeps its defaults forever. That is
-    /// the bug `ModuleViewModel`'s own doc comment records, shipped once and
-    /// then re-created inside the modules.
+    /// Public because the model reads it from `stream()`. It was typed out
+    /// again over there, matched to this one by field names across a JSON hop
+    /// with no compiler in between — and a field that stops matching does not
+    /// fail, it silently decodes to nothing and the screen keeps its defaults
+    /// forever. That is the bug the shared view model once shipped and the
+    /// modules then re-created.
     public struct StatePayload: Codable {
         public let isActive: Bool
         public let conditions: [String]

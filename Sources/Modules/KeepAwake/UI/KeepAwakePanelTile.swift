@@ -42,16 +42,15 @@ struct KeepAwakePanelTile: View {
     @State private var autoExternalDisplay: Bool
     @State private var autoPower: Bool
 
-    init(vm: ModuleViewModel, store: NamespacedStore) {
-        self.vm = KeepAwakeViewModel.shared(vm: vm)
+    init(vm: KeepAwakeViewModel, store: NamespacedStore) {
+        self.vm = vm
         self.store = store
         let settings = KeepAwakeSettings(store: store)
         _autoExternalDisplay = State(initialValue: settings.autoExternalDisplay)
         _autoPower = State(initialValue: settings.autoPower)
         _customMinutes = State(initialValue: Self.openingMinutes(store))
-        let state = KeepAwakeViewModel.shared(vm: vm)
-        _shownActive = State(initialValue: state.isActive)
-        _shownSuppressed = State(initialValue: state.suppressed || state.batteryStopped)
+        _shownActive = State(initialValue: vm.isActive)
+        _shownSuppressed = State(initialValue: vm.suppressed || vm.batteryStopped)
         _batteryFloor = State(initialValue: settings.batteryGuardPercent)
     }
 
@@ -118,7 +117,7 @@ struct KeepAwakePanelTile: View {
         HelmWidgetHeader(symbol: "moon.zzz.fill", tint: KeepAwakeDescriptor.tint.colour,
                          name: KAStr.moduleName,
                          subtitle: activeSubtitle, active: vm.isActive) {
-            Toggle("", isOn: Binding(get: { vm.isActive }, set: { _ in vm.send(KeepAwakeCommand.toggle) }))
+            Toggle("", isOn: Binding(get: { vm.isActive }, set: { _ in vm.toggle() }))
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .controlSize(.small)
@@ -267,7 +266,7 @@ struct KeepAwakePanelTile: View {
                 // sentence wraps to four lines — a paragraph where everything
                 // else is a row.
                 HelmBanner(KAStr.automationPausedShort, symbol: "pause.circle.fill", compact: true) {
-                    Button(KAStr.resume) { vm.send(KeepAwakeCommand.resumeAutomation) }
+                    Button(KAStr.resume) { vm.resumeAutomation() }
                         .controlSize(.small)
                         .fixedSize()
                 }
@@ -488,7 +487,7 @@ struct KeepAwakePanelTile: View {
                 // `.stopSessionOnly`, and «Стоп» is the word for both. The page
                 // spells its button from `KAStr.stopWord` because its Stop
                 // outlives the countdown; this one does not.
-                Button(KAStr.stop) { vm.send(KeepAwakeCommand.stop) }
+                Button(KAStr.stop) { vm.stopSession() }
                     .controlSize(.small)
                     .fixedSize()
                 // The automation controls must stay reachable while a timer runs.

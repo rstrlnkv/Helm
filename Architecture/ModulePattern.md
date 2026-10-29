@@ -33,10 +33,15 @@ them a module's Sources/Modules/<Name>/Engine/SystemPorts.swift; that is read
 in review, because an import line cannot tell a system call from a drawing.
 
 **A command is a case of the module's own enum.** There is one
-Sources/Modules/<Name>/Engine/Logic/<Name>Command.swift per module, and the
-engines' handlers switch over them with no `default` arm. A global
+Sources/Modules/<Name>/Engine/Logic/<Name>Command.swift per module whose model
+talks to its engine over the transport, and the engines' handlers switch over
+them with no `default` arm. A global
 `EngineCommand` enum was the obvious idea and is the wrong one: each engine
 handles its own subset of the names, so no switch over it could be exhaustive.
+
+A module that owns its model needs none: Keep Awake's model calls the engine's methods
+directly and takes the engine's states from its `stream()`, so its engine has no
+command file and no handler (Architecture/KeepAwake.md § How the model reaches the engine).
 
 The one place a string still crosses is the descriptor's default `backgroundScan(_:)`
 (`Sources/HelmUI/ModuleDescriptor.swift`), which the host reaches through the live
@@ -52,8 +57,8 @@ no `case` for, because a typo there is silence and silence already reads as
 
 **A payload is declared once, in the engine.** Both ends of the wire are in one
 build and the UI target imports its engine, so the UI only aliases the engine's type
-(`typealias` in `Sources/Modules/KeepAwake/UI/KeepAwakeViewModel.swift` and
-`Sources/Modules/VPN/UI/VPNViewModel.swift`) and no type decoded under
+(`typealias` in `Sources/Modules/VPN/UI/VPNViewModel.swift`; Keep Awake's
+`stream()` hands the model the engine's own `StatePayload`) and no type decoded under
 Sources/Modules/<Name>/UI is declared there; the doc comment of
 `Sources/Modules/KeepAwake/Engine/KeepAwakeStatePayload.swift` says why.
 

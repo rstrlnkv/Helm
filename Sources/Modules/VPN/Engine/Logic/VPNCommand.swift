@@ -22,11 +22,10 @@ public enum VPNCommand: String, CaseIterable, Sendable {
 /// Everything the engine says about itself.
 ///
 /// One name, and it was a literal in the engine's `emit` and a literal again in
-/// the view model's `guard e.name == …`. This module has the sharper version of
-/// what that costs written down already: `KeepAwakeViewModel`'s own doc records
-/// five properties sitting at their defaults forever because the *host* view
-/// model decoded a payload named `state` that this module also emits, under a
-/// different shape. The name is shared here; the shape is each module's own.
+/// the view model's `guard e.name == …`. What that costs is written down already:
+/// `ModuleViewModel`'s own doc records five properties sitting at their defaults
+/// forever because the *host* view model decoded a payload named `state` that
+/// this module also emits, under a different shape. The name is shared here; the shape is each module's own.
 public enum VPNEvent: String, Sendable {
     /// Connections, what Helm raised, and the last rule firing.
     case state

@@ -133,7 +133,7 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
         clamshell.removalSucceeds = false
         settings.setClamshellEnabled(false)
 
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
         await removalRan(on: clamshell)
 
         XCTAssertEqual(clamshell.removeCalls, 1, "precondition: the removal was attempted")
@@ -155,7 +155,7 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
         clamshell.removalSucceeds = false
         settings.setClamshellEnabled(false)
 
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
         await removalRan(on: clamshell)
 
         XCTAssertEqual(lines(containing: "Helm did not write"), 0,
@@ -175,7 +175,7 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
         clamshell.passwordlessGrantExists = true
         settings.setClamshellEnabled(false)
 
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
         await removalRan(on: clamshell)
 
         XCTAssertFalse(clamshell.isSudoersInstalled(), "precondition: our file went")
@@ -191,7 +191,7 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
         clamshell.passwordlessGrantExists = false
         settings.setClamshellEnabled(false)
 
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
         await removalRan(on: clamshell)
 
         XCTAssertFalse(engine.lidGrantRemains)

@@ -184,8 +184,8 @@ final class KeepAwakeToggleTests: KeepAwakeEngineRig {
 
     // MARK: - The one entrance the hotkey and the panel switch both use
 
-    /// `toggleSession` had no test at all, and it is what `KeepAwakeCommand
-    /// .toggle` runs — the global hotkey, and the switch at the top of the
+    /// `toggleSession` had no test at all, and it is what the model's
+    /// `toggle()` calls — the global hotkey, and the switch at the top of the
     /// panel tile. Everything under it was covered and the door itself was not.
     func test_toggle_starts_a_session_at_the_default_duration() {
         store.set(25, for: "defaultDurationMinutes")

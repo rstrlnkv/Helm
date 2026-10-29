@@ -283,7 +283,8 @@ import Module_VPN_Engine
     /// from System Settings, or one that simply dropped, left this showing
     /// yesterday's state for as long as the app ran.
     func refresh() { send(VPNCommand.refresh) }
-    /// The engine's own declaration — see the note on KeepAwake's.
+    /// The engine's own declaration: there is no compiler across a JSON hop, so a
+    /// second copy here could drift silently.
     private typealias StatePayload = VPNEngine.StatePayload
     private func handle(_ e: EngineEvent) {
         guard VPNEvent(rawValue: e.name) == .state,

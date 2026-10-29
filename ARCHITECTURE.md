@@ -65,7 +65,7 @@ One page per module, in the order `ls Sources/Modules` prints.
 - [Disk](Architecture/Disk.md) — reading where the space went on an APFS volume group without leaving the largest folder out.
 - [Duplicates](Architecture/Duplicates.md) — the keep policies that decide which of several identical files is the extra one.
 - [Homebrew](Architecture/Homebrew.md) — how another program's package manager is run, with read-only queries and other runs governed differently; § Operations, § Installing Homebrew, § Install counts, § Searching for a package, § The Health tab.
-- [KeepAwake](Architecture/KeepAwake.md) — holding sleep off through pure logic units orchestrated by one engine; § The closed lid, § Vetoes and the notice, § State a person asked for outlives the process, § Its states.
+- [KeepAwake](Architecture/KeepAwake.md) — holding sleep off through pure logic units orchestrated by one engine; § How the model reaches the engine, § The closed lid, § Vetoes and the notice, § State a person asked for outlives the process, § Its states.
 - [Layout](Architecture/Layout.md) — the four limits on a module that reads every keystroke and types into other applications.
 - [Leftovers](Architecture/Leftovers.md) — what it will offer to remove: login items and plug-in files whose owner is gone.
 - [Screenshots](Architecture/Screenshots.md) — freezing the displays, picking an area, a window, the Dock or the menu bar, and the inline editor over the frozen picture.

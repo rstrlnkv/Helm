@@ -5,7 +5,21 @@ import HelmRuntime
 import HelmUI
 import Module_KeepAwake_Engine
 
+/// The global shortcut's two names, in one place for the host's registration
+/// and the page's row. Both fail quietly when they drift: a row draws a
+/// shortcut and pressing it does nothing.
+enum KeepAwakeHotkey {
+    /// The slot `HotkeyManager` files the binding under. Not stored anywhere.
+    static let toggle = "\(KeepAwakeEngine.moduleID).toggle"
+
+    /// Where the recorded combination is kept inside the module's store.
+    /// **Deployed stored data: this name never moves.**
+    static let storePrefix = "hotkey"
+}
+
 @MainActor public final class KeepAwakeDescriptor: ModuleDescriptor {
+    public typealias Model = KeepAwakeViewModel
+
     /// The engine's constant, forwarded. Not a second literal: a name only one
     /// side changes is an error nowhere.
     public static let id = ModuleID(KeepAwakeEngine.moduleID)
@@ -39,6 +53,22 @@ import Module_KeepAwake_Engine
     public init() {}
 
     public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
+        keepAwakeEngine(store: store)
+    }
+
+    /// The engine and the model that drinks from its stream, built together.
+    /// Starts nothing: the model only subscribes, and the first state it receives
+    /// is the one `activate()` — later, from the host — emits.
+    public func makeModule(store: NamespacedStore) -> ModuleParts<KeepAwakeViewModel> {
+        let engine = keepAwakeEngine(store: store)
+        return ModuleParts(engine: engine, model: KeepAwakeViewModel(engine: engine))
+    }
+
+    /// Ends the model's event loop; the host calls it before the engine's
+    /// `deactivate()`.
+    public func stop(_ model: KeepAwakeViewModel) { model.stop() }
+
+    private func keepAwakeEngine(store: NamespacedStore) -> KeepAwakeEngine {
         self.store = store
         let ports = KeepAwakeSystemPorts()
         return KeepAwakeEngine(
@@ -55,7 +85,7 @@ import Module_KeepAwake_Engine
                                             words: { KAStr.batteryVetoNotice($0) }))
     }
 
-    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
+    public func menuBar(_ vm: KeepAwakeViewModel) -> MenuBarContribution? {
         let s = resolved(store)
         return MenuBarContribution(panelTile: AnyView(KeepAwakePanelTile(vm: vm, store: s)))
     }
@@ -64,7 +94,7 @@ import Module_KeepAwake_Engine
     /// drawn. 1×1 is the countdown alone; 2×N is the tile with the two
     /// automation conditions unfolded under it, which at 2×1 are behind a
     /// disclosure because the tile has to stay short.
-    public func panelWidget(_ size: PanelWidgetSize, _ vm: ModuleViewModel) -> AnyView? {
+    public func panelWidget(_ size: PanelWidgetSize, _ vm: KeepAwakeViewModel) -> AnyView? {
         let s = resolved(store)
         switch size {
         case .compact: return AnyView(KeepAwakeCompactWidget(vm: vm))
@@ -77,15 +107,15 @@ import Module_KeepAwake_Engine
         }
     }
 
-    public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
+    public func settingsPage(_ vm: KeepAwakeViewModel) -> AnyView {
         AnyView(KeepAwakeSettingsPage(vm: vm, store: resolved(store)))
     }
 
     /// This module has a plain running/not-running of its own, which is what
     /// the badge needs — and it is the same `isActive` the menu-bar icon and
     /// the panel tile draw, not a second opinion about it.
-    public func activity(_ vm: ModuleViewModel) -> ModuleActivity? {
-        KeepAwakeViewModel.shared(vm: vm).isActive ? .active : .idle
+    public func activity(_ vm: KeepAwakeViewModel) -> ModuleActivity? {
+        vm.isActive ? .active : .idle
     }
 
     /// Accessibility only while the pointer nudge is on — it is the one thing
@@ -103,19 +133,18 @@ import Module_KeepAwake_Engine
         [ModuleHotkey(slot: KeepAwakeHotkey.toggle, prefix: KeepAwakeHotkey.storePrefix)]
     }
 
-    public func hotkeyPressed(_ hotkey: ModuleHotkey, _ vm: ModuleViewModel) {
-        vm.send(KeepAwakeCommand.toggle)
+    public func hotkeyPressed(_ hotkey: ModuleHotkey, _ vm: KeepAwakeViewModel) {
+        vm.toggle()
     }
 
-    public func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>? {
-        KeepAwakeViewModel.shared(vm: vm).objectWillChange
+    public func statusChanges(_ vm: KeepAwakeViewModel) -> AnyPublisher<Void, Never>? {
+        vm.objectWillChange
             .map { _ in () }
             .eraseToAnyPublisher()
     }
 
-    public func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance {
-        let state = KeepAwakeViewModel.shared(vm: vm)
-        guard state.isActive, let store else { return .inactive }
+    public func statusAppearance(_ vm: KeepAwakeViewModel) -> StatusAppearance {
+        guard vm.isActive, let store else { return .inactive }
         // Optional per-module active-state glyph: when enabled, the menu bar shows
         // this shape while Keep Awake is active (otherwise it keeps the global shape).
         let iconStyle = MenuBarLook.customIcon(store) ? MenuBarLook.iconShape(store) : nil
@@ -124,8 +153,8 @@ import Module_KeepAwake_Engine
         var progress: Double?
         var title: String?
         var tint = MenuBarLook.activeTint(store)
-        if let end = state.endDate {
-            if MenuBarLook.ringTimer(store), let start = state.startDate {
+        if let end = vm.endDate {
+            if MenuBarLook.ringTimer(store), let start = vm.startDate {
                 progress = TimerProgress.remainingFraction(now: Date(), start: start, end: end)
             }
             if MenuBarLook.showTimerText(store) {

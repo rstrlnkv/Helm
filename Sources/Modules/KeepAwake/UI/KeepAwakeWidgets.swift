@@ -12,8 +12,8 @@ import Module_KeepAwake_Engine
 struct KeepAwakeCompactWidget: View {
     @ObservedObject private var vm: KeepAwakeViewModel
 
-    init(vm: ModuleViewModel) {
-        self.vm = KeepAwakeViewModel.shared(vm: vm)
+    init(vm: KeepAwakeViewModel) {
+        self.vm = vm
     }
 
     var body: some View {

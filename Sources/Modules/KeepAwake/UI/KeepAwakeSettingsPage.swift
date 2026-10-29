@@ -68,8 +68,8 @@ struct KeepAwakeSettingsPage: View {
     @State private var activeIconShape: String
     @StateObject private var recorder: HelmHotkeyRecorder
 
-    init(vm: ModuleViewModel, store: NamespacedStore) {
-        self.vm = KeepAwakeViewModel.shared(vm: vm)
+    init(vm: KeepAwakeViewModel, store: NamespacedStore) {
+        self.vm = vm
         self.store = store
         _recorder = StateObject(wrappedValue: HelmHotkeyRecorder(store: store, prefix: KeepAwakeHotkey.storePrefix))
         // Every one of these through the settings struct, not a second literal:
@@ -88,15 +88,14 @@ struct KeepAwakeSettingsPage: View {
         _timerEndsAutomation = State(initialValue: settings.timerEndsAutomation)
         _batteryGuardEnabled = State(initialValue: settings.batteryGuardEnabled)
         _batteryGuardPercent = State(initialValue: settings.batteryGuardPercent)
-        let live = KeepAwakeViewModel.shared(vm: vm)
-        _shownConditions = State(initialValue: live.activeConditions)
-        _shownTriggered = State(initialValue: live.triggeredConditions)
-        _shownSuppressed = State(initialValue: live.suppressed)
+        _shownConditions = State(initialValue: vm.activeConditions)
+        _shownTriggered = State(initialValue: vm.triggeredConditions)
+        _shownSuppressed = State(initialValue: vm.suppressed)
         // The function `enabledRules` reads, not a second copy: a copy of the
         // two `insert`s would be the half that never learns the hardware.
         _shownEnabled = State(initialValue: MarkableRules.onThisMac(
             autoExternalDisplay: settings.autoExternalDisplay,
-            autoPower: settings.autoPower, lidHolding: live.clamshellActive))
+            autoPower: settings.autoPower, lidHolding: vm.clamshellActive))
         _activeTintColor = State(initialValue: MenuBarLook.activeTint(store))
         _ringTimer = State(initialValue: MenuBarLook.ringTimer(store))
         _showTimerText = State(initialValue: MenuBarLook.showTimerText(store))
@@ -197,8 +196,8 @@ struct KeepAwakeSettingsPage: View {
                 batteryFloor: batteryGuardPercent,
                 timedNote: timedNote,
                 start: start,
-                stop: { vm.send(KeepAwakeCommand.stop) },
-                resume: { vm.send(KeepAwakeCommand.resumeAutomation) })
+                stop: { vm.stopSession() },
+                resume: { vm.resumeAutomation() })
         }
     }
 
@@ -567,7 +566,7 @@ struct KeepAwakeSettingsPage: View {
     /// which spells no key at all.
     private func writeLook(_ value: Any?, _ key: String) {
         store.set(value, for: key)
-        vm.send(KeepAwakeCommand.settingsChanged)
+        vm.settingsChanged()
     }
 
     // MARK: - Color swatches

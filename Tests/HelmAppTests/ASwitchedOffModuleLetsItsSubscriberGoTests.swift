@@ -88,9 +88,6 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
             Cached(module: "Homebrew", id: HomebrewDescriptor.id.rawValue) {
                 _ = HomebrewViewModel.shared(vm: $0)
             },
-            Cached(module: "KeepAwake", id: KeepAwakeDescriptor.id.rawValue) {
-                _ = KeepAwakeViewModel.shared(vm: $0)
-            },
             Cached(module: "Layout", id: LayoutDescriptor.id.rawValue) {
                 _ = LayoutViewModel.shared(vm: $0)
             },
@@ -140,6 +137,29 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
                 before the task, or give the model a `stop()` the drop closure calls.
                 """)
         }
+    }
+
+    /// Keep Awake does not cache its model: the host holds it and the descriptor's
+    /// `stop(_:)` ends its one event task, so this asks the real descriptor for
+    /// the real parts and stops the model the way `ModuleHost` does.
+    ///
+    /// The count is asserted at 1 first, for the reason given above, and the
+    /// task is given its turn to park on the stream before it is cancelled.
+    func testKeepAwakeGivesItsSubscriberBackWhenTheHostStopsItsModel() async throws {
+        let descriptor = KeepAwakeDescriptor()
+        let parts = descriptor.makeModule(store: NamespacedStore(
+            namespace: "test.keepawake.subscriber", backing: InMemoryKeyValueStore()))
+        let transport = try XCTUnwrap(parts.engine.transport as? LocalTransport)
+        await settle(transport, until: 1)
+        XCTAssertEqual(transport.subscriberCount, 1,
+                       "the model never subscribed, so the count below would pass on nothing")
+        await letTheLoopStart()
+
+        descriptor.stop(parts.model)
+        await settle(transport, until: 0)
+
+        XCTAssertEqual(transport.subscriberCount, 0,
+                       "`stop(_:)` left the engine's subscriber behind: the model's task was not cancelled")
     }
 
     /// A module that starts caching its view model arrives in the table above,

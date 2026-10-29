@@ -20,7 +20,7 @@ import HelmRuntime
 /// And every KeepAwake caller of that port is the thread that draws.
 /// `activate()` is the host's module enable, at launch; `recompute()` runs from
 /// the display, power and application observers, all of which deliver on main;
-/// the transport handler wraps itself in `MainActor.run` on purpose. So a Mac
+/// the model's calls into the engine are made on the main actor. So a Mac
 /// whose Homebrew page is busy can have its main thread parked inside
 /// `ClamshellCoordinator`, at launch, before anything is drawn — which is the
 /// arrangement `fix(settings): the thread that draws never waits for the

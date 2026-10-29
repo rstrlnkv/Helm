@@ -133,7 +133,6 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // answered.
         self.lid.sessionIsActive = { [weak self] in self?.isActive ?? false }
         self.lid.stateChanged = { [weak self] in self?.emitState() }
-        wireTransport()
     }
 
     // MARK: - ModuleEngine (module enabled/disabled)
@@ -260,10 +259,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// Every number a person can pick is bounded where they pick it — the
     /// settings stepper, the tile's presets, `TimerPolicy.extendedMinutes` for
-    /// the "+15" — and one caller is not a person: `wireTransport` decodes
-    /// `KeepAwakeStart` from a JSON payload and hands `payload.minutes`
-    /// straight here, where `minutes * 60` **traps** on `Int` overflow. A
-    /// clamp in every view is a clamp in no engine.
+    /// the "+15" — and the engine is not only called from those: `minutes * 60`
+    /// **traps** on `Int` overflow. A clamp in every view is a clamp in no
+    /// engine.
     ///
     /// A negative is refused rather than brought up to the floor: zero is this
     /// module's spelling of "until I say stop", so clamping would turn a
@@ -678,18 +676,13 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     }
 
     /// What a settings edit does, in the order it does it — **the one spelling
-    /// of it**. It was written out twice, here and in the command handler, so
-    /// the lid's edge could reach one of them and not the other.
-    private func settingsChanged() {
+    /// of it**. The engine keeps what it read, so a write nobody announces here
+    /// starts working at the next launch.
+    public func settingsChanged() {
         recompute()
         let edge = reconcileActiveSettings()
         lid.releaseIfUnneeded(switchedOff: edge == .falling)
     }
-
-    /// The `settingsChanged` path, reachable without a transport hop: a test of
-    /// what happens when a setting changes should not have to encode a JSON
-    /// payload to say so.
-    func settingsChangedForTests() { settingsChanged() }
 
     /// Everything the lid coordinator queued has run — the removal prompt is
     /// asked for on its own queue, so a test that counts the asks must wait for
@@ -701,37 +694,38 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         batteryToken = nil
     }
 
-    // MARK: - Transport
+    // MARK: - What the engine says
 
-    private func wireTransport() {
-        localTransport.setHandler { [weak self] cmd in
-            guard let self else { return Data() }
-            // On main, like every other writer here. The display, power and
-            // application observers all deliver on the main thread; commands
-            // arrived on a concurrency pool, so `isActive`, `activeConditions`
-            // and the timer dates were written from two threads with no lock —
-            // and the class carried `@unchecked Sendable` without saying why.
-            await MainActor.run {
-            // Inside `MainActor.run`, which returns nothing: an unknown name
-            // leaves without doing anything, and the empty reply below is the
-            // same answer the caller would have got from a `default`.
-            guard let name = KeepAwakeCommand(rawValue: cmd.name) else { return }
-            switch name {
-            case .toggle:
-                self.toggleSession()
-            case .start:
-                if let payload = EngineReply.decode(KeepAwakeStart.self, from: cmd) {
-                    self.startSession(minutes: payload.minutes)
+    /// The state, as a stream: the latest one first, then every later one, in
+    /// order.
+    ///
+    /// **Registered before this returns, in the one hold of the transport's lock
+    /// that replays what it last said** (`LocalTransport.events`). Reading the
+    /// state and then subscribing is two steps with a window between them — an
+    /// emit that lands there is lost — and registering before the replay hands
+    /// over an older state after a newer one. Nothing here reads the engine's own
+    /// fields for a first element for that reason. State is level-triggered, so a
+    /// model built after `activate()` still starts from the truth.
+    ///
+    /// Synchronous and not actor-isolated, so the model takes it in its own
+    /// synchronous `init`, before its first suspension: no emit can fall between
+    /// the model's construction and its subscription, and the subscriber is
+    /// counted when this returns. The decode runs in the pump, outside the lock. Ending the iteration (the consumer's task cancelled) ends the
+    /// pump, which ends the transport's stream and removes the subscriber.
+    public func stream() -> AsyncStream<StatePayload> {
+        let events = localTransport.events
+        return AsyncStream { continuation in
+            let pump = Task {
+                for await event in events {
+                    guard KeepAwakeEvent(rawValue: event.name) == .state,
+                          let state = try? JSONDecoder().decode(StatePayload.self,
+                                                                from: event.payload)
+                    else { continue }
+                    continuation.yield(state)
                 }
-            case .stop:
-                self.stopSession()
-            case .resumeAutomation:
-                self.resumeAutomation()
-            case .settingsChanged:
-                self.settingsChanged()
+                continuation.finish()
             }
-            }
-            return Data()
+            continuation.onTermination = { _ in pump.cancel() }
         }
     }
 

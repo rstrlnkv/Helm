@@ -6,6 +6,28 @@ engine is the orchestration between them and the ports:
 `KeepAwakeEngine` names the units it drives and says that the module lifecycle
 (`activate()`/`deactivate()`) and the session are separate axes.
 
+## How the model reaches the engine
+
+`KeepAwakeViewModel` is built with the engine by the descriptor's `makeModule` and
+held by the host, and it calls the engine's own methods (`toggleSession`,
+`startSession`, `stopSession`, `resumeAutomation`, `settingsChanged`) on the main
+actor, where the engine's fields are written from; the observers and `Clock.schedule`
+deliver on main, and the lid coordinator hops to main before it announces
+(`ClamshellCoordinator.onMain`). There is no command enum or handler: a name that
+does not exist is a build error, not a refused string.
+
+States come the other way through `KeepAwakeEngine.stream()`, one task in the model
+that the descriptor's `stop(_:)` cancels before the engine's `deactivate()`. The
+stream replays the latest state and registers the subscriber in the one hold of the
+transport's lock (`LocalTransport.events`); reading the state and then subscribing
+leaves a window in which an emit is lost, and registering before replaying delivers an
+older state after a newer one. It is synchronous and not actor-isolated so that the
+model takes it in its own synchronous `init`, before the first suspension: no emit
+falls between the model's construction and its subscription. `TheStreamReplaysTheStateInOrderTests` races an emit against the
+subscription and asserts the order is kept, and
+`ASwitchedOffModuleLetsItsSubscriberGoTests` that stopping the model returns the
+subscriber.
+
 ## The closed lid
 
 A permanent passwordless root grant is paid for only where the thing is otherwise

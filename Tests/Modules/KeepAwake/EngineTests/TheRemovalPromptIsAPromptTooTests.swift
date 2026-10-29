@@ -156,8 +156,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
     /// happened yet is an absence assertion passing on a subject that never
     /// occurred.
     private func settingsChanged() async {
-        _ = try? await engine.transport.send(
-            EngineCommand(name: KeepAwakeCommand.settingsChanged.rawValue))
+        engine.settingsChanged()
         await engine.drainClamshellForTests()
     }
 

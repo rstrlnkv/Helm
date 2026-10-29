@@ -130,7 +130,7 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
 
         for _ in 0..<3 {
             let asked = clamshell.grantChecks
-            engine.settingsChangedForTests()
+            engine.settingsChanged()
             await waitForTheQuestion(after: asked)
         }
 
@@ -148,9 +148,9 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
         drainMain()
 
         KeepAwakeSettings(store: store).setClamshellEnabled(false)
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
         KeepAwakeSettings(store: store).setClamshellEnabled(true)
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
 
         await waitUntil("the lid asked for the rule a second time") { clamshell.installCalls == 2 }
         XCTAssertEqual(clamshell.installCalls, 2,

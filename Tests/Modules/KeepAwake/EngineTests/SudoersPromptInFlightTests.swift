@@ -153,7 +153,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
 
         // The person changes their mind while the prompt is up.
         KeepAwakeSettings(store: store).setClamshellEnabled(false)
-        _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
+        engine.settingsChanged()
         XCTAssertEqual(clamshell.removeCount, 0,
                        "precondition: there was nothing on disk to remove yet")
 
@@ -172,7 +172,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
         await startSessionWithPromptUp()
 
         KeepAwakeSettings(store: store).setClamshellEnabled(false)
-        _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
+        engine.settingsChanged()
         clamshell.answerAllPrompts(granted: true)
         await drainMain()
 
@@ -213,7 +213,7 @@ final class SudoersPromptInFlightTests: XCTestCase {
         await startSessionWithPromptUp()
 
         let asked = clamshell.grantChecks
-        _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
+        engine.settingsChanged()
 
         await waitUntil("the lid asked again whether it needs a password") {
             clamshell.grantChecks > asked

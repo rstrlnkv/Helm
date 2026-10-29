@@ -71,7 +71,7 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
         clamshell.passwordlessGrantExists = true
         KeepAwakeSettings(store: store).setClamshellEnabled(false)
 
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
 
         // The withdrawal runs on the module's own queue, because a child
         // process must not run on the thread that draws.
@@ -94,7 +94,7 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
         clamshell.passwordlessGrantExists = false
         KeepAwakeSettings(store: store).setClamshellEnabled(false)
 
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
 
         // Asserted after the removal really happened: an absence read before the
         // subject has run is green on any code whatever.

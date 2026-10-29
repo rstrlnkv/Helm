@@ -51,8 +51,7 @@ final class TheDisplayAssertionFollowsItsSettingTests: XCTestCase {
 
     /// The command the settings page sends when anything on it moves.
     private func settingsChanged() async {
-        _ = try? await engine.transport.send(
-            EngineCommand(name: KeepAwakeCommand.settingsChanged.rawValue))
+        engine.settingsChanged()
     }
 
     func testSwitchingItOffDuringASessionPutsTheDisplayAssertionDown() async {

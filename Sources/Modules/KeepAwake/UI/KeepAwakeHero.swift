@@ -6,7 +6,7 @@ import Module_KeepAwake_Engine
 ///
 /// A view of its own rather than two members of the settings page, because the
 /// only way to review motion is to measure it, and a `private var` on a page
-/// that needs a transport, a store and a running engine cannot be hosted in a
+/// that needs a store and a running engine cannot be hosted in a
 /// window and photographed.
 ///
 /// **Why a cross-fade and not a reveal.** The house rule is that reveals grow —
@@ -596,8 +596,8 @@ struct KeepAwakeHero: View {
 
     /// One button, and its word is whichever press it is about to be.
     ///
-    /// Not two buttons and an `if`: the act on the other end is one command
-    /// (`KeepAwakeCommand.stop`), and the engine decides what that press means
+    /// Not two buttons and an `if`: the act on the other end is one call
+    /// (`KeepAwakeEngine.stopSession`), and the engine decides what that press means
     /// from the same three facts this label is spelled from. A second control
     /// would be a second decision to keep in step with the first.
     private var stopButton: some View {

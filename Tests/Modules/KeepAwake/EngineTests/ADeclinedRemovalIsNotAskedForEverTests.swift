@@ -83,7 +83,7 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
     /// the dialog below is what a rule *older than that line* still costs.
     func testSwitchingTheOptionOffTakesTheRuleBackOnce() async {
         settings.setClamshellEnabled(false)
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
         await removalRan(on: clamshell)
 
         XCTAssertEqual(clamshell.passwordlessRemovals, 1)
@@ -103,7 +103,7 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
         clamshell.withdrawalIsGranted = false
         clamshell.removalSucceeds = false
         settings.setClamshellEnabled(false)
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
         await removalRan(on: clamshell)
         XCTAssertEqual(clamshell.removeCalls, 1, "precondition: it was asked, and declined")
         XCTAssertTrue(clamshell.isSudoersInstalled(),
@@ -112,7 +112,7 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
         // Three ordinary edits of some other control — the battery floor's
         // stepper sends one of these per press.
         for _ in 0..<3 {
-            engine.settingsChangedForTests()
+            engine.settingsChanged()
             await settle()
         }
 
@@ -134,14 +134,14 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
         clamshell.withdrawalIsGranted = false
         clamshell.removalSucceeds = false
         settings.setClamshellEnabled(false)
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
         await removalRan(on: clamshell)
         XCTAssertTrue(engine.lidGrantRemains, "precondition: declined, so the rule is still there")
 
         // An administrator removes it from the terminal. Nothing tells the app.
         clamshell.sudoersInstalled = false
         clamshell.passwordlessGrantExists = false
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
         await settle()
 
         XCTAssertFalse(engine.lidGrantRemains,
@@ -155,11 +155,11 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
         clamshell.withdrawalIsGranted = false
         clamshell.removalSucceeds = false
         settings.setClamshellEnabled(false)
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
         await removalRan(on: clamshell)
         XCTAssertTrue(engine.lidGrantRemains, "precondition")
 
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
         await settle()
 
         XCTAssertTrue(engine.lidGrantRemains,
