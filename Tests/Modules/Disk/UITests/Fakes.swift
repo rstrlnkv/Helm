@@ -3,68 +3,33 @@ import HelmContract
 import HelmRuntime
 import Module_Disk_Engine
 import XCTest
+@testable import Module_Disk_UI
 
-// The two transports this module's page tests are written against, and the
-// waits that go with them.
+// The two engines this module's page tests are written against, and the waits
+// that go with them.
 //
-// **They are two on purpose.** `AnsweringTransport` answers on the spot;
-// `HeldTransport` parks every scan until a test releases it. A fake that
-// answers synchronously releases a gate before the call it is gating returns,
+// **They are two on purpose.** `AnsweringWork` answers on the spot;
+// `HeldWork` parks every scan until a test releases it. A fake that answers
+// synchronously releases a gate before the call it is gating returns,
 // so a test of a busy gate passes with the gate deleted — which is why
 // `DiskScanRaceTests` and `StopKeepsWhatItMeasuredTests` need the parking one
 // and cannot be served by the immediate one. Merging them would take the
 // mid-walk state out of the language these tests are written in.
-//
-// Each was spelled twice before it moved here, and the copies had drifted: one
-// `HeldTransport` had grown a "trash" case the other had not. The union is
-// kept — a fake simpler than the thing it stands for cannot fail the way the
-// thing can.
 
 // MARK: - Answers on the spot
 
 /// Volumes, scans and removals, all returned without suspending. For tests
 /// about what the view model *keeps* across a transition rather than about
 /// interleaving.
-final class AnsweringTransport: EngineTransport, @unchecked Sendable {
-
-    /// What the engine behind this wire does with a request.
-    ///
-    /// **A fake that can only answer is simpler than the port it stands for.**
-    /// `EngineTransport.send` is declared `throws` and its only implementation
-    /// answers empty `Data` for a handler whose engine has gone — which
-    /// `DiskViewModel.shared(vm:)`'s own comment describes in as many words:
-    /// a cached view model outliving its engine gets "every request with empty
-    /// Data from then on", the state switching the module off and on produces.
-    /// Without these two cases, «the removal nobody answered» was a state no
-    /// test in this target could write down, whatever anybody wrote.
-    ///
-    /// Kept apart from each other rather than folded together: JSON decodes
-    /// nothing from either, but they are not the same wire, and a command
-    /// answering a raw payload would tell them apart.
-    enum Answer: Equatable {
-        /// The fixture's reply: an engine that is there and answers.
-        case reply
-        /// `send` throws, which `TransportClient.request` folds to the same nil
-        /// as a reply that will not decode.
-        case refuse
-        /// Empty `Data` — an engine that is gone, or a command it does not know.
-        case nothing
-    }
+final class AnsweringWork: DiskWork, @unchecked Sendable {
 
     private let lock = NSLock()
     private var results: [String: ScanResult] = [:]
     private var removal = DiskRemoval(removed: [], refused: [], freedBytes: 0)
-    private var answer: Answer = .reply
     private let volumes: [VolumeInfo]
-    let events: AsyncStream<EngineEvent>
 
     init(volumes: [VolumeInfo]) {
         self.volumes = volumes
-        events = AsyncStream { _ in }
-    }
-
-    private var currentVolumes: [VolumeInfo] {
-        lock.lock(); defer { lock.unlock() }; return volumes
     }
 
     func answer(_ path: String, with result: ScanResult) {
@@ -75,17 +40,6 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
         lock.lock(); self.removal = removal; lock.unlock()
     }
 
-    /// The engine going away under the page, or coming back. A port that can
-    /// change while the app is running says so rather than being fixed at init
-    /// (CLAUDE.md § What not to do, and what breaks if you do).
-    func answers(_ answer: Answer) {
-        lock.lock(); self.answer = answer; lock.unlock()
-    }
-
-    private var currentAnswer: Answer {
-        lock.lock(); defer { lock.unlock() }; return answer
-    }
-
     /// What the engine was actually asked to trash. A basket row and a removal
     /// are not one to one — a cache row stands for its contents — so a test of
     /// that has to be able to read the request rather than the basket.
@@ -94,103 +48,74 @@ final class AnsweringTransport: EngineTransport, @unchecked Sendable {
     }
     private var requestedTrash: [[String]] = []
 
-    private func noteTrash(_ paths: [String]) {
-        lock.lock(); requestedTrash.append(paths); lock.unlock()
+    func mountedVolumes() async -> [VolumeInfo] { volumes }
+
+    func scan(path: String, unattended: Bool,
+              updates: (@Sendable (DiskScanUpdate) -> Void)?) async -> ScanResult? {
+        result(for: path)
     }
 
-    private func result(for path: String) -> ScanResult? {
-        lock.lock(); defer { lock.unlock() }; return results[path]
-    }
+    func cancel() {}
 
-    private var currentRemoval: DiskRemoval {
-        lock.lock(); defer { lock.unlock() }; return removal
-    }
-
-    func send(_ command: EngineCommand) async throws -> Data {
-        // The request is recorded before the wire is consulted: a test of a
-        // silence has to be able to assert that the batch really was sent, or it
-        // is asserting an absence over a press that never happened.
-        if command.name == DiskCommand.trash.rawValue {
-            noteTrash((try? JSONDecoder().decode([String].self, from: command.payload)) ?? [])
-        }
-        switch currentAnswer {
-        case .refuse: throw NoEngine.gone
-        case .nothing: return Data()
-        case .reply: break
-        }
-        switch command.name {
-        case "volumes":
-            return (try? JSONEncoder().encode(currentVolumes)) ?? Data()
-        case "scan":
-            let request = try? JSONDecoder().decode(ScanRequest.self, from: command.payload)
-            return (try? JSONEncoder().encode(request.flatMap { result(for: $0.path) })) ?? Data()
-        case "trash":
-            return (try? JSONEncoder().encode(currentRemoval)) ?? Data()
-        default:
-            return Data()
-        }
-    }
-}
-
-/// What a transport with nothing behind it throws.
-enum NoEngine: Error { case gone }
-
-// MARK: - Parks until released
-
-/// Every "scan" parks until the test releases it and events are pushed by hand,
-/// so the interleaving is chosen rather than raced — and a walk can be caught
-/// in flight, which is the state the Stop button is visible in. A removal parks
-/// too when the test asks for it (`holdTrash`), which is the state the basket
-/// must not move in.
-final class HeldTransport: EngineTransport, @unchecked Sendable {
-    private let lock = NSLock()
-    private var parked: [CheckedContinuation<Data, Never>] = []
-    private var requests: [ScanRequest] = []
-    private var trashBatches: [[String]] = []
-    private var removal = DiskRemoval(removed: [], refused: [], freedBytes: 0)
-    private var heldTrash: [CheckedContinuation<Data, Never>] = []
-    private var holdsTrash = false
-    private var continuation: AsyncStream<EngineEvent>.Continuation?
-    let events: AsyncStream<EngineEvent>
-
-    init() {
-        var handle: AsyncStream<EngineEvent>.Continuation?
-        events = AsyncStream { handle = $0 }
-        continuation = handle
-    }
-
-    func send(_ command: EngineCommand) async throws -> Data {
-        switch command.name {
-        case "volumes":
-            return (try? JSONEncoder().encode([VolumeInfo]())) ?? Data()
-        case "scan":
-            if let request = try? JSONDecoder().decode(ScanRequest.self,
-                                                       from: command.payload) {
-                note(request)
-            }
-            return await withCheckedContinuation { park($0) }
-        case "trash":
-            noteTrash((try? JSONDecoder().decode([String].self, from: command.payload)) ?? [])
-            guard isHoldingTrash else {
-                return (try? JSONEncoder().encode(currentRemoval)) ?? Data()
-            }
-            return await withCheckedContinuation { parkTrash($0) }
-        default:
-            return Data()
-        }
+    func trash(_ paths: [String]) async -> DiskRemoval {
+        noteTrash(paths)
     }
 
     // Locking lives in non-async helpers: taking an NSLock across a suspension
     // point is what the compiler objects to, and it is right to.
-    private func note(_ request: ScanRequest) {
-        lock.lock(); requests.append(request); lock.unlock()
+    private func result(for path: String) -> ScanResult? {
+        lock.lock(); defer { lock.unlock() }; return results[path]
     }
 
+    private func noteTrash(_ paths: [String]) -> DiskRemoval {
+        lock.lock(); defer { lock.unlock() }
+        requestedTrash.append(paths)
+        return removal
+    }
+
+    func backgroundScan() async -> ScanReport? { nil }
+}
+
+// MARK: - Parks until released
+
+/// Every scan parks until the test releases it and updates are pushed by hand,
+/// so the interleaving is chosen rather than raced — and a walk can be caught
+/// in flight, which is the state the Stop button is visible in. A removal parks
+/// too when the test asks for it (`holdTrash`), which is the state the basket
+/// must not move in.
+final class HeldWork: DiskWork, @unchecked Sendable {
+    private let lock = NSLock()
+    private var parked: [CheckedContinuation<ScanResult?, Never>] = []
+    private var sinks: [(@Sendable (DiskScanUpdate) -> Void)?] = []
+    private var trashBatches: [[String]] = []
+    private var removal = DiskRemoval(removed: [], refused: [], freedBytes: 0)
+    private var heldTrash: [CheckedContinuation<DiskRemoval, Never>] = []
+    private var holdsTrash = false
+
+    func mountedVolumes() async -> [VolumeInfo] { [] }
+
+    func scan(path: String, unattended: Bool,
+              updates: (@Sendable (DiskScanUpdate) -> Void)?) async -> ScanResult? {
+        await withCheckedContinuation { park($0, updates) }
+    }
+
+    func cancel() {}
+
+    func backgroundScan() async -> ScanReport? { nil }
+
+    func trash(_ paths: [String]) async -> DiskRemoval {
+        noteTrash(paths)
+        guard isHoldingTrash else { return currentRemoval }
+        return await withCheckedContinuation { parkTrash($0) }
+    }
+
+    // Locking lives in non-async helpers: taking an NSLock across a suspension
+    // point is what the compiler objects to, and it is right to.
     private func noteTrash(_ paths: [String]) {
         lock.lock(); trashBatches.append(paths); lock.unlock()
     }
 
-    private func parkTrash(_ continuation: CheckedContinuation<Data, Never>) {
+    private func parkTrash(_ continuation: CheckedContinuation<DiskRemoval, Never>) {
         lock.lock(); heldTrash.append(continuation); lock.unlock()
     }
 
@@ -224,12 +149,12 @@ final class HeldTransport: EngineTransport, @unchecked Sendable {
         heldTrash = []
         let answer = removal
         lock.unlock()
-        let payload = (try? JSONEncoder().encode(answer)) ?? Data()
-        waiting.forEach { $0.resume(returning: payload) }
+        waiting.forEach { $0.resume(returning: answer) }
     }
 
-    private func park(_ continuation: CheckedContinuation<Data, Never>) {
-        lock.lock(); parked.append(continuation); lock.unlock()
+    private func park(_ continuation: CheckedContinuation<ScanResult?, Never>,
+                      _ updates: (@Sendable (DiskScanUpdate) -> Void)?) {
+        lock.lock(); parked.append(continuation); sinks.append(updates); lock.unlock()
     }
 
     private var currentRemoval: DiskRemoval {
@@ -242,25 +167,29 @@ final class HeldTransport: EngineTransport, @unchecked Sendable {
 
     var parkedCount: Int { lock.lock(); defer { lock.unlock() }; return parked.count }
 
-    /// The name the view model gave the request at `index` — the screen has to
-    /// be able to recognise its own scan's events.
-    func scanID(_ index: Int) -> Int {
+    /// Whether the scan at `index` was started with a sink for its updates. The
+    /// volume walk draws a ring and asks for them; the measurement of one folder
+    /// wants only its final tree and asks for none.
+    func asksForUpdates(_ index: Int) -> Bool {
         lock.lock(); defer { lock.unlock() }
-        return requests.indices.contains(index) ? requests[index].scan : -1
+        return sinks.indices.contains(index) && sinks[index] != nil
     }
 
     func release(_ index: Int, with result: ScanResult?) {
         lock.lock()
         guard parked.indices.contains(index) else { lock.unlock(); return }
         let continuation = parked.remove(at: index)
+        sinks.remove(at: index)
         lock.unlock()
-        continuation.resume(returning: (try? JSONEncoder().encode(result)) ?? Data())
+        continuation.resume(returning: result)
     }
 
-    func emitPartial(scan: Int, result: ScanResult) {
-        let payload = (try? JSONEncoder().encode(PartialScan(scan: scan, result: result)))
-            ?? Data()
-        continuation?.yield(EngineEvent(name: "partial", payload: payload))
+    /// A snapshot from the scan at `index`, through the sink that scan was given.
+    func emitPartial(_ index: Int, result: ScanResult) {
+        lock.lock()
+        let sink = sinks.indices.contains(index) ? sinks[index] : nil
+        lock.unlock()
+        sink?(.partial(result))
     }
 }
 
@@ -272,22 +201,22 @@ func folder(_ path: String, bytes: Int, children: [DiskEntry] = []) -> DiskEntry
               isDirectory: true, noAccess: false, children: children)
 }
 
-/// Waits for the request task to reach the transport. Yielding a fixed number
+/// Waits for the scan to park inside `HeldWork`. Yielding a fixed number
 /// of times is a guess about scheduling; this is the condition the test
 /// depends on.
 ///
 /// `@MainActor`, as every caller is: the yields have to run where the view
 /// model's own tasks run, or the wait hops off and measures another thread.
 @MainActor
-func untilParked(_ transport: HeldTransport, count: Int) async {
-    for _ in 0..<1000 where transport.parkedCount < count { await Task.yield() }
+func untilParked(_ work: HeldWork, count: Int) async {
+    for _ in 0..<1000 where work.parkedCount < count { await Task.yield() }
 }
 
 /// The same wait for a removal: it has left the model and is suspended inside
-/// the transport, which is the only moment «while a removal runs» exists in.
+/// `HeldWork.trash`, which is the only moment «while a removal runs» exists in.
 @MainActor
-func untilTrashing(_ transport: HeldTransport, count: Int = 1) async {
-    for _ in 0..<1000 where transport.trashRequests.count < count { await Task.yield() }
+func untilTrashing(_ work: HeldWork, count: Int = 1) async {
+    for _ in 0..<1000 where work.trashRequests.count < count { await Task.yield() }
 }
 
 /// Room for the tasks already scheduled to land. The two copies of this yielded

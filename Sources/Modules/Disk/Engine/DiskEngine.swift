@@ -10,25 +10,21 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
     /// It reaches disk in shapes nothing would flag if they disagreed: the
     /// `module.disk.*` keys of a store, the directory `ScanJournal` names after
     /// it, and the removal attributed to it in the log. `DiskDescriptor.id`
-    /// is built from this rather than repeating it, the direction the
-    /// descriptors already carry their command enums, so the two spellings are
+    /// is built from this rather than repeating it, so the two spellings are
     /// one. **The string itself never changes** — it names folders and stored
     /// settings that are already on people's machines.
     public static let moduleID = "disk"
 
-    private let localTransport: LocalTransport
-    public let transport: EngineTransport
+    /// Only the host's own windows reach it (`ModuleDescriptor.wire`); the Disk
+    /// model calls this engine's methods and the engine says nothing on it.
+    public let transport: EngineTransport = LocalTransport()
     /// Every scan in flight, not the last one started: drilling into a folder
     /// the walk never reached starts a second scan beside the first.
     private let scanners = ScanRegistry<DiskScanner>()
     private let capacity: any VolumeCapacityPort
 
-    public init(transport: LocalTransport = LocalTransport(),
-                capacity: any VolumeCapacityPort = SystemVolumeCapacity()) {
+    public init(capacity: any VolumeCapacityPort = SystemVolumeCapacity()) {
         self.capacity = capacity
-        self.localTransport = transport
-        self.transport = transport
-        wireTransport()
     }
 
     public func activate() {}
@@ -48,10 +44,13 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
         }
     }
 
-    /// `scan` is the caller's name for this measurement, echoed on every event
-    /// it produces. Two scans share one transport — the volume walk and the
-    /// folder measurement a drill starts — and a snapshot that does not say
-    /// which one it belongs to was drawn as though it belonged to the other.
+    /// The same list off the main actor: the volume attributes of a network mount
+    /// nobody holds up any more block for the mount's own timeout, so the model
+    /// asks through here and never calls `volumes()` itself.
+    public func mountedVolumes() async -> [VolumeInfo] {
+        await offTheCooperativePool { self.volumes() }
+    }
+
     /// The boot volume, walked by the timer instead of by a person.
     ///
     /// **The finding is the advice, not the tree.** A disk scan answers "what
@@ -83,8 +82,12 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
     ///   read it at an empty chair. Defaults to false: a scan a person started
     ///   measures everything, because "where did the space go" must not quietly
     ///   omit the largest folder on the volume.
-    public func scan(path: String, scan id: Int = 0,
-                     unattended: Bool = false) async -> ScanResult? {
+    /// - Parameter updates: where the walk's progress and its partial snapshots go
+    ///   while it runs; nil asks for neither. Called from worker threads. Two scans
+    ///   can be walking at once (the volume and the folder a drill measures) and
+    ///   each has its own sink, so an update is never another scan's.
+    public func scan(path: String, unattended: Bool = false,
+                     updates: (@Sendable (DiskScanUpdate) -> Void)? = nil) async -> ScanResult? {
         let scanner = DiskScanner(unattended: unattended)
         let token = scanners.add(scanner)
         defer { scanners.remove(token) }
@@ -99,23 +102,27 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
 
         let counter = FileCounter()
         let freeNow = freeBytes(forPathOn: path)
-        let result: ScanResult? = await offTheCooperativePool {
-            guard let tree = scanner.scan(root: path, onProgress: { progress in
-                counter.value = progress.filesSeen
-                // Progress is broadcast so the UI can show it without polling.
-                self.localTransport.emit(DiskEvent.progress,
-                                         encoding: ScanTick(scan: id, files: progress.filesSeen,
-                                                            bytes: progress.bytesSeen,
-                                                            path: progress.currentPath))
-            }, onPartial: { partialTree in
+        var onPartial: (@Sendable (DiskNode) -> Void)?
+        if let updates {
+            onPartial = { partialTree in
                 // A shallow snapshot every ~0.35s: the ring grows while the
                 // walk is still running.
                 let snapshot = ScanResult(root: DiskEntry(partialTree, depth: 4, path: path),
                                           freeBytes: freeNow,
                                           filesScanned: counter.value, seconds: 0)
-                self.localTransport.emit(DiskEvent.partial,
-                                         encoding: PartialScan(scan: id, result: snapshot))
-            }) else { return nil }
+                updates(.partial(snapshot))
+            }
+        }
+        let result: ScanResult? = await offTheCooperativePool { [onPartial] in
+            // `onProgress` is passed whether or not anyone listens: it is the only
+            // writer of `counter`, which `filesScanned` is read from. The snapshot
+            // callback is passed only to a caller that wants snapshots, because
+            // asking for it makes the scanner build one every ~0.35s.
+            guard let tree = scanner.scan(root: path, onProgress: { progress in
+                counter.value = progress.filesSeen
+                updates?(.progress(ScanTick(files: progress.filesSeen, bytes: progress.bytesSeen,
+                                            path: progress.currentPath)))
+            }, onPartial: onPartial) else { return nil }
             let free = self.freeBytes(forPathOn: path)
             return ScanResult(root: DiskEntry(tree, depth: 6, path: path), freeBytes: free,
                               filesScanned: counter.value,
@@ -173,31 +180,6 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
                                     module: Self.moduleID)
         }
     }
-
-    private func wireTransport() {
-        localTransport.setHandler { [weak self] command in
-            guard let self else { return Data() }
-            guard let name = DiskCommand(rawValue: command.name) else { return Data() }
-            switch name {
-            case .volumes:
-                return EngineReply.encode(self.volumes(), for: command)
-            case .scan:
-                guard let payload = EngineReply.decode(ScanRequest.self, from: command)
-                else { return Data() }
-                return EngineReply.encode(await self.scan(path: payload.path, scan: payload.scan),
-                                          for: command)
-            case .backgroundScan:
-                return EngineReply.encode(await self.backgroundScan(), for: command)
-            case .cancel:
-                self.cancel()
-                return Data()
-            case .trash:
-                guard let paths = EngineReply.decode([String].self, from: command)
-                else { return Data() }
-                return EngineReply.encode(await self.trash(paths), for: command)
-            }
-        }
-    }
 }
 
 /// Progress arrives from worker threads; the count needs a home that is safe
@@ -211,58 +193,35 @@ private final class FileCounter: @unchecked Sendable {
     }
 }
 
-/// What to measure, and under whose name. The name comes from the caller
-/// because the caller is the one who has to recognise the answer: the view
-/// model knows which scan the screen belongs to before the first snapshot of it
-/// exists.
-public struct ScanRequest: Codable, Equatable, Sendable {
-    public let path: String
-    public let scan: Int
-
-    public init(path: String, scan: Int = 0) {
-        self.path = path
-        self.scan = scan
-    }
-}
-
-public struct ScanTick: Codable, Equatable, Sendable {
-    /// Which scan is counting. Two can be walking at once.
-    public let scan: Int
+public struct ScanTick: Equatable, Sendable {
     public let files: Int
     public let bytes: Int
     public let path: String
 
-    public init(scan: Int = 0, files: Int, bytes: Int, path: String) {
-        self.scan = scan
+    public init(files: Int, bytes: Int, path: String) {
         self.files = files
         self.bytes = bytes
         self.path = path
     }
 }
 
-/// A snapshot of a tree still being walked, with the scan it belongs to.
+/// What a scan says while it runs, to the caller that asked for it.
 ///
-/// Without the name, a partial from a folder measurement was drawn as the
-/// volume it was started from: the focus collapsed, the title went on naming
-/// the volume, and the volume's free space was drawn against a folder — the
-/// flat grey disc `recomputeSegments` exists to prevent. The volume's own next
-/// snapshot swapped it back, so the ring oscillated until the walk finished.
-public struct PartialScan: Codable, Equatable, Sendable {
-    public let scan: Int
-    public let result: ScanResult
-
-    public init(scan: Int, result: ScanResult) {
-        self.scan = scan
-        self.result = result
-    }
+/// Per call rather than per engine: two scans can be walking at once, and an
+/// update that travelled on one shared channel had to name its scan to be told
+/// from the other's. Here each call has its own sink, so it cannot be another's.
+public enum DiskScanUpdate: Sendable {
+    /// How far the walk has got — files seen, bytes so far.
+    case progress(ScanTick)
+    /// A tree good enough to draw, before the walk has finished.
+    case partial(ScanResult)
 }
 
-/// What the trash command answers with.
+/// What `trash` answers with.
 ///
 /// This was a field-for-field copy of `HelmTrash.Result` — the same three
 /// stored properties in the same order, the same `failed`, the same
 /// conformances — which the engine built and then unwrapped and re-wrapped for
-/// no gain. The wire is unchanged by the alias; `refused` still carries the
-/// reason, which is the only part worth reading when Full Disk Access is the
+/// no gain. `refused` still carries the reason, which is the only part worth reading when Full Disk Access is the
 /// cause.
 public typealias DiskRemoval = HelmTrash.Result

@@ -1,5 +1,4 @@
 import HelmRuntime
-import Module_Disk_UI
 import Module_Duplicates_UI
 import Module_Uninstaller_UI
 import XCTest
@@ -57,11 +56,10 @@ final class CommandNamesAreAnsweredTests: XCTestCase {
     }
 
     /// **The one name that crosses a target boundary.** The coordinator sends
-    /// `ScanCommand.backgroundScan` from `HelmApp`; three engines answer it from
+    /// `ScanCommand.backgroundScan` from `HelmApp`; two engines answer it from
     /// their own enums, and no compiler sees both sides. Two spellings of one
     /// string is exactly the shape this whole change removes elsewhere.
-    func testTheThreeScannersSpellTheScanCommandTheSameWay() {
-        XCTAssertEqual(DiskCommand.backgroundScan.rawValue, ScanCommand.backgroundScan)
+    func testTheTwoScannersSpellTheScanCommandTheSameWay() {
         XCTAssertEqual(DuplicatesCommand.backgroundScan.rawValue, ScanCommand.backgroundScan)
         XCTAssertEqual(UninstallerCommand.backgroundScan.rawValue, ScanCommand.backgroundScan)
     }

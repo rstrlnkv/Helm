@@ -14,8 +14,8 @@ struct DiskWidget: View {
     @ObservedObject private var vm: DiskViewModel
     private let size: PanelWidgetSize
 
-    init(vm: ModuleViewModel, size: PanelWidgetSize) {
-        self.vm = DiskViewModel.shared(vm: vm)
+    init(model: DiskViewModel, size: PanelWidgetSize) {
+        self.vm = model
         self.size = size
     }
 
@@ -53,14 +53,14 @@ struct DiskWidget: View {
             }
         }
         .task {
-            // **Every time it is shown**, not once per launch. `shared(vm:)`
-            // lives as long as the app does, so `if vm.volumes.isEmpty` meant
+            // **Every time it is shown**, not once per launch. The model
+            // lives as long as the module does, so `if vm.volumes.isEmpty` meant
             // the free space on this tile was the figure from the first opening
             // of the panel — for weeks, on a menu-bar app — and `CapacityBar`'s
             // red-over-90 % could never fire on a disk filling up while Helm
             // ran, which is the only way disks fill up. The panel rebuilds its
             // widgets on every opening, and this read is a volume-attributes read.
-            await vm.loadVolumes()
+            await vm.appear()
         }
     }
 }

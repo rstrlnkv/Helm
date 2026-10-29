@@ -2,34 +2,25 @@ import Foundation
 import HelmRuntime
 
 /// A volume offered on the start screen.
-public struct VolumeInfo: Codable, Equatable, Sendable, Identifiable {
+public struct VolumeInfo: Equatable, Sendable, Identifiable {
     public var id: String { path }
     public let name: String
     public let path: String
     public let totalBytes: Int
     public let freeBytes: Int
     /// Cannot trap: both fields are bounded to `0...Int.max` on the way in
-    /// (`init` and decoding), so the subtraction has no overflowing operands.
+    /// (`init`), so the subtraction has no overflowing operands.
     public var usedBytes: Int { max(totalBytes - freeBytes, 0) }
 
     public init(name: String, path: String, totalBytes: Int, freeBytes: Int) {
         self.name = name; self.path = path
         self.totalBytes = max(totalBytes, 0); self.freeBytes = max(freeBytes, 0)
     }
-
-    /// A payload decoded off the wire reaches `usedBytes` without passing the
-    /// engine's clamp, so it goes through the same bound here.
-    public init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.init(name: try c.decode(String.self, forKey: .name),
-                  path: try c.decode(String.self, forKey: .path),
-                  totalBytes: try c.decode(Int.self, forKey: .totalBytes),
-                  freeBytes: try c.decode(Int.self, forKey: .freeBytes))
-    }
 }
 
-/// A tree flattened for transport — DiskNode is a reference type built during
-/// the scan; the UI receives this immutable snapshot instead.
+/// A tree flattened into values — DiskNode is a reference type built during the
+/// scan; the model receives this immutable snapshot by return from `scan`, and
+/// `ScanStore` saves it.
 public struct DiskEntry: Codable, Equatable, Sendable, Identifiable {
     /// The path, and whether this is the bucket. They share one: the bucket's
     /// path is the path a real file called `…` would have, so `ForEach` drew

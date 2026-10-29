@@ -61,20 +61,20 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
                    freeBytes: 100, filesScanned: 40, seconds: 0)
     }
 
-    private func model(_ transport: HeldTransport) -> (DiskViewModel, ScanStore) {
+    private func model(_ work: HeldWork) -> (DiskViewModel, ScanStore) {
         // A store of its own: the module's real one is the person's own last
         // scan, and `scratchDirectory`'s teardown drains, which is what a save
         // arriving from the view model's own detached task needs.
         let store = ScanStore(directory: scratchDirectory("disk-unfinished"))
-        return (DiskViewModel(vm: ModuleViewModel(transport: transport), store: store), store)
+        return (DiskViewModel(work: work, store: store), store)
     }
 
     /// A walk in flight with one snapshot drawn — the state the ring is live in.
-    private func walkingWithASnapshot(_ transport: HeldTransport,
+    private func walkingWithASnapshot(_ work: HeldWork,
                                       _ dvm: DiskViewModel) async {
         Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(transport, count: 1)
-        transport.emitPartial(scan: transport.scanID(0), result: partOfBig())
+        await untilParked(work, count: 1)
+        work.emitPartial(0, result: partOfBig())
         await settle()
         XCTAssertEqual(dvm.phase, .result, "precondition: the ring is drawn from the snapshot")
         XCTAssertTrue(dvm.live, "precondition: the walk is still running")
@@ -91,11 +91,11 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
     // MARK: - A removal while the walk is still running
 
     func testEmptyingTheBasketDuringAWalkDoesNotWriteThePartialTreeDown() async {
-        let transport = HeldTransport()
-        transport.answerTrash(with: DiskRemoval(removed: ["/Volumes/Big/Sub"],
+        let work = HeldWork()
+        work.answerTrash(with: DiskRemoval(removed: ["/Volumes/Big/Sub"],
                                                 refused: [], freedBytes: 600))
-        let (dvm, store) = model(transport)
-        await walkingWithASnapshot(transport, dvm)
+        let (dvm, store) = model(work)
+        await walkingWithASnapshot(work, dvm)
         dvm.toggleBasket(folder("/Volumes/Big/Sub", bytes: 600))
 
         await dvm.emptyBasket()
@@ -114,13 +114,13 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
     /// The control: the identical sequence on a walk that has answered writes
     /// one, so the wait above is long enough to have seen a save.
     func testEmptyingTheBasketOnAFinishedTreeStillWritesItDown() async {
-        let transport = HeldTransport()
-        transport.answerTrash(with: DiskRemoval(removed: ["/Volumes/Big/Sub"],
+        let work = HeldWork()
+        work.answerTrash(with: DiskRemoval(removed: ["/Volumes/Big/Sub"],
                                                 refused: [], freedBytes: 600))
-        let (dvm, store) = model(transport)
+        let (dvm, store) = model(work)
         Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(transport, count: 1)
-        transport.release(0, with: partOfBig())
+        await untilParked(work, count: 1)
+        work.release(0, with: partOfBig())
         await settle()
         XCTAssertFalse(dvm.live, "precondition: the walk answered")
         dvm.toggleBasket(folder("/Volumes/Big/Sub", bytes: 600))
@@ -135,9 +135,9 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
     // MARK: - A folder measured after Stop
 
     func testMeasuringAFolderOnAStoppedTreeDoesNotWriteItDown() async {
-        let transport = HeldTransport()
-        let (dvm, store) = model(transport)
-        await walkingWithASnapshot(transport, dvm)
+        let work = HeldWork()
+        let (dvm, store) = model(work)
+        await walkingWithASnapshot(work, dvm)
 
         dvm.cancel()                                  // the Stop button
         XCTAssertTrue(dvm.stopped, "precondition: the tree on screen is a floor")
@@ -145,8 +145,8 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
         // A folder the walk never reached, which is what a stopped tree is full
         // of: no children, so the ring cannot open it without measuring it.
         dvm.drill(into: "/Volumes/Big/Sub")
-        await untilParked(transport, count: 2)
-        transport.release(1, with: measuredSub())
+        await untilParked(work, count: 2)
+        work.release(1, with: measuredSub())
         await settle()
 
         XCTAssertEqual(dvm.focusPath.map(\.path), ["/Volumes/Big", "/Volumes/Big/Sub"],
@@ -164,19 +164,19 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
     /// drill's graft really is written down, so the absence above is the guard
     /// and not the wait.
     func testMeasuringAFolderOnAFinishedTreeWritesTheGraftDown() async {
-        let transport = HeldTransport()
-        let (dvm, store) = model(transport)
+        let work = HeldWork()
+        let (dvm, store) = model(work)
         Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(transport, count: 1)
-        transport.release(0, with: partOfBig())
+        await untilParked(work, count: 1)
+        work.release(0, with: partOfBig())
         await settle()
         XCTAssertFalse(dvm.stopped, "precondition: a finished measurement")
 
         // The volume walk's own request was released above and is no longer
         // parked, so the measurement is the only one waiting.
         dvm.drill(into: "/Volumes/Big/Sub")
-        await untilParked(transport, count: 1)
-        transport.release(0, with: measuredSub())
+        await untilParked(work, count: 1)
+        work.release(0, with: measuredSub())
         await settle()
 
         // The grafted child, not merely the file: `scan(path:)` has already

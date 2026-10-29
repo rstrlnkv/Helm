@@ -52,6 +52,21 @@ final class FreeSpaceUnderOddInputsTests: XCTestCase {
             """)
     }
 
+    /// A scan nobody listens to still counts what it walked: `filesScanned` is
+    /// read from the counter the progress callback writes, and that callback is
+    /// passed whether or not there is a sink for updates. Dropping it with the
+    /// sink gave every background scan and every folder measurement a count of 0.
+    func testAScanWithoutUpdatesStillCountsItsFiles() async throws {
+        let root = scratchDirectory("disk-silent-count")
+        for name in ["a.bin", "b.bin", "c.bin"] {
+            try Data(count: 4096).write(to: root.appendingPathComponent(name))
+        }
+        let engine = DiskEngine(capacity: AnyPathCapacity(boot))
+        let scan = await engine.scan(path: root.path, updates: nil)
+        let result = try XCTUnwrap(scan, "the scan returned nothing")
+        XCTAssertGreaterThan(result.filesScanned, 0, "a scan with no sink for updates counted no files")
+    }
+
     // MARK: - A disk that is not the boot volume
 
     /// An exFAT disk — every USB stick and SD card out of the box — answers 0 for
@@ -143,6 +158,22 @@ final class FreeSpaceUnderOddInputsTests: XCTestCase {
         XCTAssertTrue(DiskEngine(capacity: AnyPathCapacity(hidden)).volumes().isEmpty)
     }
 
+    /// A figure no disk reports (negative, or past every bound) is bounded by
+    /// the initialiser, so `usedBytes` — a subtraction — cannot trap. Each
+    /// stored field is read before `usedBytes`: without the bound the
+    /// subtraction takes the whole test process with it, which nobody can read.
+    func testTheInitialiserBoundsFiguresNoDiskReports() {
+        for (total, free) in [(0, Int.min), (Int.min, 1), (-5, -5), (Int.max, Int.min)] {
+            let volume = VolumeInfo(name: "Odd", path: "/Volumes/Odd",
+                                    totalBytes: total, freeBytes: free)
+            guard volume.totalBytes >= 0, volume.freeBytes >= 0 else {
+                XCTFail("total \(total) free \(free) kept a negative field")
+                continue
+            }
+            XCTAssertGreaterThanOrEqual(volume.usedBytes, 0)
+        }
+    }
+
     /// The scan's door when the port does not answer at all: no wedge rather
     /// than a guess.
     func testAScanWhoseVolumeDoesNotAnswerDrawsNoWedge() async throws {
@@ -231,6 +262,7 @@ private struct AnyPathCapacity: VolumeCapacityPort {
         readout.path = path
         return readout
     }
+
 }
 
 /// A port with nothing mounted and no answer for any path.

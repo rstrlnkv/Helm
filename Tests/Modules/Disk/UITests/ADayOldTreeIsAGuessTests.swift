@@ -28,12 +28,12 @@ final class ADayOldTreeIsAGuessTests: XCTestCase {
 
     /// A model showing a finished measurement, with the store it saved it to.
     private func showingAFinishedScan() async -> (DiskViewModel, ScanStore) {
-        let transport = HeldTransport()
+        let work = HeldWork()
         let store = ScanStore(directory: scratchDirectory("disk-stale"))
-        let dvm = DiskViewModel(vm: ModuleViewModel(transport: transport), store: store)
+        let dvm = DiskViewModel(work: work, store: store)
         Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(transport, count: 1)
-        transport.release(0, with: result())
+        await untilParked(work, count: 1)
+        work.release(0, with: result())
         await settle()
         XCTAssertEqual(dvm.phase, .result, "precondition: a tree is on screen")
         XCTAssertNotNil(dvm.completedAt, "precondition: it is dated")
@@ -80,12 +80,12 @@ final class ADayOldTreeIsAGuessTests: XCTestCase {
     /// running. There is no completed measurement to judge, and expiring here
     /// would empty the screen out from under a scan the person is watching.
     func testAWalkInFlightIsNeverExpired() async {
-        let transport = HeldTransport()
+        let work = HeldWork()
         let store = ScanStore(directory: scratchDirectory("disk-stale-live"))
-        let dvm = DiskViewModel(vm: ModuleViewModel(transport: transport), store: store)
+        let dvm = DiskViewModel(work: work, store: store)
         Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(transport, count: 1)
-        transport.emitPartial(scan: transport.scanID(0), result: result())
+        await untilParked(work, count: 1)
+        work.emitPartial(0, result: result())
         await settle()
         XCTAssertTrue(dvm.live, "precondition: the walk is running and the ring is drawn")
 

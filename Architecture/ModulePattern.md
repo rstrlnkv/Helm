@@ -45,15 +45,21 @@ command file and no handler (Architecture/KeepAwake.md § How the model reaches 
 Leftovers' model calls its engine the same way and takes every answer by return, with
 no stream, because that engine emits nothing (Architecture/Leftovers.md § How Leftovers'
 model reaches its engine).
+Disk's model calls its engine the same way and takes the answer of each call by return;
+the progress and the partial snapshots of a scan travel on a stream the model makes for
+that one call, not on a stream of the engine's, because those events exist only inside a
+call the model made (Architecture/Disk.md § How Disk's model reaches its engine).
 
 The one place a string still crosses is the descriptor's default `backgroundScan(_:)`
 (`Sources/HelmUI/ModuleDescriptor.swift`), which the host reaches through the live
 module's `backgroundScan`, and which a module that owns its model may override to answer from the model instead:
 `ScanCommand` (`Sources/HelmRuntime/ScanReport.swift:39`) is the constant both
-sides read, and the modules `ScanRunner.scannableModules`
-(`Sources/HelmRuntime/ScanRunner.swift:30`) names have their own command files
-that say so in their doc comments.
-`Tests/HelmAppTests/CommandNamesAreAnsweredTests.swift:20` pins those spellings,
+sides read, and those of the modules `ScanRunner.scannableModules`
+(`Sources/HelmRuntime/ScanRunner.swift`) names that still talk to their engine over the
+transport have their own command files that say so in their doc comments; Disk's
+descriptor answers from its model (`DiskDescriptor.backgroundScan(_:)`).
+`CommandNamesAreAnsweredTests.testTheTwoScannersSpellTheScanCommandTheSameWay`
+(`Tests/HelmAppTests/CommandNamesAreAnsweredTests.swift`) pins those spellings,
 and scans the source per module for a command name its own engine has
 no `case` for, because a typo there is silence and silence already reads as
 "refused" here.

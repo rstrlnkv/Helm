@@ -660,7 +660,7 @@ import Module_Homebrew_Engine
     /// installed — every visit, for a list that had not changed.
     ///
     /// Keyed to the view model it was built against, not merely "exists", for
-    /// the reason `DiskViewModel.shared` gives: turning the module off drops
+    /// the reason `DuplicatesViewModel.shared(vm:)` gives: turning the module off drops
     /// the engine, and a cache held past that is talking to a corpse.
     private static var cached: HomebrewViewModel?
     public static func shared(vm: ModuleViewModel) -> HomebrewViewModel {

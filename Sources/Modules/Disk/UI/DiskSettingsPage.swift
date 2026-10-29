@@ -13,8 +13,8 @@ struct DiskSettingsPage: View {
     @State private var diskAccess: PermissionState = .granted
     @State private var confirming = false
 
-    init(vm: ModuleViewModel) {
-        dvm = DiskViewModel.shared(vm: vm)
+    init(dvm: DiskViewModel) {
+        self.dvm = dvm
     }
 
     var body: some View {
@@ -48,7 +48,7 @@ struct DiskSettingsPage: View {
         .helmTracksFullDiskAccess($diskAccess)
         .task {
             dvm.expireIfStale()
-            await dvm.loadVolumes()
+            await dvm.appear()
         }
         .animation(HelmMotion.interface, value: dvm.phase)
         // The basket bar inserts a divider and 45 pt under the ring; without
@@ -92,14 +92,6 @@ struct DiskSettingsPage: View {
                     .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 4)
-                // Above the cards rather than under them: with the list missing
-                // there are no cards, and the sentence is what the person is
-                // reading the gap for.
-                if dvm.volumeListLost {
-                    Text(DkStr.volumeListLost)
-                        .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
                 ForEach(dvm.volumes) { volume in
                     volumeCard(volume)
                 }
@@ -187,17 +179,8 @@ struct DiskSettingsPage: View {
     }
 
     /// What the last press said.
-    ///
-    /// **The lost reply comes first, and it is the stale-list wording.** Disk does
-    /// not re-read anything after a removal: the answered path prunes the tree
-    /// with the paths the engine says it moved, so a reply that never came leaves
-    /// the ring and the list showing exactly where the files were *before* the
-    /// press. `HelmRemovalOutcome.unanswered` ends by promising the list is where
-    /// they are now, which is true for the two modules that rescan and not here.
     @ViewBuilder private var removalReport: some View {
-        if dvm.replyLost {
-            HelmRemovalOutcome.unansweredWithStaleList
-        } else if let banner = dvm.banner {
+        if let banner = dvm.banner {
             HelmRemovalOutcome(
                 succeededText: banner,
                 removed: dvm.removedCount,
@@ -208,7 +191,7 @@ struct DiskSettingsPage: View {
 
     @ViewBuilder private var basketRow: some View {
         // **An empty basket draws nothing here, and cannot.** `showsRemovalBar`
-        // is `!basket.isEmpty || banner != nil || replyLost`, and the branch this
+        // is `!basket.isEmpty || banner != nil`, and the branch this
         // used to hold asked for an empty basket with nothing reported — the one
         // state in which there is no bar to draw it in. «Nothing selected» went
         // with it, in eight languages.

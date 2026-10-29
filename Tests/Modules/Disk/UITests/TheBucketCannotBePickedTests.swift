@@ -19,7 +19,7 @@ import Module_Disk_Engine
 final class TheBucketCannotBePickedTests: XCTestCase {
 
     private func model() -> DiskViewModel {
-        DiskViewModel(vm: ModuleViewModel(transport: AnsweringTransport(volumes: [])),
+        DiskViewModel(work: AnsweringWork(volumes: []),
                       store: ScanStore(directory: scratchDirectory("disk-bucket-pick")))
     }
 

@@ -1,4 +1,5 @@
 import XCTest
+import HelmRuntime
 import HelmTestSupport
 @testable import Module_Disk_Engine
 
@@ -53,6 +54,32 @@ final class DiskTrashArithmeticTests: XCTestCase {
         XCTAssertTrue(removal.refused.isEmpty, "\(removal.refused)")
         XCTAssertEqual(removal.freedBytes, measured,
                        "the removal and the scan disagree about the same folder")
+    }
+}
+
+/// The engine's own gate: `DiskEngine.trash` partitions through `UserFileScope`
+/// before `HelmTrash.remove`, and the only other test that calls it hands it a
+/// path inside the scope, so the partition could be dropped (every path passed
+/// as allowed) and nothing would notice.
+///
+/// **The path is a real file the gate refuses and that cannot move even if the
+/// gate were gone:** `/usr/bin/true` is on the sealed system volume, so a run of
+/// this test with the gate removed fails on what the engine reports, not at the
+/// move: there `trashItem` answered success for the path and the file stayed
+/// where it was, so the refused list is what this test reads. It exists, so
+/// the refusal must be `.outOfScope` (nothing was attempted) and not `.missing`.
+final class DiskTrashGateTests: XCTestCase {
+
+    func testAPathTheGateRefusesIsRefusedByTheEngineAndNotAttempted() async {
+        let path = "/usr/bin/true"
+        XCTAssertTrue(FileManager.default.fileExists(atPath: path), "precondition: the path exists")
+
+        let removal = await DiskEngine().trash([path])
+
+        XCTAssertTrue(removal.removed.isEmpty, "\(removal.removed)")
+        XCTAssertEqual(removal.refused, [HelmTrash.Refusal(path: path, reason: .outOfScope)],
+                       "the engine let a path outside the user's files reach the move")
+        XCTAssertEqual(removal.freedBytes, 0)
     }
 }
 

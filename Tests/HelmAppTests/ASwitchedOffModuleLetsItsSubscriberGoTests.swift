@@ -3,7 +3,6 @@ import HelmContract
 import HelmRuntime
 import HelmTestSupport
 import HelmUI
-import Module_Disk_UI
 import Module_Duplicates_UI
 import Module_Homebrew_UI
 import Module_KeepAwake_UI
@@ -69,9 +68,6 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
 
     private var subscribing: [Cached] {
         [
-            Cached(module: "Disk", id: DiskDescriptor.id.rawValue) {
-                _ = DiskViewModel.shared(vm: $0)
-            },
             Cached(module: "Duplicates", id: DuplicatesDescriptor.id.rawValue) {
                 // Both ports named. The store is in memory because a test leaves
                 // nothing behind, and `settings:` is a double because its
@@ -170,9 +166,9 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
     /// the directory the call is in.
     func testEveryModuleThatCachesAViewModelIsCovered() throws {
         let registered = try Self.modulesRegisteringADrop()
-        XCTAssertGreaterThanOrEqual(registered.count, 7, """
+        XCTAssertGreaterThanOrEqual(registered.count, 6, """
             the scan found \(registered.count) modules calling \
-            `ModuleUICache.dropWhenDisabled` — the tree has at least seven, so the walk or the \
+            `ModuleUICache.dropWhenDisabled` — the tree has at least six, so the walk or the \
             match has stopped reading Sources and this check is guarding nothing.
             """)
 

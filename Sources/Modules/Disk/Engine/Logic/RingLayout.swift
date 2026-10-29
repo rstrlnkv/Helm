@@ -56,8 +56,8 @@ public enum RingLayout {
     public static func layout(focus: DiskNode, path: String,
                               depthLevels: Int, freeBytes: Int) -> [RingSegment] {
         let dataBytes = focus.bytes
-        // Saturating: a volume may report a figure near Int.max (a wire payload,
-        // a filesystem that lies about its capacity), and the sum must not trap.
+        // Saturating: a volume may report a figure near Int.max (a saved scan read
+        // back from its file, a filesystem that lies about its capacity), and the sum must not trap.
         let total = dataBytes.saturatingAdding(max(freeBytes, 0))
         guard total > 0, dataBytes > 0 else { return [] }
 

@@ -21,9 +21,10 @@ public final class ScanStore: @unchecked Sendable {
     ///
     /// **This file is an index of every file name on somebody's volume**, and
     /// without the question every test that renders Disk's page read theirs:
-    /// `DiskViewModel` takes its store as a defaulted argument, so a page built
-    /// through `shared(vm:)` restores whatever that file holds, on a detached task
-    /// that races the render's settle loop. `restoreLastScan` also calls `clear()`
+    /// `DiskViewModel` takes its store as a defaulted argument, so a model built
+    /// by `DiskDescriptor.makeModule`, which passes no store, restores whatever
+    /// that file holds once the page calls `appear()`, on a detached task that
+    /// races the render's settle loop. `restoreLastScan` also calls `clear()`
     /// when the saved root has gone, so a suite run could *delete* their cache
     /// and not only read it. `TheSuiteDoesNotReadTheUsersLastScanTests` carries
     /// what it cost the ratchets, in layers and in seconds.

@@ -50,7 +50,7 @@ public enum DiskRemovalPlan {
     /// the advice's own total, which `DiskAdvice` derives from those same targets.
     ///
     /// **A folded bucket never leaves here**, and this is the last place that can
-    /// say so: the flag stops at the wire, and everything past this point is
+    /// say so: the flag stops at this question, and everything past this point is
     /// strings — `UserFileScope` and `HelmTrash` see a path that is the path a
     /// real file named `…` would have, and cannot tell the aggregate from the
     /// file. The row and the basket refuse it first; this is the step between the

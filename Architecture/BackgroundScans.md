@@ -21,7 +21,7 @@ across ticks rather than trusting one reading, and stays at or above the counter
 idleness is not evidence under fast user switching, so the console session and the
 lock state are read as well.
 
-What crosses the transport is deliberately thin: `ScanReport` is bytes, a count and a
+What a background scan answers is deliberately thin: `ScanReport` is bytes, a count and a
 list of path and size, the shape unlike scanners can all speak, and nil is not an empty
 report. `ScanJournal` keeps the numbers for the last scans per module and the item lists
 for the newest two, stores no localized text, and redirects itself out of the real

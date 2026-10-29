@@ -15,10 +15,10 @@ import Module_Disk_Engine
 /// would otherwise write into somebody's real files". Two places in `Sources/`
 /// name `.applicationSupportDirectory`. One of them asks. This is the other.
 ///
-/// **What it cost, measured 2026-08-11.** `DiskSettingsPage.init` builds its view
-/// model through `DiskViewModel.shared(vm:)`, which has no store parameter, so
-/// `restoreLastScan()` reads that file and — when the saved scan is less than a
-/// day old — draws the person's tree on a page the ratchets measure. The file on
+/// **What it cost, measured 2026-08-11.** Disk's page was given its view
+/// model by `DiskViewModel.shared(vm:)`, which had no store parameter, so
+/// `restoreLastScan()` read that file and — when the saved scan is less than a
+/// day old — drew the person's tree on a page the ratchets measure. The file on
 /// this Mac was 8 MB, decoded on a detached task, and it raced the harness's
 /// settle loop: the page-render harness read Disk at **172 layers at 17:59:50
 /// and 50 layers at 17:59:59**, same commit, same machine, nine seconds apart.

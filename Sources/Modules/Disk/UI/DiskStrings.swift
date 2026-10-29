@@ -69,10 +69,6 @@ enum DkStr {
     static var noAccess: String { L("No access") }
     static var scanNeedsAccess: String { L("Without Full Disk Access some folders scan as empty.") }
     static var startHint: String { L("Pick a volume, or scan any folder.") }
-    /// The start screen's silence: the nil `TransportClient.request`
-    /// answers for a request that threw or a reply that would not decode, said for
-    /// a picker that may be missing a disk somebody is looking for.
-    static var volumeListLost: String { L("Helm got no answer, so this may not be every volume.") }
     /// The count goes through `Count`: a scan of `/` reports seven digits, and
     /// seven ungrouped digits are read by counting them. Same in the two
     /// statements below.

@@ -21,7 +21,7 @@ import HelmContract
 /// did; they also log, at `error`, in one place, identically for every
 /// engine. `#fileID` and `#line` default in from the call site, so the line
 /// names the engine and the arm — a bare command name would not, since
-/// `scan` and `trash` are spelled the same in three modules each.
+/// one name can be spelled the same in more than one module's enum.
 ///
 /// **The line carries the command and the type it wanted, never the payload.**
 /// A payload names somebody's files; the log carries no names.

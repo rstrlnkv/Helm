@@ -145,11 +145,10 @@ public enum KeepGrounds: Equatable, Sendable {
     public static func shared(vm: ModuleViewModel, store: NamespacedStore,
                               settings: SettingGuard = DuplicatesSettings.guardOfScanSettings)
     -> DuplicatesViewModel {
-        // Keyed to the view model it was built against, not merely "exists" —
-        // see `DiskViewModel.shared(vm:)`. Turning the module off deallocates
-        // the engine while the `LocalTransport` held here survives, and its
-        // weakly-captured handler answers every request with empty Data from
-        // then on.
+        // Keyed to the view model it was built against, not merely "exists".
+        // Turning the module off deallocates the engine while the
+        // `LocalTransport` held here survives, and its weakly-captured handler
+        // answers every request with empty Data from then on.
         if let cached, cached.vm === vm { return cached }
         let created = DuplicatesViewModel(vm: vm, store: store, settings: settings)
         cached = created

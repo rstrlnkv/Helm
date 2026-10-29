@@ -199,8 +199,8 @@ private struct BreadcrumbBar: View {
             // behind `live` alone — so the click looked dead, the ring changed
             // under the person when it landed, and there was nothing to press to
             // stop it. The file count belongs to the volume walk and is absent
-            // here by construction: a folder measurement's progress events carry
-            // its own scan's name, which is not the one the screen is showing.
+            // here by construction: a folder measurement asks for no updates
+            // (`measureAndDrill` passes no sink), so nothing of it reaches `tick`.
             if dvm.walking {
                 HStack(spacing: 6) {
                     ProgressView().controlSize(.small)
