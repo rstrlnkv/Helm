@@ -25,8 +25,8 @@ itself, so a scope never widens without a test naming the new path
 ## One removal at a time
 
 Disk, Duplicates, the Uninstaller and Leftovers remove a batch the person ticked —
-Duplicates over a `trash` command, the Uninstaller over `trashPaths`,
-Disk and Leftovers by calling their engine's `trash` — and a second press while the first is in flight is not a second
+the Uninstaller over `trashPaths`, Duplicates, Disk and Leftovers by calling
+their engine's `trash` — and a second press while the first is in flight is not a second
 removal, because the files it would name are already gone: what a repeat can
 only be is a refusal, and the reply that lands second overwrites the model's report
 of the one that landed first. That refusal has to live in the model and not only in a

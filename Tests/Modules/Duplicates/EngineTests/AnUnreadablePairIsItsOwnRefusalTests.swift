@@ -65,8 +65,7 @@ final class AnUnreadablePairIsItsOwnRefusalTests: XCTestCase {
         // The first pair is being read; stop, then let it finish its read.
         for _ in 0..<100_000 where parked.calls < 1 { await Task.yield() }
         XCTAssertEqual(parked.calls, 1, "the verification was never reached")
-        _ = try await engine.transport.send(
-            EngineCommand(name: DuplicatesCommand.stopRemoval.rawValue, payload: Data()))
+        engine.stopRemoval()
         parked.release(1)
         let result = await removal.value
 

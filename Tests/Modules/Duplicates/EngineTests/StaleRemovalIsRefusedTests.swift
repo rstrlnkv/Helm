@@ -11,16 +11,9 @@ import HelmRuntime
 final class StaleRemovalIsRefusedTests: XCTestCase {
 
     private var directory: URL!
-    /// Names of everything this test may have moved to the Trash.
-    ///
-    /// The removal below is real — `HelmTrash.remove` calls
-    /// `FileManager.trashItem` — so a file the engine takes leaves `directory`
-    /// and lands in `~/.Trash`, where removing `directory` cannot reach it.
-    /// `trashItem` is passed `resultingItemURL: nil`, so the name is all a
-    /// cleanup has to go on, which is why every name below carries a UUID: a
-    /// cleanup that removed `~/.Trash/remove.bin` would be deleting somebody's
-    /// file. `HelmTrashNestedBatchTests` is where this pattern is written down.
-    private var trashedNames: [String] = []
+    /// What the engine was told to move: the port is a recorder, so nothing here
+    /// reaches the Trash.
+    private let recorder = TrashRecorder()
 
     override func setUpWithError() throws {
         try super.setUpWithError()
@@ -33,25 +26,16 @@ final class StaleRemovalIsRefusedTests: XCTestCase {
     }
 
     override func tearDown() {
-        let fm = FileManager.default
-        try? fm.removeItem(at: directory)
-        let home = URL(fileURLWithPath: NSHomeDirectory())
-        let trash = (try? fm.url(for: .trashDirectory, in: .userDomainMask,
-                                 appropriateFor: home, create: false))
-            ?? home.appendingPathComponent(".Trash")
-        for name in trashedNames { try? fm.removeItem(at: trash.appendingPathComponent(name)) }
-        trashedNames = []
+        try? FileManager.default.removeItem(at: directory)
         super.tearDown()
     }
 
-    /// A unique name, so the Trash cleanup above never names a file it does not
-    /// own.
+    /// A unique name, so two cases never share a file.
     @discardableResult
     private func write(_ name: String, _ contents: String) throws -> String {
         let unique = "\(name)-\(UUID().uuidString)"
         let url = directory.appendingPathComponent(unique)
         try Data(contents.utf8).write(to: url)
-        trashedNames.append(unique)
         return url.path
     }
 
@@ -61,14 +45,14 @@ final class StaleRemovalIsRefusedTests: XCTestCase {
         let keep = try write("keep.bin", "original content")
         let remove = try write("remove.bin", "edited since the scan")
 
-        let result = await DuplicatesEngine(settings: suiteSealGuard()).trash([
+        let result = await DuplicatesEngine(settings: suiteSealGuard(),
+                                              trashing: recorder.trashing).trash([
             DuplicatePlan(remove: remove, keep: keep),
         ])
 
         XCTAssertTrue(result.removed.isEmpty, "a changed file was trashed")
         XCTAssertEqual(result.refused.map(\.reason), [.changedSinceScan])
-        XCTAssertTrue(FileManager.default.fileExists(atPath: remove),
-                      "the file this refused to trash is gone anyway")
+        XCTAssertEqual(recorder.count, 0, "the file this refused to trash was handed to the Trash")
     }
 
     /// A pair that still matches goes through, so the guard is not simply
@@ -78,13 +62,14 @@ final class StaleRemovalIsRefusedTests: XCTestCase {
         let keep = try write("keep.bin", "the same bytes")
         let remove = try write("remove.bin", "the same bytes")
 
-        let result = await DuplicatesEngine(settings: suiteSealGuard()).trash([
+        let result = await DuplicatesEngine(settings: suiteSealGuard(),
+                                              trashing: recorder.trashing).trash([
             DuplicatePlan(remove: remove, keep: keep),
         ])
 
         XCTAssertEqual(result.removed, [remove])
         XCTAssertTrue(result.refused.isEmpty)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: remove))
+        XCTAssertEqual(recorder.paths, [remove], "the pair that still matched never reached the Trash")
     }
 
     /// One bad pair in a batch costs that pair and nothing else. Refusing the
@@ -94,13 +79,14 @@ final class StaleRemovalIsRefusedTests: XCTestCase {
         let good = try write("good.bin", "shared")
         let stale = try write("stale.bin", "different now")
 
-        let result = await DuplicatesEngine(settings: suiteSealGuard()).trash([
+        let result = await DuplicatesEngine(settings: suiteSealGuard(),
+                                              trashing: recorder.trashing).trash([
             DuplicatePlan(remove: good, keep: keep),
             DuplicatePlan(remove: stale, keep: keep),
         ])
 
         XCTAssertEqual(result.removed, [good])
         XCTAssertEqual(result.refused.map(\.reason), [.changedSinceScan])
-        XCTAssertTrue(FileManager.default.fileExists(atPath: stale))
+        XCTAssertEqual(recorder.paths, [good], "the stale pair was handed to the Trash")
     }
 }

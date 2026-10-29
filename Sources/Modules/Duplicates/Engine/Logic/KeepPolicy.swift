@@ -16,9 +16,7 @@ import HelmRuntime
 ///
 /// **The raw values are stored data.** They reach `com.helm.app.plist` and are
 /// sealed there, so renaming one silently reverts somebody's setting to the
-/// default — `KeepPolicyTests` records the two that shipped. Public because the
-/// spelling crosses the transport in `DuplicateSearchRequest`, and a wire value
-/// spelled a second time in the UI is a name only one side can change.
+/// default — `KeepPolicyTests` records the two that shipped.
 public enum KeepPolicy: String, CaseIterable, Sendable {
 
     /// Where the copy sits decides. Downloads, the Desktop and the drop box are
@@ -194,7 +192,7 @@ public struct KeepRule: Sendable {
     }
 }
 
-/// What the ordering needs of a copy, whichever side of the transport it is on.
+/// What the ordering needs of a copy, whichever side of the target boundary it is on.
 ///
 /// `FileFacts` is what the walk collects and `DuplicateGroup.Copy` is what the
 /// screen holds — and the screen re-decides which copy stays whenever the policy

@@ -11,72 +11,8 @@ import HelmTestSupport
 /// page re-decide which copy stays without hashing the folder again, since
 /// re-deciding needs the dates and nothing else.
 ///
-/// It is `Date?` and not a defaulted `Date` on purpose. A synthesised `Decodable`
-/// demands the key for a non-optional property however good its initial value is,
-/// and `JSONDecoder` then abandons the whole document rather than the field — the
-/// trap `KeepAwakeEngine.StatePayload` fell into (CLAUDE.md § What not to do, and
-/// what breaks if you do).
+/// It is `Date?`: a volume that does not record it has no date to carry.
 final class ACopyRemembersWhenItArrivedTests: XCTestCase {
-
-    /// A reply spelled the way a build from before this field spelled it. It
-    /// must decode, and the missing date must read as "not recorded" rather
-    /// than as a lost search.
-    func testAPayloadFromBeforeTheDateStillDecodes() throws {
-        let json = Data("""
-        {"copies":[\
-        {"path":"/Users/me/Documents/a.bin","bytes":1000000},\
-        {"path":"/Users/me/Desktop/b.bin","bytes":1000000,"cloneFamily":7}\
-        ]}
-        """.utf8)
-
-        let group = try JSONDecoder().decode(DuplicateGroup.self, from: json)
-
-        XCTAssertEqual(group.paths, ["/Users/me/Documents/a.bin", "/Users/me/Desktop/b.bin"])
-        XCTAssertEqual(group.copies.map(\.bytes), [1_000_000, 1_000_000])
-        XCTAssertEqual(group.copies.map(\.cloneFamily), [nil, 7])
-        XCTAssertEqual(group.copies.map(\.added), [nil, nil])
-    }
-
-    /// And the whole findings envelope, since that is what actually crosses the
-    /// wire: the field is nested two levels down, and `JSONDecoder` gives up on
-    /// the outermost document for a throw anywhere inside it.
-    func testTheFindingsEnvelopeFromBeforeTheDateStillDecodes() throws {
-        let json = Data("""
-        {"groups":[{"copies":[\
-        {"path":"/Users/me/Documents/a.bin","bytes":1000000},\
-        {"path":"/Users/me/Desktop/b.bin","bytes":1000000}\
-        ]}],"unreadable":2,"librariesSkipped":1}
-        """.utf8)
-
-        let found = try JSONDecoder().decode(DuplicateFindings.self, from: json)
-
-        XCTAssertEqual(found.groups.count, 1)
-        XCTAssertEqual(found.groups.first?.copies.map(\.added), [nil, nil])
-        XCTAssertEqual(found.unreadable, 2)
-    }
-
-    /// A copy with no date writes the shape it always wrote: the key is absent,
-    /// not a null. What one build encodes another decodes, and a field that
-    /// appears the moment it is nil is a wire format that changed for nothing.
-    func testACopyWithNoDateEncodesTheKeysItAlwaysDid() throws {
-        let data = try JSONEncoder().encode(
-            DuplicateGroup.Copy(path: "/Users/me/Documents/a.bin", bytes: 1_000_000))
-        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
-
-        XCTAssertEqual(Set(object.keys), ["path", "bytes"])
-    }
-
-    func testACopyWithADateCarriesItThroughARoundTrip() throws {
-        let arrived = Date(timeIntervalSince1970: 1_700_000_000)
-        let copy = DuplicateGroup.Copy(path: "/Users/me/Documents/a.bin",
-                                       bytes: 1_000_000, added: arrived)
-
-        let back = try JSONDecoder().decode(
-            DuplicateGroup.Copy.self, from: try JSONEncoder().encode(copy))
-
-        XCTAssertEqual(back.added, arrived)
-        XCTAssertEqual(back, copy)
-    }
 
     /// The assembly point both pipelines go through: what the walk read must
     /// reach the copy. Pure, so no volume can excuse it.

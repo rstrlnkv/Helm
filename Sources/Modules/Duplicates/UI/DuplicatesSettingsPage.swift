@@ -15,8 +15,8 @@ struct DuplicatesSettingsPage: View {
     /// The width of the pane, which decides what the toolbar can carry.
     @State private var paneWidth: CGFloat = 0
 
-    init(vm: ModuleViewModel, store: NamespacedStore) {
-        dvm = DuplicatesViewModel.shared(vm: vm, store: store)
+    init(dvm: DuplicatesViewModel) {
+        self.dvm = dvm
     }
 
     var body: some View {
@@ -92,6 +92,7 @@ struct DuplicatesSettingsPage: View {
         // first frame (`helmPageStandsOnStillContent`).
         .helmPageStandsOnStillContent()
         .helmTracksFullDiskAccess($diskAccess)
+        .task { dvm.appear() }
         .animation(HelmMotion.interface, value: dvm.phase)
         .animation(HelmMotion.interface, value: dvm.basket.isEmpty)
         // And on the groups themselves, which is the change somebody actually
@@ -319,18 +320,11 @@ struct DuplicatesSettingsPage: View {
     /// disagree, and the one that draws the report is not the one that makes room
     /// for it.
     private var hasReport: Bool {
-        dvm.replyLost || dvm.removalStopped || dvm.banner != nil || !dvm.failures.isEmpty
+        dvm.removalStopped || dvm.banner != nil || !dvm.failures.isEmpty
     }
 
     /// What actually happened, named and reasoned — the component Disk,
     /// Leftovers and the orphans tab already use.
-    ///
-    /// **The lost reply comes first, and it is the stale-list wording.** This
-    /// module never re-reads after a removal: the answered path prunes `groups`
-    /// with the paths the engine says it took, so a reply that never came leaves
-    /// the list showing where the copies were *before* the press.
-    /// `HelmRemovalOutcome.unanswered` ends by pointing at the list as where they
-    /// are now, which is true for the modules that rescan and not for this one.
     private var outcomeRow: some View {
         HStack(spacing: HelmSpace.s5) {
             removalReport
@@ -344,39 +338,31 @@ struct DuplicatesSettingsPage: View {
         }
     }
 
-    /// `DiskSettingsPage.removalReport`'s shape, for the same two states — a
-    /// builder rather than a ternary over two different initializers of one
-    /// component, which is the same thing said in a way nobody can read.
-    ///
-    /// The condition below it is this page's own: an outcome here is drawn for a
-    /// batch that refused *everything* as well, where there is no banner and a
-    /// list of failures, and drawing it only for a banner hid that list in
+    /// The condition on `hasReport` is this page's own: an outcome here is drawn
+    /// for a batch that refused *everything* as well, where there is no banner
+    /// and a list of failures, and drawing it only for a banner hid that list in
     /// exactly the case it exists for.
-    @ViewBuilder private var removalReport: some View {
-        if dvm.replyLost {
-            HelmRemovalOutcome.unansweredWithStaleList
-        } else {
-            VStack(alignment: .leading, spacing: HelmSpace.s3) {
-                // Above the counts, because it qualifies them: what the banner
-                // says moved did move — before the stop — and this owns the
-                // other half. Read off the reply, so a removal that ran to the
-                // end never draws it.
-                if dvm.removalStopped {
-                    Text(DupStr.removalStopped())
-                        .font(HelmText.rowDetail)
-                        .foregroundStyle(HelmText.quiet)
-                }
-                HelmRemovalOutcome(
-                    succeededText: dvm.banner ?? "",
-                    removed: dvm.removedCount,
-                    // `.search`, because the sentence's closing verb names a
-                    // control: three modules draw «Scan again», this page's
-                    // button is «Search again» — and `changedSinceScan` is this
-                    // module's *ordinary* refusal, raised by the engine itself
-                    // for every pair that stopped matching.
-                    failures: dvm.failures.map { HelmRemovalFailure($0, refresh: .search) },
-                    needsFullDiskAccess: diskAccess == .denied)
+    private var removalReport: some View {
+        VStack(alignment: .leading, spacing: HelmSpace.s3) {
+            // Above the counts, because it qualifies them: what the banner
+            // says moved did move — before the stop — and this owns the
+            // other half. Read off the reply, so a removal that ran to the
+            // end never draws it.
+            if dvm.removalStopped {
+                Text(DupStr.removalStopped())
+                    .font(HelmText.rowDetail)
+                    .foregroundStyle(HelmText.quiet)
             }
+            HelmRemovalOutcome(
+                succeededText: dvm.banner ?? "",
+                removed: dvm.removedCount,
+                // `.search`, because the sentence's closing verb names a
+                // control: three modules draw «Scan again», this page's
+                // button is «Search again» — and `changedSinceScan` is this
+                // module's *ordinary* refusal, raised by the engine itself
+                // for every pair that stopped matching.
+                failures: dvm.failures.map { HelmRemovalFailure($0, refresh: .search) },
+                needsFullDiskAccess: diskAccess == .denied)
         }
     }
 
@@ -408,7 +394,7 @@ struct DuplicatesSettingsPage: View {
             .help(DupStr.basketContents)
             Spacer()
             // Dimmed while a removal runs, for the reason `clearBasket` states:
-            // the paths are already on the wire, so emptying the basket here
+            // the paths are already in the call to the engine, so emptying the basket here
             // clears the screen and not the request. On a narrow pane it keeps
             // its act as a symbol and gives up only its words — the trade the
             // toolbar's mark-all already makes, through the same `control`.

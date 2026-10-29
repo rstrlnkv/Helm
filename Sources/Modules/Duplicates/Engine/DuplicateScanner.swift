@@ -3,7 +3,7 @@ import Foundation
 import HelmRuntime
 
 /// Where the duplicate search stands, for a sheet that shows its work.
-public struct DuplicateProgress: Codable, Sendable {
+public struct DuplicateProgress: Sendable {
     /// Hash operations this search will perform: two per candidate, a prefix
     /// pass and a full one. Not a file count — the sheet says "checks".
     public let candidates: Int
@@ -11,7 +11,7 @@ public struct DuplicateProgress: Codable, Sendable {
     public let hashed: Int
 
     /// Public because the type crosses the target boundary: the UI's fakes
-    /// build the tick the engine would have emitted, and a wire type only one
+    /// build the tick the engine would have emitted, and a type only one
     /// side can construct is a branch no test on the other side can reach.
     public init(candidates: Int, hashed: Int) {
         self.candidates = candidates
@@ -370,8 +370,7 @@ final class DuplicateScanner: @unchecked Sendable {
 
     /// Hash-rate progress, throttled the way DiskScanner throttles partials:
     /// pass one alone measured 7.6k events against the ~3/s a person can
-    /// read, and every one of them crossed the transport to a main-actor
-    /// publish.
+    /// read, and every one of them reached a main-actor publish.
     private final class ThrottledProgress: @unchecked Sendable {
         private let total: Int
         private let onProgress: (@Sendable (DuplicateProgress) -> Void)?

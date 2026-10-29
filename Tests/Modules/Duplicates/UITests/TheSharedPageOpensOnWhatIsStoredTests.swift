@@ -1,4 +1,3 @@
-import HelmContract
 import HelmRuntime
 import HelmUI
 import XCTest
@@ -35,7 +34,7 @@ final class TheSharedPageOpensOnWhatIsStoredTests: XCTestCase {
     }
 
     func testThePageOpensOnTheStoredPolicyRatherThanTheDefault() async {
-        let dvm = duplicatesModel(over: OneAnswerTransport(groups: []),
+        let dvm = duplicatesModel(over: AnsweringWork(groups: []),
                                   store: storeHolding(.byDate))
         XCTAssertEqual(dvm.policy, .standard,
                        "precondition: the page starts on the default, before the read lands")
@@ -51,7 +50,7 @@ final class TheSharedPageOpensOnWhatIsStoredTests: XCTestCase {
     /// And the default is still the default — a fixture that answered `.byDate`
     /// to everything would pass the test above and mean nothing.
     func testAStoreWithNoPolicyLeavesThePageOnTheDefault() async {
-        let dvm = duplicatesModel(over: OneAnswerTransport(groups: []))
+        let dvm = duplicatesModel(over: AnsweringWork(groups: []))
 
         await dvm.firstLoad?.value
 

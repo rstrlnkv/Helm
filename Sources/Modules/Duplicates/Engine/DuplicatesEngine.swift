@@ -16,41 +16,40 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// It reaches disk in shapes nothing would flag if they disagreed: the
     /// `module.duplicates.*` keys of a store, the directory `ScanJournal` names after
     /// it, and the removal attributed to it in the log. `DuplicatesDescriptor.id`
-    /// is built from this rather than repeating it, the direction the
-    /// descriptors already carry their command enums, so the two spellings are
+    /// is built from this rather than repeating it, so the two spellings are
     /// one. **The string itself never changes** — it names folders and stored
     /// settings that are already on people's machines.
     public static let moduleID = "duplicates"
 
-    private let localTransport: LocalTransport
-    public let transport: EngineTransport
+    /// Only the host's own windows reach it (`ModuleDescriptor.wire`); the model
+    /// calls this engine's methods and the engine says nothing on it.
+    public let transport: EngineTransport = LocalTransport()
     private let finderBox = FinderBox()
     /// Where the person last pointed the search. Held here, not only in the view
-    /// model, because a background scan has no view model behind it — nobody is
-    /// looking at the page when the timer comes round.
+    /// model, because a background scan names no folder (`backgroundScan()` takes
+    /// none): the timer's run reads the folder that was stored and sealed, with
+    /// nobody at the page.
     ///
-    /// Optional so every existing caller and test keeps its zero-argument
-    /// initializer; without a store there is simply no background scan.
+    /// Optional: without a store there is no background scan.
     private let store: NamespacedStore?
 
     /// - Parameter settings: how a stored setting is judged to be Helm's own.
     ///   Injectable for the same reason every other port here is: the production
     ///   answer is the login keychain, and a test must not write to the user's.
-    /// - Parameter trashing: the move itself, the parameter `HelmTrash.remove`
-    ///   already takes and for the same reason. What this engine reports as
+    /// - Parameter trashing: the move itself, `HelmTrash.moveToTrash` in the app,
+    ///   the parameter `HelmTrash.remove` already takes and for the same reason.
+    ///   No default: a construction that forgot it would move whatever it was
+    ///   handed into the Trash of whoever runs it. What this engine reports as
     ///   freed is arithmetic over a *clone family*, and the only fixture that can
     ///   exercise it is a real `clonefile` pair — so the test that proves the
     ///   figure must be able to run without moving anybody's file to the Trash.
-    public convenience init(transport: LocalTransport = LocalTransport(),
-                            store: NamespacedStore? = nil,
+    public convenience init(store: NamespacedStore? = nil,
                             settings: SettingGuard = DuplicatesSettings.guardOfScanSettings,
-                            trashing: @escaping @Sendable (URL) throws -> Void = {
-                                try FileManager.default.trashItem(at: $0, resultingItemURL: nil)
-                            }) {
+                            trashing: @escaping @Sendable (URL) throws -> Void) {
         // One fresh `Batch` per removal: the factory runs at the top of every
         // `trash` call, so the survivor memo lives exactly as long as the press
         // that made it.
-        self.init(transport: transport, store: store, settings: settings,
+        self.init(store: store, settings: settings,
                   trashing: trashing, verifying: {
                       let batch = DuplicateVerification.Batch()
                       return { batch.verify(remove: $0, keep: $1) }
@@ -67,18 +66,14 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     ///   real disk, and a check that answers on the spot is over before Stop
     ///   can be pressed, so the tests about "while it runs" need one that can
     ///   be mid-read.
-    init(transport: LocalTransport = LocalTransport(),
-         store: NamespacedStore? = nil,
+    init(store: NamespacedStore? = nil,
          settings: SettingGuard = DuplicatesSettings.guardOfScanSettings,
          trashing: @escaping @Sendable (URL) throws -> Void,
          verifying: @escaping @Sendable () -> PairCheck) {
-        self.localTransport = transport
-        self.transport = transport
         self.store = store
         self.settings = settings
         self.trashing = trashing
         self.verifying = verifying
-        wireTransport()
     }
 
     private let settings: SettingGuard
@@ -89,11 +84,19 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
 
     public func activate() {}
     public func deactivate() {
-        finderBox.current?.cancel()
+        cancel()
         // The verification stops the same way: nothing has moved yet at that
         // point, and an engine going away must not leave a loop reading files.
-        removalBox.current?.stop()
+        stopRemoval()
     }
+
+    /// Stops the search in flight; its `find` answers nil.
+    public func cancel() { finderBox.current?.cancel() }
+
+    /// Stops the removal in flight, between files. Its own entry, never
+    /// `cancel`: that one reaches the search, and a person stopping a removal
+    /// must not silently kill a search they started after it.
+    public func stopRemoval() { removalBox.current?.stop() }
 
     /// The one place a search is started.
     ///
@@ -142,18 +145,17 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     }
 
     /// The search a person is watching: no cache — they have already accepted
-    /// the wait — and every tick of progress crosses the transport.
+    /// the wait — and every tick of progress goes to `progress`.
     ///
     /// The policy is the caller's, because the person at the open page may be
     /// looking at one they have just changed and not yet stored. No default: a
     /// search that quietly keeps `standard` while the page says otherwise is the
     /// two-pipelines defect wearing a parameter list.
-    public func find(under path: String, keeping policy: KeepPolicy)
+    public func find(under path: String, keeping policy: KeepPolicy,
+                     progress: (@Sendable (DuplicateProgress) -> Void)?)
     async -> DuplicateFindings? {
         await run(under: path, by: KeepRule(policy), cache: nil,
-                  unattended: false, onProgress: { progress in
-            self.localTransport.emit(DuplicatesEvent.progress, encoding: progress)
-        })
+                  unattended: false, onProgress: progress)
     }
 
     /// The policy the module was left set to, judged against its seal.
@@ -234,8 +236,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         // The cache from the last background scan, filled by this one. An
         // interactive search passes none: a person watching a progress bar has
         // already accepted the wait, and the pay-off is on the run nobody sees.
-        // No progress: nobody is watching, so every tick would cross the
-        // transport to a view model that may not exist.
+        // No progress: nobody is watching.
         let cache = Self.loadCache() ?? HashCache()
         // Unattended, which is not only "no progress to report": the walk stops
         // at the subtrees of the home a reader nobody is watching has no
@@ -265,14 +266,9 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// the view model builds the list, and this decides what may go.
     /// Refusals come back in `refused`, never dropped.
     ///
-    /// **There was a `trash(_ paths: [String])` beside this**, and it was worse
-    /// than dead. Nothing called it — the transport sends plans, the view model
-    /// builds plans, and its three remaining callers in the tests were passing
-    /// `[DuplicatePlan]` and resolving to this overload. What it was, was a
-    /// public entrance that deleted on the strength of the scan alone: the
-    /// comment on `.trash` below says a caller sending bare paths must get
-    /// nothing removed rather than something removed unchecked, and this method
-    /// was exactly the bare-paths caller's way in.
+    /// Plans, not paths: the engine cannot verify a pair it was never told
+    /// about, so there is no entrance that removes on the strength of the scan
+    /// alone.
     ///
     /// **Every pair is read again here**, immediately before anything moves.
     /// The offer on screen is always older than the press that acts on it —
@@ -291,10 +287,12 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     ///   that a caller with no screen behind it stays as it was, and the default
     ///   is the direction that **over-reports**: a batch that names nothing gets
     ///   its families charged in full. Only a caller that can see the whole list
-    ///   can fill it, which is why the wire carries it
-    ///   (`DuplicateRemovalRequest`).
+    ///   can fill it.
+    /// - Parameter progress: how far the re-reading has got, one tick per pair.
     public func trash(_ plans: [DuplicatePlan],
-                      staying: [String] = []) async -> DuplicateRemoval {
+                      staying: [String] = [],
+                      progress: (@Sendable (DuplicateProgress) -> Void)? = nil)
+    async -> DuplicateRemoval {
         let trashing = self.trashing
         let verify = verifying()
         // The flag lives in the box so `stopRemoval` can reach it, and is this
@@ -345,10 +343,9 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                     // Every tick is a whole file read in full, so the ticks are
                     // already paced by the disk — no throttle needed where the
                     // search needs one per 128 KB prefix.
-                    self.localTransport.emit(DuplicatesEvent.progress, encoding:
-                        DuplicateProgress(candidates: inScope.count,
-                                          hashed: allowed.count + stale.count
-                                              + unreadable.count))
+                    progress?(DuplicateProgress(candidates: inScope.count,
+                                                hashed: allowed.count + stale.count
+                                                    + unreadable.count))
                 }
                 return stop.isStopped
             }
@@ -426,7 +423,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     ///
     /// It is the one refusal here that is logged as a **warning**: nothing on
     /// the page can build such a batch, so a run that reaches it is a defect
-    /// above the wire or a payload no screen produced. Counts, never names.
+    /// above the model or a payload no screen produced. Counts, never names.
     private static func refusals(stale: [String], unreadable: [String],
                                  contradicted: [String]) -> [HelmTrash.Refusal] {
         if !stale.isEmpty {
@@ -443,54 +440,6 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
             + unreadable.map { HelmTrash.Refusal(path: $0, reason: .unreadable) }
             + contradicted.map { HelmTrash.Refusal(path: $0, reason: .changedSinceScan) }
     }
-
-    // MARK: - Transport
-
-    private func wireTransport() {
-        localTransport.setHandler { [weak self] command in
-            guard let self else { return Data() }
-            // A name this engine does not know is a refusal here, once, rather
-            // than a `default` at the bottom of a switch nobody re-reads.
-            guard let name = DuplicatesCommand(rawValue: command.name) else { return Data() }
-            switch name {
-            case .find:
-                guard let payload = EngineReply.decode(DuplicateSearchRequest.self, from: command)
-                else { return Data() }
-                // What the page asked for, and what the module was left set to
-                // when it asked for nothing — a payload from before the policy
-                // existed carries none, and the stored value is the same one the
-                // background scan reads.
-                let policy = payload.keepPolicy ?? self.storedKeepPolicy()
-                return EngineReply.encode(await self.find(under: payload.path, keeping: policy),
-                                          for: command)
-            case .backgroundScan:
-                return EngineReply.encode(await self.backgroundScan(), for: command)
-            case .cancel:
-                self.finderBox.current?.cancel()
-                return Data()
-            case .stopRemoval:
-                self.removalBox.current?.stop()
-                return Data()
-            case .trash:
-                // Plans, not paths. The old shape cannot be verified — the
-                // engine would be trusting the very reading it is meant to
-                // re-check — so there is no fallback to it: a caller sending
-                // bare paths gets nothing removed rather than something removed
-                // unchecked. The request around them carries what stays.
-                guard let request = EngineReply.decode(DuplicateRemovalRequest.self,
-                                                       from: command)
-                else { return Data() }
-                // The copies that stay travel with the plans because only the
-                // page can see them (`DuplicateRemovalRequest.staying`); a
-                // request that names none is one this app does not send, and it
-                // gets today's arithmetic rather than a refusal — nothing about
-                // *what may be removed* depends on the list.
-                return EngineReply.encode(
-                    await self.trash(request.plans, staying: request.staying ?? []),
-                    for: command)
-            }
-        }
-    }
 }
 
 /// What a search answers with: the groups, and what the walk could not look at.
@@ -500,11 +449,11 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
 /// application libraries it declined to enter, and all three ended in the log —
 /// so the page drew «Every large file under this folder is one of a kind» over a
 /// tree that had been refused at every door. `DuplicatesEmpty` is the rule that
-/// reads these; this is how they cross the wire.
+/// reads these.
 ///
 /// The counts and not the paths: whose folder was in the way is nobody's
 /// business but the reader's, and a count is what the sentence needs.
-public struct DuplicateFindings: Codable, Equatable, Sendable {
+public struct DuplicateFindings: Equatable, Sendable {
     public let groups: [DuplicateGroup]
     /// Directories the walk was refused, plus files whose digest could not be
     /// taken.
@@ -518,21 +467,9 @@ public struct DuplicateFindings: Codable, Equatable, Sendable {
         self.librariesSkipped = librariesSkipped
     }
 
-    /// **Hand-written, because a synthesised `Decodable` requires every key.** A
-    /// reply from a build without the two counts would throw, and `JSONDecoder`
-    /// gives up on the whole document rather than on the field — so a page would
-    /// read a lost search where there was a perfectly good list (CLAUDE.md § What
-    /// not to do, and what breaks if you do).
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        groups = try container.decode([DuplicateGroup].self, forKey: .groups)
-        unreadable = try container.decodeIfPresent(Int.self, forKey: .unreadable) ?? 0
-        librariesSkipped = try container.decodeIfPresent(Int.self,
-                                                         forKey: .librariesSkipped) ?? 0
-    }
 }
 
-/// What the trash command answers with: everything `HelmTrash.Result` says,
+/// What `trash` answers with: everything `HelmTrash.Result` says,
 /// plus whether the person stopped it first.
 ///
 /// It was a bare typealias of the result until the removal learned to stop.
@@ -542,7 +479,7 @@ public struct DuplicateFindings: Codable, Equatable, Sendable {
 /// them, because a stop can land after some files have already moved and those
 /// are still honestly counted; a reply that is both cancelled and lists what
 /// went is exactly the state the sentence has to cover.
-public struct DuplicateRemoval: Codable, Equatable, Sendable {
+public struct DuplicateRemoval: Equatable, Sendable {
     public let removed: [String]
     public let refused: [HelmTrash.Refusal]
     public let freedBytes: Int
@@ -559,27 +496,14 @@ public struct DuplicateRemoval: Codable, Equatable, Sendable {
         self.cancelled = cancelled
     }
 
-    /// **Hand-written, because a synthesised `Decodable` requires every key.** A
-    /// reply from before the removal could be stopped carries no `cancelled`, and
-    /// `JSONDecoder` gives up on the whole document rather than the one field
-    /// (CLAUDE.md § What not to do, and what breaks if you do). Missing means «it
-    /// ran to the end».
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        removed = try container.decode([String].self, forKey: .removed)
-        refused = try container.decode([HelmTrash.Refusal].self, forKey: .refused)
-        freedBytes = try container.decode(Int.self, forKey: .freedBytes)
-        cancelled = try container.decodeIfPresent(Bool.self, forKey: .cancelled) ?? false
-    }
 }
 
 /// One removal, with the copy it duplicates named beside it.
 ///
-/// The old command took bare paths, which is all the engine needed while it
-/// trusted the search that produced them. It cannot verify a pair it was never
+/// A bare path cannot be verified: the engine cannot check a pair it was never
 /// told about, so the survivor travels with the file — the view model has both,
 /// since a `DuplicateGroup` is exactly that pairing.
-public struct DuplicatePlan: Codable, Equatable, Sendable {
+public struct DuplicatePlan: Equatable, Sendable {
     /// The copy going to the Trash.
     public let remove: String
     /// The copy that stays, and the thing `remove` has to still be identical to.

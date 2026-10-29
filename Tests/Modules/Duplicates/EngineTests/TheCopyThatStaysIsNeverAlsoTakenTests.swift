@@ -21,9 +21,9 @@ import XCTest
 /// argument `RemovableScope` was written to refuse: "those gates live in view
 /// models, and a view model is the wrong place for the last word: the engine
 /// takes a list … and trashes them, so any defect upstream that produces a bad
-/// string produces a deleted folder." This module's own doc says the same in
-/// its own words: the bare-paths entrance was removed because "a caller sending
-/// bare paths gets nothing removed rather than something removed unchecked".
+/// string produces a deleted folder." This module made the same argument when
+/// it deleted its bare-paths entrance: a caller sending something unverifiable
+/// gets nothing removed rather than something removed unchecked (`KeptCopies.swift`).
 /// A plan list whose survivors are in its own removal set is the one remaining
 /// shape of "removed unchecked", and it is the shape whose cost is the content
 /// itself.

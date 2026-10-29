@@ -49,6 +49,9 @@ Disk's model calls its engine the same way and takes the answer of each call by 
 the progress and the partial snapshots of a scan travel on a stream the model makes for
 that one call, not on a stream of the engine's, because those events exist only inside a
 call the model made (Architecture/Disk.md § How Disk's model reaches its engine).
+Duplicates' model does the same for a search and for a removal, and asks the keychain
+for the stored keep policy in `appear()` (Architecture/Duplicates.md § How Duplicates'
+model reaches its engine).
 
 The one place a string still crosses is the descriptor's default `backgroundScan(_:)`
 (`Sources/HelmUI/ModuleDescriptor.swift`), which the host reaches through the live
@@ -56,13 +59,14 @@ module's `backgroundScan`, and which a module that owns its model may override t
 `ScanCommand` (`Sources/HelmRuntime/ScanReport.swift:39`) is the constant both
 sides read, and those of the modules `ScanRunner.scannableModules`
 (`Sources/HelmRuntime/ScanRunner.swift`) names that still talk to their engine over the
-transport have their own command files that say so in their doc comments; Disk's
-descriptor answers from its model (`DiskDescriptor.backgroundScan(_:)`).
-`CommandNamesAreAnsweredTests.testTheTwoScannersSpellTheScanCommandTheSameWay`
+transport have their own command files that say so in their doc comments (only the
+Uninstaller's now); Disk's and Duplicates' descriptors answer from their models
+(`DiskDescriptor.backgroundScan(_:)`, `DuplicatesDescriptor.backgroundScan(_:)`).
+`CommandNamesAreAnsweredTests.testTheUninstallerSpellsTheScanCommandTheSameWay`
 (`Tests/HelmAppTests/CommandNamesAreAnsweredTests.swift`) pins those spellings,
-and scans the source per module for a command name its own engine has
-no `case` for, because a typo there is silence and silence already reads as
-"refused" here.
+and `testNoModuleSendsACommandAsAStringLiteral` fails on a command sent as a string
+literal under `Sources/Modules`, outside the engines, because a typo there is silence
+and silence already reads as "refused" here.
 
 **A payload is declared once, in the engine.** Both ends of the wire are in one
 build and the UI target imports its engine, so the UI only aliases the engine's type

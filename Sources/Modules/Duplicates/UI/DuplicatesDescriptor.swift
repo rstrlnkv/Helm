@@ -5,6 +5,8 @@ import Module_Duplicates_Engine
 import SwiftUI
 
 @MainActor public final class DuplicatesDescriptor: ModuleDescriptor {
+    public typealias Model = DuplicatesViewModel
+
     public static let id = ModuleID(DuplicatesEngine.moduleID)
     public static var metadata: ModuleMetadata { ModuleMetadata(
         id: id, name: DupStr.moduleName, summary: DupStr.summary,
@@ -29,29 +31,39 @@ import SwiftUI
 
     public init() {}
 
-    private var store: NamespacedStore?
-
-    /// The store reaches the engine because a background scan reads the folder
-    /// the person chose, and there is no view model awake when the timer fires.
     public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
-        self.store = store
-        return DuplicatesEngine(store: store)
-    }
-    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
-    public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
-        AnyView(DuplicatesSettingsPage(vm: vm, store: settingsStore))
+        productionEngine(store: store)
     }
 
-    /// The module's own defaults, whether or not the engine has been built yet —
-    /// the seam `VPNDescriptor` and `KeepAwakeDescriptor` already keep. The page
-    /// building its own UserDefaults-backed store here meant the store the host
-    /// handed `makeEngine` was read by the engine and by nobody else: the page
-    /// and the engine could be opened on two different rule sets, and no harness
-    /// could seed what the page reads.
-    private var settingsStore: NamespacedStore {
-        store ?? NamespacedStore(namespace: Self.id.rawValue, backing: UserDefaults.standard)
+    /// The one place the production engine is built; `makeModule` needs it as
+    /// the concrete type the model calls.
+    private func productionEngine(store: NamespacedStore) -> DuplicatesEngine {
+        DuplicatesEngine(store: store, trashing: HelmTrash.moveToTrash)
+    }
+
+    /// The engine and the model that calls it, built over one store. The keychain is
+    /// not asked here — the model's `init` reads only the remembered folder from
+    /// the store; the keychain waits for the first draw
+    /// (`DuplicatesViewModel.appear()`), so the module starting at launch asks
+    /// it nothing. The model's state outlives the settings page because the
+    /// host keeps these parts, not because the page does.
+    public func makeModule(store: NamespacedStore) -> ModuleParts<DuplicatesViewModel> {
+        let engine = productionEngine(store: store)
+        return ModuleParts(engine: engine, model: DuplicatesViewModel(work: engine, store: store))
+    }
+
+    /// Closes the model; the host calls it before the engine's `deactivate()`, on
+    /// the person's switch and on quit.
+    public func stop(_ model: DuplicatesViewModel) { model.stop() }
+
+    /// Asked of the model, not of the engine through a cast or the wire: a model
+    /// that is stopped answers nil.
+    public func backgroundScan(_ parts: ModuleParts<DuplicatesViewModel>) async -> ScanReport? {
+        await parts.model.backgroundScan()
+    }
+
+    public func menuBar(_ model: DuplicatesViewModel) -> MenuBarContribution? { .utility }
+    public func settingsPage(_ model: DuplicatesViewModel) -> AnyView {
+        AnyView(DuplicatesSettingsPage(dvm: model))
     }
 }
-
-/// The same, for the duplicate finder.
-public typealias DuplicatesCommand = Module_Duplicates_Engine.DuplicatesCommand

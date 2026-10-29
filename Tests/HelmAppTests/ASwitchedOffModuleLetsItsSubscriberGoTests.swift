@@ -3,7 +3,6 @@ import HelmContract
 import HelmRuntime
 import HelmTestSupport
 import HelmUI
-import Module_Duplicates_UI
 import Module_Homebrew_UI
 import Module_KeepAwake_UI
 import Module_Layout_UI
@@ -68,18 +67,6 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
 
     private var subscribing: [Cached] {
         [
-            Cached(module: "Duplicates", id: DuplicatesDescriptor.id.rawValue) {
-                // Both ports named. The store is in memory because a test leaves
-                // nothing behind, and `settings:` is a double because its
-                // production default is the login keychain — `init` reads the
-                // keep policy, and an empty store spends `establishKey()` on the
-                // way out.
-                _ = DuplicatesViewModel.shared(
-                    vm: $0,
-                    store: NamespacedStore(namespace: "test.duplicates.subscriber",
-                                           backing: InMemoryKeyValueStore()),
-                    settings: SettingGuard(keys: SealKeyProbe()))
-            },
             Cached(module: "Homebrew", id: HomebrewDescriptor.id.rawValue) {
                 _ = HomebrewViewModel.shared(vm: $0)
             },
@@ -166,9 +153,9 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
     /// the directory the call is in.
     func testEveryModuleThatCachesAViewModelIsCovered() throws {
         let registered = try Self.modulesRegisteringADrop()
-        XCTAssertGreaterThanOrEqual(registered.count, 6, """
+        XCTAssertGreaterThanOrEqual(registered.count, 5, """
             the scan found \(registered.count) modules calling \
-            `ModuleUICache.dropWhenDisabled` — the tree has at least six, so the walk or the \
+            `ModuleUICache.dropWhenDisabled` — the tree has at least five, so the walk or the \
             match has stopped reading Sources and this check is guarding nothing.
             """)
 

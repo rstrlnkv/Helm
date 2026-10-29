@@ -48,7 +48,8 @@ final class TheKeepPolicyIsSealedWhereStoredTests: XCTestCase {
     }
 
     private func engine(_ keys: RecordingKey) -> DuplicatesEngine {
-        DuplicatesEngine(store: store, settings: SettingGuard(keys: keys))
+        DuplicatesEngine(store: store, settings: SettingGuard(keys: keys),
+                         trashing: neverTrashes)
     }
 
     private func seal(_ value: String, with keys: RecordingKey) {

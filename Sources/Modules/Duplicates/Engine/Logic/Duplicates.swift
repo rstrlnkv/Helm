@@ -50,7 +50,7 @@ struct FileFacts: Hashable, Sendable {
 }
 
 /// Files with identical content, and what keeping only one would free.
-public struct DuplicateGroup: Codable, Equatable, Sendable, Identifiable {
+public struct DuplicateGroup: Equatable, Sendable, Identifiable {
 
     /// One copy, with what it occupies.
     ///
@@ -59,7 +59,7 @@ public struct DuplicateGroup: Codable, Equatable, Sendable, Identifiable {
     /// less than its logical length. The group used to hold a single size and
     /// multiply it, which made the answer depend on which copy the walk reached
     /// first.
-    public struct Copy: Codable, Equatable, Sendable {
+    public struct Copy: Equatable, Sendable {
         public let path: String
         public let bytes: Int
         /// The APFS clone family this copy belongs to, when the volume has one.
@@ -75,11 +75,7 @@ public struct DuplicateGroup: Codable, Equatable, Sendable, Identifiable {
         ///
         /// The walk already reads it for that decision; carrying it here is what
         /// lets the copy that stays be re-decided from the group alone, without
-        /// reading the folder again. `nil` on a volume that does not record it, and
-        /// **optional rather than defaulted**: a synthesised `Decodable` demands
-        /// the key for a non-optional property whatever its initial value is, and
-        /// `JSONDecoder` then abandons the whole document rather than the one field
-        /// (CLAUDE.md § What not to do, and what breaks if you do).
+        /// reading the folder again. `nil` on a volume that does not record it.
         public let added: Date?
 
         public init(path: String, bytes: Int, cloneFamily: UInt64? = nil,

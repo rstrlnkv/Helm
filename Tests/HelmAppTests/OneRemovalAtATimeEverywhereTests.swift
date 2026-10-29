@@ -4,9 +4,9 @@ import XCTest
 /// Every view model that can put files in the Trash refuses to do it twice at
 /// once.
 ///
-/// Four models remove a batch the person ticked — Duplicates over a
-/// `trash` command, the Uninstaller over `trashPaths`, Disk and Leftovers by
-/// calling their engine's `trash` — and in
+/// Four models remove a batch the person ticked — the Uninstaller over
+/// `trashPaths`, Duplicates, Disk and Leftovers by calling their engine's
+/// `trash` — and in
 /// three of them the destructive button was live for the whole
 /// length of the request, because what dims it — an empty basket, an empty
 /// selection — is not emptied until the answer comes back. A second press is
@@ -82,7 +82,7 @@ final class OneRemovalAtATimeEverywhereTests: XCTestCase {
     /// Three spellings: two doors on the wire — the module's own
     /// `UninstallerCommand` says so in its doc comment: «`uninstall` was
     /// `trashPaths` with the app bundle appended — a second door» — and
-    /// Disk and Leftovers, whose models call their engine's `trash` through `work`.
+    /// Disk, Duplicates and Leftovers, whose models call their engine's `trash` through `work`.
     private static func sendsARemoval(_ source: String) -> Bool {
         source.contains("Command.trash") || source.contains("uvm.trashPaths(")
             || source.contains("work.trash(")

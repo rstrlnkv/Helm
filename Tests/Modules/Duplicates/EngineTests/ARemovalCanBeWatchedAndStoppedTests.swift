@@ -1,5 +1,4 @@
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
 import XCTest
@@ -30,14 +29,6 @@ final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
         return url.path
     }
 
-    /// What the engine was told to trash — nothing, if Stop worked.
-    private final class TrashRecorder: @unchecked Sendable {
-        private let lock = NSLock()
-        private var urls: [URL] = []
-        var count: Int { lock.lock(); defer { lock.unlock() }; return urls.count }
-        func add(_ url: URL) { lock.lock(); urls.append(url); lock.unlock() }
-    }
-
     private func plans(_ count: Int) throws -> [DuplicatePlan] {
         let keep = try write("keep.bin", "the same bytes")
         return try (0..<count).map {
@@ -45,9 +36,8 @@ final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
         }
     }
 
-    private func stopRemoval(of engine: DuplicatesEngine) async throws {
-        _ = try await engine.transport.send(
-            EngineCommand(name: DuplicatesCommand.stopRemoval.rawValue, payload: Data()))
+    private func stopRemoval(of engine: DuplicatesEngine) {
+        engine.stopRemoval()
     }
 
     func testStopBetweenFilesIsANamedOutcomeAndNothingMoves() async throws {
@@ -63,7 +53,7 @@ final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
         for _ in 0..<20_000 where parked.calls < 1 { await Task.yield() }
         XCTAssertEqual(parked.calls, 1, "the removal never reached its first pair")
 
-        try await stopRemoval(of: engine)
+        stopRemoval(of: engine)
         // Every pair could go through from here — so a loop that ignores the
         // stop finishes all three instead of hanging, and the count below
         // catches it.
@@ -82,7 +72,7 @@ final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
     func testAStoppedReplyKeepsTheRefusalsItAlreadyKnew() async throws {
         let parked = ParkedVerify()
         let engine = DuplicatesEngine(settings: suiteSealGuard(),
-                                      trashing: { _ in },
+                                      trashing: neverTrashes,
                                       verifying: { { parked.check($0, $1) } })
         var plans = try plans(2)
         plans.append(DuplicatePlan(remove: "/System/Library/nope.bin",
@@ -92,7 +82,7 @@ final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
         for _ in 0..<20_000 where parked.calls < 1 { await Task.yield() }
         XCTAssertEqual(parked.calls, 1)
 
-        try await stopRemoval(of: engine)
+        stopRemoval(of: engine)
         parked.release(2)
         let result = await removal.value
 
@@ -105,7 +95,7 @@ final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
     /// stored up for the next press.
     func testStopWithNothingRunningStopsNothingLater() async throws {
         let engine = DuplicatesEngine(settings: suiteSealGuard(), trashing: { _ in })
-        try await stopRemoval(of: engine)
+        stopRemoval(of: engine)
 
         let plans = try plans(1)
         let result = await engine.trash(plans)

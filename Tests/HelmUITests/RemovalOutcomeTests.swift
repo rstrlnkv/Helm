@@ -58,16 +58,4 @@ final class RemovalOutcomeTests: XCTestCase {
                               "a reply carrying \(removed)/\(failed) read as no reply at all")
         }
     }
-
-    /// The fifth verdict, and it is not the fourth: a round where the rescan
-    /// answered and one where it did not are different states, and the sentence
-    /// is the only thing that can tell the person which they are in.
-    func testAStaleListIsNotTheSameVerdictAsAFreshOne() {
-        XCTAssertEqual(HelmRemovalOutcome.unansweredWithStaleList.verdict, .unansweredStaleList)
-        XCTAssertNotEqual(HelmRemovalOutcome.unansweredWithStaleList.verdict,
-                          HelmRemovalOutcome.unanswered.verdict, """
-                          a removal whose rescan was also lost draws the sentence promising the \
-                          list above is where the files are now.
-                          """)
-    }
 }

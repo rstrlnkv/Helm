@@ -1,4 +1,3 @@
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
 import HelmUI
@@ -45,25 +44,25 @@ final class ASearchIsNotAWayOutOfARemovalTests: XCTestCase {
                                 .init(path: second, bytes: 9_000_000)])
     }
 
-    /// A page whose removal is out on the wire and cannot come back until this
+    /// A page whose removal is out in the work and cannot come back until this
     /// test lets it.
-    private func removalInFlight() async -> (DuplicatesViewModel, DuplicatesWire) {
-        let wire = DuplicatesWire(groups: [group],
+    private func removalInFlight() async -> (DuplicatesViewModel, AnsweringWork) {
+        let work = AnsweringWork(groups: [group],
                                   removal: DuplicateRemoval(removed: [extra], refused: [],
                                                             freedBytes: 9_000_000))
-        let dvm = await searchedModel(over: wire)
+        let dvm = await searchedModel(over: work)
         dvm.toggleBasket(extra)
-        wire.answers(.park, to: .trash)
+        work.answers(.park, to: .trash)
         Task { await dvm.emptyBasket() }
-        for _ in 0..<1000 where wire.parkedCount < 1 { await Task.yield() }
-        return (dvm, wire)
+        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
+        return (dvm, work)
     }
 
     /// The window closed, so the suite does not carry a parked task out of the
     /// test that made it.
-    private func finish(_ dvm: DuplicatesViewModel, _ wire: DuplicatesWire) async {
-        wire.answers(.reply)
-        wire.releaseParked()
+    private func finish(_ dvm: DuplicatesViewModel, _ work: AnsweringWork) async {
+        work.answers(.reply)
+        work.releaseParked()
         for _ in 0..<1000 where dvm.busy { await Task.yield() }
     }
 
@@ -71,8 +70,8 @@ final class ASearchIsNotAWayOutOfARemovalTests: XCTestCase {
     /// is out with those paths in it, so nothing on screen may say they are no
     /// longer marked.
     func testSearchingWhileTheFilesAreGoingKeepsTheSelectionTheRequestIsOutWith() async {
-        let (dvm, wire) = await removalInFlight()
-        XCTAssertEqual(wire.parkedCount, 1, "precondition: the removal is really in flight")
+        let (dvm, work) = await removalInFlight()
+        XCTAssertEqual(work.parkedCount, 1, "precondition: the removal is really in flight")
         XCTAssertTrue(dvm.busy, "precondition: the model knows a removal is running")
         XCTAssertEqual(dvm.basket, [extra], "precondition: the selection is what was sent")
 
@@ -83,7 +82,7 @@ final class ASearchIsNotAWayOutOfARemovalTests: XCTestCase {
             in it — the same press `clearBasket` grew a `guard !busy` for, in the control next \
             to it
             """)
-        await finish(dvm, wire)
+        await finish(dvm, work)
     }
 
     /// `DuplicatesSettingsPage`'s own condition for drawing `basketBar` — the
@@ -94,7 +93,7 @@ final class ASearchIsNotAWayOutOfARemovalTests: XCTestCase {
     /// values the page reads, so a page that starts drawing the bar on something
     /// else makes this read wrong at a glance instead of passing quietly.
     private func pageDrawsTheBasketBar(_ dvm: DuplicatesViewModel) -> Bool {
-        let hasReport = dvm.replyLost || dvm.removalStopped
+        let hasReport = dvm.removalStopped
             || dvm.banner != nil || !dvm.failures.isEmpty
         return !dvm.basket.isEmpty || hasReport || dvm.marksNote != nil
     }
@@ -103,13 +102,13 @@ final class ASearchIsNotAWayOutOfARemovalTests: XCTestCase {
     /// it»: it is the screen forgetting a destructive act that is still under
     /// way, and taking the only way out of it with the basket.
     func testTheRemovalInFlightStillHasSomewhereToDrawItsStop() async {
-        let (dvm, wire) = await removalInFlight()
+        let (dvm, work) = await removalInFlight()
         XCTAssertTrue(pageDrawsTheBasketBar(dvm), "precondition: the bar is up before the press")
 
         dvm.search()
 
         XCTAssertTrue(dvm.busy, "precondition: pressing Search did not end the removal")
-        XCTAssertEqual(wire.parkedCount, 1, "precondition: the removal request is still parked")
+        XCTAssertEqual(work.parkedCount, 1, "precondition: the removal request is still parked")
         XCTAssertTrue(pageDrawsTheBasketBar(dvm), """
             the basket, the report and the marks note all went down in one press, and the page \
             draws the removal's tick and its Stop button inside the bar those three bring up — \
@@ -119,6 +118,6 @@ final class ASearchIsNotAWayOutOfARemovalTests: XCTestCase {
         XCTAssertTrue(dvm.busy, "precondition: still running once the search has answered")
         XCTAssertTrue(pageDrawsTheBasketBar(dvm),
                       "and the search answering does not bring the Stop control back either")
-        await finish(dvm, wire)
+        await finish(dvm, work)
     }
 }

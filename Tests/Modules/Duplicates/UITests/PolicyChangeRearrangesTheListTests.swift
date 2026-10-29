@@ -13,7 +13,7 @@ import Module_Duplicates_Engine
 /// has just been promoted to survivor silently leaves the plans while staying in
 /// the basket: the bar promises to remove four files and three go. The rule is
 /// that the two agree, and it is asserted against the plans that actually reach
-/// the wire rather than against a count.
+/// the work rather than against a count.
 @MainActor
 final class PolicyChangeRearrangesTheListTests: XCTestCase {
 
@@ -31,18 +31,18 @@ final class PolicyChangeRearrangesTheListTests: XCTestCase {
         ])
     }
 
-    private func model(_ wire: DuplicatesWire) -> DuplicatesViewModel {
-        duplicatesModel(over: wire)
+    private func model(_ work: AnsweringWork) -> DuplicatesViewModel {
+        duplicatesModel(over: work)
     }
 
-    private func searched(_ wire: DuplicatesWire) async -> DuplicatesViewModel {
-        await searchedModel(over: wire)
+    private func searched(_ work: AnsweringWork) async -> DuplicatesViewModel {
+        await searchedModel(over: work)
     }
 
     // MARK: - The list follows the answer
 
     func testTheFiledCopyStaysUnderByPlaceAndTheOlderOneUnderByDate() async {
-        let dvm = await searched(DuplicatesWire(groups: [group()]))
+        let dvm = await searched(AnsweringWork(groups: [group()]))
         dvm.choose(.byDate)
 
         XCTAssertEqual(dvm.groups.first?.paths.first, downloaded,
@@ -57,7 +57,7 @@ final class PolicyChangeRearrangesTheListTests: XCTestCase {
     /// Re-decided, not re-read: the same copies, rearranged. A policy change that
     /// dropped a copy would be a search nobody ran.
     func testNothingIsLostWhenTheOrderChanges() async {
-        let dvm = await searched(DuplicatesWire(groups: [group()]))
+        let dvm = await searched(AnsweringWork(groups: [group()]))
         dvm.choose(.byDate)
 
         XCTAssertEqual(Set(dvm.groups.flatMap(\.paths)), [downloaded, filed])
@@ -72,14 +72,14 @@ final class PolicyChangeRearrangesTheListTests: XCTestCase {
     /// reason, which asks the ladder rather than the array, would describe a copy
     /// that is not the one on the first row.
     func testAnAnswerThatLandsAfterThePolicyChangedIsPutInTheNewOrder() async {
-        let wire = DuplicatesWire(groups: [group()], answering: .park)
-        let dvm = model(wire)
+        let work = AnsweringWork(groups: [group()], answering: .park)
+        let dvm = model(work)
         dvm.choose(.byDate)
         dvm.search()
-        for _ in 0..<1000 where wire.parkedCount < 1 { await Task.yield() }
+        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
 
         dvm.choose(.byPlace)
-        wire.releaseParked()
+        work.releaseParked()
         for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
 
         XCTAssertEqual(dvm.groups.first?.paths.first, filed,
@@ -89,7 +89,7 @@ final class PolicyChangeRearrangesTheListTests: XCTestCase {
     // MARK: - And the marks follow the list
 
     func testAMarkThatBecameTheSurvivorIsTakenOff() async {
-        let dvm = await searched(DuplicatesWire(groups: [group()]))
+        let dvm = await searched(AnsweringWork(groups: [group()]))
         dvm.choose(.byDate)
         dvm.toggleBasket(filed)
         XCTAssertEqual(dvm.basket, [filed], "the mark this test is about was never made")
@@ -103,7 +103,7 @@ final class PolicyChangeRearrangesTheListTests: XCTestCase {
     /// And it says so. The rearrangement happens to every group at once, most of
     /// them below the fold, so a mark quietly coming off is a change nobody sees.
     func testTakingAMarkOffIsReported() async {
-        let dvm = await searched(DuplicatesWire(groups: [group()]))
+        let dvm = await searched(AnsweringWork(groups: [group()]))
         dvm.choose(.byDate)
         dvm.toggleBasket(filed)
 
@@ -113,7 +113,7 @@ final class PolicyChangeRearrangesTheListTests: XCTestCase {
     }
 
     func testAPolicyChangeThatMovesNoMarkSaysNothing() async {
-        let dvm = await searched(DuplicatesWire(groups: [group()]))
+        let dvm = await searched(AnsweringWork(groups: [group()]))
         dvm.choose(.byDate)
         dvm.toggleBasket(filed)
         dvm.choose(.byPlace)
@@ -129,8 +129,8 @@ final class PolicyChangeRearrangesTheListTests: XCTestCase {
     /// copies *after the first*, so a promoted survivor would leave the plans and
     /// stay in the count — the bar saying two files and one going.
     func testTheBasketAndThePlansAgreeAfterAPolicyChange() async throws {
-        let wire = DuplicatesWire(groups: [trio()])
-        let dvm = await searched(wire)
+        let work = AnsweringWork(groups: [trio()])
+        let dvm = await searched(work)
         dvm.choose(.byDate)
         dvm.toggleBasket(filed)
         dvm.toggleBasket(archived)
@@ -140,7 +140,7 @@ final class PolicyChangeRearrangesTheListTests: XCTestCase {
         let promised = dvm.basket
         await dvm.emptyBasket()
 
-        let plans = try XCTUnwrap(wire.removals.last, "no removal reached the wire at all")
+        let plans = try XCTUnwrap(work.removals.last, "no removal reached the work at all")
         XCTAssertEqual(Set(plans.map(\.remove)), Set(promised),
                        "the bar counted a file the removal never asked for")
         XCTAssertEqual(Set(plans.map(\.keep)), [filed],
@@ -151,15 +151,15 @@ final class PolicyChangeRearrangesTheListTests: XCTestCase {
     /// is a plain list of paths, so a survivor can end up in it — and this is the
     /// module's one promise: it never offers every copy of a file.
     func testTheCopyThatStaysIsNeverSentEvenWhenItIsMarked() async throws {
-        let wire = DuplicatesWire(groups: [trio()])
-        let dvm = await searched(wire)
+        let work = AnsweringWork(groups: [trio()])
+        let dvm = await searched(work)
         dvm.choose(.byPlace)
         let survivor = try XCTUnwrap(dvm.groups.first?.paths.first)
         dvm.basket = [survivor, archived]
 
         await dvm.emptyBasket()
 
-        let plans = try XCTUnwrap(wire.removals.last, "no removal reached the wire at all")
+        let plans = try XCTUnwrap(work.removals.last, "no removal reached the work at all")
         XCTAssertEqual(plans.map(\.remove), [archived])
         XCTAssertFalse(plans.map(\.remove).contains(survivor),
                        "the copy the page says stays was sent to the Trash")
@@ -169,7 +169,7 @@ final class PolicyChangeRearrangesTheListTests: XCTestCase {
 
     /// Three copies, one in transit and two filed, so that a policy change moves
     /// the survivor *and* leaves an extra behind to be removed. With two copies
-    /// the basket empties itself and `emptyBasket` never reaches the wire.
+    /// the basket empties itself and `emptyBasket` never reaches the work.
     private func trio() -> DuplicateGroup {
         let day = Date(timeIntervalSince1970: 1_700_000_000)
         return DuplicateGroup(copies: [
