@@ -192,6 +192,8 @@ struct KeepAwakeHero: View {
         // of air under the buttons that nothing is in.
         VStack(spacing: 0) {
             states
+                // The four states' buttons only, asked once; the banner's «Resume» below stays the kit's well.
+                .helmCapsuleButtons()
                 .frame(maxWidth: .infinity)
                 // The measurement alone, and **not** `helmAccordion`: this
                 // block has no open state and never collapses. What it needs is

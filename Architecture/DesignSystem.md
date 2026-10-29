@@ -105,6 +105,8 @@ A hosting root carries `helmRoot()` (`HelmRoot.swift`): the accessibility tracke
 and `HelmToggleStyle`. The Settings window's roots, `HostWindow.present` and the menu-bar panel carry it;
 the environment stops at each root, so a root without it draws plain `Button`s and `Toggle`s in the system's
 look. A page writes a plain `Button` or `Toggle` and gets the kit's. A style set on the control itself wins.
+The button's well is a rounded rectangle; `helmCapsuleButtons()` on a container makes it a capsule for the buttons
+inside, and Keep Awake's hero is the one page that asks for it.
 
 The kit owns the look and leaves the behaviour to the system. `HelmButtonStyle` is a `ButtonStyle`, not a
 `PrimitiveButtonStyle`, so the press, the keyboard shortcut and the button trait stay the system's; the price is

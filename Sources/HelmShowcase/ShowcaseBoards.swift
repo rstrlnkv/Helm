@@ -173,6 +173,12 @@ private struct ButtonsBoard: View {
                     Button(Sample.short) {}.buttonStyle(.bordered).controlSize(.large)
                 },
                 ShowcaseRow("kit destructive") { _ in Button(Sample.delete, role: .destructive) {} },
+                ShowcaseRow("kit capsule (Keep Awake hero)", states: [.rest, .hover, .pressed, .disabled]) { _ in
+                    Button(Sample.short) {}.controlSize(.large).helmCapsuleButtons()
+                },
+                ShowcaseRow("kit capsule destructive") { _ in
+                    Button(Sample.delete, role: .destructive) {}.helmCapsuleButtons()
+                },
                 ShowcaseRow("system destructive") { _ in
                     Button(Sample.delete, role: .destructive) {}.buttonStyle(.bordered)
                 },

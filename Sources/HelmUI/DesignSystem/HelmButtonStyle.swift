@@ -20,6 +20,11 @@ import SwiftUI
 /// - `\.helmShownInteraction` can force the hover or the pressed well for a screen that shows them (`HelmShowcase`).
 /// - The well follows the pointer with `HelmMotion.hover(entering:)`, which already answers Reduce Motion.
 ///
+/// **The capsule variant.** `helmCapsuleButtons()` on a container turns every plain `Button` inside it into the
+/// same well with a capsule for its shape and its content shape; nothing else about the style changes. The one
+/// page that asks is Keep Awake's hero, for the rows of buttons under its hero; `HelmShowcase` draws it on its
+/// buttons board. Every other plain `Button` keeps the `HelmRadius.ctl` corner.
+///
 /// The font is the caller's: a label that sets none gets the system's.
 struct HelmButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View { Rendered(configuration: configuration) }
@@ -31,17 +36,23 @@ struct HelmButtonStyle: ButtonStyle {
         @Environment(\.controlSize) private var controlSize
         @Environment(\.helmTraits) private var traits
         @Environment(\.helmShownInteraction) private var shown
+        @Environment(\.helmCapsuleButtons) private var capsule
 
         var body: some View {
             configuration.label
                 .foregroundStyle(ink)
                 .padding(.horizontal, HelmSpace.s5)
                 .padding(.vertical, controlSize == .large ? HelmSpace.s4 : HelmSpace.s3)
-                .background(RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous).fill(well))
-                .contentShape(RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous))
+                .background(wellShape.fill(well))
+                .contentShape(wellShape)
                 .onHover { entering in
                     withAnimation(HelmMotion.hover(entering: entering)) { hover = entering }
                 }
+        }
+
+        private var wellShape: AnyShape {
+            capsule ? AnyShape(Capsule(style: .continuous))
+                    : AnyShape(RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous))
         }
 
         private var well: Color {
@@ -56,4 +67,13 @@ struct HelmButtonStyle: ButtonStyle {
             return configuration.role == .destructive ? HelmSignal.danger(increased: traits.increasedContrast) : .primary
         }
     }
+}
+
+private extension EnvironmentValues {
+    @Entry var helmCapsuleButtons = false
+}
+
+public extension View {
+    /// Plain buttons inside this view are capsules instead of rounded wells — `HelmButtonStyle` → the capsule variant.
+    func helmCapsuleButtons() -> some View { environment(\.helmCapsuleButtons, true) }
 }
