@@ -46,8 +46,6 @@
 "App Uninstaller opens straight away. It used to measure every app on your Mac before showing anything — four seconds, nine on a cold start. The list appears now and the sizes fill in behind it." = "App Uninstaller opens straight away. It used to measure every app on your Mac before showing anything — four seconds, nine on a cold start. The list appears now and the sizes fill in behind it.";
 "App Uninstaller works in two steps: tick the apps you want gone, then review the files found for each of them before anything moves. Apps that are still running are flagged and only removed if you allow a force quit." = "App Uninstaller works in two steps: tick the apps you want gone, then review the files found for each of them before anything moves. Apps that are still running are flagged and only removed if you allow a force quit.";
 "Appearance" = "Appearance";
-"Application Scripts" = "Application Scripts";
-"Application Support" = "Application Support";
 "Apps" = "Apps";
 "Archive" = "Archive";
 "Audio" = "Audio";
@@ -64,7 +62,6 @@
 "Opens its own screen" = "Opens its own screen";
 "Beta" = "Beta";
 "Blue" = "Blue";
-"Caches" = "Caches";
 "Cancel" = "Cancel";
 "Check" = "Check";
 "Checking for updates…" = "Checking for updates…";
@@ -83,12 +80,9 @@
 "Connecting a VPN no longer makes the rest of Helm stutter." = "Connecting a VPN no longer makes the rest of Helm stutter.";
 "Connecting…" = "Connecting…";
 "Connections" = "Connections";
-"Containers" = "Containers";
 "Control" = "Control";
-"Cookies" = "Cookies";
 "Copy log" = "Copy log";
 "Couldn’t check for updates." = "Couldn’t check for updates.";
-"Counting apps…" = "Counting apps…";
 "Custom active-state icon for Keep Awake." = "Custom active-state icon for Keep Awake.";
 "Discard and start again" = "Discard and start again";
 "Error" = "Error";
@@ -192,8 +186,6 @@
 "Extensions, separated by commas" = "Extensions, separated by commas";
 "Failed" = "Failed";
 "Files" = "Files";
-"Files left in your Library" = "Files left in your Library";
-"Files left in your Library by apps you no longer have. Only files named after an app’s bundle id are listed, so some leftovers will not appear." = "Files left in your Library by apps you no longer have. Only files named after an app’s bundle id are listed, so some leftovers will not appear.";
 "Fix" = "Fix";
 "Fix two capitals at the start of a word" = "Fix two capitals at the start of a word";
 "Fix as I type" = "Fix as I type";
@@ -206,7 +198,6 @@
 "Follow" = "Follow";
 "Following" = "Following";
 "Not following" = "Not following";
-"Force quit and remove anyway" = "Force quit and remove anyway";
 "Full Disk Access" = "Full Disk Access";
 "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind.";
 "Full name" = "Full name";
@@ -216,7 +207,6 @@
 "Granted" = "Granted";
 "Grant…" = "Grant…";
 "Green" = "Green";
-"Group Containers" = "Group Containers";
 "Helm Settings" = "Helm Settings";
 "Helm can be used with VoiceOver. Every control now says what it is — the rule editor was built from pop-up buttons and fields that announced nothing, so a rule could not be written at all without sight." = "Helm can be used with VoiceOver. Every control now says what it is — the rule editor was built from pop-up buttons and fields that announced nothing, so a rule could not be written at all without sight.";
 "Helm could crash outright when an application quit while the VPN module happened to be looking at the list of running programs." = "Helm could crash outright when an application quit while the VPN module happened to be looking at the list of running programs.";
@@ -227,7 +217,6 @@
 "Helm is still in development. Beta builds are the steadier of the two." = "Helm is still in development. Beta builds are the steadier of the two.";
 "Helm needs Full Disk Access to move this." = "Helm needs Full Disk Access to move this.";
 "Helm returns to how it was just after installing, including whether it opens at login. Access you granted in System Settings stays as it is." = "Helm returns to how it was just after installing, including whether it opens at login. Access you granted in System Settings stays as it is.";
-"Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by.";
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one.";
 "macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two." = "macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two.";
 "Homebrew" = "Homebrew";
@@ -253,7 +242,6 @@
 "Keep Awake module: manual, timed or automatic (external display, power, chosen apps), closed-lid mode, battery guard, global hotkey." = "Keep Awake module: manual, timed or automatic (external display, power, chosen apps), closed-lid mode, battery guard, global hotkey.";
 "Keep Awake’s status figures update as things happen instead of freezing at whatever they were when the page opened." = "Keep Awake’s status figures update as things happen instead of freezing at whatever they were when the page opened.";
 "Keep Awake’s ⋯ controls open inline with animation: custom timer with a durations menu, automation toggles, Stop button in the countdown." = "Keep Awake’s ⋯ controls open inline with animation: custom timer with a durations menu, automation toggles, Stop button in the countdown.";
-"Keep these files" = "Keep these files";
 "Keyboard" = "Keyboard";
 "Keyboard can show its own language indicator in the menu bar, with the choices the system’s one does not offer: letters plain, on a badge or in a frame, or a flag, at the size you pick, with a menu of your layouts. Off until you turn it on, since macOS shows its own." = "Keyboard can show its own language indicator in the menu bar, with the choices the system’s one does not offer: letters plain, on a badge or in a frame, or a flag, at the size you pick, with a menu of your layouts. Off until you turn it on, since macOS shows its own.";
 "Keyboard is one gesture now. Tap the key — right ⌘ unless you change it — and Helm fixes what is in front of you: the selected text if there is any, otherwise the last word, and tapping again puts it back. There were five shortcuts to set up and none of them was set. Any modifier can be the key — right or left — and on Macs with a 🌐︎ key, that too. Transliteration and changing case are gone: transliteration could not be undone reliably, and macOS already changes case in the Edit menu." = "Keyboard is one gesture now. Tap the key — right ⌘ unless you change it — and Helm fixes what is in front of you: the selected text if there is any, otherwise the last word, and tapping again puts it back. There were five shortcuts to set up and none of them was set. Any modifier can be the key — right or left — and on Macs with a 🌐︎ key, that too. Transliteration and changing case are gone: transliteration could not be undone reliably, and macOS already changes case in the Edit menu.";
@@ -282,8 +270,6 @@
 "Login Items & Extensions now lists system extensions themselves — what they are, whose they are, and which ones outlived the app that installed them." = "Login Items & Extensions now lists system extensions themselves — what they are, whose they are, and which ones outlived the app that installed them.";
 "Login Items & Extensions: see everything that loads with your Mac, marked as in use, system, or leftover — and remove the leftovers." = "Login Items & Extensions: see everything that loads with your Mac, marked as in use, system, or leftover — and remove the leftovers.";
 "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings.";
-"Logs" = "Logs";
-"Look for leftovers automatically when an app goes to the Trash" = "Look for leftovers automatically when an app goes to the Trash";
 "MB" = "MB";
 "MODULES" = "MODULES";
 "Manage Homebrew packages" = "Manage Homebrew packages";
@@ -305,7 +291,6 @@
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works.";
 "Needed to remove app containers and to read every folder when scanning the disk." = "Needed to remove app containers and to read every folder when scanning the disk.";
 "Network" = "Network";
-"Network cache and cookies" = "Network cache and cookies";
 "Never" = "Never";
 "Words to leave alone" = "Words to leave alone";
 "Never in a password field, and never in the terminals and password managers Helm knows." = "Never in a password field, and never in the terminals and password managers Helm knows.";
@@ -313,9 +298,6 @@
 "New rule" = "New rule";
 "Next" = "Next";
 "No VPNs" = "No VPNs";
-"No applications found." = "No applications found.";
-"No applications match this search." = "No applications match this search.";
-"No extra files found." = "No extra files found.";
 "No leftovers found." = "No leftovers found.";
 "No modules enabled" = "No modules enabled";
 "No packages installed." = "No packages installed.";
@@ -373,9 +355,7 @@
 "Power" = "Power";
 "Press keys…" = "Press keys…";
 "Purple" = "Purple";
-"Putting the app back from the Trash will not bring these files back." = "Putting the app back from the Trash will not bring these files back.";
 "Quit" = "Quit";
-"Quit the running apps first, or allow a force quit." = "Quit the running apps first, or allow a force quit.";
 "Quitting Helm — or deleting it — could leave the Mac unable to sleep, because the clamshell setting Keep Awake changes outlives the app and nothing put it back on quit. And turning clamshell off while Keep Awake’s admin prompt was still up could leave a passwordless rule behind for a feature you’d just switched off. Both are fixed." = "Quitting Helm — or deleting it — could leave the Mac unable to sleep, because the clamshell setting Keep Awake changes outlives the app and nothing put it back on quit. And turning clamshell off while Keep Awake’s admin prompt was still up could leave a passwordless rule behind for a feature you’d just switched off. Both are fixed.";
 "Quitting an app now disconnects only a VPN Helm itself raised for it — never one you dialled up by hand." = "Quitting an app now disconnects only a VPN Helm itself raised for it — never one you dialled up by hand.";
 "Reading the package list…" = "Reading the package list…";
@@ -383,12 +363,9 @@
 "Redesigned About: the icon sits in a bezel that turns while updates are checked, version and build read as instrument dials, and update controls live in one card." = "Redesigned About: the icon sits in a bezel that turns while updates are checked, version and build read as instrument dials, and update controls live in one card.";
 "Refresh list" = "Refresh list";
 "Remove" = "Remove";
-"Remove an app with all of its files" = "Remove an app with all of its files";
 "Removing an app no longer offers another app’s files. Leftovers were matched by the start of an app’s identifier and never checked against what is installed — and an app kept one folder down, or one that simply claimed somebody else’s id, could still slip past that check. Nothing from another app is offered pre-ticked now." = "Removing an app no longer offers another app’s files. Leftovers were matched by the start of an app’s identifier and never checked against what is installed — and an app kept one folder down, or one that simply claimed somebody else’s id, could still slip past that check. Nothing from another app is offered pre-ticked now.";
-"Removing…" = "Removing…";
 "Rename" = "Rename";
 "Renaming scheme" = "Renaming scheme";
-"Review" = "Review";
 "Reset" = "Reset";
 "Reset all settings, in Settings → Settings. Helm goes back to how it was just after installing: preferences forgotten, each module’s saved state and the diagnostics log in the Trash — not deleted outright, so you can get them back — and the welcome tour again at the next launch. Access you granted in System Settings is macOS’s and is left alone." = "Reset all settings, in Settings → Settings. Helm goes back to how it was just after installing: preferences forgotten, each module’s saved state and the diagnostics log in the Trash — not deleted outright, so you can get them back — and the welcome tour again at the next launch. Access you granted in System Settings is macOS’s and is left alone.";
 "Reset all settings?" = "Reset all settings?";
@@ -405,13 +382,9 @@
 "Rules for specific apps" = "Rules for specific apps";
 "Rules run top to bottom and the first match wins — a file gets one action, not several." = "Rules run top to bottom and the first match wins — a file gets one action, not several.";
 "Run now" = "Run now";
-"Running" = "Running";
-"Saved windows" = "Saved windows";
 "Scan again" = "Scan again";
-"Scan for leftovers" = "Scan for leftovers";
 "Scanning…" = "Scanning…";
 "Search" = "Search";
-"Search apps" = "Search apps";
 "Search packages" = "Search packages";
 "Searching…" = "Searching…";
 "Select all" = "Select all";
@@ -467,7 +440,6 @@
 "Safari is marked as a system app rather than offered for removal at “0 B”." = "Safari is marked as a system app rather than offered for removal at “0 B”.";
 "The VPN dial counted connections that had started themselves automatically, sitting right above the list of rules it looked like it was counting." = "The VPN dial counted connections that had started themselves automatically, sitting right above the list of rules it looked like it was counting.";
 "Login Items & Extensions’ bottom bar mixed how many items were found with the size of what you’d selected." = "Login Items & Extensions’ bottom bar mixed how many items were found with the size of what you’d selected.";
-"The app itself — always removed" = "The app itself — always removed";
 "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite.";
 "The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again.";
 "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room." = "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room.";
@@ -514,7 +486,6 @@
 "Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match." = "Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match.";
 "Uninstall" = "Uninstall";
 "Uninstall…" = "Uninstall…";
-"Uninstaller" = "Uninstaller";
 "Unknown" = "Unknown";
 "Untitled rule" = "Untitled rule";
 "Update & Relaunch" = "Update & Relaunch";
@@ -542,7 +513,6 @@
 "A metric strip no longer occasionally reads the wrong appearance and darkens dark mode’s own colours to match." = "A metric strip no longer occasionally reads the wrong appearance and darkens dark mode’s own colours to match.";
 "Warnings" = "Warnings";
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it.";
-"Website data" = "Website data";
 "Welcome to Helm" = "Welcome to Helm";
 "What to check" = "What to check";
 "What to do" = "What to do";
@@ -561,8 +531,6 @@
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do.";
 "A rule can watch folders inside your home folder, but not the Library and not a whole volume." = "A rule can watch folders inside your home folder, but not the Library and not a whole volume.";
 "Watch this folder" = "Watch this folder";
-"Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers.";
-"Without Full Disk Access an app’s containers stay behind." = "Without Full Disk Access an app’s containers stay behind.";
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”.";
 "Write a log file" = "Write a log file";
 "Yellow" = "Yellow";
@@ -580,7 +548,6 @@
 "ends with" = "ends with";
 "expanded" = "expanded";
 "failed" = "failed";
-"guess" = "guess";
 "is" = "is";
 "larger than" = "larger than";
 "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it." = "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it.";
@@ -1117,11 +1084,6 @@
 "Replaced. The original is in the Trash." = "Replaced. The original is in the Trash.";
 "The screenshot was moved or changed after it was taken. Your edit is saved as a separate file." = "The screenshot was moved or changed after it was taken. Your edit is saved as a separate file.";
 "The screenshot was moved or changed after it was taken, so it cannot be edited here." = "The screenshot was moved or changed after it was taken, so it cannot be edited here.";
-"Sort By" = "Sort By";
-"Sort by Name" = "Sort by Name";
-"Sort by Size" = "Sort by Size";
-"Sort by Date Last Opened" = "Sort by Date Last Opened";
-"No record of opening" = "No record of opening";
 "Search the log" = "Search the log";
 "Earlier launch" = "Earlier launch";
 "older lines are in the file" = "older lines are in the file";

@@ -46,8 +46,6 @@
 "App Uninstaller opens straight away. It used to measure every app on your Mac before showing anything — four seconds, nine on a cold start. The list appears now and the sizes fill in behind it." = "La désinstallation s’ouvre tout de suite. Elle mesurait chaque app avant d’afficher quoi que ce soit — quatre secondes, neuf à froid. La liste apparaît, les tailles suivent.";
 "App Uninstaller works in two steps: tick the apps you want gone, then review the files found for each of them before anything moves. Apps that are still running are flagged and only removed if you allow a force quit." = "La désinstallation se fait en deux étapes : cochez les apps, puis vérifiez les fichiers trouvés pour chacune avant toute suppression. Les apps en cours sont signalées et supprimées seulement si vous autorisez la fermeture forcée.";
 "Appearance" = "Apparence";
-"Application Scripts" = "Scripts de l’app";
-"Application Support" = "Données de l’app";
 "Apps" = "Apps";
 "Archive" = "Archive";
 "Audio" = "Audio";
@@ -64,7 +62,6 @@
 "Opens its own screen" = "Ouvre son propre écran";
 "Beta" = "Beta";
 "Blue" = "Bleu";
-"Caches" = "Caches";
 "Cancel" = "Annuler";
 "Check" = "Vérifier";
 "Checking for updates…" = "Recherche de mises à jour…";
@@ -83,12 +80,9 @@
 "Connecting a VPN no longer makes the rest of Helm stutter." = "Connecter un VPN ne fait plus saccader le reste de Helm.";
 "Connecting…" = "Connexion…";
 "Connections" = "Connexions";
-"Containers" = "Conteneurs";
 "Control" = "Contrôle";
-"Cookies" = "Cookies";
 "Copy log" = "Copier le journal";
 "Couldn’t check for updates." = "Impossible de rechercher les mises à jour.";
-"Counting apps…" = "Comptage des apps…";
 "Custom active-state icon for Keep Awake." = "Icône active personnalisée pour Rester éveillé.";
 "Discard and start again" = "Supprimer et recommencer";
 "Error" = "Erreur";
@@ -192,8 +186,6 @@
 "Extensions, separated by commas" = "Extensions séparées par des virgules";
 "Failed" = "Échec";
 "Files" = "Fichiers";
-"Files left in your Library" = "Fichiers restants dans la Bibliothèque";
-"Files left in your Library by apps you no longer have. Only files named after an app’s bundle id are listed, so some leftovers will not appear." = "Fichiers laissés dans votre Bibliothèque par des apps que vous n’avez plus. Seuls ceux nommés d’après le bundle id d’une app sont listés, donc certains restes n’apparaîtront pas.";
 "Fix" = "Corriger";
 "Fix two capitals at the start of a word" = "Corriger deux majuscules en début de mot";
 "Fix as I type" = "Corriger pendant la saisie";
@@ -206,7 +198,6 @@
 "Follow" = "Suivre";
 "Following" = "Suivi actif";
 "Not following" = "Suivi inactif";
-"Force quit and remove anyway" = "Forcer à quitter et supprimer";
 "Full Disk Access" = "Accès complet au disque";
 "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "L’accès au disque est désactivé. Sans lui l’analyse ne voit pas tous les dossiers, et la désinstallation laisse les conteneurs.";
 "Full name" = "Nom complet";
@@ -216,7 +207,6 @@
 "Granted" = "Accordé";
 "Grant…" = "Accorder…";
 "Green" = "Vert";
-"Group Containers" = "Conteneurs de groupe";
 "Helm Settings" = "Réglages Helm";
 "Helm can be used with VoiceOver. Every control now says what it is — the rule editor was built from pop-up buttons and fields that announced nothing, so a rule could not be written at all without sight." = "Helm s’utilise avec VoiceOver : chaque contrôle dit ce qu’il est. L’éditeur de règles n’annonçait rien et ne pouvait pas être utilisé sans voir l’écran.";
 "Helm could crash outright when an application quit while the VPN module happened to be looking at the list of running programs." = "Helm pouvait planter net quand une app se fermait au moment où le module VPN consultait la liste des programmes en cours.";
@@ -227,7 +217,6 @@
 "Helm is still in development. Beta builds are the steadier of the two." = "Helm est encore en développement. Les versions Beta sont les plus stables des deux.";
 "Helm needs Full Disk Access to move this." = "Helm a besoin de l’accès complet au disque pour le déplacer.";
 "Helm returns to how it was just after installing, including whether it opens at login. Access you granted in System Settings stays as it is." = "Helm revient à son état juste après l’installation, y compris s’il s’ouvre à la connexion. Les accès accordés dans Réglages Système ne changent pas.";
-"Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "Helm montre les réglages, caches et fichiers de support laissés derrière, prêts à supprimer. Seulement tant que l’app est dans la corbeille : une fois vidée, plus rien ne permet de les identifier.";
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "La langue de Helm atteint désormais ce que macOS dessine pour lui : le sélecteur de dossier, sa barre latérale et les menus d’un champ de texte restaient en anglais. Les nombres et les dates suivent aussi la langue.";
 "macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two." = "macOS affiche son propre indicateur. Désactivez-le dans les réglages du clavier, sinon vous en aurez deux.";
 "Homebrew" = "Homebrew";
@@ -253,7 +242,6 @@
 "Keep Awake module: manual, timed or automatic (external display, power, chosen apps), closed-lid mode, battery guard, global hotkey." = "Module Rester éveillé : manuel, minuté ou automatique (écran externe, secteur, apps choisies), capot fermé, protection batterie, raccourci global.";
 "Keep Awake’s status figures update as things happen instead of freezing at whatever they were when the page opened." = "Les indicateurs de Rester éveillé se mettent à jour en direct au lieu de rester figés à l’ouverture.";
 "Keep Awake’s ⋯ controls open inline with animation: custom timer with a durations menu, automation toggles, Stop button in the countdown." = "Les contrôles ⋯ s’ouvrent en ligne avec animation : minuteur personnalisé avec menu de durées, automatisations, bouton Arrêter.";
-"Keep these files" = "Conserver ces fichiers";
 "Keyboard" = "Clavier";
 "Keyboard can show its own language indicator in the menu bar, with the choices the system’s one does not offer: letters plain, on a badge or in a frame, or a flag, at the size you pick, with a menu of your layouts. Off until you turn it on, since macOS shows its own." = "Clavier peut afficher son propre indicateur de langue dans la barre des menus, avec les choix que celui du système n’offre pas : lettres, pleines, encadrées, ou drapeau (emoji ou dessiné), à la taille voulue, et un menu de vos dispositions. Désactivé par défaut.";
 "Keyboard is one gesture now. Tap the key — right ⌘ unless you change it — and Helm fixes what is in front of you: the selected text if there is any, otherwise the last word, and tapping again puts it back. There were five shortcuts to set up and none of them was set. Any modifier can be the key — right or left — and on Macs with a 🌐︎ key, that too. Transliteration and changing case are gone: transliteration could not be undone reliably, and macOS already changes case in the Edit menu." = "Le Clavier tient en un geste. Appuyez sur la touche (⌘ droite par défaut) et Helm corrige ce qui est devant vous : la sélection s’il y en a une, sinon le dernier mot ; une seconde pression le restaure. Il y avait cinq raccourcis à régler et aucun ne l’était. La translittération et le changement de casse sont retirés.";
@@ -282,8 +270,6 @@
 "Login Items & Extensions now lists system extensions themselves — what they are, whose they are, and which ones outlived the app that installed them." = "Ouverture et extensions liste désormais les extensions système elles-mêmes : ce qu’elles sont, à qui elles appartiennent et lesquelles ont survécu à leur app.";
 "Login Items & Extensions: see everything that loads with your Mac, marked as in use, system, or leftover — and remove the leftovers." = "Ouverture et extensions : voyez tout ce qui se charge avec votre Mac, marqué en cours d’utilisation, système ou résidu — et supprimez les résidus.";
 "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "Les éléments d’ouverture peuvent être désactivés, pas seulement supprimés. Helm utilise la liste de macOS : le choix survit au redémarrage, sans mot de passe, et se défait.";
-"Logs" = "Journaux";
-"Look for leftovers automatically when an app goes to the Trash" = "Chercher les restes automatiquement quand une app va à la corbeille";
 "MB" = "Mo";
 "MODULES" = "MODULES";
 "Manage Homebrew packages" = "Gérer les paquets Homebrew";
@@ -305,7 +291,6 @@
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "Nécessaire pour que Clavier corrige la disposition de ce que vous tapez et que Rester éveillé bouge le pointeur. Sans lui, aucun des deux ne fonctionne.";
 "Needed to remove app containers and to read every folder when scanning the disk." = "Nécessaire pour supprimer les conteneurs d’apps et lire tous les dossiers lors de l’analyse du disque.";
 "Network" = "Réseau";
-"Network cache and cookies" = "Cache réseau et cookies";
 "Never" = "Jamais";
 "Words to leave alone" = "Mots à ne pas toucher";
 "Never in a password field, and never in the terminals and password managers Helm knows." = "Jamais dans un champ de mot de passe, ni dans les terminaux et gestionnaires de mots de passe que Helm connaît.";
@@ -313,9 +298,6 @@
 "New rule" = "Nouvelle règle";
 "Next" = "Suivant";
 "No VPNs" = "Aucun VPN";
-"No applications found." = "Aucune app trouvée.";
-"No applications match this search." = "Aucune app ne correspond à cette recherche.";
-"No extra files found." = "Aucun fichier supplémentaire trouvé.";
 "No leftovers found." = "Aucun reste trouvé.";
 "No modules enabled" = "Aucun module activé";
 "No packages installed." = "Aucun paquet installé.";
@@ -373,9 +355,7 @@
 "Power" = "Alimentation";
 "Press keys…" = "Appuyez sur des touches…";
 "Purple" = "Violet";
-"Putting the app back from the Trash will not bring these files back." = "Remettre l’app en place depuis la corbeille ne récupère pas ces fichiers.";
 "Quit" = "Quitter";
-"Quit the running apps first, or allow a force quit." = "Quittez d’abord les apps en cours, ou autorisez la fermeture forcée.";
 "Quitting Helm — or deleting it — could leave the Mac unable to sleep, because the clamshell setting Keep Awake changes outlives the app and nothing put it back on quit. And turning clamshell off while Keep Awake’s admin prompt was still up could leave a passwordless rule behind for a feature you’d just switched off. Both are fixed." = "Quitter Helm — ou le supprimer — pouvait laisser le Mac incapable de dormir, car le réglage de capot fermé que modifie Rester éveillé survit à l’app, et rien ne le remettait en place en quittant. Et désactiver le capot fermé pendant que l’invite d’administrateur de Rester éveillé était encore affichée pouvait laisser une règle sans mot de passe pour une fonction que vous veniez d’éteindre. Les deux sont corrigés.";
 "Quitting an app now disconnects only a VPN Helm itself raised for it — never one you dialled up by hand." = "Quitter une app ne déconnecte que le VPN que Helm avait établi pour elle, jamais celui que vous aviez lancé vous-même.";
 "Reading the package list…" = "Lecture de la liste des paquets…";
@@ -383,12 +363,9 @@
 "Redesigned About: the icon sits in a bezel that turns while updates are checked, version and build read as instrument dials, and update controls live in one card." = "Fenêtre À propos repensée : l’icône dans un cerclage qui tourne pendant la recherche de mises à jour, version et build en cadrans, et les commandes de mise à jour réunies dans une carte.";
 "Refresh list" = "Actualiser la liste";
 "Remove" = "Retirer";
-"Remove an app with all of its files" = "Supprimer une app avec tous ses fichiers";
 "Removing an app no longer offers another app’s files. Leftovers were matched by the start of an app’s identifier and never checked against what is installed — and an app kept one folder down, or one that simply claimed somebody else’s id, could still slip past that check. Nothing from another app is offered pre-ticked now." = "Désinstaller une app ne propose plus les fichiers d’une autre. Les restes étaient trouvés par le début de l’identifiant de l’app, sans vérifier ce qui est installé — et une app rangée dans un sous-dossier, ou qui déclarait simplement l’id d’une autre, passait encore au travers. Rien d’étranger n’est présélectionné désormais.";
-"Removing…" = "Suppression…";
 "Rename" = "Renommer";
 "Renaming scheme" = "Schéma de renommage";
-"Review" = "Vérifier";
 "Reset" = "Réinitialiser";
 "Reset all settings, in Settings → Settings. Helm goes back to how it was just after installing: preferences forgotten, each module’s saved state and the diagnostics log in the Trash — not deleted outright, so you can get them back — and the welcome tour again at the next launch. Access you granted in System Settings is macOS’s and is left alone." = "Réinitialiser tous les réglages, dans Réglages → Réglages. Helm revient à son état juste après l’installation ; ce qui était enregistré part à la corbeille, sans être supprimé définitivement. Les accès accordés dans Réglages Système ne sont pas touchés.";
 "Reset all settings?" = "Réinitialiser tous les réglages ?";
@@ -405,13 +382,9 @@
 "Rules for specific apps" = "Règles par app";
 "Rules run top to bottom and the first match wins — a file gets one action, not several." = "Les règles s’appliquent de haut en bas et la première correspondance l’emporte : un fichier reçoit une action, pas plusieurs.";
 "Run now" = "Exécuter maintenant";
-"Running" = "En cours";
-"Saved windows" = "Fenêtres enregistrées";
 "Scan again" = "Réanalyser";
-"Scan for leftovers" = "Rechercher les restes";
 "Scanning…" = "Analyse…";
 "Search" = "Rechercher";
-"Search apps" = "Rechercher des apps";
 "Search packages" = "Rechercher des paquets";
 "Searching…" = "Recherche…";
 "Select all" = "Tout sélectionner";
@@ -467,7 +440,6 @@
 "Safari is marked as a system app rather than offered for removal at “0 B”." = "Safari est marqué comme app système plutôt que proposé à la suppression pour « 0 Ko ».";
 "The VPN dial counted connections that had started themselves automatically, sitting right above the list of rules it looked like it was counting." = "Le cadran VPN comptait les connexions qui s’étaient lancées automatiquement, juste au-dessus de la liste de règles qu’il semblait compter.";
 "Login Items & Extensions’ bottom bar mixed how many items were found with the size of what you’d selected." = "Le bas de page d’Ouverture et extensions mélangeait le nombre d’éléments trouvés avec la taille de ce que vous aviez sélectionné.";
-"The app itself — always removed" = "L’app elle-même — toujours supprimée";
 "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "La protection de batterie — celle qui empêche Rester éveillé de la vider complètement — est désormais activée par défaut à 20 % sur les nouvelles installations. Elle était désactivée par défaut, juste à côté d’une durée qui vaut par défaut « indéfinie ».";
 "The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "Le disque est plein. Placer dans la corbeille demande de la place, car la corbeille est un dossier du même disque — videz-la et réessayez.";
 "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room." = "La liste du disque se parcourt au clavier : flèches entre les lignes, Retour pour entrer dans un dossier, ⌘↑ pour ressortir. Et la barre du haut tient à nouveau : l’info d’analyse est passée sous l’anneau.";
@@ -514,7 +486,6 @@
 "Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match." = "Tapez ghbdtn dans la mauvaise disposition : le mot devient привет, et la source de saisie suit.";
 "Uninstall" = "Désinstaller";
 "Uninstall…" = "Désinstaller…";
-"Uninstaller" = "Désinstalleur";
 "Unknown" = "Inconnu";
 "Untitled rule" = "Règle sans titre";
 "Update & Relaunch" = "Mettre à jour et relancer";
@@ -542,7 +513,6 @@
 "A metric strip no longer occasionally reads the wrong appearance and darkens dark mode’s own colours to match." = "Le bandeau ne se trompe plus occasionnellement d’apparence en assombrissant les couleurs du mode sombre lui-même.";
 "Warnings" = "Avertissements";
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "Les avertissements sont lisibles en thème clair, les échantillons d’icône et de couleur sont accessibles au clavier, et les tailles et les noms suivent macOS dans chaque langue.";
-"Website data" = "Données de sites web";
 "Welcome to Helm" = "Bienvenue dans Helm";
 "What to check" = "Quoi vérifier";
 "What to do" = "Quoi faire";
@@ -561,8 +531,6 @@
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "Sans accès complet au disque, un dossier protégé se lit comme vide : aucune règle ne correspond, et cela ressemble exactement à un dossier sans rien à faire.";
 "A rule can watch folders inside your home folder, but not the Library and not a whole volume." = "Une règle peut surveiller des dossiers dans votre dossier personnel, mais pas la Bibliothèque ni un volume entier.";
 "Watch this folder" = "Surveiller ce dossier";
-"Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "Sans accès complet au disque, les conteneurs d’une app restent en place et Helm ne voit pas la corbeille pour y chercher des restes.";
-"Without Full Disk Access an app’s containers stay behind." = "Sans accès complet au disque, les conteneurs de l’app resteront.";
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "Textes et tailles revus dans toute l’app : libellés plus courts, un nom par chose, et des tailles dans votre langue.";
 "Write a log file" = "Écrire un journal";
 "Yellow" = "Jaune";
@@ -580,7 +548,6 @@
 "ends with" = "se termine par";
 "expanded" = "étendu";
 "failed" = "échec";
-"guess" = "supposition";
 "is" = "est";
 "larger than" = "plus grand que";
 "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it." = "macOS utilise peut-être déjà 🌐︎ pour changer de source, ouvrir les emoji ou dicter. Réglez « Touche 🌐︎ : ne rien faire » dans les réglages du clavier, sinon les deux se produiront. Les claviers sans 🌐︎ ne l’envoient jamais.";
@@ -1117,11 +1084,6 @@
 "Replaced. The original is in the Trash." = "Remplacée. L’original est dans la corbeille.";
 "The screenshot was moved or changed after it was taken. Your edit is saved as a separate file." = "La capture a été déplacée ou modifiée après avoir été prise. Votre modification est enregistrée dans un fichier séparé.";
 "The screenshot was moved or changed after it was taken, so it cannot be edited here." = "La capture a été déplacée ou modifiée après avoir été prise, elle ne peut donc pas être modifiée ici.";
-"Sort By" = "Trier par";
-"Sort by Name" = "Trier par nom";
-"Sort by Size" = "Trier par taille";
-"Sort by Date Last Opened" = "Trier par date de dernière ouverture";
-"No record of opening" = "Aucune trace d’ouverture";
 "Search the log" = "Rechercher dans le journal";
 "Earlier launch" = "Lancement antérieur";
 "older lines are in the file" = "les lignes plus anciennes sont dans le fichier";

@@ -283,14 +283,7 @@ struct LeftoversSettingsPage: View {
         Button {
             Task { await lvm.scan() }
         } label: {
-            if lvm.scanning {
-                HStack(spacing: HelmSpace.s3) {
-                    ProgressView().controlSize(.small)
-                    Text(scanTitle)
-                }
-            } else {
-                Text(scanTitle)
-            }
+            HelmBusyLabel(scanTitle, busy: lvm.scanning)
         }
         .disabled(scanRefused)
     }

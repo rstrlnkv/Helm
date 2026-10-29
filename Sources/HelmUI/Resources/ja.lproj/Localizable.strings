@@ -46,8 +46,6 @@
 "App Uninstaller opens straight away. It used to measure every app on your Mac before showing anything — four seconds, nine on a cold start. The list appears now and the sizes fill in behind it." = "アンインストーラがすぐ開きます。以前は表示前にすべてのアプリを計測していました（4秒、コールドで9秒）。一覧を先に表示し、サイズは後から埋まります。";
 "App Uninstaller works in two steps: tick the apps you want gone, then review the files found for each of them before anything moves. Apps that are still running are flagged and only removed if you allow a force quit." = "アンインストールは2ステップ：アプリを選び、各アプリの検出ファイルを確認してから削除します。実行中のアプリは印が付き、強制終了を許可した場合のみ削除されます。";
 "Appearance" = "外観";
-"Application Scripts" = "アプリスクリプト";
-"Application Support" = "アプリのデータ";
 "Apps" = "アプリ";
 "Archive" = "アーカイブ";
 "Audio" = "オーディオ";
@@ -64,7 +62,6 @@
 "Opens its own screen" = "専用の画面を開きます";
 "Beta" = "Beta";
 "Blue" = "青";
-"Caches" = "キャッシュ";
 "Cancel" = "キャンセル";
 "Check" = "確認";
 "Checking for updates…" = "アップデートを確認中…";
@@ -83,12 +80,9 @@
 "Connecting a VPN no longer makes the rest of Helm stutter." = "VPN 接続中に Helm の他の部分がもたつかなくなりました。";
 "Connecting…" = "接続中…";
 "Connections" = "接続";
-"Containers" = "コンテナ";
 "Control" = "Control";
-"Cookies" = "Cookie";
 "Copy log" = "ログをコピー";
 "Couldn’t check for updates." = "アップデートを確認できませんでした。";
-"Counting apps…" = "アプリを数えています…";
 "Custom active-state icon for Keep Awake." = "スリープ防止のカスタムアクティブアイコン。";
 "Discard and start again" = "破棄してやり直す";
 "Error" = "エラー";
@@ -192,8 +186,6 @@
 "Extensions, separated by commas" = "拡張子（カンマ区切り）";
 "Failed" = "失敗";
 "Files" = "ファイル";
-"Files left in your Library" = "ライブラリに残ったファイル";
-"Files left in your Library by apps you no longer have. Only files named after an app’s bundle id are listed, so some leftovers will not appear." = "すでにないアプリがライブラリに残したファイル。アプリの bundle id を名前に持つファイルだけを表示するため、見つからない残存ファイルもあります。";
 "Fix" = "修正する";
 "Fix two capitals at the start of a word" = "単語の先頭 2 文字の大文字を修正";
 "Fix as I type" = "入力しながら修正";
@@ -206,7 +198,6 @@
 "Follow" = "追従";
 "Following" = "追従中";
 "Not following" = "追従していない";
-"Force quit and remove anyway" = "強制終了して削除";
 "Full Disk Access" = "フルディスクアクセス";
 "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "ディスクへのアクセスがオフです。すべてのフォルダを読めず、アンインストーラ時にコンテナが残ります。";
 "Full name" = "完全な名前";
@@ -216,7 +207,6 @@
 "Granted" = "許可済み";
 "Grant…" = "許可…";
 "Green" = "緑";
-"Group Containers" = "グループコンテナ";
 "Helm Settings" = "Helm 設定";
 "Helm can be used with VoiceOver. Every control now says what it is — the rule editor was built from pop-up buttons and fields that announced nothing, so a rule could not be written at all without sight." = "VoiceOver で操作できるようになりました。すべてのコントロールが自分の役割を読み上げます。ルールエディタは何も読み上げず、目視なしでは使えませんでした。";
 "Helm could crash outright when an application quit while the VPN module happened to be looking at the list of running programs." = "VPN モジュールが実行中プログラムの一覧を見ている最中にアプリが終了すると、Helm が異常終了することがありました。";
@@ -227,7 +217,6 @@
 "Helm is still in development. Beta builds are the steadier of the two." = "Helm はまだ開発中です。2 つのうち Beta のほうが安定しています。";
 "Helm needs Full Disk Access to move this." = "移動にはフルディスクアクセスが必要です。";
 "Helm returns to how it was just after installing, including whether it opens at login. Access you granted in System Settings stays as it is." = "Helm はログイン時に開くかどうかも含め、インストール直後の状態に戻ります。システム設定で許可したアクセスはそのままです。";
-"Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "残された設定・キャッシュ・サポートファイルを表示し、そのまま削除できます。App がゴミ箱にある間だけです。空にすると、どのファイルか見分けられなくなります。";
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "macOS が描く部分にも Helm の言語が届くようになりました。フォルダ選択画面やそのサイドバー、テキストフィールドのメニューは英語のままでした。数字や日付も言語に合わせて表記されます。";
 "macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two." = "macOS も独自の表示を出します。キーボード設定でオフにしないと2つ並びます。";
 "Homebrew" = "Homebrew";
@@ -253,7 +242,6 @@
 "Keep Awake module: manual, timed or automatic (external display, power, chosen apps), closed-lid mode, battery guard, global hotkey." = "スリープ防止モジュール：手動・タイマー・自動（外部ディスプレイ、電源、選択アプリ）、クラムシェル、バッテリー保護、グローバルショートカット。";
 "Keep Awake’s status figures update as things happen instead of freezing at whatever they were when the page opened." = "“スリープ防止”の状態表示は、ページを開いた時点で止まらずリアルタイムに更新されます。";
 "Keep Awake’s ⋯ controls open inline with animation: custom timer with a durations menu, automation toggles, Stop button in the countdown." = "⋯ の操作はカード内でアニメーション表示：時間メニュー付きカスタムタイマー、自動化スイッチ、停止ボタン。";
-"Keep these files" = "このまま残す";
 "Keyboard" = "キーボード";
 "Keyboard can show its own language indicator in the menu bar, with the choices the system’s one does not offer: letters plain, on a badge or in a frame, or a flag, at the size you pick, with a menu of your layouts. Off until you turn it on, since macOS shows its own." = "“キーボード”がメニューバーに独自の入力ソース表示を出せます。システム版では変えられない見た目を選べます：文字、塗り、枠線、旗（絵文字／描画）、サイズも自由で、配列のメニュー付き。既定はオフです。";
 "Keyboard is one gesture now. Tap the key — right ⌘ unless you change it — and Helm fixes what is in front of you: the selected text if there is any, otherwise the last word, and tapping again puts it back. There were five shortcuts to set up and none of them was set. Any modifier can be the key — right or left — and on Macs with a 🌐︎ key, that too. Transliteration and changing case are gone: transliteration could not be undone reliably, and macOS already changes case in the Edit menu." = "“キーボード”はひとつの操作になりました。キー（既定では右 ⌘）を叩くと、目の前にあるものを直します。選択範囲があればそれを、なければ直前の単語を。もう一度叩けば元に戻ります。以前は 5 つのショートカットを設定する必要があり、どれも未設定でした。ローマ字化と大文字小文字の変換はなくなりました。";
@@ -282,8 +270,6 @@
 "Login Items & Extensions now lists system extensions themselves — what they are, whose they are, and which ones outlived the app that installed them." = "“ログイン項目と機能拡張”がシステム機能拡張そのものを一覧表示：内容、提供元、そしてインストール元アプリが消えても残っているもの。";
 "Login Items & Extensions: see everything that loads with your Mac, marked as in use, system, or leftover — and remove the leftovers." = "ログイン項目と機能拡張：Mac と一緒に読み込まれるものを“使用中”、“システム”、“残存物”の印付きで一覧表示し、残存物を削除できます。";
 "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "ログイン項目は削除だけでなくオフにできます。macOS 自身と同じ一覧を使うため、再起動後も維持され、パスワード不要で元に戻せます。";
-"Logs" = "ログ";
-"Look for leftovers automatically when an app goes to the Trash" = "App がゴミ箱に入ったら、残ったファイルを自動で探す";
 "MB" = "MB";
 "MODULES" = "モジュール";
 "Manage Homebrew packages" = "Homebrew パッケージを管理";
@@ -305,7 +291,6 @@
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "“キーボード”が入力したテキストの配列を直し、“スリープ防止”がポインタを動かすために必要です。許可がないとどちらも機能しません。";
 "Needed to remove app containers and to read every folder when scanning the disk." = "アプリのコンテナ削除と、ディスクスキャン時に全フォルダを読むために必要です。";
 "Network" = "ネットワーク";
-"Network cache and cookies" = "ネットワークキャッシュと Cookie";
 "Never" = "しない";
 "Words to leave alone" = "変更しない単語";
 "Never in a password field, and never in the terminals and password managers Helm knows." = "パスワード欄では決して動きません。Helm が知っているターミナルとパスワード管理アプリでも動きません。";
@@ -313,9 +298,6 @@
 "New rule" = "新しいルール";
 "Next" = "次へ";
 "No VPNs" = "VPN なし";
-"No applications found." = "アプリが見つかりませんでした。";
-"No applications match this search." = "この検索に一致するアプリはありません。";
-"No extra files found." = "追加ファイルは見つかりませんでした。";
 "No leftovers found." = "残存物は見つかりませんでした。";
 "No modules enabled" = "有効なモジュールがありません";
 "No packages installed." = "インストール済みパッケージはありません。";
@@ -373,9 +355,7 @@
 "Power" = "電源";
 "Press keys…" = "キーを押してください…";
 "Purple" = "紫";
-"Putting the app back from the Trash will not bring these files back." = "Appをゴミ箱から戻しても、これらのファイルは戻りません。";
 "Quit" = "終了";
-"Quit the running apps first, or allow a force quit." = "実行中のアプリを終了するか、強制終了を許可してください。";
 "Quitting Helm — or deleting it — could leave the Mac unable to sleep, because the clamshell setting Keep Awake changes outlives the app and nothing put it back on quit. And turning clamshell off while Keep Awake’s admin prompt was still up could leave a passwordless rule behind for a feature you’d just switched off. Both are fixed." = "Helm を終了しても——あるいは削除しても——Mac がスリープできないままになることがありました。“スリープ防止”がクラムシェルモードのために変更するシステム設定はアプリより長く残り、終了時に元に戻す処理がなかったためです。また、“スリープ防止”の管理者権限ダイアログが表示されたままクラムシェルをオフにすると、いま切ったはずの機能のためにパスワード不要のルールが残ることもありました。どちらも修正しました。";
 "Quitting an app now disconnects only a VPN Helm itself raised for it — never one you dialled up by hand." = "アプリを終了したとき、切断するのは Helm がそのアプリのために接続した VPN だけになりました。手動で接続したものは切りません。";
 "Reading the package list…" = "パッケージ一覧を読み込み中…";
@@ -383,12 +363,9 @@
 "Redesigned About: the icon sits in a bezel that turns while updates are checked, version and build read as instrument dials, and update controls live in one card." = "“Helm について”を刷新：アップデート確認中に回転するベゼル内のアイコン、計器のようなバージョンとビルド表示、更新操作を1枚のカードに集約。";
 "Refresh list" = "リストを更新";
 "Remove" = "削除";
-"Remove an app with all of its files" = "アプリを関連ファイルごと削除";
 "Removing an app no longer offers another app’s files. Leftovers were matched by the start of an app’s identifier and never checked against what is installed — and an app kept one folder down, or one that simply claimed somebody else’s id, could still slip past that check. Nothing from another app is offered pre-ticked now." = "アプリの削除時に、別のアプリのファイルを提案しなくなりました。他のアプリのものが既定で選択されることはもうありません。";
-"Removing…" = "削除中…";
 "Rename" = "名前を変更";
 "Renaming scheme" = "リネームの方式";
-"Review" = "確認";
 "Reset" = "リセット";
 "Reset all settings, in Settings → Settings. Helm goes back to how it was just after installing: preferences forgotten, each module’s saved state and the diagnostics log in the Trash — not deleted outright, so you can get them back — and the welcome tour again at the next launch. Access you granted in System Settings is macOS’s and is left alone." = "設定 → “設定”で、すべての設定をリセットできます。Helm はインストール直後の状態に戻り、保存されていたものは完全削除ではなくゴミ箱に移動します。システム設定で許可したアクセスはそのままです。";
 "Reset all settings?" = "すべての設定をリセットしますか？";
@@ -405,13 +382,9 @@
 "Rules for specific apps" = "アプリごとのルール";
 "Rules run top to bottom and the first match wins — a file gets one action, not several." = "ルールは上から順に評価され、最初に一致したものが実行されます。ファイルに起きることは 1 つだけです。";
 "Run now" = "今すぐ実行";
-"Running" = "実行中";
-"Saved windows" = "保存されたウインドウ";
 "Scan again" = "再スキャン";
-"Scan for leftovers" = "残存ファイルを検索";
 "Scanning…" = "スキャン中…";
 "Search" = "検索";
-"Search apps" = "アプリを検索";
 "Search packages" = "パッケージを検索";
 "Searching…" = "検索中…";
 "Select all" = "すべてを選択";
@@ -467,7 +440,6 @@
 "Safari is marked as a system app rather than offered for removal at “0 B”." = "Safari はシステムアプリとして表示され、“0 B”で削除候補に出ることはなくなりました。";
 "The VPN dial counted connections that had started themselves automatically, sitting right above the list of rules it looked like it was counting." = "VPN のダイヤルは自動的に接続し始めた接続数を数えていましたが、その真上には数えているように見えるルール一覧がありました。";
 "Login Items & Extensions’ bottom bar mixed how many items were found with the size of what you’d selected." = "“ログイン項目と機能拡張”の下部バーは、見つかった件数と選択した項目のサイズを混同していました。";
-"The app itself — always removed" = "アプリ本体 — 必ず削除されます";
 "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "バッテリー保護——“スリープ防止”がセッション中にバッテリーを使い切らないようにする機能——は、新規インストールでは既定で 20% でオンになります。以前は既定でオフになっており、そのすぐ隣には既定で“無期限”となる継続時間の設定がありました。";
 "The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "ディスクの空きがありません。ゴミ箱は同じディスク上のフォルダなので、移動にも空き容量が要ります。ゴミ箱を空にしてからもう一度お試しください。";
 "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room." = "ディスクの一覧をキーボードで操作できます。矢印キーで行を移動、Return でフォルダに入り、⌘↑ で戻ります。上のバーも収まるようになりました（スキャン情報はリングの下へ）。";
@@ -514,7 +486,6 @@
 "Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match." = "配列を切り替え忘れて ghbdtn と入力すると、привет に直り、入力ソースも切り替わります。";
 "Uninstall" = "アンインストール";
 "Uninstall…" = "アンインストール…";
-"Uninstaller" = "アンインストーラ";
 "Unknown" = "不明";
 "Untitled rule" = "名称未設定のルール";
 "Update & Relaunch" = "更新して再起動";
@@ -542,7 +513,6 @@
 "A metric strip no longer occasionally reads the wrong appearance and darkens dark mode’s own colours to match." = "バーが誤って外観を読み違え、ダークモード自身の色をさらに暗くしてしまうこともなくなりました。";
 "Warnings" = "警告";
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "ライトテーマで警告が読めるようになり、アイコンと色の見本にキーボードで到達でき、単位や名称は各言語で macOS に合わせました。";
-"Website data" = "Webサイトのデータ";
 "Welcome to Helm" = "Helm へようこそ";
 "What to check" = "確認する項目";
 "What to do" = "実行する処理";
@@ -561,8 +531,6 @@
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "フルディスクアクセスがないと、保護されたフォルダは空として読まれます。どのルールも一致せず、片づけるものがないフォルダと見分けがつきません。";
 "A rule can watch folders inside your home folder, but not the Library and not a whole volume." = "ルールはホームフォルダ内のフォルダを監視できますが、ライブラリやボリューム全体は監視できません。";
 "Watch this folder" = "このフォルダを監視";
-"Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "フルディスクアクセスがないと App のコンテナが残り、Helm はゴミ箱を見て残存ファイルを探すこともできません。";
-"Without Full Disk Access an app’s containers stay behind." = "フルディスクアクセスがないと、アプリのコンテナが残ります。";
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "アプリ全体の文言とサイズ表記を見直し：ラベルを簡潔に、名称を統一し、サイズを各言語の単位で表示。";
 "Write a log file" = "ログを記録";
 "Yellow" = "黄";
@@ -580,7 +548,6 @@
 "ends with" = "で終わる";
 "expanded" = "表示されました";
 "failed" = "失敗";
-"guess" = "推測";
 "is" = "が一致";
 "larger than" = "より大きい";
 "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it." = "macOS が 🌐︎ を入力ソース切り替え・絵文字・音声入力に使っている場合があります。キーボード設定で“🌐︎ キーを押して: 何もしない”にしてください。🌐︎ のないキーボードはこのキーを送りません。";
@@ -1117,11 +1084,6 @@
 "Replaced. The original is in the Trash." = "置き換えました。元のファイルはゴミ箱にあります。";
 "The screenshot was moved or changed after it was taken. Your edit is saved as a separate file." = "スクリーンショットは撮影後に移動または変更されました。編集内容は別のファイルとして保存されています。";
 "The screenshot was moved or changed after it was taken, so it cannot be edited here." = "スクリーンショットは撮影後に移動または変更されたため、ここでは編集できません。";
-"Sort By" = "表示順序";
-"Sort by Name" = "名前で並べ替え";
-"Sort by Size" = "サイズで並べ替え";
-"Sort by Date Last Opened" = "最後に開いた日で並べ替え";
-"No record of opening" = "開いた記録なし";
 "Search the log" = "ログを検索";
 "Earlier launch" = "以前の起動";
 "older lines are in the file" = "それ以前の行はファイルにあります";

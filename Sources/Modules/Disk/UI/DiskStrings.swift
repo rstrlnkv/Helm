@@ -76,7 +76,7 @@ enum DkStr {
            .pt: "\(n) arquivos em \(seconds) s"],
           language: language)
     }
-    /// `HelmBasket.movedToTrash`: the sentence Disk and Duplicates end a removal on.
+    /// `HelmBasket.movedToTrash`: Disk, Duplicates and the Uninstaller end a removal on one sentence; Leftovers counts the rows as well (`LfStr.movedToTrash`).
     static func movedToTrash(_ size: String) -> String {
         HelmBasket.movedToTrash(size)
     }

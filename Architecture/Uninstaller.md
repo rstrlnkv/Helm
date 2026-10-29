@@ -56,3 +56,31 @@ arrival subscription and the open offer; saving a chosen sort order is not refus
 The model keeps no state for a reply that never arrives, and the Apps tab has two empty
 states, no apps found and a search that hides all of them: before the first answer the
 page draws a spinner and the footer says "Counting apps…" (`AppsEmpty.status(answered:loading:apps:)`).
+
+Words: `Sources/Modules/Uninstaller/UI/Localizable.xcstrings`; interpolated ones in inline tables in `UninstallerStrings.swift`; shared words through `L()`, and the removal's sentence through `HelmBasket` in `Sources/HelmUI/BasketStrings.swift`.
+
+## The states of the Uninstaller page
+
+The page id is the module id, `uninstaller`, and a state is shot with its file `uninstaller-<state>-<light|dark>[-<ru|de>].png`:
+
+    bash Scripts/shoot.sh uninstaller \
+      [--press "<name>" [--nth <n>]]... \
+      --arg module.app.appearance <light|dark> \
+      [--arg module.app.interfaceLanguage <ru|de>] \
+      --name <state>-<light|dark>[-<ru|de>] --out <dir>
+
+Nothing is removed or quit to reach a state: the presses only tick, open the review and scan. `confirm`, `removing`, `removal-report` and the failure list are not shot. The removal report on the review is held by `TheReviewIsNotTheLastWordTests`, its verdict by `RemovalOutcomeTests` (optional); the Trash window's busy flag by `TheTrashOfferSendsOneBatchTests`, its refusal at the close by `ARefusalIsNotADeclineAtTheCloseTests` (optional); a second press on the Leftovers tab by `TheOrphansTabRefusesASecondPressTests`, which reads the source. The confirmation, the page's "Removing…" and the failure list have no guard.
+
+| state | the page shows | reached by |
+|---|---|---|
+| `counting` | `HelmBusyState`, and "Counting apps…" in the footer | not caught by `shoot.sh` or a rectangle burst on this Mac: the list arrived before the window was first on screen; no test holds the page's frame |
+| `apps` | the striped list of apps, the footer with the count | the page as it opens |
+| `apps-basket` | the footer with "N selected · size" and Review N | `--press "<app>"` on `apps` |
+| `review` | one group per app, its bundle first with "The app itself — always removed", and Move to Trash | `apps-basket`, then `--press "Review 1"` |
+| `review-running` | the warning "Still running: …" with the force-quit switch over the review | `review` with a running app ticked |
+| `orphans-start` | the invitation to scan, and the switch for the Trash below | `--press "Leftovers" --nth <n>` (the sidebar row shares the name) |
+| `orphans` | the leftovers grouped by bundle id, nothing ticked | `orphans-start`, then `--press "Scan for leftovers"` |
+| `orphans-none` | "No leftovers found." with Scan again | `orphans`, only when this Mac has none |
+| `orphans-basket` | "N selected · size" and Move to Trash enabled | `orphans`, then `--press "Select all"` |
+| `no-disk-access` | the Full Disk Access note over any of the above | Helm Dev without the grant (real use; the crew changes no grant) |
+| `trash-offer` | the Trash window: the standing line, one card per app, Keep these files | only when the real Trash already holds an app with leftovers |

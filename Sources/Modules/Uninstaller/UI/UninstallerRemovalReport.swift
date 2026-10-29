@@ -6,12 +6,10 @@ extension HelmRemovalOutcome {
     /// The line both of this module's removal screens end with.
     ///
     /// The Leftovers tab and the unprompted Trash window report the same three
-    /// states — nothing yet, it worked, macOS refused some of it — and each
-    /// spelled the mapping out for itself: the reasons
-    /// through `UnStr.failureReason`, the Full Disk Access flag as a second
-    /// search of the same list. Two screens doing one thing must not describe it
-    /// in two ways, and the half a caller forgets is `needsFullDiskAccess`,
-    /// which is the one button on that sheet a person can act on.
+    /// states — nothing yet, it worked, macOS refused some of it — so the mapping
+    /// is written once: the reasons through `UnStr.failureReason`, the Full Disk
+    /// Access flag from the same list. The half a caller would forget is
+    /// `needsFullDiskAccess`, the one button on that sheet a person can act on.
     ///
     /// `nil` is the first state — neither page draws a bar before its first
     /// removal.

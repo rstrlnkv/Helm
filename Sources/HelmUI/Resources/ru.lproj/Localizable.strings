@@ -46,8 +46,6 @@
 "App Uninstaller opens straight away. It used to measure every app on your Mac before showing anything — four seconds, nine on a cold start. The list appears now and the sizes fill in behind it." = "«Удаление приложений» открывается сразу. Раньше оно измеряло каждое приложение на Mac прежде чем показать хоть что-то — четыре секунды, девять на холодную. Теперь список появляется сразу, а размеры подставляются следом.";
 "App Uninstaller works in two steps: tick the apps you want gone, then review the files found for each of them before anything moves. Apps that are still running are flagged and only removed if you allow a force quit." = "Удаление приложений — в два шага: отметьте приложения, затем разберите найденные файлы по каждой из них, прежде чем что-то удалять. Запущенные приложения помечаются и удаляются только с вашего разрешения на принудительное завершение.";
 "Appearance" = "Оформление";
-"Application Scripts" = "Скрипты приложения";
-"Application Support" = "Данные приложения";
 "Apps" = "Приложения";
 "Archive" = "Архив";
 "Audio" = "Аудио";
@@ -64,7 +62,6 @@
 "Opens its own screen" = "Открывает свой экран";
 "Beta" = "Beta";
 "Blue" = "Синий";
-"Caches" = "Кеши";
 "Cancel" = "Отменить";
 "Check" = "Проверить";
 "Checking for updates…" = "Проверяем обновления…";
@@ -83,12 +80,9 @@
 "Connecting a VPN no longer makes the rest of Helm stutter." = "Подключение VPN больше не подтормаживает остальной Helm.";
 "Connecting…" = "Подключение…";
 "Connections" = "Подключения";
-"Containers" = "Контейнеры";
 "Control" = "Control";
-"Cookies" = "Cookies";
 "Copy log" = "Скопировать журнал";
 "Couldn’t check for updates." = "Не удалось проверить обновления.";
-"Counting apps…" = "Считаем приложения…";
 "Custom active-state icon for Keep Awake." = "Своя иконка активного состояния для «Не спать».";
 "Discard and start again" = "Удалить и начать заново";
 "Error" = "Ошибка";
@@ -192,8 +186,6 @@
 "Extensions, separated by commas" = "Расширения через запятую";
 "Failed" = "Ошибка";
 "Files" = "Файлы";
-"Files left in your Library" = "Файлы, оставшиеся в Библиотеке";
-"Files left in your Library by apps you no longer have. Only files named after an app’s bundle id are listed, so some leftovers will not appear." = "Файлы, оставшиеся в Библиотеке от приложений, которых у вас больше нет. В списке — только файлы, названные по bundle id приложения, поэтому часть остатков в него не попадёт.";
 "Fix" = "Исправлять";
 "Fix two capitals at the start of a word" = "Исправлять две заглавные в начале слова";
 "Fix as I type" = "Исправлять по ходу набора";
@@ -206,7 +198,6 @@
 "Follow" = "Следить";
 "Following" = "Следит";
 "Not following" = "Не следит";
-"Force quit and remove anyway" = "Завершить принудительно и удалить";
 "Full Disk Access" = "Доступ к диску";
 "Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind." = "«Доступ к диску» выключен. Без него скан диска не видит часть папок, а при удалении приложения его контейнеры остаются.";
 "Full name" = "Полное имя";
@@ -216,7 +207,6 @@
 "Granted" = "Выдано";
 "Grant…" = "Выдать…";
 "Green" = "Зеленый";
-"Group Containers" = "Групповые контейнеры";
 "Helm Settings" = "Настройки Helm";
 "Helm can be used with VoiceOver. Every control now says what it is — the rule editor was built from pop-up buttons and fields that announced nothing, so a rule could not be written at all without sight." = "Helm работает с VoiceOver. Каждый элемент управления теперь называет себя — редактор правил состоял из кнопок и полей, не сообщавших ничего, и правило нельзя было составить вслепую.";
 "Helm could crash outright when an application quit while the VPN module happened to be looking at the list of running programs." = "Helm мог аварийно завершиться, когда приложение закрывалось ровно в тот момент, когда модуль VPN смотрел на список запущенных программ.";
@@ -227,7 +217,6 @@
 "Helm is still in development. Beta builds are the steadier of the two." = "Helm ещё в разработке. Из двух каналов Beta — устойчивее.";
 "Helm needs Full Disk Access to move this." = "Для перемещения нужен «Доступ к диску».";
 "Helm returns to how it was just after installing, including whether it opens at login. Access you granted in System Settings stays as it is." = "Helm вернётся к состоянию сразу после установки, включая то, открывается ли он при входе в систему. Доступ, выданный в Системных настройках, останется как есть.";
-"Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by." = "Helm покажет оставшиеся настройки, кеши и служебные файлы — их можно сразу удалить. Только пока приложение в Корзине: если очистить её, опознать файлы будет уже не по чему.";
 "Helm’s language now reaches the parts macOS draws for it. The folder picker, its sidebar and the menus on a text field were English whatever language you had chosen. Numbers and dates follow the language too: a count of files is grouped the way your language groups digits, and a date is written the way your language writes one." = "Язык Helm теперь распространяется и на то, что рисует macOS. Окно выбора папки, его боковое меню и меню у текстового поля оставались английскими при любом выбранном языке. Числа и даты тоже следуют языку: количество файлов разделяется по разрядам, а дата пишется так, как её пишут в вашем языке.";
 "macOS shows an indicator of its own. Turn it off in Keyboard settings, or you will have two." = "У macOS есть собственный индикатор. Выключите его в настройках клавиатуры, иначе индикаторов будет два.";
 "Homebrew" = "Homebrew";
@@ -253,7 +242,6 @@
 "Keep Awake module: manual, timed or automatic (external display, power, chosen apps), closed-lid mode, battery guard, global hotkey." = "Модуль «Не спать»: вручную, по таймеру или автоматически (внешний дисплей, питание, выбранные приложения), режим с закрытой крышкой, защита батареи, глобальный хоткей.";
 "Keep Awake’s status figures update as things happen instead of freezing at whatever they were when the page opened." = "Показатели состояния «Не спать» обновляются по ходу дела, а не застывают на том, что было при открытии страницы.";
 "Keep Awake’s ⋯ controls open inline with animation: custom timer with a durations menu, automation toggles, Stop button in the countdown." = "Блок «⋯» открывается прямо в карточке с анимацией: свой таймер с меню длительностей, тумблеры автоматизации, «Стоп» в отсчёте.";
-"Keep these files" = "Оставить файлы";
 "Keyboard" = "Клавиатура";
 "Keyboard can show its own language indicator in the menu bar, with the choices the system’s one does not offer: letters plain, on a badge or in a frame, or a flag, at the size you pick, with a menu of your layouts. Off until you turn it on, since macOS shows its own." = "«Клавиатура» умеет показывать свой индикатор языка в строке меню — с настройками, которых нет у системного: буквы, буквы с заливкой, буквы в контуре или флаг (эмодзи либо рисованный), нужного размера, и меню с вашими раскладками. По умолчанию выключен: системный никуда не девается.";
 "Keyboard is one gesture now. Tap the key — right ⌘ unless you change it — and Helm fixes what is in front of you: the selected text if there is any, otherwise the last word, and tapping again puts it back. There were five shortcuts to set up and none of them was set. Any modifier can be the key — right or left — and on Macs with a 🌐︎ key, that too. Transliteration and changing case are gone: transliteration could not be undone reliably, and macOS already changes case in the Edit menu." = "«Клавиатура» теперь — один жест. Нажали клавишу (по умолчанию правую ⌘) — Helm исправляет то, что перед вами: выделенный текст, если он есть, иначе последнее слово; повторное нажатие возвращает. Раньше нужно было настроить пять сочетаний, и ни одно не было задано. Клавишей может быть любой модификатор — правый или левый, — а на Mac с 🌐︎ и она. Транслитерация и смена регистра убраны: транслитерацию нельзя было надёжно отменить, а регистр macOS меняет сама — в меню «Правка».";
@@ -282,8 +270,6 @@
 "Login Items & Extensions now lists system extensions themselves — what they are, whose they are, and which ones outlived the app that installed them." = "«Объекты входа и расширения» теперь показывает и сами системные расширения: что это, чьё это и какие из них пережили удалённое приложение.";
 "Login Items & Extensions: see everything that loads with your Mac, marked as in use, system, or leftover — and remove the leftovers." = "«Объекты входа и расширения»: видно всё, что грузится вместе с Mac, с пометками «используется», «системный» и «остаток» — остатки можно удалить.";
 "Login items can be switched off instead of only deleted. Helm uses the same list macOS itself uses, so the choice survives a reboot, needs no password, and can be undone here or in System Settings." = "Объекты входа теперь можно отключить, а не только удалить. Helm пользуется тем же списком, что и сама macOS: выбор переживает перезагрузку, пароль не нужен, вернуть можно здесь или в Системных настройках.";
-"Logs" = "Логи";
-"Look for leftovers automatically when an app goes to the Trash" = "Автоматически искать остатки, если приложение перемещено в Корзину";
 "MB" = "МБ";
 "MODULES" = "МОДУЛИ";
 "Manage Homebrew packages" = "Управление пакетами Homebrew";
@@ -305,7 +291,6 @@
 "Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works." = "Нужен, чтобы «Клавиатура» исправляла раскладку набранного, а «Не спать» двигал указатель. Без него не работает ни то, ни другое.";
 "Needed to remove app containers and to read every folder when scanning the disk." = "Нужен, чтобы удалять контейнеры приложений и видеть все папки при сканировании диска.";
 "Network" = "Сеть";
-"Network cache and cookies" = "Сетевой кеш и cookie";
 "Never" = "Никогда";
 "Words to leave alone" = "Слова-исключения";
 "Never in a password field, and never in the terminals and password managers Helm knows." = "В поле пароля — никогда. И не в тех терминалах и менеджерах паролей, которые Helm знает.";
@@ -313,9 +298,6 @@
 "New rule" = "Новое правило";
 "Next" = "Далее";
 "No VPNs" = "Нет VPN";
-"No applications found." = "Приложений не найдено.";
-"No applications match this search." = "Под этот поиск не подошло ни одно приложение.";
-"No extra files found." = "Дополнительных файлов не найдено.";
 "No leftovers found." = "Остатков не найдено.";
 "No modules enabled" = "Нет включённых модулей";
 "No packages installed." = "Нет установленных пакетов.";
@@ -373,9 +355,7 @@
 "Power" = "Питание";
 "Press keys…" = "Нажмите клавиши…";
 "Purple" = "Лиловый";
-"Putting the app back from the Trash will not bring these files back." = "Если вернуть приложение из Корзины, эти файлы не вернутся.";
 "Quit" = "Завершить";
-"Quit the running apps first, or allow a force quit." = "Сначала завершите запущенные приложения или разрешите принудительное завершение.";
 "Quitting Helm — or deleting it — could leave the Mac unable to sleep, because the clamshell setting Keep Awake changes outlives the app and nothing put it back on quit. And turning clamshell off while Keep Awake’s admin prompt was still up could leave a passwordless rule behind for a feature you’d just switched off. Both are fixed." = "Выход из Helm — или его удаление — мог оставить Mac неспособным заснуть, потому что настройка режима «закрытой крышки», которую меняет «Не спать», переживает сам процесс, и ничто не возвращало её обратно при выходе. А выключение этого режима, пока ещё висело окно с паролем администратора для «Не спать», могло оставить работающее без пароля правило для функции, которую вы только что выключили. Оба случая исправлены.";
 "Quitting an app now disconnects only a VPN Helm itself raised for it — never one you dialled up by hand." = "Закрытие приложения теперь отключает только тот VPN, который Helm сам для неё поднял, — и никогда тот, что вы включили вручную.";
 "Reading the package list…" = "Читаем список пакетов…";
@@ -383,12 +363,9 @@
 "Redesigned About: the icon sits in a bezel that turns while updates are checked, version and build read as instrument dials, and update controls live in one card." = "Новое окно «О Helm»: иконка в безеле, который вращается во время проверки обновлений, версия и сборка — как показания приборов, управление обновлениями собрано в одну карточку.";
 "Refresh list" = "Перечитать список";
 "Remove" = "Убрать";
-"Remove an app with all of its files" = "Удаление приложения вместе со всеми его файлами";
 "Removing an app no longer offers another app’s files. Leftovers were matched by the start of an app’s identifier and never checked against what is installed — and an app kept one folder down, or one that simply claimed somebody else’s id, could still slip past that check. Nothing from another app is offered pre-ticked now." = "Удаление приложения больше не предлагает файлы чужого. Остатки искались по началу идентификатора приложения и не сверялись с тем, что установлено, — а приложение, лежащее во вложенной папке, или просто присвоившее себе чужой id, всё ещё проходило мимо этой проверки. Теперь ничего чужого не предлагается заранее отмеченным.";
-"Removing…" = "Удаление…";
 "Rename" = "Переименовать";
 "Renaming scheme" = "Схема переименования";
-"Review" = "Просмотреть";
 "Reset" = "Сброс";
 "Reset all settings, in Settings → Settings. Helm goes back to how it was just after installing: preferences forgotten, each module’s saved state and the diagnostics log in the Trash — not deleted outright, so you can get them back — and the welcome tour again at the next launch. Access you granted in System Settings is macOS’s and is left alone." = "Сброс всех настроек — в Настройках → «Настройки». Helm вернётся к состоянию сразу после установки: настройки забыты, сохранённое состояние модулей и журнал диагностики отправлены в Корзину (не удалены безвозвратно — их можно вернуть), а при следующем запуске снова появится приветственное окно. Доступ, выданный в Системных настройках, принадлежит macOS и не трогается.";
 "Reset all settings?" = "Сбросить все настройки?";
@@ -405,13 +382,9 @@
 "Rules for specific apps" = "Правила для отдельных приложений";
 "Rules run top to bottom and the first match wins — a file gets one action, not several." = "Правила идут сверху вниз, побеждает первое подошедшее — с файлом происходит одно действие, а не несколько.";
 "Run now" = "Прогнать сейчас";
-"Running" = "Запущено";
-"Saved windows" = "Сохранённые окна";
 "Scan again" = "Сканировать заново";
-"Scan for leftovers" = "Найти остатки";
 "Scanning…" = "Сканирование…";
 "Search" = "Поиск";
-"Search apps" = "Поиск приложений";
 "Search packages" = "Поиск пакетов";
 "Searching…" = "Ищем…";
 "Select all" = "Выбрать все";
@@ -467,7 +440,6 @@
 "Safari is marked as a system app rather than offered for removal at “0 B”." = "Safari помечается как системное приложение, а не предлагается к удалению за «0 Б».";
 "The VPN dial counted connections that had started themselves automatically, sitting right above the list of rules it looked like it was counting." = "Циферблат VPN считал соединения, установленные автоматически, находясь прямо над списком правил, который он, казалось бы, и считал.";
 "Login Items & Extensions’ bottom bar mixed how many items were found with the size of what you’d selected." = "Нижняя панель «Объектов входа и расширений» путала количество найденного с размером выбранного.";
-"The app itself — always removed" = "Само приложение удаляется всегда";
 "The battery guard — which stops Keep Awake from running a session down to empty — now starts on for new installs, at 20%. It shipped off by default, beside a session length that defaults to indefinite." = "Защита батареи — та, что не даёт «Не спать» разряжать её в ноль, — теперь при новой установке включена по умолчанию, на уровне 20 %. Раньше она была выключена по умолчанию рядом с настройкой длительности, которая по умолчанию — «бессрочно».";
 "The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again." = "На диске нет места. Корзина — папка на том же диске, поэтому для перемещения тоже нужно место. Очистите Корзину и попробуйте снова.";
 "The disk list can be walked from the keyboard: arrow keys between rows, Return to go into a folder, ⌘↑ to come back out. And the screen now fits the width it has: on a narrow window the ring gives way to the list, which carries the same facts in less room." = "По списку в «Диске» теперь можно ходить с клавиатуры: стрелки между строками, Return — войти в папку, ⌘↑ — вернуться. А экран подстраивается под ширину окна: когда её мало, кольцо уступает место списку — он несёт те же факты и требует меньше места.";
@@ -514,7 +486,6 @@
 "Type ghbdtn in the wrong layout and it becomes привет, with the input source switching to match." = "Набрали ghbdtn, забыв переключить раскладку, — Helm заменит это на «привет» и переключит раскладку сам.";
 "Uninstall" = "Удалить";
 "Uninstall…" = "Удалить…";
-"Uninstaller" = "Удаление приложений";
 "Unknown" = "Неизвестно";
 "Untitled rule" = "Без названия";
 "Update & Relaunch" = "Обновить и перезапустить";
@@ -542,7 +513,6 @@
 "A metric strip no longer occasionally reads the wrong appearance and darkens dark mode’s own colours to match." = "Полоска больше не путает оформление и не затемняет собственные цвета тёмного режима.";
 "Warnings" = "Предупреждения";
 "Warnings are legible in the light theme, the icon and colour swatches can be reached from the keyboard, and sizes and names follow macOS in every language — Russian abbreviates the byte the way the Finder does, French writes a lowercase ko, and each screen calls a permission by the name Settings gives it." = "Предупреждения читаются в светлой теме, образцы иконок и цветов достижимы с клавиатуры, а размеры и названия совпадают с macOS: байт сокращён до «Б», каждый экран зовёт разрешение так же, как Настройки.";
-"Website data" = "Данные сайтов";
 "Welcome to Helm" = "Добро пожаловать в Helm";
 "What to check" = "Что проверять";
 "What to do" = "Что сделать";
@@ -561,8 +531,6 @@
 "Without Full Disk Access a protected folder reads as empty: no rule matches, and that looks exactly like a folder with nothing to do." = "Без «Доступа к диску» защищённая папка читается пустой: ни одно правило не срабатывает — и это выглядит так же, как папка, где нечего делать.";
 "A rule can watch folders inside your home folder, but not the Library and not a whole volume." = "Правило может наблюдать за папками внутри домашней папки, но не за Библиотекой и не за целым томом.";
 "Watch this folder" = "Наблюдать за этой папкой";
-"Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers." = "Без «Доступа к диску» контейнеры приложения останутся на диске, а Корзину Helm не увидит и остатки не найдёт.";
-"Without Full Disk Access an app’s containers stay behind." = "Без «Доступа к диску» контейнеры приложения останутся на диске.";
 "Wording and sizes reviewed across the app: shorter labels, one name per thing, and sizes in your language — “432,95 ГБ”, not “432,95 GB”." = "Пересмотрены надписи и размеры по всему приложению: короче формулировки, одно название на одну вещь, размеры на вашем языке — «432,95 ГБ», а не «432,95 GB».";
 "Write a log file" = "Вести журнал";
 "Yellow" = "Желтый";
@@ -580,7 +548,6 @@
 "ends with" = "заканчивается на";
 "expanded" = "развернутая";
 "failed" = "не удалось";
-"guess" = "догадка";
 "is" = "равно";
 "larger than" = "больше чем";
 "macOS may already use 🌐︎ to switch input source, open emoji or start dictation. Set “Press 🌐︎ to: Do Nothing” in Keyboard settings, or it will do both. Keyboards without a 🌐︎ key never send it." = "macOS может уже использовать 🌐︎ — для смены языка, эмодзи или диктовки. Поставьте «Клавиша 🌐︎: ничего не делать» в настройках клавиатуры, иначе сработает и то и другое. Клавиатуры без 🌐︎ её не отправляют.";
@@ -1117,11 +1084,6 @@
 "Replaced. The original is in the Trash." = "Заменено. Исходный файл — в Корзине.";
 "The screenshot was moved or changed after it was taken. Your edit is saved as a separate file." = "Снимок переместили или изменили после съёмки. Правка сохранена отдельным файлом.";
 "The screenshot was moved or changed after it was taken, so it cannot be edited here." = "Снимок переместили или изменили после съёмки, поэтому здесь его не изменить.";
-"Sort By" = "Сортировать";
-"Sort by Name" = "Сортировать по имени";
-"Sort by Size" = "Сортировать по размеру";
-"Sort by Date Last Opened" = "Сортировать по дате последнего открытия";
-"No record of opening" = "Нет записи об открытии";
 "Search the log" = "Поиск в журнале";
 "Earlier launch" = "Более ранний запуск";
 "older lines are in the file" = "более ранние — в файле";

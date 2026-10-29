@@ -5,15 +5,15 @@ import XCTest
 import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
-/// **The fifth model that trashes, and the one the family guard once missed.**
+/// **The fifth model that trashes, and the one a scan by file name would miss.**
 ///
 /// «The model refuses; the page dims. Both, or neither is reliable» —
 /// ARCHITECTURE.md § One removal at a time, stated once for the four view
-/// models that send a trash command. `OneRemovalAtATimeEverywhereTests` enforces
+/// models that send a removal. `OneRemovalAtATimeEverywhereTests` enforces
 /// it by reading every file under `Sources/Modules` that sends a removal
-/// (`Command.trash` or `uvm.trashPaths(`), which `TrashedLeftoversView.swift` does
-/// too; the model in it, `TrashedLeftoversModel`, is not called a view model and
-/// was missed while the scan went by file name. It calls the model's `trashPaths`, and
+/// (`work.trash(`, `work.trashPaths(` or `uvm.trashPaths(`), which `TrashedLeftoversView.swift` does
+/// too; the model in it, `TrashedLeftoversModel`, is not called a view model, so a
+/// scan by file name misses it. It calls the model's `trashPaths`, and
 /// it has `busy` for the footer to read with nothing standing beside the request:
 /// `removeSelection` sets the flag and starts the batch whatever was already in
 /// flight.

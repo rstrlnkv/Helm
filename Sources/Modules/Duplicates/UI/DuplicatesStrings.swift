@@ -33,7 +33,7 @@ enum DupStr {
     static var systemItem: String { L("System") }
     static var reveal: String { L("Show in Finder") }
     static var quickLook: String { L(.quickLook) }
-    /// `HelmBasket.movedToTrash`: Disk and Duplicates end a removal on one sentence.
+    /// `HelmBasket.movedToTrash`: Disk, Duplicates and the Uninstaller end a removal on one sentence; Leftovers counts the rows as well (`LfStr.movedToTrash`).
     static func movedToTrash(_ size: String) -> String {
         HelmBasket.movedToTrash(size)
     }

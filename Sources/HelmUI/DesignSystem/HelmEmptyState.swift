@@ -163,3 +163,25 @@ public extension HelmBusyState where Actions == EmptyView {
         self.init(message) { EmptyView() }
     }
 }
+
+/// A button's label while the button's own work runs: a small spinner before the words.
+public struct HelmBusyLabel: View {
+    private let title: String
+    private let busy: Bool
+
+    public init(_ title: String, busy: Bool) {
+        self.title = title
+        self.busy = busy
+    }
+
+    public var body: some View {
+        if busy {
+            HStack(spacing: HelmSpace.s3) {
+                ProgressView().controlSize(.small)
+                Text(title)
+            }
+        } else {
+            Text(title)
+        }
+    }
+}

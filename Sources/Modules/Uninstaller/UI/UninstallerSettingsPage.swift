@@ -76,14 +76,10 @@ struct UninstallerSettingsPage: View {
     /// **The page's switcher and Refresh, in the header row of the window's card**, through the contract every
     /// module page shares (`HelmWindowToolbar.swift` in `HelmUI`).
     ///
-    /// They were one row of the page with the search field between them, and
-    /// before that a SwiftUI `ToolbarContent` bridged into the window's own
-    /// bar (`pageToolbar`, retired 2026-09-24 along with `.helmSearchable`
-    /// once this page moved onto the app-owned bar the way Homebrew already
-    /// had). The switcher still carries no width of its own — it sizes itself
-    /// from what it shows — and Refresh is still only on the Apps tab: Orphans
-    /// has its own scan and its own Rescan button, so a Refresh here spun an
-    /// icon and changed nothing the user could see.
+    /// The switcher carries no width of its own — it sizes itself from what it
+    /// shows — and Refresh is only on the Apps tab: Orphans has its own scan
+    /// and its own Rescan button, so a Refresh there would spin an icon and
+    /// change nothing the user could see.
     ///
     /// **Dims rather than disables per tab.** `tabsEnabled: step != .review`
     /// dims the whole tab strip while a
@@ -118,16 +114,12 @@ struct UninstallerSettingsPage: View {
                     Task { await refreshApps() }
                 },
             ],
-            // No `onSubmit`: the term filters the Apps list live, on every
-            // keystroke, exactly as it did through `.helmSearchable` before.
+            // No `onSubmit`: the term filters the Apps list live, on every keystroke.
             search: HelmToolbarSearch(prompt: UnStr.searchApps, text: $search))
     }
 
     private var pageBody: some View {
-        // The module had no motion at all: three steps and two lists, and
-        // moving between them — or losing the app you just removed — happened
-        // in a single frame. One token on the three things that change, the
-        // same one the other list screens use.
+        // One token, `HelmMotion.interface`, on the step: the list and the review are the one change that moves.
         VStack(spacing: 0) {
             // The switcher, Refresh and the search control are all the
             // window's own toolbar's (`toolbarContent`, `.helmWindowToolbar`
@@ -137,7 +129,7 @@ struct UninstallerSettingsPage: View {
             // only then learn the removal would be refused.
             if let note = permissionNote {
                 HelmPermissionNote(need: .fullDiskAccess, text: note)
-                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+                    .helmPageStrip()
                 Divider()
             }
 
@@ -155,11 +147,9 @@ struct UninstallerSettingsPage: View {
             }
         }
         // **Declared unconditionally, on every tab and every step, and not
-        // only under `tab == .apps && step == .pick`.** Measured against the earlier SwiftUI-bridged bar
-        // (2026-09-21, a screen recording, `un-leave`): dropping the field shifted every other item sharing the
-        // bar, Refresh included — 175 pt inside a single frame. The header row keeps the declared width of every
-        // action (`HelmHeaderActions`), but the declaration stays as it was: `filtered` still only narrows the
-        // Apps tab's list at `step == .pick`.
+        // only under `tab == .apps && step == .pick`.** Dropping the field shifted every other item sharing the
+        // bar, Refresh included. The header row keeps the declared width of every action (`HelmHeaderActions`),
+        // and `filtered` still only narrows the Apps tab's list at `step == .pick`.
         .helmWindowToolbar(toolbarContent, token: UninstallerDescriptor.id.rawValue)
         .animation(HelmMotion.interface, value: step)
     }
@@ -232,9 +222,7 @@ struct UninstallerSettingsPage: View {
     private var pickStep: some View {
         VStack(spacing: 0) {
             if loading || !uvm.listAnswered {
-                Spacer()
-                ProgressView().controlSize(.small)
-                Spacer()
+                HelmBusyState()
             } else if let nothing = appsEmpty {
                 // A statement and no verb: «no applications» would offer to
                 // repeat a question just answered, and «nothing matches this
@@ -268,19 +256,13 @@ struct UninstallerSettingsPage: View {
                 Button {
                     Task { await uvm.prepareReview() }
                 } label: {
-                    if uvm.scanning {
-                        HStack(spacing: 6) {
-                            ProgressView().controlSize(.small)
-                            Text(UnStr.scanning)
-                        }
-                    } else {
-                        Text(UnStr.reviewCount(checked.count))
-                    }
+                    HelmBusyLabel(uvm.scanning ? UnStr.scanning : UnStr.reviewCount(checked.count),
+                                  busy: uvm.scanning)
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(checked.isEmpty || uvm.scanning)
             }
-            .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
+            .helmPageStrip()
         }
     }
 
@@ -308,7 +290,7 @@ struct UninstallerSettingsPage: View {
                 .labelsHidden()
             }
             Image(nsImage: AppInfo.icon(forFile: app.path))
-                .resizable().frame(width: 28, height: 28)
+                .resizable().frame(width: UninstallerLayout.appIcon, height: UninstallerLayout.appIcon)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 // **Two lines in every row, whatever the row is.** The System
@@ -317,7 +299,7 @@ struct UninstallerSettingsPage: View {
                 // page in steps. It is a pill beside the name now — the house's
                 // one pill — which is where the eye is already looking for what
                 // a row *is*, and it costs the row no height at all.
-                HStack(spacing: 6) {
+                HStack(spacing: HelmSpace.s3) {
                     Text(app.name).lineLimit(1)
                     if system { HelmBadge(UnStr.systemApp) }
                 }
@@ -417,7 +399,7 @@ struct UninstallerSettingsPage: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(HelmSignal.warning)
                         .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: HelmSpace.s2) {
                         Text(UnStr.runningWarning(runningNames.joined(separator: ", ")))
                             .font(HelmText.rowTitle)
                             .fixedSize(horizontal: false, vertical: true)
@@ -426,7 +408,7 @@ struct UninstallerSettingsPage: View {
                     }
                     Spacer()
                 }
-                .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
+                .helmPageStrip()
             }
 
             report
@@ -443,14 +425,7 @@ struct UninstallerSettingsPage: View {
                 Button {
                     Task { await uvm.removeSelection() }
                 } label: {
-                    if uvm.busy {
-                        HStack(spacing: 6) {
-                            ProgressView().controlSize(.small)
-                            Text(UnStr.removing)
-                        }
-                    } else {
-                        Text(UnStr.moveToTrash)
-                    }
+                    HelmBusyLabel(uvm.busy ? UnStr.removing : UnStr.moveToTrash, busy: uvm.busy)
                 }
                 .buttonStyle(.borderedProminent)
                 // **Not `!ready`.** That reads `group.running`, which is what the
@@ -464,7 +439,7 @@ struct UninstallerSettingsPage: View {
                 .disabled(uvm.busy)
                 .help(ready ? "" : UnStr.blockedByRunning)
             }
-            .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
+            .helmPageStrip()
         }
     }
 
@@ -513,9 +488,9 @@ struct UninstallerSettingsPage: View {
             List {
                 Section {
                     ForEach(failures, id: \.path) { failure in
-                        HStack(alignment: .top, spacing: 8) {
+                        HStack(alignment: .top, spacing: HelmSpace.s4) {
                             VStack(alignment: .leading, spacing: HelmSpace.s1) {
-                                HStack(spacing: 8) {
+                                HStack(spacing: HelmSpace.s4) {
                                     // The line under it names the reason in
                                     // words; the triangle only repeats it.
                                     Image(systemName: "exclamationmark.triangle.fill")
@@ -533,7 +508,7 @@ struct UninstallerSettingsPage: View {
                                     // macOS's own words: the classification is a
                                     // summary, this is the evidence behind it.
                                     Text(failure.message)
-                                        .font(.caption2).foregroundStyle(HelmText.faint)
+                                        .font(HelmText.smallPrint).foregroundStyle(HelmText.faint)
                                         .lineLimit(2)
                                 }
                             }
@@ -565,7 +540,7 @@ struct UninstallerSettingsPage: View {
                 Button(UnStr.done) { uvm.dismissFailures() }
                     .buttonStyle(.borderedProminent)
             }
-            .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
+            .helmPageStrip()
         }
     }
 
@@ -582,15 +557,15 @@ struct UninstallerSettingsPage: View {
     }
 
     private func groupHeader(_ group: UninstallGroup) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: HelmSpace.s4) {
             // The icon reads as an unticked checkbox beside a column of them,
             // and says nothing a screen reader needs — the name follows it.
             Image(nsImage: AppInfo.icon(forFile: group.app.path))
-                .resizable().frame(width: 18, height: 18)
+                .resizable().frame(width: UninstallerLayout.groupIcon, height: UninstallerLayout.groupIcon)
                 .accessibilityHidden(true)
             Text(group.app.name).font(HelmText.sectionHeading)
             if group.running {
-                HelmBadge(UnStr.runningBadge, tint: .orange)
+                HelmBadge(UnStr.runningBadge, tint: HelmSignal.warning)
             }
             Spacer()
             sizeFigure(of: group.app)
@@ -608,7 +583,7 @@ struct UninstallerSettingsPage: View {
             .toggleStyle(.checkbox)
             .labelsHidden()
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
-                HStack(spacing: 6) {
+                HStack(spacing: HelmSpace.s3) {
                     Text((leftover.path as NSString).lastPathComponent).lineLimit(1)
                     // Says why the box is empty: this one was found by the app's
                     // name, and names collide.

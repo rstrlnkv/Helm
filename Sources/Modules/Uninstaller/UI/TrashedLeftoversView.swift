@@ -242,8 +242,9 @@ struct TrashedLeftoversView: View {
     /// truncate (a cut «Keep these files» is the worst button in the window to
     /// cut); the count is the half that yields.
     static let windowWidth: CGFloat = 560
-    /// The content's own height, so the window ends where its content does —
-    /// one file no longer leaves 35 pt of empty list under it.
+    /// The list's height: from one short card to the tallest the window grows before it scrolls.
+    static let listHeights: ClosedRange<CGFloat> = 80...420
+    /// The content's own height, so the window ends where its content does.
     @State private var contentHeight: CGFloat = 0
 
     var body: some View {
@@ -252,7 +253,7 @@ struct TrashedLeftoversView: View {
             Divider()
             if let report = removalReport {
                 report
-                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
+                    .helmPageStrip()
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 list
@@ -293,7 +294,7 @@ struct TrashedLeftoversView: View {
             .foregroundStyle(HelmText.quiet)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
+            .helmPageStrip()
     }
 
     /// One card per app, rather than a `List` of sections.
@@ -309,18 +310,18 @@ struct TrashedLeftoversView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: HelmSpace.s5) {
                 ForEach(model.groups) { group in
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: HelmSpace.s2) {
                         groupHeader(group)
                         ForEach(group.leftovers, id: \.path) { row($0, in: group) }
                     }
-                    .helmCard(padding: 12)
+                    .helmCard(padding: HelmSpace.s5)
                 }
             }
-            .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+            .helmPageStrip()
             .frame(maxWidth: .infinity, alignment: .leading)
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
         }
-        .frame(height: contentHeight.clamped(to: 80...420))
+        .frame(height: contentHeight.clamped(to: Self.listHeights))
     }
 
     /// The app is the subject of this window and its files are the predicate, so
@@ -330,17 +331,17 @@ struct TrashedLeftoversView: View {
     private func groupHeader(_ group: TrashedAppLeftovers) -> some View {
         HStack(spacing: HelmSpace.s5) {
             Image(nsImage: AppInfo.icon(forFile: group.appPath))
-                .resizable().frame(width: 28, height: 28)
+                .resizable().frame(width: UninstallerLayout.appIcon, height: UninstallerLayout.appIcon)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {
-                Text(group.name).font(.body.weight(.semibold)).lineLimit(1)
-                Text(group.bundleID).font(.caption2).foregroundStyle(HelmText.faint)
+                Text(group.name).font(HelmText.sectionHeading).lineLimit(1)
+                Text(group.bundleID).font(HelmText.smallPrint).foregroundStyle(HelmText.faint)
                     .lineLimit(1).truncationMode(.middle)
             }
-            Spacer(minLength: 8)
+            Spacer(minLength: HelmSpace.s4)
             Text(Bytes(group.totalBytes)).helmFigure().foregroundStyle(HelmText.quiet)
         }
-        .padding(.bottom, 2)
+        .padding(.bottom, HelmSpace.s1)
     }
 
     /// The row leads with the kind of file, not its path.
@@ -355,7 +356,7 @@ struct TrashedLeftoversView: View {
     /// offered: it could only be read, and only if it fitted.
     private func row(_ item: Leftover, in group: TrashedAppLeftovers) -> some View {
         Toggle(isOn: binding(for: item.path)) {
-            HStack(spacing: 6) {
+            HStack(spacing: HelmSpace.s3) {
                 Text(UnStr.kind(item.kind)).font(HelmText.rowTitle).lineLimit(1)
                 if let leaf = distinguishingLeaf(item, in: group) {
                     Text(leaf).font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
@@ -364,7 +365,7 @@ struct TrashedLeftoversView: View {
                 // A path found under the app's display name is a guess, and it
                 // arrives unticked. The tag says which rows those are.
                 if item.matchedByName { HelmBadge(UnStr.matchedByName) }
-                Spacer(minLength: 8)
+                Spacer(minLength: HelmSpace.s4)
                 Text(Bytes(item.sizeBytes)).helmFigure().foregroundStyle(HelmText.quiet)
             }
         }
@@ -387,7 +388,7 @@ struct TrashedLeftoversView: View {
     private var footer: some View {
         // The verbs are `fixedSize` and the count is not: when the figures
         // outgrow the room, the count truncates and the buttons stay whole.
-        HStack(spacing: 8) {
+        HStack(spacing: HelmSpace.s4) {
             Button(UnStr.trashOfferKeep) { onClose() }
             .keyboardShortcut(.cancelAction)
             .disabled(model.busy)
@@ -424,7 +425,7 @@ struct TrashedLeftoversView: View {
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
+        .helmPageStrip()
     }
 
     private func binding(for path: String) -> Binding<Bool> {
