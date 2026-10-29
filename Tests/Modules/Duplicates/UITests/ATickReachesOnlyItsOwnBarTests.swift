@@ -4,14 +4,16 @@ import XCTest
 import Module_Duplicates_Engine
 @testable import Module_Duplicates_UI
 
-/// A removal a person can stop, from the page's side of the port.
+/// A tick reaches the bar of the work it belongs to and no other: the removal's
+/// while it runs, the search's while it searches, and none that arrives after
+/// the search it came from was cancelled or replaced.
 ///
-/// The engine obeys `stopRemoval` between files —
-/// `ARemovalCanBeWatchedAndStoppedTests` proves that. This proves the page's
-/// half: the Stop press reaches the engine as `stopRemoval`, and the page claims
-/// nothing until the answer says what happened.
+/// The fakes of this target report their ticks before they park, so none of them
+/// can deliver one late; this work holds the search and reports a tick only when
+/// the test lets it, which is the order a real walk can take when the engine's
+/// cancel lands between two hashes.
 @MainActor
-final class ARemovalShowsItsProgressAndStopsTests: XCTestCase {
+final class ATickReachesOnlyItsOwnBarTests: XCTestCase {
 
     private var survivor: String { "\(home)/Downloads/keep.bin" }
     private var extra: String { "\(home)/Downloads/extra.bin" }
@@ -21,34 +23,33 @@ final class ARemovalShowsItsProgressAndStopsTests: XCTestCase {
                                 .init(path: extra, bytes: 9_000_000)])
     }
 
-    // MARK: - Stop
+    /// Parks `find`, then reports one tick and answers nil (a cancelled search).
+    private final class LateTickWork: DuplicatesWork, @unchecked Sendable {
+        private let lock = NSLock()
+        private var gate: CheckedContinuation<Void, Never>?
+        var parked: Bool { lock.withLock { gate != nil } }
 
-    /// Stop during a removal reaches the engine as its own entry — not `cancel`,
-    /// which reaches the search — and takes nothing off the screen: the reply
-    /// decides what happened, not the press.
-    func testStopReachesItsOwnEntryAndClaimsNothing() async {
-        let work = AnsweringWork(groups: [group])
-        let dvm = await searchedModel(over: work)
-        dvm.toggleBasket(extra)
-        work.answers(.park, to: .trash)
-        let removal = Task { await dvm.emptyBasket() }
-        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
-        XCTAssertTrue(dvm.busy, "precondition: the removal is really in flight")
-
-        dvm.stopRemoval()
-        for _ in 0..<1000 where !work.calls.contains(.stopRemoval) { await Task.yield() }
-
-        XCTAssertTrue(work.calls.contains(.stopRemoval))
-        XCTAssertFalse(work.calls.contains(.cancel),
-                       "stopping a removal silently cancelled the search too")
-        XCTAssertTrue(dvm.busy, "the press claimed the removal was over before the reply said so")
-        XCTAssertEqual(dvm.basket, [extra])
-
-        work.releaseParked()
-        await removal.value
+        func find(under path: String, keeping policy: KeepPolicy,
+                  progress: (@Sendable (DuplicateProgress) -> Void)?) async -> DuplicateFindings? {
+            await withCheckedContinuation { c in lock.withLock { gate = c } }
+            progress?(DuplicateProgress(candidates: 9, hashed: 4))
+            return nil
+        }
+        func release() {
+            let c = lock.withLock { () -> CheckedContinuation<Void, Never>? in
+                defer { gate = nil }
+                return gate
+            }
+            c?.resume()
+        }
+        func cancel() {}
+        func trash(_ plans: [DuplicatePlan], staying: [String],
+                   progress: (@Sendable (DuplicateProgress) -> Void)?) async -> DuplicateRemoval {
+            DuplicateRemoval(removed: [], refused: [], freedBytes: 0)
+        }
+        func stopRemoval() {}
+        func backgroundScan() async -> ScanReport? { nil }
     }
-
-    // MARK: - Progress
 
     /// The removal's ticks reach the bar while it runs and leave with its answer.
     /// The search's ticks are a different pair, so a removal that painted the
@@ -93,5 +94,33 @@ final class ARemovalShowsItsProgressAndStopsTests: XCTestCase {
         work.releaseParked()
         for _ in 0..<1000 where dvm.phase != .result { await Task.yield() }
         XCTAssertEqual(dvm.phase, .result)
+    }
+
+    func testATickAfterCancelDoesNotReachTheStartScreen() async {
+        let work = LateTickWork()
+        let dvm = duplicatesModel(over: work)
+        dvm.search()
+        for _ in 0..<1000 where !work.parked { await Task.yield() }
+        XCTAssertTrue(work.parked, "precondition: the search is in flight")
+
+        dvm.cancel()
+        work.release()
+        await settle()
+
+        XCTAssertEqual(dvm.phase, .start)
+        XCTAssertNil(dvm.progress, "a late tick of a cancelled search is on the start screen")
+    }
+
+    func testATickAfterTheNextSearchStartedIsNotTheNextSearchsTick() async {
+        let work = LateTickWork()
+        let dvm = duplicatesModel(over: work)
+        dvm.search()
+        for _ in 0..<1000 where !work.parked { await Task.yield() }
+        dvm.cancel()
+        dvm.search()
+        work.release()
+        await settle()
+
+        XCTAssertNil(dvm.progress, "the older search's tick landed on the newer search")
     }
 }

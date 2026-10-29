@@ -132,9 +132,9 @@ enum UnStr {
     /// click later says "Move to Trash", and `~/.Trash` is a folder on the same
     /// volume: nothing is free until somebody empties it.
     static func toTrash(_ size: String) -> String { L("To the Trash — \(size)", [.ru: "В Корзину — \(size)", .es: "A la papelera — \(size)", .fr: "Vers la corbeille — \(size)", .de: "In den Papierkorb — \(size)", .ja: "ゴミ箱へ — \(size)", .zh: "移到废纸篓 — \(size)", .pt: "Para o Lixo — \(size)"]) }
-    /// Word for word what Disk says (`DkStr.movedToTrash`), whose verb and noun
-    /// per language were read out of Finder's own `AL13` key. Two screens that
-    /// do the same thing must not describe it in two ways.
+    /// Word for word `HelmBasket.movedToTrash` (Disk's and Duplicates' sentence),
+    /// whose verb and noun per language were read out of Finder's own `AL13`
+    /// key. Two screens that do the same thing must not describe it in two ways.
     static func movedToTrash(_ size: String) -> String { L("Moved to the Trash — \(size)", [.ru: "Перемещено в Корзину — \(size)", .es: "Trasladado a la papelera — \(size)", .fr: "Placé dans la corbeille — \(size)", .de: "In den Papierkorb gelegt — \(size)", .ja: "ゴミ箱に入れました — \(size)", .zh: "已移到废纸篓 — \(size)", .pt: "Movido para o Lixo — \(size)"]) }
     static func movedWithFailures(_ size: String, _ n: Int) -> String {
         let items = Plural.items(n, language: AppLanguage.current.rawValue)

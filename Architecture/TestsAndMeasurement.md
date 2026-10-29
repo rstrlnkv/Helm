@@ -148,8 +148,12 @@ never does. A capture carries the display's profile, so `point` prints the file'
 values with the profile name beside the sRGB ones; the other subcommands read sRGB.
 Its subcommands: `point`, `bands`, `contrast`, `diff` over two captures of one size,
 `window <pid>` with the windows in front of each, `exe <pid>`, `scale <x> <y>`, `ax <pid>`,
-`press <pid> <name>`, `scroll <pid> <fraction>`, `statusitem <pid> <host-pid>`, and `session`, which says whether the screen is
+`press <pid> <name> [<role>] [--nth <n>]`, `scroll <pid> <fraction>`, `statusitem <pid> <host-pid>`, and `session`, which says whether the screen is
 locked and which grants this chain has.
+
+Two controls may share a name when the page offers one action twice (a toolbar button and an empty state's):
+`press` refuses them and lists them numbered in the tree order `ax` prints; `--nth <n>` (1-based), after
+`--press "<name>"` in `shoot.sh` and last in `HelmReadout press`, picks one.
 
 A state that is not on screen at launch is reached by `--press` (above), `--arg`, `--scroll` or
 `--panel`; `--name` only names the file. `--arg <key> <value>` is

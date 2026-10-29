@@ -48,33 +48,12 @@ enum DkStr {
     /// of two hundred. The row's own name is the only part of this button that
     /// differs between rows, and it is what the person is listening for.
     ///
-    /// One button, two meanings, one place: the pair had already drifted apart
-    /// once, in the direction where the label described neither state.
-    /// Interpolated, so it keeps an inline table — the lookup would otherwise be
-    /// asked for a key with a folder name already in it — and the name goes
-    /// through `Quoted`, because it is somebody's own file inside a sentence.
+    /// One button, two meanings: the name of the action and its object, from
+    /// the kit's `HelmBasket`, which Duplicates' rows read too.
     static func basketAction(name: String, basketed: Bool,
                              language: AppLanguage = AppLanguage.current) -> String {
-        let it = Quoted(name, language: language)
-        return basketed
-            ? L("Unmark \(it) for removal",
-                [.ru: "Снять отметку удаления с \(it)",
-                 .es: "Desmarcar \(it) para eliminar",
-                 .fr: "Ne plus marquer \(it) pour suppression",
-                 .de: "Markierung zum Entfernen für \(it) aufheben",
-                 .ja: "\(it) を削除予定から外す",
-                 .zh: "取消\(it)的待删除标记",
-                 .pt: "Desmarcar \(it) para remoção"],
-                language: language)
-            : L("Mark \(it) for removal",
-                [.ru: "Отметить \(it) к удалению",
-                 .es: "Marcar \(it) para eliminar",
-                 .fr: "Marquer \(it) pour suppression",
-                 .de: "\(it) zum Entfernen markieren",
-                 .ja: "\(it) を削除予定に追加",
-                 .zh: "将\(it)标记为待删除",
-                 .pt: "Marcar \(it) para remoção"],
-                language: language)
+        basketed ? HelmBasket.unmark(name: name, language: language)
+                 : HelmBasket.mark(name: name, language: language)
     }
     static var systemItem: String { L("System") }
     static var emptyFolder: String { L(.nothingInThisFolder) }
@@ -97,18 +76,9 @@ enum DkStr {
            .pt: "\(n) arquivos em \(seconds) s"],
           language: language)
     }
-    /// Where the files went, not what the disk gained: the Trash is a folder on
-    /// the same volume, so nothing is free until it is emptied. Same wording as
-    /// the button that started it (Finder's `AL13`), in the past tense.
+    /// `HelmBasket.movedToTrash`: the sentence Disk and Duplicates end a removal on.
     static func movedToTrash(_ size: String) -> String {
-        L("Moved to the Trash — \(size)",
-          [.ru: "Перемещено в Корзину — \(size)",
-           .es: "Trasladado a la papelera — \(size)",
-           .fr: "Placé dans la corbeille — \(size)",
-           .de: "In den Papierkorb gelegt — \(size)",
-           .ja: "ゴミ箱に入れました — \(size)",
-           .zh: "已移到废纸篓 — \(size)",
-           .pt: "Movido para o Lixo — \(size)"])
+        HelmBasket.movedToTrash(size)
     }
     /// Takes the plan, not a count and a size the caller worked out for itself.
     ///

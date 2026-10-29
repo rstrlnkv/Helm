@@ -59,9 +59,17 @@ enum Accessibility {
     }
 
     /// Presses the one control of that name that has a press action. More than one: refuses and lists them,
-    /// unless a role narrows it to one.
-    static func press(_ args: [String]) throws {
-        guard args.count == 2 || args.count == 3 else { throw Failure.usage("press <pid> <name> [<role>]") }
+    /// numbered in tree order (the order `ax` prints), unless a role narrows it to one or `--nth <n>` (1-based,
+    /// counted among the controls left after the role) picks one: the same action offered twice on a page,
+    /// a toolbar button and an empty state's, keeps one name. Without `--nth` a tie is still refused.
+    static func press(_ given: [String]) throws {
+        var args = given, nth: Int?
+        if let i = args.firstIndex(of: "--nth") {
+            guard i == args.count - 2, let n = Int(args[i + 1]), n >= 1 else { throw Failure.usage("press <pid> <name> [<role>] [--nth <n>=1...]") }
+            nth = n
+            args.removeSubrange(i...)
+        }
+        guard args.count == 2 || args.count == 3 else { throw Failure.usage("press <pid> <name> [<role>] [--nth <n>=1...]") }
         let app = try application(args)
         var hits: [AXUIElement] = []
         walk(app, 0) { e, _ in
@@ -70,8 +78,13 @@ enum Accessibility {
             hits.append(e)
         }
         guard !hits.isEmpty else { throw Failure.data("no control named \"\(args[1])\" with a press action") }
+        let list = hits.enumerated().map { "  \($0.offset + 1): " + describe($0.element) }.joined(separator: "\n")
+        if let n = nth {
+            guard n <= hits.count else { throw Failure.data("--nth \(n), but \(hits.count) controls named \"\(args[1])\":\n" + list) }
+            hits = [hits[n - 1]]
+        }
         guard hits.count == 1 else {
-            throw Failure.data("\(hits.count) controls named \"\(args[1])\"; name a role:\n" + hits.map { "  " + describe($0) }.joined(separator: "\n"))
+            throw Failure.data("\(hits.count) controls named \"\(args[1])\"; name a role or pass --nth <n>:\n" + list)
         }
         let rc = AXUIElementPerformAction(hits[0], kAXPressAction as CFString)
         print("pressed \(text(hits[0], kAXRoleAttribute)) \"\(args[1])\" frame \(frame(hits[0])) rc \(rc.rawValue)")

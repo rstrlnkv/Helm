@@ -4,9 +4,11 @@ set -uo pipefail
 # Take a still of one Helm Dev page: launch Helm Dev on it, bring state by
 # pressing controls by accessibility name, capture the window's region (with --panel, the panel window).
 #
-#   bash Scripts/shoot.sh <page> [--press "<control name>"]... [--arg <key> <value>]...
+#   bash Scripts/shoot.sh <page> [--press "<control name>" [--nth <n>]]... [--arg <key> <value>]...
 #                         [--scroll <fraction>] [--panel] [--name <stem>] [--inactive] [--out <dir>]
 #
+# --nth <n> after a --press picks the n-th (1-based, in the order `HelmReadout ax` prints) of several
+# controls with that name, the same action offered twice on a page; without it two of a name are refused.
 # --arg is a launch argument `-<key> <value>` after `-HelmOpenPage`, which the argument
 # domain answers over defaults and writes nothing. --scroll <fraction> (0 to 1) sets the
 # vertical scroll bar of the window's widest scroll area after the presses, for the part of a
@@ -47,11 +49,12 @@ TEMP="$(getconf DARWIN_USER_TEMP_DIR)"
 LOCK="${TEMP}helm-shoot.lock"
 
 PAGE="${1:-}"; [ $# -gt 0 ] && shift
-PRESSES=(); ARGS=(); SCROLL=""; PANEL=no; STEM=""; INACTIVE=no; OUT=""
-USAGE="usage: bash Scripts/shoot.sh <page> [--press \"<name>\"]... [--arg <key> <value>]... [--scroll <fraction>] [--panel] [--name <stem>] [--inactive] [--out <dir>]"
+PRESSES=(); NTHS=(); ARGS=(); SCROLL=""; PANEL=no; STEM=""; INACTIVE=no; OUT=""
+USAGE="usage: bash Scripts/shoot.sh <page> [--press \"<name>\" [--nth <n>]]... [--arg <key> <value>]... [--scroll <fraction>] [--panel] [--name <stem>] [--inactive] [--out <dir>]"
 while [ $# -gt 0 ]; do
   case "$1" in
-    --press) [ $# -ge 2 ] || { echo "--press needs a control name" >&2; exit 64; }; PRESSES+=("$2"); shift 2 ;;
+    --press) [ $# -ge 2 ] || { echo "--press needs a control name" >&2; exit 64; }; PRESSES+=("$2"); NTHS+=(""); shift 2 ;;
+    --nth) [ ${#PRESSES[@]} -gt 0 ] && [ $# -ge 2 ] && [[ "$2" =~ ^[1-9][0-9]*$ ]] || { echo "--nth needs a number from 1, after a --press" >&2; exit 64; }; NTHS[${#NTHS[@]}-1]="$2"; shift 2 ;;
     --arg) [ $# -ge 3 ] || { echo "--arg needs a key and a value" >&2; exit 64; }; ARGS+=("-$2" "$3"); shift 3 ;;
     --scroll) [ $# -ge 2 ] && [[ "$2" =~ ^(0(\.[0-9]+)?|1(\.0+)?)$ ]] || { echo "--scroll needs a fraction from 0 to 1" >&2; exit 64; }; SCROLL="$2"; shift 2 ;;
     --panel) PANEL=yes; shift ;;
@@ -186,10 +189,11 @@ sleep 1
 
 front() { read_window && { [ "$ABOVE" = none ] && echo "front: yes" || echo "front: no (above: $ABOVE)"; }; }
 
-for name in ${PRESSES[@]+"${PRESSES[@]}"}; do
+for k in ${PRESSES[@]+"${!PRESSES[@]}"}; do
+  name="${PRESSES[$k]}"
   [ "$(devpid)" = "$DEVPID" ] || { echo "Helm Dev $DEVPID is no longer the Helm Dev process: no press" >&2; exit 75; }
   front
-  "$READOUT" press "$DEVPID" "$name" || { echo "press \"$name\" failed" >&2; exit 65; }
+  "$READOUT" press "$DEVPID" "$name" ${NTHS[$k]:+--nth "${NTHS[$k]}"} || { echo "press \"$name\" failed" >&2; exit 65; }
   sleep 1
 done
 

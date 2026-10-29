@@ -12,8 +12,6 @@ struct DuplicatesSettingsPage: View {
     @ObservedObject private var dvm: DuplicatesViewModel
     @State private var confirming = false
     @State private var diskAccess: PermissionState = .granted
-    /// The width of the pane, which decides what the toolbar can carry.
-    @State private var paneWidth: CGFloat = 0
 
     init(dvm: DuplicatesViewModel) {
         self.dvm = dvm
@@ -21,31 +19,15 @@ struct DuplicatesSettingsPage: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // What the pane offers, read from something that cannot want more
-            // than it is given. Hung on the toolbar itself — which is where it
-            // was — this reported the width the row *resolved to*, and once the
-            // row overflows that is what the row demanded: 935 pt inside an
-            // 810 pt pane in Russian. Worse, it latched: a reading over the
-            // threshold added the count, which made the row wider still, so
-            // nothing could ever bring it back down. A zero-height,
-            // zero-minimum child has no opinion of its own, so it resolves to
-            // exactly the proposal.
-            Color.clear
-                .frame(height: 0)
-                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: {
-                    paneWidth = $0
-                }
             // Page level: without the grant the walk simply sees less, and a
             // short answer looks exactly like a clean one.
             if diskAccess == .denied {
                 HelmPermissionNote(need: .fullDiskAccess, text: DupStr.needsAccess)
-                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+                    .helmPageStrip()
                 Divider()
             }
             if dvm.folder != nil || dvm.phase != .start {
-                // Measured, not guessed: what the row drops is decided by what
-                // it can hold. `DuplicatesLayout` has the numbers.
-                toolbar(DuplicatesLayout(availableWidth: paneWidth))
+                toolbar
                 Divider()
             }
             // Under the toolbar and above everything the search says, because it
@@ -56,26 +38,20 @@ struct DuplicatesSettingsPage: View {
                 policyRow
                 Divider()
             }
-            // What the answer excludes belongs with the answer. This note used
-            // to appear only when nothing was found, so anyone who got results
-            // was never told that files under a megabyte were never compared.
+            // What the answer excludes belongs with the answer: anyone who got
+            // results is told that files under a megabyte were never compared.
             if dvm.phase == .result, !dvm.groups.isEmpty {
                 VStack(alignment: .leading, spacing: HelmSpace.s3) {
                     Text(DupStr.floorNote)
                         .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                         .fixedSize(horizontal: false, vertical: true)
-                    // The one clone-corrected total on the page, at every
-                    // width. It was a toolbar item behind a measured 1040 pt
-                    // threshold, which the window never reaches — so the only
-                    // honest figure was drawn at no width the app opens at.
-                    // Measured 2026-08-15: 324 pt in German, the widest, in a
-                    // 540 pt worst-case pane.
+                    // The one clone-corrected total on the page, at every width.
                     Text(DupStr.found(dvm.groups.count, Bytes(dvm.wastedBytes)))
                         .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 8)
+                .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s4)
                 Divider()
             }
             content
@@ -87,9 +63,9 @@ struct DuplicatesSettingsPage: View {
                 basketBar
             }
         }
-        // The band stands on the width probe and then on the permission note or
-        // the page's own toolbar, never on a scroll view, so it is lit from the
-        // first frame (`helmPageStandsOnStillContent`).
+        // The band stands on the permission note, the page's own toolbar or the
+        // start screen's empty state, never on a scroll view, so it is lit from
+        // the first frame (`helmPageStandsOnStillContent`).
         .helmPageStandsOnStillContent()
         .helmTracksFullDiskAccess($diskAccess)
         .task { dvm.appear() }
@@ -131,8 +107,8 @@ struct DuplicatesSettingsPage: View {
 
     // MARK: - Toolbar
 
-    private func toolbar(_ layout: DuplicatesLayout) -> some View {
-        HStack(spacing: 8) {
+    private var toolbar: some View {
+        HStack(spacing: HelmSpace.s4) {
             if let folder = dvm.folder {
                 Image(systemName: "folder")
                     .foregroundStyle(HelmText.quiet)
@@ -140,19 +116,18 @@ struct DuplicatesSettingsPage: View {
                 Text(Redact.path(folder.path))
                     .font(HelmText.sectionHeading)
                     .lineLimit(1).truncationMode(.middle)
-                    .frame(minWidth: 180, maxWidth: 260, alignment: .leading)
+                    .frame(minWidth: DuplicatesLayout.pathWidth.lowerBound,
+                           maxWidth: DuplicatesLayout.pathWidth.upperBound, alignment: .leading)
             }
-            Spacer(minLength: 12)
+            Spacer(minLength: HelmSpace.s5)
 
             if dvm.phase == .searching {
                 ProgressView().controlSize(.small)
                 Button(DupStr.stop) { dvm.cancel() }
                     .controlSize(.small)
             } else {
-                // Every control stays at every width. What a narrow pane takes
-                // is labels, and only from the two whose words are said again
-                // elsewhere on the page — the path truncates, being the one
-                // thing here that says the same when shortened.
+                // Every control keeps its label at every width: the path is the
+                // one thing here that says the same when shortened.
                 Button(dvm.folder == nil ? DupStr.chooseFolder : DupStr.chooseAnother) {
                     dvm.chooseFolder()
                 }
@@ -164,41 +139,19 @@ struct DuplicatesSettingsPage: View {
                     // button beside the basket already is: this press empties
                     // the basket the request is out with, and takes the
                     // removal's own tick and Stop button down with it.
-                    control(title, symbol: "arrow.clockwise", labelled: layout.labelsSearch) {
-                        dvm.search()
-                    }
-                    .disabled(dvm.busy)
+                    Button(title) { dvm.search() }
+                        .controlSize(.small)
+                        .fixedSize()
+                        .disabled(dvm.busy)
                 }
                 if !dvm.groups.isEmpty {
-                    // The label goes before the button does: every group header
-                    // already reads "Mark the extra copies", so the words are
-                    // what repeats — while on twenty groups the button itself
-                    // saves nineteen clicks.
-                    control(DupStr.basketAllExtras, symbol: "checklist",
-                            labelled: layout.labelsMarkAll) {
-                        dvm.basketAllExtras()
-                    }
+                    Button(DupStr.basketAllExtras) { dvm.basketAllExtras() }
+                        .controlSize(.small)
+                        .fixedSize()
                 }
             }
         }
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
-    }
-
-    /// A toolbar control that keeps its name where there is room for it, and
-    /// keeps saying it to VoiceOver and to the pointer where there is not.
-    private func control(_ title: String, symbol: String, labelled: Bool,
-                         action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            if labelled {
-                Text(title)
-            } else {
-                Image(systemName: symbol)
-            }
-        }
-        .controlSize(.small)
-        .fixedSize()
-        .help(title)
-        .accessibilityLabel(title)
+        .helmPageStrip()
     }
 
     // MARK: - What an extra copy is
@@ -210,10 +163,9 @@ struct DuplicatesSettingsPage: View {
     /// the thing being chosen is a belief rather than a preference — the two
     /// options are the only two halves that finish the sentence.
     ///
-    /// Nothing here narrows: `DuplicatesLayout.policyPickerWidth` is measured
-    /// from the labels themselves.
+    /// `DuplicatesLayout.policyPickerWidth` is measured from the labels themselves.
     private var policyRow: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: HelmSpace.s4) {
             Text(DupStr.extraCopyIs)
                 .font(HelmText.rowDetail)
             // Named with the label beside it and drawn without it: that is what
@@ -232,7 +184,7 @@ struct DuplicatesSettingsPage: View {
             .frame(width: DuplicatesLayout.policyPickerWidth())
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 8)
+        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s4)
     }
 
     // MARK: - Content
@@ -242,9 +194,11 @@ struct DuplicatesSettingsPage: View {
         case .start:
             // A stopped search is a named outcome, not a return to «Pick a
             // folder»: the folder is still chosen and the toolbar shows it, so
-            // the hint would read as if nothing had happened.
+            // the hint would read as if nothing had happened. With a folder the
+            // hint does not ask for one again either.
             HelmEmptyState(symbol: "doc.on.doc", tint: DuplicatesDescriptor.tint.colour,
-                           message: dvm.searchStopped ? DupStr.searchStopped() : DupStr.startHint) {
+                           message: dvm.searchStopped ? DupStr.searchStopped()
+                               : dvm.folder == nil ? DupStr.startHint : DupStr.startHintWithFolder) {
                 // With a folder already remembered the page must not ask for
                 // one again — the toolbar above is showing it. Reading it is
                 // expensive, so it is offered rather than started.
@@ -279,14 +233,14 @@ struct DuplicatesSettingsPage: View {
         // basket and the outcome are both true at the same moment. Drawing the
         // outcome only for an empty basket hid the failure list in exactly the
         // case it exists for — seen on a render, not reasoned about.
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: HelmSpace.s4) {
             if hasReport {
                 outcomeRow
             }
             // The removal, while it runs: the same tick the search draws — both
             // are files being read in full — and the way out `cancel` never
             // was. Above the basket row so the count being acted on stays put
-            // under it, and the destructive button keeps its own width ladder.
+            // under it.
             if dvm.busy {
                 HStack(spacing: HelmSpace.s5) {
                     ProgressView().controlSize(.small)
@@ -294,7 +248,7 @@ struct DuplicatesSettingsPage: View {
                         .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                         .contentTransition(.numericText())
                         .animation(HelmMotion.interface, value: dvm.progress?.hashed)
-                    Spacer(minLength: 8)
+                    Spacer(minLength: HelmSpace.s4)
                     Button(DupStr.stopRemoval) { dvm.stopRemoval() }
                         .controlSize(.small)
                         .fixedSize()
@@ -308,11 +262,11 @@ struct DuplicatesSettingsPage: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             if !dvm.basket.isEmpty {
-                basketRow(DuplicatesLayout(availableWidth: paneWidth))
+                basketRow
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
+        .helmPageStrip()
     }
 
     /// Whether the row above the basket has anything to say. One spelling, read
@@ -331,8 +285,8 @@ struct DuplicatesSettingsPage: View {
                 // Bounded, as Leftovers bounds it: unbounded, each named
                 // failure's Reveal button ran to the right edge and sat under
                 // the Close button.
-                .frame(maxWidth: 520, alignment: .leading)
-            Spacer(minLength: 8)
+                .frame(maxWidth: DuplicatesLayout.outcomeWidth, alignment: .leading)
+            Spacer(minLength: HelmSpace.s4)
             Button(DupStr.close) { dvm.dismissBanner() }
                 .controlSize(.small)
         }
@@ -366,11 +320,7 @@ struct DuplicatesSettingsPage: View {
         }
     }
 
-    /// Measured like the toolbar, because it had the toolbar's defect without
-    /// the toolbar's ladder: the count is `fixedSize` and nothing here gave
-    /// anything up, so at the narrowest pane the *prominent* button truncated
-    /// to «In den Papierkorb l…» — on the control that deletes.
-    private func basketRow(_ layout: DuplicatesLayout) -> some View {
+    private var basketRow: some View {
         HStack(spacing: HelmSpace.s5) {
             // A count is not a list. Everything about to be trashed can be
             // named here, and taken back out without hunting for its row.
@@ -393,20 +343,18 @@ struct DuplicatesSettingsPage: View {
             .fixedSize()
             .help(DupStr.basketContents)
             Spacer()
-            // Dimmed while a removal runs, for the reason `clearBasket` states:
-            // the paths are already in the call to the engine, so emptying the basket here
-            // clears the screen and not the request. On a narrow pane it keeps
-            // its act as a symbol and gives up only its words — the trade the
-            // toolbar's mark-all already makes, through the same `control`.
-            control(DupStr.clearBasket, symbol: "xmark.circle",
-                    labelled: layout.labelsClear) { dvm.clearBasket() }
+            // Dimmed while a removal runs: the paths are already in the call to
+            // the engine, so emptying the basket here clears the screen and not
+            // the request.
+            Button(DupStr.clearBasket) { dvm.clearBasket() }
+                .controlSize(.small)
+                .fixedSize()
                 .disabled(dvm.busy)
             Button(DupStr.moveToTrash) { confirming = true }
-                    .disabled(dvm.busy)
+                .disabled(dvm.busy)
                 .buttonStyle(.borderedProminent)
                 // Never truncated: this is the one control on the page whose
-                // words must survive every width, and the ladder above is what
-                // makes the room.
+                // words must survive every width.
                 .fixedSize()
         }
     }

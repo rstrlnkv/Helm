@@ -380,7 +380,7 @@ private struct BasketButton: View {
     /// The row this button belongs to, as the row draws it. Read aloud once per
     /// row down a list of two hundred, and without it every one of them was
     /// «Mark for removal» — the name of the *action*, with no object, which is
-    /// the defect `DkStr.markForRemoval` was written to fix and only half fixed.
+    /// the defect `HelmBasket.mark` was written to fix.
     let name: String
     let basketed: Bool
     let removing: Bool
