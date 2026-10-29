@@ -28,7 +28,7 @@ final class UninstallerEngineTests: XCTestCase {
             "/Users/x/Library/Caches/com.acme.tool": 100,
             "/Users/x/Library/Preferences/com.acme.tool.plist": 10,
         ])
-        let r = try await engine(fs: fs).scan(bundleID: "com.acme.tool",
+        let r = await engine(fs: fs).scan(bundleID: "com.acme.tool",
                                               appPath: "/Applications/Tool.app", appName: "Tool")
         XCTAssertEqual(Set(r.leftovers.map(\.path)),
                        ["/Users/x/Library/Caches/com.acme.tool",

@@ -14,11 +14,9 @@ import SwiftUI
         let descriptor: any ModuleDescriptor
         let engine: any ModuleEngine
         /// The module's own model, held so it lives and dies with this entry;
-        /// everything that draws from it goes through the closures below.
+        /// everything that draws from it goes through the closures below, and the
+        /// trash sweep's one `as?` in `AppDelegate`.
         let model: AnyObject
-        /// The transport-backed view model, for the host's windows that talk to
-        /// the engine themselves.
-        let wire: ModuleViewModel
         let store: NamespacedStore
         let page: @MainActor () -> AnyView
         let menuBar: @MainActor () -> MenuBarContribution?
@@ -147,7 +145,7 @@ import SwiftUI
         // `makeEngine`, so every process that asked a descriptor for an engine —
         // the offscreen render harness included — got a status item on its Mac.
         d.attachMenuBarPresence()
-        return Live(descriptor: d, engine: parts.engine, model: model, wire: d.wire(parts), store: s,
+        return Live(descriptor: d, engine: parts.engine, model: model, store: s,
                     page: { d.settingsPage(model) },
                     menuBar: { d.menuBar(model) },
                     activity: { d.activity(model) },

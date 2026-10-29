@@ -25,8 +25,9 @@ itself, so a scope never widens without a test naming the new path
 ## One removal at a time
 
 Disk, Duplicates, the Uninstaller and Leftovers remove a batch the person ticked —
-the Uninstaller over `trashPaths`, Duplicates, Disk and Leftovers by calling
-their engine's `trash` — and a second press while the first is in flight is not a second
+the Uninstaller's model calls its engine's `trashPaths` through `work`, and its
+Leftovers tab and Trash offer call the model's `uvm.trashPaths`; Duplicates, Disk and
+Leftovers call their engine's `trash` through `work` — and a second press while the first is in flight is not a second
 removal, because the files it would name are already gone: what a repeat can
 only be is a refusal, and the reply that lands second overwrites the model's report
 of the one that landed first. That refusal has to live in the model and not only in a
@@ -39,6 +40,6 @@ is the same guard read from the basket's own door.
 `Sources/Modules/` that sends a removal and holds no `guard !busy` anywhere — the file,
 not the removing method, so a guard dropped from one door of a file that keeps it at
 another passes; the files it finds are the
-output of `command grep -rlE 'Command\.trash|uvm\.trashPaths\(|work\.trash\(' Sources/Modules/`, since the count itself
+output of `command grep -rlE 'work\.trash(Paths)?\(|uvm\.trashPaths\(' Sources/Modules/`, since the count itself
 does not belong in this sentence (CLAUDE.md § Where things go). Its doc comments say
 why it scans by what a file **sends** rather than by what a type is named.

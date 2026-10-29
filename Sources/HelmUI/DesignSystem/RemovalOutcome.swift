@@ -50,12 +50,6 @@ public struct HelmRemovalOutcome: View {
     private let failures: [HelmRemovalFailure]
     private let needsFullDiskAccess: Bool
     /// What this row will say.
-    ///
-    /// **Stored rather than derived, because the fourth verdict is not a reading
-    /// of the numbers — it is the absence of any.** A `Bool` beside `removed`
-    /// and `failures` would have let a caller build "nothing came back, and five
-    /// moved", a state no transport can produce; `unanswered` is its own entry
-    /// point instead, so the combination cannot be written down.
     let verdict: Verdict
 
     /// `removed` is the count, not the sentence, because the sentence cannot be
@@ -73,27 +67,6 @@ public struct HelmRemovalOutcome: View {
         self.verdict = Self.verdict(removed: removed, failed: failures.count)
     }
 
-    /// The removal whose reply never came back.
-    ///
-    /// `TransportClient.request` answers nil for a request that threw and for a
-    /// reply that would not decode, and a caller that folded that nil to zeroes had
-    /// `verdict` read it as `.silent`. So a person pressed a
-    /// destructive button, waited, and the app had no comment while the rescan
-    /// underneath quietly changed the list.
-    ///
-    /// It is not `.succeeded` and it is not `.failed`: nothing is known to have
-    /// moved, nothing is known to have stayed, and nothing failed. It carries
-    /// no numbers because there are none to carry.
-    public static var unanswered: HelmRemovalOutcome { HelmRemovalOutcome(verdict: .unanswered) }
-
-    private init(verdict: Verdict) {
-        succeededText = ""
-        removed = 0
-        failures = []
-        needsFullDiskAccess = false
-        self.verdict = verdict
-    }
-
     /// What this line has to say, given what actually happened.
     ///
     /// Pulled out because the `failures.isEmpty` branch was not consulting
@@ -109,9 +82,6 @@ public struct HelmRemovalOutcome: View {
         case silent
         case succeeded
         case failed
-        /// The reply was lost, so none of the three above can be told apart.
-        /// Reached only through `unanswered`, never from a count.
-        case unanswered
     }
 
     static func verdict(removed: Int, failed: Int) -> Verdict {
@@ -125,11 +95,6 @@ public struct HelmRemovalOutcome: View {
             EmptyView()
         case .succeeded:
             quiet(succeededText)
-        // `.succeeded`'s shape exactly: it is a statement of what is known, not
-        // a warning. No triangle, no list of refusals and no Grant button —
-        // nothing was refused, and nothing here is anybody's to fix.
-        case .unanswered:
-            quiet(Self.noAnswer)
         case .failed:
             // **The two levels below were one level.** The heading was
             // `.caption` and the failures under it `.caption2`, which macOS
@@ -231,14 +196,6 @@ public struct HelmRemovalOutcome: View {
 
     private static var grant: String {
         L("Grant…")
-    }
-
-    /// What a lost reply says. It names no count, calls nothing a failure and
-    /// apologises for nothing — it points at the list, which the rescan
-    /// underneath has just brought up to date, as the answer to the only
-    /// question left.
-    private static var noAnswer: String {
-        L("Helm got no answer, so it does not know what moved. The list above shows where the files are now.")
     }
 
     /// The sentence this row says quietly: what is known, with nothing to act on.

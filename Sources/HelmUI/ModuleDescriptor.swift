@@ -54,13 +54,9 @@ import HelmRuntime
     /// stand-in switch or on «Reset all settings» handing the system back. The
     /// model is dropped with the module's `Live` right after.
     func stop(_ model: Model)
-    /// The view model the host's own windows (the trash
-    /// sweep) hand to code that wants the transport-backed one. For a module
-    /// whose model is that view model, the model itself.
-    func wire(_ parts: ModuleParts<Model>) -> ModuleViewModel
     /// One scan, as the host's scheduler asks for it: nil is no answer, not an
-    /// empty report. Takes the parts so one default reaches the wire for every
-    /// module; a module that has taken its model over answers from it here.
+    /// empty report. Asked only of the modules `ScanRunner.scannableModules`
+    /// lists; each of them overrides this.
     func backgroundScan(_ parts: ModuleParts<Model>) async -> ScanReport?
     /// A presence in the menu bar this module owns outright, apart from Helm's
     /// own status item — Keyboard's language indicator is the only one today.
@@ -130,13 +126,7 @@ import HelmRuntime
 }
 public extension ModuleDescriptor {
     func stop(_ model: Model) {}
-    func wire(_ parts: ModuleParts<Model>) -> ModuleViewModel {
-        ModuleViewModel(transport: parts.engine.transport)
-    }
-    func backgroundScan(_ parts: ModuleParts<Model>) async -> ScanReport? {
-        await TransportClient(parts.engine.transport)
-            .request(ScanCommand.backgroundScan, as: ScanReport.self)
-    }
+    func backgroundScan(_ parts: ModuleParts<Model>) async -> ScanReport? { nil }
     /// True when the page draws across the whole pane instead of inside the
     /// 744 pt form column, so its header knows not to centre itself.
     var pageBleeds: Bool { false }
@@ -176,7 +166,6 @@ public extension ModuleDescriptor where Model == ModuleViewModel {
         let engine = makeEngine(store: store)
         return ModuleParts(engine: engine, model: ModuleViewModel(transport: engine.transport))
     }
-    func wire(_ parts: ModuleParts<ModuleViewModel>) -> ModuleViewModel { parts.model }
 }
 
 /// A global shortcut a module declares. The host registers every one at launch;

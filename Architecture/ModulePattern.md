@@ -53,20 +53,14 @@ Duplicates' model does the same for a search and for a removal, and asks the key
 for the stored keep policy in `appear()` (Architecture/Duplicates.md § How Duplicates'
 model reaches its engine).
 
-The one place a string still crosses is the descriptor's default `backgroundScan(_:)`
-(`Sources/HelmUI/ModuleDescriptor.swift`), which the host reaches through the live
-module's `backgroundScan`, and which a module that owns its model may override to answer from the model instead:
-`ScanCommand` (`Sources/HelmRuntime/ScanReport.swift:39`) is the constant both
-sides read, and those of the modules `ScanRunner.scannableModules`
-(`Sources/HelmRuntime/ScanRunner.swift`) names that still talk to their engine over the
-transport have their own command files that say so in their doc comments (only the
-Uninstaller's now); Disk's and Duplicates' descriptors answer from their models
-(`DiskDescriptor.backgroundScan(_:)`, `DuplicatesDescriptor.backgroundScan(_:)`).
-`CommandNamesAreAnsweredTests.testTheUninstallerSpellsTheScanCommandTheSameWay`
-(`Tests/HelmAppTests/CommandNamesAreAnsweredTests.swift`) pins those spellings,
-and `testNoModuleSendsACommandAsAStringLiteral` fails on a command sent as a string
-literal under `Sources/Modules`, outside the engines, because a typo there is silence
-and silence already reads as "refused" here.
+The host reaches a background scan through the live module's `backgroundScan`, which is
+the descriptor's `backgroundScan(_:)` (`Sources/HelmUI/ModuleDescriptor.swift`): every
+scanning module's descriptor answers from its model, and the default answers nil because
+it is asked only of the modules `ScanRunner.scannableModules`
+(`Sources/HelmRuntime/ScanRunner.swift`) lists. `testNoModuleSendsACommandAsAStringLiteral`
+(`Tests/HelmAppTests/CommandNamesAreAnsweredTests.swift`) fails on a command sent as a
+string literal under `Sources/Modules`, outside the engines, because a typo there is
+silence and silence already reads as "refused" here.
 
 **A payload is declared once, in the engine.** Both ends of the wire are in one
 build and the UI target imports its engine, so the UI only aliases the engine's type

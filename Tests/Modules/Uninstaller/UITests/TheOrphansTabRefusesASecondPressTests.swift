@@ -13,7 +13,7 @@ import XCTest
 /// - `UninstallerViewModel.removeSelection` — it has the guard;
 /// - `TrashedLeftoversModel.removeSelection` — the unprompted window's own
 ///   model, which sends the command itself and is not called a view model;
-///   `TheTrashOfferSendsOneBatchTests` drives that one against a transport that
+///   `TheTrashOfferSendsOneBatchTests` drives that one against a work that
 ///   does not answer until it is told to, which is the better proof and is
 ///   available because the model is reachable;
 /// - `OrphansView.trashSelected` — this one, whose `busy` is a `@State` on the

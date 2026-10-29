@@ -21,8 +21,8 @@ import Module_Uninstaller_UI
     /// Sweeps, and shows the window only if the module found something to offer.
     /// Returns whether a window went up, so the caller can drop its reference
     /// when none did.
-    func showIfAnything(vm: ModuleViewModel) async -> Bool {
-        guard let view = await TrashedAppOffer.sweep(vm: vm, onClose: { [weak self] in
+    func showIfAnything(uvm: UninstallerViewModel) async -> Bool {
+        guard let view = await TrashedAppOffer.sweep(uvm: uvm, onClose: { [weak self] in
             self?.close()
         }) else { return false }
 

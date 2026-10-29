@@ -21,8 +21,8 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// settings that are already on people's machines.
     public static let moduleID = "duplicates"
 
-    /// Only the host's own windows reach it (`ModuleDescriptor.wire`); the model
-    /// calls this engine's methods and the engine says nothing on it.
+    /// Nothing reaches it: the model calls this engine's methods and the engine
+    /// says nothing on it. `ModuleEngine` still asks for one.
     public let transport: EngineTransport = LocalTransport()
     private let finderBox = FinderBox()
     /// Where the person last pointed the search. Held here, not only in the view

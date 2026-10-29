@@ -7,7 +7,6 @@ import Module_Homebrew_UI
 import Module_KeepAwake_UI
 import Module_Layout_UI
 import Module_Screenshots_UI
-import Module_Uninstaller_UI
 // `@testable` for one reason: `VPNDescriptor.viewModel(_:)` is internal, and it
 // is the only door to VPN's cache — the module keys its instance on the
 // descriptor rather than on a static, so `shared(vm:)`'s question has to be
@@ -82,12 +81,6 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
         ]
     }
 
-    /// Modules that cache a view model and consume no events at all, so there is
-    /// no subscriber for switching them off to give back. They are named rather
-    /// than omitted: the coverage check below reads this list, so a module that
-    /// grows an event loop later has to be moved rather than forgotten.
-    private let holdingNoSubscriber = ["Uninstaller"]
-
     // MARK: - The rule
 
     func testEveryCachingModuleGivesItsSubscriberBackWhenSwitchedOff() async {
@@ -100,7 +93,7 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
             XCTAssertEqual(transport.subscriberCount, 1, """
                 \(module.module) never registered a subscriber, so the assertion below would \
                 pass on a module that had done nothing — if this module has stopped consuming \
-                events, move it to `holdingNoSubscriber`; if it has not, the event task is not \
+                events it no longer belongs here; if it has not, the event task is not \
                 starting and every event this module draws is being missed.
                 """)
             await letTheLoopStart()
@@ -153,17 +146,17 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
     /// the directory the call is in.
     func testEveryModuleThatCachesAViewModelIsCovered() throws {
         let registered = try Self.modulesRegisteringADrop()
-        XCTAssertGreaterThanOrEqual(registered.count, 5, """
+        XCTAssertGreaterThanOrEqual(registered.count, 4, """
             the scan found \(registered.count) modules calling \
-            `ModuleUICache.dropWhenDisabled` — the tree has at least five, so the walk or the \
+            `ModuleUICache.dropWhenDisabled` — the tree has at least four, so the walk or the \
             match has stopped reading Sources and this check is guarding nothing.
             """)
 
-        let covered = Set(subscribing.map(\.module)).union(holdingNoSubscriber)
+        let covered = Set(subscribing.map(\.module))
         XCTAssertEqual(registered.subtracting(covered).sorted(), [], """
             these modules cache a view model past the module being switched off and no check \
             here says whether the cache's release actually ends the event loop. Add each to \
-            `subscribing`, or — if it consumes no events — to `holdingNoSubscriber`.
+            `subscribing`.
             """)
         XCTAssertEqual(covered.subtracting(registered).sorted(), [], """
             these are checked here and no longer call `ModuleUICache.dropWhenDisabled`, so the \

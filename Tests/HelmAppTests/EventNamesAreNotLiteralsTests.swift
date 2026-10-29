@@ -9,15 +9,13 @@ import XCTest
 ///     for await event in events where event.name == "trashChanged"
 ///
 /// under a comment explaining that the transport boundary left it no choice. It
-/// did not: a descriptor re-exports its engine's enum, the way
-/// `UninstallerDescriptor.swift` re-exports `UninstallerEvent`, so the host can
-/// say the name instead of spelling it.
+/// did not: a descriptor re-exports its engine's enum, so the host can say the
+/// name instead of spelling it.
 ///
 /// **The failure has no symptom at the seam.** Rename the case in the engine and
 /// nothing is an error anywhere; the emitter emits a name nobody listens for and
 /// the listener waits for a name nobody emits. What the person sees is a feature
-/// going quiet — drag an app to the Trash and Helm never offers to clear up
-/// after it — which is indistinguishable from the feature being switched off.
+/// going quiet, which is indistinguishable from the feature being switched off.
 ///
 /// Both directions are checked, because either one alone can drift: a literal
 /// handed to `EngineEvent(name:)` and a literal compared against `event.name`.
@@ -68,9 +66,8 @@ final class EventNamesAreNotLiteralsTests: XCTestCase {
                              "only \(scanned) source files were read, so a pass proves nothing")
         XCTAssertTrue(offenders.isEmpty,
                       "an event name was written as a string. Put it in the module's "
-                      + "`<Module>Event` enum and re-export that through its descriptor, "
-                      + "the way UninstallerDescriptor re-exports UninstallerEvent — a renamed "
-                      + "case is then a build error rather than a feature going quiet:\n"
+                      + "`<Module>Event` enum and re-export that through its descriptor — a "
+                      + "renamed case is then a build error rather than a feature going quiet:\n"
                       + offenders.joined(separator: "\n"))
     }
 }

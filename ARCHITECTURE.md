@@ -69,7 +69,7 @@ One page per module, in the order `ls Sources/Modules` prints.
 - [Layout](Architecture/Layout.md) — the four limits on a module that reads every keystroke and types into other applications.
 - [Leftovers](Architecture/Leftovers.md) — what it will offer to remove: login items and plug-in files whose owner is gone; § How Leftovers' model reaches its engine, § The states of the Leftovers page.
 - [Screenshots](Architecture/Screenshots.md) — freezing the displays, picking an area, a window, the Dock or the menu bar, and the inline editor over the frozen picture.
-- [Uninstaller](Architecture/Uninstaller.md) — deciding whether a path belongs to the application being removed.
+- [Uninstaller](Architecture/Uninstaller.md) — deciding whether a path belongs to the application being removed; its model calls the engine directly (Architecture/Uninstaller.md § How the Uninstaller's model reaches its engine).
 - [VPN](Architecture/VPN.md) — raising and dropping tunnels from rules, and the books it keeps, keyed by configuration id or, where `scutil` takes a name, by name.
 
 ## Across modules

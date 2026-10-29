@@ -50,8 +50,7 @@ final class AModuleOwnsItsModelTests: XCTestCase {
             self.standsIn = standsIn
             local.setHandler { command in
                 commands.add(command.name)
-                guard command.name == ScanCommand.backgroundScan else { return Data() }
-                return EngineReply.encode(AModuleOwnsItsModelTests.report, for: command)
+                return Data()
             }
         }
         func activate() {}
@@ -161,7 +160,6 @@ final class AModuleOwnsItsModelTests: XCTestCase {
         _ = o.page()
         let seen = try XCTUnwrap(old.pageVM, "the unconverted page was never handed a model")
         XCTAssertTrue(seen === o.model, "the unconverted page's view model is not the one the host holds")
-        XCTAssertTrue(o.wire === o.model, "the unconverted module's wire view model is a second object, not the model the page got")
         XCTAssertTrue(o.engine === old.builtEngine, "the host holds an engine other than the one built")
         XCTAssertTrue(c.engine === converted.builtEngine, "the host holds an engine other than the one makeModule built")
         XCTAssertEqual(converted.journal.calls, [], "building must not have stopped or torn anything down")
@@ -240,7 +238,7 @@ final class AModuleOwnsItsModelTests: XCTestCase {
         XCTAssertEqual(converted.commands.all, [], "the scan went over the wire although the module answers itself")
 
         let fromOld = await o.backgroundScan()
-        XCTAssertEqual(fromOld, Self.report, "the unconverted module's scan did not go over its transport")
-        XCTAssertEqual(old.commands.all, [ScanCommand.backgroundScan])
+        XCTAssertNil(fromOld, "a module that does not answer the scan itself is not asked over the wire")
+        XCTAssertEqual(old.commands.all, [], "a module that does not answer the scan itself is not asked over the wire")
     }
 }

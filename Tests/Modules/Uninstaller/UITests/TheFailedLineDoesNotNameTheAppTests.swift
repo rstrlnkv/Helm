@@ -34,7 +34,7 @@ final class TheFailedLineDoesNotNameTheAppTests: XCTestCase {
     func testAFailedRemovalIsLoggedWithoutTheAppsName() async {
         let app = InstalledApp(name: secret, bundleID: "com.secret.vendor",
                                path: "/Applications/\(secret).app", sizeBytes: 4_096)
-        let wire = UninstallerWire(
+        let work = AnsweringWork(
             apps: [app],
             scans: [app.bundleID: ScanResult(bundleID: app.bundleID, appPath: app.path,
                                              appSizeBytes: 0, leftovers: [], runningNow: false)],
@@ -42,7 +42,7 @@ final class TheFailedLineDoesNotNameTheAppTests: XCTestCase {
                                      failures: [TrashFailureInfo(path: app.path,
                                                                  reason: .needsFullDiskAccess,
                                                                  message: "denied")]))
-        let model = UninstallerViewModel(vm: ModuleViewModel(transport: wire))
+        let model = modelOver(work)
         await model.loadAppsIfNeeded()
         model.setChecked(app.bundleID, true)
         await model.prepareReview()

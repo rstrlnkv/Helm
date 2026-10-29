@@ -1,5 +1,4 @@
 import AppKit
-import HelmContract
 import HelmRuntime
 import HelmUI
 import Module_Uninstaller_UI
@@ -18,14 +17,6 @@ import Module_Uninstaller_UI
     /// dragged to the Trash.
     private var trashWindow: TrashedLeftoversWindow?
     private var moduleEnabledObserver: NSObjectProtocol?
-    private var moduleDisabledObserver: NSObjectProtocol?
-    /// The subscription to the Uninstaller's "look again". Held so it can be
-    /// cancelled: a `for await` over an event stream that never finishes runs for
-    /// the life of the app, and cancelling it from outside is the only way it
-    /// ever ends — `deinit` cannot, because the task is what keeps the object
-    /// alive (ARCHITECTURE.md § State that outlives a page and ends with its
-    /// module).
-    private var trashEventsTask: Task<Void, Never>?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -84,17 +75,9 @@ import Module_Uninstaller_UI
                 guard note.object as? String == uninstallerId else { return }
                 MainActor.assumeIsolated {
                     self?.offerTrashLeftovers()
-                    // A new engine means a new transport: the old subscription
-                    // points at a stream nothing will ever emit into again.
+                    // A new module means a new model: the old one, stopped with
+                    // its module, listens to nobody.
                     self?.watchTrashArrivals()
-                }
-            }
-        moduleDisabledObserver = NotificationCenter.default.addObserver(
-            forName: .helmModuleDisabled, object: nil, queue: .main) { [weak self] note in
-                guard note.object as? String == uninstallerId else { return }
-                MainActor.assumeIsolated {
-                    self?.trashEventsTask?.cancel()
-                    self?.trashEventsTask = nil
                 }
             }
         HelmLog.shared.info("permissions", "full disk access probe: \(PermissionCheck.currentFullDiskAccess().rawValue)")
@@ -164,14 +147,14 @@ import Module_Uninstaller_UI
     /// why is the module's own page, which already carries the notice.
     private func offerTrashLeftovers() {
         // A window already up is not a reason to do nothing — it is the reason
-        // the host does nothing *here*: the window is listening to the same
-        // event and takes the new app into the list it is already showing,
+        // the host does nothing *here*: the model hands an arrival to the open
+        // window, which takes the new app into the list it is already showing,
         // which is what a second app dropped a moment after the first deserves.
         guard trashWindow == nil else {
             HelmLog.shared.info("app", "trash arrival goes to the open window")
             return
         }
-        guard let live = host.liveModule(UninstallerDescriptor.id.rawValue) else {
+        guard let model = uninstaller else {
             HelmLog.shared.info("app", "trash sweep skipped: the uninstaller is off")
             return
         }
@@ -181,30 +164,27 @@ import Module_Uninstaller_UI
         Task { [weak self] in
             // Nothing to offer: drop the holder, or the next sweep finds it
             // occupied and stays quiet for the rest of the run.
-            if await window.showIfAnything(vm: live.wire) == false { self?.trashWindow = nil }
+            if await window.showIfAnything(uvm: model) == false { self?.trashWindow = nil }
         }
+    }
+
+    /// The Uninstaller's model, or nil while the module is off.
+    private var uninstaller: UninstallerViewModel? {
+        guard let live = host.liveModule(UninstallerDescriptor.id.rawValue) else { return nil }
+        guard let model = live.model as? UninstallerViewModel else {
+            HelmLog.shared.warn("app", "the uninstaller's model is not UninstallerViewModel, so there is no trash offer"); return nil }
+        return model
     }
 
     /// Subscribes to the Uninstaller's "look again".
     ///
-    /// The event carries nothing and is not meant to: the module watches
+    /// The signal carries nothing and is not meant to: the module watches
     /// `~/.Trash`, decides whether the change could have been an app arriving,
     /// and says only that the question is worth asking again. The host answers it
-    /// the one way it can — the same sweep it runs at launch.
+    /// the one way it can — the same sweep it runs at launch. The model ends the
+    /// subscription with the module (`UninstallerViewModel.stop()`).
     private func watchTrashArrivals() {
-        trashEventsTask?.cancel()
-        guard let live = host.liveModule(UninstallerDescriptor.id.rawValue) else { return }
-        let events = live.engine.transport.events
-        // A string is what crosses the transport; it is not what the host has
-        // to type. `UninstallerDescriptor` re-exports `UninstallerEvent`, so this
-        // name is one declaration rather than a literal on each side. Spelled by
-        // hand, a rename in the engine would be an error nowhere and the offer would
-        // simply stop appearing.
-        trashEventsTask = Task { [weak self] in
-            for await event in events where event.name == UninstallerEvent.trashChanged.rawValue {
-                self?.offerTrashLeftovers()
-            }
-        }
+        uninstaller?.listenForTrash { [weak self] in self?.offerTrashLeftovers() }
     }
 
     /// The reading nothing else takes.
@@ -243,7 +223,6 @@ import Module_Uninstaller_UI
     /// already knows how.
     func applicationWillTerminate(_ notification: Notification) {
         HelmLog.shared.info("app", "terminating")
-        trashEventsTask?.cancel()
         // The coordinator owns a repeating tick and a notification observer, and
         // neither goes through an engine's `deactivate()`. Stopped from outside,
         // like every other observer the app starts itself.

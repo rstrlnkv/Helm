@@ -39,7 +39,7 @@ final class TheFailedLineDoesNotNameALeftoverTests: XCTestCase {
         let app = InstalledApp(name: "Plain App", bundleID: id,
                                path: "/Applications/Plain App.app", sizeBytes: 4_096)
         let leftover = NSHomeDirectory() + "/Library/Containers/\(id)"
-        let wire = UninstallerWire(
+        let work = AnsweringWork(
             apps: [app],
             scans: [app.bundleID: ScanResult(bundleID: app.bundleID, appPath: app.path,
                                              appSizeBytes: 0, leftovers: [], runningNow: false)],
@@ -47,7 +47,7 @@ final class TheFailedLineDoesNotNameALeftoverTests: XCTestCase {
                                      failures: [TrashFailureInfo(path: leftover,
                                                                  reason: .needsFullDiskAccess,
                                                                  message: "denied")]))
-        let model = UninstallerViewModel(vm: ModuleViewModel(transport: wire))
+        let model = modelOver(work)
         await model.loadAppsIfNeeded()
         model.setChecked(app.bundleID, true)
         await model.prepareReview()

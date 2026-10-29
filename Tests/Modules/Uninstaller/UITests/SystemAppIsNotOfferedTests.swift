@@ -41,7 +41,7 @@ final class SystemAppIsNotOfferedTests: XCTestCase {
             ]),
             fs: SilentFS(), trash: NoTrash(), running: NoRunning())
         self.engine = engine
-        return UninstallerViewModel(vm: ModuleViewModel(transport: engine.transport))
+        return modelOver(engine)
     }
 
     func testASystemAppCannotBeTicked() {

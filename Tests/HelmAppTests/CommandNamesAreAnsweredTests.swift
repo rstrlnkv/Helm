@@ -1,5 +1,4 @@
 import HelmRuntime
-import Module_Uninstaller_UI
 import XCTest
 
 /// A command name is a type now, and this keeps it one.
@@ -14,7 +13,7 @@ import XCTest
 /// nothing left to compare: **the literals it read are gone, so a green result
 /// meant only that it had stopped looking.**
 ///
-/// What is left worth checking is the two things the compiler still cannot see.
+/// What is left worth checking is the one thing the compiler still cannot see.
 final class CommandNamesAreAnsweredTests: XCTestCase {
 
     private var sources: URL {
@@ -52,13 +51,5 @@ final class CommandNamesAreAnsweredTests: XCTestCase {
         XCTAssertTrue(offenders.isEmpty,
                       "a command sent as a string, where its module has an enum for it:\n"
                       + offenders.joined(separator: "\n"))
-    }
-
-    /// **The one name that crosses a target boundary.** The descriptor's default
-    /// `backgroundScan(_:)` (`HelmUI`) sends `ScanCommand.backgroundScan`; one engine answers it from
-    /// its own enum, and no compiler sees both sides. Two spellings of one
-    /// string is exactly the shape this whole change removes elsewhere.
-    func testTheUninstallerSpellsTheScanCommandTheSameWay() {
-        XCTAssertEqual(UninstallerCommand.backgroundScan.rawValue, ScanCommand.backgroundScan)
     }
 }

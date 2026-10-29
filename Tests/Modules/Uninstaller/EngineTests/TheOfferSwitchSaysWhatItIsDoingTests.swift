@@ -225,23 +225,4 @@ final class TheOfferSwitchSaysWhatItIsDoingTests: XCTestCase {
             reading that made the switch on the Leftovers tab a claim nobody had checked
             """)
     }
-
-    // MARK: - What the page is told
-
-    /// The reply the page reads is this value, and both sides read the enum: a
-    /// `Bool` here is how the switch came to be the only thing anybody knew.
-    func test_the_command_answers_the_state_and_not_a_flag() async throws {
-        let apps = TrashOfMine(readable: false)
-        let transport = LocalTransport()
-        let engine = UninstallerEngine(home: home, apps: apps, fs: NoFiles(),
-                                       trash: NoTrash(), running: NoRunning(),
-                                       transport: transport)
-        await MainActor.run { engine.setWatchingTrash(true) }
-
-        let reply = try await transport.send(
-            EngineCommand(name: UninstallerCommand.watchingTrash.rawValue, payload: Data()))
-
-        XCTAssertEqual(try JSONDecoder().decode(TrashWatch.self, from: reply), .cannotReadTrash,
-                       "the page cannot tell a switch that works from one that does nothing")
-    }
 }

@@ -59,7 +59,7 @@ final class ANameIsAGuessNotAnOwnershipQuestionTests: XCTestCase {
         let engine = UninstallerEngine(home: home, apps: FakeApps(apps: [player]),
                                        fs: FMFileSystem(), trash: FakeTrash(),
                                        running: FakeRunning(running: []))
-        return try await engine.scan(bundleID: player.bundleID, appPath: player.path,
+        return await engine.scan(bundleID: player.bundleID, appPath: player.path,
                                      appName: player.name)
     }
 

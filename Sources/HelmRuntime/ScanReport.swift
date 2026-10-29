@@ -30,16 +30,6 @@ public protocol BackgroundScanning {
     func backgroundScan() async -> ScanReport?
 }
 
-/// The one spelling of the command, for the caller and for every engine's switch.
-///
-/// A transport command is a string on both sides, and a name only one side
-/// changes is not an error anywhere: the engine falls through to its `default`
-/// and the caller cannot tell a typo from a refusal. Neither side writes the
-/// literal now.
-public enum ScanCommand {
-    public static let backgroundScan = "backgroundScan"
-}
-
 public struct ScanReport: Codable, Equatable, Sendable {
     /// What acting on everything found would return.
     public let bytes: Int

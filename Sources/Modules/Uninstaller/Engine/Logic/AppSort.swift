@@ -5,7 +5,7 @@ import Foundation
 /// what have I not opened for a long time. The reverse of each answers no
 /// question of that kind, so there is no direction to choose and the menu that
 /// offers these stays a flat list of three.
-public enum AppSortOrder: String, Codable, CaseIterable, Sendable {
+public enum AppSortOrder: String, CaseIterable, Sendable {
     /// A to Z. Also what every list is in until a reading arrives.
     case name
     /// Largest first; a size that was measured as nothing goes last.
@@ -34,7 +34,7 @@ public enum AppSortOrder: String, Codable, CaseIterable, Sendable {
 /// draws three different things: a date (`opened`), "no record" (asked, and
 /// Spotlight had none) and nothing at all (`unread` — not asked, because the
 /// read was cut short by its ceiling or its deadline).
-public struct AppOpenedReading: Codable, Equatable, Sendable {
+public struct AppOpenedReading: Equatable, Sendable {
     /// Path → last opened. An app that is not here and not in `unread` has no
     /// record.
     public let opened: [String: Date]
@@ -53,7 +53,7 @@ public enum AppSort {
     /// Whether the date order can mean anything: only when Spotlight answered
     /// for at least one app. With no date at all, every row would read "no
     /// record" and the order would be the name order presented as a measurement.
-    /// `nil` is a reading that has not arrived (or was lost).
+    /// `nil` is a reading that has not been taken yet.
     public static func dateOrderAvailable(_ opened: [String: Date]?) -> Bool {
         !(opened?.isEmpty ?? true)
     }

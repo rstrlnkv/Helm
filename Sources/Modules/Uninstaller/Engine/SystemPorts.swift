@@ -259,7 +259,7 @@ public struct WorkspaceRunningApps: RunningAppsPort {
     /// list of running applications, and reading it off the main thread is what
     /// killed the VPN engine over four releases (ARCHITECTURE.md § Running
     /// applications). Both callers here are off it: the scan runs inside
-    /// `offTheCooperativePool`, and `quit` arrives on the transport's pool —
+    /// `offTheCooperativePool`, and `quit` arrives from the batch on the cooperative pool —
     /// while this very type is terminating applications, which is to say while
     /// that list is being mutated.
     ///

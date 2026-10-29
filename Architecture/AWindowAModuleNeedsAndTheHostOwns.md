@@ -8,5 +8,6 @@ each.
 
 The host cannot import a module's engine, so a module that has something to say
 vends one opaque door that returns a view or nothing, as `TrashedAppOffer` does:
-nothing means no window at all rather than an empty one. `TrashedLeftoversWindow`
+nothing means no window at all rather than an empty one. The door takes the module's
+model, which the host reaches by one `as?` on the live module's model. `TrashedLeftoversWindow`
 is the example window.

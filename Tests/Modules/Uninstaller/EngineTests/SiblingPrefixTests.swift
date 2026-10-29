@@ -54,7 +54,7 @@ final class SiblingPrefixTests: XCTestCase {
                                        apps: Installed(ids: installed),
                                        fs: GlobFS(entries: entries),
                                        trash: NoTrash(), running: NoRunning())
-        return try await engine.scan(bundleID: id, appPath: "/Applications/Tool.app", appName: "Tool")
+        return await engine.scan(bundleID: id, appPath: "/Applications/Tool.app", appName: "Tool")
     }
 
     /// The trap. `com.acme.toolPro` is installed and has a container of its own;

@@ -9,23 +9,20 @@ import Module_Uninstaller_Engine
 /// **The record `TrashOfferPlan.answered` refuses to write is written anyway,
 /// one click later, by the close.**
 ///
-/// Two promises stand behind the unprompted Trash window, both of them about the
-/// same permanent record — `trashOfferDismissed`, final for as long as the app
-/// sits in the Trash, over files that are on no other screen Helm has:
+/// One promise stands behind the unprompted Trash window, about a permanent
+/// record — `trashOfferDismissed`, final for as long as the app sits in the
+/// Trash, over files that are on no other screen Helm has:
 ///
 /// - `TrashOfferPlan.answered`: «Not the ones whose files macOS refused. A
 ///   refusal is not a decision — the person can grant Full Disk Access, unlock
 ///   the file, quit whatever was holding it.»
-/// - `TrashedLeftoversModel.removeSelection`, on a reply that never came:
-///   «Nothing is recorded, the window stays, and it says what is true: nobody
-///   knows what moved.»
 ///
-/// Both are undone by the way out. `TrashedLeftoversView.onDisappear` runs
+/// It is undone by the way out. `TrashedLeftoversView.onDisappear` runs
 /// `Task { await model.answered() }` with no argument, which declines **every
-/// group on screen** — and after a refusal or a lost reply the only thing left
-/// in the footer is «Done», so the person's next click writes exactly the record
-/// the two rules above spent their care refusing. The window standing open is
-/// the whole of what they buy.
+/// group on screen** — and after a refusal the only thing left in the footer is
+/// «Done», so the person's next click writes exactly the record the rule above
+/// spent its care refusing. The window standing open is the whole of what it
+/// buys.
 ///
 /// The subject here is the close, so the tests drive what the close drives:
 /// `removeSelection()`, then `answered()`.
@@ -39,17 +36,15 @@ final class ARefusalIsNotADeclineAtTheCloseTests: XCTestCase {
                                  kind: .caches, sizeBytes: 2_048, matchedByName: matchedByName)])
     }
 
-    private func opened(_ wire: UninstallerWire) async -> TrashedLeftoversModel {
-        let model = TrashedLeftoversModel(vm: ModuleViewModel(transport: wire))
+    private func opened(_ work: AnsweringWork) async -> TrashedLeftoversModel {
+        let model = TrashedLeftoversModel(uvm: modelOver(work))
         await model.load()
         return model
     }
 
     /// The bundle ids written to the permanent record, in the order they were
     /// written.
-    private func declined(_ wire: UninstallerWire) -> [String] {
-        wire.payloads(of: .dismissTrashedApp).compactMap { String(bytes: $0, encoding: .utf8) }
-    }
+    private func declined(_ work: AnsweringWork) -> [String] { work.dismissed }
 
     // MARK: -
 
@@ -59,7 +54,7 @@ final class ARefusalIsNotADeclineAtTheCloseTests: XCTestCase {
     func testAnAppMacOSRefusedIsNotDeclinedByClosingTheReport() async throws {
         let moved = offer("com.vendor.moved")
         let refused = offer("com.vendor.refused")
-        let wire = UninstallerWire(
+        let work = AnsweringWork(
             removal: UninstallResult(
                 trashed: moved.leftovers.map(\.path), freedBytes: 2_048,
                 failures: refused.leftovers.map {
@@ -67,13 +62,13 @@ final class ARefusalIsNotADeclineAtTheCloseTests: XCTestCase {
                                      message: "Operation not permitted")
                 }),
             offers: [moved, refused])
-        let model = await opened(wire)
+        let model = await opened(work)
         XCTAssertEqual(model.groups.count, 2, "precondition: both apps are on screen")
 
         let mayClose = await model.removeSelection()
 
         XCTAssertFalse(mayClose, "precondition: a refusal keeps the window up to report it")
-        XCTAssertEqual(declined(wire), ["com.vendor.moved"], """
+        XCTAssertEqual(declined(work), ["com.vendor.moved"], """
             precondition: the removal filed the app it answered for and only that one — \
             the subject of the assertion below has to have happened for its absence to \
             mean anything
@@ -83,40 +78,12 @@ final class ARefusalIsNotADeclineAtTheCloseTests: XCTestCase {
         // is reached by Done, by Escape and by the red button alike.
         await model.answered()
 
-        XCTAssertFalse(declined(wire).contains("com.vendor.refused"), """
+        XCTAssertFalse(declined(work).contains("com.vendor.refused"), """
             closing the report filed the app macOS refused as the person's own "no". That \
             record is final for as long as the app sits in the Trash, and this window is the \
             only place a Group Container or a name-matched folder is ever offered — so \
             granting Full Disk Access afterwards does not bring the offer back.
             """)
-    }
-
-    /// The same for the silence, which `removeSelection` handles — and which the
-    /// close undoes. Nobody knows what moved, and the window files every app in
-    /// it anyway.
-    func testALostReplyIsNotADeclineWhenTheWindowIsClosed() async throws {
-        for silence in UninstallerWire.Answer.silences {
-            let group = offer("com.vendor.tool")
-            let wire = UninstallerWire(offers: [group])
-            let model = await opened(wire)
-            XCTAssertFalse(model.selected.isEmpty, "precondition: something is ticked (\(silence))")
-
-            wire.answers(silence, to: .trashPaths)
-            let mayClose = await model.removeSelection()
-
-            XCTAssertTrue(wire.commands.contains(.trashPaths),
-                          "precondition: the batch really was sent (\(silence))")
-            XCTAssertFalse(mayClose, "precondition: the window stays up (\(silence))")
-            XCTAssertTrue(model.replyLost, "precondition: it knows the reply was lost (\(silence))")
-
-            await model.answered()
-
-            XCTAssertEqual(declined(wire), [], """
-                the window was closed over a batch nobody answered — the engine may have \
-                moved every file or none of them — and filed the app as declined anyway \
-                (\(silence)). Nothing is left that would ever offer those files again.
-                """)
-        }
     }
 
     /// **The half that must keep working**, and the reason the assertions above
@@ -127,14 +94,14 @@ final class ARefusalIsNotADeclineAtTheCloseTests: XCTestCase {
     func testClosingWithoutARemovalStillDeclinesEveryAppOnScreen() async throws {
         let first = offer("com.vendor.one")
         let second = offer("com.vendor.two")
-        let wire = UninstallerWire(offers: [first, second])
-        let model = await opened(wire)
+        let work = AnsweringWork(offers: [first, second])
+        let model = await opened(work)
 
         await model.answered()
 
-        XCTAssertEqual(Set(declined(wire)), ["com.vendor.one", "com.vendor.two"],
+        XCTAssertEqual(Set(declined(work)), ["com.vendor.one", "com.vendor.two"],
                        "a window shut without an answer will open again at the next launch")
-        XCTAssertFalse(wire.commands.contains(.trashPaths),
+        XCTAssertTrue(work.batches.isEmpty,
                        "precondition: nothing was removed, so this is the plain no")
     }
 }

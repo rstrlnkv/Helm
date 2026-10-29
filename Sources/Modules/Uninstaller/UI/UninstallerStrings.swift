@@ -163,22 +163,15 @@ enum UnStr {
     /// Takes the language rather than reading `AppLanguage.current`: the suite
     /// runs in whatever language this machine is set to, so a sentence checked
     /// against `.current` is checked in one language eight times — and these
-    /// three are compared against each other, which is a check that cannot fail
-    /// when all three sides move together.
+    /// two are compared against each other, which is a check that cannot fail
+    /// when both sides move together.
     ///
-    /// Exhaustive over the enum, with no `default`: a fourth reason would
-    /// otherwise be drawn as one of these three, which is the defect
+    /// Exhaustive over the enum, with no `default`: a third reason would
+    /// otherwise be drawn as one of these two, which is the defect
     /// `AppsEmpty.Reason` exists for.
     static func emptyMessage(_ nothing: AppsEmpty.Reason,
                              language: AppLanguage = AppLanguage.current) -> String {
         switch nothing {
-        // Not «No applications found.» — nothing was found because nothing was
-        // read. This comment used to add that «the footer beside it already
-        // refuses that fold», and the footer did not: it read «Counting apps…»
-        // under this very sentence, a failure and a claim of progress on one
-        // screen. The footer is derived from the same `AppsEmpty.Reason` this
-        // switch is now, and says nothing here.
-        case .neverAnswered: return L("Helm could not read the list of applications.", language: language)
         case .noApps: return L("No applications found.", language: language)
         // A claim about the search field, which is on screen directly above this
         // message — not about the Mac.

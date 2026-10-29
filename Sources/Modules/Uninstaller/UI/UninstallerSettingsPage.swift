@@ -31,8 +31,8 @@ struct UninstallerSettingsPage: View {
     private enum Tab: String { case apps, orphans }
     @State private var tab: Tab = .apps
 
-    init(vm: ModuleViewModel) {
-        uvm = UninstallerViewModel.shared(vm: vm)
+    init(uvm: UninstallerViewModel) {
+        self.uvm = uvm
     }
 
     /// The list and its loading flag live in the view model, which outlives
@@ -188,20 +188,13 @@ struct UninstallerSettingsPage: View {
     /// count.
     ///
     /// The count comes from the model — `loading ? nil : apps.count` here said «0
-    /// apps» about a list the engine never answered, which is a sentence about
-    /// somebody's Mac that Helm did not check.
-    ///
-    /// **And then it said «Counting apps…» about it, under a body reporting a
-    /// failure.** `UnStr.appsCount`'s optional folds two unknowns into one
-    /// sentence: a reply on its way and a reply that never came. So the count
-    /// is derived from `appsEmpty` — the value the body itself draws — and not
-    /// from a second reading of the same flags; `AppsEmpty.Status` is where
-    /// that is decided, and the switch here is exhaustive so a
-    /// fourth answer cannot arrive as a `default`.
-    private var statusLine: String? {
+    /// apps» about a list nobody had asked for yet, which is a sentence about
+    /// somebody's Mac that Helm did not check. `AppsEmpty.Status` is where that
+    /// is decided, and the switch here is exhaustive so a third answer cannot
+    /// arrive as a `default`.
+    private var statusLine: String {
         let count: Int?
-        switch AppsEmpty.status(appsEmpty, loading: loading, apps: apps.count) {
-        case .silent: return nil
+        switch AppsEmpty.status(answered: uvm.listAnswered, loading: loading, apps: apps.count) {
         case .counting: count = nil
         case .counted(let known): count = known
         }
@@ -227,9 +220,9 @@ struct UninstallerSettingsPage: View {
     /// Why the list has no rows — and nil when it has some, which is what the
     /// body branches on.
     ///
-    /// **Not `filtered.isEmpty`.** The three ways this tab comes up empty want
-    /// three different sentences, and it drew the same empty inset `List` for all
-    /// of them: `AppsEmpty` holds the rule and says why there are three. The
+    /// **Not `filtered.isEmpty`.** The two ways this tab comes up empty want
+    /// two different sentences, and it drew the same empty inset `List` for both
+    /// of them: `AppsEmpty` holds the rule and says why there are two. The
     /// «answered» half is the view model's own flag, the one the footer's count
     /// reads, so the body cannot contradict the line under it.
     private var appsEmpty: AppsEmpty.Reason? {
@@ -238,12 +231,16 @@ struct UninstallerSettingsPage: View {
 
     private var pickStep: some View {
         VStack(spacing: 0) {
-            if loading {
+            if loading || !uvm.listAnswered {
                 Spacer()
                 ProgressView().controlSize(.small)
                 Spacer()
             } else if let nothing = appsEmpty {
-                emptyState(nothing)
+                // A statement and no verb: «no applications» would offer to
+                // repeat a question just answered, and «nothing matches this
+                // search» to reload the Mac when the search field that hid the
+                // rows is a few points above the message.
+                HelmEmptyState(message: UnStr.emptyMessage(nothing))
             } else {
                 List {
                     ForEach(filtered) { app in
@@ -265,13 +262,8 @@ struct UninstallerSettingsPage: View {
             HStack(spacing: HelmSpace.s5) {
                 Button(UnStr.selectNone) { uvm.clearChecked() }
                     .disabled(checked.isEmpty)
-                // Nothing at all when there is nothing to count: the body above
-                // has said why, and a second sentence down here can only agree
-                // with it or contradict it.
-                if let statusLine {
-                    Text(statusLine)
-                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                }
+                Text(statusLine)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                 Spacer()
                 Button {
                     Task { await uvm.prepareReview() }
@@ -289,30 +281,6 @@ struct UninstallerSettingsPage: View {
                 .disabled(checked.isEmpty || uvm.scanning)
             }
             .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
-        }
-    }
-
-    /// The sentence over an empty list, and a verb only where there is one to
-    /// give.
-    ///
-    /// The split is `AppsEmpty.invites`, which is also the split
-    /// `HelmEmptyState`'s two initialisers draw along: a list nobody answered is
-    /// a dead end and gets the plate and the button, while «no applications» and
-    /// «nothing matches this search» are statements — one asking to repeat a
-    /// question just answered, the other to reload the Mac when the search field
-    /// that hid the rows is a few points above the message.
-    @ViewBuilder private func emptyState(_ nothing: AppsEmpty.Reason) -> some View {
-        if AppsEmpty.invites(nothing) {
-            // The toolbar's own icon for the toolbar's own act: the button and
-            // the round arrow above it ask for the same thing.
-            HelmEmptyState(symbol: "arrow.clockwise", tint: UninstallerDescriptor.tint.colour,
-                           message: UnStr.emptyMessage(nothing)) {
-                Button(UnStr.refreshList) { Task { await refreshApps() } }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(loading)
-            }
-        } else {
-            HelmEmptyState(message: UnStr.emptyMessage(nothing))
         }
     }
 
@@ -511,23 +479,13 @@ struct UninstallerSettingsPage: View {
     /// measured defect was in the copy. Whichever step is up, the last press reads
     /// the same way.
     @ViewBuilder private var report: some View {
-        if uvm.replyLost || uvm.resultBanner != nil {
-            Group {
-                // Ahead of the banner, which is nil in this state: a reply that
-                // never came says so rather than nothing. Drawn exactly as a
-                // success is — no triangle, no list, no Grant button — because
-                // nothing was refused and nothing here is anybody's to fix.
-                if uvm.replyLost {
-                    HelmRemovalOutcome.unanswered
-                } else if let banner = uvm.resultBanner {
-                    Text(banner)
-                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, HelmLayout.formInset)
-            .padding(.top, HelmSpace.s5)
+        if let banner = uvm.resultBanner {
+            Text(banner)
+                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, HelmLayout.formInset)
+                .padding(.top, HelmSpace.s5)
         }
     }
 
