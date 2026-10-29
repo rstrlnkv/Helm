@@ -46,6 +46,52 @@ final class StringsCoverageTests: XCTestCase {
         }
     }
 
+    /// **The modules' catalogs, which the `.lproj` tests above cannot see.** A catalog is
+    /// `Sources/Modules/<Name>/UI/Localizable.xcstrings`, its symbols are internal to its target and
+    /// its keys are identifiers, so the kit's `.lproj` walk has nothing to say about it. This reads
+    /// the file: all eight languages, none empty, and none marked anything but `translated` — a
+    /// catalog editor writes «needs_review» for a value somebody has not looked at, and the build
+    /// ships it all the same.
+    func testEveryCatalogSymbolCarriesTheEightLanguages() throws {
+        let catalogs = try ModuleCatalogs.all()
+        XCTAssertFalse(catalogs.isEmpty, "no module catalog was found — ModuleCatalogs is not reading Sources/Modules")
+        var offenders: [String] = []
+        var symbols = 0
+        for catalog in catalogs {
+            XCTAssertFalse(catalog.strings.isEmpty, "\(catalog.path) carries no symbols")
+            for (symbol, values) in catalog.strings {
+                symbols += 1
+                for language in AppLanguage.allCases {
+                    guard let value = values[language.rawValue] else {
+                        offenders.append("\(catalog.module).\(symbol): no \(language.rawValue)")
+                        continue
+                    }
+                    if value.isEmpty { offenders.append("\(catalog.module).\(symbol): empty \(language.rawValue)") }
+                    let state = catalog.states[symbol]?[language.rawValue] ?? ""
+                    if state != "translated" {
+                        offenders.append("\(catalog.module).\(symbol): \(language.rawValue) is «\(state)»")
+                    }
+                }
+            }
+        }
+        XCTAssertGreaterThan(symbols, 0)
+        XCTAssertTrue(offenders.isEmpty,
+                      "\(offenders.count) catalog value(s) are missing or unfinished:\n"
+                      + offenders.sorted().prefix(40).joined(separator: "\n"))
+    }
+
+    /// A word in a module's catalog and in the kit's `.lproj` is two translations of one English
+    /// text, free to drift apart — and a catalog's symbols are internal, so the other module cannot
+    /// reach the catalog's copy. A shared word lives in the kit, and `ModuleCatalogs.tableByEnglish`
+    /// refuses the same English in two catalogs.
+    func testNoWordLivesInTheKitAndInAModuleCatalog() throws {
+        let kit = Set(table(for: .en).keys)
+        let both = try ModuleCatalogs.tableByEnglish(for: .en).keys.filter { kit.contains($0) }.sorted()
+        XCTAssertTrue(both.isEmpty,
+                      "\(both.count) English text(s) are in the kit and in a module catalog: "
+                      + both.prefix(10).joined(separator: ", "))
+    }
+
     /// The inline-table half of `testEveryEnglishKeyExistsInEveryOtherLanguage`
     /// — English is not required, since an inline table has no `.en` row to
     /// diff against, but it is still counted for the duplicate check: a

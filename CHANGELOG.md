@@ -181,6 +181,7 @@ only once it has no known problems left.
 - **UPD** Screenshots stands directly before Homebrew in a sidebar Helm builds fresh; a sidebar you have arranged keeps its order.
 - **UPD** Two things to know before you test: “Blur Emails and Phone Numbers” is not yet safe for hiding private data — text larger than its largest block may still be read back out of the mosaic, as may small text under “Blur” at a thin setting, and while Helm is still reading the picture, “Done” saves it without the blurs and says nothing. And much of this redesign has not been looked at on a real screen yet.
 - **FIX** Keep Awake and Layout no longer hold their keyboard shortcut while switched off, so another app can use it.
+- **UPD** Keep Awake’s Russian wording no longer speaks to you directly and follows macOS’s own terms (“указатель”, “аккумулятор”, “сетевой адаптер”), with “е” for “ё” throughout.
 
 ## 0.10.0 — 2026-08-09
 

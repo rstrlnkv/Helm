@@ -2,8 +2,9 @@ import XCTest
 import HelmTestSupport
 @testable import HelmUI
 
-/// Every string belongs in the eight `.lproj` files, and a translation that is
-/// its own key is English wearing another language's name.
+/// Every string belongs in a table — the kit's eight `.lproj` files or its
+/// module's `Localizable.xcstrings` — and a translation that is its own key is
+/// English wearing another language's name.
 ///
 /// CLAUDE.md allows exactly one exception to the first: **only a
 /// Swift-interpolated string keeps an inline table, because interpolation runs
@@ -30,7 +31,9 @@ final class StringsLiveInLprojTests: XCTestCase {
         let path = try XCTUnwrap(Localized.stringsFile(for: language)?.path)
         let table = try XCTUnwrap(NSDictionary(contentsOfFile: path) as? [String: String])
         XCTAssertGreaterThan(table.count, 100, "\(language.rawValue).lproj carries almost nothing")
-        return table
+        // A module's catalog is a table too, keyed by its English text: `deliberateIdentities` below
+        // names an English word wherever it is shipped, and the identity checks read both places.
+        return table.merging(try ModuleCatalogs.tableByEnglish(for: language)) { kit, _ in kit }
     }
 
     /// A floor under the keyed tables the real tree carries, measured

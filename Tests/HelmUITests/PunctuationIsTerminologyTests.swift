@@ -32,7 +32,9 @@ final class PunctuationIsTerminologyTests: XCTestCase {
         let dict = try XCTUnwrap(NSDictionary(contentsOfFile: path) as? [String: String],
                                  "\(language.rawValue).lproj did not parse")
         XCTAssertGreaterThan(dict.count, 100, "\(language.rawValue).lproj carries almost nothing")
-        return dict
+        // The kit's table, and every module's catalog keyed by its English text — a module's words
+        // are judged by the same loop, since a quotation mark does not care which file it sits in.
+        return dict.merging(try ModuleCatalogs.tableByEnglish(for: language)) { kit, _ in kit }
     }
 
     /// A language's own marks, asked of `Quoted` rather than written down here.

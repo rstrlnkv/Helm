@@ -190,6 +190,28 @@ final class NoOrphanTranslationsTests: XCTestCase {
                       + orphans.map { "  \"\($0)\"" }.joined(separator: "\n"))
     }
 
+    /// The catalog's half of `testNoTranslationIsKeptForAKeyNothingAsksFor`. A module's words are
+    /// asked for by symbol (`localized(.symbol)`), not by a quoted literal, so the kit's scan cannot
+    /// see them; this asks the module's own `UI` sources — comments blanked, as above — for each
+    /// `.symbol`. A symbol nothing names ships eight translations of a word nobody draws.
+    func testNoCatalogSymbolGoesUnnamed() throws {
+        let catalogs = try ModuleCatalogs.all()
+        XCTAssertFalse(catalogs.isEmpty, "no module catalog was found, so a pass means nothing")
+        var unnamed: [String] = []
+        for catalog in catalogs {
+            let directory = (catalog.path as NSString).deletingLastPathComponent
+            let swift = try SwiftSource.uncommented(under: directory).map(\.text).joined(separator: "\n")
+            XCTAssertFalse(swift.isEmpty, "\(directory) holds no Swift, so a pass means nothing")
+            for symbol in catalog.strings.keys.sorted() {
+                let named = swift.range(of: #"\.\#(symbol)\b"#, options: .regularExpression) != nil
+                if !named { unnamed.append("\(catalog.module).\(symbol)") }
+            }
+        }
+        XCTAssertTrue(unnamed.isEmpty,
+                      "\(unnamed.count) catalog symbol(s) are named nowhere in their module's UI — "
+                      + "remove them from the catalog:\n" + unnamed.joined(separator: "\n"))
+    }
+
     /// And the direction neither this file nor `StringsCoverageTests` covered:
     /// an `L("…")` written in the source with no entry in any table.
     ///

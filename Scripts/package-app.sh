@@ -267,11 +267,10 @@ cp "$REPO_ROOT/Resources/HelmApp/Info.plist" "$CONTENTS_DIR/Info.plist"
 # The ring artwork the icon is built from; only the SVG is copied, the scale,
 # colours and slab in HelmAppMark.swift are copied from the icon by hand.
 cp "$REPO_ROOT/Resources/Icon/Helm.icon/Assets/helm-ring.svg" "$RESOURCES_DIR/helm-ring.svg"
-# SwiftPM resource bundles. A target that declares `resources:` gets its own
-# .bundle beside the binary, and `Bundle.module` looks for it next to the
-# executable — miss this copy and the flag artwork is simply absent at
-# runtime, with every layout quietly falling back to letters and nothing in
-# the build saying so.
+# SwiftPM resource bundles. A target with `resources:` or a `Localizable.xcstrings`
+# gets its own .bundle, and `Bundle.module` looks for it in `Contents/Resources`
+# first — miss this copy and the first lookup traps (`fatalError` in SwiftPM's
+# generated accessor).
 BUNDLE_COUNT=0
 for bundle in "$REPO_ROOT"/.build/release/*.bundle; do
   [ -e "$bundle" ] || continue

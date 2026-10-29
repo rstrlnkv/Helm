@@ -6,17 +6,36 @@ The English text is the key and stays at the call site (`L()` in
 `ls -d Sources/HelmUI/Resources/*.lproj` lists the languages and
 `command grep -c '^"' Sources/HelmUI/Resources/*.lproj/Localizable.strings` counts the
 keys per file. An inline table survives only where a Swift-interpolated string is the key;
-`command grep -rl 'table:' Sources` names those sites. `Tests/Support/EachLanguage.swift` states the rule a new test
+`Tests/Support/InlineTables.swift` is the reader that finds those sites. `Tests/Support/EachLanguage.swift` states the rule a new test
 follows for the language it asks in.
 
-Each guard faces a direction the others are blind to, and each file's header says how:
+A module that has moved its words keeps them in `Sources/Modules/<Name>/UI/Localizable.xcstrings`
+(`ls Sources/Modules/*/UI/Localizable.xcstrings` lists them): all eight languages in one file, and
+the key is an identifier, not the English — SwiftPM generates an internal `LocalizedStringResource`
+symbol from it, so a mistyped key is a build error and the call site reads `localized(.summary)`
+(`Sources/Modules/KeepAwake/UI/KeepAwakeStrings.swift`, whose helper asks the resource in
+`AppLanguage.current`, since `String(localized:)` alone answers in the language macOS resolves for the
+process, not the one the person picked in Helm). Symbols are
+internal to their target, so a word that two modules or the kit draw stays in the kit's `.lproj` and
+is read through `L()`; the same English in a catalog and in the kit is a failure
+(`StringsCoverageTests`). The catalog needs no `resources:` entry: SwiftPM processes it on its own and
+`Scripts/package-app.sh` copies every `*.bundle` into `Contents/Resources`, where the target's
+`Bundle.module` finds it. An interpolated string still keeps its inline table at the call site.
 
-- `Tests/HelmUITests/StringsCoverageTests.swift` — a key missing from one of the eight files.
-- `Tests/HelmUITests/NoOrphanTranslationsTests.swift` — a translation nothing asks for.
+Each guard faces a direction the others are blind to, and each file's header says how (the catalog halves in the doc comment of their own test method):
+
+- `Tests/HelmUITests/StringsCoverageTests.swift` — a key missing from one of the eight files, a
+  catalog symbol missing a language or not marked `translated`, a word in both the kit and a catalog.
+- `Tests/HelmUITests/NoOrphanTranslationsTests.swift` — a translation nothing asks for, a catalog
+  symbol its module never names.
 - `Tests/HelmUITests/StringsLiveInLprojTests.swift` — a literal that reached no table.
 - `Tests/HelmUITests/OneEntryPerKeyTests.swift` — a key written twice in one file.
 - `Tests/HelmUITests/PunctuationIsTerminologyTests.swift` — a mark or a space a language
-  does not use.
+  does not use, in the kit's files and in every catalog.
+
+`Tests/Support/ModuleCatalogs.swift` reads the catalogs as data for these guards, and
+`Tests/Modules/KeepAwake/UITests/TheModuleWordsReachEveryLanguageTests.swift` shows the words
+come out of the built target in the language asked.
 
 One English key means one thing. Where a second meaning needs the same word, the English
 is written differently, because several languages had independently drawn distinctions

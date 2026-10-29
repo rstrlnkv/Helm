@@ -51,6 +51,18 @@ value that stays true after a dialog was declined.
 gives; the mitigation that ships instead is that edge: a forged value can engage a
 grant the person already gave, and cannot summon a password dialog.
 
+`PmsetClamshellPort` is the only code that runs the grant's privileged commands, and no test runs it: every engine test builds the engine with
+a fake `ClamshellPort` (`FakeClamshell` or a test's own), and `HelmProcess.run` is called directly, so there is no point at which a test can record argv. Three things in it are held by
+reading only: every call against the grant goes through `withoutPassword` (`sudo -n`, or a dialog-less caller blocks on a prompt no window owns);
+the argv words come from `SudoersRule` (`disableSleepArguments`, `removeArguments`), never typed here; and `removeSudoers` runs `removeScript()`
+where `installSudoers` runs `installScript(user:)`, a swap that compiles, passes the suite and turns "Remove the rule" into "install it again".
+A change to this class is read against `SudoersRule` line by line and run once by hand on Helm Dev (switch the closed-lid option on, then off, and look
+for the file at `SudoersRule.installedPath` gone). That hand check covers the passwordless
+removal (`removeSudoersWithoutPassword`, `sudo -n rm`), which `ClamshellCoordinator.removeGrant`
+tries first; `removeSudoers` and its `removeScript()` run only when that fails, e.g. for an
+old-form rule without the `rm` line, so the swap above is reached by hand only with such a rule in place. A test wants a process runner injected into the class (a closure `(String, [String]) -> (status, output)`
+defaulting to `HelmProcess.run`), which no one has asked for yet.
+
 ## Vetoes and the notice
 
 A veto that ends everything is on the wire under its own name, and the engine
@@ -68,6 +80,30 @@ one notice slot when both it and a pause are true, since only one of the two exp
 why nothing at all is running; the slot is gated on "there is something to say"
 (`KeepAwakePanelTile.hasNotice`) rather than on the pause flag; and the notice
 carries no button, because a control that cannot do what it says is worse than none.
+
+The battery floor is inclusive: `BatteryGuard.shouldDeactivate` is `percent <= threshold`, so the session ends *at* the figure. Every sentence that names
+it says "or less" (the slider's note, the hero's and the panel's notice, the system notification), in all eight languages; ja and zh also have a strict
+word (未満, 低于) that would say the opposite, and do not use it here. Compose them from the one phrase (`KAStr.atPercentOrLess`), never write the boundary
+out again in a new string; a translator who writes "below" is wrong about what the Mac does.
+
+`KeepAwakeEngine` takes the battery veto's notification channel as an optional, and `nil` means silent. The only place the real port and its words are
+handed over is `KeepAwakeDescriptor.keepAwakeEngine`; a rebuild of that call that drops `batteryVeto:` switches the notification off and no engine test
+notices, because they all build the engine with a fake. The sentence comes from the UI target (`KAStr.batteryVetoNotice`), the engine cannot spell it.
+
+The reason line in the log ("holding sleep: manual+timer") is composed by `ConditionLabel`, which orders the reasons. `activeConditions` is a `Set`;
+a line built by iterating it prints the same session in a different order on each launch, and `grep -c` over two logs counts nothing.
+
+What the Stop button says and what the next press does both come from `StopPress.next`, called by the engine (`KeepAwakeEngine.swift`, the press) and by
+the hero (`KeepAwakeHero.stopPress`, the word). There is no armed flag: its three inputs are read again on every rebuild, so the word is true only while
+the state it names is true. A second spelling of the decision in a view is a button that promises one act and does another.
+
+## Rules read from the machine
+
+"External display" (the rule's row) is meaningless on a Mac with no display of its own (every display is external, the rule would mean never sleep),
+and the stored flag survives on a machine whose plist was written as a laptop. Every place that counts or draws the rule asks `MacHardware.hasBuiltInDisplay`
+first: the engine (`externalDisplayCondition`), the settings row, the panel tile and the mark column (`MarkableRules.onThisMac`); `AutomationMirror` only
+copies the stored flag into the views' state. A new reader of the flag that does not ask counts a rule that has no row, and the card indents its rows for a
+mark nobody can put there.
 
 ## State a person asked for outlives the process
 
@@ -118,6 +154,8 @@ live tiles (VPN profile names, disk): it is proof for the owner's eyes, never ke
 | `lid-refused` | closed-lid option on, macOS refused | real use only: a sudoers rule that answers `disablesleep 0` but not `disablesleep 1` (not what Helm wrote), or the administrator dialog accepted and the call still failing |
 | `left-behind` | lid option off, its sudoers rule still there; an unreadable rules value | the rule: real use, left by an earlier run that could not withdraw it; the unreadable rules value: a stored value that does not parse (`--arg module.keep-awake.autoAppRules garbage`, or a damaged settings file) |
 | `worst` | three conditions, eight app rules (one not installed), lid held, longest numbers | a person sets the largest numbers the page offers and the most app rules; the clamp maximum (1440 minutes) is reached only by a stored value, e.g. `--arg module.keep-awake.jiggleIntervalMinutes '<integer>1440</integer>'`; the app not installed is real use: an app removed after its rule was added |
+
+`worst` has no launch sample: the one that drew it was removed (f1951bed), so every part of it is set by a person or by `--arg`, which reaches settings only. Do not put `module.keep-awake.clamshellEnabled` in an unattended shot: while a rule holds the Mac awake, a grant already installed runs `pmset disablesleep 1` for real (`KeepAwakeEngine.recompute`, the `MacHardware.hasLid, settings.clamshellEnabled` branch, `lid.engage(mayPrompt: byGesture)`), and a `--press` on a start control without a grant raises the administrator dialog.
 
 Longest strings come from the language: add `--arg module.app.interfaceLanguage ru`, and once with `de` for the German wrap.
 
