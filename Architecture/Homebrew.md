@@ -33,6 +33,8 @@ model hears nothing and asks nothing, so an install that `deactivate()` ends is 
 followed by a re-read of a module going off. The page's Stop button is
 `stopOperation()`; `stop()` is the seam's.
 
+Words: `Sources/Modules/Homebrew/UI/Localizable.xcstrings`; interpolated ones in inline tables in `HomebrewStrings.swift`; shared words through `L()` from the kit.
+
 ## Operations
 
 Quitting mid-operation is reported rather than prevented: every operation writes a

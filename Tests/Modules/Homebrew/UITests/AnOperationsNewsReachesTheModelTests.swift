@@ -13,7 +13,7 @@ import HelmUI
 /// machine.
 ///
 /// The stream carries two kinds, a line (an edge, every one of them) and a state (a level), and the
-/// model's loop is the only reader. Defect class kept: a line lost or reordered,
+/// model's loop is the only reader. What it holds: a line lost or reordered,
 /// an ending that re-reads nothing, or a re-read for a state that is not an
 /// ending.
 @MainActor

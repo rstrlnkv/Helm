@@ -27,7 +27,7 @@ Each guard faces a direction the others are blind to, and each file's header say
 
 - `Tests/HelmUITests/StringsCoverageTests.swift` — a key missing from one of the eight files, a
   catalog symbol missing a language or not marked `translated`, a word in both the kit and a catalog.
-- `Tests/HelmUITests/NoOrphanTranslationsTests.swift` — a translation nothing asks for, a catalog
+- `Tests/HelmUITests/NoOrphanTranslationsTests.swift` — an `en.lproj` key nothing asks for, a catalog
   symbol its module never names.
 - `Tests/HelmUITests/StringsLiveInLprojTests.swift` — a literal that reached no table.
 - `Tests/HelmUITests/OneEntryPerKeyTests.swift` — a key written twice in one file.
