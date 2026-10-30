@@ -153,7 +153,7 @@ final class TheRoutingFlagIsNotFrozenTests: XCTestCase {
 
         let seenAgain = await verdict(on: transport)
         XCTAssertEqual(seenAgain, .besideTunnel, """
-            the default route left the tunnel and the page kept the green tick: \
+            the default route left the tunnel and the page kept the green dot: \
             the routing flag was cached with the interface at the first status \
             read and the tool is never asked again while the tunnel is up, so \
             the one sentence this feature exists to get right is a reassurance \

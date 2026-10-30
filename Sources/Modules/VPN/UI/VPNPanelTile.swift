@@ -13,15 +13,15 @@ struct VPNPanelTile: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: HelmSpace.s4) {
             header
             if vm.connections.isEmpty {
                 Text(VPNStr.noVPNs())
                     // The panel's scale, not the settings window's.
-                    .font(.caption)
+                    .font(HelmText.smallPrint)
                     .foregroundStyle(HelmText.quiet)
             } else {
-                VStack(spacing: 8) {
+                VStack(spacing: HelmSpace.s4) {
                     ForEach(vm.connections) { connectionRow($0) }
                 }
             }
@@ -43,7 +43,7 @@ struct VPNPanelTile: View {
 
     private var header: some View {
         // The token, not `.indigo` — see the same note on Keep Awake's tile.
-        HelmWidgetHeader(symbol: "lock.shield", tint: VPNDescriptor.tint.colour, name: "VPN",
+        HelmWidgetHeader(symbol: "lock.shield", tint: VPNDescriptor.tint.colour, name: VPNDescriptor.metadata.name,
                          active: anyConnected) {
             HelmStatusDot(active: anyConnected)
         }
@@ -71,10 +71,10 @@ struct VPNPanelTile: View {
         // switch can be turned off then, which is exactly when somebody wants
         // out. Where it *stands* is the third question, at the `Toggle` below.
         let action = VPNCardAction.of(c.status)
-        return HStack(spacing: 8) {
+        return HStack(spacing: HelmSpace.s4) {
             HelmStatusDot(active: Self.lit(c))
             Text(c.name).lineLimit(1)
-            Spacer(minLength: 8)
+            Spacer(minLength: HelmSpace.s4)
             if c.status.isTransitioning { ProgressView().controlSize(.small) }
             // **`isUp`, and not the card's verb.** A switch's position is what
             // was last asked for, which is a different question from «where does

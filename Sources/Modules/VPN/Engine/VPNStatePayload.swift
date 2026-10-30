@@ -141,8 +141,8 @@ public struct VPNTunnelState: Codable, Equatable, Sendable {
     /// as a tunnel that has carried nothing (`VPNTunnelFacts`).
     public let bytesIn: UInt64?
     public let bytesOut: UInt64?
-    /// Where the traffic actually leaves from. `.unknown` until the first check
-    /// answers.
+    /// Where the traffic actually leaves from. `.unknown` when a reading it
+    /// needs is missing (`VPNExitVerdict.of`).
     public let exit: VPNExitVerdict
     public let speed: VPNSpeedReading?
     /// **Whether a measurement is in flight, as the engine's own answer.**

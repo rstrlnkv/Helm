@@ -71,37 +71,27 @@ import Module_VPN_Engine
     public func menuBar(_ model: VPNViewModel) -> MenuBarContribution? {
         MenuBarContribution(panelTile: AnyView(VPNPanelTile(vm: model)))
     }
-    /// Three sizes. The middle one is the tile this module has always drawn;
-    /// 1×1 is how many are up out of how many exist, and 2×N is the tile with
-    /// every connection listed under it — which is the case that makes somebody
-    /// open the panel at all: one of them is connected and it is not the one
-    /// they expected.
+    /// Two sizes: 1×1 is how many are up out of how many exist, 2×1 is every
+    /// connection with its switch. There is no 2×N (the reason is at `case .tall`).
     public func panelWidget(_ size: PanelWidgetSize, _ model: VPNViewModel) -> AnyView? {
         switch size {
         case .compact: return AnyView(VPNCompactWidget(vm: model))
         case .wide: return AnyView(VPNPanelTile(vm: model))
-        // No 2×N. The 2×1 tile already lists every connection with a switch,
-        // so the tall one printed the same list a second time underneath —
-        // four VPNs came out as eight rows, four of them dead. The doc comment
-        // that justified it described a tile this repo does not have.
+        // No 2×N: the 2×1 tile already lists every connection with a switch,
+        // so a tall one would print the same list a second time underneath.
         case .tall: return nil
         }
     }
 
-    /// The badge in the page header, which is where the count used to be.
-    ///
-    /// A `HelmMetricStrip` sat above this page reading «2 connections · 1
-    /// active · 3 automatic». Two of those three are facts the list underneath
-    /// spells out a row at a time, and the third is a number nobody acts on;
-    /// what a person wants from the top of this page is whether anything is up
-    /// at all. That is one word, and the window already has a place for it.
+    /// The badge in the page header: what a person wants from the top of this
+    /// page is whether anything is up at all. That is one word, and the window
+    /// has a place for it; the list underneath spells out the rest a row at a
+    /// time.
     public func activity(_ model: VPNViewModel) -> ModuleActivity? {
         // `isConnected`, not `isUp`. `isUp` is «something is happening here»
         // and includes `.connecting`, so a tunnel three seconds into coming up
-        // put a green «Active» in the header beside a card that said
-        // «Connecting…». That exact defect was found and fixed once in the
-        // metric strip this badge replaced — and came back with the badge,
-        // because the question was copied and the answer was not.
+        // would put a green «Active» in the header beside a card that said
+        // «Connecting…».
         model.connections.contains { $0.status.isConnected } ? .active : .idle
     }
 
@@ -134,7 +124,7 @@ import Module_VPN_Engine
         // is a separate question, answered a level up in `StatusPlan.spins`:
         // this is a preference, that is an instruction from the system.
         // Every one of these three is asked *on the configuration that fired*,
-        // never module-wide: the settings live on the card now.
+        // never module-wide: the settings live on the card.
         let spinning = model.automationSpin(on: firing.name)
             && VPNAutomation.spinPhase(firing, now: now) != nil
         let names = model.effectiveNotice(for: firing.kind, on: firing.name).showsMenuBarName

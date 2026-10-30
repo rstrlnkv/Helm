@@ -30,12 +30,10 @@ extension VPNSettingsPage {
     /// rules — including for an app that already has one, which is how a rule
     /// written before identities existed is repaired.
     ///
-    /// **The tunnel is the caller's now.** It used to be
-    /// `vm.connections.first?.name` — `scutil`'s creation order, which is not the
-    /// order the page draws and never the tunnel that is up: on a Mac with two
-    /// configurations, adding your first application was a coin flip nobody was
-    /// told about. The button lives inside one card's popover, so the answer is
-    /// that card.
+    /// **The tunnel is the caller's.** `scutil`'s creation order is not the order
+    /// the page draws and never the tunnel that is up, so on a Mac with two
+    /// configurations a default would be a coin flip nobody was told about. The
+    /// button lives inside one card's popover, so the answer is that card.
     func pickApp(into vpnName: String) {
         let picked = AppPicker.chooseApps().map {
             (bundleID: $0.bundleID, identity: CodeIdentity.of(bundleAt: $0.url))

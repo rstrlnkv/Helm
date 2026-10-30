@@ -14,12 +14,10 @@ enum VPNStr {
     }
     /// What the two panel tiles say when macOS holds no configuration.
     ///
-    /// **Two words, because the 1×1 tile is 144 pt and cannot grow.**
-    /// «No VPNs configured» measured 142 pt of the 120 the card leaves in
-    /// Portuguese, 131 in Japanese, 127 in German and 121 in Russian, so the
-    /// smallest tile in the panel wrapped to two lines in four of the eight
-    /// languages — and the tile stands under a header that already says VPN, so
-    /// the word the sentence lost was one the reader had just read.
+    /// **Two words, because the 1×1 tile cannot grow.** A longer sentence
+    /// wraps in the longer languages, and the tile stands under a header that
+    /// already says VPN, so the word a short one loses is one the reader has
+    /// just read.
     /// The page's own empty state is `noVPNsSystem`,
     /// which has room to explain.
     static func noVPNs(language: AppLanguage = AppLanguage.current) -> String {
@@ -31,18 +29,16 @@ enum VPNStr {
     /// screen: `scutil --nc` connects and disconnects configurations the system
     /// owns, and there is no `--nc create`. So the screen leads to where they
     /// are made rather than drawing an empty list with a Connect button
-    /// underneath it, which is what it did — one quiet line, no plate, and
-    /// nothing to press.
+    /// underneath it.
     static var noVPNsSystem: String {
         L(.noVPNsAreSetUp)
     }
     /// Why Helm cannot simply offer to make one, and what it *will* do once
     /// there is one — said here because this is the only screen a person with
     /// no VPN ever sees of this module.
-    /// Four lines in English and five in Russian at the 380 pt cap, which is
-    /// what the example cost: «bringing up the work VPN when Slack opens» is
-    /// this module's pitch and not this reader's need — the reader has no VPN at
-    /// all, and the one thing they can do from here is make one.
+    /// No example: «bringing up the work VPN when Slack opens» is this module's
+    /// pitch and not this reader's need — the reader has no VPN at all, and the
+    /// one thing they can do from here is make one.
     static var noVPNsExplain: String {
         L(.helmConnectsTheConfigurationsMacOS)
     }
@@ -73,10 +69,10 @@ enum VPNStr {
                   .pt: "\(it) não está mais nos Ajustes do Sistema"],
                  language: language)
     }
-    /// **Two sentences, because a refusal has a verb.** This said «refused to
-    /// connect» about a `--nc stop` the tool would not perform: the person who
-    /// asked to bring a tunnel down read that Helm could not bring it up, while
-    /// it stayed up and carried everything the Mac sent. The verbs are macOS's
+    /// **Two sentences, because a refusal has a verb.** «Refused to connect»
+    /// for a `--nc stop` the tool would not perform tells the person who asked
+    /// to bring a tunnel down that Helm could not bring it up, while it stays up
+    /// and carries everything the Mac sends. The verbs are macOS's
     /// own words for its own two actions — *verbunden*/*getrennt*, 接続/切断 —
     /// the same table the labels above are read out of.
     ///
@@ -169,8 +165,8 @@ enum VPNStr {
     /// not the non-reflexive French, which is what Apple uses for *devices*.
     ///
     /// **`Cancel` is the third, and it is a translation fact rather than a
-    /// nicety.** A handshake that is being abandoned was labelled with the
-    /// tunnel's verb, and 接続解除 (*release the connection*) and 断开连接
+    /// nicety.** A handshake that is being abandoned cannot carry the tunnel's
+    /// verb, and 接続解除 (*release the connection*) and 断开连接
     /// (*break the connection*) both name a connection that does not exist yet.
     /// The word is macOS's own for the same act, already shipped in all eight.
     static func cardWord(_ word: VPNCardAction.Word,
@@ -210,13 +206,12 @@ enum VPNStr {
     /// and the number is on screen in cards.
     static var showFewerConnections: String { L(.showFewer) }
     /// The rules stand under the tunnel they point at, so the row has no VPN
-    /// pop-up left — this menu is what replaced it.
+    /// pop-up; moving a rule is this menu's item.
     static var moveRule: String { L(.moveToAnotherVPN) }
     static var removeRule: String { L(.removeRule) }
-    /// Under a group's name when Helm itself is the reason that tunnel is up —
-    /// the engine's own book, not a tunnel somebody dialled by hand. It was a
-    /// mark on every row until the rules were grouped, where it is one sentence
-    /// about the tunnel rather than one per application.
+    /// In place of the card's status word when Helm itself is the reason that tunnel is up —
+    /// the engine's own book, not a tunnel somebody dialled by hand. One
+    /// sentence about the tunnel rather than one mark per application.
     static var groupHeldByRules: String { L(.connectedByTheseRules) }
     /// The left door on a card, and the title of what it opens.
     static func rulesFor(_ vpn: String, language: AppLanguage = AppLanguage.current) -> String {
@@ -270,13 +265,13 @@ enum VPNStr {
     static func connections(language: AppLanguage = AppLanguage.current) -> String {
         L(.connections, language: language)
     }
-    /// Always on screen, not only in the empty state: the section is headed
-    /// "per-app", and `connect(vpnName)` raises a *system* configuration — while
-    /// it is up, everything this Mac sends goes through it. A reader who has met
-    /// split tunnelling will otherwise read this section as that.
+    /// On screen whenever there is a connection: `connect(vpnName)` raises a
+    /// *system* configuration — while it is up, everything this Mac sends goes
+    /// through it. A reader who has met split tunnelling will otherwise read a
+    /// per-app rule as that.
     ///
-    /// «that app» pointed at nothing once this became a footer under a list of
-    /// many rules — the sentence is read after the rules, not beside one.
+    /// The sentence is read after the rules, not beside one, so it names no
+    /// single app.
     static var perAppScopeNote: String {
         L(.aVPNCarriesEverythingThis)
     }
@@ -344,12 +339,8 @@ enum VPNStr {
     /// Localization); German would otherwise have been given
     /// *Benachrichtigung*, which is not what macOS calls it.
     ///
-    /// **Two words each, because they are a pop-up's items.** They were
-    /// captions under 104 pt picture cards, where «Имя в строке меню» measured
-    /// 117.9 pt in German, 125.0 in Portuguese, 147.3 in Spanish and 148.7 in
-    /// French and wrapped onto two lines; the three modes are the items of the
-    /// mode pop-up now, where the same length truncates instead. What they have
-    /// to fit is `VPNConnectionCard.modeWidth`. The names are the
+    /// **Short, because they are a pop-up's items**, where a longer
+    /// label truncates. What they have to fit is `VPNConnectionCard.modeWidth`. The names are the
     /// pane's own: `ControlCenterSettings.appex`'s display name and
     /// `DesktopSettings.appex`'s `Menu Bar`.
     ///
@@ -368,9 +359,9 @@ enum VPNStr {
     /// Shown when macOS answered no. It says what will happen instead, because
     /// the one outcome this module must never produce is quietly nothing.
     ///
-    /// One sentence rather than two: it speaks for both rows of the card now
-    /// (`VPNNotice.permissionMissing`), and «will be shown» put the consequence
-    /// in the passive and the future when it is already the case.
+    /// One sentence: it speaks for both questions of the popover
+    /// (`VPNNotice.permissionMissing`), and says the consequence as the present
+    /// fact it is.
     static var noticeDenied: String {
         L(.macOSIsNotAllowingNotifications)
     }
@@ -388,10 +379,8 @@ enum VPNStr {
     }
     /// The cost of the two quiet settings meeting, said where they are set.
     ///
-    /// **It names the option on screen.** «set to nothing» described a choice
-    /// spelled «Do not notify» in the card above it, which is a sentence about a
-    /// control that did not exist — in eight languages. The option is «Nothing»
-    /// now, and this quotes it.
+    /// **It names the option on screen**: the option is «Nothing», and this
+    /// quotes it.
     static var spinSilentWarning: String {
         L(.withThisOffAndThe)
     }
@@ -462,9 +451,8 @@ enum VPNStr {
                    .pt: "\(name) não está conectado"],
                      language: language)
         case .dropped:
-            // «оборвался», not «отключился»: Russian had six words for two
-            // events and the pair was crossed — «отключается» is the one that
-            // was asked for, which is the other row's news entirely.
+            // «оборвался», not «отключился»: the other row's news is
+            // «отключается», and the pair must not be crossed.
             return L("\(name) went down on its own",
                      [.ru: "\(name) оборвался сам",
                    .es: "\(name) se desconectó por sí solo",
@@ -498,8 +486,7 @@ enum VPNStr {
 
     /// The unit the speed column's two figures are in, on its note line.
     ///
-    /// Hand-written rather than read out of macOS, and measured before it was:
-    /// `MeasurementFormatter` over `UnitInformationStorage.megabits` answers
+    /// Hand-written rather than read out of macOS: `MeasurementFormatter` over `UnitInformationStorage.megabits` answers
     /// «Mb» in seven of the eight and «Мбит» in Russian, with no per-second in
     /// any of them — a different abbreviation from the one every one of these
     /// eight already shipped inside «Speed, Mbit/s», and not the thing being
@@ -525,14 +512,11 @@ enum VPNStr {
 
     /// The speed column's note: the unit, and whatever qualifies it.
     ///
-    /// Two things ever do — how old a figure is when there is an age to draw
-    /// (`VPNTunnelFacts.speedShowsItsAge`, whose only reader this is), and what
-    /// a first measurement costs before there is a figure at all. A fresh
-    /// reading is qualified by neither and keeps the unit alone, which is the
-    /// distinction that property exists for, drawn as a shorter note rather
-    /// than as no note at all — and so does a reading stamped *ahead* of the
-    /// page's clock, which is stale and has no age to print, which is why the
-    /// two properties on `VPNTunnelFacts` are two.
+    /// One thing ever does: how old a figure is when there is an age to draw
+    /// (`VPNTunnelStrip.speedTile` reads `VPNTunnelFacts.speedShowsItsAge`). A
+    /// fresh reading, no reading, and a reading stamped *ahead* of the page's
+    /// clock keep the unit alone; that last one is stale and has no age to
+    /// print, which is why the two properties on `VPNTunnelFacts` are two.
     static func speedNote(_ qualifier: String?) -> String {
         guard let qualifier else { return speedUnit }
         return note(speedUnit, qualifier)
@@ -568,21 +552,9 @@ enum VPNStr {
     /// While the transfer this button started is running.
     static var measuring: String { L(.measuring) }
 
-    /// The bare verdict, for the Mac that has no default-route tunnel to name
-    /// a country for. `trafficThroughTunnel(country:)` is the other half of
-    /// this pair — two members rather than one with an empty half, since a
-    /// sentence ending in a dash and nothing is a sentence that lost its end.
+    /// The verdict when the tunnel holds the default route; the country is a
+    /// line of its own (`VPNTunnelStrip.Place`).
     static var trafficThroughTunnel: String { L(.trafficGoesThroughTheTunnel) }
-    /// **The hero's second line is the country's own name, and nothing else.**
-    ///
-    /// It was a sentence — «leaving from the Netherlands» — with the name
-    /// interpolated into it, and that is a shape Russian cannot take: «из»
-    /// governs the genitive and `Locale.localizedString(forRegionCode:)` hands
-    /// back the nominative, so the line read «выход из Нидерланды». Every
-    /// inflecting language of the eight has the same fault and none of them can
-    /// be fixed from a region code, which is why the verdict used to put the
-    /// country after a dash. A bare name declines nowhere: the line above has
-    /// already said what it is the country of.
     /// **The traffic is in the tunnel and the exit has not answered.**
     ///
     /// Its own sentence rather than an empty second line, because the two
@@ -636,22 +608,17 @@ enum VPNStr {
 
     /// The hero with nothing to be about.
     ///
-    /// The section used to be absent altogether when no tunnel was up, which
-    /// is right for a section three quarters of the way down a page and wrong
-    /// for the first block on it: a slot that disappears takes the page's
-    /// shape with it, and a reader who looked at the top of this page
-    /// yesterday finds something else there today.
+    /// The hero is present when no tunnel is up: a slot that disappears takes
+    /// the page's shape with it, and the first block on a page is the one a
+    /// reader looks for in the same place every day.
     static var noTunnelUp: String { L(.noTunnelIsUp) }
     /// And what to do about it, in **one** sentence.
     ///
-    /// It was two, and the second one — «and its country, its counters and its
-    /// speed appear here» — described the screen the reader is about to be
-    /// shown rather than telling them anything they can act on. It cost a line:
-    /// this note sits in the slot a hero's caption takes, which is the scale's
-    /// body step (`HelmText.rowTitle`), and at that size the old sentence
-    /// needed 717 pt in English and 916 in German against a 684 pt column — so
-    /// the state a Mac with no VPN shows every time would have grown a line in
-    /// three more languages and pushed the first card down.
+    /// A second sentence describing the screen the reader is about to be shown
+    /// would tell them nothing they can act on, and would cost a line: this note
+    /// sits in the slot a hero's caption takes, the scale's body step
+    /// (`HelmText.rowTitle`), and the state a Mac with no VPN shows every time
+    /// must not push the first card down.
     static var noTunnelUpNote: String {
         L(.trafficIsLeavingThisMac)
     }
@@ -660,10 +627,19 @@ enum VPNStr {
     /// exists to catch, since a card reading "Connected" says nothing about
     /// where the packets actually went.
     static var trafficBesideTunnel: String { L(.trafficIsNotGoingThrough) }
-    /// Neither verdict: the probe itself failed, which is not the same news
-    /// as the bad one above and must not be read as it.
+    /// Neither verdict: both routing readings were missing, which is not the
+    /// same news as the bad one above and must not be read as it.
     static var trafficUnknown: String { L(.couldNotCheckWhereThe) }
 
+    /// **The hero's second line is the country's own name, and nothing else.**
+    ///
+    /// A sentence with the name interpolated into it is a shape Russian cannot
+    /// take: «из» governs the genitive and `Locale.localizedString(forRegionCode:)`
+    /// hands back the nominative. Every inflecting language of the eight has the
+    /// same fault and none of them can be fixed from a region code. A bare name
+    /// declines nowhere: the line above has already said what it is the country
+    /// of.
+    ///
     /// The country in the app's own language, from the two-letter code the
     /// exit probe answered. Never the service's own spelling of it — a third
     /// party does not get to name a place in Helm's window.

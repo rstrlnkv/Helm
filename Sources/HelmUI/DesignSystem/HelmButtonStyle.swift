@@ -21,11 +21,11 @@ import SwiftUI
 /// - The well follows the pointer with `HelmMotion.hover(entering:)`, which already answers Reduce Motion.
 ///
 /// **The capsule variant.** `helmCapsuleButtons()` on a container turns every plain `Button` inside it into the
-/// same well with a capsule for its shape and its content shape; nothing else about the style changes. The one
-/// pages that ask are Keep Awake's and Layout's heroes, for the rows of buttons under them; `HelmShowcase` draws it on
+/// same well with a capsule for its shape and its content shape; nothing else about the style changes. The
+/// pages that ask are Keep Awake's, Layout's and VPN's heroes, for the rows of buttons under them; `HelmShowcase` draws it on
 /// its buttons board. Every other plain `Button` keeps the `HelmRadius.ctl` corner.
 ///
-/// **The chosen well.** `helmChosen(_:)` marks the chosen button of a row of positional choices: its well is
+/// **The chosen well.** `helmChosen(_:)` marks the chosen button of a row of positional choices, or a door whose popover is open, with its well
 /// `HelmSurface.chosenWash` of the accent, opaque and blended inside the appearance, the ink stays primary (white on
 /// the solid accent is below the 4.5:1 floor), and the pointer and the press add nothing to it. A choice whose
 /// options differ in kind is `HelmPillChoice`.

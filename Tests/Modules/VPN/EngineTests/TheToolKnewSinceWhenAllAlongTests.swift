@@ -19,7 +19,7 @@ import HelmTestSupport
 ///
 /// The exclusions are the same shape of oversight one field over. The parser
 /// calls them «the decoys» and steps over them by indentation, and the page told
-/// the reader under a green tick that all of this Mac's traffic goes through the
+/// the reader under a green dot that all of this Mac's traffic goes through the
 /// VPN — while `17.0.0.0/8`, which is Apple's whole network, was declared
 /// outside it.
 final class TheToolKnewSinceWhenAllAlongTests: XCTestCase {
@@ -162,9 +162,9 @@ final class TheToolKnewSinceWhenAllAlongTests: XCTestCase {
 
     func testAppleIsNamedAndTheDullRangesAreOneWord() {
         let summary = VPNExcludedRoutes.summarize([
-            .init(destination: "10.0.0.0", mask: "255.0.0.0"),
-            .init(destination: "192.168.0.0", mask: "255.255.0.0"),
-            .init(destination: "17.0.0.0", mask: "255.0.0.0"),
+            .init(destination: "10.0.0.0"),
+            .init(destination: "192.168.0.0"),
+            .init(destination: "17.0.0.0"),
         ])
         XCTAssertTrue(summary.localNetwork)
         XCTAssertTrue(summary.apple, """
@@ -176,9 +176,9 @@ final class TheToolKnewSinceWhenAllAlongTests: XCTestCase {
 
     func testAnythingElseIsCountedRatherThanNamed() {
         let summary = VPNExcludedRoutes.summarize([
-            .init(destination: "10.0.0.0", mask: "255.0.0.0"),
-            .init(destination: "93.184.216.0", mask: "255.255.255.0"),
-            .init(destination: "203.0.113.0", mask: "255.255.255.0"),
+            .init(destination: "10.0.0.0"),
+            .init(destination: "93.184.216.0"),
+            .init(destination: "203.0.113.0"),
         ])
         XCTAssertEqual(summary.others, 2)
         XCTAssertFalse(summary.apple)
@@ -191,16 +191,6 @@ final class TheToolKnewSinceWhenAllAlongTests: XCTestCase {
         XCTAssertEqual(VPNExcludedRoutes.summarize([]), .none)
         XCTAssertTrue(VPNExcludedRoutes.summarize([]).isEmpty)
         XCTAssertFalse(VPNExcludedRoutes.summarize([
-            .init(destination: "10.0.0.0", mask: "255.0.0.0")]).isEmpty)
-    }
-
-    /// Matched on the destination alone: a reader who excluded 10/8 with an
-    /// unusual mask has still excluded the local network, which is all the word
-    /// claims.
-    func testTheMaskDoesNotDecideWhatARangeIs() {
-        let summary = VPNExcludedRoutes.summarize([
-            .init(destination: "172.16.0.0", mask: "255.255.0.0")])
-        XCTAssertTrue(summary.localNetwork)
-        XCTAssertEqual(summary.others, 0)
+            .init(destination: "10.0.0.0")]).isEmpty)
     }
 }

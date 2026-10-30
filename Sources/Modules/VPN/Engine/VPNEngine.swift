@@ -914,7 +914,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// network arriving. Cached for the life of the tunnel it was a local
     /// memory of a live external fact with no channel to say it had changed
     /// (CLAUDE.md), and the dangerous direction is the route leaving while the
-    /// green tick stays.
+    /// green dot stays.
     ///
     /// So the cache is kept exactly where the flag is dead weight. The
     /// parameter is the routing table's own answer, which is what

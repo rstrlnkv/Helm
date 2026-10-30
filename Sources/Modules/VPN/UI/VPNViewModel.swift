@@ -58,8 +58,8 @@ extension VPNEngine: VPNWork {}
     /// field — so the engine withheld the payload as a duplicate and the arrival
     /// that was meant to clear the spinner never came.
     ///
-    /// A name rather than a `Bool` because the flag is per tunnel on the wire:
-    /// one boolean turned a spinner over every tunnel in the list while a single
+    /// A name rather than a `Bool` because a run belongs to one tunnel: one
+    /// boolean would turn a spinner over every tunnel in the list while a single
     /// run was going.
     @Published private(set) var measuring: String?
 

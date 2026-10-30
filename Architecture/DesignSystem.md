@@ -106,8 +106,8 @@ and `HelmToggleStyle`. The Settings window's roots, `HostWindow.present` and the
 the environment stops at each root, so a root without it draws plain `Button`s and `Toggle`s in the system's
 look. A page writes a plain `Button` or `Toggle` and gets the kit's. A style set on the control itself wins.
 The button's well is a rounded rectangle; `helmCapsuleButtons()` on a container makes it a capsule for the buttons
-inside, and Keep Awake's and Layout's heroes are the pages that ask for it. `helmChosen(_:)` marks the chosen
-button of a row of positional choices with `HelmSurface.chosenWash` of the accent; a choice whose options differ in
+inside, and Keep Awake's, Layout's and VPN's heroes are the pages that ask for it. `helmChosen(_:)` marks the chosen
+button of a row of positional choices, or a door whose popover is open, with `HelmSurface.chosenWash` of the accent; a choice whose options differ in
 kind is `HelmPillChoice`.
 
 The kit owns the look and leaves the behaviour to the system. `HelmButtonStyle` is a `ButtonStyle`, not a

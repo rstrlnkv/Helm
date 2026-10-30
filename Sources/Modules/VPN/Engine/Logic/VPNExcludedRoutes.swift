@@ -5,28 +5,28 @@ import Foundation
 
 /// **What a tunnel carries around itself instead of through itself.**
 ///
-/// A NetworkExtension configuration declares excluded routes, and the page said
-/// nothing about them while telling the reader, under a green tick, that «all of
-/// this Mac's traffic goes through the VPN». On the machine this was written
-/// against that sentence is false: among the seven exclusions is `17.0.0.0/8`,
-/// which is Apple's whole network — iCloud, the App Store, iMessage — leaving
-/// through `en0` with the real address.
+/// A NetworkExtension configuration declares excluded routes, and a verdict that
+/// ignored them would say «Traffic goes through the tunnel» beside a connected
+/// card. That sentence can be false: among the seven
+/// exclusions on the machine this was written against is `17.0.0.0/8`, which is
+/// Apple's whole network — iCloud, the App Store, iMessage — leaving through
+/// `en0` with the real address.
 ///
-/// Helm was already reading these lines and throwing them away.
 /// `VPNStatusParser` calls them «the decoys» and walks past them by indentation
-/// to reach the tunnel's own interface, and seven of them sit in that parser's
-/// own committed fixture. The verdict was built out of the one line the walk was
-/// looking for and none of the ones it stepped over.
+/// to reach the tunnel's own interface, collecting their destinations on the
+/// way; seven of them sit in that parser's own committed fixture.
 public enum VPNExcludedRoutes {
 
-    /// One declared exclusion, as the tool writes it: a destination and a mask,
-    /// both dotted quads.
+    /// One declared exclusion, as the tool writes it: a destination, a dotted quad.
+    ///
+    /// **No mask is kept, because the verdict is matched on the destination
+    /// alone.** The parser still requires the `SubnetMask` line to finish a
+    /// route, so a dictionary the tool cut short is dropped rather than
+    /// half-read (`VPNStatusParser`).
     public struct Route: Equatable, Sendable {
         public let destination: String
-        public let mask: String
-        public init(destination: String, mask: String) {
+        public init(destination: String) {
             self.destination = destination
-            self.mask = mask
         }
     }
 
