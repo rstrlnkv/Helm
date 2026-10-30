@@ -157,15 +157,8 @@ keeps the panel and the Settings window in step in both directions.
 **A module's state belongs to its view model rather than to its page.** Leaving a
 module's page in Settings tears down the type-erased subtree and every
 `@StateObject` in it. The pattern is `makeModule`, which the host holds for the
-enable; Screenshots alone still keeps a cache keyed by the underlying
-`ModuleViewModel`, and
-
-```bash
-command grep -rn 'static func shared(vm' Sources/Modules/*/UI/*.swift
-```
-
-names the two places it does (`ScreenshotsPageModel.swift`, `ScreenshotsCapture.swift`). Caching the view model is only half of it — whatever the
-page keeps in `@State` dies with the page.
+enable. Holding the view model is only half of it — whatever the page keeps in `@State`
+dies with the page.
 
 ## Bulk reads
 

@@ -1,27 +1,4 @@
-import Foundation
 import HelmRuntime
-
-/// Everything the screenshots engine answers to.
-///
-/// Exhaustive at the switch that handles it, so a case added here without an arm
-/// is a build error rather than a command that silently answers nothing. A
-/// capture is **not** a command: the frame of one display is tens of megabytes,
-/// and the transport carries `Data` between a handler and its caller, so a
-/// capture that went through it would copy each frame at least twice. The
-/// shortcut reaches `ScreenshotsCapture` in the UI target directly, and the
-/// engine's wire carries only what the settings page draws.
-public enum ScreenshotsCommand: String, CaseIterable, Sendable {
-    /// Re-read what lives outside Helm — the save folder and the system's own
-    /// screenshot shortcuts — and publish it. Asked on every opening of the page
-    /// and every time Helm comes back to the front, because the person changes
-    /// both in System Settings while Helm is behind.
-    case refresh
-}
-
-/// Everything the engine says about itself.
-public enum ScreenshotsEvent: String, Sendable {
-    case screenshotsState
-}
 
 /// The shortcuts this module registers with the host, named once.
 ///

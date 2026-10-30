@@ -35,16 +35,20 @@ import Module_Screenshots_Engine
         }(),
         detail: ShellGlyph.circle(12, 13.7, 3))
 
-    private var store: NamespacedStore?
-
     public init() {}
 
-    public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
-        self.store = store
-        return ScreenshotsEngine()
+    public func makeEngine(store: NamespacedStore) -> any ModuleEngine { ScreenshotsEngine() }
+
+    public func makeModule(store: NamespacedStore) -> ModuleParts<ScreenshotsViewModel> {
+        let engine = ScreenshotsEngine()
+        return ModuleParts(engine: engine, model: ScreenshotsViewModel(work: engine, store: store))
     }
 
-    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
+    /// The host closes the model before the engine goes: its stream ends and the capture
+    /// in flight, its panels and its pins close with it.
+    public func stop(_ model: ScreenshotsViewModel) { model.stop() }
+
+    public func menuBar(_ model: ScreenshotsViewModel) -> MenuBarContribution? { .utility }
 
     public static var hotkeys: [ModuleHotkey] {
         ScreenshotsHotkey.allCases.map {
@@ -52,18 +56,14 @@ import Module_Screenshots_Engine
         }
     }
 
-    /// Not through the transport: a capture is tens of megabytes of frame, and
-    /// the action lands in this target, which holds the overlay.
-    public func hotkeyPressed(_ hotkey: ModuleHotkey, _ vm: ModuleViewModel) {
-        guard let shot = ScreenshotsHotkey.allCases.first(where: { $0.slot == hotkey.slot }),
-              let store else { return }
-        ScreenshotsCapture.begin(shot, vm: vm, store: store)
+    /// The action lands in this target, which holds the overlay: a capture is
+    /// tens of megabytes of frame, and a frame does not cross to the engine.
+    public func hotkeyPressed(_ hotkey: ModuleHotkey, _ model: ScreenshotsViewModel) {
+        guard let shot = ScreenshotsHotkey.allCases.first(where: { $0.slot == hotkey.slot }) else { return }
+        model.press(shot)
     }
 
-    public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
-        AnyView(ScreenshotsSettingsPage(
-            vm: vm,
-            store: store ?? NamespacedStore(namespace: ScreenshotsDescriptor.id.rawValue,
-                                            backing: UserDefaults.standard)))
+    public func settingsPage(_ model: ScreenshotsViewModel) -> AnyView {
+        AnyView(ScreenshotsSettingsPage(model: model))
     }
 }

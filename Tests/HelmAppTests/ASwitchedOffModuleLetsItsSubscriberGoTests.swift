@@ -11,26 +11,13 @@ import Module_VPN_UI
 
 /// Switching a module off must give its transport subscriber back.
 ///
-/// A module that caches its view model across page teardown registers with
-/// `ModuleUICache.dropWhenDisabled`, and every one of those closures releases
-/// the instance and nothing else. Whether that is enough is not a question the
-/// closure answers: the view model's event loop is a `Task` over
-/// `LocalTransport.events`, the stream nothing ever calls `finish()` on, and
-/// the *only* thing that prunes `subscribers` is `continuation.onTermination`
-/// — which fires when that task is cancelled. Cancelling is `deinit`'s job, and
-/// `deinit` can only run if the task does not hold the object it belongs to.
-///
-/// So the drop is sound exactly when the loop was written to re-acquire `self`
-/// per event (`for await … { guard let self else { break } }`) and inert when it
-/// was written as `await self?.observeEvents()`, which resolves the weak capture
-/// once and then holds `self` for a call that never returns. Both shapes compile,
-/// both look right, and the difference is invisible from every screen in the app.
-///
-/// `SubscriberPruningTests` already pins that shape in the abstract — a
-/// hand-rolled task over a bare `LocalTransport`. What it cannot see is whether
-/// the modules use it, or whether the notification that drops a cache reaches
-/// them at all. This asks the real `shared(vm:)` of every caching module, over
-/// the real notification `ModuleHost.disable` posts, and reads the count that a
+/// The host holds each module's model and the descriptor's `stop(_:)` ends its
+/// one event task. Whether that is enough is not a question `stop(_:)` answers:
+/// the model's event loop is a `Task` over `LocalTransport.events`, the stream
+/// nothing ever calls `finish()` on, and the *only* thing that prunes
+/// `subscribers` is `continuation.onTermination` — which fires when that task is
+/// cancelled. So this asks the real descriptor of every module whose model holds such a task for its real
+/// parts, stops the model the way `ModuleHost` does, and reads the count that a
 /// leak makes climb.
 ///
 /// **The count is asserted at 1 before it is asserted at 0.** A subscriber that
@@ -42,62 +29,8 @@ import Module_VPN_UI
 @MainActor
 final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
 
-    // MARK: - The modules
-
-    /// One entry per module that caches a view model **and** subscribes to
-    /// events. `build` deliberately returns nothing: the point of the check is
-    /// that the module's own cache is the last strong reference, so the test
-    /// must not become one itself.
-    private struct Cached {
-        let module: String
-        let id: String
-        let build: @MainActor (ModuleViewModel) -> Void
-    }
-
-    private var subscribing: [Cached] {
-        [
-            Cached(module: "Screenshots", id: ScreenshotsDescriptor.id.rawValue) {
-                _ = ScreenshotsPageModel.shared(vm: $0)
-            },
-        ]
-    }
-
-    // MARK: - The rule
-
-    func testEveryCachingModuleGivesItsSubscriberBackWhenSwitchedOff() async {
-        for module in subscribing {
-            let transport = LocalTransport()
-            let vm = ModuleViewModel(transport: transport)
-            module.build(vm)
-
-            await settle(transport, until: 1)
-            XCTAssertEqual(transport.subscriberCount, 1, """
-                \(module.module) never registered a subscriber, so the assertion below would \
-                pass on a module that had done nothing — if this module has stopped consuming \
-                events it no longer belongs here; if it has not, the event task is not \
-                starting and every event this module draws is being missed.
-                """)
-            await letTheLoopStart()
-
-            NotificationCenter.default.post(name: .helmModuleDisabled, object: module.id)
-            await settle(transport, until: 0)
-
-            XCTAssertEqual(transport.subscriberCount, 0, """
-                \(module.module) kept its transport subscriber after the module was switched \
-                off. Its `ModuleUICache.dropWhenDisabled` closure released the cached view \
-                model and the view model outlived the release, so `deinit` never ran and \
-                `eventsTask?.cancel()` never fired — the loop is holding the object it belongs \
-                to. That is the shape `Task { [weak self] in await self?.observe() }` produces: \
-                the weak capture is resolved once and the call it makes never returns. Write the \
-                loop as `for await … { guard let self else { break } }` over a stream captured \
-                before the task, or give the model a `stop()` the drop closure calls.
-                """)
-        }
-    }
-
-    /// Keep Awake does not cache its model: the host holds it and the descriptor's
-    /// `stop(_:)` ends its one event task, so this asks the real descriptor for
-    /// the real parts and stops the model the way `ModuleHost` does.
+    /// Keep Awake: the host holds the model and the descriptor's `stop(_:)` ends
+    /// its one event task.
     ///
     /// The count is asserted at 1 first, for the reason given above, and the
     /// task is given its turn to park on the stream before it is cancelled.
@@ -125,6 +58,25 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
         let descriptor = LayoutDescriptor()
         let parts = descriptor.makeModule(store: NamespacedStore(
             namespace: "test.layout.subscriber", backing: InMemoryKeyValueStore()))
+        let transport = try XCTUnwrap(parts.engine.transport as? LocalTransport)
+        await settle(transport, until: 1)
+        XCTAssertEqual(transport.subscriberCount, 1,
+                       "the model never subscribed, so the count below would pass on nothing")
+        await letTheLoopStart()
+
+        descriptor.stop(parts.model)
+        await settle(transport, until: 0)
+
+        XCTAssertEqual(transport.subscriberCount, 0,
+                       "`stop(_:)` left the engine's subscriber behind: the model's task was not cancelled")
+    }
+
+    /// Screenshots is built like Layout: the host holds the model, `stop(_:)` ends its one event task. The engine is
+    /// built, never activated, so nothing here reads a preference or the disk and no capture is made.
+    func testScreenshotsGivesItsSubscriberBackWhenTheHostStopsItsModel() async throws {
+        let descriptor = ScreenshotsDescriptor()
+        let parts = descriptor.makeModule(store: NamespacedStore(
+            namespace: "test.screenshots.subscriber", backing: InMemoryKeyValueStore()))
         let transport = try XCTUnwrap(parts.engine.transport as? LocalTransport)
         await settle(transport, until: 1)
         XCTAssertEqual(transport.subscriberCount, 1,
@@ -176,53 +128,6 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
 
         XCTAssertEqual(transport.subscriberCount, 0,
                        "`stop(_:)` left the engine's subscriber behind: the model's task was not cancelled")
-    }
-
-    /// A module that starts caching its view model arrives in the table above,
-    /// or the table is a comment.
-    ///
-    /// Derived from the source rather than from a list beside the list:
-    /// `dropWhenDisabled` is what makes a module's instance outlive its page, so
-    /// every call to it under `Sources/Modules` is a subject, and the module is
-    /// the directory the call is in.
-    func testEveryModuleThatCachesAViewModelIsCovered() throws {
-        let registered = try Self.modulesRegisteringADrop()
-        XCTAssertGreaterThanOrEqual(registered.count, 1, """
-            the scan found \(registered.count) modules calling \
-            `ModuleUICache.dropWhenDisabled` — the tree has at least one (Screenshots), so the \
-            walk or the match has stopped reading Sources and this check is guarding nothing.
-            """)
-
-        let covered = Set(subscribing.map(\.module))
-        XCTAssertEqual(registered.subtracting(covered).sorted(), [], """
-            these modules cache a view model past the module being switched off and no check \
-            here says whether the cache's release actually ends the event loop. Add each to \
-            `subscribing`.
-            """)
-        XCTAssertEqual(covered.subtracting(registered).sorted(), [], """
-            these are checked here and no longer call `ModuleUICache.dropWhenDisabled`, so the \
-            check is asking about a cache that is gone.
-            """)
-    }
-
-    // MARK: - Reading the tree
-
-    private static func modulesRegisteringADrop() throws -> Set<String> {
-        let modules = RepoSource.root.appendingPathComponent("Sources/Modules")
-        var found: Set<String> = []
-        for name in try FileManager.default.contentsOfDirectory(atPath: modules.path) {
-            let ui = modules.appendingPathComponent(name).appendingPathComponent("UI")
-            guard let files = FileManager.default.enumerator(atPath: ui.path) else { continue }
-            for case let file as String in files where file.hasSuffix(".swift") {
-                let source = try String(contentsOf: ui.appendingPathComponent(file),
-                                        encoding: .utf8)
-                // The call, not the word: this file and `ModuleUICache` itself
-                // both name the symbol in prose, and a match on the bare name
-                // would count a doc comment as a registration.
-                if source.contains("ModuleUICache.dropWhenDisabled(") { found.insert(name) }
-            }
-        }
-        return found
     }
 
     // MARK: - Waiting

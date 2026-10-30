@@ -133,7 +133,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
                                      locations: ScreenshotsLocations(home: home, desktop: desktop))
         let toast = ShotToastRig.toast(clock)
         let box = Box()
-        let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store, session: session,
+        let controller = CaptureController(store: store, session: session,
                                            presentOverlay: { overlay in box.count += 1; box.overlay = overlay; return overlay.build() },
                                            pins: PinBoard(present: { _ in }, screens: { [] }), toast: toast)
         controllers.append(controller)

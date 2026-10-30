@@ -27,6 +27,11 @@ public struct ScreenshotsState: Codable, Equatable, Sendable {
         boxes: SystemShortcuts.boxes(from: .unreadable))
 }
 
+/// Everything the engine says about itself.
+enum ScreenshotsEvent: String, Sendable {
+    case screenshotsState
+}
+
 /// Where the user's own folders are. An argument rather than a read of the
 /// process's home, so a test points the whole module at a scratch directory.
 public struct ScreenshotsLocations: Sendable {

@@ -12,8 +12,8 @@ import Module_Screenshots_Engine
 ///
 /// The freeze is the one long wait in a capture — some hundred milliseconds of
 /// ScreenCaptureKit on three displays — and the module's switch can be turned
-/// in it. `ModuleUICache.dropWhenDisabled` then calls `CaptureController.cancel`,
-/// which closes an overlay that does not exist yet and lets the controller go;
+/// in it. The model's `stop()` then calls `CaptureController.teardown`, which cancels the press and
+/// closes an overlay that does not exist yet, and the model lets the controller go;
 /// the task that was waiting on the freeze still holds the controller and
 /// resumes. On the area shortcut what it resumes into is `CaptureOverlay.present` — panels
 /// above the menu bar on every screen, owned by a controller nobody holds, for
@@ -90,7 +90,7 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
         let session = CaptureSession(capture: capture, writer: disk, trash: NoTrash(), pasteboard: board, preferences: NoPreferences(), shutter: NoShutter(), textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))
-        let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store,
+        let controller = CaptureController(store: store,
                                            session: session, presentOverlay: presenting)
         return (controller, capture, disk, board)
     }
@@ -117,7 +117,7 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
             let (controller, capture, disk, board) = try rig(target)
             controller.begin(.fullScreen)
             await capture.gate.reached()
-            // What `ModuleUICache.dropWhenDisabled` does when the switch is turned.
+            // What `teardown` does first; the model's `stop()` calls it when the switch is turned.
             controller.cancel()
             await capture.gate.open()
             await grace(0.5)

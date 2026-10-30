@@ -120,7 +120,7 @@ import SwiftUI
     /// It is **not** how much the module holds while it runs — every module lives in
     /// one process and one malloc zone, and there is no per-subsystem accounting to
     /// ask. The pair is still the signal that matters: 3 MB on and nothing back off
-    /// is the leak family `dropWhenDisabled` was written for.
+    /// is the leak family of a model that outlives its module.
     private func enable(_ d: any ModuleDescriptor) {
         let key = type(of: d).id.rawValue
         HelmLog.shared.info("host", "enable \(key)")
@@ -200,12 +200,9 @@ import SwiftUI
         // A scan task can outlive the engine that started it, and an interval
         // nobody closes would name a module that is no longer there.
         HelmActivity.sweep(module: key)
-        // Whoever cached UI state for this module drops it, and then the pages
-        // go back to the system rather than sitting in an emptied malloc zone.
+        // Whoever listens for the module's end lets go (the hotkeys).
         NotificationCenter.default.post(name: .helmModuleDisabled, object: key)
-        // The reclaim comes first: freeing returns memory to malloc and not to
-        // macOS, so a reading taken before it would report nothing given back
-        // however much the teardown released.
+        // The reading comes last, so it covers the whole teardown.
         if let before, let after = MemoryFootprint.current() {
             HelmLog.shared.memory("module.\(key).disable", grewBy: after - before)
         }

@@ -63,7 +63,7 @@ final class TheHandOffCopiesAndSavesTests: XCTestCase {
         let session = CaptureSession(capture: NeverAsked(), writer: disk, trash: NoTrash(), pasteboard: board, preferences: NoPreferences(), shutter: NoShutter(), textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))
-        let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store,
+        let controller = CaptureController(store: store,
                                            session: session)
         return (controller, board, disk)
     }

@@ -3,15 +3,14 @@
 `Sources/Modules/Screenshots/` freezes each display, lets a person pick an area, a
 window or the whole screen out of the frozen frame, and saves or copies the picture.
 It needs a grant no other module does — Screen & System Audio Recording, the third
-`PermissionNeed` — and it is the one module whose work does **not** go through the
-transport. A 5K display's frozen frame is some sixty megabytes and the wire is `Data` in both
-directions, so a capture that crossed it would be copied at least twice for nothing:
-the module's `hotkeyPressed` calls `ScreenshotsCapture.begin`
-(`Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`) directly, and that
-builds a `CaptureSession` (`Sources/Modules/Screenshots/Engine/CaptureSession.swift`)
-out of the engine's own ports. The engine's wire carries what the settings page
-cannot read for itself — the validated save folder and which of the system's own
-screenshot shortcuts are still ticked — as `ScreenshotsState`.
+`PermissionNeed` — and it is the one module whose capture does **not** go through the
+engine. A 5K display's frozen frame is some sixty megabytes, so a frame never crosses
+the port between the model and the engine: the module's `hotkeyPressed` calls the
+model's `press`, which builds a `CaptureController` over a `CaptureSession`
+(`Sources/Modules/Screenshots/Engine/CaptureSession.swift`) made of the engine's own
+ports. What the engine tells the model is what the settings page cannot read for itself
+— the validated save folder and which of the system's own screenshot shortcuts are still
+ticked — as `ScreenshotsState` (§ How Screenshots' model reaches its engine).
 
 Everything the session asks of the machine is a port with a fake
 (`Sources/Modules/Screenshots/Engine/Ports.swift`): the capture, the file write, the move of
@@ -416,3 +415,27 @@ replaced, does. Nothing about a pin is stored.
 The shortcuts carry a default (`HotkeyFallback`, `Sources/HelmRuntime/HotkeyFallback.swift`)
 that applies only while the store holds no key at all, so a cleared shortcut stays
 cleared; a switched-off module holds no combination (ARCHITECTURE.md § The transport and the store).
+
+## How Screenshots' model reaches its engine
+
+`ScreenshotsViewModel` is built with the engine by the descriptor's `makeModule` and held
+by the host. It calls the engine through `ScreenshotsWork` (`ScreenshotsViewModel.swift`),
+an internal port of three members: `stream()`, `refresh()` (the answer comes on the
+stream) and `session(store:naming:)`, a factory the model calls once, at the first press.
+There is no command enum or handler. After the descriptor's `stop(_:)` the model reaches
+none of the three (`AStoppedScreenshotsModelReachesNoWorkTests`).
+
+The one thing the engine says is `ScreenshotsState`, level-triggered, through
+`ScreenshotsEngine.stream()` in the shape of Keep Awake's (Architecture/KeepAwake.md § How
+the model reaches the engine): the latest state first, the subscriber registered before it
+returns, one task in the model that `stop(_:)` cancels before the engine's `deactivate()`
+(`TheScreenshotsStreamCarriesTheStateTests`, `ASwitchedOffModuleLetsItsSubscriberGoTests`).
+
+The session and the controller are built at the first press and not in the model's init: the one
+makes the capture ports, the other a panel and a toast, and a press may never come. `stop()` ends the controller
+with `CaptureController.teardown`, so a switch-off in the middle of a capture, or after
+one, closes the press, the countdown, the overlay (open or flashing), the bar, the toast
+and the pins (`ASwitchedOffCaptureClosesEveryWindowTests`), and a press that comes after it builds nothing
+(`AStoppedScreenshotsModelReachesNoWorkTests`, `TheStoppedModelMeetsTheOrdersNobodyPlannedTests`). The host's order is the model's `stop()`
+and then the engine's `deactivate()`; the engine's `deactivate()` touches no session, so a
+capture in flight is not left holding a closed engine.

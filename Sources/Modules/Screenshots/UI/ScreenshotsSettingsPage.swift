@@ -8,7 +8,7 @@ struct ScreenshotsSettingsPage: View {
     /// holds of the same shortcuts.
     enum Tab: String, CaseIterable { case capturing, editor, system }
 
-    @ObservedObject private var model: ScreenshotsPageModel
+    @ObservedObject private var model: ScreenshotsViewModel
     private let store: NamespacedStore
 
     @State private var tab = Tab.capturing
@@ -40,8 +40,9 @@ struct ScreenshotsSettingsPage: View {
     @StateObject private var screenKey: HelmHotkeyRecorder
     @StateObject private var panelKey: HelmHotkeyRecorder
 
-    init(vm: ModuleViewModel, store: NamespacedStore) {
-        model = ScreenshotsPageModel.shared(vm: vm)
+    init(model: ScreenshotsViewModel) {
+        self.model = model
+        let store = model.store
         self.store = store
         let settings = ScreenshotsSettings.read(store)
         _target = State(initialValue: settings.saveTarget)

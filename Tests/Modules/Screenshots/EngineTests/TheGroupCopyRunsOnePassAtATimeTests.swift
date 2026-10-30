@@ -14,7 +14,7 @@ import XCTest
 /// held by the work it really does.
 ///
 /// The inputs: a second press mid-pass; three presses; a cancelled task mid-pass (which is what the module going
-/// off does: `ScreenshotsCapture.cancel` cancels the copy task); a press after a finished pass; a press that finds
+/// off does: `CaptureController.cancel` cancels the copy task); a press after a finished pass; a press that finds
 /// the first stopped by a third.
 ///
 /// Total failure of the subject prints: two writes, the earlier pass's pictures on the board, a refusal naming the
