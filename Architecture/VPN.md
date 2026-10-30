@@ -56,6 +56,8 @@ The connections are a card grid whose column count is arithmetic and whose cap
 needs an order: `VPNGridLayout`, `VPNConnectionOrder` and `cardCeiling` (in
 `VPNSettingsPage.swift`) say why.
 
+The defaults key `module.vpn.lastUsedName`, which earlier builds could write, is read by nothing and stays where it is, neither migrated nor deleted.
+
 ## How VPN's model reaches its engine
 
 `VPNViewModel` is built with the engine by the descriptor's `makeModule` and held by the
@@ -81,3 +83,5 @@ yields and announces no firing (`AStoppedVPNModelReachesNoWorkTests`,
 `ASwitchedOffModuleLetsItsSubscriberGoTests`); `stop()` also cancels its expiry and announcement tasks. The model lives as long as the module is
 switched on, so the panel tile and the menu-bar ring keep following the tunnel with
 Settings closed.
+
+Words: `Sources/Modules/VPN/UI/Localizable.xcstrings`; interpolated ones in inline tables in `VPNStrings.swift`; shared words through `L()` from the kit.

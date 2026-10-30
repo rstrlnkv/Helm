@@ -90,9 +90,8 @@ final class VPNRulesTests: XCTestCase {
 
 /// The three questions a status can be asked, and which is which.
 ///
-/// `isUp` means "something is happening here" — right for a tile that lights,
-/// wrong for a number labelled *active*, which counted a connection whose own
-/// row was spinning and saying "Connecting", in green.
+/// `isUp` means "something is happening here" — right for the panel tile's
+/// switch; the tile lights on `isConnected`.
 final class VPNStatusVocabularyTests: XCTestCase {
 
     func testConnectedIsNarrowerThanUp() {

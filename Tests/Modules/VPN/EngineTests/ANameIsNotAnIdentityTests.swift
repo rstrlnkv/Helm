@@ -153,8 +153,8 @@ final class ANameIsNotAnIdentityTests: XCTestCase {
     }
 
     /// The identity two SwiftUI `ForEach`es are keyed by must not repeat.
-    /// `VPNConnection.id` falls back to the *name* when no UUID-shaped token is on
-    /// the line, so the fallback turns the identity question back into the one
+    /// `VPNConnection.id` falls back to `<name>#<namesakes before it>` when no
+    /// UUID-shaped token is on the line, so the fallback turns the identity question back into the one
     /// this whole file is about — and duplicate ids in a `ForEach` are undefined,
     /// not merely ugly.
     func testTheIdentityOfTwoConnectionsIsNeverTheSame() {

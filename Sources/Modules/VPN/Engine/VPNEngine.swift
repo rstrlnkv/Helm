@@ -487,13 +487,6 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         emitState()
     }
 
-    public var defaultConnection: VPNConnection? {
-        if let live = connections.first(where: \.status.isUp) {
-            return live
-        }
-        return VPNListParser.defaultConnection(from: connections, lastUsedName: settings.lastUsedName)
-    }
-
     /// The person's door: a press on a card is never an automatic act, so the
     /// flag the rules pass is not a thing a caller of this can set. Exhaustive,
     /// so a verb added to `VPNVerb` without an arm is a build error.
@@ -1248,7 +1241,6 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private func emitState(force: Bool = false) {
         let payload = StatePayload(connections: connections,
                                     autoConnected: autoConnected.sorted(),
-                                    defaultName: defaultConnection?.name,
                                     lastAutomation: lastAutomation,
                                     lastFailure: lastFailure,
                                     secretsBehindAPrompt: secretsBehindAPrompt,

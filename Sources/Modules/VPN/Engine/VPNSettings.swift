@@ -129,9 +129,4 @@ public struct VPNSettings {
         return noticeBook.tint(for: connectionID, kind: kind,
                                fallback: spinTint(for: kind))
     }
-
-    public var lastUsedName: String? {
-        let s = store.string("lastUsedName", default: "")
-        return s.isEmpty ? nil : s
-    }
 }

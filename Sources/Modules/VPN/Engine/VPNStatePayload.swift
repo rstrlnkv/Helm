@@ -29,7 +29,6 @@ extension VPNEngine {
     public struct StatePayload: Codable, Equatable, Sendable {
         public let connections: [VPNConnection]
         public let autoConnected: [String]
-        public let defaultName: String?
         /// The last firing Helm caused, if any. Optional, so the synthesized
         /// decoder reads it with `decodeIfPresent` and a payload written before
         /// this field existed still decodes — a throw here would cost the page
@@ -64,12 +63,11 @@ extension VPNEngine {
         /// is hand-written.
         public var tunnels: [VPNTunnelState] = []
 
-        init(connections: [VPNConnection], autoConnected: [String], defaultName: String?,
+        init(connections: [VPNConnection], autoConnected: [String],
              lastAutomation: VPNAutomation?, lastFailure: VPNFailure? = nil,
              secretsBehindAPrompt: [String] = [], tunnels: [VPNTunnelState] = []) {
             self.connections = connections
             self.autoConnected = autoConnected
-            self.defaultName = defaultName
             self.lastAutomation = lastAutomation
             self.lastFailure = lastFailure
             self.secretsBehindAPrompt = secretsBehindAPrompt
@@ -80,7 +78,6 @@ extension VPNEngine {
             let box = try decoder.container(keyedBy: CodingKeys.self)
             connections = try box.decode([VPNConnection].self, forKey: .connections)
             autoConnected = try box.decode([String].self, forKey: .autoConnected)
-            defaultName = try box.decodeIfPresent(String.self, forKey: .defaultName)
             lastAutomation = try box.decodeIfPresent(VPNAutomation.self, forKey: .lastAutomation)
             lastFailure = try box.decodeIfPresent(VPNFailure.self, forKey: .lastFailure)
             secretsBehindAPrompt = try box.decodeIfPresent([String].self,

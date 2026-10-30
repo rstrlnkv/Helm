@@ -1,5 +1,4 @@
 import SwiftUI
-import HelmContract
 import HelmRuntime
 import HelmUI
 import Module_VPN_Engine
@@ -26,7 +25,6 @@ extension VPNEngine: VPNWork {}
 @MainActor public final class VPNViewModel: ObservableObject {
     @Published private(set) var connections: [VPNConnection] = []
     @Published private(set) var autoConnected: Set<String> = []
-    @Published private(set) var defaultName: String?
     /// The last rule firing worth reacting to, or nil. Stale firings never get
     /// here — see `apply`.
     @Published private(set) var lastAutomation: VPNAutomation?
@@ -325,7 +323,6 @@ extension VPNEngine: VPNWork {}
     private func apply(_ p: VPNEngine.StatePayload) {
         connections = p.connections
         autoConnected = Set(p.autoConnected)
-        defaultName = p.defaultName
         lastFailure = p.lastFailure
         secretsBehindAPrompt = p.secretsBehindAPrompt
         tunnels = p.tunnels

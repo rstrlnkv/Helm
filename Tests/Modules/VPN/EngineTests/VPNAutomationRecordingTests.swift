@@ -305,7 +305,7 @@ final class VPNAutomationRecordingTests: XCTestCase {
     /// whole page's state down rather than one field of it.
     func test_a_state_payload_without_the_field_still_decodes() throws {
         let legacy = Data("""
-        {"connections":[],"autoConnected":[],"defaultName":null}
+        {"connections":[],"autoConnected":[]}
         """.utf8)
 
         let payload = try JSONDecoder().decode(VPNEngine.StatePayload.self, from: legacy)

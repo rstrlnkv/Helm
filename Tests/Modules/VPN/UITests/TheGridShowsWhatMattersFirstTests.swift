@@ -23,7 +23,7 @@ final class TheGridShowsWhatMattersFirstTests: XCTestCase {
         let settings = VPNSettings(store: store)
         let vm = VPNViewModel(work: work, settings: settings)
         let payload = VPNEngine.StatePayload(connections: connections, autoConnected: [],
-                                             defaultName: nil, lastAutomation: nil)
+                                             lastAutomation: nil)
         work.say(payload)
         for _ in 0..<50 where vm.connections.count != connections.count {
             RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))

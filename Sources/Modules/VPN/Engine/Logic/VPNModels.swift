@@ -16,9 +16,9 @@ public enum VPNStatus: String, Equatable, Sendable, Codable {
     public var isTransitioning: Bool { self == .connecting || self == .disconnecting }
 
     /// Up, and only up. `isUp` answers "is something happening here", which is
-    /// the right question for a tile that lights, and the wrong one for a
-    /// number labelled *active*: it counted a connection whose own row was
-    /// showing a spinner and the word "Connecting", in green.
+    /// the right question for the panel tile's switch, and the wrong one for
+    /// anything that lights or counts: a tunnel whose card says "Connecting…"
+    /// and whose panel row shows a spinner is not connected yet.
     public var isConnected: Bool { self == .connected }
 }
 

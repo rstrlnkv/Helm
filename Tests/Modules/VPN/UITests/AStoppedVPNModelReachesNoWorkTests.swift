@@ -27,7 +27,7 @@ final class AStoppedVPNModelReachesNoWorkTests: XCTestCase {
         VPNEngine.StatePayload(
             connections: [VPNConnection(id: "1", name: "Office", status: .connected,
                                         kind: "IKEv2")],
-            autoConnected: [], defaultName: "Office", lastAutomation: firing,
+            autoConnected: [], lastAutomation: firing,
             tunnels: measuring.map { [VPNTunnelState(name: $0, interface: "utun3", since: nil,
                                                       bytesIn: nil, bytesOut: nil,
                                                       exit: .unknown, speed: nil,

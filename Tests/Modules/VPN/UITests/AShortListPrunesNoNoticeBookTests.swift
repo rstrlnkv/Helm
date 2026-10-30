@@ -25,13 +25,13 @@ final class AShortListPrunesNoNoticeBookTests: XCTestCase {
 
         let work = FakeVPNWork()
         let model = VPNViewModel(work: work, settings: settings)
-        work.say(VPNEngine.StatePayload(connections: [], autoConnected: [], defaultName: nil,
+        work.say(VPNEngine.StatePayload(connections: [], autoConnected: [],
                                         lastAutomation: nil))
         // The control: a later state with another configuration does arrive.
         work.say(VPNEngine.StatePayload(
             connections: [VPNConnection(id: "2", name: "Home", status: .disconnected,
                                         kind: "IKEv2")],
-            autoConnected: [], defaultName: nil, lastAutomation: nil))
+            autoConnected: [], lastAutomation: nil))
         await waitUntil("the second state arrives") { model.connections.map(\.id) == ["2"] }
 
         XCTAssertEqual(VPNNoticeBook.encode(settings.noticeBook), before,

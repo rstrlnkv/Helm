@@ -3,8 +3,7 @@
 
 import Foundation
 
-/// Pure parsing of `scutil --nc list` / `scutil --nc status` output and the
-/// "which VPN is the default" resolution.
+/// Pure parsing of `scutil --nc list` / `scutil --nc status` output.
 enum VPNListParser {
     static func parseStatus(_ token: String) -> VPNStatus {
         switch token.trimmingCharacters(in: .whitespaces).lowercased() {
@@ -99,23 +98,6 @@ enum VPNListParser {
                                         status: parseStatus(statusToken), kind: kind))
         }
         return result
-    }
-
-    /// The default VPN: the sole configured one, else the last-used (if still
-    /// present), else the first.
-    static func defaultConnection(from connections: [VPNConnection],
-                                  lastUsedName: String?) -> VPNConnection? {
-        if connections.count == 1 { return connections.first }
-        // **A lookup key, never a command.** The name comes out of an unsealed
-        // plist any process running as this user can rewrite, and the bound —
-        // that a stored name can only nominate a configuration this Mac
-        // has — is the whole of what stands between a forged value and the tool
-        // being handed a name nobody configured. `AForgedLastUsedNameIsBoundedTests` holds it
-        // from both ends, and says there why sealing the value is refused.
-        if let lastUsedName, let match = connections.first(where: { $0.name == lastUsedName }) {
-            return match
-        }
-        return connections.first
     }
 
     /// The rows of the output, which is **not** the same as its lines.

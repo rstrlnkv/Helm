@@ -266,7 +266,7 @@ final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
     func testAPayloadFromBeforeThisFieldStillDecodesWithEverythingElseInIt() throws {
         let legacy = Data("""
         {"connections":[{"id":"1","name":"Office","status":"connected"}],
-         "autoConnected":[],"defaultName":"Office"}
+         "autoConnected":[]}
         """.utf8)
 
         let payload = try JSONDecoder().decode(VPNEngine.StatePayload.self, from: legacy)

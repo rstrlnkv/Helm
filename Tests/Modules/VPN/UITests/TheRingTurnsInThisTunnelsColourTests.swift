@@ -40,7 +40,7 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
             connections: connections.map {
                 VPNConnection(id: $0.0, name: $0.1, status: .disconnected, kind: "IKEv2")
             },
-            autoConnected: [], defaultName: nil, lastAutomation: nil)
+            autoConnected: [], lastAutomation: nil)
         work.say(payload)
         for _ in 0..<80 where vm.connections.isEmpty {
             RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))

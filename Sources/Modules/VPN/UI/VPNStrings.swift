@@ -1,9 +1,4 @@
-// This file no longer waives the line-length rule, and that is a measurement
-// rather than a preference: its longest line is 311 characters against the 320
-// `.swiftlint.yml` allows for a line carrying eight languages, so the waiver was
-// excusing nothing and the linter said so. The seven other `*Strings.swift`
-// files still carry one and still need it. A row added to a table below may put
-// a line back over, and then the warning is the notice it is meant to be.
+// Inline tables are one language per line; this file needs no line-length waiver.
 
 import Foundation
 import HelmUI
@@ -11,19 +6,11 @@ import Module_VPN_Engine
 
 /// Localized strings for the VPN module UI. "VPN" itself stays untranslated.
 enum VPNStr {
-    // Between a connection's protocol and its state. A middle dot in the
-    // Latin languages; CJK sets `・` instead, which is what `DupStr.found`
-    // and `LfStr.selectedLine` already do. It was written into the view as
-    // part of the status text.
-    //
-    // In the `.lproj` files, not in a table here: seven rows of which six only
-    // said what English says, standing outside everything those files are
-    // guarded by.
-
     static var summary: String {
         // No full stop, in any of them: a module subtitle is a label, and the
-        // English base carries none in any of the nine.
-        L("Connect system VPNs, automatically per app")
+        // English base carries none, in any module: read the `en` value of each
+        // module's summary key in its `UI/Localizable.xcstrings`.
+        L(.connectSystemVPNsAutomaticallyPer)
     }
     /// What the two panel tiles say when macOS holds no configuration.
     ///
@@ -36,7 +23,7 @@ enum VPNStr {
     /// The page's own empty state is `noVPNsSystem`,
     /// which has room to explain.
     static func noVPNs(language: AppLanguage = AppLanguage.current) -> String {
-        L("No VPNs", language: language)
+        L(.noVPNs, language: language)
     }
     /// The page when macOS has no VPN at all.
     ///
@@ -47,7 +34,7 @@ enum VPNStr {
     /// underneath it, which is what it did — one quiet line, no plate, and
     /// nothing to press.
     static var noVPNsSystem: String {
-        L("No VPNs are set up on this Mac")
+        L(.noVPNsAreSetUp)
     }
     /// Why Helm cannot simply offer to make one, and what it *will* do once
     /// there is one — said here because this is the only screen a person with
@@ -57,7 +44,7 @@ enum VPNStr {
     /// this module's pitch and not this reader's need — the reader has no VPN at
     /// all, and the one thing they can do from here is make one.
     static var noVPNsExplain: String {
-        L("Helm connects the configurations macOS holds — by hand, or by rule when an app opens. Add one in System Settings.")
+        L(.helmConnectsTheConfigurationsMacOS)
     }
     /// What to say when the tool refused.
     ///
@@ -163,7 +150,7 @@ enum VPNStr {
         let it = Quoted(name, language: language)
         let press = cardWord(.connect, language: language)
         return L("Press \(press) once for \(it) — a rule cannot unlock its stored secret",
-                 [.ru: "Нажмите «\(press)» для \(it) — правилу сохранённый ключ недоступен",
+                 [.ru: "Для \(it) нужно один раз нажать «\(press)» — правилу сохраненный ключ недоступен",
                   .es: "Pulsa “\(press)” una vez en \(it): una regla no puede acceder a su clave guardada",
                   .fr: "Appuyez une fois sur «\u{00A0}\(press)\u{00A0}» pour \(it)\u{00A0}: une règle ne peut pas accéder à sa clé enregistrée",
                   .de: "Drücke einmal „\(press)“ für \(it) — eine Regel kann den gespeicherten Schlüssel nicht abrufen",
@@ -171,20 +158,6 @@ enum VPNStr {
                   .zh: "请为\(it)按一次“\(press)”——规则无法取用已保存的密钥",
                   .pt: "Clique em “\(press)” uma vez para \(it) — uma regra não consegue acessar a chave salva"],
                  language: language)
-    }
-
-    /// The name a rule still points at, in the picker, when the system no
-    /// longer has it. Marked rather than plain: the entry is where the rule
-    /// currently is and not somewhere it can be put back.
-    static func missingConnection(_ name: String) -> String {
-        L("\(name) — missing",
-          [.ru: "\(name) — больше нет",
-           .es: "\(name) — no existe",
-           .fr: "\(name) — introuvable",
-           .de: "\(name) — nicht vorhanden",
-           .ja: "\(name) — ありません",
-           .zh: "\(name) — 已不存在",
-           .pt: "\(name) — não existe"])
     }
 
     /// The word on a card, from the engine's own table — the one place this
@@ -203,8 +176,8 @@ enum VPNStr {
     static func cardWord(_ word: VPNCardAction.Word,
                          language: AppLanguage = AppLanguage.current) -> String {
         switch word {
-        case .connect: return L("Connect", language: language)
-        case .disconnect: return L("Disconnect", language: language)
+        case .connect: return L(.connect, language: language)
+        case .disconnect: return L(.disconnect, language: language)
         case .cancel: return L("Cancel", language: language)
         }
     }
@@ -213,9 +186,9 @@ enum VPNStr {
     /// third comes from. Not the empty state's sentence shortened: that one says
     /// what the module does, and this reader has already seen it do it.
     static var connectionsHint: String {
-        L("Add another in System Settings and Helm picks it up.")
+        L(.addAnotherInSystemSettings)
     }
-    static var openNetworkSettings: String { L("Open Network settings") }
+    static var openNetworkSettings: String { L(.openNetworkSettings) }
     /// Under a grid that is showing six of more. The **total** is in the word,
     /// not the remainder: a person who has just counted six cards is being told
     /// how many there are, and «Show all (2)» over six drawn cards is a sum
@@ -224,35 +197,38 @@ enum VPNStr {
                                    language: AppLanguage = AppLanguage.current) -> String {
         let n = Count(total, language: language)
         return L("Show all (\(n))",
-                 [.ru: "Показать все (\(n))", .es: "Mostrar todas (\(n))",
-                  .fr: "Tout afficher (\(n))", .de: "Alle anzeigen (\(n))",
-                  .ja: "すべて表示（\(n)）", .zh: "显示全部（\(n)）",
+                 [.ru: "Показать все (\(n))",
+                  .es: "Mostrar todas (\(n))",
+                  .fr: "Tout afficher (\(n))",
+                  .de: "Alle anzeigen (\(n))",
+                  .ja: "すべて表示（\(n)）",
+                  .zh: "显示全部（\(n)）",
                   .pt: "Mostrar todas (\(n))"],
                  language: language)
     }
     /// The same button, pressed. No count: it is the row above that changes,
     /// and the number is on screen in cards.
-    static var showFewerConnections: String { L("Show fewer") }
+    static var showFewerConnections: String { L(.showFewer) }
     /// The rules stand under the tunnel they point at, so the row has no VPN
     /// pop-up left — this menu is what replaced it.
-    static var moveRule: String { L("Move to another VPN") }
-    static var removeRule: String { L("Remove rule") }
+    static var moveRule: String { L(.moveToAnotherVPN) }
+    static var removeRule: String { L(.removeRule) }
     /// Under a group's name when Helm itself is the reason that tunnel is up —
     /// the engine's own book, not a tunnel somebody dialled by hand. It was a
     /// mark on every row until the rules were grouped, where it is one sentence
     /// about the tunnel rather than one per application.
-    static var groupHeldByRules: String { L("Connected by these rules") }
-    /// The same news as `missingConnection`, for a place where the name is
-    /// already on screen: a heading that reads «Old office — Old office is
-    /// gone» says it twice, which is what the first drawing did.
-    static var groupMissing: String { L("No longer in System Settings") }
+    static var groupHeldByRules: String { L(.connectedByTheseRules) }
     /// The left door on a card, and the title of what it opens.
     static func rulesFor(_ vpn: String, language: AppLanguage = AppLanguage.current) -> String {
         let it = Quoted(vpn, language: language)
         return L("Rules for \(it)",
-                 [.ru: "Правила для \(it)", .es: "Reglas de \(it)",
-                  .fr: "Règles de \(it)", .de: "Regeln für \(it)",
-                  .ja: "\(it) の規則", .zh: "\(it) 的规则", .pt: "Regras de \(it)"],
+                 [.ru: "Правила для \(it)",
+                  .es: "Reglas de \(it)",
+                  .fr: "Règles de \(it)",
+                  .de: "Regeln für \(it)",
+                  .ja: "\(it) の規則",
+                  .zh: "\(it) 的规则",
+                  .pt: "Regras de \(it)"],
                  language: language)
     }
     /// The right door, and its popover's title. «About», not «for»: these are
@@ -260,14 +236,17 @@ enum VPNStr {
     static func noticesFor(_ vpn: String, language: AppLanguage = AppLanguage.current) -> String {
         let it = Quoted(vpn, language: language)
         return L("Messages about \(it)",
-                 [.ru: "Сообщения о \(it)", .es: "Mensajes sobre \(it)",
-                  .fr: "Messages à propos de \(it)", .de: "Meldungen zu \(it)",
-                  .ja: "\(it) についての通知", .zh: "关于 \(it) 的消息",
+                 [.ru: "Сообщения о \(it)",
+                  .es: "Mensajes sobre \(it)",
+                  .fr: "Messages à propos de \(it)",
+                  .de: "Meldungen zu \(it)",
+                  .ja: "\(it) についての通知",
+                  .zh: "关于 \(it) 的消息",
                   .pt: "Mensagens sobre \(it)"],
                  language: language)
     }
     /// The left door when nothing points at this configuration yet.
-    static var noRulesYet: String { L("No rules") }
+    static var noRulesYet: String { L(.noRules) }
     /// The one line for rules whose configuration this Mac does not have. Said
     /// once, under the grid, because those rules have no card to be on.
     static func orphanedRules(_ n: Int, language: AppLanguage = AppLanguage.current) -> String {
@@ -285,26 +264,11 @@ enum VPNStr {
     /// Under the two picture questions in the notices popover. The one sentence
     /// a person needs about the change of model: these are this configuration's,
     /// not the module's.
-    static var onlyThisConnection: String { L("Applies to this connection only") }
-    /// The door into arranging the rules, and out of it — the same two words
-    /// the sidebar's own arrangement uses, and the same two keys: this is one
-    /// English word meaning one thing, so the module spells the key rather than
-    /// reaching into `HelmApp`'s table for it (`AutopilotStr.edit` and
-    /// `UninstallerStr.done` do the same).
-    static var arrange: String { L("Edit") }
-    static var arrangeDone: String { L("Done") }
-    /// The place a rule can be dropped in a tunnel that has none yet — without
-    /// it, an empty configuration could never be given its first application by
-    /// dragging. `AppStr.dragModuleHere` is the sidebar's own copy of this
-    /// sentence, one target over.
-    static var dragAppHere: String { L("Drag an app here") }
+    static var onlyThisConnection: String { L(.appliesToThisConnectionOnly) }
     /// Nothing to refresh afterwards: the engine watches the list.
-    static var noVPNsNote: String { L("Helm picks it up on its own — there is nothing to refresh.") }
+    static var noVPNsNote: String { L(.helmPicksItUpOn) }
     static func connections(language: AppLanguage = AppLanguage.current) -> String {
-        L("Connections", language: language)
-    }
-    static var perAppAutomation: String {
-        L("Per-app automation")
+        L(.connections, language: language)
     }
     /// Always on screen, not only in the empty state: the section is headed
     /// "per-app", and `connect(vpnName)` raises a *system* configuration — while
@@ -314,36 +278,16 @@ enum VPNStr {
     /// «that app» pointed at nothing once this became a footer under a list of
     /// many rules — the sentence is read after the rules, not beside one.
     static var perAppScopeNote: String {
-        L("A VPN carries everything this Mac sends, not only the app it names, and it takes a few seconds to come up after the app starts.")
+        L(.aVPNCarriesEverythingThis)
     }
-    static var perAppHint: String {
-        L("Add an app, and Helm connects a VPN when it launches.")
-    }
-    static var rulePickerVPN: String { L("VPN") }
-    static var rulePickerWhen: String { L("Timing") }
+    static var rulePickerWhen: String { L(.timing) }
     static func ruleTiming(_ timing: VPNAppRule.Timing) -> String {
         switch timing {
-        case .launchAndQuit: return L("On launch and quit")
-        case .launchOnly: return L("On launch only")
-        case .quitOnly: return L("On quit only")
-        case .off: return L("Never")
+        case .launchAndQuit: return L(.onLaunchAndQuit)
+        case .launchOnly: return L(.onLaunchOnly)
+        case .quitOnly: return L(.onQuitOnly)
+        case .off: return L(.never)
         }
-    }
-    /// Spanish and Portuguese agree with *la VPN* / *a VPN*, which is what this
-    /// module calls it everywhere else; both said *configurado* of a feminine
-    /// noun.
-    static func ruleVPNMissing(_ name: String,
-                               language: AppLanguage = AppLanguage.current) -> String {
-        let it = Quoted(name, language: language)
-        return L("\(it) is no longer set up — this rule never fires",
-                 [.ru: "\(it) больше не настроен — правило не срабатывает",
-                  .es: "\(it) ya no está configurada: la regla no se ejecuta",
-                  .fr: "\(it) n’est plus configuré — la règle ne se déclenche pas",
-                  .de: "\(it) ist nicht mehr eingerichtet — die Regel greift nie",
-                  .ja: "\(it)は設定されていません。このルールは動作しません",
-                  .zh: "\(it)已不存在，此规则不会生效",
-                  .pt: "\(it) não está mais configurada — a regra nunca dispara"],
-                 language: language)
     }
     /// Why a rule that looks set up does not fire, when the reason is the rule
     /// itself rather than what happens to be running.
@@ -355,18 +299,12 @@ enum VPNStr {
     static func ruleTrustNote(_ verdict: VPNRuleTrust.Verdict) -> String? {
         switch verdict {
         case .act, .runningInstanceUnreadable, .mismatch: return nil
-        case .noIdentityRecorded: return L("Choose this app again to confirm which app it is")
-        case .appNotSigned: return L("This app is not signed — this rule never fires")
+        case .noIdentityRecorded: return L(.chooseThisAppAgainTo)
+        case .appNotSigned: return L(.thisAppIsNotSigned)
         }
     }
     static var addApp: String {
         L("Add app…")
-    }
-    /// Under a rule whose tunnel Helm is holding up at this moment — the one
-    /// thing the list could not say, since a rule that has silently stopped
-    /// firing looks exactly like one that fires every day.
-    static var ruleHoldingNow: String {
-        L("Connected by this rule now")
     }
 
     /// The five words on a card's second line — macOS's own, out of the table
@@ -380,11 +318,11 @@ enum VPNStr {
     /// surfaces cannot come to spell it differently.
     static func status(_ s: VPNStatus) -> String {
         switch s {
-        case .connected: return L("Connected")
-        case .connecting: return L("Connecting…")
-        case .disconnected: return L("Disconnected")
-        case .disconnecting: return L("Disconnecting…")
-        case .unknown: return L("Unknown")
+        case .connected: return L(.connected)
+        case .connecting: return L(.connecting)
+        case .disconnected: return L(.disconnected)
+        case .disconnecting: return L(.disconnecting)
+        case .unknown: return L(.unknown)
         }
     }
 
@@ -394,11 +332,11 @@ enum VPNStr {
     /// picture of the mode it is set to. There is no section heading over the
     /// pair — the popover's own title (`noticesFor`) is the heading.
     static var noticeRuleLabel: String {
-        L("When a rule fires")
+        L(.whenARuleFires)
     }
     /// The other event: nobody asked for this one.
     static var noticeDropLabel: String {
-        L("When a tunnel drops on its own")
+        L(.whenATunnelDropsOn)
     }
     /// The three answers. "Menu bar" and "Notification" are macOS's own words
     /// for its own things — Menüleiste, メニューバー, Mitteilung — read out of
@@ -421,9 +359,9 @@ enum VPNStr {
     static func noticeOption(_ notice: VPNNotice,
                              language: AppLanguage = AppLanguage.current) -> String {
         switch notice {
-        case .silent: return L("Nothing", language: language)
-        case .menuBar: return L("Menu bar", language: language)
-        case .system: return L("Notification", language: language)
+        case .silent: return L(.nothing, language: language)
+        case .menuBar: return L(.menuBar, language: language)
+        case .system: return L(.notification, language: language)
         }
     }
 
@@ -434,19 +372,19 @@ enum VPNStr {
     /// (`VPNNotice.permissionMissing`), and «will be shown» put the consequence
     /// in the passive and the future when it is already the case.
     static var noticeDenied: String {
-        L("macOS is not allowing notifications from Helm, so the name appears in the menu bar instead.")
+        L(.macOSIsNotAllowingNotifications)
     }
 
     /// «Turn» beside a `Toggle` reads as *switch it*, which is what the toggle
     /// itself does; all seven translations already said *rotate*.
     static var spinLabel: String {
-        L("Spin the menu-bar icon")
+        L(.spinTheMenuBarIcon)
     }
     static var spinConnected: String {
-        L("When a rule connects")
+        L(.whenARuleConnects)
     }
     static var spinDisconnected: String {
-        L("When a tunnel goes down")
+        L(.whenATunnelGoesDown)
     }
     /// The cost of the two quiet settings meeting, said where they are set.
     ///
@@ -455,7 +393,7 @@ enum VPNStr {
     /// control that did not exist — in eight languages. The option is «Nothing»
     /// now, and this quotes it.
     static var spinSilentWarning: String {
-        L("With this off and the notice set to Nothing, a rule that connects or drops a tunnel gives no sign at all.")
+        L(.withThisOffAndThe)
     }
 
     // MARK: - The banner a firing posts
@@ -481,16 +419,16 @@ enum VPNStr {
                                       language: AppLanguage = AppLanguage.current) -> String {
         switch kind {
         case .connected:
-            return L("Connected", language: language)
+            return L(.connected, language: language)
         case .disconnected:
             // U+00A0 in the Russian, as macOS writes it: an ordinary space
             // there lets a two-word status break across lines.
-            return L("Not connected", language: language)
+            return L(.notConnected, language: language)
         case .dropped:
             // Not read out of macOS's table, because macOS has no line for
             // this: `VPN_DISCONNECTED` is the state, and the news here is that
             // nobody asked for it. The state is what the body says.
-            return L("VPN dropped", language: language)
+            return L(.vpnDropped, language: language)
         }
     }
 
@@ -504,25 +442,49 @@ enum VPNStr {
                                      language: AppLanguage = AppLanguage.current) -> String {
         switch kind {
         case .connected:
-            return L("\(name) is connected", [.ru: "\(name) подключен", .es: "\(name) está conectado", .fr: "\(name) est connecté", .de: "„\(name)“ ist verbunden", .ja: "\(name)は接続されています", .zh: "\(name)已连接", .pt: "\(name) está conectado"], language: language)
+            return L("\(name) is connected",
+                     [.ru: "\(name) подключен",
+                   .es: "\(name) está conectado",
+                   .fr: "\(name) est connecté",
+                   .de: "„\(name)“ ist verbunden",
+                   .ja: "\(name)は接続されています",
+                   .zh: "\(name)已连接",
+                   .pt: "\(name) está conectado"],
+                     language: language)
         case .disconnected:
-            return L("\(name) is not connected", [.ru: "\(name) не подключен", .es: "\(name) no está conectado", .fr: "\(name) n’est pas connecté", .de: "„\(name)“ ist nicht verbunden", .ja: "\(name)は接続されていません", .zh: "\(name)未连接", .pt: "\(name) não está conectado"], language: language)
+            return L("\(name) is not connected",
+                     [.ru: "\(name) не подключен",
+                   .es: "\(name) no está conectado",
+                   .fr: "\(name) n’est pas connecté",
+                   .de: "„\(name)“ ist nicht verbunden",
+                   .ja: "\(name)は接続されていません",
+                   .zh: "\(name)未连接",
+                   .pt: "\(name) não está conectado"],
+                     language: language)
         case .dropped:
             // «оборвался», not «отключился»: Russian had six words for two
             // events and the pair was crossed — «отключается» is the one that
             // was asked for, which is the other row's news entirely.
-            return L("\(name) went down on its own", [.ru: "\(name) оборвался сам", .es: "\(name) se desconectó por sí solo", .fr: "\(name) s’est déconnecté tout seul", .de: "„\(name)“ wurde von selbst getrennt", .ja: "\(name)が自動的に切断されました", .zh: "\(name)已自行断开", .pt: "\(name) caiu sozinho"], language: language)
+            return L("\(name) went down on its own",
+                     [.ru: "\(name) оборвался сам",
+                   .es: "\(name) se desconectó por sí solo",
+                   .fr: "\(name) s’est déconnecté tout seul",
+                   .de: "„\(name)“ wurde von selbst getrennt",
+                   .ja: "\(name)が自動的に切断されました",
+                   .zh: "\(name)已自行断开",
+                   .pt: "\(name) caiu sozinho"],
+                     language: language)
         }
     }
 
     // MARK: - The strip
 
     /// How long the tunnel carrying the default route has been up.
-    static var tileUptime: String { L("Connected for") }
+    static var tileUptime: String { L(.connectedFor) }
     /// The column beside it: bytes received since the tunnel came up.
-    static var tileDown: String { L("Downloaded") }
+    static var tileDown: String { L(.downloaded) }
     /// Bytes sent over the same span.
-    static var tileUp: String { L("Uploaded") }
+    static var tileUp: String { L(.uploaded) }
     /// The fourth column, filled only after a press of `measureSpeed` — there
     /// is no passive way to read a link's throughput, so it starts empty and
     /// says so with a dash rather than a number nobody asked for.
@@ -532,7 +494,7 @@ enum VPNStr {
     /// the bytes carry theirs in the value, and this one carried it in the
     /// label because its value is two numbers and cannot. The unit went down a
     /// line instead, so all four labels are a plain word.
-    static var tileSpeed: String { L("Speed") }
+    static var tileSpeed: String { L(.speed) }
 
     /// The unit the speed column's two figures are in, on its note line.
     ///
@@ -542,12 +504,12 @@ enum VPNStr {
     /// any of them — a different abbreviation from the one every one of these
     /// eight already shipped inside «Speed, Mbit/s», and not the thing being
     /// named.
-    static var speedUnit: String { L("Mbit/s") }
+    static var speedUnit: String { L(.megabitsPerSecond) }
 
     /// Under both byte figures: what span they are a total over. Both, not one
     /// — every column carries a note so the row has one shape, and a count with
     /// no span under it is a number the reader has to guess the meaning of.
-    static var bytesSince: String { L("since the tunnel came up") }
+    static var bytesSince: String { L(.sinceTheTunnelCameUp) }
 
     /// Under the first column: which tunnel the row is about, and the
     /// interface it came up on.
@@ -595,22 +557,22 @@ enum VPNStr {
     /// tunnel gets measured rather than that this one cannot be: the reader is
     /// one press of a segment away from the one that can.
     static var speedIsTheRoutedTunnels: String {
-        L("Speed is measured on the tunnel that carries the traffic")
+        L(.speedIsMeasuredOnThe)
     }
 
     /// The button's first press.
-    static var measureSpeed: String { L("Measure speed") }
+    static var measureSpeed: String { L(.measureSpeed) }
     /// The same button once a reading already sits in the tile — the label
     /// says a fresh number will replace the stale one, not that none exists.
-    static var measureAgain: String { L("Measure again") }
+    static var measureAgain: String { L(.measureAgain) }
     /// While the transfer this button started is running.
-    static var measuring: String { L("Measuring…") }
+    static var measuring: String { L(.measuring) }
 
     /// The bare verdict, for the Mac that has no default-route tunnel to name
     /// a country for. `trafficThroughTunnel(country:)` is the other half of
     /// this pair — two members rather than one with an empty half, since a
     /// sentence ending in a dash and nothing is a sentence that lost its end.
-    static var trafficThroughTunnel: String { L("Traffic goes through the tunnel") }
+    static var trafficThroughTunnel: String { L(.trafficGoesThroughTheTunnel) }
     /// **The hero's second line is the country's own name, and nothing else.**
     ///
     /// It was a sentence — «leaving from the Netherlands» — with the name
@@ -629,7 +591,7 @@ enum VPNStr {
     /// reads as neither. Never drawn beside a verdict that is not
     /// `throughTunnel`: there is no exit country to be about when the traffic
     /// is going round the tunnel.
-    static var exitCountryUnknown: String { L("The exit country is not known") }
+    static var exitCountryUnknown: String { L(.theExitCountryIsNot) }
 
     /// **What the tunnel carries around itself, in one clause under the
     /// verdict** — or nil when it carries nothing around itself at all.
@@ -658,18 +620,18 @@ enum VPNStr {
     /// The dull case nearly every tunnel declares, so that printers and NAS
     /// boxes keep working. Worth one line because the sentence above it claims
     /// everything.
-    static var excludedLocal: String { L("Except the local network") }
+    static var excludedLocal: String { L(.exceptTheLocalNetwork) }
     /// `17.0.0.0/8`. The one exclusion worth naming: not a printer — every Apple
     /// service this Mac talks to.
-    static var excludedApple: String { L("Except Apple\u{2019}s own servers") }
+    static var excludedApple: String { L(.exceptAppleOwnServers) }
     static var excludedLocalAndApple: String {
-        L("Except the local network and Apple\u{2019}s own servers")
+        L(.exceptTheLocalNetworkAnd)
     }
     /// Anything the two sentences above do not cover. General because a range is
     /// not something a reader can act on, and because a count cannot be
     /// interpolated into eight grammars.
     static var excludedSomeTraffic: String {
-        L("Some traffic goes around the tunnel, not through it")
+        L(.someTrafficGoesAroundThe)
     }
 
     /// The hero with nothing to be about.
@@ -679,7 +641,7 @@ enum VPNStr {
     /// for the first block on it: a slot that disappears takes the page's
     /// shape with it, and a reader who looked at the top of this page
     /// yesterday finds something else there today.
-    static var noTunnelUp: String { L("No tunnel is up") }
+    static var noTunnelUp: String { L(.noTunnelIsUp) }
     /// And what to do about it, in **one** sentence.
     ///
     /// It was two, and the second one — «and its country, its counters and its
@@ -691,16 +653,16 @@ enum VPNStr {
     /// the state a Mac with no VPN shows every time would have grown a line in
     /// three more languages and pushed the first card down.
     static var noTunnelUpNote: String {
-        L("Traffic is leaving this Mac directly — bring a connection up below.")
+        L(.trafficIsLeavingThisMac)
     }
     /// The bad verdict: a rule brought a tunnel up, and macOS's own route
     /// table sent the traffic around it anyway — the one outcome this check
     /// exists to catch, since a card reading "Connected" says nothing about
     /// where the packets actually went.
-    static var trafficBesideTunnel: String { L("Traffic is not going through the tunnel") }
+    static var trafficBesideTunnel: String { L(.trafficIsNotGoingThrough) }
     /// Neither verdict: the probe itself failed, which is not the same news
     /// as the bad one above and must not be read as it.
-    static var trafficUnknown: String { L("Could not check where the traffic goes") }
+    static var trafficUnknown: String { L(.couldNotCheckWhereThe) }
 
     /// The country in the app's own language, from the two-letter code the
     /// exit probe answered. Never the service's own spelling of it — a third

@@ -71,8 +71,8 @@ final class StringsLiveInLprojTests: XCTestCase {
     /// Every entry here is a decision somebody made and can be argued with;
     /// that is the point of writing them down. It replaced a length threshold —
     /// "fail if the key is 20 characters or more" — which did no work at all:
-    /// the longest legitimate identity in the tree is `Notification` at twelve,
-    /// so the rule fired on none of the fifty-five below, while `Show all`,
+    /// most legitimate identities are a word or two, so a length rule fired on
+    /// almost none of the entries below, while `Show all`,
     /// `Widget size` and `Close tab` could have shipped untranslated in all
     /// seven and passed. A threshold hides the decision; a list makes it.
     ///
@@ -225,7 +225,6 @@ final class StringsLiveInLprojTests: XCTestCase {
         // «Versión», «バージョン», «版本», «Versão».
         "Version": [.fr, .de],
         "Video": [.de],
-        "VPN": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         "🌐︎": [.ru, .es, .fr, .de, .ja, .zh, .pt],
         // Apple's own name for its material. macOS keeps it Latin in all eight
         // languages (`Appearance.appex`, key `Liquid Glass`); German alone

@@ -55,12 +55,16 @@ struct VPNPanelTile: View {
     /// is the panel saying this Mac is protected while it is not. This is the
     /// surface somebody glances at before sending something they would not send
     /// in clear.
-    private var anyConnected: Bool {
+    var anyConnected: Bool {
         vm.connections.contains(where: \.status.isConnected)
     }
 
+    /// The row's dot, by the same word as `anyConnected` above: whether a
+    /// tunnel is on, not whether it is on its way.
+    static func lit(_ c: VPNConnection) -> Bool { c.status.isConnected }
+
     private func connectionRow(_ c: VPNConnection) -> some View {
-        // Three questions, and the dot and the switch used to share one answer.
+        // Three questions, each with its own answer.
         // Whether traffic is on the tunnel is `isConnected` (the dot, above);
         // whether the switch may be touched at all is `VPNCardAction`, which is
         // the engine's to answer — it says yes while a handshake runs, so the
@@ -68,7 +72,7 @@ struct VPNPanelTile: View {
         // out. Where it *stands* is the third question, at the `Toggle` below.
         let action = VPNCardAction.of(c.status)
         return HStack(spacing: 8) {
-            HelmStatusDot(active: c.status.isConnected)
+            HelmStatusDot(active: Self.lit(c))
             Text(c.name).lineLimit(1)
             Spacer(minLength: 8)
             if c.status.isTransitioning { ProgressView().controlSize(.small) }

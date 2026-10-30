@@ -41,7 +41,7 @@ final class ADropIsAnnouncedOnItsOwnSettingTests: XCTestCase {
             connections: [VPNConnection(id: "A1", name: "Office",
                                         status: kind == .connected ? .connected : .disconnected,
                                         kind: "IKEv2")],
-            autoConnected: [], defaultName: "Office", lastAutomation: firing)
+            autoConnected: [], lastAutomation: firing)
         work.say(payload)
         for _ in 0..<500 where model.lastAutomation == nil { await Task.yield() }
         await model.announcement?.value

@@ -29,7 +29,7 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
         work.say(VPNEngine.StatePayload(
             connections: [VPNConnection(id: "A1", name: "Office",
                                         status: .connected, kind: "IKEv2")],
-            autoConnected: ["Office"], defaultName: "Office", lastAutomation: automation))
+            autoConnected: ["Office"], lastAutomation: automation))
     }
 
     /// Waits on the announcement itself rather than on a count of yields: the

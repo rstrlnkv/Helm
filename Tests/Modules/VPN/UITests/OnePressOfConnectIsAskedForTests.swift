@@ -44,7 +44,7 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
         var payload = VPNEngine.StatePayload(
             connections: [VPNConnection(id: "1", name: "Office", status: .disconnected,
                                         kind: "IPSec")],
-            autoConnected: [], defaultName: "Office", lastAutomation: nil)
+            autoConnected: [], lastAutomation: nil)
         payload.secretsBehindAPrompt = ["Office"]
         work.say(payload)
         pump { !vm.connections.isEmpty }
@@ -121,7 +121,7 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
         var payload = VPNEngine.StatePayload(
             connections: [VPNConnection(id: "id-One", name: "One", status: .disconnected,
                                         kind: "IPSec")],
-            autoConnected: [], defaultName: nil, lastAutomation: nil)
+            autoConnected: [], lastAutomation: nil)
         payload.secretsBehindAPrompt = locked
         work.say(payload)
         pump { !vm.connections.isEmpty }

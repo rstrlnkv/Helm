@@ -125,9 +125,16 @@ struct VPNConnectionCard: View {
 
     // MARK: - What the card says without being opened
 
+    /// **`isConnected`, not `isUp`.** The dot and the button's colour are the
+    /// page's answer to "which one is up", and `VPNStatus.isConnected`'s own doc
+    /// comment says why: `isUp` includes `.connecting`, and a green mark on
+    /// a tunnel three seconds into a handshake says the Mac is protected while
+    /// it is not.
+    static func lit(_ connection: VPNConnection) -> Bool { connection.status.isConnected }
+
     private var header: some View {
         HStack(spacing: HelmSpace.s4) {
-            HelmStatusDot(active: connection.status.isConnected)
+            HelmStatusDot(active: Self.lit(connection))
             Text(connection.name).font(.system(size: 13, weight: .semibold))
                 .lineLimit(1)
                 .help(connection.name)
@@ -147,7 +154,7 @@ struct VPNConnectionCard: View {
         } label: {
             Image(systemName: VPNCardGlyph.of(action))
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(connection.status.isConnected
+                .foregroundStyle(Self.lit(connection)
                                  ? HelmSignal.success : HelmText.quiet)
                 .frame(width: 28, height: 28)
                 .background(Circle().fill(HelmSurface.onPanelFill))
