@@ -62,9 +62,7 @@ final class AStaleHistoryIsNeverHandedToThePageTests: XCTestCase {
         XCTAssertFalse(engine.historyRefused, "precondition: it is Helm's own")
 
         XCTAssertEqual(engine.history, [])
-        let command = EngineCommand(name: AutopilotCommand.history.rawValue)
-        let reply = try await engine.transport.send(command)
-        let handed = try JSONDecoder().decode([ActionRecord].self, from: reply)
+        let handed = await engine.readHistory()
         XCTAssertEqual(handed, [], "the page was handed a record older than the window")
     }
 

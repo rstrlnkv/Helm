@@ -41,7 +41,7 @@ final class TheOfferAndTheChooserAgreeWhichFolderIsWatchedTests: XCTestCase {
         -> (offer: Bool, chooser: Bool?) {
         let folder = WatchedFolder(id: "w", path: watched)
         let model = AutopilotViewModel(
-            vm: ModuleViewModel(transport: AutopilotWire(folders: [folder])),
+            work: FakeAutopilotWork(folders: [folder]), historyChanges: AsyncStream { _ in },
             presetFolders: FakePresetFolders(home: home.path), home: home.path)
         await model.load()
         let chosen = model.draftFolder(at: candidate)

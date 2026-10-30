@@ -117,9 +117,15 @@ final class TheDescriptorWalkHoldsItsGroundTests: XCTestCase {
         var throughAFolder = 0, overALink = 0
         var leaked: [String] = []
         flipper.start()
-        let deadline = Date().addingTimeInterval(4)
+        // Four seconds once both kinds of read have happened; up to ten while
+        // one has not, so a loaded machine waits for its evidence instead of
+        // failing on its absence. A read through the folder needs it to stay a
+        // folder from the open to the child's facts, which a swap with no pause
+        // can starve under load.
+        let enough = Date().addingTimeInterval(4), ceiling = Date().addingTimeInterval(10)
         var reads = 0
-        while Date() < deadline, reads < 20_000 {
+        while Date() < ceiling,
+              (reads < 20_000 && Date() < enough) || throughAFolder == 0 || overALink == 0 {
             reads += 1
             let files = reader.reading(in: watched.path, depth: 3).files
             if files.contains(where: { $0.name == "ok.pdf" }) { throughAFolder += 1 }
@@ -211,8 +217,8 @@ final class TheDescriptorWalkHoldsItsGroundTests: XCTestCase {
     }
 }
 
-/// Swaps two directory entries atomically, as fast as it can, on a thread of
-/// its own, until told to stop.
+/// Swaps two directory entries atomically, on a thread of its own, until told
+/// to stop — each state held up to 200 µs, so a walk can land in either.
 private final class Flipper: @unchecked Sendable {
     private let a: String, b: String
     private let lock = NSLock()
@@ -226,7 +232,10 @@ private final class Flipper: @unchecked Sendable {
         Thread.detachNewThread { [self] in
             var swaps = 0
             while lock.withLock({ running }) {
-                if renamex_np(a, b, UInt32(RENAME_SWAP)) == 0 { swaps += 1 }
+                if renamex_np(a, b, UInt32(RENAME_SWAP)) == 0 {
+                    swaps += 1
+                    usleep(UInt32.random(in: 0...200))
+                }
             }
             // Leave the real folder under its own name.
             if (try? FileManager.default.destinationOfSymbolicLink(atPath: a)) != nil {

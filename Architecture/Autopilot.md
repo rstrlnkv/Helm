@@ -41,3 +41,25 @@ A per-rule fact stays per-rule, and a module macOS is blocking is marked from th
 permission and not from the switch. A module-wide suppression marked on every switched-on
 rule says "paused" about rules that are merely waiting, and a page reading its own enabled
 flag shows "Active" for a module that has been inert all session.
+
+## How Autopilot's model reaches its engine
+
+`AutopilotViewModel` is built with the engine by the descriptor's `makeModule` and held by
+the host for the life of the module, so it asks the engine nothing when it is built: the
+page calls `appear()` at every mount, which reads the folders, their status and the
+history, as a page that owned its model did at each opening. The model calls the engine
+through its `AutopilotWork` port, which the engine conforms to, and every answer is a
+return. The reads and writes of the rule set and the history run off the cooperative
+pool and never on the engine's own queue, because the status and the clearing of the
+history take that queue synchronously inside; a dry run, a Run now and both returns run
+on that queue, serialised with the hourly sweep and the FSEvents leg. Run now refuses a
+folder that is switched off in the engine, not only at the button. The gates are below
+these calls and are not reached around.
+
+The one thing the engine says unasked, that a pass went into the history, is not a call of
+the model's. The engine is built with a `historyChanged` closure, called only after the
+history and its seal were written; the descriptor makes it yield into a one-slot
+`AsyncStream`, and the model re-reads the history on it once a page has opened the module.
+The descriptor's `stop(_:)` closes the model before the engine's `deactivate()`.
+`AStoppedAutopilotModelReachesNoWorkTests.testBuildingTheModelAsksTheEngineNothing` holds
+the first; `TheModelsDoorNeverWaitsOnTheEnginesQueueTests` holds the queue rule.

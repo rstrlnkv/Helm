@@ -144,6 +144,28 @@ final class RuleRunnerTests: XCTestCase {
         XCTAssertEqual(outcome, .refused(.outOfScope))
     }
 
+    /// The act, not the record: a file that exists outside `WatchScope` is
+    /// handed to the runner with a move and a rename whose destinations are
+    /// fine, and it has to stay exactly where it was. Deleting the scope check
+    /// at the top of `RuleRunner.run` leaves the refusal row's reason to the
+    /// other tests; this one is red on the disk.
+    func testAFileOutsideTheWatchScopeIsNotMovedOrRenamed() throws {
+        let elsewhere = scratchDirectory("elsewhere")
+        let file = try write("a.pdf", in: elsewhere)
+        let destination = root.appendingPathComponent("Sorted")
+
+        let moved = runner.run(plan(file, .move(to: destination.path)), at: file.path, key: TestRuleKey.material)
+        XCTAssertEqual(moved, .refused(.outOfScope))
+        XCTAssertTrue(exists(file.path), "the out-of-scope file was moved")
+        XCTAssertFalse(exists(destination.appendingPathComponent("a.pdf").path),
+                       "something arrived at the destination")
+
+        let renamed = runner.run(plan(file, .rename(pattern: "{name}-final")), at: file.path, key: TestRuleKey.material)
+        XCTAssertEqual(renamed, .refused(.outOfScope))
+        XCTAssertTrue(exists(file.path), "the out-of-scope file was renamed")
+        XCTAssertFalse(exists(elsewhere.appendingPathComponent("a-final.pdf").path))
+    }
+
     // MARK: - Running twice
 
     /// The same rule over the same file a second time does nothing.

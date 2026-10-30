@@ -23,8 +23,8 @@ import HelmRuntime
 final class SealedRules: @unchecked Sendable {
     private let store: NamespacedStore
     /// The rule set is read from the engine's queue — the sweep timer and the
-    /// FSEvents leg both land there first — and from the transport, which
-    /// answers `folders` and `status` on whatever thread asked. Two threads at
+    /// FSEvents leg both land there first — and from the model's door, which
+    /// reads `folders` and `status` off the cooperative pool. Two threads at
     /// least, so the key and the verdict carry their own lock rather than
     /// borrowing one held elsewhere.
     private let keys: RuleKeyPort
@@ -40,7 +40,7 @@ final class SealedRules: @unchecked Sendable {
     /// indivisible act, and so is saving a rule set.
     ///
     /// The four callers that read the rule set — the sweep timer, FSEvents, the
-    /// transport and the watch refresh — each record what they decided in
+    /// model's door and the watch refresh — each record what they decided in
     /// `refusal`. Unordered, that write says what was true of the file at the
     /// moment *that* read snapshotted it: a read which began before something
     /// edited the plist could finish after the read that saw the edit and put
@@ -364,7 +364,7 @@ final class SealedRules: @unchecked Sendable {
     /// forward is to throw it away — which is why `discardRefusedRules` takes
     /// only that one.
     ///
-    /// Read by `AutopilotCommand.status`, which is how the page draws a card
+    /// Read through `AutopilotEngine.status`, which is how the page draws a card
     /// saying the rules could not be read instead of an empty state saying there
     /// were never any.
     var refusal: RuleRefusal? { trustLock.withLock { refusalReason } }

@@ -6,7 +6,7 @@ import SwiftUI
 /// The module's page: the folders being watched, and each one's rules in the
 /// order they will be tried.
 struct AutopilotSettingsPage: View {
-    @StateObject private var rvm: AutopilotViewModel
+    @ObservedObject var rvm: AutopilotViewModel
     @State private var editing: EditingRule?
     @State private var diskAccess: PermissionState = .granted
 
@@ -19,10 +19,6 @@ struct AutopilotSettingsPage: View {
         /// still the preset's own.
         var preset: RulePreset?
         var id: String { rule.id }
-    }
-
-    init(vm: ModuleViewModel) {
-        _rvm = StateObject(wrappedValue: AutopilotViewModel(vm: vm))
     }
 
     var body: some View {
@@ -98,6 +94,9 @@ struct AutopilotSettingsPage: View {
         // frame (`helmPageStandsOnStillContent`).
         .helmPageStandsOnStillContent()
         .helmTracksFullDiskAccess($diskAccess)
+        // At every mount: the model outlives the page, and the folders' states
+        // and whether anything is watching are re-asked at each opening.
+        .task { await rvm.appear() }
         .animation(HelmMotion.interface, value: rvm.folders.count)
         // A sweep's report and a return's report grow into the banner without
         // moving focus, so they are silent to VoiceOver unless said.
@@ -179,9 +178,8 @@ struct AutopilotSettingsPage: View {
             .listStyle(.inset)
             // No history read here on purpose. The engine acts on a timer and
             // on files arriving, and it *announces* those passes — the view
-            // model subscribes for the life of the page and re-asks, so a
-            // `.task` here would only re-read the same store on open and on
-            // every remount after an off-screen idle.
+            // model subscribes for the life of the module and re-asks, so a
+            // `.task` here would only read the same store twice on open.
         }
     }
 

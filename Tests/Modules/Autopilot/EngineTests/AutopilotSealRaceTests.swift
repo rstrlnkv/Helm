@@ -68,8 +68,8 @@ private final class HoldingStore: KeyValueStore, @unchecked Sendable {
 
 /// Two threads asking the engine whose rules these are.
 ///
-/// The rule set is read from the sweep timer, from FSEvents, from the transport
-/// and from the watch refresh — four callers, none of them serialised with the
+/// The rule set is read from the sweep timer, from FSEvents, from the model's
+/// door and from the watch refresh — four callers, none of them serialised with the
 /// others. Each read decides whether the stored rules are Helm's own and records
 /// that decision in `rulesRefused`, which is the only signal a person has that
 /// something else wrote their rules. So the reads have to be ordered against

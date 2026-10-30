@@ -55,6 +55,10 @@ call the model made (Architecture/Disk.md § How Disk's model reaches its engine
 Duplicates' model does the same for a search and for a removal, and asks the keychain
 for the stored keep policy in `appear()` (Architecture/Duplicates.md § How Duplicates'
 model reaches its engine).
+Autopilot's model calls the same way and takes the engine's one unasked signal, a pass
+written into the history, on a one-slot stream the descriptor makes, as the Uninstaller's
+Trash arrivals travel (Architecture/Autopilot.md § How Autopilot's model reaches its
+engine).
 
 The host reaches a background scan through the live module's `backgroundScan`, which is
 the descriptor's `backgroundScan(_:)` (`Sources/HelmUI/ModuleDescriptor.swift`): every

@@ -5,9 +5,30 @@ import HelmUI
 import Module_Autopilot_Engine
 import SwiftUI
 
+/// What the model asks of the engine: the one door. Every answer is the return
+/// value, so there is no reply that can be lost. The one thing the engine says
+/// unasked — a pass went into the history — does not come through here: the
+/// descriptor hands the model a stream of it.
+protocol AutopilotWork: AnyObject, Sendable {
+    func readFolders() async -> [WatchedFolder]
+    func readStatus() async -> AutopilotStatus
+    func readHistory() async -> [ActionRecord]
+    /// Whether it was taken is not in the answer: the model re-reads (`sendFolders`).
+    func save(_ folders: [WatchedFolder]) async
+    func dropRefusedRules() async
+    func dropHistory() async
+    func dryRun(_ draft: WatchedFolder) async -> [PreviewRow]
+    /// Nil for a folder the engine does not hold or that is switched off.
+    func sweepNow(folderID: String) async -> SweepReport?
+    func putBack(record id: String) async -> UndoReport
+    func putBack(run id: String) async -> UndoReport
+}
+
+extension AutopilotEngine: AutopilotWork {}
+
 /// The module's state: which folders are watched, what their rules are, and
 /// what a rule would do before it is allowed to do it.
-@MainActor final class AutopilotViewModel: ObservableObject {
+@MainActor public final class AutopilotViewModel: ObservableObject {
     @Published private(set) var folders: [WatchedFolder] = []
     /// The dry run currently on screen, keyed by rule id so a stale answer for
     /// a rule nobody is looking at cannot land in the open editor.
@@ -19,8 +40,7 @@ import SwiftUI
     /// watching, and the report stayed on screen reporting on nothing.
     private var bannerFolderID: WatchedFolder.ID?
 
-    let vm: ModuleViewModel
-    private let client: TransportClient
+    private let work: any AutopilotWork
     /// Where this Mac keeps the folders the presets are about, and the home
     /// directory `WatchScope` measures against. Both injected for the same
     /// reason: a test must be able to stand a moved Downloads, or one that leads
@@ -28,68 +48,64 @@ import SwiftUI
     private let presetFolders: any PresetFolderPort
     private let home: String
 
-    /// **No shared instance, deliberately.**
-    ///
-    /// There was one, cached and keyed to the host view model, justified by «a
-    /// widget rebuilt on every body pass». Autopilot has no widget — its
-    /// descriptor answers `.utility` — and nothing ever called it, so the cache
-    /// was never filled and the `dropWhenDisabled` registration never happened.
-    /// The one real caller is the settings page, whose `StateObject` already
-    /// builds this exactly once for the life of the page.
-    ///
-    /// If Autopilot does get a tile, the thing to bring back is this cache: the
-    /// initialiser asks the engine for the folders and the history, and a view
-    /// that rebuilds would send both requests again every time.
-    /// The load the initialiser starts, held rather than fired and forgotten.
-    ///
-    /// A task no caller can reach is a task no caller can wait out: every test
-    /// that builds this model and then calls `load()` itself has a second
-    /// reader racing this one on the same wire, and the race surfaced as a
-    /// history read landing *after* a count of them had been taken — «3 is not
-    /// equal to 2», in full-suite runs only, measured at 8 constructions in
-    /// 200. The page is unaffected: it builds the model once, waits for
-    /// nothing, and reads whatever state the load publishes.
-    private(set) var firstLoad: Task<Void, Never>?
-    private var eventsTask: Task<Void, Never>?
+    /// Set by `stop()`: whatever is pressed after reaches no work.
+    private(set) var closed = false
+    /// Whether a page has opened the module since launch. Until one has, an
+    /// announced pass is not read: the first `appear()` reads everything, and a
+    /// ping is no reason to read the rule store early.
+    private var loaded = false
+    private var listening: Task<Void, Never>?
 
-    init(vm: ModuleViewModel,
+    /// Built once, by the descriptor's `makeModule`, at launch, and held by the
+    /// host for the life of the module — so **the initialiser asks the engine
+    /// nothing**: a load here would read the rule store, and with it the
+    /// keychain key, at every launch of somebody who never opened Autopilot
+    /// (`AStoppedAutopilotModelReachesNoWorkTests`). The page calls `appear()`.
+    ///
+    /// The stream is captured here and `self` re-acquired per signal, the way
+    /// `DuplicatesViewModel` does and for the reason it documents: handing the
+    /// loop to an instance method holds `self` for a call that never returns,
+    /// and the `deinit` below then cancels nothing. The subscription lives here
+    /// and not in the page, so a pass the engine announces while no page is
+    /// open lands in the model, and the page finds it there when it opens.
+    init(work: any AutopilotWork,
+         historyChanges: AsyncStream<Void>,
          presetFolders: any PresetFolderPort = SystemPresetFolders(),
          home: String = NSHomeDirectory()) {
-        self.vm = vm
-        self.client = TransportClient(vm.transport)
+        self.work = work
         self.presetFolders = presetFolders
         self.home = home
-        firstLoad = Task { await load() }
-        // The stream is captured here and `self` re-acquired per event, the way
-        // `DuplicatesViewModel` does and for the reason it documents: handing
-        // the loop to an instance method holds `self` for a call that never
-        // returns, and the `deinit` below then cancels nothing.
-        //
-        // The subscription lives here and not in the page: pages unmount off
-        // screen (`helmIdlesOffScreen`) while this model keeps its state, so an
-        // event lands as one published change with nobody drawing — instead of
-        // a `.task` re-reading the store on every remount.
-        let events = vm.transport.events
-        eventsTask = Task { [weak self] in
-            for await event in events {
-                guard let self else { break }
-                await self.handle(event)
+        listening = Task { [weak self] in
+            for await _ in historyChanges {
+                guard let self, !self.closed else { break }
+                guard self.loaded else { continue }
+                await self.loadHistory()
             }
         }
     }
 
-    deinit { eventsTask?.cancel() }
+    deinit { listening?.cancel() }
 
-    /// The engine saying its history changed — on a timer or on a file
-    /// arriving, with nobody pressing anything. The event carries no data; the
-    /// model re-asks, so the read that fills the page stays the engine's.
-    private func handle(_ event: EngineEvent) async {
-        guard AutopilotEvent(rawValue: event.name) == .history else { return }
-        await loadHistory()
+    /// Closes the model: the host calls it before the engine's `deactivate()`.
+    /// Whatever is pressed after reaches no work, and the announcement
+    /// subscription lets go.
+    func stop() {
+        closed = true
+        listening?.cancel()
+        listening = nil
+    }
+
+    /// The page opening, at every mount: the folder states and `watching` are
+    /// facts of the world, re-asked at each opening.
+    func appear() async {
+        guard !closed else { return }
+        await load()
+        loaded = true
     }
 
     func load() async {
-        folders = await client.request(AutopilotCommand.folders) ?? []
+        guard !closed else { return }
+        folders = await work.readFolders()
         // In the turn the folders land, before the status is awaited: rules that
         // arrive with this reading must not stand beside a block that was drawn
         // for a page without them. Hide only — whether to *offer* waits for the
@@ -99,14 +115,11 @@ import SwiftUI
         // not a fact on its own: the engine hands `[]` out for a rule set
         // something else wrote exactly as it does for a Mac that never had one,
         // and a folder that is gone looks exactly like one with nothing to do.
-        let status = await client.request(AutopilotCommand.status, as: AutopilotStatus.self)
-        refusal = status?.refusal
-        folderStates = status?.folders ?? [:]
-        watching = status?.watching
-        // A lost reply leaves this false, which is the page it was already
-        // drawing: refusing every return is a claim about somebody's Mac, and
-        // a request that came back with nothing cannot make one.
-        historyRefused = status?.historyRefused ?? false
+        let status = await work.readStatus()
+        refusal = status.refusal
+        folderStates = status.folders
+        watching = status.watching
+        historyRefused = status.historyRefused
         refreshPresets()
         await loadHistory()
     }
@@ -137,10 +150,6 @@ import SwiftUI
     }
 
     /// Why none of the stored rules are running, or `nil` when they are.
-    ///
-    /// A lost reply leaves this `nil`, which is the page it was already drawing:
-    /// a refusal is a claim about somebody's Mac and a request that came back
-    /// with nothing cannot make one.
     @Published private(set) var refusal: RuleRefusal?
 
     /// What reading each watched folder came to, by folder id, and whether a
@@ -184,7 +193,8 @@ import SwiftUI
     /// is a save, and while the rules are refused a save is refused with them —
     /// so without this the page never takes another edit.
     func discardRefusedRules() async {
-        await client.send(AutopilotCommand.discardRefusedRules)
+        guard !closed else { return }
+        await work.dropRefusedRules()
         await load()
     }
 
@@ -208,10 +218,11 @@ import SwiftUI
     @Published private(set) var bannerRun: ActionRun?
 
     /// Asked for rather than pushed, like the folders — the announcement that
-    /// prompts a re-ask (`AutopilotEvent.history`) carries no data, so the
+    /// prompts a re-ask (the descriptor's stream) carries no data, so the
     /// engine's read stays the only one that judges the seal and the window.
     func loadHistory() async {
-        history = await client.request(AutopilotCommand.history) ?? []
+        guard !closed else { return }
+        history = await work.readHistory()
         // The one place the grouping is computed. Five hundred rows is not a
         // thing anybody can act on, and "the twelve files that arrived at
         // 14:22" is.
@@ -235,8 +246,9 @@ import SwiftUI
     }
 
     func clearHistory() {
+        guard !closed else { return }
         Task {
-            await client.send(AutopilotCommand.clearHistory)
+            await work.dropHistory()
             await load()
         }
     }
@@ -260,11 +272,11 @@ import SwiftUI
     @Published private(set) var runs: [ActionRun] = []
 
     func undo(_ record: ActionRecord) async {
-        await putBack(AutopilotCommand.undo, id: record.id)
+        await putBack { await $0.putBack(record: record.id) }
     }
 
     func undoRun(_ run: ActionRun) async {
-        await putBack(AutopilotCommand.undoRun, id: run.id)
+        await putBack { await $0.putBack(run: run.id) }
     }
 
     /// Both gestures, which differ only in what the id names.
@@ -272,9 +284,9 @@ import SwiftUI
     /// The history is read back afterwards, because the rows the page would
     /// offer again are exactly what has changed — and the banner is the report,
     /// composed from the lines rather than from a count the engine sent.
-    private func putBack(_ command: AutopilotCommand, id: String) async {
-        let report: UndoReport? = await client.request(command, encoding: UndoRequest(id: id))
-        guard let report else { return }
+    private func putBack(_ ask: (any AutopilotWork) async -> UndoReport) async {
+        guard !closed else { return }
+        let report = await ask(work)
         bannerFolderID = nil
         bannerRun = nil
         // Read off the report before the history is reloaded, while the records
@@ -409,12 +421,13 @@ import SwiftUI
     /// running as this user can rewrite, and `SealedRules.write` turns down a
     /// rule set it did not write — so a save can be refused at any moment by
     /// something the page never saw happen. `refusal` read once at load is the
-    /// local flag standing in for that live fact, and `setFolders` is answered
-    /// with empty `Data` whether it saved or refused, so the reply cannot carry
-    /// the answer either. The re-read is the reverse channel, and it is the same
-    /// gesture `discardRefusedRules` makes one method up.
+    /// local flag standing in for that live fact, and `save` answers nothing
+    /// whether it saved or refused, so the answer cannot carry it either. The
+    /// re-read is the reverse channel, and it is the same gesture
+    /// `discardRefusedRules` makes one method up.
     private func sendFolders(_ list: [WatchedFolder]) async {
-        await client.send(AutopilotCommand.setFolders, encoding: list)
+        guard !closed else { return }
+        await work.save(list)
         await load()
     }
 
@@ -423,6 +436,8 @@ import SwiftUI
     /// The panel is the only way a folder gets in, so the path is one the
     /// person chose rather than one anything typed.
     func addFolder() {
+        // No panel from a module that has been switched off.
+        guard !closed else { return }
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
@@ -644,17 +659,18 @@ import SwiftUI
     /// the preview answers the rule being written rather than the one before
     /// the last keystroke.
     func runPreview(for folder: WatchedFolder, rule: Rule) async {
+        guard !closed else { return }
         previewingRuleID = rule.id
         // The whole folder, in the order it is read. This used to send a folder
         // holding this rule alone — which answers a question nobody asked, since
         // the first match wins and a rule above takes the files first.
         let probe = folder.previewing(rule)
-        let rows: [PreviewRow]? = await client.request(AutopilotCommand.previewDraft, encoding: probe)
+        let rows = await work.dryRun(probe)
         // A cancelled ask is one the editor has already replaced — the folder
         // was changed under it — and the rule id is the same, so the check below
         // cannot tell its answer from the current one.
         guard !Task.isCancelled, previewingRuleID == rule.id else { return }
-        preview = rows ?? []
+        preview = rows
     }
 
     /// What the rule being written takes, and what another rule takes instead.
@@ -671,10 +687,10 @@ import SwiftUI
     }
 
     func runNow(_ folder: WatchedFolder) async {
-        // The engine's own type — it was declared here, inside this function.
-        let report: SweepReport? = await client.request(AutopilotCommand.runNow,
-                                                        encoding: WatchedFolderRef(id: folder.id))
-        guard let report else { return }
+        guard !closed else { return }
+        // Nil for a folder that is switched off or no longer held: nothing
+        // was swept, and nothing is said about a sweep.
+        guard let report = await work.sweepNow(folderID: folder.id) else { return }
         bannerFolderID = folder.id
         // A sweep's report is a different banner; the return's offer and its
         // per-row notes do not belong under it.
@@ -687,10 +703,10 @@ import SwiftUI
         // been renamed is the sentence this whole state exists to stop.
         folderStates[folder.id] = report.folder
         // **The record was written by the sweep this call just waited for.** The
-        // page reads the history once, from the List's own `.task`, which has
-        // long since run — so «Acted on 0 of 3» arrived over a history that
-        // still said nothing, at the one moment somebody is looking straight at
-        // the module asking why a rule did nothing.
+        // page read the history when it opened, and the engine's announcement of
+        // this pass reaches the model's own loop at some later turn — so without
+        // this read «Acted on 0 of 3» would arrive over a history that still said
+        // nothing, and the offer below would be taken from the previous pass.
         await loadHistory()
         // The pass this run just made, which is the newest one in the history
         // it has only now read back. A run that acted on nothing has none —

@@ -5,6 +5,8 @@ import Module_Autopilot_Engine
 import SwiftUI
 
 @MainActor public final class AutopilotDescriptor: ModuleDescriptor {
+    public typealias Model = AutopilotViewModel
+
     public static let id = ModuleID(AutopilotEngine.moduleID)
     /// **The one module that has something to hand over on a first launch.**
     /// Every other one either works the moment it is switched on or waits for a
@@ -33,6 +35,13 @@ import SwiftUI
     public init() {}
 
     public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
+        productionEngine(store: store, historyChanged: {})
+    }
+
+    /// The one place the production engine is built; `makeModule` needs it as
+    /// the concrete type the model calls.
+    private func productionEngine(store: NamespacedStore,
+                                  historyChanged: @escaping @Sendable () -> Void) -> AutopilotEngine {
         // The sweep runs hourly with nobody at the desk and it trashes files,
         // which makes it the one thing this module does that a person is owed
         // out loud. The sentence comes from here, because `L()` is `HelmUI`'s
@@ -41,8 +50,31 @@ import SwiftUI
         AutopilotEngine(store: store,
                         sweepNotice: SweepNotifier(
                             port: SystemAutomationNotice(area: AutopilotEngine.moduleID),
-                            words: { ApStr.sweepNotice($0) }))
+                            words: { ApStr.sweepNotice($0) }),
+                        historyChanged: historyChanged)
     }
+
+    /// The channel the engine's "a pass went into the history" travels on,
+    /// newest one kept: the signal means "look again" and carries nothing, so
+    /// the model's loop takes one ping, the slot holds one more, and the rest
+    /// are dropped — three in a row are at most two reads, never three. A
+    /// function of its own so a test reads the same buffering `makeModule` uses
+    /// (`AnAnnouncedPassReachesTheModelWithNoPageTests.testThreePingsBeforeAnyoneLooksAreAtMostTwoReads`).
+    static func historyChannel() -> (AsyncStream<Void>, AsyncStream<Void>.Continuation) {
+        AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
+    }
+
+    /// The engine and the model that calls it, built once at launch; the model
+    /// reads nothing until a page opens it.
+    public func makeModule(store: NamespacedStore) -> ModuleParts<AutopilotViewModel> {
+        let (changes, changed) = Self.historyChannel()
+        let engine = productionEngine(store: store, historyChanged: { changed.yield() })
+        return ModuleParts(engine: engine, model: AutopilotViewModel(work: engine, historyChanges: changes))
+    }
+
+    /// Closes the model; the host calls it before the engine's `deactivate()`,
+    /// on the person's switch and on quit.
+    public func stop(_ model: AutopilotViewModel) { model.stop() }
 
     /// Not a utility any more: how many folders it watches and what it did
     /// today are figures worth a glance, which is the whole test for whether a
@@ -53,9 +85,9 @@ import SwiftUI
     /// put right today — and both are numbers without a question behind them:
     /// nobody opens a menu bar to find out how many folders are watched. A tile
     /// has to earn its 90 pt, and this one was earning it by existing.
-    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
+    public func menuBar(_ model: AutopilotViewModel) -> MenuBarContribution? { .utility }
 
-    public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
-        AnyView(AutopilotSettingsPage(vm: vm))
+    public func settingsPage(_ model: AutopilotViewModel) -> AnyView {
+        AnyView(AutopilotSettingsPage(rvm: model))
     }
 }
