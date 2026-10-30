@@ -826,7 +826,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     }
 
     /// Puts the last conversion back, if the caret can still be where it was.
-    public func undoLast() {
+    func undoLast() {
         let bundleID = secure.frontmostBundleID()
         lock.lock()
         guard let record = undo, record.canUndo(in: bundleID),
@@ -880,7 +880,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
 
     /// Converts whatever is in the buffer right now, whatever the dictionary
     /// thinks — the hotkey path.
-    public func convertLastWord() {
+    func convertLastWord() {
         let bundleID = secure.frontmostBundleID()
         lock.lock()
         // `wholeWord`, not `word`: the buffer refuses a word it could not hold

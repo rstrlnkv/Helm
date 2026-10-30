@@ -83,7 +83,7 @@ public struct HelmChoiceCards<Value: Hashable, Preview: View>: View {
                             // not has three baselines and no alignment at all.
                             // A tick label under a picture is what the scale's
                             // bottom step is for.
-                            .font(.caption)
+                            .font(HelmText.pictureCaption)
                             // Weight, not colour: the ring already says which
                             // one is chosen, and a second colour saying it
                             // again is what makes the two that are not chosen

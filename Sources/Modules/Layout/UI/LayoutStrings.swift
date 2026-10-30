@@ -13,7 +13,7 @@ enum LyStr {
     static var automatic: String { L(.fixAsIType) }
     /// The rule, said once. `introWhen` said it again as step 1's second point —
     /// sixteen translated rows for one sentence, both of them drawn inside one
-    /// four-card tour. «Once swapped» was also opaque (swapped what?) where «in
+    /// three-step tour. «Once swapped» was also opaque (swapped what?) where «in
     /// the other layout» is the thing itself.
     static var automaticNote: String { L(.onlyWhenWhatYouTypedIs) }
     static var suspended: String { L(.pausedAPasswordFieldIsIn) }
@@ -346,14 +346,8 @@ enum LyStr {
     /// outlives the rejection (that is when «Never this word» earns its keep),
     /// and it must say which state it is in.
     static var lastChangeUndone: String { L(.lastChangeUndone) }
-    /// Under the triggers when all three are off: no ending ever confirms a
-    /// word, so «Fix as I type» is dead however green the badge above is.
-    /// The period segment, and the metric the hero is showing.
-    ///
-    /// The five are drawn as words rather than as glyphs: «7 дней» and
-    /// «Всё время» are not a picture anybody would recognise, and a segment of
-    /// five unlabelled marks is a puzzle. The metric beside it *is* two glyphs —
-    /// a letter and a clock — because those two are.
+    /// A period's name, on the hero's five buttons and the panel tile's period menu. Words, not glyphs: «7 дней» and
+    /// «Всё время» are not a picture anybody would recognise.
     static func periodName(_ period: ConversionPeriod,
                            language: AppLanguage = AppLanguage.current) -> String {
         switch period {
@@ -439,11 +433,6 @@ enum LyStr {
         return language == .en ? english : table[language] ?? english
     }
 
-    /// What a VoiceOver reader hears when a word is rewritten in the app they
-    /// are typing in. The words themselves are in it — an announcement is
-    /// spoken and gone, the one channel with the same lifetime as the memory
-    /// the module keeps them in. The undo tail rides only when an undo gesture
-    /// actually exists. Interpolated, so it keeps its own table.
     /// The last change, read rather than seen.
     ///
     /// **No arrow.** `ConversionPair` hides the glyph from VoiceOver saying
@@ -518,6 +507,11 @@ enum LyStr {
         return table[language] ?? "Last fourteen days: \(words), \(now) of them today"
     }
 
+    /// What a VoiceOver reader hears when a word is rewritten in the app they
+    /// are typing in. The words themselves are in it — an announcement is
+    /// spoken and gone, the one channel with the same lifetime as the memory
+    /// the module keeps them in. The undo tail rides only when an undo gesture
+    /// actually exists. Interpolated, so it keeps its own table.
     static func fixedAnnouncement(before: String, after: String, undoable: Bool,
                                   language: AppLanguage = AppLanguage.current) -> String {
         let fixed: [AppLanguage: String] = [

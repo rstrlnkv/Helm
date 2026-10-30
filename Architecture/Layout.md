@@ -45,3 +45,35 @@ may have just granted Accessibility or edited their layouts) and another applica
 coming to the front (the layout bound to it) both go through `AppActivationPort`;
 `deactivate()` is one `stopObserving()` call, and a second `startObserving` replaces the
 first (`TheEngineLetsGoOfItsObserversTests`, `TheActivationPortKeepsOneWatchTests`).
+
+## The states of the Layout page
+
+The page id is the module id, `layout`, and a state is shot with its file `layout-<state>-<light|dark>[-<ru|de>].png` (the language is always passed: without it Helm Dev speaks the Mac's language):
+
+    bash Scripts/shoot.sh layout \
+      [--press "<name>" [--nth <n>]]... \
+      [--arg module.layout.<key> <value>]... \
+      --arg module.app.appearance <light|dark> \
+      --arg module.app.interfaceLanguage <en|ru|de> \
+      --name <state>-<light|dark>[-<ru|de>] --out <dir>
+
+Nothing is typed and no grant is changed to reach a state; the tour is left with "Got it" unpressed, because it writes `introSeen`.
+
+| state | the page shows | reached by |
+|---|---|---|
+| `hero-nothing-yet` | the sentence figure, its caption, five capsule buttons, "Today" chosen | the page as it opens, with `introSeen` set and `heroPeriod` unset in the dev domain, in Helm Dev with Accessibility, on a day the ledger holds no word put right (`figures.words > 0` is false for the chosen period) |
+| `hero-period-<p>` | another period chosen: `hero-counting` when the ledger has words in it, the sentence otherwise | `--arg module.layout.heroPeriod week` (`month`, `year`, `allTime`) |
+| `hero-counting` | a number figure over "words put right · <period> · ≈ <time> not spent typing again" | a period the dev ledger has words in: `--arg module.layout.heroPeriod <p>`; nothing is typed |
+| `hero-paused` | the caption "Paused — a password field is in front, and Helm never reads one." | needs secure input in front; not shot |
+| `denied` | "Not watching", the reason and Grant…; the two notes; the indicator section only | Helm Dev without Accessibility |
+| `tour-1`, `tour-2`, `tour-3` | the tour card's steps | `--press "<Show>"` (the button on the "How it works" row), then `--press "<Next>"` once and twice; or `--arg module.layout.introSeen '<false/>'` |
+| `indicator-<style>` | the indicator section open, the style picker and the preview (none for `sourceName`) | `--arg module.layout.indicator '<true/>' --arg module.layout.badgeStyle <plain\|filled\|outlined\|flagDrawn\|sourceName>` |
+| `last-change` | the "Last change" row, the pair, the note, Never this word | needs typing; not shot |
+| `no-dictionary` | the warning line under the behaviour | only on a Mac with a layout macOS has no dictionary for; not shot |
+| `lists` | the lists window: words (empty: the "no words" line), apps (the built-in refusals this Mac has, the add button), Done | `--press "<the Words row's name>"`, read from `HelmReadout ax` first; the lists window (520 × 452 on screen) may read `onscreen no`, and then `shoot.sh` shoots the settings window: take the lists window's id from `HelmReadout window <pid>` and capture it with `screencapture -x -o -l <id>` |
+
+The menu-bar indicator has no page. Its states are `off` (no status item), one per badge style, its menu with and without the emoji item (Accessibility granted or not), and the badge corrected on menu open, with its once-per-run log line. Its change is an image swap in AppKit with no animation, so there is no motion to record; the menu cannot be opened by `HelmReadout`, so it is not shot.
+
+The panel tile has three sizes (compact, wide, tall) and three more states: Layout off (`HelmWidgetUnmeasured`), suspended (no status dot), and a last change (a block filled with `onPanelFill`).
+
+No guard: the sparkline's accent opacities have no Increase Contrast variant, because a value nobody can photograph without changing a Mac setting would be a guess; the hero's swap between the period row and the grant button (`helmAccordion`) is reachable only by switching Layout or the grant, so it is not recorded.

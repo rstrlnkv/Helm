@@ -177,6 +177,8 @@ public enum HelmText {
     public static let statusGlyph = Font.title3
     /// The fine print at the foot of a page and a group heading on a panel card: `.caption2`, 10 pt at the default.
     public static let smallPrint = Font.caption2
+    /// A tick label under a picture: `.caption`, 10 pt at the default.
+    public static let pictureCaption = Font.caption
     /// The version over a changelog entry: `.title3` bold, 15 pt at the default.
     public static let entryHeading = Font.title3.weight(.bold)
 }

@@ -50,6 +50,10 @@ public enum HelmLayout {
     /// A card of mixed rows keeps one left edge for its labels because every mark column is this wide.
     public static let markColumn: CGFloat = 14
 
+    /// The leading SF Symbol column of a row: the icon is centred in it, so rows of different symbols keep one
+    /// left edge for their labels.
+    public static let symbolColumn: CGFloat = 18
+
     /// The width a section card actually gets.
     public static var cardWidth: CGFloat { settingsColumn - formInset * 2 }
 

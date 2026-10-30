@@ -5,18 +5,11 @@ import Module_Layout_Engine
 
 /// Keyboard in the menu-bar panel.
 ///
-/// **It had a widget once and it was taken away, with a good reason: «a number
-/// with no question behind it».** Three things changed and all three are what
-/// bring it back: the count outlives a launch, it answers for a period rather
-/// than for today alone, and the module has verbs that work from here.
-///
-/// **Which verb is the whole design of these tiles.** «Put it back» is the one
-/// people want, and it cannot be offered: an undo is a blind edit at the caret,
-/// valid only in the app the conversion happened in — and opening this panel
-/// makes Helm that app. `UndoRecord.canUndo(in:)` would refuse every press. A
-/// button that cannot fire is worse than no button, so the verbs here are the
-/// two that work from anywhere: «never this word», which edits a list, and the
-/// switch that decides whether words are fixed as you type at all.
+/// The verbs here are the two that work from anywhere: «never this word», which edits
+/// a list, and the switch that decides whether words are fixed as you type. «Put it
+/// back» is not offered: an undo is a blind edit at the caret, valid only in the app
+/// the conversion happened in, and opening this panel makes Helm that app, so
+/// `UndoRecord.canUndo(in:)` would refuse every press.
 enum LayoutWidgets {
 
     /// 1×1 — how many.
@@ -44,10 +37,7 @@ enum LayoutWidgets {
         let store: NamespacedStore
         var onNever: (String) -> Void
         var onAutomatic: (Bool) -> Void
-        // Both read from the store the way the page reads them, and both live
-        // here. The period used to be a `@State` in a 35-line file whose whole
-        // job was to hold it and hand down a `Binding` — a wrapper for a view
-        // that already owns state, and the only construction of that binding.
+        // Both read from the store the way the page reads them.
         @State private var period: ConversionPeriod
         @State private var automatic: Bool
 
@@ -74,13 +64,8 @@ enum LayoutWidgets {
     }
 }
 
-/// Every size's drawing, over a state rather than over a view model.
-///
-/// **Split out so it can be looked at.** The tiles above own an event loop and
-/// a store, which is what a panel needs and exactly what a render bench cannot
-/// build — so before this the only way to see whether a tile looked right was
-/// to install the app and open the menu bar, and a screenshot from the owner
-/// was standing in for a measurement. This takes a `LayoutState` and draws it.
+/// Every size's drawing, over a state rather than over a view model, so a render
+/// bench can draw it: the tiles above own an event loop and a store.
 struct LayoutTile: View {
     let state: LayoutState
     let size: PanelWidgetSize
@@ -95,55 +80,37 @@ struct LayoutTile: View {
             HelmWidgetHeader(symbol: "keyboard", tint: LayoutDescriptor.tint.colour,
                              name: LyStr.moduleName, active: state.enabled,
                              compact: size == .compact) {
-                // The dot the other tiles use for «and it is working right
-                // now». Suspended is not off — secure input silences the module
-                // deliberately — but it is not watching either, and a green dot
-                // over a silent module is the tile lying at its smallest size.
+                // Suspended is not off, but it is not watching either, and a green dot over
+                // a module that secure input has silenced is the tile lying at its smallest size.
                 if state.enabled && !state.suspended && size != .compact {
-                    // Decorative to a reader: it carries no text, and exposed
-                    // unnamed it was a stop that said nothing at all — worse
-                    // than silence. What it means is in the tile's own words.
-                    Circle().fill(HelmSignal.success).frame(width: 6, height: 6)
-                        .accessibilityHidden(true)
+                    HelmStatusDot(active: true, size: .widget)
                 }
             }
             if state.enabled {
-                // The period is in the caption only where nothing on the tile
-                // can change it. On 2×N the button beside the figure names it,
-                // and saying it twice on a 280 pt tile reads as two spans.
+                // The caption names the period only where nothing on the tile can change
+                // it: on 2×N the button beside the figure does.
                 HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s3) {
                     HelmWidgetFigure(figure(state, period),
                                      size == .tall
                                      ? LyStr.wordsPutRight(count: count(state, period))
                                      : LyStr.wordsIn(period, count: count(state, period)),
                                      size)
-                    // Beside the figure rather than under the drawing: it is
-                    // what the figure is *of*, and a control a line away from
-                    // the number it governs reads as a control over the tile.
-                    // Baselines, not tops — a 20 pt figure and a small button
-                    // aligned by their boxes sit visibly off each other.
+                    // Beside the figure, which it governs; aligned by baseline, not by box.
                     if size == .tall { periods }
                 }
-                // The one gap in the tile that is not between two lines of the
-                // same thought: the plate names the module, the figure answers
-                // it. 6 pt read as one paragraph.
+                // The plate names the module, the figure answers it: not one thought, so more air.
                 .padding(.top, HelmSpace.s2)
                 if size == .tall, let saved = savedLabel(state, period) {
-                    // The page's second figure, which is the one people quote.
-                    // Quiet, because it is an estimate and the count above it
-                    // is not.
+                    // The page's second figure; quiet, because it is an estimate.
                     Text(saved)
                         .font(HelmText.rowDetail)
                         .foregroundStyle(HelmText.quiet)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                        .minimumScaleFactor(0.8) // a long estimate shrinks before it truncates
                 }
                 if size == .tall {
-                    // The tall tile's own answer, and only its own: 2×1 is one
-                    // row of the panel's grid, and a Keyboard tile twice the
-                    // height of every other module's 2×1 makes the row it sits
-                    // in about Keyboard. Measured at 202 pt against Disk's 110
-                    // before the drawing and the estimate moved down here.
+                    // The tall tile's own answer: 2×1 is one row of the panel's grid, and
+                    // a taller 2×1 would make its row about Keyboard.
                     Sparkline(days: state.totals.recent)
                         .padding(.top, HelmSpace.s3)
                 }
@@ -156,10 +123,8 @@ struct LayoutTile: View {
                         .font(HelmText.rowDetail)
                         .controlSize(.small)
                         .onChange(of: automatic.wrappedValue) { _, value in onAutomatic(value) }
-                        // The switch is the tile's own setting and stands apart
-                        // from the report above it. Air, since the block above
-                        // now draws its own edge and a rule under it would be a
-                        // second boundary for one gap.
+                        // The tile's own setting, apart from the report above it; air, not a
+                        // rule, since the block above draws its own edge.
                         .padding(.top, HelmSpace.s2)
                 }
             } else {
@@ -170,20 +135,11 @@ struct LayoutTile: View {
 
     /// The period: a button that opens the list of five.
     ///
-    /// Five buttons in a row was the other shape and it cost two lines of the
-    /// tile to say one thing — the fifth name wrapped alone in every language
-    /// measured. A button spends one line and shows the period it is on, which
-    /// is why the caption beside it stopped saying it.
-    ///
-    /// **Keep Awake's shape, not a `Picker`'s.** That tile's duration control is
-    /// a `Menu` under `.menuStyle(.button)` and `.buttonStyle(.bordered)`, and a
-    /// pop-up button next to it in the same panel is a second kind of the same
-    /// object — the difference nobody can name and everybody sees. `.fixedSize()`
-    /// for the reason it has there too: a control stretched to the tile's width
-    /// reads as the tile's subject, and the subject is the figure.
-    ///
-    /// Named, because a control whose face is its value alone is «pop up button»
-    /// to VoiceOver.
+    /// One line, showing the period it is on, where five buttons in a row wrapped the
+    /// fifth name alone in every language measured. Keep Awake's shape, a `Menu` under
+    /// `.menuStyle(.button)` and `.buttonStyle(.bordered)`, so two pop-ups in one panel
+    /// are one kind of object; `.fixedSize()` so it does not read as the tile's subject.
+    /// Named, because a control whose face is its value alone is «pop up button» to VoiceOver.
     private var periods: some View {
         Menu {
             ForEach(ConversionPeriod.allCases, id: \.self) { option in
@@ -196,49 +152,35 @@ struct LayoutTile: View {
         .buttonStyle(.bordered)
         .controlSize(.small)
         .fixedSize()
-        // **Label *and* value.** `accessibilityLabel` replaces the whole label
-        // rather than adding to it, so naming the control dropped the one fact
-        // it exists to show: VoiceOver said «Period, menu button» and never
-        // which period. The comment above is right that a control whose face is
-        // its value alone reads as «pop-up button» — the repair is both, not
-        // the value instead of the name.
+        // Label and value: `accessibilityLabel` replaces the face, so the value carries
+        // the period.
         .accessibilityLabel(LyStr.period)
         .accessibilityValue(LyStr.periodName(period))
     }
-
 }
 
 /// The last word put right, and the one thing that can be done about it here.
 ///
-/// The pair is drawn as what it is — a word that was wrong and a word that is
-/// right — rather than as a sentence: monospaced, because the two halves are
-/// letters standing in for each other and a proportional face hides how close
-/// they are. The verb is borderless: a bordered button the width of the tile
-/// reads as the tile's purpose, and the purpose is the figure above it.
+/// The pair is drawn as what it is, a wrong word and a right one, monospaced because
+/// the halves are letters standing in for each other. The verb is borderless: a
+/// bordered button the width of the tile would read as the tile's purpose.
 ///
-/// **A block with a fill, not a band between two rules.** Rules divide a list
-/// into parts of one thing; this is not part of the figure above it, it is a
-/// different thing that happens to be on the same tile. A fill says «this is a
-/// piece» in one edge where two rules take two — and the tile had three of them
-/// stacked down its lower half, which is a lot of drawing to say «and now
-/// something else».
+/// A block with a fill, not a band between rules: it is a different thing from the
+/// figure above it, and a fill says so in one edge where rules take two.
 private struct LastChange: View {
     let state: LayoutState
     var onNever: (String) -> Void
 
     var body: some View {
         if let last = state.lastConversion {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 Text(state.lastConversionUndone ? LyStr.lastChangeUndone : LyStr.lastChange)
                     .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.faint)
                 ConversionPair(last, undone: state.lastConversionUndone)
                     .font(HelmText.rowDetail)
-                // Not «put it back»: that is a blind edit at a caret in another
-                // app, and this panel is in front of it. This one edits a list
-                // and works wherever it is pressed. Absent for a forced
-                // conversion — that word was never vouched for by a dictionary
-                // and may be anything the person typed.
+                // Edits a list, so it works wherever it is pressed. Absent for a forced
+                // conversion: no dictionary vouched for that word.
                 if !last.forced {
                     Button(LyStr.neverThisWord) { onNever(last.before) }
                         .buttonStyle(.link)
@@ -257,9 +199,8 @@ private struct LastChange: View {
 
 /// A fortnight of days, oldest on the left.
 ///
-/// **This is the whole reason a 2×N tile exists here.** The panel's contract
-/// asks the tall size «why is it that many», and a bigger copy of the figure is
-/// not an answer. Bars, not a line: the ledger holds one number per day, and a
+/// The panel's contract asks the tall size why it is that many; a bigger copy of the
+/// figure is no answer. Bars, not a line: the ledger holds one number per day, and a
 /// line between two days draws hours nothing was measured in.
 private struct Sparkline: View {
     let days: [Int]
@@ -267,36 +208,30 @@ private struct Sparkline: View {
     private var peak: Int { max(days.max() ?? 0, 1) }
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 2) {
+        HStack(alignment: .bottom, spacing: HelmSpace.s1) {
             ForEach(Array(days.enumerated()), id: \.offset) { index, value in
-                // A day with nothing on it still draws its floor, so the row
-                // reads as fourteen days rather than as however many were busy.
-                // Today is the accent: the bar somebody is adding to now.
-                // A rectangle, not a `Capsule`: fourteen bars across 248 pt
-                // are 15 wide against 26 tall, and a capsule at that proportion
-                // is an egg — the busy days drew as blobs and the quiet ones as
-                // long dashes, which is a picture of nothing.
-                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                    .fill(index == days.count - 1
-                          ? Color.accentColor.opacity(0.9)
-                          : Color.accentColor.opacity(0.35))
-                    .frame(height: max(2, 26 * CGFloat(value) / CGFloat(peak)))
+                // A day with nothing on it still draws its floor, so the row reads as
+                // fourteen days. Today is the stronger accent. A rectangle, not a
+                // `Capsule`: a bar this narrow is taller than wide, and a capsule
+                // at that proportion is an egg.
+                RoundedRectangle(cornerRadius: LayoutLook.sparkCorner, style: .continuous)
+                    .fill(Color.accentColor.opacity(index == days.count - 1
+                                                    ? LayoutLook.sparkToday
+                                                    : LayoutLook.sparkPast))
+                    .frame(height: max(LayoutLook.sparkFloor,
+                                       LayoutLook.sparkHeight * CGFloat(value) / CGFloat(peak)))
             }
         }
-        .frame(height: 26, alignment: .bottom)
+        .frame(height: LayoutLook.sparkHeight, alignment: .bottom)
         .accessibilityElement()
-        // **The numbers, not just the span.** Fourteen bars are the tall tile's
-        // whole reason for being — «why is it that many» — and a reader who
-        // cannot see them heard «Last fourteen days» and nothing else. The
-        // label is built from `days`, which this view already has.
+        // The numbers, not just the span: the bars are the tall tile's reason for being.
         .accessibilityLabel(LyStr.fortnightSummary(total: days.reduce(0, +),
                                                    today: days.last ?? 0))
     }
 }
 
-/// The figure and its caption, spelled once for all three sizes: a tile that
-/// says «14» at one size and «14 words» at another is two answers to one
-/// question.
+/// The figure and its caption, spelled once for all three sizes, so no size gives a
+/// different answer to one question.
 private func count(_ state: LayoutState, _ period: ConversionPeriod) -> Int {
     state.totals.figures(period).words
 }
@@ -307,9 +242,8 @@ private func figure(_ state: LayoutState, _ period: ConversionPeriod) -> String 
     return Decimal(Double(words), decimals: 0)
 }
 
-/// Nil rather than «0 min» when nothing has been put right: an estimate of a
-/// saving that was never made is the sort of number that makes every other
-/// number on the tile worth less.
+/// Nil rather than «0 min» when nothing has been put right: an estimate of a saving
+/// never made makes every other number on the tile worth less.
 private func savedLabel(_ state: LayoutState, _ period: ConversionPeriod) -> String? {
     let figures = state.totals.figures(period)
     guard figures.words > 0 else { return nil }
@@ -321,16 +255,9 @@ private func savedLabel(_ state: LayoutState, _ period: ConversionPeriod) -> Str
 
 /// «vtymit → меньше»: the word that was wrong, and the word that replaced it.
 ///
-/// **One drawing, because it was three.** The settings page typed the arrow
-/// into a string (`"\(before) → \(after)"`), this tile drew an 8 pt
-/// `arrow.right`, and the abbreviations section drew a third — one relation,
-/// three ways, on one module's screens. The tile's shape is the one that
-/// survived: it keeps the halves apart, so the replaced word can be struck
-/// through and read as replaced rather than as part of a phrase.
-///
-/// The arrow goes through `Text(Image(...))` rather than a bare `Image`, so it
-/// scales with whatever font the caller sets — the page sets a subheadline and
-/// the tile a caption, and a fixed 8 pt would be wrong in one of them.
+/// One drawing for the tile, the page's «Last change» and the abbreviations: it keeps
+/// the halves apart, so the replaced word can be struck through. The arrow goes
+/// through `Text(Image(...))` so it scales with the caller's font.
 struct ConversionPair: View {
     private let event: ConversionEvent
     private let undone: Bool
@@ -344,24 +271,19 @@ struct ConversionPair: View {
         HStack(spacing: HelmSpace.s2) {
             Text(event.before)
                 .foregroundStyle(HelmText.quiet)
-                // Struck through only while the change stands: once it is put
-                // back, the word on the left is what is in the field again.
+                // Struck through only while the change stands.
                 .strikethrough(!undone, pattern: .solid)
             Text(Image(systemName: "arrow.right"))
                 .foregroundStyle(HelmText.faint)
-                // A bare glyph inside the combined element below would be read
-                // as one: the arrow's job is done by the word «to» in the label.
+                // The word «to» in the label does the arrow's job.
                 .accessibilityHidden(true)
             Text(event.after)
         }
         .monospaced()
         .lineLimit(1)
         .truncationMode(.middle)
-        // **One row, not three stops.** Two words and an arrow, uncombined,
-        // gave a reader «vjq», something, «мой», with nothing saying one
-        // replaced the other. `LayoutAnnouncer` says it correctly when the
-        // change *happens*; this is the row read afterwards, in the tile and in
-        // the page's «Last change».
+        // One row, not three stops, with a label saying one replaced the other;
+        // `LayoutAnnouncer` says it when the change happens, this is the row read afterwards.
         .accessibilityElement(children: .combine)
         .accessibilityLabel(LyStr.pairRead(before: event.before, after: event.after))
     }

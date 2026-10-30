@@ -176,6 +176,13 @@ private struct ButtonsBoard: View {
                 ShowcaseRow("kit capsule (Keep Awake hero)", states: [.rest, .hover, .pressed, .disabled]) { _ in
                     Button(Sample.short) {}.controlSize(.large).helmCapsuleButtons()
                 },
+                ShowcaseRow("kit capsule row, one chosen") { _ in
+                    HStack(spacing: HelmSpace.s3) {
+                        Button(Sample.short) {}.helmChosen(true)
+                        Button(Sample.title) {}.helmChosen(false)
+                        Button(Sample.delete) {}.helmChosen(false)
+                    }.helmCapsuleButtons()
+                },
                 ShowcaseRow("kit capsule destructive") { _ in
                     Button(Sample.delete, role: .destructive) {}.helmCapsuleButtons()
                 },
@@ -425,6 +432,7 @@ private struct SurfacesBoard: View {
                     HelmBadge(Sample.short, tint: danger, emphasis: .prominent)
                     HelmBadge(Sample.russian, tint: success)
                     HelmStatusDot(active: true)
+                    HelmStatusDot(active: true, size: .widget)
                     HelmStatusDot(active: false)
                 }
                 HelmSectionTitle(Sample.title)

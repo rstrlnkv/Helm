@@ -58,17 +58,9 @@ public struct HelmAppRuleRow<Controls: View, Note: View>: View {
                 Text(info.name).lineLimit(1)
                 Spacer(minLength: 12)
                 controls
-                Button(action: remove) {
-                    // A cross, not a filled minus. The minus is the sign macOS
-                    // puts under a list — the button that removes the *selected*
-                    // row — and there is one of these per row, which is the
-                    // other gesture entirely.
-                    Image(systemName: "xmark").foregroundStyle(HelmText.faint)
-                }
-                .buttonStyle(.plain)
                 // Which app this removes. A list of these offered VoiceOver
                 // five identical buttons called "remove".
-                .accessibilityLabel("\(HelmA11y.remove), \(info.name)")
+                HelmRemoveButton(label: "\(HelmA11y.remove), \(info.name)", action: remove)
             }
             note
         }
@@ -76,5 +68,24 @@ public struct HelmAppRuleRow<Controls: View, Note: View>: View {
         // re-measured in a card: an app row came out 55 pt where every other
         // plain row was 35–37, so one card of five read as visibly looser than
         // its neighbours. Ten of those points were vertical padding on the row.
+    }
+}
+
+/// The button that takes one row off a list: a faint cross, not a filled minus. The minus is the sign macOS puts
+/// under a list — the button that removes the *selected* row — and there is one of these per row, which is the other
+/// gesture entirely. `label` is what VoiceOver reads, as given.
+public struct HelmRemoveButton: View {
+    let label: String
+    let action: () -> Void
+    public init(label: String, action: @escaping () -> Void) {
+        self.label = label
+        self.action = action
+    }
+    public var body: some View {
+        Button(action: action) {
+            Image(systemName: "xmark").foregroundStyle(HelmText.faint)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 }

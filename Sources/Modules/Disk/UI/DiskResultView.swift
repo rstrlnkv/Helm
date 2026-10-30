@@ -582,7 +582,7 @@ private struct AdviceList: View {
             Image(systemName: icon(item.kind))
                 .foregroundStyle(HelmText.quiet)
                 // The icon column of an advice row.
-                .frame(width: 18)
+                .frame(width: HelmLayout.symbolColumn)
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 Text(item.name).lineLimit(1).truncationMode(.middle)
                 Text(DkStr.adviceReason(item))

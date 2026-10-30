@@ -22,8 +22,13 @@ import SwiftUI
 ///
 /// **The capsule variant.** `helmCapsuleButtons()` on a container turns every plain `Button` inside it into the
 /// same well with a capsule for its shape and its content shape; nothing else about the style changes. The one
-/// page that asks is Keep Awake's hero, for the rows of buttons under its hero; `HelmShowcase` draws it on its
-/// buttons board. Every other plain `Button` keeps the `HelmRadius.ctl` corner.
+/// pages that ask are Keep Awake's and Layout's heroes, for the rows of buttons under them; `HelmShowcase` draws it on
+/// its buttons board. Every other plain `Button` keeps the `HelmRadius.ctl` corner.
+///
+/// **The chosen well.** `helmChosen(_:)` marks the chosen button of a row of positional choices: its well is
+/// `HelmSurface.chosenWash` of the accent, opaque and blended inside the appearance, the ink stays primary (white on
+/// the solid accent is below the 4.5:1 floor), and the pointer and the press add nothing to it. A choice whose
+/// options differ in kind is `HelmPillChoice`.
 ///
 /// The font is the caller's: a label that sets none gets the system's.
 struct HelmButtonStyle: ButtonStyle {
@@ -37,6 +42,10 @@ struct HelmButtonStyle: ButtonStyle {
         @Environment(\.helmTraits) private var traits
         @Environment(\.helmShownInteraction) private var shown
         @Environment(\.helmCapsuleButtons) private var capsule
+        @Environment(\.helmChosen) private var chosen
+
+        /// Stored, not built per call: the reason is on `HelmSurface.chosenWash`.
+        private static let chosenWell = HelmSurface.chosenWash(.accentColor)
 
         var body: some View {
             configuration.label
@@ -56,6 +65,7 @@ struct HelmButtonStyle: ButtonStyle {
         }
 
         private var well: Color {
+            if chosen { return Self.chosenWell }
             guard enabled else { return HelmSurface.wellFill }
             let pressed = configuration.isPressed || shown == .pressed
             let lit = hover || shown == .hover
@@ -71,9 +81,13 @@ struct HelmButtonStyle: ButtonStyle {
 
 private extension EnvironmentValues {
     @Entry var helmCapsuleButtons = false
+    @Entry var helmChosen = false
 }
 
 public extension View {
     /// Plain buttons inside this view are capsules instead of rounded wells — `HelmButtonStyle` → the capsule variant.
     func helmCapsuleButtons() -> some View { environment(\.helmCapsuleButtons, true) }
+
+    /// This button is the chosen one of its row: the accent wash for its well — `HelmButtonStyle` → the chosen well.
+    func helmChosen(_ chosen: Bool) -> some View { environment(\.helmChosen, chosen) }
 }

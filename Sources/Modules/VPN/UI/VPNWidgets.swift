@@ -25,7 +25,7 @@ struct VPNCompactWidget: View {
                              name: VPNDescriptor.metadata.name,
                              active: up > 0, compact: true) {
                 if up > 0 {
-                    Circle().fill(HelmSignal.success).frame(width: 6, height: 6)
+                    HelmStatusDot(active: true, size: .widget)
                 }
             }
             if vm.connections.isEmpty {

@@ -18,8 +18,8 @@ extension View {
 /// you want» said it in one colour. Here each option is inked by its own `chosenFill`.
 ///
 /// Not the knocked-out white on a saturated capsule the panel's size chips use: that was measured and it does not
-/// hold up (white on the accent is 4.02:1 in both appearances, on the warning orange 2.23:1 in dark, against the
-/// 4.5:1 floor). So the tint colours the fill and nothing else, as `HelmBadge` does, and the lettering stays the
+/// hold up (white on the accent falls short in both appearances, 3.65:1 in dark, and on the warning orange is 2.23:1 in
+/// dark, against the 4.5:1 floor). So the tint colours the fill and nothing else, as `HelmBadge` does, and the lettering stays the
 /// text colour, whatever the option. Pass `HelmSurface.chosenWash(_:)` as the fill.
 ///
 /// Buttons rather than a tap gesture on a shape, so Full Keyboard Access reaches them and each carries its own
