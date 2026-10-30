@@ -16,7 +16,7 @@ string tables at once.
 Tokens live one family to a file in `Sources/HelmUI/DesignSystem`: `HelmFills.swift` holds
 `HelmSurface` — a small set of fills over `Color.primary` (and `rowWashOpacity`, `chosenWash(_:)`), and `hairline`, which `helmPillTrack` (`HelmPillChoice.swift`) draws as the rim of a pill's track — the settings window's channel choice, the panel's size chips and the drawer's choose chip — though no card is given one —
 `HelmLadders.swift` `HelmSpace` and `HelmRadius`, `HelmLayout.swift` `HelmLayout` (with `markColumn`, the 14 pt column a row's mark and a log row's glyph share; `helmPageStrip()` is the inset of a full-width strip on a page that bleeds),
-`HelmText.swift` `HelmText` (with the faces `statusGlyph`, `smallPrint` and `entryHeading`), `HelmSignal.swift` `HelmSignal`, `HelmMotion.swift` the curves,
+`HelmText.swift` `HelmText` (with the faces `statusGlyph`, `smallPrint`, `entryHeading`, `plateTitle` and `code`), `HelmSignal.swift` `HelmSignal`, `HelmMotion.swift` the curves,
 `ModuleTint.swift` the method, and with it `hostColour` (General, Log, About) and `whatsNewColour`,
 and `HelmTraits.swift` the one entry a kit view reads the look through: `\.helmTraits`, the
 colour scheme and the three accessibility settings in one value (`HelmAccessibility.system`
@@ -29,7 +29,7 @@ the workspace itself.
 
 `HelmSurfaces.swift` holds the components: `HelmIconPlate`, `HelmSignalPlate`,
 `HelmSectionTitle` and `HelmMetricStrip`, and the two view modifiers
-`helmPreviewEdge(chosen:)` and `helmCard(padding:)`. `helmCard()` is the one card
+`helmPreviewEdge(chosen:)` and `helmCard(padding:)`. `HelmRowMenu.swift` is a row's own menu of further actions, named with the row's subject because VoiceOver reads several of them on a page. `helmCard()` is the one card
 treatment: a fill, continuous corners at `HelmRadius.card`, and no border, because a grouped
 `Form` section is drawn by the system and nothing can restyle it (`command grep -rln 'Form {' Sources` lists the views still built on one). A
 surface that floats over content takes `.glassEffect` rather than an edge, because glass

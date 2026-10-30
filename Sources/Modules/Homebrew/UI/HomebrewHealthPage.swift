@@ -141,7 +141,7 @@ struct HomebrewHealthPage: View {
             }
             VStack(alignment: .leading, spacing: HelmSpace.s2) {
                 Text(Self.verdictTitle(verdict))
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(HelmText.plateTitle)
                     .fixedSize(horizontal: false, vertical: true)
                 if let detail = Self.verdictDetail(verdict) {
                     Text(detail)
@@ -324,10 +324,7 @@ private struct HealthFixBlock: View {
             HelmSectionTitle(HbStr.helmReadsThisAs)
             HStack(spacing: HelmSpace.s3) {
                 Text(command)
-                    // A text *style* rather than a frozen 11 pt: `.subheadline`
-                    // is the same 11 at the default setting and follows the
-                    // system text size from there, which a literal cannot.
-                    .font(.system(.subheadline, design: .monospaced))
+                    .font(HelmText.code)
                     .textSelection(.enabled)
                     .padding(.horizontal, HelmSpace.s4).padding(.vertical, HelmSpace.s3)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -401,10 +398,7 @@ private struct ConfigurationCard: View {
                                     Text(line.key)
                                         .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
                                     Text(line.value)
-                                        // The one spelling this module gives a
-                                        // monospaced face, the shape the rest of
-                                        // the tree uses.
-                                        .font(.system(.subheadline, design: .monospaced))
+                                        .font(HelmText.code)
                                         .textSelection(.enabled)
                                         .gridColumnAlignment(.leading)
                                 }

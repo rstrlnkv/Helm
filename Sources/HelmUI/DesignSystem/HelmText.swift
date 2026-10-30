@@ -181,6 +181,11 @@ public enum HelmText {
     public static let pictureCaption = Font.caption
     /// The version over a changelog entry: `.title3` bold, 15 pt at the default.
     public static let entryHeading = Font.title3.weight(.bold)
+    /// A title set beside an icon plate: an editor sheet's name, a verdict, a page's own title. A fixed size, 16 pt, the scale's step above body.
+    public static let plateTitle = Font.system(size: 16, weight: .semibold)
+    /// What is inside is not language but something to be typed exactly (a command, a path); a text
+    /// style, so it is 11 pt at the default and follows the system's size.
+    public static let code = Font.system(.subheadline, design: .monospaced)
 }
 
 public extension View {

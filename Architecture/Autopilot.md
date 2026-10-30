@@ -72,3 +72,33 @@ the first; `TheModelsDoorNeverWaitsOnTheEnginesQueueTests` holds the queue rule.
 no untitled rule behind (`addRule(to:)` in `AutopilotViewModel.swift`); no guard.
 
 Words: `Sources/Modules/Autopilot/UI/Localizable.xcstrings`; interpolated ones in inline tables in `AutopilotStrings.swift`; shared words through `L()` from the kit.
+
+## The states of the Autopilot page
+
+The page id is the module id, `autopilot`, and a state is shot with its file `autopilot-<state>-<light|dark>[-<ru|de>].png` (the language is always passed: without it Helm Dev speaks the Mac's language):
+
+    bash Scripts/shoot.sh autopilot \
+      [--press "<name>" [--nth <n>]]... \
+      --arg module.app.appearance <light|dark> \
+      --arg module.app.interfaceLanguage <en|ru|de> \
+      --name <state>-<light|dark>[-<ru|de>] --out <dir>
+
+No state is shot from Helm Dev with a saved rule: a rule saved there writes the same keychain items (`com.helm.autopilot`, account `rule-seq`, `RuleKeychain.swift`) as the person's installed Helm and would roll back their rules. The states with folders, a report and a history are shot on a bench over a fake `AutopilotWork`, a harness of the crew outside the tree that scripts `empty`, `folders`, `report` and `history` only; Helm Dev shows only the states that need no rule. The sealed-rules refusals are held by `ARefusedRuleSetIsNotAnEmptyPageTests` and, for the history, `AHistoryNotHelmsPutsNothingBackTests`.
+
+| state | the page shows | reached by |
+|---|---|---|
+| `empty` | the plate, "Point Helm at a folder…", Add folder… (prominent), "Show the rules to start with" | the page as it opens on Helm Dev with no stored rules |
+| `no-disk-access` | `HelmPermissionNote` over the page; the starting-rules menu disabled | Helm Dev without Full Disk Access (the crew changes no grant) |
+| `rules-tampered` | `HelmBanner` "The rules stored on this Mac…" with Discard and start again | not shot (needs a forged plist); `ARefusedRuleSetIsNotAnEmptyPageTests` |
+| `rules-unreadable` | `HelmBanner` "Helm cannot read the key…", no button | not shot; same test |
+| `folders` | toolbar (first-match note, Add folder…, the menu while offered); per folder: switch, path, Run now, "…"; rule rows (switch, name, one-line summary, edit, up, down); "No rules yet"; New rule; the history card | the bench's `folders` |
+| `folder-missing` / `folder-unreadable` / `not-watching` | a `HelmBanner` under the folder's header | not shot: the bench scripts `empty`, `folders`, `report` and `history` only |
+| `report` | the report at the foot: the sentence, Put back N, Turn off "…", Done | the bench's `report` |
+| `history` | "Last 30 days", file-count badge, problems, a pass header with Put back N, rows (file, verb and detail, "back where it was" badge, rule name), notes | the bench's `history` |
+| `history-empty-<everyRuleOff\|nothingYet>` | the card's sentence | not shot: the bench scripts `empty`, `folders`, `report` and `history` only |
+| `history-refused` | `HelmBanner` "The record of what Autopilot did was not written by Helm…" with the discard button | not shot; `AHistoryNotHelmsPutsNothingBackTests` holds the engine half |
+| `editor-new` | the sheet: plate and name, the folder line, When (all/any, Add condition) with "Nothing in this folder matches yet" where a condition would be, Then, What would happen ("Nothing in this folder matches yet"), the footer with the switch disabled | not shot: the bench scripts `empty`, `folders`, `report` and `history` only |
+| `editor-dry-run` | the rows card, the count, "Another rule takes these files" | not shot: the bench scripts `empty`, `folders`, `report` and `history` only; it needs a rule with a condition the folder's files meet, below a rule that takes some of them |
+| `editor-preset` | Choose…, the "Once saved…" note | not shot: a preset's folder is the person's Downloads, Desktop, etc., and opening it runs a dry run there (`RuleEditor.swift`) |
+
+Motion: rules and folders added, removed or moved inside the list animate on `HelmMotion.interface`, and the switch between the empty page and the folders cross-fades on it; the report appears and leaves at once: a button arrives after its sentence, and every opening slide tried drew the sentence over it; history passes arrive as a cut: a List row's height is the table's; in the editor the rename hint and the "Once saved…" note open and close on `HelmMotion.disclosure`, and conditions arrive as a cut; the editor sheet's opening is AppKit's. All held by recording only, no guard. The out-of-reach banner opens and closes on `HelmMotion.disclosure` too (`chooseFolder()` in `RuleEditor.swift`), not recorded: it is reached only from a preset's editor, which is not shot. Increase Contrast: no guard.

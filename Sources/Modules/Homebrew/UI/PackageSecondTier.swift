@@ -233,12 +233,7 @@ struct PackageSecondTier: View {
             HelmSectionTitle(HbStr.packageNotes)
                 .padding(.leading, HelmSpace.s5)
             Text(caveats)
-                // A text *style* rather than a frozen 11 pt: it resolves to the
-                // same 11 at the default setting and follows the system text
-                // size from there, which a literal size cannot. The one other
-                // deliberate monospaced face in the tree
-                // (`HelmExplainer`) is spelled the same way.
-                .font(.system(.subheadline, design: .monospaced))
+                .font(HelmText.code)
                 .foregroundStyle(HelmText.quiet)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)

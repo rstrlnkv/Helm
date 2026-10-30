@@ -855,7 +855,7 @@ struct HomebrewSettingsPage: View {
     /// What a console line is drawn in — one declaration, read by the rows and
     /// by the measurement of their height, so the box cannot be sized for a
     /// face the rows are not set in.
-    static let consoleFont = Font.system(.subheadline, design: .monospaced)
+    static let consoleFont = HelmText.code
 
     /// One line's height, measured the way `SidebarComposerSheet` measures its
     /// note: a hosting controller asked what the text needs (`sizeThatFits`),

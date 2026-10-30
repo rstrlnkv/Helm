@@ -408,7 +408,7 @@ public struct HelmPageHeader<Trailing: View>: View {
             // — and with the summary gone the name no longer has to hold a
             // two-line block up on its own.
             Text(title)
-                .font(.system(size: 16, weight: .semibold))
+                .font(HelmText.plateTitle)
                 .tracking(-0.2)
                 .lineLimit(1)
                 // The name does not give way, nor do the tabs and the search beside it: the window's minimum

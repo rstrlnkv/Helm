@@ -76,14 +76,24 @@ public struct HelmAppRuleRow<Controls: View, Note: View>: View {
 /// gesture entirely. `label` is what VoiceOver reads, as given.
 public struct HelmRemoveButton: View {
     let label: String
+    let target: CGFloat?
     let action: () -> Void
-    public init(label: String, action: @escaping () -> Void) {
+    /// `target` is the side of a square hit area round the cross, for a page whose pointer has to hit a glyph a few
+    /// points wide; without it the button is the glyph, as every page drew it before.
+    public init(label: String, target: CGFloat? = nil, action: @escaping () -> Void) {
         self.label = label
+        self.target = target
         self.action = action
     }
     public var body: some View {
         Button(action: action) {
-            Image(systemName: "xmark").foregroundStyle(HelmText.faint)
+            if let target {
+                Image(systemName: "xmark").foregroundStyle(HelmText.faint)
+                    .frame(minWidth: target, minHeight: target)
+                    .contentShape(Rectangle())
+            } else {
+                Image(systemName: "xmark").foregroundStyle(HelmText.faint)
+            }
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)

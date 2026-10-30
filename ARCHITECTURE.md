@@ -61,7 +61,7 @@ comment, not on a page.
 
 One page per module, in the order `ls Sources/Modules` prints.
 
-- [Autopilot](Architecture/Autopilot.md) — the refusals that bound acting on files unasked, starting with sealed rules; its model calls the engine directly (Architecture/Autopilot.md § How Autopilot's model reaches its engine).
+- [Autopilot](Architecture/Autopilot.md) — the refusals that bound acting on files unasked, starting with sealed rules; its model calls the engine directly (Architecture/Autopilot.md § How Autopilot's model reaches its engine, § The states of the Autopilot page).
 - [Disk](Architecture/Disk.md) — reading where the space went on an APFS volume group without leaving the largest folder out; its model calls the engine directly (Architecture/Disk.md § How Disk's model reaches its engine, § The states of the Disk page).
 - [Duplicates](Architecture/Duplicates.md) — the keep policies that decide which of several identical files is the extra one; its model calls the engine directly (Architecture/Duplicates.md § How Duplicates' model reaches its engine, § The states of the Duplicates page).
 - [Homebrew](Architecture/Homebrew.md) — how another program's package manager is run, with read-only queries and other runs governed differently; § Operations, § Installing Homebrew, § Install counts, § Searching for a package, § The Health tab.

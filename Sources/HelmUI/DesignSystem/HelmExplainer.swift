@@ -159,11 +159,7 @@ struct HelmExplainerPage: View {
                 .fixedSize(horizontal: false, vertical: true)
         case .command(let command):
             Text(command)
-                // The one place this app sets a monospaced face on purpose:
-                // what is inside is not language, it is something to be typed
-                // exactly. A style rather than a size, so it scales with the
-                // system's setting like the rest of the page.
-                .font(.system(.subheadline, design: .monospaced))
+                .font(HelmText.code)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.vertical, HelmSpace.s3)

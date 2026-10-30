@@ -432,7 +432,7 @@ struct LeftoversSettingsPage: View {
                 Text(Bytes(item.sizeBytes))
                     .helmFigure().foregroundStyle(HelmText.quiet)
             }
-            Menu {
+            HelmRowMenu(subject: item.identifier) {
                 Button(HelmA11y.showInFinder) { HelmReveal.inFinder(item.path) }
                 if item.actions.contains(.delete) {
                     Button(Self.deleteLabel(for: item), role: .destructive) {
@@ -453,12 +453,7 @@ struct LeftoversSettingsPage: View {
                     // over Apple's own files, where no password helps.
                     Text(LfStr.noDelete(withheld))
                 }
-            } label: {
-                Image(systemName: "ellipsis.circle")
             }
-            .menuStyle(.borderlessButton)
-            .accessibilityLabel("\(HelmA11y.moreActions), \(item.identifier)")
-            .fixedSize()
         }
     }
 

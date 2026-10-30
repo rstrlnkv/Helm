@@ -195,6 +195,9 @@ private struct ButtonsBoard: View {
                 ShowcaseRow("icon only, named", states: [.rest, .hover, .pressed, .disabled]) { _ in
                     Button { } label: { Image(systemName: "gearshape") }.accessibilityLabel(Sample.title)
                 },
+                ShowcaseRow("row menu (HelmRowMenu)") { _ in
+                    HelmRowMenu(subject: Sample.title) { Button(Sample.short) {} }
+                },
             ])
         }
     }

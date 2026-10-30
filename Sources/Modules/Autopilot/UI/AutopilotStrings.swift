@@ -10,9 +10,7 @@ import Module_Autopilot_Engine
 ///
 /// The module is named for what it does rather than what it is made of: a
 /// folder holds rules, and the module keeps the folder on course without hands
-/// on it — the instrument Helm is named after, one step further along. "Rules"
-/// named the mechanism, and left the sidebar with an entry that could have
-/// belonged to any part of the app.
+/// on it — the instrument Helm is named after, one step further along.
 enum ApStr {
     static var moduleName: String { L(.autopilot) }
     static var summary: String { L(.foldersThatKeepThemselvesInOrder) }
@@ -20,8 +18,7 @@ enum ApStr {
     static var needsAccess: String { L(.withoutFullDiskAccessAProtected) }
     /// `WatchScope`'s refusal, which is positional: `~/Library`, a whole volume,
     /// anything outside the home. Its own sentence, never `needsAccess` — that
-    /// one names a grant, and no grant changes a position, so it sent people to
-    /// System Settings to earn the same refusal twice.
+    /// one names a grant, and no grant changes a position.
     static var folderOutOfReach: String { L(.aRuleCanWatchFoldersInside) }
 
     // MARK: - Rules that are not Helm's to run
@@ -41,9 +38,7 @@ enum ApStr {
 
     static var addFolder: String { L(.addFolder) }
     /// The folder header's switch, which carries no words on screen. The name
-    /// says what the switch does and the path beside it says which folder —
-    /// labelled with the bare path, VoiceOver read the path twice and the verb
-    /// never.
+    /// says what the switch does and the path beside it says which folder.
     static var watchFolder: String { L(.watchThisFolder) }
     static var removeFolder: String { L(.stopWatching) }
     static var runNow: String { L(.runNow) }
@@ -51,8 +46,7 @@ enum ApStr {
     static var depth: String { L(.includeSubfolders) }
 
     /// **What a switch that says «on» is not saying.** A folder that was renamed,
-    /// a folder behind Full Disk Access and a folder with nothing in it were one
-    /// screen: the path, a live switch, and «Acted on 0 of 0». These are the three
+    /// a folder behind Full Disk Access and a folder with nothing in it are three
     /// separate things, and they are separate because a person can do something
     /// different about each — point the rule somewhere else, grant the
     /// permission, or nothing at all.
@@ -102,8 +96,7 @@ enum ApStr {
     /// The five names, and the only part of a preset that is translated.
     ///
     /// What each one *does* is `RuleSummary.describe(rule)` — built from the
-    /// rule itself, so a name and a description cannot drift apart, which is
-    /// what the changelog entry naming a button that did not exist cost.
+    /// rule itself, so a name and a description cannot drift apart.
     ///
     /// Exhaustive, and the `PresetKind` it switches over is the engine's: a
     /// sixth preset does not build until it has a name in eight languages.
@@ -185,11 +178,8 @@ enum ApStr {
     static var folderIncludesSubfolders: String { L(.subfoldersAreIncludedForThisFolder) }
     /// What a Run now did — and, when there is one, what it did not do.
     ///
-    /// **«Acted on 0 of 3» is also what a refusal on every file looks like.** The
-    /// report has carried `refused` and `failed` all along and this sentence took
-    /// neither, so the press whose whole purpose is "show me that this works"
-    /// answered a rule that is refusing every file with a figure that reads as
-    /// "nothing here matched".
+    /// **«Acted on 0 of 3» is also what a refusal on every file looks like**, so
+    /// the sentence carries `refused` and `failed` as well.
     ///
     /// The two halves are joined rather than rewritten: `historyProblems` already
     /// says the second one in eight languages, with the colon-before-count that
@@ -237,10 +227,8 @@ enum ApStr {
     static var comparisonOlder: String { L(.olderThan) }
     static var comparisonNewer: String { L(.newerThan) }
     static var unitMegabytes: String { L(.megabytesUnit) }
-    /// The word, agreeing with the number in the field beside it. The
-    /// argument for a bare plural was that the label names a field rather than
-    /// counting anything — but the field holds a number, so it counts, and the
-    /// row opened on "1 дней".
+    /// The word, agreeing with the number in the field beside it: the field
+    /// holds a number, so the word counts with it.
     ///
     /// Both of these stand after «старше» or «новее», which govern the
     /// genitive, so the agreement is `DayUnit`'s rather than `Plural`'s: the
@@ -291,9 +279,8 @@ enum ApStr {
     /// A rule reads as a sentence — "name contains report, move to Documents" —
     /// and the screen builds it out of pickers and fields whose meaning comes
     /// entirely from their position in the row. Sighted, that works; read aloud
-    /// it was "pop up button, pop up button, text field" and a rule could not be
-    /// built at all. These are the names those controls always had and never
-    /// said. Kept short, because VoiceOver reads the name before every value.
+    /// it would be "pop up button, pop up button, text field", so each control
+    /// carries a name. Kept short, because VoiceOver reads the name before every value.
     static var a11yField: String { L(.whatToCheck) }
     static var a11yComparison: String { L(.howToCompare) }
     static var a11yValue: String { L(.valueToMatch) }
@@ -303,7 +290,7 @@ enum ApStr {
     static var a11yHost: String { L(.siteTheFileCameFrom) }
     static var a11yTagValue: String { L(.tagName) }
     static var a11yAction: String { L(.whatToDo) }
-    static var a11yScheme: String { L(.renamingScheme) }
+    static var a11yScheme: String { L(.howToSort) }
     static var a11yPattern: String { L(.namePattern) }
     static var a11yMatch: String { L(.whichConditionsMustMatch) }
 
@@ -312,12 +299,9 @@ enum ApStr {
     static var historyTitle: String { L(.last30Days) }
     static var historyClear: String { L("Clear") }
 
-    /// **Why the record is empty, which was three sentences wearing one.**
-    ///
-    /// «Autopilot has not done anything yet» was drawn over a Mac with no
-    /// watched folder, over a rule set the person had switched off entirely,
-    /// and over one that is running and has found nothing — three states with
-    /// three different next steps, told as one. Exhaustive, so a fourth reason
+    /// **Why the record is empty: three states with three different next steps**
+    /// — no watched folder, every rule switched off, a running rule that has
+    /// found nothing. Exhaustive, so a fourth reason
     /// cannot be added to the engine without a sentence to say it with.
     static func historyEmpty(_ reason: HistoryEmpty.Reason,
                              language: AppLanguage = AppLanguage.current) -> String {
@@ -535,9 +519,7 @@ enum ApStr {
 
     /// Why a row was refused, in the reader's language. The record stores the
     /// reason's rawValue — data, stable across releases — and this is the only
-    /// place it turns into words; the row used to glue that rawValue straight
-    /// onto the verb and read «refused changedSinceCheck» in all eight
-    /// languages. Exhaustive on purpose: a new reason refuses to build until
+    /// place it turns into words. Exhaustive on purpose: a new reason refuses to build until
     /// it can say itself.
     static func historyRefusal(_ reason: RuleOutcome.Refusal,
                                language: AppLanguage = AppLanguage.current) -> String {
