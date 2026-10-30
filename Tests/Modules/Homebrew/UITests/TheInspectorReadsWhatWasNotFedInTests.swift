@@ -42,8 +42,7 @@ final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
     // MARK: - A pinned cask
 
     /// **`brew pin` being formulae-only is a fact about brew, not about this
-    /// type.** `pkgRow` and `InspectorState` both carry the comment «pinned and
-    /// cask never overlap»; `BrewOutdatedParser` reads `pinned` out of the JSON
+    /// type.** `BrewOutdatedParser` reads `pinned` out of the JSON
     /// for whichever array it is in, so the day a cask carries it the value
     /// arrives here. Refusing the upgrade is the safe answer either way — an
     /// `Upgrade` button that brew answers with «…is pinned» is a button that

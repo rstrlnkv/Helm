@@ -33,6 +33,11 @@ model hears nothing and asks nothing, so an install that `deactivate()` ends is 
 followed by a re-read of a module going off. The page's Stop button is
 `stopOperation()`; `stop()` is the seam's.
 
+Where brew is arrives first: `activate()` files it from the locator (`HomebrewNews.brew`; no
+`brew` runs, and the quit marker is not taken), so the first frame already knows which
+page it is. It only seeds `status`: once the engine's own reading has answered, a later
+seed is ignored, because that reading carries what the seed cannot (`interruptedOp`).
+
 Words: `Sources/Modules/Homebrew/UI/Localizable.xcstrings`; interpolated ones in inline tables in `HomebrewStrings.swift`; shared words through `L()` from the kit.
 
 ## Operations
@@ -104,7 +109,7 @@ Return asks nothing, and no section is drawn.
 
 The two package tabs are a master list and an inspector (`InspectorState`,
 `HomebrewSplit`); **the Health tab is one page and has neither**
-(`HomebrewHealthPage`, mounted by `HomebrewSettingsPage.managerBody` before the
+(`HomebrewHealthPage`, mounted by `HomebrewManager` before the
 split is asked anything, so nothing on it is ever selected). Its doc comment holds the
 reading order (verdict, findings, configuration), `HealthScreen` what is put on
 screen, and `DoctorParser` why a warning keeps its whole block. The verdict is taken

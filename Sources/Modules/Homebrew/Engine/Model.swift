@@ -50,13 +50,21 @@ public enum HomebrewNews: Equatable, Sendable {
     case line(String)
     /// Where the operation is now: running, done or failed.
     case state(OpState)
+    /// Where brew is, said once when the module is switched on: `nil` is no brew.
+    /// A reading of the locator only, so it names nothing about the Cellar and
+    /// takes nothing off the marker (`HomebrewEngine.status`). It lets the page's
+    /// first frame be the right page, not the install screen until `readStatus`
+    /// has answered.
+    case brew(path: String?)
 }
 
-/// The names the engine files its two announcements under on `LocalTransport`;
-/// `HomebrewEngine.stream()` is the one reader.
+/// The names the engine files its three announcements under on `LocalTransport`;
+/// `HomebrewEngine.stream()` is the one reader. `brewFound`'s payload is the
+/// path's UTF-8, empty for none.
 enum HomebrewEvent: String, Sendable {
     case opLog
     case opState
+    case brewFound
 }
 
 public struct BrewPackage: Codable, Equatable, Sendable, Identifiable {

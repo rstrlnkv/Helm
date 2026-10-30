@@ -10,6 +10,9 @@ import HelmRuntime
 /// state, every line the tool printed, the ending, in the order they were said,
 /// to a subscriber registered before `stream()` returns.
 ///
+/// Activation says where brew is, first: the locator's path, or none, and the
+/// model's first frame is drawn from it.
+///
 /// Lines are edges and states are levels. A stream that dropped a line, kept
 /// only the newest of a burst, or took its subscription a moment after it was
 /// asked for would show as a console with a hole in it or a page that never
@@ -39,6 +42,9 @@ private final class HandFedRunner: ProcessRunner, @unchecked Sendable {
 
 private struct FixtureBrew: BrewLocator {
     func brewPath() -> String? { "/opt/fixture/bin/brew" }
+}
+private struct NoBrew: BrewLocator {
+    func brewPath() -> String? { nil }
 }
 private struct NoPrivileges: PrivilegedRunner {
     func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
@@ -123,6 +129,23 @@ final class TheHomebrewStreamCarriesTheOperationTests: XCTestCase {
             .line("==> fetching"),
             .state(OpState(phase: .done, label: "install wget", exitCode: 0)),
         ], "a page opened mid-operation did not hear it from the start")
+    }
+
+    func testActivationSaysWhereBrewIs() async {
+        for (locator, expected) in [(FixtureBrew() as BrewLocator, "/opt/fixture/bin/brew" as String?),
+                                    (NoBrew(), nil)] {
+            let engine = HomebrewEngine(locator: locator, runner: HandFedRunner(),
+                                        privileged: NoPrivileges(), user: "tester",
+                                        transport: LocalTransport(), marker: InMemoryOpMarker(),
+                                        popularity: NoPopularity(), weight: NoPackageWeight(),
+                                        tools: ToolsAlreadyInstalled(), ticker: NoWaitTicker())
+            let news = engine.stream()
+            engine.activate()
+            let got = await collect(news, through: { if case .brew = $0 { true } else { false } })
+            XCTAssertEqual(got, [.brew(path: expected)],
+                           "activation did not say where brew is (\(expected ?? "none"))")
+            engine.deactivate()
+        }
     }
 
     func testEndingTheIterationGivesTheSubscriberBack() async {

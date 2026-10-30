@@ -125,7 +125,7 @@ struct LeftoversSettingsPage: View {
         // way a selection could outlive its row. Moved here from the switcher
         // view itself once that view moved into the header row, which
         // owns no state of the page's to hang a change handler on
-        // (`HomebrewSettingsPage` does the same for its own segment).
+        // (`HomebrewManager` does the same for its own segment).
         .onChange(of: lvm.showAll) { _, _ in lvm.dropHiddenSelections() }
     }
 

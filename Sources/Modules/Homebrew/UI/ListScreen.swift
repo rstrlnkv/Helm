@@ -64,9 +64,8 @@ enum ListScreen: Equatable {
     /// The query could not be put. Its own sentence, and nothing moving —
     /// there is nothing to wait for.
     case unanswerable
-    /// **There are rows, and a query hides every one of them.** Added
-    /// 2026-09-24 with the field that filters every tab: a list that answered
-    /// with rows and a filter that shows none of them is neither `.nothing`
+    /// **There are rows, and a query hides every one of them.** A list that
+    /// answered with rows and a filter that shows none of them is neither `.nothing`
     /// (brew answered "no packages") nor `.rows` (there is nothing to draw) —
     /// it is its own sentence, over the same list underneath.
     case noMatches

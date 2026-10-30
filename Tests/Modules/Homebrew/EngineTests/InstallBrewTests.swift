@@ -111,7 +111,7 @@ final class InstallBrewTests: XCTestCase {
             switch HomebrewEvent(rawValue: event.name) {
             case .opState: state = try? JSONDecoder().decode(OpState.self, from: event.payload)
             case .opLog: log = String(bytes: event.payload, encoding: .utf8)
-            case .none: break
+            case .brewFound, .none: break
             }
         }
         return (state, log)

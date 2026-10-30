@@ -5,9 +5,7 @@ import Module_Homebrew_Engine
 /// **The package view's second tier: what `brew info` added, under the tier the
 /// lists already drew.**
 ///
-/// Its own file rather than five more members on `HomebrewSettingsPage`, which
-/// was already the longest view in the module and went past the house's file
-/// length with them in it. Nothing here reads the page or the view model: the
+/// Its own file: nothing here reads the page or the view model: the
 /// whole input is one `PackageInfo` and the figure beside it, which is why it
 /// can stand alone at all.
 /// `packageDetail` stays the one builder of what a package draws, and this is

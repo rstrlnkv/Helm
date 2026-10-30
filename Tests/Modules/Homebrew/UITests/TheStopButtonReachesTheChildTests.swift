@@ -74,9 +74,9 @@ final class TheStopButtonReachesTheChildTests: XCTestCase {
     /// Structural.
     func testThePageWiresTheStopButton() throws {
         let page = RepoSource.root
-            .appendingPathComponent("Sources/Modules/Homebrew/UI/HomebrewSettingsPage.swift")
+            .appendingPathComponent("Sources/Modules/Homebrew/UI/HomebrewConsole.swift")
         let source = try String(contentsOf: page, encoding: .utf8)
         XCTAssertTrue(source.contains("hb.stopOperation()"),
-                      "HomebrewSettingsPage offers no way to stop a running operation")
+                      "HomebrewConsole offers no way to stop a running operation")
     }
 }

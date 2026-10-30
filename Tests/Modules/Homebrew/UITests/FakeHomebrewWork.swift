@@ -12,9 +12,10 @@ import XCTest
 /// A call is written down by its member's name (`calls`), with the one thing it
 /// was asked about after a space where it has one (`find wget`); a press is
 /// kept whole in `acts` and noted in `calls` as `perform`. `say(_:)` is what the
-/// engine would emit; the last line and the last state are replayed, first, to a
-/// stream taken afterwards, in the order the two kinds first appeared — the
-/// engine's own stream does the same through `LocalTransport`. A stream the
+/// engine would emit; the last line and the last state are replayed to a stream
+/// taken afterwards in the order the two kinds first appeared, after where brew
+/// is, which activation says before any operation — `LocalTransport` keeps the
+/// same order for the engine. A stream the
 /// consumer let go of is counted (`finishedStreams`), so «the loop was
 /// cancelled» is read from the work and not assumed from the model.
 ///
@@ -32,6 +33,7 @@ final class FakeHomebrewWork: HomebrewWork, @unchecked Sendable {
     private var waiting: [String: [CheckedContinuation<Void, Never>]] = [:]
     private var lastLine: HomebrewNews?
     private var lastState: HomebrewNews?
+    private var lastBrew: HomebrewNews?
     private var order: [Bool] = []          // true: the line kind appeared first
     private var live: [UUID: AsyncStream<HomebrewNews>.Continuation] = [:]
     private var finished = 0
@@ -72,6 +74,8 @@ final class FakeHomebrewWork: HomebrewWork, @unchecked Sendable {
             case .state:
                 if lastState == nil { order.append(false) }
                 lastState = news
+            case .brew:
+                lastBrew = news
             }
             return Array(live.values)
         }
@@ -83,6 +87,8 @@ final class FakeHomebrewWork: HomebrewWork, @unchecked Sendable {
             let id = UUID()
             lock.withLock {
                 recorded.append("stream")
+                // Where brew is is said at activation, before any operation speaks.
+                if let news = lastBrew { continuation.yield(news) }
                 for lineFirst in order {
                     if let news = lineFirst ? lastLine : lastState { continuation.yield(news) }
                 }

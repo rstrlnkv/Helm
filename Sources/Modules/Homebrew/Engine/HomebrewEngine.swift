@@ -183,6 +183,11 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     }
 
     public func activate() {
+        // Where brew is, filed before anything else so a model built just before
+        // this has its first frame right (`HomebrewNews.brew`). The locator and
+        // not `status()`: that one takes the quit marker.
+        localTransport.emit(EngineEvent(name: HomebrewEvent.brewFound.rawValue,
+                                        payload: Data((locator.brewPath() ?? "").utf8)))
         // Not in `init`, because `init` runs for every module the host knows
         // about and `activate` only for the ones that are switched on: a module
         // the person has turned off never reaches the network for readings its
@@ -1248,8 +1253,9 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - The model's door
 
-    /// The last line and the last state, in the order the two kinds first appeared,
-    /// then every line and state after them in the order they were said.
+    /// The last line, the last state and where brew is, in the order the three kinds
+    /// first appeared, then every line, state and brew after them in the order they
+    /// were said.
     ///
     /// **Registered before this returns, in the one hold of the transport's lock
     /// that replays what it last said** (`LocalTransport.events`): reading the
@@ -1272,6 +1278,9 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
                         guard let state = try? JSONDecoder().decode(OpState.self, from: event.payload)
                         else { continue }
                         continuation.yield(.state(state))
+                    case .brewFound:
+                        let path = String(decoding: event.payload, as: UTF8.self)
+                        continuation.yield(.brew(path: path.isEmpty ? nil : path))
                     case .none:
                         continue
                     }

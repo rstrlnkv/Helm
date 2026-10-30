@@ -16,7 +16,7 @@ import Module_Homebrew_Engine
 /// and the rest, internal): an `async` requirement is met by a sync method of the
 /// same name, and a blocking call would then run wherever the caller's task is.
 protocol HomebrewWork: AnyObject, Sendable {
-    /// The last line and state, then every one after them in order; registered before it returns.
+    /// The last line, state and brew location, then every one after them in order; registered before it returns.
     func stream() -> AsyncStream<HomebrewNews>
     func readStatus() async -> BrewStatus
     func readInstalled() async -> [BrewPackage]?
@@ -44,6 +44,9 @@ extension HomebrewEngine: HomebrewWork {}
     private var door: (any HomebrewWork)? { closed ? nil : work }
 
     @Published private(set) var status = BrewStatus(installed: false, brewPath: nil)
+    /// Whether `status` is an answer of the engine's and not the seed of
+    /// `HomebrewNews.brew`; the seed applies only while this is false.
+    private var statusRead = false
     @Published private(set) var installed: [BrewPackage] = []
     /// What happened to the last `brew list` — which is three things and not
     /// two. This was a `Bool`, and the state it could not hold is a refusal:
@@ -367,7 +370,7 @@ extension HomebrewEngine: HomebrewWork {}
     /// before their list has ever answered — the same `[]` a genuinely empty
     /// answer leaves — so reading emptiness alone asked brew for a word this
     /// Mac had all along, on the first visit to a tab whose own refresh
-    /// (`loadIfNeeded` never asks `brew outdated`, and the page's `refresh`
+    /// (`loadIfNeeded` never asks `brew outdated`, and the manager's `refresh`
     /// for the tab this `didSet`/pause is about has not landed yet) simply
     /// has not finished. Measured: switching to Обновления with «node»
     /// already typed and `[node]` behind `brew outdated` asked brew before
@@ -769,6 +772,12 @@ extension HomebrewEngine: HomebrewWork {}
             // From the front, which is what a terminal's scrollback does: the
             // end is the half a person is reading. (`say` does it, so the
             // lines the model writes itself are bounded by the same rule.)
+        case .brew(let path):
+            // Only the first frame's seed, and only while nothing has been read:
+            // `loadIfNeeded` reads the status at every visit, and that reading is
+            // the truth, `interruptedOp` included. A seed that came after it
+            // would wipe it.
+            if !statusRead { status = BrewStatus(installed: path != nil, brewPath: path) }
         case .state(let s):
             // Before `op` changes, because the line is about the step between
             // the two states.
@@ -856,7 +865,10 @@ extension HomebrewEngine: HomebrewWork {}
     // MARK: - Queries
 
     func refreshStatus() async {
-        status = await door?.readStatus() ?? status
+        if let read = await door?.readStatus() {
+            status = read
+            statusRead = true
+        }
         // Carried once: the engine's marker is consumed by the read, so only
         // the first status after an interrupted quit says it — into the
         // console, the surface that already narrates operations.

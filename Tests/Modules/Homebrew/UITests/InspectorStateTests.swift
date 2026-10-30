@@ -33,7 +33,7 @@ private func state(_ segment: HomebrewViewModel.Segment, _ selected: String?,
 /// description batch has answered yet. The fourth is `loadedOutdated`, not an
 /// absence folded into the reading: `loadIfNeeded` deliberately never asks
 /// `brew outdated`, so a freshly opened Installed segment must read as "not
-/// asked" and not as "up to date" — `HomebrewSettingsPage.statusLine` already
+/// asked" and not as "up to date" — `HomebrewManager.statusLine` already
 /// carries this rule for the status bar, and the inspector must not disagree
 /// with it about the same package. The description is the other one that must
 /// not turn into a wait — a package with no description yet is drawn with

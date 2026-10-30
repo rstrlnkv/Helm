@@ -46,6 +46,12 @@ struct HomebrewSplit {
     /// through `helmWindowToolbar`, and this is the one boundary there is.
     static let masterAndInspector: CGFloat = 560
 
+    /// The least the master column and the inspector are laid out at beside each
+    /// other. The 521 pt measurement above was taken at these two, so they stay
+    /// as they were.
+    static let masterMinimum: CGFloat = 240
+    static let inspectorMinimum: CGFloat = 260
+
     /// Below this there is no inspector: one column at full width, and the
     /// description returns to the row, which is where it reads at a pane too
     /// narrow for a second column.
@@ -107,7 +113,7 @@ struct HomebrewSplit {
     var masterWidth: CGFloat {
         // The share is measured against the *old* two-sided budget — the
         // divider's position is not this decision's to move, only which side
-        // of it pays for the gap that used to be visible. `managerBody` no
+        // of it pays for the gap that used to be visible. `HomebrewManager` no
         // longer spends anything on the list's own side of the gutter
         // (`HStack(spacing: 0)`); what it used to spend there is handed to
         // the master unconditionally below, at the floor and the ceiling as

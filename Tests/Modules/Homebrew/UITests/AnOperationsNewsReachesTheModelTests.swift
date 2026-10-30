@@ -12,10 +12,11 @@ import HelmUI
 /// it was said, and an operation that ended sends the model back to read the
 /// machine.
 ///
-/// The stream carries two kinds, a line (an edge, every one of them) and a state (a level), and the
-/// model's loop is the only reader. What it holds: a line lost or reordered,
-/// an ending that re-reads nothing, or a re-read for a state that is not an
-/// ending.
+/// The stream carries three kinds, a line (an edge, every one of them), a state
+/// (a level) and where brew is (a seed), and the model's loop is the only
+/// reader. What it holds: a line lost or reordered, an ending that re-reads
+/// nothing, a re-read for a state that is not an ending, or a seed that
+/// overwrites a status the engine has already answered.
 @MainActor
 final class AnOperationsNewsReachesTheModelTests: XCTestCase {
 
@@ -96,5 +97,45 @@ final class AnOperationsNewsReachesTheModelTests: XCTestCase {
         work.say(.state(running("install Homebrew")))
         await eventually("the arrival reaches the model") { model.op.waiting == nil }
         XCTAssertEqual(model.consoleLines, [waitingLine, arrivedLine])
+    }
+
+    func testWhereBrewIsSeedsTheStatusBeforeAnyRead() async {
+        let work = FakeHomebrewWork()
+        work.say(.brew(path: "/seed/bin/brew"))
+        let model = HomebrewViewModel(work: work)
+        await eventually("the seed reaches the model") { model.status.installed }
+        XCTAssertEqual(model.status.brewPath, "/seed/bin/brew")
+        XCTAssertEqual(work.calls, ["stream"], "a seed sent the model to read the machine")
+    }
+
+    func testASeedAfterTheReadLeavesTheReadStanding() async {
+        let work = FakeHomebrewWork()
+        work.status = BrewStatus(installed: true, brewPath: "/real/bin/brew",
+                                 interruptedOp: "upgrade wget")
+        let model = HomebrewViewModel(work: work)
+        await model.refreshStatus()
+        XCTAssertEqual(model.status.interruptedOp, "upgrade wget", "control: the read was not kept")
+
+        work.say(.brew(path: "/seed/bin/brew"))
+        work.say(.line("after the seed"))
+        // The line is behind the seed on one stream: once it is shown, the seed was handled.
+        await eventually("the line behind the seed reaches the console") {
+            model.consoleLines.last == "after the seed"
+        }
+        XCTAssertEqual(model.status.brewPath, "/real/bin/brew")
+        XCTAssertEqual(model.status.interruptedOp, "upgrade wget",
+                       "a seed wrote over the status the engine had answered")
+    }
+
+    func testNoBrewSeedsNotInstalled() async {
+        let work = FakeHomebrewWork()
+        work.say(.brew(path: nil))
+        work.say(.line("after the seed"))
+        let model = HomebrewViewModel(work: work)
+        await eventually("the line behind the seed reaches the console") {
+            model.consoleLines.last == "after the seed"
+        }
+        XCTAssertFalse(model.status.installed)
+        XCTAssertNil(model.status.brewPath)
     }
 }
