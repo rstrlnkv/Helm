@@ -31,37 +31,37 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
 
     /// Counts what was asked and answers from a table. Named at construction;
     /// no default port here could reach this Mac's own brew.
-    private final class Counter: EngineTransport, @unchecked Sendable {
-        private let stream = AsyncStream<EngineEvent>.makeStream()
-        var events: AsyncStream<EngineEvent> { stream.stream }
+    private final class Counter: HomebrewWork, @unchecked Sendable {
         private let installedList: [BrewPackage]
         init(installed: [BrewPackage] = []) { installedList = installed }
 
-        /// The payload of every `.search` that was sent, in order.
+        /// Every word that was searched for, in order.
         ///
         /// Taken under the lock on both sides, in a synchronous property that
         /// returns the value rather than holding it across a suspension —
-        /// `send` is called from the view model's own task and read from the
+        /// the reads are made from the view model's own task and read from the
         /// test's.
         private let lock = NSLock()
         private var asked: [String] = []
         var searches: [String] { lock.withLock { asked } }
 
-        func send(_ command: EngineCommand) async throws -> Data {
-            switch HomebrewCommand(rawValue: command.name) {
-            case .status:
-                return try JSONEncoder().encode(
-                    BrewStatus(installed: true, brewPath: "/opt/fixture/bin/brew"))
-            case .listInstalled: return try JSONEncoder().encode(installedList)
-            case .search:
-                // Failable: a payload that is not UTF-8 reads as the empty word.
-                let word = String(data: command.payload, encoding: .utf8) ?? ""
-                lock.withLock { asked.append(word) }
-                return try JSONEncoder().encode([SearchHit]())
-            case .descriptions: return try JSONEncoder().encode([String: String]())
-            default: return Data()
-            }
+        func stream() -> AsyncStream<HomebrewNews> { AsyncStream { _ in } }
+        func readStatus() async -> BrewStatus {
+            BrewStatus(installed: true, brewPath: "/opt/fixture/bin/brew")
         }
+        func readInstalled() async -> [BrewPackage]? { installedList }
+        func readOutdated() async -> [OutdatedPackage]? { [] }
+        func readDescriptions(of names: [String], isCask: Bool) async -> [String: String] { [:] }
+        func find(_ query: String) async -> [SearchHit]? {
+            lock.withLock { asked.append(query) }
+            return []
+        }
+        func readDependents(of package: PackageRef) async -> [String]? { nil }
+        func readInfo(about package: PackageRef) async -> PackageInfo? { nil }
+        func measure(_ package: PackageRef, version: String) async -> Int? { nil }
+        func readDoctor() async -> [DoctorIssue]? { nil }
+        func readConfig() async -> BrewConfig? { nil }
+        func perform(_ act: HomebrewAct) {}
     }
 
     /// Set well below the owner's real 700 ms, so each case exercises the
@@ -73,7 +73,7 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
     /// Turns of the run loop that also **yield**, which `MountedRender.settle`
     /// deliberately does not.
     ///
-    /// The press starts a `Task` that awaits a round trip to the transport, and
+    /// The press starts a `Task` that awaits a round trip to the engine, and
     /// a settle loop holds the main actor for its whole length — so a count
     /// read after one of those is a count taken before the request could
     /// possibly have been made, and the test would fail on the harness rather
@@ -97,10 +97,9 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
     func testTypingAsksNothingAtOnceThenTheLastWordAfterThePause() async {
         let transport = Counter()
         defer { withExtendedLifetime(transport) {} }
-        let mvm = ModuleViewModel(transport: transport)
-        let hb = HomebrewViewModel.shared(vm: mvm)
+        let hb = HomebrewViewModel(work: transport)
         hb.searchPause = Self.pause
-        let fixture = LivePageUnderTheHeaderFixture(HomebrewSettingsPage(vm: mvm),
+        let fixture = LivePageUnderTheHeaderFixture(HomebrewSettingsPage(hb: hb),
                                                   selection: .module(HomebrewDescriptor.id.rawValue),
                                                   width: 984, height: 520)
         let mount = fixture.mount
@@ -142,10 +141,9 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
     func testReturnAsksAtOnceWithoutWaitingForThePause() async {
         let transport = Counter()
         defer { withExtendedLifetime(transport) {} }
-        let mvm = ModuleViewModel(transport: transport)
-        let hb = HomebrewViewModel.shared(vm: mvm)
+        let hb = HomebrewViewModel(work: transport)
         hb.searchPause = .seconds(10)
-        let fixture = LivePageUnderTheHeaderFixture(HomebrewSettingsPage(vm: mvm),
+        let fixture = LivePageUnderTheHeaderFixture(HomebrewSettingsPage(hb: hb),
                                                   selection: .module(HomebrewDescriptor.id.rawValue),
                                                   width: 984, height: 520)
         let mount = fixture.mount
@@ -174,10 +172,9 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
         let transport = Counter(installed: [BrewPackage(name: "wget", version: "1.25.0",
                                                         isCask: false)])
         defer { withExtendedLifetime(transport) {} }
-        let mvm = ModuleViewModel(transport: transport)
-        let hb = HomebrewViewModel.shared(vm: mvm)
+        let hb = HomebrewViewModel(work: transport)
         hb.searchPause = Self.pause
-        let fixture = LivePageUnderTheHeaderFixture(HomebrewSettingsPage(vm: mvm),
+        let fixture = LivePageUnderTheHeaderFixture(HomebrewSettingsPage(hb: hb),
                                                   selection: .module(HomebrewDescriptor.id.rawValue),
                                                   width: 984, height: 520)
         let mount = fixture.mount

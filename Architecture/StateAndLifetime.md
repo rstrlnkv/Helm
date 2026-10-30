@@ -3,8 +3,10 @@
 ## State that outlives a page and ends with its module
 
 A module's UI state outlives its page and not its module. Settings rebuilds a page on
-every sidebar visit, so the view models are cached; the cache is dropped by module id
-through `ModuleUICache.dropWhenDisabled` (`Sources/HelmUI/DesignSystem/ModuleUICache.swift`),
+every sidebar visit, so a model is held outside the page: by the host for every module;
+Screenshots alone, on the default `makeModule`, holds its page model and capture
+controller in a cache dropped by module id through
+`ModuleUICache.dropWhenDisabled` (`Sources/HelmUI/DesignSystem/ModuleUICache.swift`),
 driven by `.helmModuleDisabled`, posted from `Sources/HelmApp/ModuleHost.swift`. The
 on-disk scan cache is untouched by this: the copy in memory goes, the answer stays.
 A module that owns its model ends it in `stop(_:)` (`Sources/HelmUI/ModuleDescriptor.swift`),

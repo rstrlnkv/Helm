@@ -6,9 +6,9 @@ import HelmRuntime
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
 
-/// The whole path of a press on Stop: view model → wire → engine → the child's
-/// handle. Driven over the real `LocalTransport`, because the command name
-/// crosses a target boundary and only the trip proves the two sides agree.
+/// The whole path of a press on Stop: view model → port → engine → the child's
+/// handle. Driven over the real engine, because the act crosses a target
+/// boundary and only the trip proves the two sides agree.
 @MainActor
 final class TheStopButtonReachesTheChildTests: XCTestCase {
 
@@ -59,13 +59,13 @@ final class TheStopButtonReachesTheChildTests: XCTestCase {
                                     privileged: NoPrivileges(), user: "tester",
                                     transport: transport)
         defer { _ = engine }
-        let model = HomebrewViewModel(vm: ModuleViewModel(transport: transport))
+        let model = HomebrewViewModel(work: engine)
 
         model.upgradeAll()
         await waitUntil("the operation was seen running") { model.op.phase == .running }
         await waitUntil("the stream started") { !runner.handles.isEmpty }
 
-        model.stop()
+        model.stopOperation()
 
         await waitUntil("the child was terminated") { runner.handles.first?.terminated == true }
     }
@@ -76,7 +76,7 @@ final class TheStopButtonReachesTheChildTests: XCTestCase {
         let page = RepoSource.root
             .appendingPathComponent("Sources/Modules/Homebrew/UI/HomebrewSettingsPage.swift")
         let source = try String(contentsOf: page, encoding: .utf8)
-        XCTAssertTrue(source.contains("hb.stop()"),
+        XCTAssertTrue(source.contains("hb.stopOperation()"),
                       "HomebrewSettingsPage offers no way to stop a running operation")
     }
 }

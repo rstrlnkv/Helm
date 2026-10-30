@@ -73,7 +73,7 @@ final class ALateReadingCannotRaiseADialogTests: XCTestCase {
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
                                     marker: InMemoryOpMarker())
-        return (engine, HomebrewViewModel(vm: ModuleViewModel(transport: engine.transport)))
+        return (engine, HomebrewViewModel(work: engine))
     }
 
     private var parked: BrewPackage {

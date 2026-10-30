@@ -1,5 +1,4 @@
 import XCTest
-import HelmContract
 import HelmTestSupport
 import HelmUI
 @testable import Module_Homebrew_Engine
@@ -73,23 +72,15 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
 
     // MARK: - What the press does
 
-    private final class Clinic: EngineTransport, @unchecked Sendable {
-        private let stream = AsyncStream<EngineEvent>.makeStream()
-        var events: AsyncStream<EngineEvent> { stream.stream }
-        private let lock = NSLock()
-        private var sent: [[String]] = []
-        var fired: [[String]] { lock.withLock { sent } }
-
-        func send(_ command: EngineCommand) async throws -> Data {
-            if HomebrewCommand(rawValue: command.name) == .doctorFix,
-               let argv = try? JSONDecoder().decode([String].self, from: command.payload) {
-                lock.withLock { sent.append(argv) }
-            }
-            return Data()
+    /// The argv of every doctor fix the fake was asked to run, in order.
+    private func fired(_ work: FakeHomebrewWork) -> [[String]] {
+        work.acts.compactMap { act in
+            if case .doctorFix(let argv) = act { return argv }
+            return nil
         }
     }
 
-    private func settle(_ clinic: Clinic, until: () -> Bool) async {
+    private func settle(_ work: FakeHomebrewWork, until: () -> Bool) async {
         for _ in 0..<2_000 where !until() { await Task.yield() }
     }
 
@@ -97,11 +88,11 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
     /// it, every «nothing was sent» below is true of a view model that sends
     /// nothing at all.
     func testCleanupStillRunsOnThePress() async {
-        let clinic = Clinic()
-        let model = HomebrewViewModel(vm: ModuleViewModel(transport: clinic))
+        let work = FakeHomebrewWork()
+        let model = HomebrewViewModel(work: work)
         model.askToRunFix(DoctorFix(argv: ["cleanup"], kind: .runnable))
-        await settle(clinic) { !clinic.fired.isEmpty }
-        XCTAssertEqual(clinic.fired, [["cleanup"]], """
+        await settle(work) { !fired(work).isEmpty }
+        XCTAssertEqual(fired(work), [["cleanup"]], """
             `brew cleanup` did not reach the engine on the press — so this fake sees no commands \
             at all, and the absences below prove nothing
             """)
@@ -109,21 +100,21 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
     }
 
     func testTheDestructiveOneReachesNothingUntilItIsConfirmed() async {
-        let clinic = Clinic()
-        let model = HomebrewViewModel(vm: ModuleViewModel(transport: clinic))
+        let work = FakeHomebrewWork()
+        let model = HomebrewViewModel(work: work)
         let fix = DoctorFix(argv: ["uninstall", "periphery"], kind: .runnable)
 
         model.askToRunFix(fix)
         XCTAssertEqual(model.pendingFix, fix, "the press raised no question")
-        await settle(clinic) { !clinic.fired.isEmpty }
-        XCTAssertEqual(clinic.fired, [], """
+        await settle(work) { !fired(work).isEmpty }
+        XCTAssertEqual(fired(work), [], """
             `brew uninstall periphery` was on its way to the engine before anybody had answered \
             the question — which is the single click, with a dialog drawn over it
             """)
 
         model.confirmFix()
-        await settle(clinic) { !clinic.fired.isEmpty }
-        XCTAssertEqual(clinic.fired, [["uninstall", "periphery"]], """
+        await settle(work) { !fired(work).isEmpty }
+        XCTAssertEqual(fired(work), [["uninstall", "periphery"]], """
             answering the question ran nothing, so the dialog is the whole feature and the fix \
             cannot be applied at all
             """)
@@ -134,16 +125,16 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
     /// half is `cancelUninstall`'s own lesson: this view model outlives the
     /// page, so a question left standing is one the next visit opens with.
     func testDecliningRunsNothingAndClearsTheQuestion() async {
-        let clinic = Clinic()
-        let model = HomebrewViewModel(vm: ModuleViewModel(transport: clinic))
+        let work = FakeHomebrewWork()
+        let model = HomebrewViewModel(work: work)
         model.askToRunFix(DoctorFix(argv: ["uninstall", "periphery"], kind: .runnable))
         model.cancelFix()
-        await settle(clinic) { !clinic.fired.isEmpty }
-        XCTAssertEqual(clinic.fired, [], "the fix ran after the person declined it")
+        await settle(work) { !fired(work).isEmpty }
+        XCTAssertEqual(fired(work), [], "the fix ran after the person declined it")
         XCTAssertNil(model.pendingFix)
         // And a confirm with nothing pending is not a second door to the act.
         model.confirmFix()
-        await settle(clinic) { !clinic.fired.isEmpty }
-        XCTAssertEqual(clinic.fired, [], "a confirm with no question standing ran something")
+        await settle(work) { !fired(work).isEmpty }
+        XCTAssertEqual(fired(work), [], "a confirm with no question standing ran something")
     }
 }

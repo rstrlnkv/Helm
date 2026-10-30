@@ -10,7 +10,7 @@ import HelmRuntime
 /// operation that is over.
 final class StoppingTheWaitRaisesNoDialogTests: XCTestCase {
 
-    /// «Stop waiting» is the existing `.stop`: no new command on the wire. The
+    /// «Stop waiting» is the existing `.stop`: no new act. The
     /// operation ends as stopped, the tick is released, and a tick that was
     /// already in flight does not go on to the dialog.
     func testStopWaitingEndsTheOperationAndNoTickRaisesTheDialog() async {

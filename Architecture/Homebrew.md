@@ -11,6 +11,28 @@ view model keeps what it had, so a full Cellar is not drawn as "no packages"; th
 refusal is a named line in the log instead. The one query that retries halves its
 batch rather than its timeout.
 
+## The model
+
+`HomebrewViewModel` is built once per enable by `HomebrewDescriptor.makeModule`, so
+the page reads it and does not own it: leaving the page does not drop the lists and
+descriptions it cost two `brew list` runs and a `brew desc` batch per kind to read. Its init
+asks the engine for nothing but its stream.
+
+It reaches the engine through `HomebrewWork`, an internal port at the top of its file:
+its `async` readings and one `perform(_:)` for every press. The members are named
+apart from the engine's synchronous ones (`listInstalled()` and the rest, internal):
+an `async` requirement is met by a sync method of the same name, and the blocking call
+would then run wherever the caller's task is. `perform(_:)` returns at once and hops
+inside, onto the concurrent global queue and not a serial one: `installBrew` holds its
+thread on the administrator's password dialog, and Stop must overtake it. What the
+engine says while an operation runs, a line or a state, arrives on `stream()` in the
+order it was said.
+
+The host calls the descriptor's `stop(_:)` before the engine's `deactivate()`. A closed
+model hears nothing and asks nothing, so an install that `deactivate()` ends is not
+followed by a re-read of a module going off. The page's Stop button is
+`stopOperation()`; `stop()` is the seam's.
+
 ## Operations
 
 Quitting mid-operation is reported rather than prevented: every operation writes a

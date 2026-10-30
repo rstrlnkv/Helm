@@ -11,8 +11,7 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     /// It reaches disk in shapes nothing would flag if they disagreed: the
     /// `module.leftovers.*` keys of a store, the directory `ScanJournal` names after
     /// it, and the removal attributed to it in the log. `LeftoversDescriptor.id`
-    /// is built from this rather than repeating it, the direction the
-    /// descriptors already carry their command enums, so the two spellings are
+    /// is built from this rather than repeating it, so the two spellings are
     /// one. **The string itself never changes** — it names folders and stored
     /// settings that are already on people's machines.
     public static let moduleID = "leftovers"

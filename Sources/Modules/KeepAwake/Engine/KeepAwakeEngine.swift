@@ -11,8 +11,8 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// The module's own name for itself, and the namespace its settings are
     /// stored under.
     ///
-    /// On the engine, with the descriptor forwarding it upward — the same
-    /// direction the command enum travels, and the convention `DiskEngine`,
+    /// On the engine, with the descriptor forwarding it upward — the
+    /// convention `DiskEngine`,
     /// `DuplicatesEngine`, `LeftoversEngine` and `UninstallerEngine` already
     /// follow. It was a literal in the descriptor while the engine side had no
     /// name at all, so nothing in `Engine/` could say which store it was

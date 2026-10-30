@@ -19,8 +19,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// It is the `module.autopilot.*` prefix of every setting this module has
     /// ever saved and the category its log lines file under.
     /// `AutopilotDescriptor.id` is built from this rather than repeating it,
-    /// the direction the descriptors already carry their command enums, so the
-    /// two spellings are one. **The string itself never changes** — it names
+    /// so the two spellings are one. **The string itself never changes** — it names
     /// stored settings already on people's machines. The keychain service and
     /// the stamp attribute stay `com.helm.autopilot*` literals on purpose:
     /// each is deployed under its own name and documents why it must not

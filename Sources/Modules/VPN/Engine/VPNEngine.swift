@@ -33,8 +33,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// It is the `module.vpn.*` prefix of every setting this module has ever
     /// saved and the category its log lines file under. `VPNDescriptor.id` is
-    /// built from this rather than repeating it, the direction the descriptors
-    /// already carry their command enums, so the two spellings are one. **The
+    /// built from this rather than repeating it, so the two spellings are one. **The
     /// string itself never changes** — it names stored settings already on
     /// people's machines. The keychain service stays its `com.helm.vpn`
     /// literal on purpose: it is deployed under its own name

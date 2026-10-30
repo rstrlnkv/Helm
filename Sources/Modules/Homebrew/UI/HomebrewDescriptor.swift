@@ -30,7 +30,26 @@ import Module_Homebrew_Engine
 
     public init() {}
 
+    public typealias Model = HomebrewViewModel
+
     public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
+        productionEngine()
+    }
+
+    /// The model is built here, once per enable, so the page reads it and does
+    /// not own it: leaving the page does not drop what the lists and
+    /// descriptions cost to read. Its init asks the engine for nothing but its
+    /// stream.
+    public func makeModule(store: NamespacedStore) -> ModuleParts<HomebrewViewModel> {
+        let engine = productionEngine()
+        return ModuleParts(engine: engine, model: HomebrewViewModel(work: engine))
+    }
+
+    /// The host closes the model before the engine goes: its stream task ends
+    /// and nothing it was asked after that reaches the engine.
+    public func stop(_ model: HomebrewViewModel) { model.stop() }
+
+    private func productionEngine() -> HomebrewEngine {
         let ports = HomebrewSystemPorts()
         return HomebrewEngine(locator: ports.locator, runner: ports.runner,
                               privileged: ports.privileged, user: NSUserName(),
@@ -38,10 +57,10 @@ import Module_Homebrew_Engine
                               weight: ports.weight, tools: ports.tools, ticker: ports.ticker)
     }
 
-    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { .utility }
+    public func menuBar(_ model: HomebrewViewModel) -> MenuBarContribution? { .utility }
 
-    public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
-        AnyView(HomebrewSettingsPage(vm: vm))
+    public func settingsPage(_ model: HomebrewViewModel) -> AnyView {
+        AnyView(HomebrewSettingsPage(hb: model))
     }
     // statusAppearance: default (.inactive).
 }

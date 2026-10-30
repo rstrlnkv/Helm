@@ -8,9 +8,7 @@ import Module_Homebrew_Engine
 // cache is read by, which is the half that has to agree with the row.
 
 struct HomebrewSettingsPage: View {
-    @ObservedObject private var hb: HomebrewViewModel
-
-    init(vm: ModuleViewModel) { hb = HomebrewViewModel.shared(vm: vm) }
+    @ObservedObject var hb: HomebrewViewModel
 
     var body: some View {
         VStack(spacing: 0) {
@@ -44,8 +42,8 @@ struct HomebrewSettingsPage: View {
         // batch again.
         .task { await hb.loadIfNeeded() }
         // The other side of that: the view model outliving the page is exactly
-        // why the page has to say it has gone. An uninstall ask is asked over
-        // the transport and can be out for the whole query deadline, and the
+        // why the page has to say it has gone. An uninstall ask is asked of
+        // the engine and can be out for the whole query deadline, and the
         // `Task` the press launches is not tied to this subtree — so switching
         // modules or closing Settings leaves a query whose answer would set
         // `pendingUninstall` on a view model with nothing mounted, and the next
@@ -798,7 +796,7 @@ struct HomebrewSettingsPage: View {
                 if hb.running {
                     // The only way out of a brew that will not finish — the
                     // module used to be dead until an app restart.
-                    Button(Self.stopTitle(for: hb.op)) { hb.stop() }.controlSize(.small)
+                    Button(Self.stopTitle(for: hb.op)) { hb.stopOperation() }.controlSize(.small)
                 }
                 Button(HbStr.clear) { hb.clearConsole() }.controlSize(.small).disabled(hb.running)
             }

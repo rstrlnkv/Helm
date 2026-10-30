@@ -2,17 +2,14 @@ import Foundation
 
 /// Dropping a module's cached UI state when the module is switched off.
 ///
-/// Several modules keep their view model alive across page teardown on purpose:
-/// Settings rebuilds a page on every sidebar visit, and losing a minute-long
-/// scan — or paying four seconds to measure 39 bundles again — to a sidebar
-/// click is hostile. That cache is keyed to the module's view model and nothing
-/// clears it, which is right while the module is on and wrong the moment it is
-/// off: a scan tree is hundreds of megabytes that nobody can reach any more and
-/// nobody asked to keep.
+/// A module on the default `makeModule` may keep page state alive across page
+/// teardown, in a static of its own: Settings rebuilds a page on every sidebar
+/// visit. That cache is keyed to the host's view model, and nothing else clears
+/// it, which is right while the module is on and wrong the moment it is off: what it holds
+/// was built for an engine that is gone.
 ///
 /// One observer per module id, registered the first time that module caches
-/// anything. Written once here rather than four times in four view models,
-/// which is the duplication the house rules exist to stop.
+/// anything. Written once here rather than in each view model.
 @MainActor
 public enum ModuleUICache {
     private static var observers: [String: NSObjectProtocol] = [:]

@@ -15,22 +15,48 @@ public enum BrewKey {
     }
 }
 
-/// What the UI sends to name one package. It crossed the transport as a struct
-/// declared **twice** — privately in the engine and privately again in the view
-/// model — so the two could drift apart with nothing to catch it: a renamed
-/// field fails the decode, the handler returns `Data()`, and the button does
-/// nothing at all.
-public struct PackageRef: Codable, Sendable {
+/// What the UI hands over to name one package. A formula and a cask can share
+/// a name, so the name alone does not say which one is meant.
+public struct PackageRef: Equatable, Sendable {
     public let name: String
     public let isCask: Bool
     public init(name: String, isCask: Bool) { self.name = name; self.isCask = isCask }
 }
 
-/// One `brew desc` batch: a list of names of one kind.
-public struct DescriptionsRequest: Codable, Sendable {
-    public let names: [String]
-    public let isCask: Bool
-    public init(names: [String], isCask: Bool) { self.names = names; self.isCask = isCask }
+/// A press on the engine: every act that starts a child, or ends one.
+///
+/// Exhaustive at the one `switch` that runs it (`HomebrewEngine.perform`), so
+/// an act added here without an arm is a build error rather than a button that
+/// does nothing.
+public enum HomebrewAct: Equatable, Sendable {
+    case install(PackageRef), uninstall(PackageRef)
+    case upgrade(name: String), upgradeAll
+    /// The argv itself — `["uninstall", "periphery"]` — and the engine **judges
+    /// it again** before running it, against the installed list it reads at that
+    /// moment. The UI's own judgement decides what to draw and nothing else:
+    /// between the draw and the press a terminal can uninstall the very package
+    /// the button names (`HomebrewEngine.runDoctorFix`).
+    case doctorFix(argv: [String])
+    case installBrew
+    /// End the running long operation, if any. The only way out of a brew that
+    /// will not finish — operations have no deadline, because an install may
+    /// honestly take an hour.
+    case stop
+}
+
+/// What the engine says while a long operation runs, in the order it said it.
+public enum HomebrewNews: Equatable, Sendable {
+    /// One line of the tool's output, as it arrives.
+    case line(String)
+    /// Where the operation is now: running, done or failed.
+    case state(OpState)
+}
+
+/// The names the engine files its two announcements under on `LocalTransport`;
+/// `HomebrewEngine.stream()` is the one reader.
+enum HomebrewEvent: String, Sendable {
+    case opLog
+    case opState
 }
 
 public struct BrewPackage: Codable, Equatable, Sendable, Identifiable {
@@ -285,28 +311,4 @@ public struct BrewConfig: Codable, Equatable, Sendable {
     public let lines: [ConfigLine]
     public let text: String
     public init(lines: [ConfigLine], text: String) { self.lines = lines; self.text = text }
-}
-
-/// What the UI sends to ask how much disk one package occupies.
-///
-/// `PackageRef` and a version, rather than `PackageRef` alone, because **the
-/// answer is remembered against the version it was measured for**. The engine
-/// keeps one figure per `name@version` for its own life; the version is the
-/// half that makes a kept figure honest, since an upgrade replaces the keg the
-/// walk measured. The page already holds it — it is `PackageInfo`'s
-/// `installedVersion`, the very tile this figure is drawn beside — so nothing
-/// has to be read twice to name it.
-///
-/// Declared here for the reason `PackageRef`'s own comment gives: a payload
-/// declared once in the engine and read from the UI is a wire contract with a
-/// compiler between its halves.
-public struct PackageSizeRequest: Codable, Sendable {
-    public let name: String
-    public let isCask: Bool
-    /// The version the figure will be remembered against. Never empty: a
-    /// package with no installed version has no keg to walk.
-    public let version: String
-    public init(name: String, isCask: Bool, version: String) {
-        self.name = name; self.isCask = isCask; self.version = version
-    }
 }

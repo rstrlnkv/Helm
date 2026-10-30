@@ -21,8 +21,8 @@ import HelmUI
 /// the page.
 ///
 /// `pendingUninstall` used to be the page's `@State` and died with the subtree.
-/// It lives on `HomebrewViewModel` now, and `HomebrewViewModel.shared(vm:)`
-/// caches that for the app's lifetime — so the answer lands on a live view model
+/// It lives on `HomebrewViewModel` now, and the descriptor builds that once per
+/// enable, so it outlives the page — so the answer lands on a live view model
 /// with no page mounted, sets `pendingUninstall`, and nothing clears it. The
 /// dialog's `isPresented` is derived from that property alone: the next visit to
 /// Homebrew raises a confirmation nobody asked for, over a dependents reading
@@ -89,7 +89,7 @@ final class LeavingThePageRetiresAnUninstallAskTests: XCTestCase {
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
                                     marker: InMemoryOpMarker())
-        return (engine, HomebrewViewModel(vm: ModuleViewModel(transport: engine.transport)))
+        return (engine, HomebrewViewModel(work: engine))
     }
 
     /// One press, no second press and no cancel — the person simply leaves. The

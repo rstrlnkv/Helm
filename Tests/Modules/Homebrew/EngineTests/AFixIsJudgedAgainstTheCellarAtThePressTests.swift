@@ -13,7 +13,7 @@ import HelmRuntime
 /// a terminal, or by Helm's own Installed tab two segments away. The argv the
 /// page still carries then names a package that is not on this Mac.
 ///
-/// So the argv arriving over the wire is a *candidate*, never a verdict:
+/// So the argv arriving through the door is a *candidate*, never a verdict:
 /// `HomebrewEngine.runDoctorFix` reads the installed list at the press and puts
 /// it through `DoctorFix.judge` again. The UI's judgement decides what to draw;
 /// this one decides what to run.
@@ -211,10 +211,10 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
             """)
     }
 
-    /// **Nothing on this wire is trusted to have been judged.** No page draws a
+    /// **Nothing through this door is trusted to have been judged.** No page draws a
     /// button for `untap`, for an `uninstall` carrying two names, or for one
-    /// carrying a flag — but the transport is not a private channel, and the
-    /// engine is the gate rather than the page.
+    /// carrying a flag — but `perform(_:)` is public, and the engine is the gate
+    /// rather than the page.
     func testAnArgvNoPageEverDrewIsRefused() {
         let never = [
             ["untap", "sozercan/homebrew-repo"],   // off `DoctorFix.Allowed` entirely
