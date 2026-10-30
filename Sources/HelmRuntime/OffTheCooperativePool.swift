@@ -9,8 +9,11 @@ import Foundation
 /// nothing else in the app gets to run, including the UI's own actor hops.
 ///
 /// A module with its own serial queue should use that instead, so the work is
-/// also serialised — Autopilot does. This is for the ones that only need to be
-/// off the pool.
+/// also serialised — Autopilot does for its walks and moves. Its cheap reads
+/// and writes come here: off the pool because the rule set can sit behind a
+/// keychain prompt, and off that queue because `status` and `dropHistory` take
+/// it synchronously inside (`AutopilotEngine.swift`, MARK: - The model's door).
+/// This is for the ones that only need to be off the pool.
 public func offTheCooperativePool<T: Sendable>(
     qos: DispatchQoS.QoSClass = .userInitiated,
     _ work: @escaping @Sendable () -> T

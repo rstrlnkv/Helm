@@ -17,10 +17,11 @@ disabled_rules:
   # right about `} else {`; its fix is not worth the five it damaged.
   - statement_position
 
-# A localized string is one line carrying eight languages; splitting it hurts
-# more than it helps, and such lines are correct at that length:
-# `ChangelogData.swift` and the `*Strings.swift` files whose inline tables hold
-# them switch this rule off at their first line, so the warning is left to
+# A localized string in an inline table that is not wrapped one language per
+# line is one line carrying eight languages; splitting it hurts more than it
+# helps, and such lines are correct at that length: the files that still hold
+# them (`command grep -rln 'swiftlint:disable line_length' Sources`) switch
+# this rule off at their first line, so the warning is left to
 # notice genuinely runaway code, and
 # `swiftlint lint --quiet --only-rule line_length Sources Tests`
 # lists what it notices today. An error threshold here would only report the

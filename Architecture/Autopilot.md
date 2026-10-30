@@ -50,8 +50,12 @@ page calls `appear()` at every mount, which reads the folders, their status and 
 history, as a page that owned its model did at each opening. The model calls the engine
 through its `AutopilotWork` port, which the engine conforms to, and every answer is a
 return. The reads and writes of the rule set and the history run off the cooperative
-pool and never on the engine's own queue, because the status and the clearing of the
-history take that queue synchronously inside; a dry run, a Run now and both returns run
+pool (`offTheCooperativePool` in `AutopilotEngine.swift`), never on main and never on the
+engine's own queue: the rule set's verdict asks the keychain for the seal key, which on an
+ad-hoc build is a modal authorization prompt after every rebuild rather than an answer
+(`SealedRules.swift`), and on main that prompt would hold the thread that draws until somebody
+answers it, as the app's own settings seal once did (`SealKeyCache.swift`) (no guard); and the status and the clearing of the history take
+that queue synchronously inside; a dry run, a Run now and both returns run
 on that queue, serialised with the hourly sweep and the FSEvents leg. Run now refuses a
 folder that is switched off in the engine, not only at the button. The gates are below
 these calls and are not reached around.
@@ -63,3 +67,8 @@ history and its seal were written; the descriptor makes it yield into a one-slot
 The descriptor's `stop(_:)` closes the model before the engine's `deactivate()`.
 `AStoppedAutopilotModelReachesNoWorkTests.testBuildingTheModelAsksTheEngineNothing` holds
 the first; `TheModelsDoorNeverWaitsOnTheEnginesQueueTests` holds the queue rule.
+
+"New rule" opens the editor on a draft and writes nothing; only Done saves, so Cancel leaves
+no untitled rule behind (`addRule(to:)` in `AutopilotViewModel.swift`); no guard.
+
+Words: `Sources/Modules/Autopilot/UI/Localizable.xcstrings`; interpolated ones in inline tables in `AutopilotStrings.swift`; shared words through `L()` from the kit.
