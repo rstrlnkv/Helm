@@ -155,9 +155,8 @@ public struct KeepAwakeSettings {
     /// never at launch. This one is read from `recompute`, which runs on every
     /// display, charger and application event.
     ///
-    /// So it waits for a Developer ID — the same purchase CLAUDE.md says is
-    /// blocking `NEVPNManager`, an `SMAppService` helper, notarization and TCC
-    /// grants surviving an install. Until then the plist is what it is, and the
+    /// So it waits for a Developer ID, which an `SMAppService` helper,
+    /// notarization and TCC grants surviving an install also wait for. Until then the plist is what it is, and the
     /// mitigation that *did* ship is the one that matters most: the
     /// administrator dialog needs a gesture, so a forged value cannot summon a
     /// password prompt — it can only engage a grant the person already gave.

@@ -4,12 +4,31 @@ import HelmRuntime
 import HelmUI
 import Module_VPN_Engine
 
-@MainActor final class VPNViewModel: ObservableObject {
+/// What the model asks of the engine: the person's door and nothing the rules
+/// use. A fake stands for the engine in `AStoppedVPNModelReachesNoWorkTests`.
+protocol VPNWork: AnyObject, Sendable {
+    /// The latest state, then every later one, in order; registered before it returns.
+    func stream() -> AsyncStream<VPNEngine.StatePayload>
+    /// Re-read the system's answer; returns at once.
+    func refresh()
+    /// A press on a card. Never an automatic act: the engine's own `auto` flag
+    /// is not reachable through this.
+    func press(_ verb: VPNVerb, on name: String)
+    /// One speed run on the named tunnel; the engine refuses any but the one
+    /// carrying the default route, and says so in its next state.
+    func measureSpeed(_ name: String)
+    /// Re-read the saved rules, on the engine's own queue; returns at once.
+    func reloadRules()
+}
+
+extension VPNEngine: VPNWork {}
+
+@MainActor public final class VPNViewModel: ObservableObject {
     @Published private(set) var connections: [VPNConnection] = []
     @Published private(set) var autoConnected: Set<String> = []
     @Published private(set) var defaultName: String?
     /// The last rule firing worth reacting to, or nil. Stale firings never get
-    /// here — see `handle`.
+    /// here — see `apply`.
     @Published private(set) var lastAutomation: VPNAutomation?
     /// The last command `scutil` did not accept, cleared by the next one it
     /// did. The engine has published this since it learned to read the tool's
@@ -31,9 +50,9 @@ import Module_VPN_Engine
     /// **Which tunnel** a measurement is in flight for, or nil — the engine's
     /// answer, not this object's memory of a press.
     ///
-    /// The press still sets it, because the command has a queue to cross and a
-    /// button that does nothing for a moment reads as a button that did not
-    /// work; but every state that arrives overwrites it with what the engine
+    /// The press still sets it, because the engine answers on its own work
+    /// queue, after the press has returned, and a button that does nothing for a
+    /// moment reads as a button that did not work; but every state that arrives overwrites it with what the engine
     /// says (`VPNTunnelState.measuring`). A flag that only a press could set was
     /// wrong in three ways: a page opened while a run was going knew nothing
     /// about it, a run outliving the page that started it left the next one
@@ -46,7 +65,7 @@ import Module_VPN_Engine
     /// run was going.
     @Published private(set) var measuring: String?
 
-    private let transport: EngineTransport
+    private let work: any VPNWork
     private let settings: VPNSettings?
     /// What macOS is asked to post a banner through. Optional because nothing
     /// in a test may reach the real one — `UNUserNotificationCenter.current()`
@@ -59,6 +78,7 @@ import Module_VPN_Engine
     private var bannerAuthorizedForTesting: Bool?
     private var spinForTesting: Bool?
     private var eventsTask: Task<Void, Never>?
+    private(set) var closed = false
     private var expiryTask: Task<Void, Never>?
     /// The announcement of the last firing, while it is still in flight.
     ///
@@ -257,38 +277,52 @@ import Module_VPN_Engine
         }
     }
 
-    init(transport: EngineTransport, settings: VPNSettings? = nil,
+    /// The stream is taken here, synchronously, before the first suspension:
+    /// `stream()` registers the subscriber and replays the latest state in one
+    /// step, so no state emitted from this line on is missed. Nothing is asked
+    /// of the engine; `activate()` emits and the replay delivers.
+    init(work: any VPNWork, settings: VPNSettings? = nil,
          notices: AutomationNoticePort? = nil) {
-        self.transport = transport
+        self.work = work
         self.settings = settings
         self.notices = notices
-        let events = transport.events
+        let states = work.stream()
         eventsTask = Task { [weak self] in
-            for await e in events {
-                guard let self else { break }
-                self.handle(e)
+            for await state in states {
+                guard let self, !self.closed else { break }
+                self.apply(state)
             }
         }
-        // Ask the engine to publish current state.
-        send(VPNCommand.refresh)
     }
 
-    /// Ends the event loop, which unregisters the transport subscriber.
+    /// Ends the event loop, which unregisters the engine's subscriber, ends the
+    /// firing's expiry and announcement, and closes the doors to the engine. The
+    /// host calls it through the descriptor's `stop(_:)` before the engine's
+    /// `deactivate()`.
+    func stop() {
+        closed = true
+        eventsTask?.cancel()
+        eventsTask = nil
+        expiryTask?.cancel()
+        expiryTask = nil
+        announcement?.cancel()
+        announcement = nil
+    }
+
+    /// The backstop for a model dropped without `stop()`: the loop re-acquires
+    /// `self` per state, so it does not keep the model alive.
     deinit { eventsTask?.cancel(); expiryTask?.cancel(); announcement?.cancel() }
 
-    /// Re-reads the system's answer.
-    ///
-    /// The engine is asked once in `init` and then only after Helm itself
-    /// connects or disconnects, so a tunnel raised from the macOS menu bar,
-    /// from System Settings, or one that simply dropped, left this showing
-    /// yesterday's state for as long as the app ran.
-    func refresh() { send(VPNCommand.refresh) }
-    /// The engine's own declaration: there is no compiler across a JSON hop, so a
-    /// second copy here could drift silently.
-    private typealias StatePayload = VPNEngine.StatePayload
-    private func handle(_ e: EngineEvent) {
-        guard VPNEvent(rawValue: e.name) == .state,
-              let p = try? JSONDecoder().decode(StatePayload.self, from: e.payload) else { return }
+    /// Re-reads the system's answer when the page or the panel tile appears. The
+    /// engine also re-reads on its own after every network change
+    /// (`VPNEngine.networkChanged`); this is the ask for a surface that has just
+    /// come on screen.
+    func refresh() {
+        guard !closed else { return }
+        work.refresh()
+    }
+
+    private func apply(_ p: VPNEngine.StatePayload) {
         connections = p.connections
         autoConnected = Set(p.autoConnected)
         defaultName = p.defaultName
@@ -352,33 +386,31 @@ import Module_VPN_Engine
             self?.bannerAuthorization = heard
         }
     }
-    /// Named by the engine's own enum, which is what every call site uses.
-    ///
-    /// The `send(_ name: String, …)` this forwarded to was public, and nothing
-    /// outside called it — a door back to the string spelling the enum exists
-    /// to close, held open for a caller that never arrived.
-    func send(_ command: VPNCommand, payload: Data = Data()) {
-        Task { [transport] in
-            _ = try? await transport.send(EngineCommand(name: command.rawValue,
-                                                        payload: payload))
-        }
-    }
+
     /// Asks for one measurement, **on a named tunnel**. It spends real traffic
     /// and takes `NetworkQualitySpeed.typicalRun`, which is why nothing calls this
     /// but a press.
     ///
     /// The engine refuses a name that is not the tunnel carrying the default
     /// route and publishes when it does, so the optimistic flag below is cleared
-    /// by that refusal exactly the way it is cleared by a run that finished.
+    /// by that refusal exactly the way it is cleared by a run that finished
+    /// (`measuring` says why the press sets it).
     func measureSpeed(_ name: String) {
+        guard !closed else { return }
         measuring = name
-        send(VPNCommand.measureSpeed, payload: nameData(name))
+        work.measureSpeed(name)
     }
-    func connect(_ name: String) { send(VPNCommand.connect, payload: nameData(name)) }
-    func disconnect(_ name: String) { send(VPNCommand.disconnect, payload: nameData(name)) }
-    /// The engine's own type — it was declared again here, inside this
-    /// function, matched to the other by field name across a JSON hop.
-    private func nameData(_ name: String) -> Data {
-        (try? JSONEncoder().encode(VPNConnectionRef(name: name))) ?? Data()
+    func connect(_ name: String) {
+        guard !closed else { return }
+        work.press(.connect, on: name)
+    }
+    func disconnect(_ name: String) {
+        guard !closed else { return }
+        work.press(.disconnect, on: name)
+    }
+    /// The saved rules changed: the engine re-reads them.
+    func rulesChanged() {
+        guard !closed else { return }
+        work.reloadRules()
     }
 }

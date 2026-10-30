@@ -13,7 +13,7 @@ import XCTest
 ///
 /// Two settings that cannot both be read are one setting with a second name.
 /// This drives the real path — a state payload carrying a firing, through
-/// `handle`, through `announce` — because that is where the mode is chosen, and
+/// `apply`, through `announce` — because that is where the mode is chosen, and
 /// a test of `VPNSettings` alone would pass with the view model still reading
 /// the rules' mode for everything.
 @MainActor
@@ -24,15 +24,13 @@ final class ADropIsAnnouncedOnItsOwnSettingTests: XCTestCase {
     private func announce(kind: VPNAutomation.Kind,
                           rules: VPNNotice, drop: VPNNotice) async
         -> (banner: [NoticeText], label: String?) {
-        let transport = LocalTransport()
-        let descriptor = VPNDescriptor()
-        let host = ModuleViewModel(transport: transport)
+        let work = FakeVPNWork()
         let store = NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore())
         let settings = VPNSettings(store: store)
         settings.setNotice(rules)
         settings.setDropNotice(drop)
         let port = FakeAutomationNotice(state: .authorized)
-        let model = VPNViewModel(transport: transport, settings: settings, notices: port)
+        let model = VPNViewModel(work: work, settings: settings, notices: port)
         // What macOS says now, rather than the stored mirror — the same read the
         // settings page does on arrival. Without it `.system` falls back to the
         // menu-bar label and every banner assertion below is about the fallback.
@@ -44,13 +42,9 @@ final class ADropIsAnnouncedOnItsOwnSettingTests: XCTestCase {
                                         status: kind == .connected ? .connected : .disconnected,
                                         kind: "IKEv2")],
             autoConnected: [], defaultName: "Office", lastAutomation: firing)
-        transport.emit(EngineEvent(name: "state",
-                                   payload: try! JSONEncoder().encode(payload)))
+        work.say(payload)
         for _ in 0..<500 where model.lastAutomation == nil { await Task.yield() }
         await model.announcement?.value
-        // The descriptor is asked rather than the model, because the menu-bar
-        // name is its decision and it reads a different accessor.
-        _ = descriptor.viewModel(host)
         return (port.posted, model.effectiveNotice(for: kind).showsMenuBarName
                 ? model.lastAutomation?.name : nil)
     }

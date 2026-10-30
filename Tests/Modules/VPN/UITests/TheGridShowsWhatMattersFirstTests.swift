@@ -18,13 +18,13 @@ import HelmRuntime
 final class TheGridShowsWhatMattersFirstTests: XCTestCase {
 
     private func page(_ connections: [VPNConnection]) -> VPNSettingsPage {
-        let transport = LocalTransport()
+        let work = FakeVPNWork()
         let store = NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore())
         let settings = VPNSettings(store: store)
-        let vm = VPNViewModel(transport: transport, settings: settings)
+        let vm = VPNViewModel(work: work, settings: settings)
         let payload = VPNEngine.StatePayload(connections: connections, autoConnected: [],
                                              defaultName: nil, lastAutomation: nil)
-        transport.emit(EngineEvent(name: "state", payload: try! JSONEncoder().encode(payload)))
+        work.say(payload)
         for _ in 0..<50 where vm.connections.count != connections.count {
             RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
         }

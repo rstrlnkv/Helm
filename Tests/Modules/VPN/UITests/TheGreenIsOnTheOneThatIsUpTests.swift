@@ -29,14 +29,14 @@ final class TheGreenIsOnTheOneThatIsUpTests: XCTestCase {
 
     private func shoot(_ status: VPNStatus) throws -> NSBitmapImageRep {
         let width: CGFloat = 845, height: CGFloat = 400
-        let transport = LocalTransport()
+        let work = FakeVPNWork()
         let store = NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore())
         let settings = VPNSettings(store: store)
-        let vm = VPNViewModel(transport: transport, settings: settings)
+        let vm = VPNViewModel(work: work, settings: settings)
         let payload = VPNEngine.StatePayload(
             connections: [VPNConnection(id: "1", name: "One", status: status, kind: "IKEv2")],
             autoConnected: [], defaultName: nil, lastAutomation: nil)
-        transport.emit(EngineEvent(name: "state", payload: try! JSONEncoder().encode(payload)))
+        work.say(payload)
         for _ in 0..<50 where vm.connections.isEmpty {
             RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
         }

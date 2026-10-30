@@ -193,13 +193,13 @@ final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
         // The press itself, and nothing arranged behind it: the fake reads its
         // System tier only where a prompt is allowed and caches what it read,
         // which is what the real port does and what makes one press enough.
-        engine.connect("Office")
+        engine.connect("Office", auto: false)
 
         XCTAssertEqual(engine.secretsBehindAPrompt, [],
                        "the notice outlived the thing it was about")
-        XCTAssertEqual(starts(runner).count, 2, "and the press itself did nothing")
-        XCTAssertTrue(starts(runner).last?.contains("--secret") ?? false,
-                      "the secret a person asked for never reached the command")
+        XCTAssertEqual(runner.supplied.map(\.name), ["Office"], "and the press itself did nothing")
+        XCTAssertEqual(runner.supplied.last?.credentials.secret, "s",
+                       "the secret a person asked for never reached the system")
     }
 
     /// The other way it stops being true, and the one Helm is not told about:

@@ -91,12 +91,6 @@ final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
         return (engine, transport)
     }
 
-    private func measure(_ transport: LocalTransport) async {
-        let payload = (try? JSONEncoder().encode(VPNConnectionRef(name: "routed"))) ?? Data()
-        _ = try? await transport.send(EngineCommand(name: VPNCommand.measureSpeed.rawValue,
-                                                    payload: payload))
-    }
-
     /// Waits for a state the matcher accepts, subscribing **before** the act so
     /// nothing can go by unseen.
     private func waitForState(_ transport: LocalTransport, _ what: String,
@@ -122,7 +116,7 @@ final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
         // a module whose speed port has never answered.
         await waitForState(transport, "the first reading reached the page",
                            until: { $0.tunnels.first?.speed != nil },
-                           during: { await measure(transport) })
+                           during: { engine.measureSpeed("routed") })
         let first = await lastState(on: transport)
         XCTAssertEqual(first?.tunnels.first?.speed?.down, 343,
                        "precondition: no figure ever reached the page, so nothing below "
@@ -140,7 +134,7 @@ final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
         speed.blocksUntilReleased = true
         await waitForState(transport, "the second run is in flight",
                            until: { $0.tunnels.first?.measuring == true },
-                           during: { await measure(transport) })
+                           during: { engine.measureSpeed("routed") })
         XCTAssertEqual(speed.askedFor.count, 2,
                        "precondition: the second run was refused by the engine rather than "
                        + "reaching the port, so this says nothing about a refusal")

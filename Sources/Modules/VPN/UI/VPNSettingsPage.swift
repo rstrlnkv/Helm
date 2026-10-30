@@ -175,9 +175,9 @@ struct VPNSettingsPage: View {
         }
         .formStyle(.grouped)
         .helmIdlesOffScreen()
-        // The engine is asked once in `init` and the view model is cached for
-        // the app's lifetime, so without these the page showed whatever the
-        // system said at launch.
+        // The model asks the engine nothing in `init`; the host keeps it while
+        // the module is on, and `stop(_:)` closes it — so without these the page
+        // would show whatever the system said when the module came on.
         .task {
             vm.refresh()
             await vm.refreshBannerAuthorization()

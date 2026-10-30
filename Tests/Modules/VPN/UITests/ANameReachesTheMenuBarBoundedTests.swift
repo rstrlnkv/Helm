@@ -19,12 +19,11 @@ import XCTest
 final class ANameReachesTheMenuBarBoundedTests: XCTestCase {
 
     private func appearance(name: String) -> StatusAppearance {
-        let descriptor = VPNDescriptor()
-        let host = ModuleViewModel(transport: LocalTransport())
-        descriptor.viewModel(host).setForTesting(
+        let model = VPNViewModel(work: FakeVPNWork())
+        model.setForTesting(
             automation: VPNAutomation(at: Date(), name: name, kind: .connected),
             notice: .menuBar)
-        return descriptor.statusAppearance(host)
+        return VPNDescriptor().statusAppearance(model)
     }
 
     func testAnOrdinaryNameIsStillTheName() {

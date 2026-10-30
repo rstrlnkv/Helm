@@ -81,6 +81,17 @@ final class FakeRunner: VPNRunnerPort {
     private let hook = NSLock()
     private var _onRun: (@Sendable ([String]) -> Void)?
 
+    /// Every `start(_:supplying:)` the engine made, in order: the credentials
+    /// travel here and never through `issued`, which is the point.
+    var supplied: [(name: String, credentials: VPNCredentials)] = []
+    /// What the in-process start answers; the port's four states and no more.
+    var startAnswer: VPNStartAnswer = .started
+
+    func start(_ name: String, supplying credentials: VPNCredentials) -> VPNStartAnswer {
+        supplied.append((name, credentials))
+        return startAnswer
+    }
+
     func run(_ args: [String]) -> HelmProcess.Result {
         onRun?(args)
         issued.append(args)

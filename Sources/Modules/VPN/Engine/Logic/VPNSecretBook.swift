@@ -36,7 +36,7 @@ struct VPNSecretBook: Sendable {
     /// one step — the read and the decision are the same fact, and separating
     /// them left the caller holding «was this news» to combine by hand.
     enum Step: Equatable {
-        /// Read: these go on the command line.
+        /// Read: these go to the system in process, never on a command line.
         case supply(VPNCredentials)
         /// Nothing to supply and nothing to say: this configuration keeps no
         /// secret Helm has to hand over.

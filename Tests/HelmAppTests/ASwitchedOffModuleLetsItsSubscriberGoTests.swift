@@ -7,11 +7,7 @@ import Module_Homebrew_UI
 import Module_KeepAwake_UI
 import Module_Layout_UI
 import Module_Screenshots_UI
-// `@testable` for one reason: `VPNDescriptor.viewModel(_:)` is internal, and it
-// is the only door to VPN's cache — the module keys its instance on the
-// descriptor rather than on a static, so `shared(vm:)`'s question has to be
-// asked through the descriptor here.
-@testable import Module_VPN_UI
+import Module_VPN_UI
 
 /// Switching a module off must give its transport subscriber back.
 ///
@@ -58,12 +54,6 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
         let build: @MainActor (ModuleViewModel) -> Void
     }
 
-    /// Held for the whole check: VPN keeps its cached model on the descriptor
-    /// and its drop closure captures the descriptor weakly, so a descriptor
-    /// nobody holds takes the cache with it and the notification would be
-    /// dropping something already gone.
-    private let vpn = VPNDescriptor()
-
     private var subscribing: [Cached] {
         [
             Cached(module: "Homebrew", id: HomebrewDescriptor.id.rawValue) {
@@ -71,9 +61,6 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
             },
             Cached(module: "Screenshots", id: ScreenshotsDescriptor.id.rawValue) {
                 _ = ScreenshotsPageModel.shared(vm: $0)
-            },
-            Cached(module: "VPN", id: VPNDescriptor.id.rawValue) { [vpn] in
-                _ = vpn.viewModel($0)
             },
         ]
     }
@@ -154,6 +141,26 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
                        "`stop(_:)` left the engine's subscriber behind: the model's task was not cancelled")
     }
 
+    /// VPN is built like Keep Awake: the host holds the model, `stop(_:)` ends
+    /// its one event task. The engine is built, never activated, so nothing here
+    /// reaches the network.
+    func testVPNGivesItsSubscriberBackWhenTheHostStopsItsModel() async throws {
+        let descriptor = VPNDescriptor()
+        let parts = descriptor.makeModule(store: NamespacedStore(
+            namespace: "test.vpn.subscriber", backing: InMemoryKeyValueStore()))
+        let transport = try XCTUnwrap(parts.engine.transport as? LocalTransport)
+        await settle(transport, until: 1)
+        XCTAssertEqual(transport.subscriberCount, 1,
+                       "the model never subscribed, so the count below would pass on nothing")
+        await letTheLoopStart()
+
+        descriptor.stop(parts.model)
+        await settle(transport, until: 0)
+
+        XCTAssertEqual(transport.subscriberCount, 0,
+                       "`stop(_:)` left the engine's subscriber behind: the model's task was not cancelled")
+    }
+
     /// A module that starts caching its view model arrives in the table above,
     /// or the table is a comment.
     ///
@@ -163,9 +170,9 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
     /// the directory the call is in.
     func testEveryModuleThatCachesAViewModelIsCovered() throws {
         let registered = try Self.modulesRegisteringADrop()
-        XCTAssertGreaterThanOrEqual(registered.count, 3, """
+        XCTAssertGreaterThanOrEqual(registered.count, 2, """
             the scan found \(registered.count) modules calling \
-            `ModuleUICache.dropWhenDisabled` — the tree has at least three, so the walk or the \
+            `ModuleUICache.dropWhenDisabled` — the tree has at least two, so the walk or the \
             match has stopped reading Sources and this check is guarding nothing.
             """)
 

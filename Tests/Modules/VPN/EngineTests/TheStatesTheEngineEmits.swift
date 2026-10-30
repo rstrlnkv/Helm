@@ -6,7 +6,7 @@ import HelmContract
 import XCTest
 @testable import Module_VPN_Engine
 
-/// Reading what the engine told the page, the two ways a test needs it. Shared
+/// Reading the states the engine emits, the ways a test needs it. Shared
 /// rather than private to whichever file needed it first: the sentinel below is
 /// the difference between a count and a race, and a second copy of it is a
 /// second chance to leave the sentinel out.
@@ -39,36 +39,6 @@ func stateEvents(on transport: LocalTransport,
     return seen
 }
 
-/// The same drain, around work that has to be **awaited** — a command sent
-/// through the transport rather than a method called on the engine.
-///
-/// `LocalTransport.send` is `async`, so it cannot be spelled inside the closure
-/// above, and starting it in a detached `Task` instead would race the sentinel:
-/// the drain would end before the handler had run and count nothing, which is
-/// the shape of a test that passes because its subject never happened. A
-/// separate argument label rather than an overload of `during:`, so no existing
-/// call site can quietly change which one it resolves to.
-///
-/// With `VPNWorkQueue.inline` the handler runs to completion inside the `await`,
-/// so everything the command caused is already buffered when the sentinel goes
-/// out.
-func stateEvents(on transport: LocalTransport,
-                 awaiting work: () async -> Void) async -> [VPNEngine.StatePayload?] {
-    let events = transport.events
-    await work()
-    let end = EngineEvent(name: "test.sentinel.\(UUID().uuidString)", payload: Data())
-    transport.emit(end)
-    var seen: [VPNEngine.StatePayload?] = []
-    for await event in events {
-        if event.name == end.name { break }
-        if event.name == VPNEvent.state.rawValue {
-            seen.append(try? JSONDecoder().decode(VPNEngine.StatePayload.self,
-                                                  from: event.payload))
-        }
-    }
-    return seen
-}
-
 /// The state a page opened now would draw: the transport replays the last event
 /// of each name to every new subscriber, which is what a view model built after
 /// the engine has already spoken receives. Nil is «the engine has said nothing».
@@ -76,7 +46,7 @@ func lastState(on transport: LocalTransport) async -> VPNEngine.StatePayload? {
     await stateEvents(on: transport).last ?? nil
 }
 
-/// Watches the wire until a payload the test is waiting for arrives, and says so
+/// Watches the emitted states until a payload the test is waiting for arrives, and says so
 /// through an expectation.
 ///
 /// For the answers that reach the page **when they arrive** rather than by the
@@ -111,10 +81,8 @@ func watchState(_ transport: LocalTransport,
 /// transport replays only the last event per name: subscribing afterwards can
 /// miss the state and wait for ever for one that has already gone by.
 ///
-/// Answers whether the state arrived. It is a `Bool` rather than the payload
-/// because `StatePayload` is not `Sendable` and must not cross out of the
-/// watching task; the caller reads the wire itself afterwards, which is the
-/// same value by then.
+/// Answers whether the state arrived; the caller reads the last state itself
+/// afterwards, which is the same value by then.
 @discardableResult
 func refreshed(_ engine: VPNEngine, on transport: LocalTransport,
                timeout: TimeInterval = 5,

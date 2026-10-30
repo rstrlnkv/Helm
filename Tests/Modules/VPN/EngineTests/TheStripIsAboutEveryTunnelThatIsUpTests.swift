@@ -71,12 +71,6 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
                   work: .inline)
     }
 
-    private func measure(_ engine: VPNEngine, _ name: String) async throws {
-        let payload = try JSONEncoder().encode(VPNConnectionRef(name: name))
-        _ = try await engine.transport.send(EngineCommand(name: VPNCommand.measureSpeed.rawValue,
-                                                          payload: payload))
-    }
-
     // MARK: - Both of them reach the page
 
     func test_two_tunnels_up_both_reach_the_page() async {
@@ -142,7 +136,7 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         XCTAssertEqual(count, 2,
                        "precondition: there is no second tunnel to refuse a measurement for")
 
-        try await measure(engine, "work")
+        engine.measureSpeed("work")
 
         XCTAssertTrue(speed.askedFor.isEmpty, """
             fifteen seconds of somebody's traffic were spent measuring the route \
@@ -164,7 +158,7 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         let watcher = watchState(transport,
                                  until: { $0.tunnels.contains { $0.speed != nil } },
                                  then: landed)
-        try await measure(engine, "home")
+        engine.measureSpeed("home")
 
         await fulfillment(of: [landed], timeout: 5)
         watcher.cancel()
@@ -192,7 +186,7 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         let engine = makeEngine(runner, transport: transport, interfaces: interfaces, speed: speed)
         engine.refresh()
 
-        try await measure(engine, "work")
+        engine.measureSpeed("work")
 
         let tunnels = await lastState(on: transport)?.tunnels ?? []
         XCTAssertEqual(tunnels.count, 2, "precondition: the state never reached the page")
@@ -212,7 +206,7 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         let engine = makeEngine(runner, transport: transport, interfaces: interfaces, speed: speed)
         engine.refresh()
 
-        try await measure(engine, "a tunnel nobody has")
+        engine.measureSpeed("a tunnel nobody has")
 
         XCTAssertTrue(speed.askedFor.isEmpty)
     }
@@ -243,7 +237,7 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         let watcher = watchState(transport,
                                  until: { $0.tunnels.contains(where: \.measuring) },
                                  then: running)
-        try await measure(engine, "home")
+        engine.measureSpeed("home")
         await fulfillment(of: [running], timeout: 5)
         watcher.cancel()
 
@@ -274,7 +268,7 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         let watcher = watchState(transport,
                                  until: { $0.tunnels.contains { $0.speed != nil } },
                                  then: landed)
-        try await measure(engine, "home")
+        engine.measureSpeed("home")
         await fulfillment(of: [landed], timeout: 5)
         watcher.cancel()
 
@@ -306,7 +300,7 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         let watcher = watchState(transport,
                                  until: { $0.tunnels.contains { $0.speed != nil } },
                                  then: landed)
-        try await measure(engine, "home")
+        engine.measureSpeed("home")
         await fulfillment(of: [landed], timeout: 5)
         watcher.cancel()
 

@@ -25,13 +25,11 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
         VPNAutomation(at: Date(), name: name, kind: kind)
     }
 
-    private func emit(_ automation: VPNAutomation, on transport: LocalTransport) {
-        let payload = VPNEngine.StatePayload(
+    private func emit(_ automation: VPNAutomation, on work: FakeVPNWork) {
+        work.say(VPNEngine.StatePayload(
             connections: [VPNConnection(id: "A1", name: "Office",
                                         status: .connected, kind: "IKEv2")],
-            autoConnected: ["Office"], defaultName: "Office", lastAutomation: automation)
-        transport.emit(EngineEvent(name: "state",
-                                   payload: try! JSONEncoder().encode(payload)))
+            autoConnected: ["Office"], defaultName: "Office", lastAutomation: automation))
     }
 
     /// Waits on the announcement itself rather than on a count of yields: the
@@ -53,16 +51,15 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
     /// System Settings, and the app hears nothing when they do.
     private func announce(notice: VPNNotice, mirror: Bool, macOS: NoticeAuthorization)
         async -> (banner: [NoticeText], label: String?) {
-        let transport = LocalTransport()
+        let work = FakeVPNWork()
         let descriptor = VPNDescriptor()
-        let host = ModuleViewModel(transport: transport)
         let port = FakeAutomationNotice(state: macOS)
-        let model = descriptor.viewModel(host)
+        let model = VPNViewModel(work: work)
         model.setForTesting(automation: nil, notice: notice,
                             bannerAuthorized: mirror, notices: port)
-        emit(firing(), on: transport)
+        emit(firing(), on: work)
         await settle(model)
-        return (port.posted, descriptor.statusAppearance(host).title)
+        return (port.posted, descriptor.statusAppearance(model).title)
     }
 
     func testTheAuthorizedBannerModePostsTheBanner() async {
@@ -129,14 +126,14 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
     /// payload — a refresh while the name is still on screen must not post the
     /// banner again.
     func testARepeatedPayloadDoesNotPostTheBannerTwice() async {
-        let transport = LocalTransport()
+        let work = FakeVPNWork()
         let port = FakeAutomationNotice()
-        let model = VPNViewModel(transport: transport, notices: port)
+        let model = VPNViewModel(work: work, notices: port)
         model.setForTesting(automation: nil, notice: .system, bannerAuthorized: true)
         let fired = firing()
-        emit(fired, on: transport)
+        emit(fired, on: work)
         await settle(model)
-        emit(fired, on: transport)
+        emit(fired, on: work)
         for _ in 0..<200 { await Task.yield() }
         await model.announcement?.value
         XCTAssertEqual(port.posted.count, 1, "the same firing was announced twice")

@@ -120,7 +120,7 @@ to the pane from the first refusal. It is tied to the cdhash like the others, an
 does not survive an ad-hoc rebuild either.
 
 A stable signing identity is the only real fix, and the same purchase is what
-`NEVPNManager`, an `SMAppService` helper and notarization each need.
+an `SMAppService` helper and notarization each need.
 
 ## The updater
 

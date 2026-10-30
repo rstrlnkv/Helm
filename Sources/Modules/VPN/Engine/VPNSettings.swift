@@ -134,5 +134,4 @@ public struct VPNSettings {
         let s = store.string("lastUsedName", default: "")
         return s.isEmpty ? nil : s
     }
-    public func setLastUsed(_ name: String) { store.set(name, for: "lastUsedName") }
 }

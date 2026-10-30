@@ -82,6 +82,18 @@ public enum VPNCommandReply: Equatable, Sendable {
         return .refused(withoutTheNames(text, names: names))
     }
 
+    /// What the in-process start said, in the words the `scutil` path gives the
+    /// same news. A refusal carries fixed words and at most the system's number, so
+    /// it cannot hold a name.
+    public static func of(_ answer: VPNStartAnswer) -> VPNCommandReply {
+        switch answer {
+        case .started: .accepted
+        case .noSuchService: .noSuchService
+        case .unreadable: .refused("the system's network configuration could not be read")
+        case .refused(let code): .refused("SCNetworkConnectionStart refused (SCError \(code))")
+        }
+    }
+
     /// Every name gone, case-insensitively — the tool has no reason to spell one
     /// the way the person did — and the result bounded. One log line is not the
     /// place for a wall of text: the file is 2 MB with a single rollover, so an

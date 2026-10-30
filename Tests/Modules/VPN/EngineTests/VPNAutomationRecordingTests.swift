@@ -129,7 +129,7 @@ final class VPNAutomationRecordingTests: XCTestCase {
         runner.listOutput = list("Disconnected")
         let engine = makeEngine(runner)
 
-        engine.connect("A")
+        engine.connect("A", auto: false)
 
         XCTAssertNil(engine.lastAutomation,
                      "the person pressed the button; announcing it back to them says nothing")
@@ -144,7 +144,7 @@ final class VPNAutomationRecordingTests: XCTestCase {
         engine.connect("A", auto: true)
         engine.clearLastAutomationForTesting()
 
-        engine.disconnect("A")
+        engine.disconnect("A", auto: false)
 
         XCTAssertNil(engine.lastAutomation,
                      "a disconnect asked for from the panel is the person's, not Helm's")
@@ -157,7 +157,7 @@ final class VPNAutomationRecordingTests: XCTestCase {
         let runner = FakeRunner()
         runner.listOutput = list("Disconnected")
         let engine = makeEngine(runner)
-        engine.connect("A")
+        engine.connect("A", auto: false)
 
         runner.listOutput = list("Connected")
         engine.refresh()

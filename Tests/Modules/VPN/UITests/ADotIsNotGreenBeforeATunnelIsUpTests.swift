@@ -35,23 +35,22 @@ final class ADotIsNotGreenBeforeATunnelIsUpTests: XCTestCase {
     }
 
     /// A view model holding one connection in the given state, fed the way the app
-    /// feeds it: an engine payload over the transport.
+    /// feeds it: an engine payload on its stream.
     private func model(_ status: VPNStatus) -> VPNViewModel {
-        let transport = LocalTransport()
+        let work = FakeVPNWork()
         // In memory, never `UserDefaults.standard`.
         let settings = VPNSettings(store: NamespacedStore(namespace: "vpn",
                                                          backing: InMemoryKeyValueStore()))
-        let vm = VPNViewModel(transport: transport, settings: settings)
+        let vm = VPNViewModel(work: work, settings: settings)
         let payload = VPNEngine.StatePayload(
             connections: [VPNConnection(id: "1", name: "One", status: status, kind: "IKEv2")],
             autoConnected: [], defaultName: "One", lastAutomation: nil)
-        transport.emit(EngineEvent(name: "state",
-                                   payload: try! JSONEncoder().encode(payload)))
+        work.say(payload)
         for _ in 0..<80 where vm.connections.isEmpty {
             RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
         }
         XCTAssertEqual(vm.connections.count, 1,
-                       "the wire did not deliver: the reading below would be of an empty tile")
+                       "the stream did not deliver: the reading below would be of an empty tile")
         return vm
     }
 

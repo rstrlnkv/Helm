@@ -56,8 +56,36 @@ public enum VPNCredentialRead: Equatable, Sendable {
 ///
 /// `HelmProcess.Result` rather than a type of this module's own: it is already
 /// the shape of "what a command-line tool answered", and there is one of those.
+///
+/// **A start that carries a secret is a second entry point, not a longer
+/// argument list.** `scutil --nc start` takes `--user`, `--password` and
+/// `--secret` only as arguments, which stand in `ps auxww` for every process of
+/// this user while the child lives, and it has no terminal form. The secret goes
+/// to the system in process instead (`SCNetworkConnectionStart`), so the answer
+/// is its own enum: the tool's printed sentence does not exist on this path.
 public protocol VPNRunnerPort: AnyObject {
     func run(_ args: [String]) -> HelmProcess.Result
+    /// Starts the configuration called `name`, handing the system `credentials`
+    /// without any process seeing them. The answer names three reasons and no
+    /// text: no configuration by that name in the list the system gave, the
+    /// system's configuration unreadable (so nothing is known about the name),
+    /// the system refusing the start with its `SCError`, or the start taken.
+    func start(_ name: String, supplying credentials: VPNCredentials) -> VPNStartAnswer
+}
+
+/// What `VPNRunnerPort.start(_:supplying:)` found. **No text, so no name in
+/// it** — the system's error is a number, and a number names nobody's VPN.
+public enum VPNStartAnswer: Equatable, Sendable {
+    /// The system took the start. Like `scutil` saying nothing, this is not yet a
+    /// tunnel that is up; the poll that follows reads that.
+    case started
+    /// The current network set was read and holds no configuration of that name.
+    case noSuchService
+    /// The set, the service or its connection could not be read, so the name is
+    /// neither found nor missing.
+    case unreadable
+    /// The system refused it, with the `SCError` it gave.
+    case refused(code: Int32)
 }
 
 /// Supplies --user/--password/--secret for a keychain-backed VPN.

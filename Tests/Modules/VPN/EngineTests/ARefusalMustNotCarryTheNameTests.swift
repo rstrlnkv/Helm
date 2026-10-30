@@ -108,7 +108,7 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                work: .inline)
 
-        engine.connect(service)
+        engine.connect(service, auto: false)
 
         let lines = HelmLog.shared.recentEntries().filter { $0.category == "vpn" }
         // The subject first: an absence proves nothing when nothing was written.
@@ -132,7 +132,7 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                work: .inline)
 
-        engine.connect(service)
+        engine.connect(service, auto: false)
 
         XCTAssertEqual(engine.lastFailure,
                        VPNFailure(name: service, reason: .refused, verb: .connect),

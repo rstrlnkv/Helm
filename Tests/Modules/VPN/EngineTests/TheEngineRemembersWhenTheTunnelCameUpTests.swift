@@ -34,15 +34,6 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         "(\(status)) \(id ?? uuid) IPSec \"\(name)\""
     }
 
-    /// A speed command **names its tunnel**, the way connect and disconnect
-    /// already do: an unbound run follows the default route, so which tunnel a
-    /// figure belongs to is the command's to say and the engine's to check
-    /// (`VPNExitVerdict.carriesTheDefaultRoute`).
-    private func measureCommand(_ name: String) throws -> EngineCommand {
-        EngineCommand(name: VPNCommand.measureSpeed.rawValue,
-                      payload: try JSONEncoder().encode(VPNConnectionRef(name: name)))
-    }
-
     private func makeSettings() -> VPNSettings {
         VPNSettings(store: NamespacedStore(namespace: "vpn",
                                            backing: InMemoryKeyValueStore()))
@@ -347,9 +338,9 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         await fulfillment(of: [ready], timeout: 5)
         watcher.cancel()
 
-        _ = try await engine.transport.send(measureCommand("A"))
+        engine.measureSpeed("A")
         await fulfillment(of: [measuring], timeout: 5)
-        engine.connect("A")
+        engine.connect("A", auto: false)
 
         await fulfillment(of: [answered], timeout: 5)
     }
@@ -366,7 +357,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
                                 interfaces: tunnelIsTheDefaultRoute(), speed: speed)
         engine.refresh()
 
-        _ = try await engine.transport.send(measureCommand("A"))
+        engine.measureSpeed("A")
 
         XCTAssertTrue(speed.askedFor.isEmpty)
     }
@@ -399,7 +390,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
         // what happens in the app, and what the press is racing.
         runner.listOutput = list("Disconnected")
         engine.refresh()
-        _ = try await engine.transport.send(measureCommand("A"))
+        engine.measureSpeed("A")
 
         XCTAssertTrue(speed.askedFor.isEmpty,
                       "fifteen seconds of somebody's traffic spent measuring a tunnel that "
@@ -448,7 +439,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
 
         let started = expectation(description: "the page was told a run is in flight")
         let running = watchState(transport, until: { $0.tunnels.first?.measuring == true }, then: started)
-        _ = try await engine.transport.send(measureCommand("A"))
+        engine.measureSpeed("A")
         await fulfillment(of: [started], timeout: 5)
         running.cancel()
 
@@ -491,7 +482,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
 
         let events = await stateEvents(on: transport) {
             engine.refresh()                    // the page's baseline
-            engine.connect("A")                 // accepted; the poll re-reads 26 times
+            engine.connect("A", auto: false)                 // accepted; the poll re-reads 26 times
         }
 
         XCTAssertGreaterThan(runner.listReadCount, 25,

@@ -20,7 +20,7 @@ extension VPNSettingsPage {
     /// the card's callbacks live on the page one file over.
     func persist() {
         VPNSettings(store: store).setRulesJSON(VPNRules.encode(rules))
-        vm.send(VPNCommand.reloadRules)
+        vm.rulesChanged()
     }
 
     /// **Where a rule's identity comes from, and the only place it can.** The path

@@ -96,12 +96,6 @@ final class ARefusedMeasurementIsNotSilenceTests: XCTestCase {
         return (engine, transport)
     }
 
-    private func measure(_ transport: LocalTransport, _ name: String) async {
-        let payload = (try? JSONEncoder().encode(VPNConnectionRef(name: name))) ?? Data()
-        _ = try? await transport.send(EngineCommand(name: VPNCommand.measureSpeed.rawValue,
-                                                    payload: payload))
-    }
-
     /// **The control.** The same command, on the tunnel that does carry the
     /// route, reaches the page — so the silence below belongs to the refusal and
     /// not to a command that never arrived.
@@ -117,7 +111,7 @@ final class ARefusedMeasurementIsNotSilenceTests: XCTestCase {
         let (engine, transport) = twoTunnels(speed)
         defer { speed.release(); engine.deactivate() }
 
-        let seen = await stateEvents(on: transport) { await measure(transport, "routed") }
+        let seen = await stateEvents(on: transport) { engine.measureSpeed("routed") }
         await fulfillment(of: [running], timeout: 5)
 
         XCTAssertTrue(seen.contains { $0?.tunnels.contains { $0.measuring } == true }, """
@@ -148,7 +142,7 @@ final class ARefusedMeasurementIsNotSilenceTests: XCTestCase {
                        .besideTunnel,
                        "precondition: «beside» carries the route, so nothing is refused")
 
-        let seen = await stateEvents(on: transport) { await measure(transport, "beside") }
+        let seen = await stateEvents(on: transport) { engine.measureSpeed("beside") }
 
         XCTAssertTrue(speed.askedFor.isEmpty,
                       "precondition: the run was started rather than refused")

@@ -3,6 +3,15 @@
 
 import Foundation
 
+/// Everything the engine says about itself.
+///
+/// One name, shared by the emit and the stream that reads it back; the shape is
+/// `VPNEngine.StatePayload`'s.
+enum VPNEvent: String, Sendable {
+    /// Connections, what Helm raised, and the last rule firing.
+    case state
+}
+
 /// The state every VPN surface draws, and the one declaration of it.
 ///
 /// Out of `VPNEngine` and still `VPNEngine.StatePayload`, the way
@@ -12,12 +21,12 @@ import Foundation
 /// point — the same type, not a copy — because a payload declared twice is
 /// matched by field name across a JSON hop with no compiler in between.
 extension VPNEngine {
-    /// Public because the page decodes it — see the note on KeepAwake's.
+    /// Public because the model reads it from `stream()` — see the note on KeepAwake's.
     /// `Equatable` because the engine refuses to emit a payload equal to the
     /// last one it sent (`emitState`): the poll re-reads up to 26 times behind
     /// one connect, and every field-for-field duplicate it produced re-rendered
     /// every mounted page to learn nothing.
-    public struct StatePayload: Codable, Equatable {
+    public struct StatePayload: Codable, Equatable, Sendable {
         public let connections: [VPNConnection]
         public let autoConnected: [String]
         public let defaultName: String?

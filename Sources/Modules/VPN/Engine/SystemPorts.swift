@@ -15,6 +15,40 @@ public final class ScutilRunner: VPNRunnerPort {
     public func run(_ args: [String]) -> HelmProcess.Result {
         HelmProcess.run("/usr/sbin/scutil", args)
     }
+
+    /// The start that carries a secret, in this process: `scutil --nc start`
+    /// takes `--user`, `--password` and `--secret` only as arguments, which every
+    /// process of this user can read while the child lives.
+    ///
+    /// Called on the module's work queue like `run`, and it does not block:
+    /// `SCNetworkConnectionStart` hands the start to the system and returns
+    /// (`linger` true, or the start would be undone when `connection` is
+    /// released at the end of this function). Nothing here is logged: a name
+    /// would be, and the answer is a code.
+    public func start(_ name: String, supplying credentials: VPNCredentials) -> VPNStartAnswer {
+        // Unreadable and absent are different news: only a list that was read
+        // and held no such name is `.noSuchService`.
+        guard let prefs = SCPreferencesCreate(nil, "Helm" as CFString, nil),
+              let set = SCNetworkSetCopyCurrent(prefs),
+              let services = SCNetworkSetCopyServices(set) as? [SCNetworkService]
+        else { return .unreadable }
+        guard let service = services.first(where: { SCNetworkServiceGetName($0) as String? == name })
+        else { return .noSuchService }
+        guard let serviceID = SCNetworkServiceGetServiceID(service),
+              let connection = SCNetworkConnectionCreateWithServiceID(nil, serviceID, nil, nil)
+        else { return .unreadable }
+        // `scutil` hands over by the service's own interface type; a PPP service
+        // says nothing about its transport, the interface under it does.
+        let outer = SCNetworkServiceGetInterface(service)
+        let kind = outer.flatMap { SCNetworkInterfaceGetInterfaceType($0) as String? } ?? ""
+        let inner = outer.flatMap { SCNetworkInterfaceGetInterface($0) }
+            .flatMap { SCNetworkInterfaceGetInterfaceType($0) as String? }
+        let options = VPNStartOptions.userOptions(credentials, interface: kind, inner: inner)
+        guard SCNetworkConnectionStart(connection, options as CFDictionary?, true) else {
+            return .refused(code: SCError())
+        }
+        return .started
+    }
 }
 
 // MARK: - WorkspaceAppObserver
@@ -382,7 +416,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// available yet: it needs the flag on the write, the read *and* the delete
     /// (they must agree or the read stops finding the write), and it needs an
     /// `application-identifier` entitlement this ad-hoc-signed bundle has not got
-    /// — the same Developer ID already blocking `NEVPNManager`, the seal on
+    /// — the same Developer ID already blocking the seal on
     /// `clamshellEnabled` and notarization. It would also be a change to the
     /// credential path that cannot be tested without writing to somebody's real
     /// keychain. `ASecretsProtectionIsNotClaimedTwiceTests` holds the pair

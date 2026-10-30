@@ -55,6 +55,7 @@ call the model made (Architecture/Disk.md § How Disk's model reaches its engine
 Duplicates' model does the same for a search and for a removal, and asks the keychain
 for the stored keep policy in `appear()` (Architecture/Duplicates.md § How Duplicates'
 model reaches its engine).
+VPN's model calls the same way through its port `VPNWork` and takes the engine's state from its `stream()`, forced re-emissions included (Architecture/VPN.md § How VPN's model reaches its engine).
 Autopilot's model calls the same way and takes the engine's one unasked signal, a pass
 written into the history, on a one-slot stream the descriptor makes, as the Uninstaller's
 Trash arrivals travel (Architecture/Autopilot.md § How Autopilot's model reaches its
@@ -71,8 +72,7 @@ silence and silence already reads as "refused" here.
 
 **A payload is declared once, in the engine.** Both ends of the wire are in one
 build and the UI target imports its engine, so the UI only aliases the engine's type
-(`typealias` in `Sources/Modules/VPN/UI/VPNViewModel.swift`; Keep Awake's
-`stream()` hands the model the engine's own `StatePayload`) and no type decoded under
+(Keep Awake's and VPN's `stream()` hand the model the engine's own `StatePayload`) and no type decoded under
 Sources/Modules/<Name>/UI is declared there; the doc comment of
 `Sources/Modules/KeepAwake/Engine/KeepAwakeStatePayload.swift` says why.
 

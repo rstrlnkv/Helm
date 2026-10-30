@@ -36,7 +36,7 @@ final class ARefusalRemembersItsVerbTests: XCTestCase {
     func testAStopTheToolRefusedIsRecordedAsAStop() {
         let e = engine(runner(refusing: "cannot stop Office: resource busy"))
 
-        e.disconnect("Office")
+        e.disconnect("Office", auto: false)
 
         XCTAssertEqual(e.lastFailure?.reason, .refused, "precondition: the refusal was read")
         XCTAssertEqual(e.lastFailure?.verb, .disconnect,
@@ -49,7 +49,7 @@ final class ARefusalRemembersItsVerbTests: XCTestCase {
     func testAConnectTheToolRefusedIsStillRecordedAsAConnect() {
         let e = engine(runner(refusing: "cannot start Office: resource busy"))
 
-        e.connect("Office")
+        e.connect("Office", auto: false)
 
         XCTAssertEqual(e.lastFailure?.verb, .connect)
     }

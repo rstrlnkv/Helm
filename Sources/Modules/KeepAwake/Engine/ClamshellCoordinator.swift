@@ -328,9 +328,9 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// deleting Helm while it is still running leaves the rule.** No code runs,
     /// so nothing withdraws it, and the file then names an application that is
     /// gone. Nothing closes that without a Developer ID and a real privileged
-    /// helper the system removes with the app — the fifth thing that purchase is
-    /// blocking, beside `NEVPNManager`, `SMAppService`, notarization and a
-    /// stable cdhash for TCC and the keychain (ARCHITECTURE.md § Sealed
+    /// helper the system removes with the app — one more thing that purchase is
+    /// blocking, beside `SMAppService`, notarization, the seal on
+    /// `clamshellEnabled` and a stable cdhash for TCC and the keychain (ARCHITECTURE.md § Sealed
     /// settings). Until then the answer is a sentence: `KAStr.adminNote` names
     /// the path and the `sudo rm` that removes it, before the password is asked
     /// for rather than after.
