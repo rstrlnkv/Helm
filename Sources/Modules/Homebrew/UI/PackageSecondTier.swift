@@ -5,9 +5,8 @@ import Module_Homebrew_Engine
 /// **The package view's second tier: what `brew info` added, under the tier the
 /// lists already drew.**
 ///
-/// Its own file: nothing here reads the page or the view model: the
-/// whole input is one `PackageInfo` and the figure beside it, which is why it
-/// can stand alone at all.
+/// Nothing here reads the page or the view model: the whole input is one
+/// `PackageInfo` and the figure beside it.
 /// `packageDetail` stays the one builder of what a package draws, and this is
 /// one of the things it draws.
 ///
@@ -40,10 +39,8 @@ struct PackageSecondTier: View {
     /// is out now, or a figure.
     let size: SizeReading
 
-    /// The same stack the first tier's blocks sit in, with the same step: this
-    /// used to be a `@ViewBuilder` member of the page, spaced by the page's own
-    /// `VStack`, and a nested stack with a different number would have moved
-    /// every block on the screen.
+    /// The same stack the first tier's blocks sit in, with the same step: a nested
+    /// stack with a different number would move every block on the screen.
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s5) {
             facts
@@ -62,36 +59,27 @@ struct PackageSecondTier: View {
     /// trailing** — the shape macOS itself uses for exactly this, in System
     /// Settings' own «About» and in every grouped `Form`.
     ///
-    /// It was a `LazyVGrid` of adaptive tiles, label over value, each in a well
-    /// of its own. The grid needed a measured minimum to decide how many went
-    /// across (114 pt, solved against the framework's own inequality at the
-    /// narrowest inspector), and still gave a French label two lines at that
-    /// width; and a column of wells side by side read as a set of controls
-    /// rather than as statements about one package. Rows need no such number:
-    /// there is one of them per fact at every width, and the only thing the
-    /// width decides is whether a long value takes a second line.
+    /// Rows, not tiles: a grid of tiles needs a measured minimum to decide how
+/// many go across and still gives a French label two lines, and a column of wells
+/// side by side reads as a set of controls rather than as statements about one
+/// package. Rows need no such number: there is one of them per fact at every
+/// width, and the only thing the width decides is whether a long value takes a
+/// second line.
     ///
-    /// **The label recedes and the value does not**, which is the hierarchy the
-    /// tiles already had and the mockup inverted by accident. The person came
-    /// for «3.6.4», not for «Installed version».
+    /// **The label recedes and the value does not.** The person came for «3.6.4»,
+/// not for «Installed version».
     ///
     /// The value may wrap and keeps to the trailing edge when it does:
-    /// measured 2026-09-15, the widest pair is French at 105.2 pt of label and
-    /// 106.3 of value, which with the row's own gaps is a few points more than
-    /// the 244 pt inspector at `HomebrewSplit`'s threshold. One wrapped value in
-    /// one language at one width is the price, and the same one the tiles paid.
+    /// the widest pair is French at 105.2 pt of label and
+/// 106.3 of value (measured once by hand, no guard), which with the row's own
+/// gaps is a few points more than the 244 pt inspector at `HomebrewSplit`'s
+/// threshold. One wrapped value in one language at one width is the price.
     @ViewBuilder
     private var facts: some View {
         let rows = PackageFacts.of(info, size: size)
         if !rows.isEmpty {
-            VStack(spacing: 0) {
-                ForEach(Array(rows.enumerated()), id: \.element.label) { index, row in
-                    if index > 0 {
-                        // Inset to the text, the way a grouped `Form` draws
-                        // its own: a rule across the card's whole width reads
-                        // as the card being cut in two.
-                        Divider().padding(.leading, HelmSpace.s5)
-                    }
+            HelmSettingsSection {
+                ForEach(rows, id: \.label) { row in
                     HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s5) {
                         Text(row.label).foregroundStyle(HelmText.quiet)
                         Spacer(minLength: 0)
@@ -99,10 +87,8 @@ struct PackageSecondTier: View {
                             .multilineTextAlignment(.trailing)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    .padding(.horizontal, HelmSpace.s5).padding(.vertical, HelmSpace.s3)
                 }
             }
-            .helmCard(padding: 0)
         }
     }
 
@@ -172,17 +158,13 @@ struct PackageSecondTier: View {
                 }
                 let quiet = quietNotes
                 if !quiet.isEmpty {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(Array(quiet.enumerated()), id: \.offset) { index, text in
-                            if index > 0 { Divider().padding(.leading, HelmSpace.s5) }
+                    HelmSettingsSection {
+                        ForEach(quiet, id: \.self) { text in
                             Text(text)
                                 .foregroundStyle(HelmText.quiet)
                                 .fixedSize(horizontal: false, vertical: true)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, HelmSpace.s5).padding(.vertical, HelmSpace.s3)
                         }
                     }
-                    .helmCard(padding: 0)
                 }
             }
         }
@@ -206,15 +188,11 @@ struct PackageSecondTier: View {
     /// `node` answers with eight names in a column that is 260 pt at its
     /// narrowest.
     private func chips(_ heading: String, _ names: [String]) -> some View {
-        VStack(alignment: .leading, spacing: HelmSpace.s3) {
-            HelmSectionTitle(heading)
-                .padding(.leading, HelmSpace.s5)
+        HelmSettingsSection(heading) {
             HelmWrappingRow(spacing: HelmSpace.s2, lineSpacing: HelmSpace.s2,
                             alignment: .leading) {
                 ForEach(names, id: \.self) { HelmBadge($0) }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .helmCard(padding: HelmSpace.s5)
         }
     }
 
@@ -227,16 +205,12 @@ struct PackageSecondTier: View {
     /// surface as the facts above it rather than a recessed well — it is
     /// something to read, not something to type into.
     private func caveatsBlock(_ caveats: String) -> some View {
-        VStack(alignment: .leading, spacing: HelmSpace.s3) {
-            HelmSectionTitle(HbStr.packageNotes)
-                .padding(.leading, HelmSpace.s5)
+        HelmSettingsSection(HbStr.packageNotes) {
             Text(caveats)
                 .font(HelmText.code)
                 .foregroundStyle(HelmText.quiet)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .helmCard(padding: HelmSpace.s5)
         }
     }
 }

@@ -773,7 +773,7 @@ extension HomebrewEngine: HomebrewWork {}
             // end is the half a person is reading. (`say` does it, so the
             // lines the model writes itself are bounded by the same rule.)
         case .brew(let path):
-            // Only the first frame's seed, and only while nothing has been read:
+            // Only a seed, and only while nothing has been read:
             // `loadIfNeeded` reads the status at every visit, and that reading is
             // the truth, `interruptedOp` included. A seed that came after it
             // would wipe it.
@@ -1155,7 +1155,7 @@ extension HomebrewEngine: HomebrewWork {}
     /// Which press the dialog belongs to, so an older query cannot raise one.
     ///
     /// The same counter `search` keeps, for the reason `LatestRequest` gives,
-    /// and here the act it guards is the app's only irreversible deletion.
+    /// and here the act it guards is an irreversible deletion.
     /// Nothing is disabled while this query is out — the page's `disabled`
     /// tracks long operations, not queries — so two presses put two queries in
     /// flight and the last continuation to resume used to win: the answer for a

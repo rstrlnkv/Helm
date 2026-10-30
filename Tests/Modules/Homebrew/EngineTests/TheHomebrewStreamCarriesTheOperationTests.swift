@@ -11,7 +11,7 @@ import HelmRuntime
 /// to a subscriber registered before `stream()` returns.
 ///
 /// Activation says where brew is, first: the locator's path, or none, and the
-/// model's first frame is drawn from it.
+/// model seeds its status from it. This test never draws a frame.
 ///
 /// Lines are edges and states are levels. A stream that dropped a line, kept
 /// only the newest of a burst, or took its subscription a moment after it was

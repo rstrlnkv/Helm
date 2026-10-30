@@ -3,6 +3,15 @@ import HelmUI
 
 struct HomebrewSettingsPage: View {
     @ObservedObject var hb: HomebrewViewModel
+    /// What is drawn of `showsConsole`: a value the engine publishes is not a press (`HelmAccordion`).
+    @State private var shownConsole: Bool
+    @State private var consoleBlock: CGFloat?
+    @Environment(\.helmTraits) private var traits
+
+    init(hb: HomebrewViewModel) {
+        _hb = ObservedObject(wrappedValue: hb)
+        _shownConsole = State(initialValue: Self.showsConsole(hb))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -11,26 +20,23 @@ struct HomebrewSettingsPage: View {
             } else {
                 installScreen
             }
-            if showsConsole {
+            VStack(spacing: 0) {
                 Divider()
-                HomebrewConsole(hb: hb)
+                HomebrewConsole(hb: hb, open: shownConsole)
             }
+            .helmAccordion(open: shownConsole, height: $consoleBlock)
         }
-        // **The console arrives by taking its height off everything above it**, and it used
-        // to do that in one frame: the first install of the session put a
-        // divider and the well under the page, and the list, the status bar and
-        // whatever row the eye was on jumped up together. One token, on
-        // the fact that decides it — the same one the other list screens use
-        // (`UninstallerSettingsPage`).
-        //
-        // `showsConsole` and not `hb.consoleLines.count`: the lines arriving
-        // scroll, which `HomebrewConsole` does by a jump, and re-running the page's
-        // layout per line of `brew` output is a different thing entirely.
-        // The band stands on the manager's own bands or on the install screen,
-        // never on a scroll view, so it is lit from the first frame
-        // (`helmPageStandsOnStillContent`).
+        // **The console arrives by taking its height off everything above it.** Its
+        // flag is the view's own (`shownConsole`): the operation's state is a value the
+        // engine publishes, not a press, and `HelmAccordion` says what that needs.
+        // `showsConsole` and not the lines: a line arriving scrolls by a jump in
+        // `HomebrewConsole`, and re-running the page's layout per line is another thing.
+        // The band stands on the manager's own bands or on the install screen, never on
+        // a scroll view, so it is lit from the first frame (`helmPageStandsOnStillContent`).
         .helmPageStandsOnStillContent()
-        .animation(HelmMotion.interface, value: showsConsole)
+        .onChange(of: Self.showsConsole(hb)) { _, now in
+            withAnimation(HelmMotion.disclosure) { shownConsole = now }
+        }
         // The view model outlives this page, so a return visit shows what is
         // already loaded instead of paying for `brew list` and a `brew desc`
         // batch again.
@@ -41,25 +47,24 @@ struct HomebrewSettingsPage: View {
         // `Task` the press launches is not tied to this subtree — so switching
         // modules or closing Settings leaves a query whose answer would set
         // `pendingUninstall` on a view model with nothing mounted, and the next
-        // visit to Homebrew opens a confirmation for the app's only
+        // visit to Homebrew opens a confirmation for an
         // irreversible deletion that nobody asked for. `LatestRequest` retires
         // work on a later press and on a cancel; leaving is neither, and this
         // is the one place that knows it happened. The modifier is not on
-        // this page and this comment used to say it was: `.helmIdlesOffScreen()`
+        // this page: `.helmIdlesOffScreen()`
         // is on the detail hosting controller in `SettingsWindow.swift`, which
         // holds whichever module page is open — so hiding the app or occluding
         // the Settings window unmounts this subtree and fires this too, which is
         // the behaviour, reached from one level up. Dismissing a
         // confirmation dialog the person had left standing on screen rather
         // than leaving it to act later on a reading taken before the
-        // interruption, which is the right call for the app's only
+        // interruption, which is the right call for an
         // irreversible deletion.
         // And the other question this page can have standing: a `brew doctor`
         // fix that removes a package waits on a dialog too, and it is asked of
         // the same view model, which outlives this subtree.
         .onDisappear { hb.cancelUninstall(); hb.cancelFix() }
-        // The second irreversible deletion this page can reach, and it used to
-        // go on a single click six points from Copy. The question names the
+        // The second irreversible deletion this page can reach; it asks first. The question names the
         // package with the words the Uninstall dialog uses — `FixAsk` decides
         // which of the two questions is asked, and whether one is asked at all.
         .confirmationDialog(hb.pendingFix.flatMap { Self.fixQuestion($0) } ?? "",
@@ -71,8 +76,7 @@ struct HomebrewSettingsPage: View {
         } message: {
             if let note = hb.pendingFix.flatMap({ Self.fixQuestionNote($0) }) { Text(note) }
         }
-        // Removing a cask removes an application. Every other destructive
-        // action in Helm asks first; this one used to go on a single click.
+        // Removing a cask removes an application, so it asks first.
         .confirmationDialog(hb.pendingUninstall.map { HbStr.confirmUninstall($0.name) } ?? "",
                             isPresented: Binding(get: { hb.pendingUninstall != nil },
                                                  set: { if !$0 { hb.cancelUninstall() } }),
@@ -99,25 +103,21 @@ struct HomebrewSettingsPage: View {
     /// refused before it launched anything writes no console line, so a refusal
     /// with an empty console had no console to be drawn in and reached the page
     /// as nothing at all.
-    private var showsConsole: Bool {
+    private static func showsConsole(_ hb: HomebrewViewModel) -> Bool {
         !hb.consoleLines.isEmpty || hb.running || hb.op.phase == .failed
     }
 
     // MARK: - Not installed
 
-    /// The same pane draws `HelmEmptyState` with the module switched off; this
-    /// used to replace it in place with a hand-rolled second one — 16 pt stack
-    /// spacing against 14, a 20 pt title against 17, a 12 pt body against 13,
-    /// and a button pinned to 260 pt. One flick of the switch showed both.
+    /// The same pane draws `HelmEmptyState` with the module switched off, so this is
+    /// the same drawing and not a second, hand-rolled one: one flick of the switch
+    /// would show both.
     ///
-    /// **The tint is the module's, not the category's.** This comment used to
-    /// say the colour was «read off the descriptor rather than written as
-    /// `.pink`» — and it was reading the category's colour, which is `.pink` reached
-    /// the long way round and shared with two other modules. The plate in the
-    /// page header above it was already green.
+    /// **The tint is the module's** (`HomebrewDescriptor.tint`): this plate and the
+    /// one in the page header above it are one green.
     private var installScreen: some View {
         HelmEmptyState(symbol: "shippingbox",
-                       tint: HomebrewDescriptor.tint.colour,
+                       tint: HomebrewDescriptor.tint.colour(increased: traits.increasedContrast),
                        title: HbStr.notInstalledTitle,
                        message: HbStr.notInstalledBody()) {
             Button {

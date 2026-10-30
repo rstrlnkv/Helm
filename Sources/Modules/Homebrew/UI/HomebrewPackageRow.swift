@@ -16,6 +16,7 @@ import HelmUI
 /// empty one, since the split layout never re-flows a row that never draws
 /// a description at all.
 struct HomebrewPackageRow: View {
+    @Environment(\.helmTraits) private var traits
     let name: String
     let detail: String?
     let isCask: Bool
@@ -48,7 +49,7 @@ struct HomebrewPackageRow: View {
                 // same fact, so the row and the package screen say it one way.
                 Image(systemName: Self.updateMarkSymbol)
                     .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmSignal.warning)
+                    .foregroundStyle(HelmSignal.warning(increased: traits.increasedContrast))
                     .accessibilityLabel(HbStr.updateAvailable)
                     // Kept in the layout and taken out of both readings when
                     // there is nothing to say: invisible, and not an element
@@ -73,12 +74,10 @@ struct HomebrewPackageRow: View {
                 }
             }
             Spacer(minLength: 0)
-            // **A column, not a word after the name.** Inline, every version
-            // began wherever its name happened to end, so a list of them could
-            // not be read down — and «26.8.2 → 26.9.0» is exactly what a person
-            // scans the updates list for. At the trailing edge they line up
-            // under the column's own heading (`HomebrewColumnHeader`), in figures that
-            // do not jump as they change.
+            // **A column, not a word after the name**: inline, a version starts
+            // where its name ends and a list of them cannot be read down. At the
+            // trailing edge they line up under the column's own heading
+            // (`HomebrewColumnHeader`), in figures that do not jump as they change.
             if let detail {
                 Text(detail).font(HelmText.figureFont).foregroundStyle(HelmText.quiet)
                     .lineLimit(1)
@@ -116,17 +115,18 @@ struct HomebrewPackageRow: View {
 /// In the house's section voice (`HelmSectionTitle`), and marked a header
 /// for the rotor.
 struct HomebrewColumnHeader: View {
-    let columns: ListColumns
+    /// Whether the rows under it keep the update mark's slot.
+    let marksUpdates: Bool
     let singleColumn: Bool
 
     var body: some View {
         HStack(spacing: HelmSpace.s3) {
-            if columns.marksUpdates {
+            if marksUpdates {
                 Image(systemName: HomebrewPackageRow.updateMarkSymbol).font(HelmText.rowDetail).hidden()
             }
-            HelmSectionTitle(columns.leading)
+            HelmSectionTitle(HbStr.columnPackage)
             Spacer(minLength: 0)
-            if let trailing = columns.trailing { HelmSectionTitle(trailing) }
+            HelmSectionTitle(HbStr.tileVersion)
             RowChevron(singleColumn: singleColumn).hidden()
         }
         .accessibilityElement(children: .combine)
@@ -177,13 +177,11 @@ private struct RowChevron: View {
 /// column, which at this step is a rule every few lines in a 310 pt column of
 /// short names; the approved drawing has a hairline at a twentieth of that
 /// weight, which macOS's is not and cannot be made into. What separates one row
-/// from the next now is the alternating fill `helmStripedList(rowPitch:)` turns on for
+/// from the next is the alternating fill `helmStripedList(rowPitch:)` turns on for
 /// both of them, and the `Section` headers over them, which carry the structure
-/// the rules were standing in for. Hiding
-/// the separator also puts this page with the app's other striped list
-/// screens rather than against them: `OrphansView`, Uninstaller and Leftovers
-/// all hide theirs on the row, and Homebrew was the one list still drawing
-/// rules.
+/// the rules would stand in for. Hiding the separator also puts this page with
+/// the app's other striped list screens: `OrphansView`, Uninstaller and Leftovers
+/// all hide theirs on the row.
 extension View {
     func helmListRow() -> some View {
         listRowSeparator(.hidden)

@@ -184,8 +184,10 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     public func activate() {
         // Where brew is, filed before anything else so a model built just before
-        // this has its first frame right (`HomebrewNews.brew`). The locator and
-        // not `status()`: that one takes the quit marker.
+        // this can have its first frame right (`HomebrewNews.brew`). Seen on bench
+        // recordings over a fake; in the app the news crosses two tasks and that
+        // order is unproved. The locator and not `status()`: that one takes the
+        // quit marker.
         localTransport.emit(EngineEvent(name: HomebrewEvent.brewFound.rawValue,
                                         payload: Data((locator.brewPath() ?? "").utf8)))
         // Not in `init`, because `init` runs for every module the host knows
@@ -497,7 +499,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     /// Which installed packages still need `name`.
     ///
-    /// `brew uninstall` is the only irreversible deletion in the app, and until
+    /// `brew uninstall` is an irreversible deletion, and until
     /// now it was also the only one that would not say what it takes with it:
     /// removing `openssl@3` on this Mac breaks eight installed formulae, and the
     /// dialog asked the same mild question it asks for a leaf.

@@ -52,9 +52,10 @@ public enum HomebrewNews: Equatable, Sendable {
     case state(OpState)
     /// Where brew is, said once when the module is switched on: `nil` is no brew.
     /// A reading of the locator only, so it names nothing about the Cellar and
-    /// takes nothing off the marker (`HomebrewEngine.status`). It lets the page's
-    /// first frame be the right page, not the install screen until `readStatus`
-    /// has answered.
+    /// takes nothing off the marker (`HomebrewEngine.status`). It exists so the page's
+    /// first frame can be the right page, not the install screen until `readStatus`
+    /// has answered; whether it lands in time in the app is unproved
+    /// (`Architecture/Homebrew.md` § The model).
     case brew(path: String?)
 }
 

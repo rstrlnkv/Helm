@@ -5,13 +5,11 @@ import Module_Homebrew_Engine
 
 /// **The Health tab: a verdict, the findings behind it, and the configuration.**
 ///
-/// It was a striped list with an inspector beside it, built for a hundred
-/// packages, and the two things it held — one to three paragraphs of prose from
+/// A striped list with an inspector beside it is built for a hundred packages,
+/// and the two things this tab holds — one to three paragraphs of prose from
 /// `brew doctor` and a document from `brew config` — are not that shape: a
 /// title cut to one line at 286 pt with its meaning one click away, a stripe
 /// under nothing, and «Nothing to fix.» drawn as the quietest row of a table.
-/// The owner chose this direction from three drawn ones, 2026-09-29 («Берем вот
-/// этот вариант»).
 ///
 /// **Read top to bottom, and nothing needs choosing first.**
 ///
@@ -44,6 +42,12 @@ import Module_Homebrew_Engine
 /// field only filters.
 struct HomebrewHealthPage: View {
     @ObservedObject var hb: HomebrewViewModel
+    @Environment(\.helmTraits) private var traits
+
+    /// The plate of a reading that examined nothing. No signal token means
+    /// "nothing is known", so this is the one plate that is not one of them;
+    /// `HelmBadge.neutralTint` is hierarchical and would change the plate.
+    private static let unexaminedTint = Color.gray
 
     /// The findings the person has opened, by `DoctorIssue.id`. The view's own
     /// state and not the view model's: it is a fact about what this page has
@@ -53,7 +57,7 @@ struct HomebrewHealthPage: View {
 
     /// One slot for the disclosure chevron, in every row, so a finding that has
     /// no control still lines its title up with the ones that do.
-    static let chevronSlot: CGFloat = 12
+    static let chevronSlot: CGFloat = HelmSpace.s5
     /// Where a row's body starts: under its title, past the chevron.
     static let bodyInset: CGFloat = HelmSpace.s5 + chevronSlot + HelmSpace.s3
 
@@ -68,9 +72,8 @@ struct HomebrewHealthPage: View {
                     // findings and the field is hiding them, which is a
                     // different fact from having none. **On the column's own
                     // edge, with no padding of its own** — the one the
-                    // verdict's plate and both cards stand on. It was inset by
-                    // a card's padding under nothing that had one, a fourth
-                    // left edge on the page.
+                    // verdict's plate and both cards stand on. A card's
+                // padding under nothing that had one would be a fourth left edge on the page.
                     Text(HbStr.noMatches)
                         .foregroundStyle(HelmText.quiet)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -114,11 +117,11 @@ struct HomebrewHealthPage: View {
 
     private func verdict(_ verdict: HealthVerdict) -> some View {
         // **Top-aligned, and the text column has a fixed step from the top.**
-        // The row used to centre its text on the plate, so the title stood
+        // Centred on the plate, the title would stand
         // wherever the number of lines put it: a wait with one line lower
         // than the answer that replaced it with two, and a refusal that wraps
-        // higher again — the title jumping at the moment it was being read.
-        // Now its first line begins at the same place in every reading, whatever
+        // higher again, the title jumping at the moment it was being read.
+        // So its first line begins at the same place in every reading, whatever
         // is under it.
         HStack(alignment: .top, spacing: HelmSpace.s5) {
             switch verdict {
@@ -132,11 +135,11 @@ struct HomebrewHealthPage: View {
                     .padding(.top, HelmSpace.s2)
                     .frame(width: Self.plate, height: Self.plate, alignment: .top)
             case .clean:
-                HelmSignalPlate(symbol: "checkmark", tint: HelmSignal.success, size: Self.plate)
+                HelmSignalPlate(symbol: "checkmark", tint: HelmSignal.success(increased: traits.increasedContrast), size: Self.plate)
             case .unexaminable:
-                HelmSignalPlate(symbol: "questionmark", tint: .gray, size: Self.plate)
+                HelmSignalPlate(symbol: "questionmark", tint: Self.unexaminedTint, size: Self.plate)
             case .findings:
-                HelmSignalPlate(symbol: "exclamationmark.triangle.fill", tint: HelmSignal.warning,
+                HelmSignalPlate(symbol: "exclamationmark.triangle.fill", tint: HelmSignal.warning(increased: traits.increasedContrast),
                                 size: Self.plate)
             }
             VStack(alignment: .leading, spacing: HelmSpace.s2) {
@@ -197,6 +200,7 @@ struct HomebrewHealthPage: View {
 /// words and the fix.
 private struct FindingRow: View {
     @ObservedObject var hb: HomebrewViewModel
+    @Environment(\.helmTraits) private var traits
     let issue: DoctorIssue
     let open: Bool
     /// nil is «always open»: the only finding has no control to close it.
@@ -239,7 +243,7 @@ private struct FindingRow: View {
             // all of them, so `severityWord` has none for it. `Problem` is
             // `Error:` in brew's own text and is the one that should stand out.
             if let word = HomebrewSettingsPage.severityWord(issue.severity),
-               let tint = HomebrewSettingsPage.severityTint(issue.severity) {
+               let tint = HomebrewSettingsPage.severityTint(issue.severity, increased: traits.increasedContrast) {
                 HelmBadge(word, tint: tint)
             }
             // **The closed row's one button.** Open, it is in the body beside
@@ -272,9 +276,8 @@ private struct FindingRow: View {
 /// the same builder, so the two cannot disagree about what pressing it does.
 ///
 /// **The destructive one, drawn and behaved as the destructive one it is.**
-/// `role: .destructive` is what makes it behave in a menu or a dialog and
-/// draws nothing on this macOS, so `helmDestructive` carries what a person can
-/// see; `askToRunFix` is what makes
+/// `role: .destructive` is what makes `HelmButtonStyle` draw it red, and in a
+/// menu or a dialog behave as one; `askToRunFix` is what makes
 /// it *behave* differently, and `FixAsk` decides which of the two commands on
 /// the allowlist that means — `brew cleanup` still runs on the press, because a
 /// cached download comes back.
@@ -288,9 +291,7 @@ private struct HealthRunButton: View {
 
     var body: some View {
         let command = HomebrewSettingsPage.commandLine(fix)
-        Button(role: .destructive) { hb.askToRunFix(fix) } label: {
-            Text(HomebrewSettingsPage.runLabel(fix)).helmDestructive()
-        }
+        Button(HomebrewSettingsPage.runLabel(fix), role: .destructive) { hb.askToRunFix(fix) }
         .disabled(hb.running)
         .help(command)
         .accessibilityHint(command)
@@ -300,8 +301,8 @@ private struct HealthRunButton: View {
 /// The command, whose label says whose reading it is, and whatever this app
 /// may do with it.
 ///
-/// **No control here attributes the command to Homebrew.** Measured on this
-/// Mac (Homebrew 7.0.1, 2026-09-15): `brew doctor` printed 1,194 bytes and not
+/// **No control here attributes the command to Homebrew.** On one Mac, one
+/// Homebrew version (7.0.1): `brew doctor` printed 1,194 bytes and not
 /// one `brew …` command line, so `uninstall <name>` is Helm's reading of a
 /// heading brew printed and not a line brew wrote — `HbStr.helmReadsThisAs` and
 /// `HbStr.brewNamedNoCommand` are the two places that say so, and the second is

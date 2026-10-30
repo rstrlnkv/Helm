@@ -11,8 +11,8 @@ struct HomebrewPackageList: View {
     // different views, not one view called with different rows.
     var body: some View {
         switch hb.segment {
-        case .installed: installedList(singleColumn: singleColumn)
-        case .updates: updatesList(singleColumn: singleColumn)
+        case .installed: installedList()
+        case .updates: updatesList()
         // The manager mounts `HomebrewHealthPage` for this segment before it
         // asks for a list.
         case .health: EmptyView()
@@ -55,14 +55,13 @@ struct HomebrewPackageList: View {
 
     /// **The "Available to install" section's own three sentences, and its
     /// rows.** Shared by both package tabs' `listOrEmpty`, the only place it is
-    /// drawn: Состояние has no such section.
+    /// drawn: Health has no such section.
     ///
-    /// `marksUpdates` reserves the update mark's slot on Установленные so a
+    /// `marksUpdates` reserves the update mark's slot on Installed so a
     /// hit's name lines up with the installed rows above it — `HomebrewPackageRow`'s own
     /// reason for taking `false` rather than nil there.
     @ViewBuilder
-    private func availableRows(_ section: AvailableSection, hits: [SearchHit],
-                               singleColumn: Bool, marksUpdates: Bool) -> some View {
+    private func availableRows(_ section: AvailableSection, hits: [SearchHit], marksUpdates: Bool) -> some View {
         switch section {
         case .searching: noteRow(HbStr.searching, busy: true)
         case .nothingFound: noteRow(HbStr.noResults)
@@ -76,35 +75,30 @@ struct HomebrewPackageList: View {
         }
     }
 
-    /// The window toolbar's own search field filters this list as it is
+    /// The header row's search field filters this list as it is
     /// typed into (`HomebrewViewModel.shownInstalled`), and the "Available to
     /// install" section appears under it when the filter finds nothing and
     /// the pause has run its course, or after Return.
-    private func installedList(singleColumn: Bool) -> some View {
+    private func installedList() -> some View {
         listOrEmpty(hb.installed, shown: hb.shownInstalled, reading: hb.installedReading,
                     nothing: HbStr.noneInstalled, unanswerable: HbStr.couldNotList,
                     waiting: HbStr.packagesLoading,
-                    columns: ListColumns(leading: HbStr.columnPackage, trailing: HbStr.tileVersion,
-                                         marksUpdates: true),
-                    singleColumn: singleColumn, section: hb.section, hits: hb.shownHits) { pkg in
+                    marksUpdates: true, section: hb.section, hits: hb.shownHits) { pkg in
             HomebrewPackageRow(name: pkg.name, detail: pkg.version, isCask: pkg.isCask, singleColumn: singleColumn,
                                hasUpdate: hasUpdate(pkg.id),
                                desc: singleColumn ? hb.description(name: pkg.name, isCask: pkg.isCask) ?? " " : nil)
         }
     }
 
-    private func updatesList(singleColumn: Bool) -> some View {
+    private func updatesList() -> some View {
         VStack(spacing: 0) {
-            // No bar of its own: «Обновить всё» is in the window's
-            // own toolbar beside Refresh, declared on `HomebrewManager`'s
-            // `.helmWindowToolbar` — visible on this very segment, hidden
-            // everywhere else.
+            // No bar of its own: «Upgrade all» is a declared action of the page's header
+            // row, beside Refresh, on `HomebrewManager`'s `.helmWindowToolbar`, visible on
+            // this segment only.
             listOrEmpty(hb.outdated, shown: hb.shownOutdated, reading: hb.outdatedReading,
                         nothing: HbStr.upToDate, unanswerable: HbStr.couldNotCheckForUpdates,
                         waiting: HbStr.checkingForUpdates,
-                        columns: ListColumns(leading: HbStr.columnPackage, trailing: HbStr.tileVersion,
-                                             marksUpdates: false),
-                        singleColumn: singleColumn, section: hb.section, hits: hb.shownHits) { pkg in
+                        marksUpdates: false, section: hb.section, hits: hb.shownHits) { pkg in
                 // A pinned formula and a cask can both carry a badge here — the
                 // parser does not refuse a `pinned` flag on a cask entry, even
                 // though `brew pin` only ever sets one on a formula
@@ -132,14 +126,10 @@ struct HomebrewPackageList: View {
     /// also what `hb.selection` holds — no `String(describing:)` conversion
     /// needed at the boundary.
     ///
-    /// **Four sentences for four states, and the fourth is new.** This took
-    /// one `empty:` that went nil while a query was out, which is two states
-    /// in one optional and no room at all for a third: a `brew` that refused
-    /// left the flag behind it down for ever, so the pane drew the spinner and
-    /// «Reading the package list…» over a question nothing was going to
-    /// answer, with no timeout anywhere in the UI. `.noMatches` is the fourth,
-    /// added with the field that filters every tab: rows exist and a query
-    /// hides all of them, which is neither an empty answer nor a refusal.
+    /// **Four sentences for four states.** A refusal reads differently from a
+    /// wait, or the pane spins over a question nothing will answer. `.noMatches`:
+    /// rows exist and a query hides all of them, neither an empty answer nor a
+    /// refusal.
     ///
     /// `shown` is `items` with the query applied — the two are equal when
     /// there is no query, which is what keeps every existing reading of the
@@ -148,17 +138,14 @@ struct HomebrewPackageList: View {
     private func listOrEmpty<T: Identifiable, Row: View>(
         _ items: [T], shown: [T], reading: ListReading,
         nothing: String, unanswerable: String, waiting: String,
-        columns: ListColumns, singleColumn: Bool,
+        marksUpdates: Bool,
         section: AvailableSection?, hits: [SearchHit],
         @ViewBuilder row: @escaping (T) -> Row) -> some View
         where T.ID == String {
         // **The section forces the list shape, even over a list that is
-        // itself completely empty.** `ListScreen.of` alone would still read a
-        // genuinely empty `installed` as `.nothing` whatever the query says —
-        // this Mac's own zero-package fixture drew the same «No packages
-        // installed.» sentence whether a search was answering, waiting or
-        // refusing, before the section moved inside the `List` this branch
-        // draws now. A section is only ever non-nil once a needle has
+        // itself completely empty.** A genuinely empty `installed` reads `.nothing`
+        // whatever the query says; the section has to draw inside the `List` for its
+        // waiting and refused sentences to be seen. A section is only ever non-nil once a needle has
         // actually been asked about (`AvailableSection.of`), so this cannot
         // force the list shape over an untyped field.
         let screen = ListScreen.of(isEmpty: items.isEmpty, shownIsEmpty: shown.isEmpty,
@@ -178,7 +165,7 @@ struct HomebrewPackageList: View {
         return Group {
             if listShape {
                 packageList(shown, screen: screen, notes: (nothing, unanswerable, waiting),
-                           columns: columns, singleColumn: singleColumn,
+                           marksUpdates: marksUpdates,
                            section: section, hits: hits, row: row)
             } else if screen == .waiting {
                 // `HelmBusyState()` is the bare spinner its own doc comment
@@ -209,17 +196,16 @@ struct HomebrewPackageList: View {
     /// time by the section rather than by a missing reading.
     private func packageList<T: Identifiable, Row: View>(
         _ shown: [T], screen: ListScreen, notes: (nothing: String, unanswerable: String, waiting: String),
-        columns: ListColumns, singleColumn: Bool,
+        marksUpdates: Bool,
         section: AvailableSection?, hits: [SearchHit],
         @ViewBuilder row: @escaping (T) -> Row) -> some View
         where T.ID == String {
-        // A `List` with no selection has no focusable rows at all — arrow
-        // keys did nothing. Selecting is also how the inspector is reached,
-        // so this is the row's only door into the app now. No
+        // A `List` with no selection has no focusable rows, and selecting is
+        // how the inspector is reached. No
         // `.onTapGesture`, no `.listRowBackground`: macOS draws the system
         // selection itself.
         List(selection: Binding(get: { hb.selected }, set: { hb.select($0) })) {
-            Section(header: HomebrewColumnHeader(columns: columns, singleColumn: singleColumn)) {
+            Section(header: HomebrewColumnHeader(marksUpdates: marksUpdates, singleColumn: singleColumn)) {
                 if let note = Self.ownListNote(screen, notes: notes) {
                     noteRow(note.text, busy: note.busy)
                 } else {
@@ -228,8 +214,7 @@ struct HomebrewPackageList: View {
             }
             if let section {
                 Section(header: HelmSectionTitle(HbStr.availableToInstall)) {
-                    availableRows(section, hits: hits, singleColumn: singleColumn,
-                                 marksUpdates: columns.marksUpdates)
+                    availableRows(section, hits: hits, marksUpdates: marksUpdates)
                 }
             }
         }
@@ -246,13 +231,4 @@ struct HomebrewPackageList: View {
         // of every other list in the app.
         .helmStripedList(rowPitch: HelmSpace.s8)
     }
-}
-
-/// What a package list's heading names, and whether the rows under it keep
-/// the update mark's slot — the three facts `HomebrewColumnHeader` needs and nothing
-/// else, so each call site spells them in one place.
-struct ListColumns {
-    let leading: String
-    let trailing: String?
-    let marksUpdates: Bool
 }

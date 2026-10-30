@@ -2,19 +2,16 @@ import Foundation
 
 /// **What happened to the query behind one of this module's lists.**
 ///
-/// The three package lists each had a `Bool` — `loadedInstalled`,
-/// `loadedOutdated`, and nothing at all for the search — and a `Bool` can only
-/// answer two of the three things that happen to a `brew` call. It said
-/// "loaded" and "not loaded yet", and a refusal is neither: `brew list` that
-/// could not be put leaves the flag down for ever, so the page drew the waiting
-/// spinner and «Reading the package list…» over a question that will never be
-/// answered, with no timeout anywhere in the UI to end it.
+/// A `Bool` per list can answer only two of the three things that happen to a
+/// `brew` call: "loaded" and "not loaded yet". A refusal is neither: a `brew
+/// list` that could not be put would leave the flag down for ever, and the page
+/// would draw the waiting spinner over a question that will never be answered,
+/// with no timeout anywhere in the UI to end it.
 ///
-/// This is `DoctorReading`'s shape applied to the other three lists, for the
-/// rule that type carries and `refreshDoctor`'s own doc comment states: "no
-/// issues" and "the question could not be put" are the same empty array and
-/// must never be one sentence on screen. Состояние honoured it; Установленные,
-/// Обновления and Поиск did not.
+/// This is `DoctorReading`'s shape for the package lists, for the rule that type
+/// carries and `refreshDoctor`'s own doc comment states: "no issues" and "the
+/// question could not be put" are the same empty array and must never be one
+/// sentence on screen.
 enum ListReading: Equatable {
     /// Nobody has asked yet. The "Available to install" section's ordinary
     /// state — no query is out for brew, whether because the field is empty
@@ -41,8 +38,7 @@ enum ListReading: Equatable {
     case unanswerable
 }
 
-/// **What a list pane puts on screen — five drawings now, and the first four
-/// are what this exists for.**
+/// **What a list pane puts on screen — five drawings.**
 ///
 /// `AvailableSection` and `HealthScreen` are the shape this follows, for the
 /// reason those files give: which sentence stands over which state is the whole
@@ -87,42 +83,5 @@ enum ListScreen: Equatable {
     /// over a state that would otherwise be centred.
     static func forcesListShape(section: AvailableSection?, screen: ListScreen) -> Bool {
         section != nil || screen == .rows || screen == .noMatches
-    }
-}
-
-/// **What pressing Run on a `brew doctor` fix has to ask first.**
-///
-/// The allowlist behind a runnable fix holds two commands (`DoctorFix.Allowed`)
-/// and they are not the same kind of act. `brew cleanup` throws away cached
-/// downloads, every one of which comes back from the network; `brew uninstall
-/// <name>` unlinks a package and removes its cellar directory, and there is
-/// nothing to put back — it is the same irreversible deletion the Uninstall
-/// button performs, which has raised a confirmation naming the package since
-/// the day somebody noticed it removed an application on a single click.
-/// Measured 2026-09-16 on the shipping page: «Выполнить» sat 6 pt from
-/// «Скопировать», at the same weight, with no role and no question, and the
-/// command behind it was `brew uninstall periphery`.
-///
-/// **The unrecognised command asks too.** `DoctorFix.judge` is what decides
-/// whether a command may run at all and it is argument-exact, so nothing
-/// outside the two entries reaches this today. That is a fact about today's
-/// allowlist and not a property of this type: a third entry added without
-/// reading this file gets a question rather than a press, which is the safe
-/// direction for a fix this app is about to run on somebody's machine.
-enum FixAsk: Equatable {
-    /// Nothing is destroyed that cannot be had again. The press runs it.
-    case runsOnThePress
-    /// A package leaves this Mac for good. The question names it, with the
-    /// words the Uninstall button's own dialog uses.
-    case uninstalls(name: String)
-    /// Something this build has no sentence for. The question names the
-    /// command itself, because naming nothing is how a dialog becomes a
-    /// reflex.
-    case unrecognised
-
-    static func of(_ argv: [String]) -> FixAsk {
-        if argv == ["cleanup"] { return .runsOnThePress }
-        if argv.count == 2, argv[0] == "uninstall" { return .uninstalls(name: argv[1]) }
-        return .unrecognised
     }
 }

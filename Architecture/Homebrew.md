@@ -34,9 +34,14 @@ followed by a re-read of a module going off. The page's Stop button is
 `stopOperation()`; `stop()` is the seam's.
 
 Where brew is arrives first: `activate()` files it from the locator (`HomebrewNews.brew`; no
-`brew` runs, and the quit marker is not taken), so the first frame already knows which
-page it is. It only seeds `status`: once the engine's own reading has answered, a later
-seed is ignored, because that reading carries what the seed cannot (`interruptedOp`).
+`brew` runs, and the quit marker is not taken), so that a model which has heard it draws the
+right page on its first frame and not the install screen. Bench recordings over a fake
+`HomebrewWork` show that frame. `testWhereBrewIsSeedsTheStatusBeforeAnyRead` holds only that
+the seed reaches the model and asks the machine nothing. In the app `ModuleHost` builds the
+model before `activate()`, so the model has subscribed when the event is filed; the event then
+crosses two tasks, and where the page's first body falls against its landing is unproved. If
+the page draws first, it shows the install screen until the news or `readStatus` lands. It only
+seeds `status`: once the engine's own reading has answered, a later seed is ignored, because that reading carries what the seed cannot (`interruptedOp`).
 
 Words: `Sources/Modules/Homebrew/UI/Localizable.xcstrings`; interpolated ones in inline tables in `HomebrewStrings.swift`; shared words through `L()` from the kit.
 
@@ -117,3 +122,26 @@ from the *unfiltered* reading, so a word typed into the field cannot make a Mac 
 clean. The gate under a fix button is unchanged: the page's view model judges each
 fix through `DoctorFixCandidate.judging` (which calls `DoctorFix.judge`) before it is
 drawn, and the engine's `runDoctorFix` judges again against a list read at the press.
+
+## The states of the Homebrew page
+
+The crew never opens the page on a real prefix: a `brew` run may write its own cache, and the Updates tab's `brew outdated` may update the catalogue (read from Homebrew's scripts, not run). Every state is reached on a bench over a fake `HomebrewWork`, a harness of the crew outside the tree that never constructs `HomebrewEngine` and starts no process.
+
+| state | the page shows | reached by |
+|---|---|---|
+| not installed | the install plate and its button, no tabs | the seed or `readStatus` says no brew, or neither has answered yet (`status`'s default reads the same) |
+| loading | the list area's "Reading the package list…" | `readInstalled` out |
+| list | the striped list, the inspector's invitation | an answer with rows |
+| empty / unanswerable | the sentence in the list, an empty inspector | an empty answer / a refused one |
+| no matches / search hits | the sentence / the filtered rows | a query over the list |
+| available | the "Available to install" section: searching, found, none, refused | a query the list does not hold, after the pause or on Return |
+| updates | the list of outdated packages; Upgrade all in the header row | the Updates tab |
+| inspector | name, version, action, description; the second tier when `brew info` has answered | a row selected |
+| one column | the list with descriptions and a chevron; the package behind a back bar | a pane under `HomebrewSplit.masterAndInspector` |
+| health | verdict, findings that open in place, configuration | the Health tab |
+| health, one finding | that finding open, no control to close it | a reading with one finding |
+| operation | the console: pill, Stop, lines | any long operation; its height opens on `HelmMotion.disclosure` |
+| operation ended | done, stopped, cancelled, or failed with its note | the engine's last `OpState` |
+| dialogs | Uninstall's question, a fix's question | Uninstall…, Run… |
+
+Motion: the console's height moves on `HelmMotion.disclosure`, read on bench recordings, no guard. At opening the well arrives empty and rises with the list, and the lines land at their place while it rises: a clip keeps them inside the well, so they appear inside it, the first about 150 ms after the start, and none is drawn over the pill or above the well. At close the lines are already gone, Clear having removed them, so an empty well shrinks. A pane swap below the threshold runs on `HelmMotion.interface`; a switch of tab and the second tier's arrival are cuts, compared by frame counts on the bench, no guard; a row leaving is the list's own removal, about 15 frames, the same before and after, read off the frame tables, no guard. The real window's motion and Reduce Motion are unproved: the bench has no shell and cannot force the flag. Increase Contrast: the signal colours read their pairs through `\.helmTraits`, shot with the setting forced on the bench's environment, not on a Mac; no guard. Not reachable on the bench: the administrator's dialog, Apple's tools window, the shell's own ground, and real `brew` timings.

@@ -76,7 +76,7 @@ enum HbStr {
            .zh: "卸载 \(name)？",
            .pt: "Desinstalar \(name)?"])
     }
-    /// The only irreversible deletion in the app, and it had the mildest
+    /// An irreversible deletion, and it had the mildest
     /// confirmation: a bare "Uninstall ada-url?" beside five screens that spell
     /// out "Move to Trash" for deletions the Finder can undo. `brew uninstall`
     /// unlinks and removes the cellar directory, and there is nothing to put

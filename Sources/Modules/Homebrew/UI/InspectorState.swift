@@ -4,15 +4,15 @@ import Module_Homebrew_Engine
 
 /// What the inspector draws, decided without a view.
 ///
-/// **Two of the three tabs have an inspector; Состояние does not.** Its findings
+/// **Two of the three tabs have an inspector; Health does not.** Its findings
 /// open in place in a card of their own and its configuration opens the same
 /// way (`HomebrewHealthPage`), so there is nothing to select there and nothing
 /// for this type to describe: `.health` answers `.nothingToSelect`, which the
 /// page never mounts.
 ///
 /// `AvailableSection.of` is the shape this follows: the page asks a value type
-/// what it is looking at, and the decision is held by a test rather than by a
-/// screenshot. Everything here is a function of what the page already has — no
+/// what it is looking at, and the decision is held by a test
+/// (`InspectorStateDecisionsTests`, optional) rather than by a screenshot. Everything here is a function of what the page already has — no
 /// query of its own, and nothing that can be waited on.
 ///
 /// Internal, not `public` — nothing outside `Module_Homebrew_UI` reads this
@@ -24,11 +24,8 @@ enum InspectorState: Equatable {
     /// **There is nothing to pick.** The list beside this is empty — because
     /// the query is still out, because it answered nothing, or because it could
     /// not be put at all — and «Select a package» over it invites a choice
-    /// nobody can make. Measured 2026-09-16 on a 984 pt pane: the invitation
-    /// occupied 515 of 984 pt, 52 % of the pane, beside a master saying
-    /// Homebrew had not answered; at its worst, on a Состояние whose findings
-    /// *and* configuration both refused, one unselectable sentence on the left
-    /// and an invitation on the right.
+    /// nobody can make: the invitation occupied half the pane, beside a master
+/// saying Homebrew had not answered.
     ///
     /// **One case for all three of waiting, empty and refused, and that is the
     /// point.** The list's own three sentences are `ListScreen`'s job and they
@@ -72,12 +69,12 @@ enum InspectorState: Equatable {
         // of it, so a stale `selected` left over from a list that has since
         // emptied is not a reason to go on offering the invitation either.
         // `hits` counts on the two package tabs, since the section it
-        // describes sits under those and not under Состояние.
+        // describes sits under those and not under Health.
         //
-        // **Состояние first, and whatever it is holding.** It has no inspector
+        // **Health first, and whatever it is holding.** It has no inspector
         // (see the type's own comment), so a selection left on it is not
-        // something this could describe, and a hit the section drew there —
-        // it no longer draws one — is not one to offer an install for.
+        // something this could describe, and the section draws no hit there to
+        // offer an install for.
         if segment == .health { return .nothingToSelect }
         let empty: Bool
         if let shownEmpty {
@@ -248,11 +245,10 @@ enum HealthVerdict: Equatable {
 /// **What the whole health tab puts on screen: a verdict, the findings the
 /// search field leaves, and the configuration the search field leaves.**
 ///
-/// The tab used to be a striped list with an inspector beside it and the
-/// sentence for each reading a row in that list. It is one page now — the
-/// verdict first, then a card of findings that each open in place, then the
-/// configuration in a card of its own (`HomebrewHealthPage`) — so what the
-/// three parts hold is decided here, once, and not in a `body`.
+/// The tab is one page: the verdict first, then a card of findings that each
+/// open in place, then the configuration in a card of its own
+/// (`HomebrewHealthPage`), so what the three parts hold is decided here, once,
+/// and not in a `body`.
 ///
 /// **The fourth reading, `noMatches`, is about the findings and not about the
 /// Mac.** `brew doctor` really finding nothing and a query hiding what it did
@@ -482,7 +478,7 @@ enum PackageFacts {
 ///
 /// **A stack that resolves to zero height is not the same as no stack.** A
 /// `VStack`'s spacing is not paid around an absent child, which is why
-/// `factTiles` collapses to nothing when it earns no tile — but `origin` and
+/// `facts` collapses to nothing when it has nothing to say — but `origin` and
 /// `notes` were unconditional stacks, so for the commonest package of all (an
 /// installed formula somebody asked for, no other version lines, not deprecated)
 /// the tier paid its 24 pt step around each of two empty blocks where the

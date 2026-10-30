@@ -48,13 +48,13 @@ struct HomebrewManager: View {
             // content.** Above the threshold the list and the subject sit side
             // by side; below it, selecting a row replaces the list with that
             // same view at full width, with `backBar` above it to return —
-            // there is exactly one builder per kind of subject, called from
+            // `packageDetail` is the one builder, called from
             // both places, so a wide inspector and a narrow screen cannot
             // drift into offering two different things for one of them.
             GeometryReader { proxy in
                 let split = HomebrewSplit(availableWidth: proxy.size.width)
                 if hb.segment == .health {
-                    // **Not a master and a subject, at any width.** Состояние
+                    // **Not a master and a subject, at any width.** Health
                     // is one page whose findings open where they stand
                     // (`HomebrewHealthPage`), so the split is not asked and
                     // no selection exists to put a back bar over.
@@ -70,10 +70,8 @@ struct HomebrewManager: View {
                     // own leading padding below.
                     HStack(spacing: 0) {
                         listArea(singleColumn: split.singleColumn)
-                            // `minWidth` and the compressibility it buys are
-                            // kept exactly as they were: a fixed `width:` here
-                            // would move the floor the 521 pt measurement was
-                            // taken at.
+                            // `minWidth` and the compressibility it buys: a fixed `width:` here
+                // would move the floor `HomebrewSplit` carries.
                             .frame(minWidth: HomebrewSplit.masterMinimum, idealWidth: split.masterWidth,
                                    maxWidth: split.masterWidth)
                         Divider()
@@ -142,7 +140,7 @@ struct HomebrewManager: View {
         // **The page's controls, in the header row of the window's card**, through the contract every module
         // page shares (`HelmWindowToolbar.swift` in `HelmUI`).
         //
-        // **Upgrade all leaves the actions off Обновления rather than being dimmed on every segment**
+        // **Upgrade all leaves the actions off Updates rather than being dimmed on every segment**
         // (`isVisible`). The row reserves the full width of every
         // declared action (`HelmHeaderActions`), so Refresh, always visible, stays exactly still while
         // Upgrade All comes and goes.

@@ -5,7 +5,7 @@ import SwiftUI
 ///
 /// The same argument as `HelmText`, one class of colour over. The system
 /// palette is tuned for dark, where all three are comfortable, and it is light
-/// where they fail — measured with `Scripts/design/contrast.swift` against both
+/// where they fail — measured against both
 /// `windowBackgroundColor` and `controlBackgroundColor`, which are the same
 /// colour on macOS 26:
 ///
@@ -52,7 +52,17 @@ public enum HelmSignal {
     public static func success(increased: Bool) -> Color { increased ? successIncreased : successOrdinary }
     public static func danger(increased: Bool) -> Color { increased ? dangerIncreased : dangerOrdinary }
 
-    /// Six stored colours rather than six built on demand, and the reason is
+    /// `danger` for a label on a button's well (`HelmButtonStyle`), which is a surface of its own:
+    /// `danger` is solved against the bare window, and the well, a card under it and the pointer
+    /// over it all move the ground toward the ink. Solved by arithmetic on assumed grounds (window
+    /// `#FFFFFF` / `#1E1E1E`, the fills of `HelmSurface`) to 4.9:1 on a card under the pointer and
+    /// to 7.6:1 on a card at rest under Increase Contrast; a press on a card comes to 4.68 / 4.59.
+    /// Rendered on a bench window, at rest only: 5.69 / 6.00 on a card, 6.05 / 6.51 bare (read once
+    /// by hand, no guard). Under the pointer, and on any other ground, a tinted banner among them,
+    /// 4.5:1 is unproved. Internal: only the style reads it.
+    static func dangerOnWell(increased: Bool) -> Color { increased ? dangerOnWellIncreased : dangerOnWellOrdinary }
+
+    /// Eight stored colours rather than eight built on demand, and the reason is
     /// identity rather than cost. `Color` compares by the object inside it, so a
     /// property that builds a fresh `NSColor(name:)` on every access is a colour
     /// that is never equal to itself: two reads of `warning` compared unequal,
@@ -72,6 +82,13 @@ public enum HelmSignal {
     private static let dangerIncreased = adaptive(
         light: NSColor(srgbRed: 0.663, green: 0.142, blue: 0.154, alpha: 1),
         dark: NSColor(srgbRed: 1.000, green: 0.515, blue: 0.522, alpha: 1))
+
+    private static let dangerOnWellOrdinary = adaptive(
+        light: NSColor(srgbRed: 0.693, green: 0.148, blue: 0.159, alpha: 1),
+        dark: NSColor(srgbRed: 1.000, green: 0.545, blue: 0.518, alpha: 1))
+    private static let dangerOnWellIncreased = adaptive(
+        light: NSColor(srgbRed: 0.543, green: 0.116, blue: 0.125, alpha: 1),
+        dark: NSColor(srgbRed: 1.000, green: 0.698, blue: 0.680, alpha: 1))
 
     /// One colour that answers for itself in either appearance, so no call site
     /// has to read the environment to stay legible.

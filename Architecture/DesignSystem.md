@@ -93,6 +93,8 @@ an argument the way `HelmMotion.spins(requested:reduceMotion:)` does, so that a 
 holds the flag from `\.helmTraits` passes it, and `HelmShowcase` can draw either. The second
 set is the same solve against a higher floor, and each is solved against the *rounded* literal.
 
+A label on a button's well is a surface of its own: `HelmButtonStyle` inks the destructive role with `HelmSignal`'s `dangerOnWell(increased:)`, solved by arithmetic against the well on a card, under the pointer, because `danger` is solved against the bare window. Rendered readings exist at rest only; on a tinted ground such as `HelmBanner`'s, and under the pointer anywhere, 4.5:1 is unproved (`HelmSignal`).
+
 A menu swatch is drawn already coloured and left a non-template image. The colour panel's
 target is held from the view. A colour is converted to sRGB on the way in, and a stored
 case is retired and never removed. A component's contrast is measured against what it

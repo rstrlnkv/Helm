@@ -14,7 +14,7 @@ import SwiftUI
 ///   `HelmSurface.panelSelection`; the corner `HelmRadius.ctl`.
 /// - Padding `HelmSpace.s5` across and `HelmSpace.s3` down, `HelmSpace.s4` down at `.large`
 ///   (`HelmEmptyState` sets it).
-/// - Ink `Color.primary`; `.destructive` role `HelmSignal.danger(increased:)` from `\.helmTraits`;
+/// - Ink `Color.primary`; `.destructive` role `HelmSignal.dangerOnWell(increased:)` from `\.helmTraits`;
 ///   disabled `HelmText.faint`.
 /// - A window that is not the active one gets no look of its own from this style: the inactive look stays the system's.
 /// - `\.helmShownInteraction` can force the hover or the pressed well for a screen that shows them (`HelmShowcase`).
@@ -74,7 +74,7 @@ struct HelmButtonStyle: ButtonStyle {
 
         private var ink: Color {
             guard enabled else { return HelmText.faint }
-            return configuration.role == .destructive ? HelmSignal.danger(increased: traits.increasedContrast) : .primary
+            return configuration.role == .destructive ? HelmSignal.dangerOnWell(increased: traits.increasedContrast) : .primary
         }
     }
 }

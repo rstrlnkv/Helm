@@ -4,6 +4,11 @@ import HelmUI
 
 struct HomebrewConsole: View {
     @ObservedObject var hb: HomebrewViewModel
+    /// What the page draws of `showsConsole` (`HomebrewSettingsPage.shownConsole`): while it is
+    /// false the scroll view is not mounted, so a closed console costs none. A run that opens it
+    /// starts followed; a run over lines still kept keeps the scroll view and its `followsConsole`.
+    let open: Bool
+    @Environment(\.helmTraits) private var traits
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s3) {
@@ -11,13 +16,32 @@ struct HomebrewConsole: View {
                 statusPill
                 Spacer()
                 if hb.running {
-                    // The only way out of a brew that will not finish — the
-                    // module used to be dead until an app restart.
+                    // The only way out of a brew that will not finish: without it the
+                    // module is dead until an app restart.
                     Button(HomebrewSettingsPage.stopTitle(for: hb.op)) { hb.stopOperation() }.controlSize(.small)
                 }
                 Button(HbStr.clear) { hb.clearConsole() }.controlSize(.small).disabled(hb.running)
             }
-            ConsoleScroll(rows: hb.consoleRows, sequence: hb.consoleSequence)
+            // A view that is always there: a `Group` with nothing in it takes the padding,
+            // the height and the well's fill with it, so the block would measure short and
+            // the well would arrive in mid-flight. `Color.clear` also keeps the well's width.
+            ZStack(alignment: .topLeading) {
+                Color.clear
+                if open {
+                    ConsoleScroll(rows: hb.consoleRows, sequence: hb.consoleSequence)
+                        // The offset must not read the reveal's moving frame, or it keeps a
+                        // fraction of a point and every line stays soft until a remount.
+                        .geometryGroup()
+                        // `.identity`: an `if` inside the page's `withAnimation` would
+                        // otherwise fade. The well arrives by height (`HelmAccordion`); the
+                        // lines do not travel with it, they land at once and the
+                        // `.clipped()` below shows them as the well reaches them.
+                        .transition(.identity)
+                }
+            }
+            // The scroll view lands at its place while the block is still rising: only
+            // this clip keeps it inside the well in flight.
+            .clipped()
             // **The inset is outside the scroll view, so its clip sits at the
             // inset.** Padding inside the scrolled content scrolls away with
             // it: the first line was off the top edge at rest only, and once
@@ -41,20 +65,18 @@ struct HomebrewConsole: View {
 
     /// **How tall the console is: ten lines of what `brew` printed.**
     ///
-    /// It was a bare `160` with no reason at the line or anywhere else, and 160
-    /// is on no ladder — the space ladder stops at 40 and the type scale is not
-    /// a scale of heights. Ten lines is the derivation: `brew upgrade` announces
+    /// The space ladder stops at 40 and the type scale is not a scale of heights, so
+    /// the height is derived: `brew upgrade` announces
     /// each step with a `==>` line and fetches under it, so a window that holds
     /// fewer than a handful of those shows the fetch and not what it belongs to,
     /// while one twice this deep is the page it arrives into.
     ///
     /// **The line is what SwiftUI lays out, asked of SwiftUI.** Ten of them with
     /// `HelmSpace.s1` between — the step the console's own stack uses — plus
-    /// `consoleInset` above and below. The line used to be read off `NSFont`'s
-    /// ascender, descender and leading, which at the default text size is 13 pt,
-    /// while SwiftUI sets the same face on a 14 pt line: the pitch drawn was 16
-    /// and the formula counted 15, so the box held nine whole lines and the
-    /// tenth was cut by the bottom edge with the inset gone.
+    /// `consoleInset` above and below. Read off `NSFont`'s ascender, descender and leading the line is 13 pt at
+    /// the default text size, while SwiftUI sets the same face on a 14 pt line: the pitch
+    /// drawn is 16 and a formula counting 15 gives a box of nine whole lines, the
+    /// tenth cut by the bottom edge with the inset gone (read once by hand, no guard).
     ///
     /// **Computed, not held, and it follows the system text size.** A `static
     /// let` would freeze at whatever the size was when the app launched, which is
@@ -112,7 +134,7 @@ struct HomebrewConsole: View {
             HelmBusyLabel(HomebrewSettingsPage.pillTitle(for: hb.op), busy: true)
                 .font(HelmText.rowDetail)
         case .done:
-            Label(HbStr.done, systemImage: "checkmark.circle.fill").foregroundStyle(HelmSignal.success).font(HelmText.rowDetail)
+            Label(HbStr.done, systemImage: "checkmark.circle.fill").foregroundStyle(HelmSignal.success(increased: traits.increasedContrast)).font(HelmText.rowDetail)
         case .failed where hb.op.reason == .stopped:
             // The person asked for this end; a red octagon would call their own
             // press a defect.
@@ -123,13 +145,15 @@ struct HomebrewConsole: View {
                 Label(HbStr.cancelled, systemImage: "stop.circle.fill").foregroundStyle(HelmText.quiet).font(HelmText.rowDetail)
                 if let note = HomebrewSettingsPage.failureNote(hb.op) {
                     Text(note).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         case .failed:
             HStack(spacing: HelmSpace.s3) {
-                Label(HbStr.failed, systemImage: "xmark.octagon.fill").foregroundStyle(HelmSignal.danger).font(HelmText.rowDetail)
+                Label(HbStr.failed, systemImage: "xmark.octagon.fill").foregroundStyle(HelmSignal.danger(increased: traits.increasedContrast)).font(HelmText.rowDetail)
                 if let note = HomebrewSettingsPage.failureNote(hb.op) {
                     Text(note).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         case .idle:
@@ -140,9 +164,9 @@ struct HomebrewConsole: View {
 
 /// **The console's lines and the rule that follows them.** A struct of its own,
 /// not a property of the page, so that its `followsConsole` lives exactly as
-/// long as the scroll view does: the page keeps the console off the screen
-/// while there is nothing to say, and a person who scrolled up in one run's
-/// output must not find the next run's not followed.
+/// long as the scroll view does: a console the page has closed has no scroll
+/// view, so the run that opens it starts followed; a run over lines still kept
+/// keeps the scroll view, and a person who scrolled up stays where they are.
 private struct ConsoleScroll: View {
     let rows: [HomebrewViewModel.ConsoleRow]
     /// `HomebrewViewModel.consoleSequence`: how many lines have ever arrived,
