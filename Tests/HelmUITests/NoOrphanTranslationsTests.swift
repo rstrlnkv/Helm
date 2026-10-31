@@ -55,15 +55,16 @@ final class NoOrphanTranslationsTests: XCTestCase {
     ///
     /// *Raw* — which is what both scans did until 2026-08-21 — a key named in
     /// prose reads as asked for. This repository writes backticked names inside
-    /// doc comments on purpose, so `AppStrings.swift` really does say «Not
-    /// `L("Off")`», and that one sentence really did keep the key «Off» alive
-    /// by explaining why nothing uses it. Measured over the whole tree the day
+    /// doc comments on purpose, so the host's strings file once said «Not
+    /// `L("Off")`» (`git log -S` on that sentence finds it), and that one
+    /// sentence really did keep the key «Off» alive by explaining why nothing
+    /// uses it. Measured over the whole tree the day
     /// this changed, the two readings differed by **0 keys and 0 literals** —
     /// this is the hole closed before something fell in it.
     ///
     /// `SwiftSource.code` is the opposite mistake and the one that looks right:
     /// it blanks the insides of literals too, so every `L("Off")` becomes
-    /// `L("")` and all 1055 keys orphan at once.
+    /// `L("")` and every key orphans at once.
     ///
     /// **And the two scans must read the same text or they can contradict each
     /// other.** They point opposite ways at the same line: on a raw reading a
@@ -202,14 +203,23 @@ final class NoOrphanTranslationsTests: XCTestCase {
             let directory = (catalog.path as NSString).deletingLastPathComponent
             let swift = try SwiftSource.uncommented(under: directory).map(\.text).joined(separator: "\n")
             XCTAssertFalse(swift.isEmpty, "\(directory) holds no Swift, so a pass means nothing")
+            // The changelog catalog's key is the English sentence, and Xcode spells its symbol from the
+            // letters and digits of it, so the key and the symbol are compared by those alone.
+            let spelled = Set(swift.matches(of: /\.Changelog\.([^\s)]+)/).map { Self.letters(String($0.1)) })
             for symbol in catalog.strings.keys.sorted() {
-                let named = swift.range(of: #"\.\#(symbol)\b"#, options: .regularExpression) != nil
+                let named = catalog.module == "Changelog"
+                    ? spelled.contains(Self.letters(symbol))
+                    : swift.range(of: #"\.\#(symbol)\b"#, options: .regularExpression) != nil
                 if !named { unnamed.append("\(catalog.module).\(symbol)") }
             }
         }
         XCTAssertTrue(unnamed.isEmpty,
                       "\(unnamed.count) catalog symbol(s) are named nowhere in their module's UI — "
                       + "remove them from the catalog:\n" + unnamed.joined(separator: "\n"))
+    }
+
+    private static func letters(_ text: String) -> String {
+        String(text.lowercased().filter { $0.isLetter || $0.isNumber })
     }
 
     /// And the direction neither this file nor `StringsCoverageTests` covered:

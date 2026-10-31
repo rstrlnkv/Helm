@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import HelmRuntime
 import HelmUI
+import HelmAppStrings
 
 /// Runs background scans when `ScanSchedule` says they may.
 ///

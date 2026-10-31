@@ -3,6 +3,7 @@ import XCTest
 import HelmTestSupport
 import HelmUI
 @testable import HelmApp
+import HelmAppStrings
 
 /// What the Log page draws is derived from the lines themselves, in pure
 /// functions (`LogSessions`, `LogRepeats`, `LogSearch`, `LogPresentation`) — so

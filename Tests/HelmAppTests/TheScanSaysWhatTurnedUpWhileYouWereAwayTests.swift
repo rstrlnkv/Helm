@@ -3,6 +3,7 @@ import HelmTestSupport
 import HelmUI
 import XCTest
 @testable import HelmApp
+import HelmAppStrings
 
 /// The other half of the journal.
 ///

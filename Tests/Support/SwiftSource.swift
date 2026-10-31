@@ -38,11 +38,11 @@ public enum SwiftSource {
     /// **`code` is the wrong reading for one family of check and it is not
     /// obviously wrong.** The orphan-translation scan asks whether anything in
     /// the tree still says `L("Off")`; run over `code` output that line reads
-    /// `L("")` and all 1054 keys report as dead at once, which at least fails
+    /// `L("")` and every key reports as dead at once, which at least fails
     /// loudly. Run over the **raw** file it reads the opposite way and fails
     /// silently: this repository writes backticked names inside doc comments on
-    /// purpose, so `Sources/HelmApp/AppStrings.swift`'s «Not `L("Off")`» keeps
-    /// the key «Off» alive by explaining why nothing uses it there.
+    /// purpose, so a doc comment saying «Not `L("Off")`» (the host's strings file
+    /// once had one) keeps the key «Off» alive by explaining why nothing uses it.
     ///
     /// Not a second walk, and it could not be one: a `//` inside a string is not
     /// a comment, so blanking comments correctly already requires parsing every

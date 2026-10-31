@@ -157,7 +157,7 @@ final class DocumentsNameTheTreeTests: XCTestCase {
     /// directory leaves every mention of its old path wrong while its name still
     /// exists, and "somewhere in the tree there is a file called this" is the
     /// weaker claim the prose is not making. Paths are written from the root
-    /// (`Sources/HelmApp/ChangelogData.swift`) and from inside `Sources`
+    /// (`Sources/HelmAppStrings/ChangelogData.swift`) and from inside `Sources`
     /// (`Modules/Disk/UI/RingView.swift`) about equally often, so both are tried.
     ///
     /// A line number is checked too — `AppDelegate.swift:127` outlived the line

@@ -3,6 +3,7 @@ import Combine
 import SwiftUI
 import HelmRuntime
 import HelmUI
+import HelmAppStrings
 
 /// The settings window: the ground of the stored look (`HelmBarAppearance`) with a column of module rows on it, and an opaque
 /// card holding the page, built by `SettingsShellViewController` from

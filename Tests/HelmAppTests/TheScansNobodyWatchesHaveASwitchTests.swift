@@ -3,6 +3,7 @@ import HelmTestSupport
 import HelmUI
 import XCTest
 @testable import HelmApp
+import HelmAppStrings
 
 /// The section that finally says Helm reads the disk on its own.
 ///

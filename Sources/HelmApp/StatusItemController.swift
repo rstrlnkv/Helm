@@ -3,6 +3,7 @@ import Combine
 import HelmContract
 import HelmRuntime
 import HelmUI
+import HelmAppStrings
 
 /// Owns the single `NSStatusItem`. `StatusPlan` decides which enabled module it
 /// reflects and whether the ring moves; left click toggles the shared panel,

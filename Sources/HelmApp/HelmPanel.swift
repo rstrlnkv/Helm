@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import HelmRuntime
 import HelmUI
+import HelmAppStrings
 
 /// Internal because `HelmPanel` (PanelWindow.swift) hosts it.
 struct HelmPanelContent: View {

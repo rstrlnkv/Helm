@@ -2,6 +2,7 @@ import HelmContract
 import HelmRuntime
 import HelmUI
 import SwiftUI
+import HelmAppStrings
 
 /// **The column that stands on the window's backdrop: section headings, a row
 /// for each module that is on, and the row for Helm's own three pages at the

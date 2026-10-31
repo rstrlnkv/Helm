@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import HelmRuntime
+import HelmAppStrings
 
 /// Checks the public GitHub repo's latest release and, if newer than the running
 /// build, offers a one-click silent update: it downloads the release `.zip`

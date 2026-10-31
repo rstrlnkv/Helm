@@ -143,7 +143,7 @@ be swapped in either.
 
 `CHANGELOG.md` at the root of the tree is the canonical English record and is not
 bundled — nothing in `Scripts/package-app.sh` or `Package.swift` names it.
-`Sources/HelmApp/ChangelogData.swift` is the same list inside the app; the two have
+`Sources/HelmAppStrings/ChangelogData.swift` is the same list inside the app; the two have
 drifted about which versions exist before, and `TheChangelogAndTheAppsListAgreeTests`
 now holds them to the same releases and dates. A version heading in
 the file is `## X.Y.Z — YYYY-MM-DD`, one line per change with `**NEW**` / `**UPD**` /
@@ -153,8 +153,8 @@ the file carries no sub-headings at all.
 The text of a changelog entry is written for the person who updated and is not part of
 making the code change. An entry that names a control is read against the running app and
 not only for grammar, because the English string is the key: a wrong name is faithfully
-translated into all seven other languages, and the fix is one key deleted and rewritten in
-eight files.
+translated into all seven other languages, and the fix is one key rewritten in
+`Sources/HelmAppStrings/Changelog.xcstrings` and its symbol in `ChangelogData.swift`.
 
 ## The disk image window
 

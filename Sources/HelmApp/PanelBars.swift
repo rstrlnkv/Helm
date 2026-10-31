@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import HelmRuntime
 import HelmUI
+import HelmAppStrings
 
 // The rows of the card that are not tiles: the tab strip, the setup bar, the
 // gallery of widgets no tab is holding, and the footer. Drawn by the card in

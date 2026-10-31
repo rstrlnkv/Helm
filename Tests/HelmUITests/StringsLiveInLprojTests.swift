@@ -81,6 +81,13 @@ final class StringsLiveInLprojTests: XCTestCase {
     /// languages that were checked, not everywhere the spelling could occur.
     private static let deliberateIdentities: [String: Set<AppLanguage>] = [
         "1 module": [.fr],
+        // The host's counted words, now in its catalog and so read by this loop. French says «module»
+        // and Spanish «error» the way English does (the six others differ), and a count in front of
+        // them does not change the word.
+        "%@ error": [.es],
+        "%@ modules": [.fr],
+        " · %@ module": [.fr],
+        " · %@ modules": [.fr],
         "App": [.es, .fr, .de, .pt],
         "Apps": [.es, .fr, .de, .pt],
         "Archive": [.fr],

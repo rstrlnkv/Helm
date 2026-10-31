@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import HelmRuntime
 import HelmUI
+import HelmAppStrings
 
 /// What colour each update channel is, decided once.
 ///

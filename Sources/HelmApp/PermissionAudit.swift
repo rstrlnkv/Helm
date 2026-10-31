@@ -1,5 +1,6 @@
 import AppKit
 import HelmRuntime
+import HelmAppStrings
 
 /// Checks what Helm needs from macOS the first time it runs, and says so once.
 /// Discovered the hard way: without Full Disk Access an uninstall silently

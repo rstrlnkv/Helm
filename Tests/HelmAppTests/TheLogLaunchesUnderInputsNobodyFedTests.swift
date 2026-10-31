@@ -3,6 +3,7 @@ import XCTest
 import HelmTestSupport
 import HelmUI
 @testable import HelmApp
+import HelmAppStrings
 
 /// The launch cards of the Log page, fed the inputs their own tests did not
 /// feed: a launch whose logging was switched on after it started, lines written

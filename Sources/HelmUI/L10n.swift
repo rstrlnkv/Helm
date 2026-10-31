@@ -12,11 +12,11 @@ public enum AppLanguage: String, CaseIterable, Sendable {
 
     /// Best match from the user's preferred languages, else English.
     ///
-    /// Cached: this is read by every `L()` and every `Bytes()`, and every one of
-    /// Helm's 238 string properties is computed, so a hovered list of 200 rows
+    /// Cached: this is read by every `L()` and every `Bytes()`, and Helm's string
+    /// properties are computed, so a hovered list of 200 rows
     /// hit `Locale.preferredLanguages` — a CFPreferences read — a few hundred
-    /// times per frame. The cache is dropped when the system's locale changes,
-    /// which is the only thing that can change the answer.
+    /// times per frame. The cache is dropped when the system's locale changes
+    /// or `override` is set, the only two things that can change the answer.
     public static var current: AppLanguage { cache.value }
 
     /// A language chosen in Settings, overriding the system's preference.
@@ -134,11 +134,85 @@ public func L(_ english: String, _ table: [AppLanguage: String] = [:],
 /// `language`. The resource carries its own target's bundle, which is why one
 /// function in the kit can read every module's catalog; the symbol is what
 /// makes a mistyped key a build error.
+///
+/// **Remembered, because the system does not.** `String(localized:)` measures
+/// dearer the larger the table it answers from, on every call; a held dictionary
+/// does not. A word drawn in a view body is paid per frame at the
+/// system's price, so each answer is kept by what identifies it — key, table,
+/// bundle, arguments and language — and only an answer not kept pays.
 public func L(_ resource: LocalizedStringResource,
               language: AppLanguage = AppLanguage.current) -> String {
     var resource = resource
     resource.locale = Locale(identifier: language.rawValue)
-    return String(localized: resource)
+    return ResourceAnswers.shared.string(for: resource)
+}
+
+/// The answers `L(_:language:)` has given, bounded because a resource that
+/// carries arguments is a new entry for every value it is asked with.
+///
+/// A `LocalizedStringResource` is not `Hashable`, and its arguments can be read
+/// only by describing `defaultValue`, which is far dearer than the search it
+/// would replace, so the dictionary is keyed by what is cheap — key, table,
+/// language — and each
+/// such family keeps a short list of `(resource, answer)` that the resource's
+/// own `==` searches. That `==` also compares the bundle and the arguments, so
+/// the same key in two catalogs (`summary`, `upToDate`) stays two answers.
+///
+/// **Why the list is short.** Hashing only the visible part puts every value of
+/// one template in one hash bucket; a key hashing only that part made a hit a
+/// walk through all of them by `==`, which grows with the number of
+/// distinct arguments and ends dearer than not remembering at all. A family
+/// holds at most `perFamily` answers and the oldest is replaced, so a hit costs
+/// at most that many comparisons and a miss twice that, whatever the arguments
+/// are. Above `perFamily` values of one template in turn every ask misses, and
+/// costs a little more than no memo.
+///
+/// **Not `LockedMemo`**, which needs a `Hashable` key, keeps every value for good
+/// and builds under its lock. Here the build is `String(localized:)`, the very
+/// call this exists to avoid, and it runs outside the lock so a slow word does
+/// not hold up the others; a memo that never forgets would also grow by one
+/// entry per argument ever shown.
+private final class ResourceAnswers: @unchecked Sendable {
+    static let shared = ResourceAnswers()
+
+    private struct Family: Hashable {
+        let key: String
+        let table: String?
+        let language: String
+    }
+
+    /// Answers kept per family.
+    private static let perFamily = 16
+
+    /// Past this many answers in all, everything is dropped and rebuilt on
+    /// demand, the way `AppLanguage`'s cache drops its answer: simpler than
+    /// ordering them.
+    private static let ceiling = 4096
+
+    private let lock = NSLock()
+    private var answers: [Family: [(resource: LocalizedStringResource, text: String)]] = [:]
+    private var count = 0
+
+    func string(for resource: LocalizedStringResource) -> String {
+        let family = Family(key: resource.key, table: resource.table,
+                            language: resource.locale.identifier)
+        lock.lock()
+        let kept = answers[family]?.first { $0.resource == resource }?.text
+        lock.unlock()
+        if let kept { return kept }
+        let text = String(localized: resource)
+        lock.lock()
+        defer { lock.unlock() }
+        if count >= Self.ceiling { answers.removeAll(); count = 0 }
+        var list = answers.removeValue(forKey: family) ?? []
+        if !list.contains(where: { $0.resource == resource }) {
+            if list.count >= Self.perFamily { list.removeFirst(); count -= 1 }
+            list.append((resource, text))
+            count += 1
+        }
+        answers[family] = list
+        return text
+    }
 }
 
 /// The `.lproj` tables themselves: one sub-bundle per language, loaded from

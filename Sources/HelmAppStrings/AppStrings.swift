@@ -1,44 +1,43 @@
+import Foundation
 import HelmRuntime
 import HelmUI
 
 /// Localized strings for the app shell (settings window chrome).
-enum AppStr {
+public enum AppStr {
     /// Rows that exist only on a dev build. Not translated cheaply — the point
     /// of the section is reading the app in another language, so its own labels
     /// have to be right in that language too.
-    static var developerSection: String { L("Developer") }
-    static var interfaceLanguage: String { L("Interface language") }
+    public static var developerSection: String { L(.developerSection) }
+    public static var interfaceLanguage: String { L(.interfaceLanguage) }
     /// Named after the place the answer comes from, and named the way macOS
     /// names it there — «System Settings» in English, «Настройки системы» in
     /// Russian, and so on out of each language's own System Settings. «Same as
     /// the Mac» described a relationship; this points at the pane.
-    static var systemLanguage: String { L("System Settings") }
+    public static var systemLanguage: String { L(.systemLanguage) }
     /// It used to end «windows already open keep the language they were drawn
     /// in», which was true of the first attempt and is not true now: both the
     /// settings window and the panel take a new identity and are rebuilt. A
     /// note describing a limitation that has been removed is worse than none.
-    static var interfaceLanguageNote: String {
-        L("Dev builds only, for reading the app in a language this Mac is not set to.")
+    public static var interfaceLanguageNote: String {
+        L(.interfaceLanguageNote)
     }
     /// The names of `HelmBarAppearance`'s two cases; "Liquid Glass" is
     /// macOS's own name for its material, spelled as System Settings spells it.
-    static var barAppearanceFlat: String { L("Flat") }
-    static var barAppearanceLiquidGlass: String { L("Liquid Glass") }
+    public static var barAppearanceFlat: String { L(.barAppearanceFlat) }
+    public static var barAppearanceLiquidGlass: String { L(.barAppearanceLiquidGlass) }
     /// The General row choosing between them (`BarAppearanceRow`).
-    static var barAppearanceTitle: String { L("Toolbar style") }
+    public static var barAppearanceTitle: String { L(.barAppearanceTitle) }
 
     /// The badge beside a module's name in its page header.
     ///
-    /// «Active» is the key Layout's own indicator already uses for the same
-    /// meaning — a module that is working — so it is reused rather than said a
-    /// second way. Its partner is new: nothing in the app had a word for the
-    /// ordinary state, because nothing drew it.
-    static var moduleActive: String { L("Active") }
-    /// The same key Layout's indicator already carries for the same state, so
-    /// «Active» and its negative come as a pair. Two English spellings of one
-    /// idea had already collapsed into one word in German and Japanese, which
-    /// is the translators noticing what the source had not.
-    static var moduleIdle: String { L("Not running") }
+    /// «Active» is a module that is working. Its partner, `moduleIdle`, is the
+    /// ordinary state, which nothing in the app had a word for before this badge
+    /// drew it.
+    public static var moduleActive: String { L(.moduleActive) }
+    /// The negative of `moduleActive`, so the two come as a pair. Two English
+    /// spellings of one idea had already collapsed into one word in German and
+    /// Japanese, which is the translators noticing what the source had not.
+    public static var moduleIdle: String { L(.moduleIdle) }
 
     /// The settings window's own title. Never drawn — the window hides its
     /// title bar text — and read aloud all the same: VoiceOver announces it on
@@ -49,54 +48,47 @@ enum AppStr {
     /// "Helm Settings", the shape macOS uses for an app's own settings window,
     /// with each language's word for the pane taken from `settingsPane` so the
     /// title and the sidebar cannot disagree.
-    static var settingsWindowTitle: String {
-        L("Helm Settings")
+    public static var settingsWindowTitle: String {
+        L(.settingsWindowTitle)
     }
     /// Sidebar entry for the app-level pane (login item, panel layout, menu-bar icon).
-    static var settingsPane: String { L("Settings") }
+    public static var settingsPane: String { L(.settingsPane) }
     /// The first of the Settings page's three tabs. Not "General": that word is
-    /// a glyph category's name, another meaning, and the table is keyed by English.
-    static var settingsTabGeneral: String { L("Basics") }
+    /// a glyph category's name, another meaning, and one English text means one thing.
+    public static var settingsTabGeneral: String { L(.settingsTabGeneral) }
     /// The light/dark control, which macOS itself calls «Appearance» — the same
     /// word as the section it now sits in. A section and its first row reading
     /// identically is how a person stops seeing the heading at all, so the row
     /// says what it chooses between.
-    static var lightOrDark: String { L("Light or dark") }
-    static var launchAtLogin: String { L("Open Helm at login") }
-    static var checking: String { L("Checking…") }
-    static var upToDate: String { L("You’re on the latest version.") }
+    public static var lightOrDark: String { L(.lightOrDark) }
+    public static var launchAtLogin: String { HelmWord.openHelmAtLogin }
+    public static var checking: String { L(.checking) }
+    public static var upToDate: String { L(.upToDate) }
     /// Said to somebody running a build the channel has not published yet —
     /// which is a state worth naming rather than calling "up to date", because
     /// the person in it is usually the person testing something.
-    static func aheadOfChannel(_ newest: String) -> String {
-        L("Your build is newer than the channel — its latest is \(newest).",
-          [.ru: "Ваша сборка новее канала — в нём последняя \(newest).",
-           .es: "Tu compilación es más reciente que el canal: la última de este es \(newest).",
-           .fr: "Votre version est plus récente que le canal — la dernière y est \(newest).",
-           .de: "Dein Build ist neuer als der Kanal — dessen neuester ist \(newest).",
-           .ja: "お使いのビルドはチャンネルより新しいバージョンです（チャンネルの最新は \(newest)）。",
-           .zh: "你的版本比该通道更新——通道中的最新版本是 \(newest)。",
-           .pt: "Sua build é mais recente que o canal — a última dele é \(newest)."])
+    public static func aheadOfChannel(_ newest: String) -> String {
+        L(.aheadOfChannel(newest))
     }
-    static var download: String { L("Download") }
-    static var updateReady: String { L("Update ready") }
-    static var updateAndRelaunch: String { L("Update & Relaunch") }
-    static var downloadingUpdate: String { L("Downloading…") }
-    static var installingUpdate: String { L("Installing…") }
+    public static var download: String { L(.download) }
+    public static var updateReady: String { L(.updateReady) }
+    public static var updateAndRelaunch: String { L(.updateAndRelaunch) }
+    public static var downloadingUpdate: String { L(.downloadingUpdate) }
+    public static var installingUpdate: String { L(.installingUpdate) }
     /// Not `updateFailed`. A download that does not match what the release
     /// published is not a network hiccup, and Retry is the wrong offer: the
     /// honest next step is to look at the release itself.
-    static var updateDigestMismatch: String {
-        L("The download did not match what the release published, so Helm did not install it.")
+    public static var updateDigestMismatch: String {
+        L(.updateDigestMismatch)
     }
-    static var updateFailed: String { L("Update failed") }
+    public static var updateFailed: String { L(.updateFailed) }
 
     /// The banner for a release the daily check found with nobody watching.
     ///
     /// The title is `updateReady`, the card's own words rather than a second
     /// spelling of them: two sentences for one state is how the app came to say
     /// «Configure panel» about a button that says «Edit panel».
-    static func updateFoundNotice(version: String,
+    public static func updateFoundNotice(version: String,
                                   language: AppLanguage = AppLanguage.current) -> NoticeText {
         NoticeText(title: updateReady, body: updateFoundBody(version: version, language: language))
     }
@@ -109,26 +101,18 @@ enum AppStr {
     /// reading when they go looking.
     static func updateFoundBody(version: String,
                                 language: AppLanguage = AppLanguage.current) -> String {
-        L("\(version) — Settings → About Helm",
-          [.ru: "\(version) — Настройки → О Helm",
-           .es: "\(version) — Ajustes → Acerca de Helm",
-           .fr: "\(version) — Réglages → À propos de Helm",
-           .de: "\(version) — Einstellungen → Über Helm",
-           .ja: "\(version) — 設定 → Helm について",
-           .zh: "\(version) — 设置 → 关于 Helm",
-           .pt: "\(version) — Ajustes → Sobre o Helm"],
-          language: language)
+        L(.updateFoundBody(version), language: language)
     }
-    static var edit: String { L("Edit") }
-    static var done: String { L("Done") }
-    static var permissionsChanged: String { L("Helm is missing permissions it needs") }
-    static var later: String { L("Later") }
-    static var permissions: String { L("Permissions") }
-    static var fullDiskAccess: String { L("Full Disk Access") }
-    static var fullDiskAccessWhy: String { L("Needed to remove app containers and to read every folder when scanning the disk.") }
-    static var fullDiskAccessAdHoc: String { L("Access is tied to one exact copy of Helm, so grant it again after every update: remove Helm with “−”, then add it with “+”.") }
-    static var grant: String { L("Grant…") }
-    static var permissionGranted: String { L("Granted") }
+    public static var edit: String { HelmWord.edit }
+    public static var done: String { HelmWord.done }
+    public static var permissionsChanged: String { L(.permissionsChanged) }
+    public static var later: String { L(.later) }
+    public static var permissions: String { L(.permissions) }
+    static var fullDiskAccess: String { L(.fullDiskAccess) }
+    static var fullDiskAccessWhy: String { L(.fullDiskAccessWhy) }
+    public static var fullDiskAccessAdHoc: String { L(.fullDiskAccessAdHoc) }
+    public static var grant: String { HelmWord.grant }
+    public static var permissionGranted: String { L(.permissionGranted) }
     /// Beside `grant`, and never a bare "Show": Login Items already labels its
     /// filter menu that way, where the word is a standing choice rather than an
     /// action — Russian tells the two apart («Показывать» against «Показать»)
@@ -150,10 +134,10 @@ enum AppStr {
     /// Takes a language, so a test can ask about the seven this machine is not
     /// set to. The suite runs in whatever language this Mac is in, and a check
     /// gated on `.current` never exercises the language it was written for.
-    static func showPermissions(language: AppLanguage = AppLanguage.current) -> String {
-        L("Show", language: language)
+    public static func showPermissions(language: AppLanguage = AppLanguage.current) -> String {
+        HelmWord.show(language: language)
     }
-    static var showPermissions: String { showPermissions() }
+    public static var showPermissions: String { showPermissions() }
 
     /// The one thing on the settings page that is wrong right now, said above
     /// everything else. Counted from `permissions` rather than `inertWithout`:
@@ -175,30 +159,21 @@ enum AppStr {
     /// same line: two facts there is a paragraph wrapped around a control, at
     /// the top of the first thing anybody opens when something is wrong. The
     /// settings page has the room and keeps both.
-    static func permissionsWithheld(count: Int,
+    public static func permissionsWithheld(count: Int,
                                     language: AppLanguage = AppLanguage.current) -> String {
-        L("\(count) \(count == 1 ? "permission" : "permissions") not granted",
-          permissionsClause(count), language: language)
+        permissionsClause(count, language: language)
     }
 
-    static func permissionsWithheld(count: Int, modules: Int,
+    public static func permissionsWithheld(count: Int, modules: Int,
                                     language: AppLanguage = AppLanguage.current) -> String {
-        let modulesWord = modules == 1 ? "module" : "modules"
-        let en = "\(count) \(count == 1 ? "permission" : "permissions") not granted"
-            + " · \(modules) \(modulesWord)"
-        var table = permissionsClause(count)
-        let ruModules = Plural.russian(modules, "модуль", "модуля", "модулей")
-        let tail: [AppLanguage: String] = [
-            .ru: " · \(modules) \(ruModules)",
-            .es: " · \(modules) " + (modules == 1 ? "módulo" : "módulos"),
-            .fr: " · \(modules) " + (modules == 1 ? "module" : "modules"),
-            .de: " · \(modules) " + (modules == 1 ? "Modul" : "Module"),
-            .ja: " · \(modules) 個のモジュール",
-            .zh: " · \(modules) 个模块",
-            .pt: " · \(modules) " + (modules == 1 ? "módulo" : "módulos"),
-        ]
-        for (language, suffix) in tail { table[language, default: ""] += suffix }
-        return L(en, table, language: language)
+        let number = String(modules)
+        let tail: LocalizedStringResource
+        switch form(modules, language) {
+        case .one: tail = .permissionsWithheldModulesOne(number)
+        case .few: tail = .permissionsWithheldModulesFew(number)
+        case .many: tail = .permissionsWithheldModulesMany(number)
+        }
+        return permissionsClause(count, language: language) + L(tail, language: language)
     }
 
     /// «2 permissions not granted», in the seven. Shared, so the panel's line
@@ -209,90 +184,80 @@ enum AppStr {
     /// concatenation of eight interpolated ternaries is more than the
     /// type-checker will take in one go, and «try breaking up the expression»
     /// is not a hint worth rediscovering.
-    private static func permissionsClause(_ count: Int) -> [AppLanguage: String] {
-        let ru = Plural.russian(count, "разрешение", "разрешения", "разрешений")
-        let es = count == 1 ? "permiso" : "permisos"
-        let fr = count == 1 ? "autorisation manquante" : "autorisations manquantes"
-        let de = count == 1 ? "Berechtigung fehlt" : "Berechtigungen fehlen"
-        let pt = count == 1 ? "permissão não concedida" : "permissões não concedidas"
-        return [.ru: "Не выдано \(count) \(ru)",
-                .es: "Faltan \(count) \(es)",
-                .fr: "\(count) \(fr)",
-                .de: "\(count) \(de)",
-                .ja: "\(count) 件の許可が未付与",
-                .zh: "\(count) 项权限未授予",
-                .pt: "\(count) \(pt)"]
+    private static func permissionsClause(_ count: Int, language: AppLanguage) -> String {
+        let number = String(count)
+        switch form(count, language) {
+        case .one: return L(.permissionsWithheldOne(number), language: language)
+        case .few: return L(.permissionsWithheldFew(number), language: language)
+        case .many: return L(.permissionsWithheldMany(number), language: language)
+        }
+    }
+
+    /// `Plural.form`, except that these sentences write zero in the plural in
+    /// French too («0 sections»), where the shared rule counts zero with the
+    /// singular — a sentence that said otherwise would be a change of wording.
+    private static func form(_ count: Int, _ language: AppLanguage) -> Plural.Form {
+        language == .fr && count == 0 ? .many : Plural.form(count, language: language.rawValue)
     }
 
     /// The localized face of `PermissionNeed`; the runtime carries English.
-    static func permissionTitle(_ need: PermissionNeed) -> String {
+    public static func permissionTitle(_ need: PermissionNeed) -> String {
         switch need {
         case .fullDiskAccess: return fullDiskAccess
         case .accessibility: return accessibility
         case .screenRecording: return screenRecording
         }
     }
-    static func permissionWhy(_ need: PermissionNeed) -> String {
+    public static func permissionWhy(_ need: PermissionNeed) -> String {
         switch need {
         case .fullDiskAccess: return fullDiskAccessWhy
         case .accessibility: return accessibilityWhy
         case .screenRecording: return screenRecordingWhy
         }
     }
-    static var accessibility: String { L("Accessibility") }
+    static var accessibility: String { L(.accessibility) }
     /// The pane's own name on this macOS (`SCREENANDAUDIOCAPTURE` in the Security &
     /// Privacy extension's table), which replaced «Screen Recording» — a person is
     /// looking for this word in a list, and the old one is not in it.
-    static var screenRecording: String { L("Screen & System Audio Recording") }
+    static var screenRecording: String { L(.screenRecording) }
     /// Says what the grant is *for*, and that Helm records nothing: the name is
     /// macOS's and it reads as a camera, which is what a person weighs the ask by.
     static var screenRecordingWhy: String {
-        L("Needed for Screenshots to capture the screen. Helm records no video and no sound — macOS simply has one switch for reading pixels and for recording.")
+        L(.screenRecordingWhy)
     }
     /// Names both things the grant buys, because one of them is that Helm can
     /// see every keystroke in every application. The lapsed-grant alert
     /// (`permissionReason`) already said so; this is the caption a person reads
     /// *while deciding*, and it described a mouse jiggle.
-    static var accessibilityWhy: String { L("Needed for Keyboard to fix the layout of what you type, and for Keep Awake to nudge the pointer. Without it neither works.") }
-    static var writeLog: String { L("Write a log file") }
-    static var logNoteStable: String { L("Turn on before reporting a problem. The file lives in ~/Library/Logs/Helm.") }
-    static var revealLog: String { L("Show in Finder") }
-    static var copyLog: String { L("Copy log") }
+    static var accessibilityWhy: String { L(.accessibilityWhy) }
+    public static var writeLog: String { L(.writeLog) }
+    public static var logNoteStable: String { L(.logNoteStable) }
+    public static var revealLog: String { HelmWord.showInFinder }
+    public static var copyLog: String { L(.copyLog) }
     /// Next to the button whose whole purpose is pasting this into a bug report.
     /// `HelmLog` puts every app name, VPN name and path through `Redact` before
     /// writing, and that is a reason to press the button rather than a footnote.
-    static var logRedactionNote: String {
-        L("The log records what Helm did, not what you have: app names, VPN names and paths are replaced before anything is written.")
+    public static var logRedactionNote: String {
+        L(.logRedactionNote)
     }
-    static var clearLog: String { L("Clear") }
+    public static var clearLog: String { HelmWord.clear }
 
-    /// What the login switch has to say, and the two states where it says
-    /// nothing: a caption under an ordinary switch is a caption nobody reads.
-    ///
-    /// Optional rather than an empty string, so the page cannot draw an empty
-    /// `Text` — and so the compiler is what decides whether a new
-    /// `LoginItemState` is spoken for.
-    static func loginItemNote(_ state: LoginItemState,
-                              language: AppLanguage = AppLanguage.current) -> String? {
-        switch state {
-        case .on, .off: return nil
-        case .needsApproval:
-            return L("Waiting for you to allow Helm in System Settings.", language: language)
-        case .refused:
-            return L("macOS would not add Helm to your login items, so it will not open by itself.",
-                     language: language)
-        }
+    public static func loginItemNeedsApproval(language: AppLanguage = AppLanguage.current) -> String {
+        L(.loginItemNeedsApproval, language: language)
+    }
+    public static func loginItemRefused(language: AppLanguage = AppLanguage.current) -> String {
+        L(.loginItemRefused, language: language)
     }
 
     /// Named the way macOS names the row, so the row Helm points at is the row
     /// that is found: on macOS 27 it is «Login Items & Extensions»
     /// (`LoginItems.appex`), and each language's spelling is that bundle's.
-    static func openLoginItems(language: AppLanguage = AppLanguage.current) -> String {
-        L("Open Login Items & Extensions…", language: language)
+    public static func openLoginItems(language: AppLanguage = AppLanguage.current) -> String {
+        L(.openLoginItems, language: language)
     }
-    static var openLoginItems: String { openLoginItems() }
+    public static var openLoginItems: String { openLoginItems() }
 
-    static var modulesSection: String { L("Modules") }
+    public static var modulesSection: String { L(.modulesSection) }
     /// The section that says Helm reads the disk with nobody at the desk.
     ///
     /// It had no screen at all: `ScanCoordinator` walks the volume for three
@@ -304,31 +269,27 @@ enum AppStr {
     /// Each takes a language, for the reason `showPermissions` does: the suite
     /// runs in this Mac's own, so a check gated on `.current` never reads the
     /// other seven.
-    static func backgroundScansSection(language: AppLanguage = AppLanguage.current) -> String {
-        L("While you are away", language: language)
+    public static func backgroundScansSection(language: AppLanguage = AppLanguage.current) -> String {
+        L(.backgroundScansSection, language: language)
     }
-    static var backgroundScansSection: String { backgroundScansSection() }
+    public static var backgroundScansSection: String { backgroundScansSection() }
 
-    static func backgroundScansNote(language: AppLanguage = AppLanguage.current) -> String {
-        L("These modules look through your files on their own — only when the Mac is idle, unlocked and on power, and no more than twice a day each.",
+    public static func backgroundScansNote(language: AppLanguage = AppLanguage.current) -> String {
+        L(.backgroundScansNote,
           language: language)
     }
-    static var backgroundScansNote: String { backgroundScansNote() }
+    public static var backgroundScansNote: String { backgroundScansNote() }
 
     /// The row's own caption. «Not yet» rather than «never»: a scan that has not
     /// run today is the ordinary state of a Mac somebody uses.
-    static func scanNeverRun(language: AppLanguage = AppLanguage.current) -> String {
-        L("Hasn’t run yet", language: language)
+    public static func scanNeverRun(language: AppLanguage = AppLanguage.current) -> String {
+        L(.scanNeverRun, language: language)
     }
-    static var scanNeverRun: String { scanNeverRun() }
+    public static var scanNeverRun: String { scanNeverRun() }
 
-    static func scanLastRun(_ when: String,
+    public static func scanLastRun(_ when: String,
                             language: AppLanguage = AppLanguage.current) -> String {
-        L("Last run \(when)",
-          [.ru: "Последний раз \(when)", .es: "Última vez \(when)",
-           .fr: "Dernière fois \(when)", .de: "Zuletzt \(when)",
-           .ja: "前回: \(when)", .zh: "上次\(when)", .pt: "Última vez \(when)"],
-          language: language)
+        L(.scanLastRun(when), language: language)
     }
 
     // MARK: - What a scan nobody watched turned up
@@ -349,9 +310,9 @@ enum AppStr {
     /// modules is speaking. The name comes from the registry rather than being
     /// written again here — `ScanCoordinator` passes what the sidebar shows.
     ///
-    /// Interpolated, so the table is inline: the lookup happens after the
-    /// numbers are already in the string.
-    static func scanFindingNotice(module: String, finding: ScanNews.Finding,
+    /// The count and the size are written in the sentence's language first and
+    /// the catalog's template wraps them.
+    public static func scanFindingNotice(module: String, finding: ScanNews.Finding,
                                   language: AppLanguage = AppLanguage.current) -> NoticeText {
         NoticeText(title: module,
                    body: scanFindingBody(finding, language: language))
@@ -360,18 +321,11 @@ enum AppStr {
     /// The body alone, so a test can read the sentence in a language without
     /// having to build the pair around it — and so the eight-language check is
     /// of the words rather than of the assembly.
-    static func scanFindingBody(_ finding: ScanNews.Finding,
+    public static func scanFindingBody(_ finding: ScanNews.Finding,
                                 language: AppLanguage = AppLanguage.current) -> String {
-        func items(_ code: String) -> String { Plural.items(finding.count, language: code) }
-        func size(_ code: String) -> String { HelmBytes.string(finding.bytes, language: code) }
-        return L("\(items("en")) since the last check — \(size("en"))",
-                 [.ru: "\(items("ru")) с прошлой проверки — \(size("ru"))",
-                  .es: "\(items("es")) desde la última comprobación — \(size("es"))",
-                  .fr: "\(items("fr")) depuis la dernière vérification — \(size("fr"))",
-                  .de: "\(items("de")) seit der letzten Prüfung — \(size("de"))",
-                  .ja: "前回の確認以降 \(items("ja")) — \(size("ja"))",
-                  .zh: "自上次检查以来 \(items("zh")) — \(size("zh"))",
-                  .pt: "\(items("pt")) desde a última verificação — \(size("pt"))"],
+        let code = language.rawValue
+        return L(.scanFindingBody(Plural.items(finding.count, language: code),
+                                  HelmBytes.string(finding.bytes, language: code)),
                  language: language)
     }
 
@@ -379,26 +333,26 @@ enum AppStr {
     /// a panel, a settings window and a sidebar the person arranges. A tagline
     /// under the wordmark is the app's own claim about itself, so it names the
     /// machine it serves rather than one of the places it appears in.
-    static var tagline: String { L("Modular tools for your Mac.") }
-    static var metricVersion: String { L("VERSION") }
-    static var metricBuild: String { L("BUILD") }
-    static var metricModules: String { L("MODULES") }
-    static var checkNow: String { L("Check") }
-    static var appearance: String { L("Appearance") }
+    public static var tagline: String { L(.tagline) }
+    public static var metricVersion: String { L(.metricVersion) }
+    public static var metricBuild: String { L(.metricBuild) }
+    public static var metricModules: String { L(.metricModules) }
+    public static var checkNow: String { L(.checkNow) }
+    public static var appearance: String { L(.appearance) }
     /// Why Helm wants a permission, named per permission. An unexplained
     /// request is one people deny.
-    static func permissionReason(_ need: PermissionNeed) -> String {
+    public static func permissionReason(_ need: PermissionNeed) -> String {
         switch need {
         case .fullDiskAccess:
-            return L("Full disk access is off. Without it the disk scan cannot read every folder, and removing an app leaves its containers behind.")
+            return L(.fullDiskAccessReason)
         case .accessibility:
-            return L("Accessibility is off. Without it Helm cannot see what you type, so keyboard corrections and the pointer nudge do nothing.")
+            return L(.accessibilityReason)
         case .screenRecording:
-            return L("Screen & System Audio Recording is off. Without it Helm cannot read the screen, so the screenshot shortcuts capture nothing.")
+            return L(.screenRecordingReason)
         }
     }
 
-    static func openPane(_ need: PermissionNeed) -> String {
+    public static func openPane(_ need: PermissionNeed) -> String {
         switch need {
         case .fullDiskAccess: return openDiskAccessPane
         case .accessibility: return openAccessibilityPane
@@ -410,39 +364,39 @@ enum AppStr {
     /// different things — and the seven translations of both were identical,
     /// which is the proof they were one concept with two English spellings.
     /// One key each, naming the pane the way System Settings does.
-    static var openDiskAccessPane: String { L("Open Full Disk Access…") }
-    static var openAccessibilityPane: String { L("Open Accessibility…") }
-    static var openScreenRecordingPane: String { L("Open Screen & System Audio Recording…") }
-    static var retry: String { L("Try again") }
+    static var openDiskAccessPane: String { HelmWord.openFullDiskAccess }
+    static var openAccessibilityPane: String { L(.openAccessibilityPane) }
+    static var openScreenRecordingPane: String { L(.openScreenRecordingPane) }
+    public static var retry: String { L(.retry) }
     /// Shown when a release publishes no digest for its asset: the updater
     /// refuses to swap a bundle it cannot check, and hands the user the page.
-    static var updateManualInstall: String { L("This release published no checksum. Helm opened its download page instead.") }
-    static var updateCannotReplaceItself: String { L("This copy of Helm is not the one a release replaces. Helm opened its download page instead.") }
-    static var updateCheckFailed: String { L("Couldn’t check for updates.") }
-    static func lastChecked(_ when: String) -> String { L("Checked \(when)", [.ru: "Проверялось \(when)", .es: "Comprobado \(when)", .fr: "Vérifié \(when)", .de: "Geprüft \(when)", .ja: "確認: \(when)", .zh: "检查于\(when)", .pt: "Verificado \(when)"]) }
-    static var neverChecked: String { L("Not checked yet") }
-    static var updateChannel: String { L("Update channel") }
-    static var channelBeta: String { L("Beta") }
-    static var channelDev: String { L("Dev") }
-    static var channelBetaNote: String { L("Helm is still in development. Beta builds are the steadier of the two.") }
+    public static var updateManualInstall: String { L(.updateManualInstall) }
+    public static var updateCannotReplaceItself: String { L(.updateCannotReplaceItself) }
+    public static var updateCheckFailed: String { L(.updateCheckFailed) }
+    public static func lastChecked(_ when: String) -> String { L(.lastChecked(when)) }
+    public static var neverChecked: String { L(.neverChecked) }
+    public static var updateChannel: String { L(.updateChannel) }
+    static var channelBeta: String { L(.channelBeta) }
+    static var channelDev: String { L(.channelDev) }
+    static var channelBetaNote: String { L(.channelBetaNote) }
     /// Set in capitals like `betaBadge`: they sit side by side and a pair
     /// where one shouts and the other does not reads as two kinds of thing.
-    static var devBadge: String { L("DEV") }
-    static var betaBadge: String { L("BETA") }
-    static var channelDevNote: String { L("Early builds with new features — expect rough edges.") }
+    public static var devBadge: String { L(.devBadge) }
+    public static var betaBadge: String { L(.betaBadge) }
+    static var channelDevNote: String { L(.channelDevNote) }
 
     /// The two above, chosen by the channel rather than by a ternary at the
     /// call site — the same shape `openPane(_:)` takes for a permission. The
     /// About page asked for each of these three times over: the pill's label,
     /// the pill's tooltip, the note under the row, and the badge's tooltip.
-    static func channelName(_ channel: UpdateCheck.Channel) -> String {
+    public static func channelName(_ channel: UpdateCheck.Channel) -> String {
         switch channel {
         case .beta: return channelBeta
         case .dev: return channelDev
         }
     }
 
-    static func channelNote(_ channel: UpdateCheck.Channel) -> String {
+    public static func channelNote(_ channel: UpdateCheck.Channel) -> String {
         switch channel {
         case .beta: return channelBetaNote
         case .dev: return channelDevNote
@@ -450,37 +404,32 @@ enum AppStr {
     }
 
     /// The sidebar's warning next to a module macOS is currently blocking.
-    static var moduleBlockedByPermission: String {
-        L("Switched on, but macOS is withholding what it needs")
+    public static var moduleBlockedByPermission: String {
+        L(.moduleBlockedByPermission)
     }
 
     /// The value a blocked module's row carries after its name, so it names no
     /// subject of its own.
-    static var moduleRowBlockedByPermission: String {
-        L("macOS is withholding a needed permission")
+    public static var moduleRowBlockedByPermission: String {
+        L(.moduleRowBlockedByPermission)
     }
 
     /// The chevron beside the sidebar's foot row, and the row that takes its
     /// place when the sidebar is narrowed to its glyphs.
-    static var hideSidebar: String { L("Hide Sidebar") }
-    static var showSidebar: String { L("Show Sidebar") }
+    public static var hideSidebar: String { L(.hideSidebar) }
+    public static var showSidebar: String { L(.showSidebar) }
 
     // MARK: - The live log
 
-    static var logPane: String { L("Log") }
-    static var logLevelAll: String { L("Everything") }
-    static var logLevelWarnings: String { L("Warnings") }
-    static var logLevelErrors: String { L("Errors") }
-    static var logAllModules: String { L("All modules") }
+    public static var logPane: String { L(.logPane) }
+    public static var logLevelAll: String { L(.logLevelAll) }
+    public static var logLevelWarnings: String { L(.logLevelWarnings) }
+    public static var logLevelErrors: String { L(.logLevelErrors) }
+    public static var logAllModules: String { L(.logAllModules) }
     /// Counted, because "1 modules" and „1 Module" are what a bare plural
     /// produces — and this menu shows 1 more often than any other number.
-    static func logSomeModules(_ n: Int) -> String {
-        L(n == 1 ? "1 module" : "\(n) modules", [.ru: n == 1 ? "1 модуль" : "Модулей: \(n)",
-                           .es: n == 1 ? "1 módulo" : "\(n) módulos",
-                           .fr: n == 1 ? "1 module" : "\(n) modules",
-                           .de: n == 1 ? "1 Modul" : "\(n) Module",
-                           .ja: "\(n) 個のモジュール", .zh: "\(n) 个模块",
-                           .pt: n == 1 ? "1 módulo" : "\(n) módulos"])
+    public static func logSomeModules(_ n: Int) -> String {
+        n == 1 ? L(.logModulesOne) : L(.logModules(String(n)))
     }
     /// The level of one line, **said** rather than shown.
     ///
@@ -493,18 +442,18 @@ enum AppStr {
     /// English key means one thing, and those two name a *filter setting*. Nil
     /// for an ordinary line — a value on every row would be a word read out
     /// nine hundred times to say nothing happened.
-    static func logLevelWord(_ level: LogLevel) -> String? {
+    public static func logLevelWord(_ level: LogLevel) -> String? {
         switch level {
         case .info: return nil
-        case .warn: return L("Warning")
-        case .error: return L("Error")
+        case .warn: return L(.logLevelWarning)
+        case .error: return L(.logLevelError)
         }
     }
     /// Stays pinned to the newest line while it is on. Off is what somebody
     /// wants the moment they see the line they were waiting for.
-    static var logFollow: String { L("Follow") }
-    static var logEmpty: String { L("Nothing logged yet.") }
-    static var logNothingMatches: String { L("Nothing matches these filters.") }
+    public static var logFollow: String { L(.logFollow) }
+    public static var logEmpty: String { L(.logEmpty) }
+    public static var logNothingMatches: String { L(.logNothingMatches) }
     /// **This sentence is owed a rewrite, and it is a localizer's.** It was
     /// written when `total` was everything this process had logged, so «45 of 45
     /// lines» was true twice over. The tail is seeded from the file now, so
@@ -512,38 +461,32 @@ enum AppStr {
     /// and the same words read as «the log is 1 000 lines long». Eight languages
     /// say it, and the fix is the English key — «Showing the last N lines», or a
     /// count of the file — not seven corrections underneath the wrong one.
-    static func logCount(_ shown: Int, _ total: Int) -> String {
-        L("\(shown) of \(total) lines", [.ru: "Строк: \(shown) из \(total)",
-                                          .es: "\(shown) de \(total) líneas",
-                                          .fr: "\(shown) sur \(total) lignes",
-                                          .de: "\(shown) von \(total) Zeilen",
-                                          .ja: "\(total) 行中 \(shown) 行",
-                                          .zh: "\(total) 行中的 \(shown) 行",
-                                          .pt: "\(shown) de \(total) linhas"])
+    public static func logCount(_ shown: Int, _ total: Int) -> String {
+        L(.logCount(String(shown), String(total)))
     }
 
-    static var aboutHelm: String { L("About Helm") }
+    public static var aboutHelm: String { L(.aboutHelm) }
     /// Not «Sidebar» any more: the same arrangement now orders the panel and
     /// the icon menu, so naming one of the three places it shows up was the
     /// kind of half-truth that sends somebody looking for a second control
     /// that does not exist.
-    static var sidebarSections: String { L("Order and sections") }
+    public static var sidebarSections: String { L(.sidebarSections) }
     /// The one thing the sheet did not say. Every explanatory word in it was
     /// about dragging and sections; the column of switches carried none.
-    static var moduleSwitchNote: String { L("A switch turns the module off everywhere in Helm.") }
-    static var newSection: String { L("New section") }
-    static var renameSection: String { L("Rename") }
-    static var removeSection: String { L("Remove section") }
-    static var useDefaultSectionName: String { L("Use the default name") }
+    public static var moduleSwitchNote: String { L(.moduleSwitchNote) }
+    public static var newSection: String { L(.newSection) }
+    public static var renameSection: String { HelmWord.rename }
+    public static var removeSection: String { L(.removeSection) }
+    public static var useDefaultSectionName: String { L(.useDefaultSectionName) }
     /// The empty section's own row. A section somebody just made has no modules
     /// and would otherwise be a heading followed by the next heading — nothing
     /// to aim a drop at.
-    static var dragModuleHere: String { L("Drag a module here") }
+    public static var dragModuleHere: String { L(.dragModuleHere) }
     /// Marks a section the person made, as against one seeded from a category.
-    static var yourSection: String { L("your section") }
+    public static var yourSection: String { L(.yourSection) }
     /// Puts the seeded arrangement back. Not `reset`, which in this app means
     /// every setting at once — one English key means one thing.
-    static var restoreSections: String { L("Restore defaults") }
+    public static var restoreSections: String { L(.restoreSections) }
     /// What the sheet is for, said once at the top of it. The block on the
     /// page carried this note in its edit mode, where it was only ever read by
     /// somebody who had already worked out what to do.
@@ -552,49 +495,42 @@ enum AppStr {
     /// this forwarding to it — with nothing but the sheet calling either. A
     /// rename that stopped halfway leaves the old name reachable, and the next
     /// person has to work out which of the two is the one to change.
-    static var sidebarComposerNote: String {
-        L("Drag to reorder. A module can go into any section, and a section you remove hands its modules to its neighbour.")
+    public static var sidebarComposerNote: String {
+        L(.sidebarComposerNote)
     }
 
     /// What is arranged, without opening anything. Counted from the
     /// arrangement rather than from the registry: a section somebody emptied
     /// is still a section they made.
-    static func sidebarSummary(on: Int, of total: Int, sections: Int) -> String {
+    public static func sidebarSummary(on: Int, of total: Int, sections: Int) -> String {
         // «9 modules in 4 sections» was `ModuleRegistry.all.count` rendered as
         // if it were state: `reconciled` guarantees every registered module
         // appears in exactly one section, so the number could not change. Turn
         // four modules off and the row still said nine. What a person wants to
         // know from a summary is what they have done, and how many are on is
         // the only number here that is theirs.
-        func sectionWord(_ n: Int, _ one: String, _ many: String) -> String {
-            n == 1 ? "\(n) \(one)" : "\(n) \(many)"
+        let (a, b, c) = (String(on), String(total), String(sections))
+        switch form(sections, AppLanguage.current) {
+        case .one: return L(.sidebarSummaryOne(a, b, c))
+        case .few: return L(.sidebarSummaryFew(a, b, c))
+        case .many: return L(.sidebarSummaryMany(a, b, c))
         }
-        let en = "\(on) of \(total) on · " + sectionWord(sections, "section", "sections")
-        return L(en,
-          [.ru: "\(on) из \(total) включено · \(sections) "
-                + Plural.russian(sections, "раздел", "раздела", "разделов"),
-           .es: "\(on) de \(total) activados · " + sectionWord(sections, "sección", "secciones"),
-           .fr: "\(on) sur \(total) activés · " + sectionWord(sections, "section", "sections"),
-           .de: "\(on) von \(total) aktiv · " + sectionWord(sections, "Abschnitt", "Abschnitte"),
-           .ja: "\(total) 個中 \(on) 個が有効 · \(sections) セクション",
-           .zh: "\(total) 个中 \(on) 个已启用 · \(sections) 个分组",
-           .pt: "\(on) de \(total) ativados · " + sectionWord(sections, "seção", "seções")])
     }
 
-    static var moduleIcons: String { L("Module icons") }
-    static var moduleIconsColour: String { L("Colour") }
-    static var moduleIconsPlain: String { L("Plain") }
+    public static var moduleIcons: String { L(.moduleIcons) }
+    public static var moduleIconsColour: String { L(.moduleIconsColour) }
+    public static var moduleIconsPlain: String { L(.moduleIconsPlain) }
     /// The two menu-bar rows, and they say **menu bar** because nothing else in
     /// their section does. They sat under «Appearance» beside the theme and the
     /// module icons as «Icon shape» and «Icon size», with no word anywhere on the
     /// page saying which icon — and the app's own term for it is one Keep Awake
     /// already uses as a heading over the same picker. `IconShapePicker`'s own
     /// default title stays as it is: it is titled by that heading there.
-    static var menuBarIconShape: String { L("Menu-bar icon shape") }
-    static var menuBarIconSize: String { L("Menu-bar icon size") }
-    static var settings: String { L("Settings…") }
-    static var panel: String { L("Panel") }
-    static var utilities: String { L("Utilities") }
+    public static var menuBarIconShape: String { L(.menuBarIconShape) }
+    public static var menuBarIconSize: String { L(.menuBarIconSize) }
+    public static var settings: String { L(.settings) }
+    public static var panel: String { L(.panel) }
+    public static var utilities: String { L(.utilities) }
 
     // MARK: - The panel, arranged
 
@@ -607,25 +543,25 @@ enum AppStr {
     /// that menu, which is a promise about a name and was false about one of
     /// them. Read from one place it cannot drift, which is the fix
     /// `VPNStr.secretNeedsAPress` is built the same way for.
-    static var editPanel: String { L("Edit panel") }
-    static var showSettingsButton: String { L("Show Settings button") }
-    static var showPanelEditButton: String { L("Show the edit button in the panel") }
-    static var showQuitButton: String { L("Show Quit button") }
+    public static var editPanel: String { L(.editPanel) }
+    public static var showSettingsButton: String { L(.showSettingsButton) }
+    public static var showPanelEditButton: String { L(.showPanelEditButton) }
+    public static var showQuitButton: String { L(.showQuitButton) }
     /// Why any of the three may be hidden at all: none of them is the only way
     /// to what it does. This caption is also one of exactly two places the app
     /// teaches the right-click menu, and Helm is `LSUIElement` — no Dock icon,
     /// no application menu — so those two places are the whole set of doors
     /// somebody can be told about.
-    static var panelFooterNote: String {
-        L("All three are also in the right-click menu on the menu-bar icon.")
+    public static var panelFooterNote: String {
+        L(.panelFooterNote)
     }
-    static var panelSetup: String { L("Editing the panel") }
-    static var removeWidget: String { L("Remove widget") }
-    static var widgetSize: String { L("Widget size") }
-    static var addWidget: String { L("Add widget") }
-    static var chooseUtilities: String { L("Choose what is in the list") }
-    static var tabLabels: String { L("Tab labels") }
-    static var tabIcon: String { L("Icon") }
+    public static var panelSetup: String { L(.panelSetup) }
+    public static var removeWidget: String { L(.removeWidget) }
+    public static var widgetSize: String { L(.widgetSize) }
+    public static var addWidget: String { L(.addWidget) }
+    public static var chooseUtilities: String { L(.chooseUtilities) }
+    public static var tabLabels: String { L(.tabLabels) }
+    public static var tabIcon: String { L(.tabIcon) }
     /// The pop-up's four answers.
     ///
     /// **Names and icons, not «Text» and «Glyph».** Glyph is the word this
@@ -637,65 +573,65 @@ enum AppStr {
     /// **«only», so the bare word stays free.** One English key means one
     /// thing: a bare «Names» is a label any other page may need for a second
     /// meaning, and the two would share one translation. `OneEntryPerKeyTests`
-    /// is the guard that was missing: every reader of these files goes through
-    /// `NSDictionary`, which resolves a repeated key silently.
-    static func tabLabelStyle(_ style: TabLabelStyle) -> String {
+    /// is the guard that was missing: a reader resolves a repeated key
+    /// silently.
+    public static func tabLabelStyle(_ style: TabLabelStyle) -> String {
         switch style {
-        case .automatic: L("Automatic")
-        case .text: L("Names only")
-        case .glyphAndText: L("Names and icons")
-        case .glyph: L("Icons only")
+        case .automatic: L(.tabLabelStyleAutomatic)
+        case .text: L(.tabLabelStyleNamesOnly)
+        case .glyphAndText: L(.tabLabelStyleNamesAndIcons)
+        case .glyph: L(.tabLabelStyleIconsOnly)
         }
     }
-    static var newTab: String { L("New tab") }
-    static var closeTab: String { L("Close tab") }
-    static var tabLabel: String { L("Tab") }
+    public static var newTab: String { L(.newTab) }
+    public static var closeTab: String { L(.closeTab) }
+    public static var tabLabel: String { L(.tabLabel) }
     /// The name of the tab Helm seeds, read in the reader's language rather
     /// than stored in whichever language it was created in.
-    static var mainTab: String { L("Main") }
+    static var mainTab: String { L(.mainTab) }
     /// An unnamed tab is numbered.
     ///
     /// Every unnamed tab used to answer «Вкладка», so a strip of three read
     /// «Главная · Вкладка · Вкладка» — and the care `addingTab` takes to hand
     /// out a different glyph is invisible at the default label style, which is
     /// text.
-    static func tabTitle(_ tab: PanelLayout.Tab, number: Int? = nil) -> String {
+    public static func tabTitle(_ tab: PanelLayout.Tab, number: Int? = nil) -> String {
         if let name = tab.name { return name }
         if tab.seed == "main" { return mainTab }
         guard let number else { return tabLabel }
         return tabLabel + " " + "\(number)"
     }
-    static var moduleIsOff: String { L("Module is off") }
-    static var nothingOnThisTab: String { L("Nothing on this tab yet") }
-    static var nothingOnThisTabHint: String { L("Press the pencil below to add a widget.") }
+    public static var moduleIsOff: String { L(.moduleIsOff) }
+    public static var nothingOnThisTab: String { L(.nothingOnThisTab) }
+    public static var nothingOnThisTabHint: String { L(.nothingOnThisTabHint) }
     /// The same sentence for a panel whose pencil has been switched off. It
     /// pointed at the button either way, so with the button hidden the hint
     /// named a control that was not on screen — and the door it did not
     /// mention is the one that cannot be closed.
-    static var nothingOnThisTabHintNoButton: String {
-        L("Right-click the menu-bar icon to add a widget.")
+    public static var nothingOnThisTabHintNoButton: String {
+        L(.nothingOnThisTabHintNoButton)
     }
 
-    static var noModules: String { L("No modules enabled") }
-    static var noModulesHint: String { L("Enable a module in Settings.") }
-    static var whatsNew: String { L("What’s New") }
+    public static var noModules: String { L(.noModules) }
+    public static var noModulesHint: String { L(.noModulesHint) }
+    public static var whatsNew: String { L(.whatsNew) }
 
-    static var author: String { L("Author") }
+    public static var author: String { L(.author) }
     /// A name, so it is written the way it is written — in Cyrillic where the
     /// reader has an alphabet for it, transliterated where they do not. Not a
     /// translation: nobody translates a name, they only spell it.
     ///
-    /// In the `.lproj` files like everything else. It was an inline table with
+    /// In the catalog like everything else. It was an inline table with
     /// one row in it, which is six languages absent from a table nothing
     /// guards — the exact shape the changelog's twenty tables had when one of
     /// them shipped English to six languages.
-    static var authorName: String { L("Rostislav Strelnikov") }
-    static var close: String { L("Close") }
-    static var quit: String { L("Quit") }
+    public static var authorName: String { L(.authorName) }
+    public static var close: String { HelmWord.close }
+    public static var quit: String { L(.quit) }
     /// Explains the tint rule without naming a specific module (the icon is no
     /// longer ring-only, and module names are themselves localized).
-    static var menuBarNote: String {
-        L("The icon is white when idle and takes on the colour of whichever module is active.")
+    public static var menuBarNote: String {
+        L(.menuBarNote)
     }
 
     /// A section's heading: the name somebody typed, or its seed translated.
@@ -703,7 +639,7 @@ enum AppStr {
     /// Never the stored string on its own — a seeded section has no stored
     /// string precisely so that switching the app's language moves its heading
     /// with it.
-    static func sectionTitle(_ section: SidebarLayout.Section) -> String {
+    public static func sectionTitle(_ section: SidebarLayout.Section) -> String {
         if let name = section.name { return name }
         guard let seed = section.seed, let category = ModuleCategory(rawValue: seed) else { return "" }
         return categoryName(category)
@@ -711,36 +647,36 @@ enum AppStr {
 
     static func categoryName(_ c: ModuleCategory) -> String {
         switch c {
-        case .power: return L("Power")
-        case .network: return L("Network")
-        case .clipboard: return L("Clipboard")
-        case .window: return L("Window")
-        case .media: return L("Media")
-        case .files: return L("Files")
-        case .appearance: return L("Appearance")
+        case .power: return L(.categoryPower)
+        case .network: return HelmWord.network
+        case .clipboard: return HelmWord.clipboard
+        case .window: return L(.categoryWindow)
+        case .media: return HelmWord.media
+        case .files: return L(.categoryFiles)
+        case .appearance: return L(.appearance)
         case .utilities: return AppStr.utilities
-        case .misc: return L("Miscellaneous")
+        case .misc: return L(.categoryMiscellaneous)
         }
     }
 
-    static var turnOn: String { L("Turn on") }
-    static var cancel: String { L("Cancel") }
-    static var resetSection: String {
-        L("Reset")
+    public static var turnOn: String { HelmWord.turnOn }
+    public static var cancel: String { HelmWord.cancel }
+    public static var resetSection: String {
+        L(.resetSection)
     }
-    static var resetAll: String {
-        L("Reset all settings…")
+    public static var resetAll: String {
+        L(.resetAll)
     }
-    static var resetNote: String {
-        L("Helm returns to how it was just after installing, including whether it opens at login. Access you granted in System Settings stays as it is.")
+    public static var resetNote: String {
+        L(.resetNote)
     }
-    static var resetConfirmTitle: String {
-        L("Reset all settings?")
+    public static var resetConfirmTitle: String {
+        L(.resetConfirmTitle)
     }
-    static var resetConfirmBody: String {
-        L("Each module’s saved data and the diagnostics log go to the Trash, where you can get them back. Your preferences — which modules are on, their order, your shortcuts — are forgotten for good. Helm restarts and greets you as it did the first time.")
+    public static var resetConfirmBody: String {
+        L(.resetConfirmBody)
     }
-    static var resetConfirmAction: String {
-        L("Reset and Restart")
+    public static var resetConfirmAction: String {
+        L(.resetConfirmAction)
     }
 }

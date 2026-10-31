@@ -4,6 +4,7 @@
 import SwiftUI
 import HelmRuntime
 import HelmUI
+import HelmAppStrings
 
 /// The log, while it is being written — a card for each launch of the app.
 ///

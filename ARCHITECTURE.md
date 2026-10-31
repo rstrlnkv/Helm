@@ -7,7 +7,7 @@ for what crosses the engine/host boundary,
 `Sources/HelmRuntime` for plumbing without UI, `Sources/HelmUI` for the design
 system and the strings, and `Sources/HelmLaunch` for the one thing Swift cannot
 express — plus `Sources/HelmApp`, the executable that owns the window, the panel
-and the status item. The whole shape is declared in `Package.swift`, and the
+and the status item, with its words in `Sources/HelmAppStrings`. The whole shape is declared in `Package.swift`, and the
 boundaries in these pages are the ones the compiler enforces.
 
 ## How these pages are kept
@@ -33,8 +33,9 @@ comment, not on a page.
 | plumbing two modules both want | `Sources/HelmRuntime/` |
 | a string or a control two modules both draw | `Sources/HelmUI/` |
 | a token — surface, motion, colour, radius | `Sources/HelmUI/DesignSystem/` |
-| the translations | `Sources/HelmUI/Resources/` |
-| the window, panel, status item, settings, changelog | `Sources/HelmApp/` |
+| the translations of the kit's shared words | `Sources/HelmUI/Resources/` |
+| the host's words, the changelog's entries and their translations | `Sources/HelmAppStrings/` |
+| the window, panel, status item, settings | `Sources/HelmApp/` |
 | plumbing a test target wants | `Tests/Support/` |
 | what a screen reads as, in numbers | `Sources/HelmReadout/` |
 | the kit's components in every state, to look at | `Sources/HelmShowcase/` |

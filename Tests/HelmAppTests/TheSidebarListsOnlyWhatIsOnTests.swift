@@ -4,6 +4,7 @@ import HelmUI
 import SwiftUI
 import XCTest
 @testable import HelmApp
+import HelmAppStrings
 
 /// **The sidebar's rows are a pure value of two things, the arrangement and the
 /// set of modules switched on: a module that is off is not a row, a section left

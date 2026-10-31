@@ -1,6 +1,7 @@
 import SwiftUI
 import HelmRuntime
 import HelmUI
+import HelmAppStrings
 
 // The panel's chrome and its two standing tiles, drawn by the card in
 // `HelmPanel.swift`. Internal rather than `private` for that reason and no

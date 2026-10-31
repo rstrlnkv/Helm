@@ -4,7 +4,8 @@
 import Foundation
 import HelmUI
 
-/// The modules' own string catalogs, read as data: `Sources/Modules/<Name>/UI/Localizable.xcstrings`.
+/// The string catalogs, read as data: each module's `Sources/Modules/<Name>/UI/Localizable.xcstrings`
+/// and the host's `Sources/HelmAppStrings/Localizable.xcstrings` and `Changelog.xcstrings`.
 ///
 /// A catalog's symbols are internal to its target, so a test in the kit's target
 /// cannot name one — and `Bundle.module` inside a test target is the test's own
@@ -27,12 +28,17 @@ public enum ModuleCatalogs {
     public static func all() throws -> [Catalog] {
         let modules = RepoSource.root.appendingPathComponent("Sources/Modules")
         let names = try FileManager.default.contentsOfDirectory(atPath: modules.path).sorted()
+        var found: [(relative: String, module: String)] = names.map {
+            ("Sources/Modules/\($0)/UI/Localizable.xcstrings", $0)
+        }
+        // The host's two: its own words, and the changelog (the English sentence is the key there).
+        found.append(("Sources/HelmAppStrings/Localizable.xcstrings", "HelmApp"))
+        found.append(("Sources/HelmAppStrings/Changelog.xcstrings", "Changelog"))
         var out: [Catalog] = []
-        for name in names {
-            let relative = "Sources/Modules/\(name)/UI/Localizable.xcstrings"
+        for (relative, module) in found {
             guard FileManager.default.fileExists(atPath:
                 RepoSource.root.appendingPathComponent(relative).path) else { continue }
-            out.append(try read(relative, module: name))
+            out.append(try read(relative, module: module))
         }
         return out
     }
@@ -64,7 +70,10 @@ public enum ModuleCatalogs {
         for catalog in try all() {
             for (symbol, values) in catalog.strings {
                 guard let english = values["en"], let value = values[language.rawValue] else { continue }
-                if out[english] != nil {
+                // A template differs by its argument, so the same words in two keys (the Few and Many
+                // forms of a count, a time and a day) are one sentence twice, not one text meaning two things.
+                // Only a real placeholder (`%@`, `%1$@`) says so: a sentence with a bare percent sign is still a sentence.
+                if out[english] != nil, english.range(of: #"%(\d+\$)?@"#, options: .regularExpression) == nil {
                     throw RepoSource.Failure("\(catalog.path): \(symbol) repeats the English «\(english)» — "
                                             + "one English text means one thing")
                 }

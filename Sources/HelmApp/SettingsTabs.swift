@@ -3,6 +3,7 @@
 
 import SwiftUI
 import HelmUI
+import HelmAppStrings
 
 /// The three tabs of the Settings page — Basics, Log, About Helm — and the selection
 /// they write.

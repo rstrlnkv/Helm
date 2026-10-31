@@ -156,18 +156,24 @@ let showcase: [Target] = [
 
 /// The host and the tests that belong to no module.
 let host: [Target] = [
+    // The host's words sit in a library, not in `HelmApp`: an executable target's testable
+    // variant is compiled without its string catalogs (only the product variant lists them in its
+    // sources phase), so `L(.x)` there builds for the product and fails `swift build --build-tests`.
+    // A library has a static and a `-dynamic` target; tests build on the static one. Read with
+    // `swift package dump-pif --preserve-structure`.
+    .target(name: "HelmAppStrings", dependencies: ["HelmRuntime", "HelmUI"]),
     .executableTarget(
         name: "HelmApp",
         // The UI targets only: the host talks to a module through its descriptor,
         // and each descriptor already depends on its own engine. A direct edge
         // here is a door past the descriptor into an engine's internals.
-        dependencies: ["HelmContract", "HelmRuntime", "HelmUI", "HelmLaunch"]
+        dependencies: ["HelmAppStrings", "HelmContract", "HelmRuntime", "HelmUI", "HelmLaunch"]
             + modules.map { .byName(name: $0.ui) }
     ),
     .testTarget(name: "HelmContractTests",
                 dependencies: ["HelmContract", "HelmTestSupport"]),
     .testTarget(name: "HelmAppTests",
-                dependencies: ["HelmApp", "HelmContract", "HelmRuntime", "HelmUI",
+                dependencies: ["HelmApp", "HelmAppStrings", "HelmContract", "HelmRuntime", "HelmUI",
                                "HelmTestSupport"]),
     .testTarget(name: "HelmRuntimeTests",
                 dependencies: ["HelmRuntime", "HelmContract", "HelmTestSupport"]),

@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import HelmRuntime
 import HelmUI
+import HelmAppStrings
 
 /// The settings page the window opens on: the icon, the sidebar, what launches
 /// at login, and the grants macOS is holding back.
