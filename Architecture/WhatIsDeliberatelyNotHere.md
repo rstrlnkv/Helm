@@ -14,11 +14,11 @@ take back — taking back what one binary changed is already
 ARCHITECTURE.md § Giving everything back.
 
 **No transport between the parts.** The host and the modules are one process and
-talk through `Sources/HelmContract`, so there is no version to negotiate and no
-wire compatibility to keep across a release. The `Data` payload of
-`EngineCommand`/`EngineEvent` (`Sources/HelmContract/EngineMessage.swift`) only
-erases a type for one generic call site and never reaches a socket, a pipe or a
-second binary.
+talk through `Sources/HelmContract` and the descriptor, so there is no version to
+negotiate and no wire compatibility to keep across a release. A model calls its
+engine's methods, and what an engine says unasked reaches the model as typed values
+on `EngineNews` (`Sources/HelmContract/EngineNews.swift`): nothing is encoded, and
+nothing reaches a socket, a pipe or a second binary.
 
 **No back-deployment.** The package declares `.macOS("26.0")` and the shipped
 bundle is arm64 only. Supporting an older system means the ports grow a second path each, and there

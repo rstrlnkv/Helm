@@ -3,51 +3,27 @@
 
 import Foundation
 
-/// Everything the engine says about itself.
-///
-/// One name, shared by the emit and the stream that reads it back; the shape is
-/// `VPNEngine.StatePayload`'s.
-enum VPNEvent: String, Sendable {
-    /// Connections, what Helm raised, and the last rule firing.
-    case state
-}
-
 /// The state every VPN surface draws, and the one declaration of it.
 ///
 /// Out of `VPNEngine` and still `VPNEngine.StatePayload`, the way
 /// `KeepAwakeEngine.StatePayload` already sits beside its engine: an extension
-/// keeps the name every reader spells while taking a wire type with a
-/// hand-written decoder out of the middle of the connect logic. The name is the
-/// point — the same type, not a copy — because a payload declared twice is
-/// matched by field name across a JSON hop with no compiler in between.
+/// keeps the name every reader spells while taking the payload out of the middle
+/// of the connect logic. The name is the point — the same type, not a copy —
+/// because a payload declared twice is two declarations of one fact.
 extension VPNEngine {
     /// Public because the model reads it from `stream()` — see the note on KeepAwake's.
     /// `Equatable` because the engine refuses to emit a payload equal to the
     /// last one it sent (`emitState`): the poll re-reads up to 26 times behind
     /// one connect, and every field-for-field duplicate it produced re-rendered
     /// every mounted page to learn nothing.
-    public struct StatePayload: Codable, Equatable, Sendable {
+    public struct StatePayload: Equatable, Sendable {
         public let connections: [VPNConnection]
         public let autoConnected: [String]
-        /// The last firing Helm caused, if any. Optional, so the synthesized
-        /// decoder reads it with `decodeIfPresent` and a payload written before
-        /// this field existed still decodes — a throw here would cost the page
-        /// its whole state for the sake of one field.
-        /// `VPNAutomationRecordingTests` holds a payload without it.
+        /// The last firing Helm caused, if any.
         public let lastAutomation: VPNAutomation?
-        /// Optional for the same reason as the field above: a payload written
-        /// before it existed still decodes, and a throw here would cost the
-        /// page its whole state for the sake of one field.
         public var lastFailure: VPNFailure?
         /// Configurations Helm has a secret for and may not read unattended —
         /// `VPNSecretBook`. Sorted by the engine, so the page draws in one order.
-        ///
-        /// **Not an `Optional`, so this payload needed a decoder of its own.** The
-        /// three fields above are optional and Swift's synthesised `Decodable`
-        /// reads those with `decodeIfPresent`; a non-optional array with a stored
-        /// default is still a required key, and a document missing it throws —
-        /// taking every connection the page draws with it (CLAUDE.md § What not to
-        /// do, and what breaks if you do).
         public var secretsBehindAPrompt: [String] = []
         /// Every connected tunnel that has an interface reading, the one
         /// carrying the default route first.
@@ -59,8 +35,7 @@ extension VPNEngine {
         /// selection naming a tunnel that has gone falls back to it.
         ///
         /// Empty when nothing is up — the strip is absent then, rather than
-        /// empty. Non-optional, and therefore one more reason the decoder below
-        /// is hand-written.
+        /// empty.
         public var tunnels: [VPNTunnelState] = []
 
         init(connections: [VPNConnection], autoConnected: [String],
@@ -74,47 +49,16 @@ extension VPNEngine {
             self.tunnels = tunnels
         }
 
-        public init(from decoder: Decoder) throws {
-            let box = try decoder.container(keyedBy: CodingKeys.self)
-            connections = try box.decode([VPNConnection].self, forKey: .connections)
-            autoConnected = try box.decode([String].self, forKey: .autoConnected)
-            lastAutomation = try box.decodeIfPresent(VPNAutomation.self, forKey: .lastAutomation)
-            lastFailure = try box.decodeIfPresent(VPNFailure.self, forKey: .lastFailure)
-            secretsBehindAPrompt = try box.decodeIfPresent([String].self,
-                                                           forKey: .secretsBehindAPrompt) ?? []
-            // **The key this payload used to carry, read as a one-element
-            // list.** A document written by the build before the switcher names
-            // `facts` and no `tunnels` at all, and a decoder that only asked for
-            // the new key would answer «nothing is up» on the first launch after
-            // an update — for a Mac with a tunnel up and a strip that should be
-            // on the screen. Neither key is a Mac from before the strip existed.
-            if let listed = try box.decodeIfPresent([VPNTunnelState].self, forKey: .tunnels) {
-                tunnels = listed
-            } else {
-                let older = try decoder.container(keyedBy: OlderPayloadKeys.self)
-                tunnels = try older.decodeIfPresent(VPNTunnelState.self, forKey: .facts)
-                    .map { [$0] } ?? []
-            }
-        }
     }
 }
 
-/// The one key `StatePayload` used to carry and no longer has a property for.
-///
-/// **Its own enum, not a case added to `CodingKeys`**: those are synthesised
-/// from the properties and drive `encode` as well, so a case with nothing behind
-/// it costs the type its `Encodable` conformance outright — measured, not
-/// guessed. At file scope rather than nested, which is one level too deep here.
-/// Read, never written.
-private enum OlderPayloadKeys: String, CodingKey { case facts }
-
-/// What the page's tile strip draws, as one value on the wire.
+/// What the page's tile strip draws, as one value.
 ///
 /// Its own type rather than six loose fields on the payload: they are true of
 /// *one* tunnel — the one holding the default route — and six optionals side by
 /// side invite a reader to mix a name from one refresh with a byte count from
 /// the next.
-public struct VPNTunnelState: Codable, Equatable, Sendable {
+public struct VPNTunnelState: Equatable, Sendable {
     public let name: String
     public let interface: String
     /// When the tunnel came up.
@@ -132,7 +76,7 @@ public struct VPNTunnelState: Codable, Equatable, Sendable {
     ///
     /// The summary rather than the ranges, because a range is a fact about
     /// somebody's network and this module already refuses to put an exit address
-    /// on the wire for the same reason. `.none` is «excludes nothing», which is
+    /// in the published state for the same reason. `.none` is «excludes nothing», which is
     /// a real answer — a status read that failed produces no tunnel at all.
     public let excluded: VPNExcludedRoutes.Summary
     /// Whole kilobytes, not bytes — see `VPNInterfaceCounters.onTheWire` for
@@ -158,7 +102,7 @@ public struct VPNTunnelState: Codable, Equatable, Sendable {
     /// withheld the payload as a duplicate and the arrival that was supposed to
     /// clear the spinner never came.
     ///
-    /// On the wire it fixes that by construction rather than by a rule anybody
+    /// In the published state it fixes that by construction rather than by a rule anybody
     /// has to keep: the start and the end of a run are both changes, so neither
     /// can be withheld.
     public let measuring: Bool
@@ -177,42 +121,16 @@ public struct VPNTunnelState: Codable, Equatable, Sendable {
         self.speed = speed
         self.measuring = measuring
     }
-
-    /// Hand-written for the field above: a stored default does **not** make a
-    /// document without the key decode — Swift's synthesised `Decodable` wants it
-    /// regardless and `JSONDecoder` then gives up on the whole payload, which here
-    /// is every tile the strip draws (CLAUDE.md § What not to do, and what breaks
-    /// if you do). False is what a build from before this field meant: it had no
-    /// way to start a run that outlived its own answer.
-    public init(from decoder: Decoder) throws {
-        let box = try decoder.container(keyedBy: CodingKeys.self)
-        name = try box.decode(String.self, forKey: .name)
-        interface = try box.decode(String.self, forKey: .interface)
-        since = try box.decodeIfPresent(Date.self, forKey: .since)
-        bytesIn = try box.decodeIfPresent(UInt64.self, forKey: .bytesIn)
-        bytesOut = try box.decodeIfPresent(UInt64.self, forKey: .bytesOut)
-        exit = try box.decode(VPNExitVerdict.self, forKey: .exit)
-        speed = try box.decodeIfPresent(VPNSpeedReading.self, forKey: .speed)
-        measuring = try box.decodeIfPresent(Bool.self, forKey: .measuring) ?? false
-        // The same repair as the field above, for the same reason: a payload
-        // written before this field existed has no key for it, and Swift's
-        // synthesised `Decodable` wants one regardless — `JSONDecoder` then
-        // gives up on the whole document rather than on the field, which here is
-        // every tile the hero draws. `.none` is what a build from before this
-        // meant: it had no way to know what a tunnel excluded.
-        excluded = try box.decodeIfPresent(VPNExcludedRoutes.Summary.self,
-                                           forKey: .excluded) ?? .none
-    }
 }
 
 extension VPNTunnelState {
     /// One tunnel's reading, assembled from what the engine remembers about it.
     ///
     /// **Here rather than at the engine's call site**, which is where it was: it
-    /// is the construction of a wire value out of seven remembered facts, and
+    /// is the construction of a published value out of seven remembered facts, and
     /// putting it beside the value keeps `VPNEngine.tunnelStates` to the two
     /// questions that are actually the engine's — which tunnels, and in what
-    /// order. The counters reach the wire as whole kilobytes for the reason
+    /// order. The counters reach the state as whole kilobytes for the reason
     /// `VPNInterfaceCounters.onTheWire` gives, and nil stays nil: an interface
     /// the kernel has no counters for is not a tunnel that has carried nothing.
     /// `since` is Helm's **own** observation, and it is the fallback: the tool's

@@ -38,7 +38,7 @@ final class ADropThatHealedIsNotAnnouncedTests: XCTestCase {
     ///
     /// `_autoConnected` is written by an *automatic* connect — a rule firing for
     /// an app that launched — and not by a command somebody sent. The first
-    /// version of this fixture connected through the transport and then asserted
+    /// version of this fixture connected with a command and then asserted
     /// its own precondition, which is how it said so.
     private func engineHoldingTheTunnel(_ runner: FakeRunner, _ clock: TestClock) -> VPNEngine {
         let apps = FakeApps()

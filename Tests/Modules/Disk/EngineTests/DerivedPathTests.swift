@@ -16,7 +16,7 @@ import XCTest
 /// storage was removed and have to hold after.
 final class DerivedPathTests: XCTestCase {
 
-    /// Every path in the transported tree, in traversal order, duplicates kept.
+    /// Every path in the tree, in traversal order, duplicates kept.
     /// A set would hide the one collision that matters — see the bucket test.
     private func paths(of entry: DiskEntry) -> [String] {
         [entry.path] + entry.children.flatMap(paths(of:))
@@ -37,7 +37,7 @@ final class DerivedPathTests: XCTestCase {
         let all = paths(of: DiskEntry(builder.build(), depth: 6, path: "/"))
 
         XCTAssertEqual(all.filter { $0.contains("//") }, [],
-                       "a doubled slash reached the wire: \(all)")
+                       "a doubled slash reached the entry: \(all)")
         XCTAssertEqual(all.sorted(), [
             "/",
             "/Users",

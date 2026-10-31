@@ -1,6 +1,5 @@
 import Foundation
 import HelmContract
-import HelmRuntime
 import HelmTestSupport
 import XCTest
 @testable import Module_Screenshots_Engine
@@ -10,7 +9,7 @@ private func makeEngine(home: URL, preferences: FakePreferences) -> ScreenshotsE
     try? FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
     return ScreenshotsEngine(preferences: preferences,
                              locations: ScreenshotsLocations(home: home, desktop: desktop),
-                             transport: LocalTransport())
+                             news: EngineNews())
 }
 
 /// The first state the engine's stream yields, or nil if none arrives in time.
@@ -56,7 +55,7 @@ final class TheEngineSaysWhatLivesOutsideHelmTests: XCTestCase {
 }
 
 /// What the settings page is told: the folder macOS names, validated, and which
-/// system boxes are ticked. Through the transport, as the page hears it.
+/// system boxes are ticked. Through the news, as the page hears it.
 final class TheEngineTellsThePageWhatItReadTests: XCTestCase {
 
     func testActivationPublishesTheReadingAndALateSubscriberStillGetsIt() async throws {
@@ -64,7 +63,7 @@ final class TheEngineTellsThePageWhatItReadTests: XCTestCase {
         preferences.hotkeys = .read(["28": ["enabled": false]])
         let engine = makeEngine(home: scratchDirectory("shots-engine"), preferences: preferences)
         engine.activate()
-        // Give the read a moment to land; the transport replays it to whoever comes next.
+        // Give the read a moment to land; the news replays it to whoever comes next.
         try await Task.sleep(nanoseconds: 300_000_000)
 
         let found = await firstState(of: engine)

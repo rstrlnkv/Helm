@@ -58,13 +58,13 @@ final class ARunningOperationCanBeStoppedTests: XCTestCase {
         }
     }
 
-    private func lastOpState(_ transport: LocalTransport) async -> OpState? {
-        transport.emit(EngineEvent(name: "test.sentinel", payload: Data()))
+    private func lastOpState(_ news: EngineNews<HomebrewNews>) async -> OpState? {
+        news.say(.line("test.sentinel"), slot: "test.sentinel")
         var last: OpState?
-        for await event in transport.events {
-            if event.name == "test.sentinel" { break }
-            if event.name == HomebrewEvent.opState.rawValue {
-                last = try? JSONDecoder().decode(OpState.self, from: event.payload)
+        for await item in news.stream() {
+            if case .line("test.sentinel") = item { break }
+            if case .state(let s) = item {
+                last = s
             }
         }
         return last
@@ -72,10 +72,10 @@ final class ARunningOperationCanBeStoppedTests: XCTestCase {
 
     func testStopTerminatesTheChildAndNamesTheOutcome() async {
         let runner = HangingRunner()
-        let transport = LocalTransport()
+        let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
-                                    transport: transport)
+                                    news: news)
 
         engine.install(name: "wget", isCask: false)
         XCTAssertEqual(runner.handles.count, 1, "precondition: the operation started")
@@ -85,7 +85,7 @@ final class ARunningOperationCanBeStoppedTests: XCTestCase {
                       "Stop was pressed and the child brew was not terminated")
 
         runner.exitAll(code: 15)
-        let state = await lastOpState(transport)
+        let state = await lastOpState(news)
         XCTAssertEqual(state?.phase, .failed)
         XCTAssertEqual(state?.reason, .stopped,
                        "a stop the person asked for reported itself as an ordinary failure")
@@ -99,15 +99,15 @@ final class ARunningOperationCanBeStoppedTests: XCTestCase {
     /// outside (a brew killed in a terminal) is a failure, not a stop.
     func testAnUnrequestedSignalDeathIsNotAStop() async {
         let runner = HangingRunner()
-        let transport = LocalTransport()
+        let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
-                                    transport: transport)
+                                    news: news)
 
         engine.install(name: "wget", isCask: false)
         runner.exitAll(code: 15)
 
-        let state = await lastOpState(transport)
+        let state = await lastOpState(news)
         XCTAssertEqual(state?.phase, .failed)
         XCTAssertNil(state?.reason, "nobody pressed Stop, but the failure claims one")
     }
@@ -115,14 +115,14 @@ final class ARunningOperationCanBeStoppedTests: XCTestCase {
     /// Stopping nothing is a no-op, not a crash and not a stray event.
     func testStopWithNothingRunningIsHarmless() async {
         let runner = HangingRunner()
-        let transport = LocalTransport()
+        let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
-                                    transport: transport)
+                                    news: news)
 
         engine.stop()
 
-        let state = await lastOpState(transport)
+        let state = await lastOpState(news)
         XCTAssertNil(state, "stop with nothing running invented an operation state")
     }
 
@@ -130,10 +130,10 @@ final class ARunningOperationCanBeStoppedTests: XCTestCase {
     /// operation starts, or one stop would rename every failure after it.
     func testTheStopFlagDoesNotOutliveItsOperation() async {
         let runner = HangingRunner()
-        let transport = LocalTransport()
+        let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
-                                    transport: transport)
+                                    news: news)
 
         engine.install(name: "wget", isCask: false)
         engine.stop()
@@ -142,7 +142,7 @@ final class ARunningOperationCanBeStoppedTests: XCTestCase {
         engine.upgradeAll()
         runner.exitAll(code: 1)
 
-        let state = await lastOpState(transport)
+        let state = await lastOpState(news)
         XCTAssertEqual(state?.phase, .failed)
         XCTAssertNil(state?.reason,
                      "the previous operation's stop renamed this one's honest failure")

@@ -19,7 +19,7 @@ import HelmRuntime
 /// printed: `VPNCommandReply.of(_:name:)` sanitises the text, so `.refused` can
 /// only ever hold something already redacted. A rule enforced by the type is a
 /// rule the next call site cannot forget — and there is a second one waiting, the
-/// wire, since the reply's text is what any future «what did the tool say» screen
+/// published state, since the reply's text is what any future «what did the tool say» screen
 /// would read.
 ///
 /// What is *not* redacted, deliberately: `_lastFailure.name`. The screen is

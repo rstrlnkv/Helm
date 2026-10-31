@@ -28,7 +28,7 @@ import Module_Layout_Engine
     private(set) var indicator: LanguageIndicator?
     /// Kept so it can be dropped. A block observer does not remove itself, and
     /// this descriptor is one long-lived instance in `ModuleRegistry.all` whose
-    /// `makeEngine` runs again on every enable — so turning Keyboard off and on
+    /// `makeModule` runs again on every enable — so turning Keyboard off and on
     /// left the previous indicator alive, retained by its own orphan observer
     /// and still owning a status item, while a second one was built. One more
     /// flag in the menu bar per toggle. `LayoutEngine.activate()` learned this
@@ -38,10 +38,6 @@ import Module_Layout_Engine
     public init() {}
 
     public typealias Model = LayoutViewModel
-
-    public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
-        productionEngine(store: store)
-    }
 
     public func makeModule(store: NamespacedStore) -> ModuleParts<LayoutViewModel> {
         let engine = productionEngine(store: store)
@@ -76,7 +72,7 @@ import Module_Layout_Engine
     /// The module's own flag in the menu bar, built when the module starts
     /// running and taken away when it stops.
     ///
-    /// **Not in `makeEngine`, which is where it used to be.** `refresh()` builds
+    /// **Not in `makeModule`, which is where it used to be.** `refresh()` builds
     /// a real `NSStatusItem` the moment it reads the setting as on, so anybody
     /// who built an engine against a store with the indicator switched on
     /// decorated the Mac they were running on — including the offscreen render
@@ -86,7 +82,7 @@ import Module_Layout_Engine
     /// involved. Building an engine and appearing in the menu bar are two acts,
     /// and the host is what performs the second one.
     ///
-    /// It also gave the module no way *off* the menu bar. `makeEngine` dropped
+    /// It also gave the module no way *off* the menu bar. building the module dropped
     /// the previous indicator and built another, so switching Keyboard off left
     /// the flag where it was — retained by its own observers, for the life of
     /// the process — and only switching it on again cleaned up. `detach` is the

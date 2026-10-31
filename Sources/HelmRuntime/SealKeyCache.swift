@@ -59,7 +59,7 @@ import Foundation
 /// `held`, and nothing calls out of this file while holding `held`.
 ///
 /// `@unchecked` because the one mutable field is behind `held` on both sides —
-/// the rule a `LocalTransport` field once broke by taking the lock on one of
+/// the rule a handler field once broke by taking the lock on one of
 /// them.
 public final class SealKeyCache: SealKeyPort, @unchecked Sendable {
     private let source: SealKeyPort

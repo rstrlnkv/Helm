@@ -109,13 +109,12 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     private let runner: ProcessRunner
     private let privileged: PrivilegedRunner
     private let user: String
-    private let localTransport: LocalTransport
+    private let news: EngineNews<HomebrewNews>
     private let marker: OpMarker
     private let popularity: PopularityReading
     private let weight: PackageWeight
     private let tools: CommandLineToolsPort
     private let ticker: WaitTicker
-    public let transport: EngineTransport
 
     private let lock = NSLock()
     private var busy = false
@@ -163,7 +162,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     private static let installerURL = "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
 
     public init(locator: BrewLocator, runner: ProcessRunner, privileged: PrivilegedRunner,
-                user: String, transport: LocalTransport = LocalTransport(),
+                user: String, news: EngineNews<HomebrewNews> = EngineNews(),
                 marker: OpMarker = InMemoryOpMarker(),
                 popularity: PopularityReading = NoPopularity(),
                 weight: PackageWeight = NoPackageWeight(),
@@ -173,8 +172,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         self.runner = runner
         self.privileged = privileged
         self.user = user
-        self.localTransport = transport
-        self.transport = transport
+        self.news = news
         self.marker = marker
         self.popularity = popularity
         self.weight = weight
@@ -185,11 +183,11 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     public func activate() {
         // Where brew is, filed before anything else so a model built just before
         // this can have its first frame right (`HomebrewNews.brew`). Seen on bench
-        // recordings over a fake; in the app the news crosses two tasks and that
-        // order is unproved. The locator and not `status()`: that one takes the
-        // quit marker.
-        localTransport.emit(EngineEvent(name: HomebrewEvent.brewFound.rawValue,
-                                        payload: Data((locator.brewPath() ?? "").utf8)))
+        // recordings over a fake; in the app the news reaches the model through
+        // the model's own task and that order is unproved. The locator and not
+        // `status()`: that one takes the quit marker.
+        news.say(.brew(path: locator.brewPath().flatMap { $0.isEmpty ? nil : $0 }),
+                 slot: HomebrewEvent.brewFound.rawValue)
         // Not in `init`, because `init` runs for every module the host knows
         // about and `activate` only for the ones that are switched on: a module
         // the person has turned off never reaches the network for readings its
@@ -837,11 +835,10 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     }
 
     private func emitLog(_ line: String) {
-        localTransport.emit(EngineEvent(name: HomebrewEvent.opLog.rawValue,
-                                        payload: Data(line.utf8)))
+        news.say(.line(line), slot: HomebrewEvent.opLog.rawValue)
     }
     private func emitState(_ s: OpState) {
-        localTransport.emit(HomebrewEvent.opState, encoding: s)
+        news.say(.state(s), slot: HomebrewEvent.opState.rawValue)
     }
 
     /// `verb` is what happened; `subject` is the package it happened to, kept
@@ -1259,39 +1256,17 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// first appeared, then every line, state and brew after them in the order they
     /// were said.
     ///
-    /// **Registered before this returns, in the one hold of the transport's lock
-    /// that replays what it last said** (`LocalTransport.events`): reading the
-    /// state and then subscribing leaves a window an emit falls into, and
-    /// subscribing before the replay hands over an older state after a newer
-    /// one. Synchronous and not actor-isolated, so the model takes it in its own
-    /// synchronous `init`. The decode runs in the pump, outside the lock; ending
-    /// the iteration ends the pump, which ends the transport's stream and
-    /// removes the subscriber. Unbounded on purpose: a dropped `.done` is a page
+    /// **Registered before this returns, in the one hold of the lock that replays
+    /// what was last said** (`EngineNews.stream`): reading the state and then
+    /// subscribing leaves a window an emit falls into, and subscribing before the
+    /// replay hands over an older state after a newer one. Synchronous and not
+    /// actor-isolated, so the model takes it in its own synchronous `init`, before
+    /// its first suspension; the subscriber is counted when this returns. Ending
+    /// the iteration removes the subscriber. Unbounded on purpose: a dropped `.done` is a page
     /// that never leaves «running»; the console's bound is the model's.
-    public func stream() -> AsyncStream<HomebrewNews> {
-        let events = localTransport.events
-        return AsyncStream { continuation in
-            let pump = Task {
-                for await event in events {
-                    switch HomebrewEvent(rawValue: event.name) {
-                    case .opLog:
-                        continuation.yield(.line(String(decoding: event.payload, as: UTF8.self)))
-                    case .opState:
-                        guard let state = try? JSONDecoder().decode(OpState.self, from: event.payload)
-                        else { continue }
-                        continuation.yield(.state(state))
-                    case .brewFound:
-                        let path = String(decoding: event.payload, as: UTF8.self)
-                        continuation.yield(.brew(path: path.isEmpty ? nil : path))
-                    case .none:
-                        continue
-                    }
-                }
-                continuation.finish()
-            }
-            continuation.onTermination = { _ in pump.cancel() }
-        }
-    }
+    public func stream() -> AsyncStream<HomebrewNews> { news.stream() }
+
+    public var subscriberCount: Int { news.subscriberCount }
 
     // The readings below hop off the cooperative pool: each sync method they
     // call blocks its thread on a child, a lock or a directory. A nil keeps its

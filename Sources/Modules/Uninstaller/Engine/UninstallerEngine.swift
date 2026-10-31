@@ -41,9 +41,6 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// that the offer was switched on. May be called from any queue.
     private let trashChanged: @Sendable () -> Void
 
-    /// Nothing reaches it: the model calls this engine's methods and the engine
-    /// says nothing on it. `ModuleEngine` still asks for one.
-    public let transport: EngineTransport = LocalTransport()
 
     /// `store` holds one thing: which trashed apps the person has already declined
     /// to clean up after. Defaulted to memory so the tests that build this engine

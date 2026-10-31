@@ -110,7 +110,7 @@ import SwiftUI
 
     /// Measured **around** the construction, which is the whole point.
     ///
-    /// The reading used to be taken on the line before `makeEngine`, so
+    /// The reading used to be taken on the line before the module was built, so
     /// `module.disk.enable: 9 MB` was the process total *before* Disk existed and
     /// said nothing whatever about Disk. Nine such lines at launch read like nine
     /// per-module costs and were nine consecutive totals.
@@ -142,7 +142,7 @@ import SwiftUI
         // After the engine is running, and from here rather than from
         // `makeModule`: a module's own menu-bar item is part of it running, not
         // part of it being constructed. Keyboard's indicator was built inside
-        // `makeEngine`, so every process that asked a descriptor for an engine —
+        // the engine's construction, so every process that built a module —
         // the offscreen render harness included — got a status item on its Mac.
         d.attachMenuBarPresence()
         return Live(descriptor: d, engine: parts.engine, model: model, store: s,

@@ -4,8 +4,8 @@ import XCTest
 /// `~/Library/Logs/Helm/helm.log` is a product surface, and a suite run used to
 /// write into it.
 ///
-/// `EngineReply` logs at `error` when a reply will not encode, and when it still
-/// read payloads it logged one that would not decode — and its own tests, since
+/// The engine wire, since removed, logged at `error` when a reply would not encode,
+/// and when it still read payloads it logged one that would not decode — and its own tests, since
 /// cut, exercised exactly that, because that was the behaviour they were written
 /// for. The lines landed in the file every dev build
 /// is triaged against before it ships, wearing the same shape as a real fault,

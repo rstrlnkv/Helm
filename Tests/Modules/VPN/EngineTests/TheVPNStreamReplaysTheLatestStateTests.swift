@@ -16,16 +16,16 @@ import HelmTestSupport
 /// engine has already published; a stream that replays nothing leaves the page
 /// drawing an empty list until the next change, a stream that drops the forced
 /// re-emission leaves a spinner nothing clears, and a subscriber never given back
-/// outlives the model that made it. The engine runs its own `LocalTransport`,
+/// outlives the model that made it. The engine runs its own `EngineNews`,
 /// passed in, so the count of subscribers is the engine's.
 @MainActor
 final class TheVPNStreamReplaysTheLatestStateTests: XCTestCase {
 
-    private func engine(_ runner: FakeRunner, transport: LocalTransport,
+    private func engine(_ runner: FakeRunner, news: EngineNews<VPNEngine.StatePayload>,
                         interfaces: FakeInterfaces = FakeInterfaces()) -> VPNEngine {
         VPNEngine(settings: VPNSettings(store: NamespacedStore(namespace: "vpn",
                                                                backing: InMemoryKeyValueStore())),
-                  runner: runner, apps: FakeApps(), transport: transport,
+                  runner: runner, apps: FakeApps(), news: news,
                   interfaces: interfaces, exit: FakeExit(), speed: FakeSpeed(), work: .inline)
     }
 
@@ -49,7 +49,7 @@ final class TheVPNStreamReplaysTheLatestStateTests: XCTestCase {
     }
 
     func testASubscriberAfterTheEngineSpokeIsHandedTheStateItMissed() async {
-        let engine = engine(listed("Connected"), transport: LocalTransport())
+        let engine = engine(listed("Connected"), news: EngineNews())
         engine.refresh()
 
         let reader = Reader(engine.stream())
@@ -61,7 +61,7 @@ final class TheVPNStreamReplaysTheLatestStateTests: XCTestCase {
 
     func testLaterStatesArriveInOrder() async {
         let runner = listed("Disconnected")
-        let engine = engine(runner, transport: LocalTransport())
+        let engine = engine(runner, news: EngineNews())
         engine.refresh()
         let reader = Reader(engine.stream())
         await waitUntil("the replay") { !reader.states.isEmpty }
@@ -86,7 +86,7 @@ final class TheVPNStreamReplaysTheLatestStateTests: XCTestCase {
     /// withhold it; the engine forces it, and the stream must not add a dedup of
     /// its own.
     func testTheForcedReEmissionOfARefusedMeasurementArrives() async {
-        let engine = engine(listed("Connected"), transport: LocalTransport())
+        let engine = engine(listed("Connected"), news: EngineNews())
         engine.refresh()
         let reader = Reader(engine.stream())
         await waitUntil("the replay") { !reader.states.isEmpty }
@@ -101,13 +101,13 @@ final class TheVPNStreamReplaysTheLatestStateTests: XCTestCase {
     }
 
     func testEndingTheIterationGivesTheSubscriberBack() async {
-        let transport = LocalTransport()
-        let engine = engine(FakeRunner(), transport: transport)
-        XCTAssertEqual(transport.subscriberCount, 0, "precondition: nobody has subscribed")
+        let news = EngineNews<VPNEngine.StatePayload>()
+        let engine = engine(FakeRunner(), news: news)
+        XCTAssertEqual(news.subscriberCount, 0, "precondition: nobody has subscribed")
 
         let reader = Reader(engine.stream())
-        await waitUntil("the stream registers") { transport.subscriberCount == 1 }
+        await waitUntil("the stream registers") { news.subscriberCount == 1 }
         reader.task?.cancel()
-        await waitUntil("the stream is given back") { transport.subscriberCount == 0 }
+        await waitUntil("the stream is given back") { news.subscriberCount == 0 }
     }
 }

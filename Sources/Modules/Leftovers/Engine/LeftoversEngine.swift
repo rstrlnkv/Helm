@@ -26,7 +26,6 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     /// agent folders at the moment of a press, so the engine's refusal rests on
     /// what is there now rather than on what a scan found earlier.
     private let files: LeftoversFilePort
-    public let transport: EngineTransport = LocalTransport()
     /// The write half. The scan gets `loaded` and cannot reach this.
     private let switcher: LoginItemSwitchPort
     /// Where the labels this module disabled are recorded, so `willDisable()`

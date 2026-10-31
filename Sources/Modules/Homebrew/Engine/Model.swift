@@ -59,9 +59,9 @@ public enum HomebrewNews: Equatable, Sendable {
     case brew(path: String?)
 }
 
-/// The names the engine files its three announcements under on `LocalTransport`;
-/// `HomebrewEngine.stream()` is the one reader. `brewFound`'s payload is the
-/// path's UTF-8, empty for none.
+/// The slots the engine files its three announcements in on `EngineNews`; each
+/// keeps its own last value for a late subscriber. `HomebrewEngine`'s three `say`
+/// calls are the one user.
 enum HomebrewEvent: String, Sendable {
     case opLog
     case opState
@@ -108,7 +108,6 @@ public struct BrewStatus: Codable, Equatable, Sendable {
     /// The label of an operation that was still running when Helm last quit —
     /// the child brew survives the app, so the Cellar may have changed with no
     /// observer. Carried once, by the first `status()` of the next launch.
-    /// Optional, so the synthesized decode reads an older payload without it.
     public let interruptedOp: String?
     public init(installed: Bool, brewPath: String?, interruptedOp: String? = nil) {
         self.installed = installed; self.brewPath = brewPath
@@ -166,7 +165,7 @@ public struct PackageInfo: Codable, Equatable, Sendable {
     }
 }
 
-public enum OpPhase: String, Codable, Sendable { case idle, running, done, failed }
+public enum OpPhase: String, Sendable { case idle, running, done, failed }
 
 /// Why a failed operation failed, when the engine knows more than an exit code.
 ///
@@ -174,7 +173,7 @@ public enum OpPhase: String, Codable, Sendable { case idle, running, done, faile
 /// press that did nothing, visibly forever) or an exit code indistinguishable
 /// from a build failure. The engine names the reason; the UI owns the words, so
 /// the eight languages live where `L()` can reach them.
-public enum OpFailureReason: String, Codable, Sendable, CaseIterable {
+public enum OpFailureReason: String, Sendable, CaseIterable {
     /// brew vanished between `status()` and the press — Homebrew's own
     /// uninstaller ran in a terminal while Helm's window sat open.
     case brewMissing
@@ -218,18 +217,16 @@ public enum OpFailureReason: String, Codable, Sendable, CaseIterable {
 /// field itself is what draws the wait differently: the pill, Stop's title, and
 /// the console, which says one line as the wait begins and another as it ends
 /// (`HomebrewViewModel.consoleLine`).
-public enum OpWait: String, Codable, Sendable, CaseIterable {
+public enum OpWait: String, Sendable, CaseIterable {
     /// Apple's Command Line Tools are being installed in Apple's own window.
     case commandLineTools
 }
 
-public struct OpState: Codable, Equatable, Sendable {
+public struct OpState: Equatable, Sendable {
     public let phase: OpPhase
     public let label: String
     public let exitCode: Int?
-    /// Optional, so the synthesized decode reads an older payload without it.
     public let reason: OpFailureReason?
-    /// Optional for the same reason: an older payload has no such key.
     public let waiting: OpWait?
     public init(phase: OpPhase, label: String, exitCode: Int? = nil,
                 reason: OpFailureReason? = nil, waiting: OpWait? = nil) {

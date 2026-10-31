@@ -114,11 +114,10 @@ public enum HelmFailure {
     /// is made out of bytes somebody else chose.
     ///
     /// `DecodingError` and `EncodingError` carry a coding path, and for an
-    /// object-shaped payload every key in that path came off the wire. A table
+    /// object-shaped document every key in that path came off the file. A table
     /// keyed by path is an ordinary shape (`HashCache` and `appSizes` are both
-    /// written that way), so the keys are somebody's file names — and
-    /// `EngineReply` states the rule the other way round: the line carries the
-    /// command and the type it wanted, never the payload. The case and the type
+    /// written that way), so the keys are somebody's file names — and the line
+    /// carries the type it wanted, never the content. The case and the type
     /// it was reaching for are the whole of what a reader needs; the call site
     /// already names the arm and the type it asked for.
     private static func swiftDescription(of error: Error) -> String {

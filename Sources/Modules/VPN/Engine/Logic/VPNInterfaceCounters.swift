@@ -59,7 +59,7 @@ enum VPNInterfaceCounters {
         }
     }
 
-    /// The same count as the wire carries it: whole kilobytes.
+    /// The same count as the published state carries it: whole kilobytes.
     ///
     /// **The counters are the one part of the payload that moves on its own**,
     /// and the engine withholds only a payload equal in every field to the last

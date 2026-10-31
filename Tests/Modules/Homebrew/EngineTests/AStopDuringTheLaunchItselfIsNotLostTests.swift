@@ -15,7 +15,7 @@ import HelmRuntime
 /// «Stopped», and `brew install` goes on running to completion.
 ///
 /// It is milliseconds wide and it is not unreachable: `stop` arrives on the
-/// transport from a button press, on a different thread from the one inside
+/// news from a button press, on a different thread from the one inside
 /// `runOp`, and the two are not ordered by anything else.
 ///
 /// **The fake presses the button from inside `stream`,** which is the only way
@@ -70,7 +70,7 @@ final class AStopDuringTheLaunchItselfIsNotLostTests: XCTestCase {
         let runner = RunnerThatIsInterrupted()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
-                                    transport: LocalTransport(),
+                                    news: EngineNews(),
                                     marker: InMemoryOpMarker())
         runner.duringLaunch = { [weak engine] in engine?.stop() }
 
@@ -90,7 +90,7 @@ final class AStopDuringTheLaunchItselfIsNotLostTests: XCTestCase {
         let runner = RunnerThatIsInterrupted()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
-                                    transport: LocalTransport(),
+                                    news: EngineNews(),
                                     marker: InMemoryOpMarker())
 
         engine.install(name: "wget", isCask: false)

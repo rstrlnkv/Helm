@@ -6,7 +6,7 @@ import Foundation
 /// and never written to disk. A key tap sees passwords typed into fields an app
 /// forgot to mark secure, and the only safe place for that is somewhere already
 /// gone.
-public struct ConversionEvent: Codable, Equatable, Sendable {
+public struct ConversionEvent: Equatable, Sendable {
     public let before: String
     public let after: String
     /// Bundle id of the app it happened in, so an undo cannot land elsewhere.
@@ -58,7 +58,7 @@ public enum ConversionPeriod: String, CaseIterable, Codable, Sendable {
 
 /// One period's two figures. Characters travel beside words because the time
 /// estimate is taken from the length of what was actually fixed.
-public struct LedgerFigures: Codable, Equatable, Sendable {
+public struct LedgerFigures: Equatable, Sendable {
     public let words: Int
     public let characters: Int
     public init(words: Int, characters: Int) {
@@ -73,7 +73,7 @@ public struct LedgerFigures: Codable, Equatable, Sendable {
 /// reading it — nil until the first word is put right. A figure with no scale
 /// is worse than no figure: forty words is a lot in a week and nothing in three
 /// years.
-public struct ConversionTotals: Codable, Equatable, Sendable {
+public struct ConversionTotals: Equatable, Sendable {
     public let today: LedgerFigures
     public let week: LedgerFigures
     public let month: LedgerFigures
@@ -123,7 +123,7 @@ public struct ConversionTotals: Codable, Equatable, Sendable {
 }
 
 /// What the settings page shows.
-public struct LayoutState: Codable, Equatable, Sendable {
+public struct LayoutState: Equatable, Sendable {
     public let enabled: Bool
     public let automatic: Bool
     /// True while secure input is on: the module is deliberately silent, and
@@ -156,14 +156,4 @@ public struct LayoutState: Codable, Equatable, Sendable {
         self.totals = totals
         self.noDictionary = noDictionary
     }
-}
-
-/// Everything the engine says about itself.
-///
-/// One name, spelled once for the engine's `emit` and the stream that filters
-/// on it: a literal on each side would keep publishing while the `guard` kept
-/// not matching, and the page would show the state it launched with, forever.
-enum LayoutEvent: String, Sendable {
-    /// The language, the badge, and the last conversion.
-    case layoutState
 }

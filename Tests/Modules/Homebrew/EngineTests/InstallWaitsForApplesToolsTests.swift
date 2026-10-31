@@ -248,15 +248,4 @@ final class InstallWaitsForApplesToolsTests: XCTestCase {
 
         XCTAssertEqual(rig.privileged.scripts.count, 1)
     }
-
-    // MARK: - The wire
-
-    /// A payload from the release before this field existed decodes with no
-    /// waiting: the synthesised decoding reads the optional if present.
-    func testAnOlderStateDecodesWithoutAWaitingField() throws {
-        let old = Data(#"{"phase":"running","label":"install wget"}"#.utf8)
-        let state = try JSONDecoder().decode(OpState.self, from: old)
-        XCTAssertEqual(state.phase, .running)
-        XCTAssertNil(state.waiting)
-    }
 }

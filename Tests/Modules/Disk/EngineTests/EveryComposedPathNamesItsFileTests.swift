@@ -129,7 +129,7 @@ final class EveryComposedPathNamesItsFileTests: XCTestCase {
     /// app's rules rather than about this file.
     ///
     /// The bucket needs no such name test any more: it is `isFolded`, and the
-    /// flag reaches the wire (`DiskEntry.isFolded`).
+    /// flag reaches the entry (`DiskEntry.isFolded`).
     func testAFileReallyNamedLikeTheFoldedBucketIsStillTheUsersOwnFile() throws {
         let root = try makeFixture()
         let tree = try XCTUnwrap(DiskScanner(foldThreshold: 0).scan(root: root.path))

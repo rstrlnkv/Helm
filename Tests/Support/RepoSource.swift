@@ -3,7 +3,7 @@ import Foundation
 /// The repository, as the tests that read it see it.
 ///
 /// A whole family of checks in this suite reads source rather than calling it,
-/// because what they pin is not something a type system says: an event name
+/// because what they pin is not something a type system says: a string
 /// that must not be a literal, a list that must agree with the tree, a card
 /// that must not spell a constant its own arithmetic reads. Every one of them
 /// began with the same four lines —

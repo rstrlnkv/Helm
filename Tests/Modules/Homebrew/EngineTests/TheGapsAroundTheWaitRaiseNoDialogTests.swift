@@ -88,7 +88,7 @@ final class TheGapsAroundTheWaitRaiseNoDialogTests: XCTestCase {
         let host = Host()
         host.engine = HomebrewEngine(locator: WaitRig.FixedLocator(), runner: RecordingStreamRunner(),
                                      privileged: privileged, user: "tester",
-                                     transport: LocalTransport(), marker: InMemoryOpMarker(),
+                                     news: EngineNews(), marker: InMemoryOpMarker(),
                                      tools: tools, ticker: ticker)
         host.engine?.installBrew()
         XCTAssertEqual(ticker.live, 1, "precondition: the wait is armed")
@@ -125,7 +125,7 @@ final class TheGapsAroundTheWaitRaiseNoDialogTests: XCTestCase {
         autoreleasepool {
             host.engine = HomebrewEngine(locator: WaitRig.FixedLocator(), runner: RecordingStreamRunner(),
                                          privileged: privileged, user: "tester",
-                                         transport: LocalTransport(), marker: InMemoryOpMarker(),
+                                         news: EngineNews(), marker: InMemoryOpMarker(),
                                          tools: tools, ticker: ticker)
             gone = host.engine
             tools.onRequest = { [host] in
@@ -318,7 +318,7 @@ final class TheGapsAroundTheWaitRaiseNoDialogTests: XCTestCase {
         let ticker = FakeWaitTicker()
         let engine = HomebrewEngine(locator: WaitRig.FixedLocator(), runner: RecordingStreamRunner(),
                                     privileged: ProbedPrivileged(probe), user: "tester",
-                                    transport: LocalTransport(), marker: InMemoryOpMarker(),
+                                    news: EngineNews(), marker: InMemoryOpMarker(),
                                     tools: ProbedTools(fake, probe), ticker: ticker)
         probe.engine = engine
 

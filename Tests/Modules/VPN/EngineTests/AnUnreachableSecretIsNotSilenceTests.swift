@@ -117,7 +117,7 @@ final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
                        "a configuration that is gone was still being named on screen")
     }
 
-    // MARK: - The engine, and the wire
+    // MARK: - The engine, and its state
 
     /// The state the user's log had and the screen did not.
     func testAnAutomaticConnectPutsTheUnreachableSecretOnTheWire() async {
@@ -131,8 +131,8 @@ final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
         XCTAssertEqual(engine.secretsBehindAPrompt, ["Office"],
                        "the rule reached a dead end and nothing but the log knew")
         var payload: VPNEngine.StatePayload?
-        for await event in engine.transport.events where event.name == VPNEvent.state.rawValue {
-            payload = try? JSONDecoder().decode(VPNEngine.StatePayload.self, from: event.payload)
+        for await state in engine.stream() {
+            payload = state
             break
         }
         XCTAssertEqual(payload?.secretsBehindAPrompt, ["Office"],
@@ -258,21 +258,4 @@ final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
         XCTAssertEqual(engine.lastAutomation?.kind, .connected)
     }
 
-    /// A payload from a build that predates the field decodes whole. A stored
-    /// default does not buy this on its own — Swift's synthesised `Decodable`
-    /// requires the key regardless, and `JSONDecoder` then gives up on the document
-    /// rather than on the field, which would cost the page every connection it
-    /// draws (CLAUDE.md § What not to do, and what breaks if you do).
-    func testAPayloadFromBeforeThisFieldStillDecodesWithEverythingElseInIt() throws {
-        let legacy = Data("""
-        {"connections":[{"id":"1","name":"Office","status":"connected"}],
-         "autoConnected":[]}
-        """.utf8)
-
-        let payload = try JSONDecoder().decode(VPNEngine.StatePayload.self, from: legacy)
-
-        XCTAssertEqual(payload.connections.count, 1,
-                       "one missing field cost the page everything else in the payload")
-        XCTAssertEqual(payload.secretsBehindAPrompt, [])
-    }
 }

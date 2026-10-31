@@ -81,7 +81,7 @@ final class OpeningThePageAsksWhatItAlwaysAskedTests: XCTestCase {
     private func pair(_ runner: RecordingBrew) -> (HomebrewEngine, HomebrewViewModel) {
         let engine = HomebrewEngine(locator: FixtureBrew(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
-                                    transport: LocalTransport(), marker: InMemoryOpMarker(),
+                                    news: EngineNews(), marker: InMemoryOpMarker(),
                                     popularity: NoPopularity(), weight: NoPackageWeight(),
                                     tools: ToolsAlreadyInstalled(), ticker: NoWaitTicker())
         return (engine, HomebrewViewModel(work: engine))

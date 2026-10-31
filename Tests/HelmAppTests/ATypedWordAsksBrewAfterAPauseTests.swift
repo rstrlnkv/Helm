@@ -89,15 +89,15 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
     /// Waits, in short turns, until either the deadline or a search has
     /// arrived — a real deadline rather than one exact sleep, for the reason
     /// CLAUDE.md gives about a timing test on a real clock.
-    private func waitForASearch(_ transport: Counter, _ mount: MountedRender,
+    private func waitForASearch(_ work: Counter, _ mount: MountedRender,
                                 deadlineTurns: Int) async {
-        for _ in 0..<deadlineTurns where transport.searches.isEmpty { await turn(mount, 2) }
+        for _ in 0..<deadlineTurns where work.searches.isEmpty { await turn(mount, 2) }
     }
 
     func testTypingAsksNothingAtOnceThenTheLastWordAfterThePause() async {
-        let transport = Counter()
-        defer { withExtendedLifetime(transport) {} }
-        let hb = HomebrewViewModel(work: transport)
+        let work = Counter()
+        defer { withExtendedLifetime(work) {} }
+        let hb = HomebrewViewModel(work: work)
         hb.searchPause = Self.pause
         let fixture = LivePageUnderTheHeaderFixture(HomebrewSettingsPage(hb: hb),
                                                   selection: .module(HomebrewDescriptor.id.rawValue),
@@ -123,14 +123,14 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
                 above says) and neither count below is about this page
                 """)
         }
-        XCTAssertEqual(transport.searches, [], """
-            typing sent \(transport.searches.count) searches to the engine before the pause had \
+        XCTAssertEqual(work.searches, [], """
+            typing sent \(work.searches.count) searches to the engine before the pause had \
             elapsed — the trigger fires on a timer, not on a keystroke
             """)
 
-        await waitForASearch(transport, mount, deadlineTurns: 60)
-        XCTAssertEqual(transport.searches, ["wgex"], """
-            past the pause the engine saw \(transport.searches) — an earlier prefix must not \
+        await waitForASearch(work, mount, deadlineTurns: 60)
+        XCTAssertEqual(work.searches, ["wgex"], """
+            past the pause the engine saw \(work.searches) — an earlier prefix must not \
             have reached it, and only the word left in the field should
             """)
     }
@@ -139,9 +139,9 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
     /// Return asks before a pause set to ten seconds could ever have fired on
     /// its own.
     func testReturnAsksAtOnceWithoutWaitingForThePause() async {
-        let transport = Counter()
-        defer { withExtendedLifetime(transport) {} }
-        let hb = HomebrewViewModel(work: transport)
+        let work = Counter()
+        defer { withExtendedLifetime(work) {} }
+        let hb = HomebrewViewModel(work: work)
         hb.searchPause = .seconds(10)
         let fixture = LivePageUnderTheHeaderFixture(HomebrewSettingsPage(hb: hb),
                                                   selection: .module(HomebrewDescriptor.id.rawValue),
@@ -158,9 +158,9 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
 
         XCTAssertTrue(mount.type("wget"), "the field never took the word")
         XCTAssertTrue(mount.pressReturn(), "Return never reached the field")
-        await waitForASearch(transport, mount, deadlineTurns: 60)
-        XCTAssertEqual(transport.searches, ["wget"], """
-            Return sent \(transport.searches) — nothing at all means Return no longer asks \
+        await waitForASearch(work, mount, deadlineTurns: 60)
+        XCTAssertEqual(work.searches, ["wget"], """
+            Return sent \(work.searches) — nothing at all means Return no longer asks \
             unconditionally, and the pause could not have fired in this time on its own
             """)
     }
@@ -169,10 +169,10 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
     /// own: the trigger is "the local filter found nothing", and typing
     /// `wget` against an installed `wget` finds a row.
     func testAWordThatMatchesAnInstalledPackageAsksNothingOnItsOwn() async {
-        let transport = Counter(installed: [BrewPackage(name: "wget", version: "1.25.0",
+        let work = Counter(installed: [BrewPackage(name: "wget", version: "1.25.0",
                                                         isCask: false)])
-        defer { withExtendedLifetime(transport) {} }
-        let hb = HomebrewViewModel(work: transport)
+        defer { withExtendedLifetime(work) {} }
+        let hb = HomebrewViewModel(work: work)
         hb.searchPause = Self.pause
         let fixture = LivePageUnderTheHeaderFixture(HomebrewSettingsPage(hb: hb),
                                                   selection: .module(HomebrewDescriptor.id.rawValue),
@@ -189,8 +189,8 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
 
         XCTAssertTrue(mount.type("wget"), "the field never took the word")
         await turn(mount, 80)   // several multiples of the pause
-        XCTAssertEqual(transport.searches, [], """
-            \(transport.searches) — the installed row already answers "wget", so the pause had \
+        XCTAssertEqual(work.searches, [], """
+            \(work.searches) — the installed row already answers "wget", so the pause had \
             nothing to ask brew about
             """)
     }

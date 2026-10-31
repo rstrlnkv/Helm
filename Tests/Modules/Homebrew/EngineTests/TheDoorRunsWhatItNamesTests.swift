@@ -74,7 +74,7 @@ final class TheDoorRunsWhatItNamesTests: XCTestCase {
 
     private func engine(_ runner: ProcessRunner) -> HomebrewEngine {
         HomebrewEngine(locator: FixtureBrew(), runner: runner, privileged: NoPrivileges(),
-                       user: "tester", transport: LocalTransport(), marker: InMemoryOpMarker(),
+                       user: "tester", news: EngineNews(), marker: InMemoryOpMarker(),
                        popularity: NoPopularity(), weight: NoPackageWeight(),
                        tools: ToolsAlreadyInstalled(), ticker: NoWaitTicker())
     }

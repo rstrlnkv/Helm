@@ -34,10 +34,6 @@ import Module_VPN_Engine
 
     public typealias Model = VPNViewModel
 
-    public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
-        productionEngine(store: store)
-    }
-
     public func makeModule(store: NamespacedStore) -> ModuleParts<VPNViewModel> {
         let engine = productionEngine(store: store)
         // The model's `SystemAutomationNotice` is its own; its init touches

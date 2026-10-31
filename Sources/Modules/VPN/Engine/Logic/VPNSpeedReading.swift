@@ -6,7 +6,7 @@ import Foundation
 /// One `networkQuality` run: what came down, what went up, and how responsive
 /// the link was while it did — with the moment it was taken, because a figure
 /// without its age is read as live.
-public struct VPNSpeedReading: Codable, Equatable, Sendable {
+public struct VPNSpeedReading: Equatable, Sendable {
     /// Megabits per second, rounded. The tool answers in bits.
     public let down: Int
     public let up: Int
@@ -31,12 +31,8 @@ public struct VPNSpeedReading: Codable, Equatable, Sendable {
     /// nothing else; this publishes a *length*, so the arc goes on claiming the
     /// clock rather than the work (`HelmExpectedWait`).
     ///
-    /// Optional, and that is what makes an older payload decode: Swift synthesises
-    /// `decodeIfPresent` for an `Optional` property, where a non-optional with a
-    /// stored default is still a required key and throws away the whole document
-    /// (CLAUDE.md § What not to do, and what breaks if you do). Nil is also what a
-    /// run of no measurable length means, which is every reading a test's fixed
-    /// clock produces.
+    /// Optional: nil is what a run of no measurable length means, which is every
+    /// reading a test's fixed clock produces.
     public let took: TimeInterval?
 
     public init(down: Int, up: Int, rpm: Int?, at: Date, took: TimeInterval? = nil) {

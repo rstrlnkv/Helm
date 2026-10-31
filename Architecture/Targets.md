@@ -11,9 +11,9 @@ depends on and no product lists. `HelmReadout` depends on nothing, and `HelmShow
 Each target and what it holds:
 
 - `HelmLaunch` — the package's only non-Swift target: the Objective-C `@try` around an `NSTask` launch, which a Swift `catch` cannot be, and, inside `HelmReadNumber`, around the call `WindowCorner` makes of a window's own number.
-- `HelmContract` — protocols and wire types.
+- `HelmContract` — protocols, the types a module declares itself with, and `EngineNews`.
 - `HelmRuntime` — shared plumbing without UI.
-- `HelmUI` — the design system, `L()`, `ModuleViewModel`, the `ModuleDescriptor` protocol; carries `Resources`.
+- `HelmUI` — the design system, `L()`, the `ModuleDescriptor` protocol; carries `Resources`.
 - `Module_<X>_Engine` — a module's headless logic.
 - `Module_<X>_UI` — a module's descriptor, settings page, panel tile and view model.
 - `HelmTestSupport` — `Tests/Support`, below.
@@ -29,8 +29,8 @@ command grep -nE 'public (protocol|struct|enum|actor|final class) ' Sources/Helm
 ```
 
 One edge runs from `Sources/HelmRuntime` to `Sources/HelmContract` and none the
-other way: `EngineReply` (`Sources/HelmRuntime/EngineReply.swift`) is engine-side
-wire plumbing that logs, and the log lives in `Sources/HelmRuntime`.
+other way: `Sources/HelmRuntime/StatusPlan.swift` chooses among the contract's
+`StatusAppearance` values.
 
 `Sources/HelmRuntime` is the answer to "has this been written already", and
 `ls Sources/HelmRuntime` is the list; `ls Tests/Support` is the same list for

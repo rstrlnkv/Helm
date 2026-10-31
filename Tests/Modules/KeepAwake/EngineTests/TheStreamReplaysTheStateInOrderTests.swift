@@ -8,33 +8,33 @@ import HelmTestSupport
 /// every later one, in order, with nothing missing, repeated, or older than a
 /// newer one already delivered.
 ///
-/// The replay exists because state is level-triggered: a model built after
-/// `activate()` must still see the current truth. Taking the stream in two steps
+/// The replay exists because state is level-triggered: a subscriber that comes
+/// after the engine has spoken must still see the current truth. Taking the stream in two steps
 /// (read the state, then subscribe) loses an emit that lands between them;
 /// registering before replaying delivers an older state after a newer one. Only
-/// one hold of the transport's lock for both is right, and a race is the only way
+/// one hold of the news's lock for both is right, and a race is the only way
 /// to see either defect, so each round emits a numbered run of states while the
 /// subscription is taken and checks the *structure* of what arrived: strictly
 /// increasing, contiguous from its first element, ending on the last emit.
-/// `Tests/HelmContractTests/ReplayOrderTests.swift` guards the same order in
-/// `LocalTransport` itself, with raw bytes; this one is aimed at the engine's own
-/// typed entry point.
+/// `Tests/HelmContractTests/EngineNewsReplayTests.swift` guards the same order in
+/// `EngineNews` itself, over `Int`; this one is aimed at the engine's own typed
+/// entry point.
 ///
-/// The emit goes through the transport the engine was built on, with a numbered
+/// The emit goes through the news the engine was built on, with a numbered
 /// payload (in `holdingApps`), because the engine's own emitter writes no number
 /// a test could order by. No hook is needed from the engine.
 final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
 
-    private var shared: LocalTransport!
+    private var shared: EngineNews<KeepAwakeEngine.StatePayload>!
     private var raced: KeepAwakeEngine!
 
     override func setUp() {
         super.setUp()
-        shared = LocalTransport()
+        shared = EngineNews<KeepAwakeEngine.StatePayload>()
         raced = KeepAwakeEngine(settings: settings, store: store, assertions: assertions,
                                 displayInfo: displayInfo, displayObserver: displayObserver,
                                 power: power, apps: apps, pointer: pointer,
-                                clamshell: clamshell, clock: clock, transport: shared)
+                                clamshell: clamshell, clock: clock, news: shared)
     }
 
     private static func state(_ n: Int) -> KeepAwakeEngine.StatePayload {
@@ -66,21 +66,21 @@ final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
 
     /// One round of `total` numbered emits (0..<total). Returns what arrived.
     private func round(_ order: Order, total: Int) async -> [Int] {
-        let transport = shared!
+        let news = shared!
         let engine = raced!
         let seen = Seen()
         let emitAll: @Sendable () -> Void = {
-            for n in 0..<total { transport.emit(KeepAwakeEvent.state, encoding: Self.state(n)) }
+            for n in 0..<total { news.say(Self.state(n)) }
         }
         var reader: Task<Void, Never>!
         switch order {
         case .emitFirst:
-            transport.emit(KeepAwakeEvent.state, encoding: Self.state(0))
+            news.say(Self.state(0))
             let stream = engine.stream()
             reader = Task.detached {
                 for await p in stream { seen.record(Self.number(p)) }
             }
-            for n in 1..<total { transport.emit(KeepAwakeEvent.state, encoding: Self.state(n)) }
+            for n in 1..<total { news.say(Self.state(n)) }
         case .subscribeFirst:
             let stream = engine.stream()
             reader = Task.detached {
@@ -103,12 +103,12 @@ final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
     /// a two-step subscription leaves is a few nanoseconds wide and each
     /// `stream()` call is one throw at it. Returns what each subscriber saw.
     private func racingRound(total: Int, subscribers: Int) async -> [[Int]] {
-        let transport = shared!
+        let news = shared!
         let engine = raced!
         let emitted = Count()
         let emitter = Task.detached {
             for n in 0..<total {
-                transport.emit(KeepAwakeEvent.state, encoding: Self.state(n))
+                news.say(Self.state(n))
                 emitted.bump()
             }
         }
@@ -149,7 +149,7 @@ final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
     func testEmitBeforeSubscribeReplaysTheLatestThenFollows() async {
         var bad: [String] = []
         for _ in 0..<200 {
-            shared = LocalTransport()
+            shared = EngineNews<KeepAwakeEngine.StatePayload>()
             raced = makeRaced()
             let got = await round(.emitFirst, total: 50)
             if let why = verdict(got, total: 50) { bad.append(why) }
@@ -162,7 +162,7 @@ final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
     func testSubscribeBeforeEmitSeesEveryState() async {
         var bad: [String] = []
         for _ in 0..<200 {
-            shared = LocalTransport()
+            shared = EngineNews<KeepAwakeEngine.StatePayload>()
             raced = makeRaced()
             let got = await round(.subscribeFirst, total: 50)
             if let why = verdict(got, total: 50) { bad.append(why) }
@@ -177,7 +177,7 @@ final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
         var enteredWindow = 0
         var checked = 0
         for _ in 0..<300 {
-            shared = LocalTransport()
+            shared = EngineNews<KeepAwakeEngine.StatePayload>()
             raced = makeRaced()
             for got in await racingRound(total: total, subscribers: 16) {
                 checked += 1
@@ -199,7 +199,7 @@ final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
         XCTAssertEqual(shared.subscriberCount, before + 1,
                        "stream() registers synchronously, before any await")
         let task = Task.detached { for await _ in stream {} }
-        shared.emit(KeepAwakeEvent.state, encoding: Self.state(1))
+        shared.say(Self.state(1))
         task.cancel()
         await task.value
         let deadline = Date().addingTimeInterval(2)
@@ -209,10 +209,37 @@ final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
         XCTAssertEqual(shared.subscriberCount, before, "a cancelled stream left its subscriber behind")
     }
 
+    /// The engine's own emitter, not the news beside it: every test above says into
+    /// the injected news, so none of them notices an engine that stopped saying.
+    /// Here the state changes only through `startSession` and `stopSession`, the
+    /// rig's engine keeps its own news, and the stream shows what the engine said.
+    func testTheStatesTheEngineSaysItselfArriveReplayedAndInOrder() async {
+        engine.startSession(minutes: 0)
+        let seen = Seen()
+        let stream = engine.stream()
+        let reader = Task.detached {
+            for await p in stream { seen.record(p.isActive ? 1 : 0) }
+        }
+        await waitFor(seen, count: 1)
+        engine.stopSession()
+        await waitFor(seen, count: 2)
+        reader.cancel()
+        await reader.value
+        XCTAssertEqual(Array(seen.all.prefix(2)), [1, 0],
+                       "the replay of the running session, then the stop, in that order")
+    }
+
+    private func waitFor(_ seen: Seen, count: Int) async {
+        let deadline = Date().addingTimeInterval(2)
+        while seen.all.count < count, Date() < deadline {
+            try? await Task.sleep(nanoseconds: 1_000_000)
+        }
+    }
+
     private func makeRaced() -> KeepAwakeEngine {
         KeepAwakeEngine(settings: settings, store: store, assertions: assertions,
                         displayInfo: displayInfo, displayObserver: displayObserver,
                         power: power, apps: apps, pointer: pointer,
-                        clamshell: clamshell, clock: clock, transport: shared)
+                        clamshell: clamshell, clock: clock, news: shared)
     }
 }

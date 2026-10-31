@@ -390,7 +390,7 @@ its own check mark and, for a tool, its key shown (`EditorPalette.menuSymbol(of:
 
 The shortcuts carry a default (`HotkeyFallback`, `Sources/HelmRuntime/HotkeyFallback.swift`)
 that applies only while the store holds no key at all, so a cleared shortcut stays
-cleared; a switched-off module holds no combination (ARCHITECTURE.md § The transport and the store).
+cleared; a switched-off module holds no combination (ARCHITECTURE.md § The stream and the store).
 
 ## The after-shot window
 
@@ -455,7 +455,7 @@ replaced, does. Nothing about a pin is stored.
 by the host. It calls the engine through `ScreenshotsWork` (`ScreenshotsViewModel.swift`),
 an internal port of three members: `stream()`, `refresh()` (the answer comes on the
 stream) and `session(store:naming:)`, a factory the model calls once, at the first press.
-There is no command enum or handler. After the descriptor's `stop(_:)` the model reaches
+After the descriptor's `stop(_:)` the model reaches
 none of the three (`AStoppedScreenshotsModelReachesNoWorkTests`).
 
 The one thing the engine says is `ScreenshotsState`, level-triggered, through

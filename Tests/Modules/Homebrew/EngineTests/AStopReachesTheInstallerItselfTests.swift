@@ -65,7 +65,7 @@ final class AStopReachesTheInstallerItselfTests: XCTestCase {
         let runner = RecordingRunner()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: AllowingPrivileged(), user: "tester",
-                                    transport: LocalTransport())
+                                    news: EngineNews())
         engine.installBrew()
         return try XCTUnwrap(try XCTUnwrap(runner.args.first, "the engine launched nothing").last)
     }

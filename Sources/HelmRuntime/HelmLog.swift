@@ -30,8 +30,8 @@ public enum LogPolicy {
 /// **A test process must not write into the file people triage.** The log is a
 /// product surface: `~/Library/Logs/Helm/helm.log` is what a dev build is judged
 /// by before it ships, so a line in it reads as something the app did. Logging
-/// code under test logs — `EngineReply`'s tests exercise the decode failure it
-/// was written to record — and those lines wore the shape of a real fault well
+/// code under test logs — a test of a failing decode records the failure it provokes —
+/// and those lines wore the shape of a real fault well
 /// enough to be triaged as one.
 ///
 /// The *folder* moves rather than the file, because everything that lives beside

@@ -40,7 +40,7 @@ final class ASecretsProtectionIsNotClaimedTwiceTests: XCTestCase {
                                     + "agree")
     }
 
-    /// The purge deletes every `com.helm.vpn` item, and `VPNDescriptor.makeEngine`
+    /// The purge deletes every `com.helm.vpn` item, and `VPNDescriptor.makeModule`
     /// builds the port that runs it — including from two test files that build
     /// every descriptor. The gate is a call the pure rule cannot prove is wired,
     /// so it is read here.

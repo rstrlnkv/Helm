@@ -71,7 +71,7 @@ final class TheStopsReachIsWhatItsOperationNamesTests: XCTestCase {
         tools.gitExecutable = true
         let engine = HomebrewEngine(locator: WaitRig.FixedLocator(), runner: runner,
                                     privileged: ScriptedPrivileged(reply: .done),
-                                    user: "tester", transport: LocalTransport(),
+                                    user: "tester", news: EngineNews(),
                                     marker: InMemoryOpMarker(), popularity: NoPopularity(),
                                     weight: NoPackageWeight(), tools: tools, ticker: FakeWaitTicker())
         let presses: [(String, StopReach, () -> Void)] = [

@@ -26,8 +26,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private let announcer: AnnouncePort?
     /// Absent in tests, where the values are injected directly.
     private let settings: NamespacedStore?
-    private let localTransport: LocalTransport
-    public let transport: EngineTransport
+    private let news: EngineNews<LayoutState>
     /// Where `settingsChanged` re-reads, in call order: `reloadSettings` ends in
     /// an accessibility call and must not run on the thread the tap callback
     /// runs on.
@@ -108,7 +107,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                 automatic: Bool = true,
                 audible: Bool = false,
                 settings: NamespacedStore? = nil,
-                transport: LocalTransport = LocalTransport()) {
+                news: EngineNews<LayoutState> = EngineNews()) {
         self.tap = tap
         self.typing = typing
         self.sources = sources
@@ -126,8 +125,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         self.automatic = automatic
         self.audible = audible
         self.settings = settings
-        self.localTransport = transport
-        self.transport = transport
+        self.news = news
     }
 
     // MARK: - Module lifecycle
@@ -971,32 +969,16 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// The state, as a stream: the latest one first, then every later one, in
     /// order.
     ///
-    /// **Registered before this returns, in the one hold of the transport's lock
-    /// that replays what it last said** (`LocalTransport.events`). Reading the
-    /// state and then subscribing is two steps with a window between them — an
-    /// emit that lands there is lost — and registering before the replay hands
-    /// over an older state after a newer one. State is level-triggered, so a
-    /// model built after `activate()` still starts from the truth.
-    ///
-    /// Synchronous, so the model takes it in its own synchronous `init`, before
-    /// its first suspension. Ending the iteration ends the pump, which ends the
-    /// transport's stream and removes the subscriber.
-    public func stream() -> AsyncStream<LayoutState> {
-        let events = localTransport.events
-        return AsyncStream { continuation in
-            let pump = Task {
-                for await event in events {
-                    guard LayoutEvent(rawValue: event.name) == .layoutState,
-                          let state = try? JSONDecoder().decode(LayoutState.self,
-                                                                from: event.payload)
-                    else { continue }
-                    continuation.yield(state)
-                }
-                continuation.finish()
-            }
-            continuation.onTermination = { _ in pump.cancel() }
-        }
-    }
+    /// **Registered before this returns, in the one hold of the lock that replays
+    /// what was last said** (`EngineNews.stream`): reading the state and then
+    /// subscribing leaves a window an emit falls into, and subscribing before the
+    /// replay hands over an older state after a newer one. Synchronous and not
+    /// actor-isolated, so the model takes it in its own synchronous `init`, before
+    /// its first suspension; the subscriber is counted when this returns. Ending
+    /// the iteration removes the subscriber.
+    public func stream() -> AsyncStream<LayoutState> { news.stream() }
+
+    public var subscriberCount: Int { news.subscriberCount }
 
     /// Re-read the store, on the engine's own serial queue; returns at once.
     public func settingsChanged() { settingsChanged(then: {}) }
@@ -1059,6 +1041,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                                 totals: counted,
                                 noDictionary: noDictionary)
         lock.unlock()
-        localTransport.emit(LayoutEvent.layoutState, encoding: state)
+        news.say(state)
     }
 }

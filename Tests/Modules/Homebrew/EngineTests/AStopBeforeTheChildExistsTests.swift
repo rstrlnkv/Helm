@@ -134,16 +134,16 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
 
     // MARK: - Plumbing
 
-    /// The last `opState` the transport holds, read through its replay — a
+    /// The last `opState` the news holds, read through its replay — a
     /// sentinel emitted before subscribing marks where the replay ends, so the
     /// read is deterministic.
-    private func lastOpState(_ transport: LocalTransport) async -> OpState? {
-        transport.emit(EngineEvent(name: "test.sentinel", payload: Data()))
+    private func lastOpState(_ news: EngineNews<HomebrewNews>) async -> OpState? {
+        news.say(.line("test.sentinel"), slot: "test.sentinel")
         var last: OpState?
-        for await event in transport.events {
-            if event.name == "test.sentinel" { break }
-            if event.name == HomebrewEvent.opState.rawValue {
-                last = try? JSONDecoder().decode(OpState.self, from: event.payload)
+        for await item in news.stream() {
+            if case .line("test.sentinel") = item { break }
+            if case .state(let s) = item {
+                last = s
             }
         }
         return last
@@ -168,7 +168,7 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
         let runner = HangingRunner()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: privileged, user: "tester",
-                                    transport: LocalTransport(),
+                                    news: EngineNews(),
                                     marker: InMemoryOpMarker())
 
         let returned = startInstallBrew(engine)
@@ -190,10 +190,10 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
     func testAStopPressedAtTheDialogEndsTheOperation() async {
         let privileged = DialogOnScreen(reply: .done)
         let runner = HangingRunner()
-        let transport = LocalTransport()
+        let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: privileged, user: "tester",
-                                    transport: transport, marker: InMemoryOpMarker())
+                                    news: news, marker: InMemoryOpMarker())
 
         let returned = startInstallBrew(engine)
         privileged.waitUntilOnScreen()
@@ -202,7 +202,7 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
         XCTAssertEqual(returned.wait(timeout: .now() + 5), .success,
                        "installBrew never returned")
 
-        let state = await lastOpState(transport)
+        let state = await lastOpState(news)
         XCTAssertNotEqual(state?.phase, .running, """
             the page is still showing a running operation with a Stop button \
             that has already been pressed and did nothing
@@ -222,7 +222,7 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
         let runner = HangingRunner()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: privileged, user: "tester",
-                                    transport: LocalTransport(),
+                                    news: EngineNews(),
                                     marker: InMemoryOpMarker())
 
         engine.installBrew()
@@ -240,7 +240,7 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
         let runner = HangingRunner()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: privileged, user: "tester",
-                                    transport: LocalTransport(),
+                                    news: EngineNews(),
                                     marker: InMemoryOpMarker())
 
         let returned = startInstallBrew(engine)

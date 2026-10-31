@@ -87,7 +87,7 @@ final class StoppingTheWaitRaisesNoDialogTests: XCTestCase {
         autoreleasepool {
             let engine = HomebrewEngine(locator: WaitRig.FixedLocator(), runner: RecordingStreamRunner(),
                                         privileged: privileged, user: "tester",
-                                        transport: LocalTransport(), marker: InMemoryOpMarker(),
+                                        news: EngineNews(), marker: InMemoryOpMarker(),
                                         tools: tools, ticker: ticker)
             engine.installBrew()
             weakEngine = engine

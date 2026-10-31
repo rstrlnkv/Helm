@@ -5,7 +5,7 @@ import XCTest
 ///
 /// `listInstalled`, `outdated`, `descriptions` and `search` all call
 /// `ShellProcessRunner.run` and parse what comes back. It answers on a dispatch
-/// queue borrowed from the transport, so whatever happens here happens to the
+/// queue of the system's own, so whatever happens here happens to the
 /// Homebrew page.
 final class ShellProcessRunnerTests: XCTestCase {
 

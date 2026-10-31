@@ -102,8 +102,8 @@ extension Module {
 let foundation: [Target] = [
     .target(name: "HelmLaunch"),
     .target(name: "HelmContract"),
-    // One edge, and only this direction: `EngineReply` is engine-side wire
-    // plumbing that logs, and the log lives here. The contract stays free of
+    // One edge, and only this direction: `StatusPlan` chooses among the
+    // contract's `StatusAppearance` values. The contract stays free of
     // everything.
     .target(name: "HelmRuntime", dependencies: ["HelmContract", "HelmLaunch"]),
     .target(name: "HelmUI", dependencies: ["HelmContract", "HelmRuntime"],
@@ -158,10 +158,9 @@ let showcase: [Target] = [
 let host: [Target] = [
     .executableTarget(
         name: "HelmApp",
-        // The UI targets only: the host talks to a module through its descriptor
-        // and the transport, and each descriptor already depends on its own
-        // engine. A direct edge here is a door past the transport into an
-        // engine's internals.
+        // The UI targets only: the host talks to a module through its descriptor,
+        // and each descriptor already depends on its own engine. A direct edge
+        // here is a door past the descriptor into an engine's internals.
         dependencies: ["HelmContract", "HelmRuntime", "HelmUI", "HelmLaunch"]
             + modules.map { .byName(name: $0.ui) }
     ),

@@ -59,26 +59,24 @@ final class AStopReadsAsWhatItActuallyStoppedTests: XCTestCase {
         let ticker = FakeWaitTicker()
         let privileged = ScriptedPrivileged(reply: .done, holds: false)
         let runner = HeldRunner()
-        let transport = LocalTransport()
+        let news = EngineNews<HomebrewNews>()
         let engine: HomebrewEngine
-        let tape: AsyncStream<EngineEvent>
+        let tape: AsyncStream<HomebrewNews>
 
         init() {
             engine = HomebrewEngine(locator: WaitRig.FixedLocator(), runner: runner,
                                     privileged: privileged, user: "tester",
-                                    transport: transport, marker: InMemoryOpMarker(),
+                                    news: news, marker: InMemoryOpMarker(),
                                     tools: tools, ticker: ticker)
-            tape = transport.events
+            tape = news.stream()
         }
 
         func terminalStates() async -> [OpState] {
-            transport.emit(EngineEvent(name: "test.sentinel", payload: Data()))
+            news.say(.line("test.sentinel"), slot: "test.sentinel")
             var out: [OpState] = []
-            for await event in tape {
-                if event.name == "test.sentinel" { break }
-                if event.name == HomebrewEvent.opState.rawValue,
-                   let s = try? JSONDecoder().decode(OpState.self, from: event.payload),
-                   s.phase != .running { out.append(s) }
+            for await item in tape {
+                if case .line("test.sentinel") = item { break }
+                if case .state(let s) = item, s.phase != .running { out.append(s) }
             }
             return out
         }

@@ -35,7 +35,7 @@ struct KeepAwakeSettingsPage: View {
 
     /// What the rule rows are **drawn** from, as against what is true.
     ///
-    /// Every one of these arrives from the engine over the wire, and law 2 of
+    /// Every one of these arrives from the engine, and law 2 of
     /// this house's motion notes is that a value handed over from outside
     /// carries no transaction with it: `.animation(_:value:)` on the row would
     /// be measured indistinguishable from no animation at all. So the arriving
@@ -226,7 +226,7 @@ struct KeepAwakeSettingsPage: View {
     private func start(_ minutes: Int) { vm.start(minutes: minutes) }
 
     /// Four rules, and every row answers two questions at once: the mark on the
-    /// left is what is happening now — a condition off the wire — and the
+    /// left is what is happening now — a condition from the engine — and the
     /// control on the right is what is configured, out of the store. Kept close
     /// together, so a person who sees that a rule is holding the Mac sees what to
     /// change about it.
@@ -251,7 +251,7 @@ struct KeepAwakeSettingsPage: View {
                 vm.save(in: store) { $0.setAutoPower(v) }
             }
             // **The one thing this module does that outlives the process.**
-            // `clamshellActive` crosses the wire and the panel tile's subtitle
+            // `clamshellActive` is published and the panel tile's subtitle
             // reads it; this row reads it too, so somebody who shut the lid sees
             // what the switch they set is doing and not only the switch.
             //

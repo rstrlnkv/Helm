@@ -5,9 +5,9 @@ import Module_Layout_Engine
 
 /// **Building an engine must not put anything in the menu bar.**
 ///
-/// `makeEngine` used to build the module's `LanguageIndicator` and call
+/// `makeModule` used to build the module's `LanguageIndicator` and call
 /// `refresh()` on it, and `refresh` builds a real `NSStatusItem` the moment it
-/// reads `indicator` = true. So every caller of `makeEngine` that happened to
+/// reads `indicator` = true. So every caller of `makeModule` that happened to
 /// hold a store with that setting on decorated the Mac it was running on — the
 /// offscreen render harness among them, which is how this was found: seeding
 /// Layout's store for a measurement put a second flag in the menu bar of the
@@ -38,9 +38,9 @@ final class BuildingAnEngineDoesNotDecorateTheMenuBarTests: XCTestCase {
 
     func testMakingTheEngineLeavesTheMenuBarAloneWithTheIndicatorSwitchedOn() {
         let descriptor = LayoutDescriptor()
-        _ = descriptor.makeEngine(store: store(indicator: true))
+        _ = descriptor.makeModule(store: store(indicator: true))
         XCTAssertNil(descriptor.indicator, """
-            `makeEngine` built the module's menu-bar indicator, and with the setting on that \
+            `makeModule` built the module's menu-bar indicator, and with the setting on that \
             is a real `NSStatusItem` in the menu bar of whatever process asked for an engine — \
             a measurement, a seeded render, a test. Building an engine is not the moment a \
             module appears in the menu bar; `attachMenuBarPresence()` is.
@@ -49,7 +49,7 @@ final class BuildingAnEngineDoesNotDecorateTheMenuBarTests: XCTestCase {
 
     func testAttachingThePresenceIsWhatBuildsTheIndicator() {
         let descriptor = LayoutDescriptor()
-        _ = descriptor.makeEngine(store: store(indicator: false))
+        _ = descriptor.makeModule(store: store(indicator: false))
         descriptor.attachMenuBarPresence()
         XCTAssertNotNil(descriptor.indicator, """
             nothing was built by `attachMenuBarPresence()`, so the seam the render harness \
@@ -58,7 +58,7 @@ final class BuildingAnEngineDoesNotDecorateTheMenuBarTests: XCTestCase {
             """)
     }
 
-    /// The host builds through `makeModule`, not `makeEngine`: it must set the store
+    /// The host builds through `makeModule`: it must set the store
     /// the later `attachMenuBarPresence()` builds the indicator from, or the
     /// indicator silently vanishes from the app.
     func testMakingTheModuleLeavesTheMenuBarAloneAndAttachStillBuildsIt() {
@@ -74,7 +74,7 @@ final class BuildingAnEngineDoesNotDecorateTheMenuBarTests: XCTestCase {
 
     func testDetachingDropsIt() {
         let descriptor = LayoutDescriptor()
-        _ = descriptor.makeEngine(store: store(indicator: false))
+        _ = descriptor.makeModule(store: store(indicator: false))
         descriptor.attachMenuBarPresence()
         XCTAssertNotNil(descriptor.indicator,
                         "nothing was attached, so this test would prove nothing about detaching")

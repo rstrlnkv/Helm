@@ -101,21 +101,20 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
     /// Every port named at construction, the marker included: a defaulted one
     /// would be this Mac's own (`CLAUDE.md`).
     private func engine(_ runner: ProcessRunner,
-                        _ transport: LocalTransport = LocalTransport()) -> HomebrewEngine {
+                        _ news: EngineNews<HomebrewNews> = EngineNews()) -> HomebrewEngine {
         HomebrewEngine(locator: FixedLocator(), runner: runner,
                        privileged: NoPrivileges(), user: "tester",
-                       transport: transport, marker: InMemoryOpMarker())
+                       news: news, marker: InMemoryOpMarker())
     }
 
-    /// Everything the engine put on the transport, read back through the replay:
+    /// Everything the engine put on the news, read back through the replay:
     /// with the fakes synchronous, whatever was emitted is already there.
-    private func states(_ transport: LocalTransport) async -> [OpState] {
-        transport.emit(EngineEvent(name: "test.sentinel", payload: Data()))
+    private func states(_ news: EngineNews<HomebrewNews>) async -> [OpState] {
+        news.say(.line("test.sentinel"), slot: "test.sentinel")
         var found: [OpState] = []
-        for await event in transport.events {
-            if event.name == "test.sentinel" { break }
-            guard event.name == HomebrewEvent.opState.rawValue,
-                  let state = try? JSONDecoder().decode(OpState.self, from: event.payload)
+        for await item in news.stream() {
+            if case .line("test.sentinel") = item { break }
+            guard case .state(let state) = item
             else { continue }
             found.append(state)
         }
@@ -134,8 +133,8 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
     /// refusal is the list `brew list` answered a line before the act.
     func testTheSamePressRunsAndThenRefusesWhenTheNameLeavesTheCellar() async {
         let runner = MovingCellar(installed: ["periphery", "wget"])
-        let transport = LocalTransport()
-        let engine = engine(runner, transport)
+        let news = EngineNews<HomebrewNews>()
+        let engine = engine(runner, news)
         let argv = ["uninstall", "periphery"]
 
         engine.runDoctorFix(argv)
@@ -155,7 +154,7 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
             judged when the issue was drawn rather than when the button was pressed — \
             \(runner.launched)
             """)
-        let refusals = await states(transport).filter { $0.reason == .fixRefused }
+        let refusals = await states(news).filter { $0.reason == .fixRefused }
         XCTAssertEqual(refusals.count, 1, """
             the run was refused and nothing was said about it: a press that answers with no \
             state at all is a button that visibly does nothing forever
@@ -169,8 +168,8 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
     /// would refuse `uninstall` by luck while admitting `cleanup` by mistake.
     func testACellarThatCouldNotBeReadRefusesTheRun() async {
         let runner = MovingCellar(installed: ["periphery"])
-        let transport = LocalTransport()
-        let engine = engine(runner, transport)
+        let news = EngineNews<HomebrewNews>()
+        let engine = engine(runner, news)
 
         engine.runDoctorFix(["uninstall", "periphery"])
         XCTAssertEqual(runner.launched.count, 1, "precondition: a readable Cellar ran it")
@@ -182,7 +181,7 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
             `brew list` refused and the engine ran the uninstall anyway — a refusal was read as \
             an answer about the machine: \(runner.launched)
             """)
-        let refusals = await states(transport).filter { $0.reason == .fixRefused }
+        let refusals = await states(news).filter { $0.reason == .fixRefused }
         XCTAssertEqual(refusals.count, 1, "the refusal was silent")
     }
 

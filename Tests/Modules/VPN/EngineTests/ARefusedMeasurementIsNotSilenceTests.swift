@@ -61,7 +61,7 @@ final class ARefusedMeasurementIsNotSilenceTests: XCTestCase {
     /// defaults reach the network or run a tool for fifteen seconds
     /// (`NoTestTakesAProductionPortTests`).
     private func twoTunnels(_ speed: FakeSpeed)
-        -> (engine: VPNEngine, transport: LocalTransport) {
+        -> (engine: VPNEngine, news: EngineNews<VPNEngine.StatePayload>) {
         let runner = FakeRunner()
         runner.listOutput = list([(id: "AAAAAAAA-0000-0000-0000-000000000001", name: "routed"),
                                   (id: "BBBBBBBB-0000-0000-0000-000000000002", name: "beside")])
@@ -79,21 +79,21 @@ final class ARefusedMeasurementIsNotSilenceTests: XCTestCase {
                                "utun9": (in: 2_000_000, out: 2_000_000)]
         // **The exit request is still out**, which is what the real port is for
         // up to eight seconds of every refresh that starts one. It is also what
-        // keeps this test's reading of the wire deterministic: the check's own
+        // keeps this test's reading of the stream deterministic: the check's own
         // completion calls `emitState` too, and under `VPNWorkQueue.inline` that
         // runs on the answering task's thread rather than on the module's serial
         // queue — so the two emissions race and one is silently swallowed as a
         // duplicate (`TheTestQueueIsAsSerialAsTheRealOneTests`).
         let exit = FakeExit()
         exit.hangs = true
-        let transport = LocalTransport()
+        let news = EngineNews<VPNEngine.StatePayload>()
         let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
                                     namespace: "vpn", backing: InMemoryKeyValueStore())),
-                               runner: runner, apps: FakeApps(), transport: transport,
+                               runner: runner, apps: FakeApps(), news: news,
                                interfaces: interfaces, exit: exit, speed: speed,
                                work: .inline)
         engine.refresh()
-        return (engine, transport)
+        return (engine, news)
     }
 
     /// **The control.** The same command, on the tunnel that does carry the
@@ -108,14 +108,14 @@ final class ARefusedMeasurementIsNotSilenceTests: XCTestCase {
         speed.blocksUntilReleased = true
         let running = XCTestExpectation(description: "the run has started")
         speed.onStart = { running.fulfill() }
-        let (engine, transport) = twoTunnels(speed)
+        let (engine, news) = twoTunnels(speed)
         defer { speed.release(); engine.deactivate() }
 
-        let seen = await stateEvents(on: transport) { engine.measureSpeed("routed") }
+        let seen = await stateEvents(on: news) { engine.measureSpeed("routed") }
         await fulfillment(of: [running], timeout: 5)
 
-        XCTAssertTrue(seen.contains { $0?.tunnels.contains { $0.measuring } == true }, """
-            the accepted measurement never reached the wire, so this file's \
+        XCTAssertTrue(seen.contains { $0.tunnels.contains { $0.measuring } }, """
+            the accepted measurement never reached the news, so this file's \
             fixture cannot say anything about the refusal below
             """)
     }
@@ -130,19 +130,19 @@ final class ARefusedMeasurementIsNotSilenceTests: XCTestCase {
     /// exactly one of those before the press.
     func testAMeasurementRefusedOverAQuietTunnelStillReachesThePage() async {
         let speed = FakeSpeed()
-        let (engine, transport) = twoTunnels(speed)
+        let (engine, news) = twoTunnels(speed)
         defer { engine.deactivate() }
 
-        let quiet = await stateEvents(on: transport)
+        let quiet = await stateEvents(on: news)
         XCTAssertEqual(quiet.count, 1,
-                       "precondition: the wire is not settled, so a count means nothing")
-        XCTAssertEqual(quiet.last??.tunnels.count, 2,
+                       "precondition: the state is not settled, so a count means nothing")
+        XCTAssertEqual(quiet.last?.tunnels.count, 2,
                        "precondition: both tunnels never reached the page")
-        XCTAssertEqual(quiet.last??.tunnels.first(where: { $0.name == "beside" })?.exit,
+        XCTAssertEqual(quiet.last?.tunnels.first(where: { $0.name == "beside" })?.exit,
                        .besideTunnel,
                        "precondition: «beside» carries the route, so nothing is refused")
 
-        let seen = await stateEvents(on: transport) { engine.measureSpeed("beside") }
+        let seen = await stateEvents(on: news) { engine.measureSpeed("beside") }
 
         XCTAssertTrue(speed.askedFor.isEmpty,
                       "precondition: the run was started rather than refused")

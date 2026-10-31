@@ -14,7 +14,7 @@ import Module_KeepAwake_Engine
     @Published public private(set) var isActive = false
     /// The engine's own cases, not the strings they travel as. Held as
     /// `Set<String>`, every view that asked a question about them had to spell
-    /// the wire names again — `["externalDisplay", "power", "app"]`, twice —
+    /// the raw names again — `["externalDisplay", "power", "app"]`, twice —
     /// and `KAStr` switched over five more literals to turn one back into a
     /// word. A name that stops matching is not an error anywhere; the row just
     /// goes quiet.

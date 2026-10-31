@@ -93,7 +93,7 @@ public final class FrontmostApp: @unchecked Sendable {
     ///
     /// Outside deliberately: a handler is other people's code and may call
     /// straight back into this type, and a lock held across a call out is the
-    /// shape `LocalTransport.setHandler` is on record for.
+    /// shape that would deadlock a handler that calls back into this type.
     private func tell(_ bundleID: String) {
         lock.lock(); let handlers = Array(watchers.values); lock.unlock()
         for handler in handlers { handler(bundleID) }

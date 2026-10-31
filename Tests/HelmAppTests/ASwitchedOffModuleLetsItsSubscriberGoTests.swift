@@ -9,11 +9,11 @@ import Module_Layout_UI
 import Module_Screenshots_UI
 import Module_VPN_UI
 
-/// Switching a module off must give its transport subscriber back.
+/// Switching a module off must give its news subscriber back.
 ///
 /// The host holds each module's model and the descriptor's `stop(_:)` ends its
 /// one event task. Whether that is enough is not a question `stop(_:)` answers:
-/// the model's event loop is a `Task` over `LocalTransport.events`, the stream
+/// the model's event loop is a `Task` over `EngineNews.stream()`, the stream
 /// nothing ever calls `finish()` on, and the *only* thing that prunes
 /// `subscribers` is `continuation.onTermination` — which fires when that task is
 /// cancelled. So this asks the real descriptor of every module whose model holds such a task for its real
@@ -38,16 +38,16 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
         let descriptor = KeepAwakeDescriptor()
         let parts = descriptor.makeModule(store: NamespacedStore(
             namespace: "test.keepawake.subscriber", backing: InMemoryKeyValueStore()))
-        let transport = try XCTUnwrap(parts.engine.transport as? LocalTransport)
-        await settle(transport, until: 1)
-        XCTAssertEqual(transport.subscriberCount, 1,
+        let live = parts.engine
+        await settle(live, until: 1)
+        XCTAssertEqual(live.subscriberCount, 1,
                        "the model never subscribed, so the count below would pass on nothing")
         await letTheLoopStart()
 
         descriptor.stop(parts.model)
-        await settle(transport, until: 0)
+        await settle(live, until: 0)
 
-        XCTAssertEqual(transport.subscriberCount, 0,
+        XCTAssertEqual(live.subscriberCount, 0,
                        "`stop(_:)` left the engine's subscriber behind: the model's task was not cancelled")
     }
 
@@ -58,16 +58,16 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
         let descriptor = LayoutDescriptor()
         let parts = descriptor.makeModule(store: NamespacedStore(
             namespace: "test.layout.subscriber", backing: InMemoryKeyValueStore()))
-        let transport = try XCTUnwrap(parts.engine.transport as? LocalTransport)
-        await settle(transport, until: 1)
-        XCTAssertEqual(transport.subscriberCount, 1,
+        let live = parts.engine
+        await settle(live, until: 1)
+        XCTAssertEqual(live.subscriberCount, 1,
                        "the model never subscribed, so the count below would pass on nothing")
         await letTheLoopStart()
 
         descriptor.stop(parts.model)
-        await settle(transport, until: 0)
+        await settle(live, until: 0)
 
-        XCTAssertEqual(transport.subscriberCount, 0,
+        XCTAssertEqual(live.subscriberCount, 0,
                        "`stop(_:)` left the engine's subscriber behind: the model's task was not cancelled")
     }
 
@@ -77,16 +77,16 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
         let descriptor = ScreenshotsDescriptor()
         let parts = descriptor.makeModule(store: NamespacedStore(
             namespace: "test.screenshots.subscriber", backing: InMemoryKeyValueStore()))
-        let transport = try XCTUnwrap(parts.engine.transport as? LocalTransport)
-        await settle(transport, until: 1)
-        XCTAssertEqual(transport.subscriberCount, 1,
+        let live = parts.engine
+        await settle(live, until: 1)
+        XCTAssertEqual(live.subscriberCount, 1,
                        "the model never subscribed, so the count below would pass on nothing")
         await letTheLoopStart()
 
         descriptor.stop(parts.model)
-        await settle(transport, until: 0)
+        await settle(live, until: 0)
 
-        XCTAssertEqual(transport.subscriberCount, 0,
+        XCTAssertEqual(live.subscriberCount, 0,
                        "`stop(_:)` left the engine's subscriber behind: the model's task was not cancelled")
     }
 
@@ -97,16 +97,16 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
         let descriptor = HomebrewDescriptor()
         let parts = descriptor.makeModule(store: NamespacedStore(
             namespace: "test.homebrew.subscriber", backing: InMemoryKeyValueStore()))
-        let transport = try XCTUnwrap(parts.engine.transport as? LocalTransport)
-        await settle(transport, until: 1)
-        XCTAssertEqual(transport.subscriberCount, 1,
+        let live = parts.engine
+        await settle(live, until: 1)
+        XCTAssertEqual(live.subscriberCount, 1,
                        "the model never subscribed, so the count below would pass on nothing")
         await letTheLoopStart()
 
         descriptor.stop(parts.model)
-        await settle(transport, until: 0)
+        await settle(live, until: 0)
 
-        XCTAssertEqual(transport.subscriberCount, 0,
+        XCTAssertEqual(live.subscriberCount, 0,
                        "`stop(_:)` left the engine's subscriber behind: the model's task was not cancelled")
     }
 
@@ -117,16 +117,16 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
         let descriptor = VPNDescriptor()
         let parts = descriptor.makeModule(store: NamespacedStore(
             namespace: "test.vpn.subscriber", backing: InMemoryKeyValueStore()))
-        let transport = try XCTUnwrap(parts.engine.transport as? LocalTransport)
-        await settle(transport, until: 1)
-        XCTAssertEqual(transport.subscriberCount, 1,
+        let live = parts.engine
+        await settle(live, until: 1)
+        XCTAssertEqual(live.subscriberCount, 1,
                        "the model never subscribed, so the count below would pass on nothing")
         await letTheLoopStart()
 
         descriptor.stop(parts.model)
-        await settle(transport, until: 0)
+        await settle(live, until: 0)
 
-        XCTAssertEqual(transport.subscriberCount, 0,
+        XCTAssertEqual(live.subscriberCount, 0,
                        "`stop(_:)` left the engine's subscriber behind: the model's task was not cancelled")
     }
 
@@ -135,7 +135,7 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
     /// Lets the event loop actually start and park on its stream.
     ///
     /// **Not a courtesy wait — without it this check cannot see half the defect
-    /// it exists for.** `LocalTransport.events` registers its continuation
+    /// it exists for.** `EngineNews.stream()` registers its continuation
     /// inside `AsyncStream`'s builder, which runs the moment `init` touches the
     /// property — so the subscriber is there *before* the task that consumes it
     /// has run a single line. A gate that waits for the count to reach 1 is
@@ -164,9 +164,9 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
     /// tasks can spin without the main queue ever getting a turn. Returning
     /// early is safe — the assertion is at the call site, so a wait that gives
     /// up reports the count it actually saw.
-    private func settle(_ transport: LocalTransport, until count: Int) async {
+    private func settle(_ engine: any ModuleEngine, until count: Int) async {
         for _ in 0..<400 {
-            if transport.subscriberCount == count { return }
+            if engine.subscriberCount == count { return }
             try? await Task.sleep(nanoseconds: 5_000_000)
         }
     }

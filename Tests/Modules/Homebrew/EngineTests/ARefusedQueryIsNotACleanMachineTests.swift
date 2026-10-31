@@ -115,7 +115,7 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
         // took a real one would be an integration test against this Mac.
         HomebrewEngine(locator: FixedLocator(), runner: runner,
                        privileged: NoPrivileges(), user: "tester",
-                       transport: LocalTransport(), marker: InMemoryOpMarker())
+                       news: EngineNews(), marker: InMemoryOpMarker())
     }
 
     // MARK: - The installed list

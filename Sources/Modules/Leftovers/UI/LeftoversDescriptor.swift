@@ -32,10 +32,6 @@ import Module_Leftovers_Engine
 
     public init() {}
 
-    public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
-        LeftoversEngine(store: store)
-    }
-
     /// The engine and the model that calls it, built together. The model holds the
     /// scan and every checkbox for as long as the module lives, so Settings
     /// rebuilding the page on each sidebar visit costs neither.

@@ -13,13 +13,13 @@ held by the host, and it calls the engine's own methods (`toggleSession`,
 `startSession`, `stopSession`, `resumeAutomation`, `settingsChanged`) on the main
 actor, where the engine's fields are written from; the observers and `Clock.schedule`
 deliver on main, and the lid coordinator hops to main before it announces
-(`ClamshellCoordinator.onMain`). There is no command enum or handler: a name that
-does not exist is a build error, not a refused string.
+(`ClamshellCoordinator.onMain`). A name that does not exist is a
+build error, not a refused string.
 
 States come the other way through `KeepAwakeEngine.stream()`, one task in the model
 that the descriptor's `stop(_:)` cancels before the engine's `deactivate()`. The
-stream replays the latest state and registers the subscriber in the one hold of the
-transport's lock (`LocalTransport.events`); reading the state and then subscribing
+stream replays the latest state and registers the subscriber in the one hold of
+`EngineNews`'s lock (`EngineNews.stream`); reading the state and then subscribing
 leaves a window in which an emit is lost, and registering before replaying delivers an
 older state after a newer one. It is synchronous and not actor-isolated so that the
 model takes it in its own synchronous `init`, before the first suspension: no emit
@@ -65,7 +65,7 @@ defaulting to `HelmProcess.run`), which no one has asked for yet.
 
 ## Vetoes and the notice
 
-A veto that ends everything is on the wire under its own name, and the engine
+A veto that ends everything is in its state under its own name, and the engine
 refreshes the published sets (`activeConditions`, `triggeredConditions`) *before* the
 veto returns, so a screen drawn under a veto is not drawn from whatever the sets held
 when it began and does not offer to pause a rule that is not holding. One screen
@@ -75,7 +75,7 @@ expressions the stop path consults, so the screen and the behaviour cannot come
 apart, and a row's state is decided in one pure place, `RuleNote.of`, where the veto
 outranks the pause and `triggerHolds` is per-rule rather than the module's own flag.
 
-When a guard has stopped everything, that is said on the wire. The guard takes the
+When a guard has stopped everything, that is said in the state. The guard takes the
 one notice slot when both it and a pause are true, since only one of the two explains
 why nothing at all is running; the slot is gated on "there is something to say"
 (`KeepAwakePanelTile.hasNotice`) rather than on the pause flag; and the notice

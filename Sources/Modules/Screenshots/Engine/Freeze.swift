@@ -13,7 +13,7 @@ public struct DisplayID: Hashable, Sendable {
 /// not declared so. `frame` is the display in CG-global points (see
 /// `ScreenSpace`), `scale` the pixels to a point, and the image is at native
 /// scale: a 5K display's frame is some sixty megabytes, which is why none of
-/// this travels over the transport.
+/// this is ever copied or encoded.
 ///
 /// **`image` never has the pointer in it; `withCursor` does.** The overlay draws
 /// `image` under a live crosshair, and a pointer baked into that would be a

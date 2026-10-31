@@ -14,7 +14,7 @@ import XCTest
 /// kept whole in `acts` and noted in `calls` as `perform`. `say(_:)` is what the
 /// engine would emit; the last line and the last state are replayed to a stream
 /// taken afterwards in the order the two kinds first appeared, after where brew
-/// is, which activation says before any operation — `LocalTransport` keeps the
+/// is, which activation says before any operation — `EngineNews<HomebrewNews>` keeps the
 /// same order for the engine. A stream the
 /// consumer let go of is counted (`finishedStreams`), so «the loop was
 /// cancelled» is read from the work and not assumed from the model.

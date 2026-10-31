@@ -5,7 +5,7 @@ import Module_Autopilot_Engine
 /// The engine's door as the model sees it, standing for the engine and nothing else.
 ///
 /// **Carries the engine's states only.** Four things the rule store can be in (valid,
-/// empty, absent, refused) and the history it keeps; no transport state (a refused
+/// empty, absent, refused) and the history it keeps; no lost-reply state (a refused
 /// send, an empty reply) because the door has none: every answer is a return, and
 /// a state the real engine cannot be in would let a test pass for the fake's reasons.
 ///

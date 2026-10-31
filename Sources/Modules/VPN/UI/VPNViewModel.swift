@@ -278,7 +278,7 @@ extension VPNEngine: VPNWork {}
     /// The stream is taken here, synchronously, before the first suspension:
     /// `stream()` registers the subscriber and replays the latest state in one
     /// step, so no state emitted from this line on is missed. Nothing is asked
-    /// of the engine; `activate()` emits and the replay delivers.
+    /// of the engine; what the engine says from now on arrives on the stream.
     init(work: any VPNWork, settings: VPNSettings? = nil,
          notices: AutomationNoticePort? = nil) {
         self.work = work

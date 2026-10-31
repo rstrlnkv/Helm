@@ -31,10 +31,6 @@ import SwiftUI
 
     public init() {}
 
-    public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
-        productionEngine(store: store)
-    }
-
     /// The one place the production engine is built; `makeModule` needs it as
     /// the concrete type the model calls.
     private func productionEngine(store: NamespacedStore) -> DuplicatesEngine {
@@ -56,7 +52,7 @@ import SwiftUI
     /// the person's switch and on quit.
     public func stop(_ model: DuplicatesViewModel) { model.stop() }
 
-    /// Asked of the model, not of the engine through a cast or the wire: a model
+    /// Asked of the model, not of the engine through a cast: a model
     /// that is stopped answers nil.
     public func backgroundScan(_ parts: ModuleParts<DuplicatesViewModel>) async -> ScanReport? {
         await parts.model.backgroundScan()

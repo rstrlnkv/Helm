@@ -54,10 +54,10 @@ final class TheStopButtonReachesTheChildTests: XCTestCase {
 
     func testStopFromTheViewModelTerminatesTheChild() async {
         let runner = HangingRunner()
-        let transport = LocalTransport()
+        let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
-                                    transport: transport)
+                                    news: news)
         defer { _ = engine }
         let model = HomebrewViewModel(work: engine)
 

@@ -13,9 +13,9 @@ import HelmRuntime
 /// installation and never again — and it used to be able to happen on **every**
 /// run of anything that linked this module:
 ///
-/// - `VPNDescriptor.makeEngine` builds `VPNSystemPorts()` unconditionally, which
-///   constructs `KeychainCredentials`, whose `init` purged. Two test files call
-///   `makeEngine` for every descriptor there is, so `swift test` deleted the
+/// - `VPNDescriptor.makeModule` builds `VPNSystemPorts()` unconditionally, which
+///   constructs `KeychainCredentials`, whose `init` purged. Two test files build
+///   every descriptor's module, so `swift test` deleted the
 ///   person's real VPN secrets.
 /// - The latch was `UserDefaults.standard`, which is the *calling process's*
 ///   domain. The test domain therefore never held it, and the deletion was

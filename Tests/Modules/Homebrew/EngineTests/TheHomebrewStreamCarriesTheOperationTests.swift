@@ -52,10 +52,10 @@ private struct NoPrivileges: PrivilegedRunner {
 
 final class TheHomebrewStreamCarriesTheOperationTests: XCTestCase {
 
-    private func engine(_ runner: ProcessRunner, _ transport: LocalTransport = LocalTransport())
+    private func engine(_ runner: ProcessRunner, _ news: EngineNews<HomebrewNews> = EngineNews())
         -> HomebrewEngine {
         HomebrewEngine(locator: FixtureBrew(), runner: runner, privileged: NoPrivileges(),
-                       user: "tester", transport: transport, marker: InMemoryOpMarker(),
+                       user: "tester", news: news, marker: InMemoryOpMarker(),
                        popularity: NoPopularity(), weight: NoPackageWeight(),
                        tools: ToolsAlreadyInstalled(), ticker: NoWaitTicker())
     }
@@ -109,21 +109,21 @@ final class TheHomebrewStreamCarriesTheOperationTests: XCTestCase {
     }
 
     func testTheRunningStateReachesAStreamTakenLate() async {
-        let transport = LocalTransport()
+        let news = EngineNews<HomebrewNews>()
         let runner = HandFedRunner()
-        let engine = self.engine(runner, transport)
+        let engine = self.engine(runner, news)
         engine.install(name: "wget", isCask: false)
         runner.line("==> fetching")
-        XCTAssertEqual(transport.subscriberCount, 0, "control: nobody listened yet")
+        XCTAssertEqual(news.subscriberCount, 0, "control: nobody listened yet")
 
-        let news = engine.stream()
+        let tape = engine.stream()
         // Registered before `stream()` returns: an ending that lands now is
         // after the replay and not instead of it.
-        XCTAssertEqual(transport.subscriberCount, 1,
+        XCTAssertEqual(news.subscriberCount, 1,
                        "the subscription was not taken when the stream was asked for")
         runner.exit(0)
 
-        let got = await collect(news, through: Self.isEnding)
+        let got = await collect(tape, through: Self.isEnding)
         XCTAssertEqual(got, [
             .state(OpState(phase: .running, label: "install wget")),
             .line("==> fetching"),
@@ -136,7 +136,7 @@ final class TheHomebrewStreamCarriesTheOperationTests: XCTestCase {
                                     (NoBrew(), nil)] {
             let engine = HomebrewEngine(locator: locator, runner: HandFedRunner(),
                                         privileged: NoPrivileges(), user: "tester",
-                                        transport: LocalTransport(), marker: InMemoryOpMarker(),
+                                        news: EngineNews(), marker: InMemoryOpMarker(),
                                         popularity: NoPopularity(), weight: NoPackageWeight(),
                                         tools: ToolsAlreadyInstalled(), ticker: NoWaitTicker())
             let news = engine.stream()
@@ -149,24 +149,24 @@ final class TheHomebrewStreamCarriesTheOperationTests: XCTestCase {
     }
 
     func testEndingTheIterationGivesTheSubscriberBack() async {
-        let transport = LocalTransport()
-        let engine = self.engine(HandFedRunner(), transport)
-        XCTAssertEqual(transport.subscriberCount, 0, "control: nobody listened yet")
+        let news = EngineNews<HomebrewNews>()
+        let engine = self.engine(HandFedRunner(), news)
+        XCTAssertEqual(news.subscriberCount, 0, "control: nobody listened yet")
 
-        let news = engine.stream()
-        XCTAssertEqual(transport.subscriberCount, 1)
-        let reader = Task { for await _ in news {} }
+        let tape = engine.stream()
+        XCTAssertEqual(news.subscriberCount, 1)
+        let reader = Task { for await _ in tape {} }
         // The reader is running, not merely made.
         try? await Task.sleep(for: .milliseconds(100))
-        XCTAssertEqual(transport.subscriberCount, 1)
+        XCTAssertEqual(news.subscriberCount, 1)
 
         reader.cancel()
         await reader.value
         let deadline = Date().addingTimeInterval(5)
-        while transport.subscriberCount != 0, Date() < deadline {
+        while news.subscriberCount != 0, Date() < deadline {
             try? await Task.sleep(for: .milliseconds(10))
         }
-        XCTAssertEqual(transport.subscriberCount, 0,
+        XCTAssertEqual(news.subscriberCount, 0,
                        "a subscriber outlived the iteration that took it")
     }
 }

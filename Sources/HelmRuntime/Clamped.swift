@@ -59,7 +59,7 @@ public extension FloatingPoint {
 public extension Int {
     /// The sum, held at `Int.max` or `Int.min` instead of trapping.
     ///
-    /// For figures that came out of a file or off the wire, where one bound on
+    /// For figures that came out of a file or a scan, where one bound on
     /// each figure does not bound a sum of thousands of them: an integer add traps
     /// in release as well as debug, and a figure that is only large is a better
     /// answer than a process that is gone. `RingLayout` calls this for both its sums.

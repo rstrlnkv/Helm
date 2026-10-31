@@ -80,7 +80,6 @@ final class OnlyThePersonsSwitchAsksTheEngineTests: XCTestCase {
     /// methods and the one that matters would be indistinguishable from them.
     func testEveryEngineAnswersItWithoutHavingToImplementIt() {
         final class Bare: ModuleEngine {
-            let transport: EngineTransport = LocalTransport()
             func activate() {}
             func deactivate() {}
         }

@@ -5,10 +5,8 @@ import HelmRuntime
 
 @MainActor public protocol ModuleDescriptor {
     /// What this module's pages, menu-bar contribution and panel tiles are drawn
-    /// from, and what the module itself ends in `stop(_:)`. Defaults to the
-    /// shared `ModuleViewModel`, which talks to the engine over the transport:
-    /// a module that has not taken its model over says nothing and keeps it.
-    associatedtype Model: AnyObject = ModuleViewModel
+    /// from, and what the module itself ends in `stop(_:)`.
+    associatedtype Model: AnyObject
     static var id: ModuleID { get }
     /// **Computed on every read, never stored.** `ModuleMetadata` is a struct of
     /// finished strings, so a `static let` calls `L()` once — the first time
@@ -34,20 +32,15 @@ import HelmRuntime
     /// let a module ship without a shape of its own and share another's, and the
     /// compiler asking is better than a test noticing.
     static var glyph: ShellGlyph { get }
-    /// Build the engine for this module (host owns lifecycle). `store` is the module's namespaced store.
+    /// The engine for this module and the model drawn from it, built together
+    /// (the host owns the lifecycle). `store` is the module's namespaced store.
     ///
-    /// **And nothing else.** It builds an object; it does not start anything and
+    /// **And nothing else.** It builds objects; it does not start anything and
     /// does not touch the machine — `activate()` is where a module reaches the
     /// system, and `attachMenuBarPresence()` is where it appears in the menu
     /// bar. Keyboard's used to do the third of those inside the first, so a
     /// measurement that built an engine against a configured store put a status
     /// item on somebody's Mac.
-    func makeEngine(store: NamespacedStore) -> any ModuleEngine
-    /// The engine and the model drawn from it, built together. Starts nothing,
-    /// for the reason `makeEngine` starts nothing.
-    ///
-    /// The default is `makeEngine` and the shared view model on its transport;
-    /// `makeEngine` has no default of its own, since that one would call this one.
     func makeModule(store: NamespacedStore) -> ModuleParts<Model>
     /// The model's own deactivation: the host calls it on the person's switch
     /// and on quit, before the engine's `deactivate()`, and never on a refused
@@ -158,13 +151,6 @@ public extension ModuleDescriptor {
     /// pass and building a widget is not.
     func panelWidgetSizes(_ model: Model) -> Set<PanelWidgetSize> {
         Set(PanelWidgetSize.allCases.filter { panelWidget($0, model) != nil })
-    }
-}
-
-public extension ModuleDescriptor where Model == ModuleViewModel {
-    func makeModule(store: NamespacedStore) -> ModuleParts<ModuleViewModel> {
-        let engine = makeEngine(store: store)
-        return ModuleParts(engine: engine, model: ModuleViewModel(transport: engine.transport))
     }
 }
 

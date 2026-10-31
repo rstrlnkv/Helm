@@ -215,7 +215,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// than public: no other target may forget which one it is taking.
     ///
     /// **And it runs off the thread that built this.** That thread is the main
-    /// one — `VPNDescriptor.makeEngine` is `@MainActor` and builds
+    /// one — `VPNDescriptor.makeModule` is `@MainActor` and builds
     /// `VPNSystemPorts()` while the module list is assembled — so a
     /// `SecItemDelete` there is a launch-time keychain call, the family of the
     /// 19,09 s hang fixed in 4dcc5fb6, and on an ad-hoc-signed bundle a dialog

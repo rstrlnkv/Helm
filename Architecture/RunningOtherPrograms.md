@@ -38,5 +38,5 @@ VPN's secret has no terminal form to go to, so it goes to the system in process
 (Architecture/VPN.md).
 
 A blocking call is hopped through `Sources/HelmRuntime/OffTheCooperativePool.swift`,
-since a transport handler runs on the Swift-concurrency pool and a process waited on or a
+since an `async` engine method a model awaits runs on the Swift-concurrency pool and a process waited on or a
 recursive scan parks a pool thread for seconds.

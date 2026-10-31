@@ -20,19 +20,17 @@ public final class ScreenshotsEngine: ModuleEngine, @unchecked Sendable {
 
     private let preferences: CapturePreferences
     private let locations: ScreenshotsLocations
-    private let localTransport: LocalTransport
-    public let transport: EngineTransport
+    private let news: EngineNews<ScreenshotsState>
     private let lock = NSLock()
     private var refreshing: Task<Void, Never>?
     private var stopped = false
 
     public init(preferences: CapturePreferences = SystemCapturePreferences(),
                 locations: ScreenshotsLocations = .system,
-                transport: LocalTransport = LocalTransport()) {
+                news: EngineNews<ScreenshotsState> = EngineNews()) {
         self.preferences = preferences
         self.locations = locations
-        self.localTransport = transport
-        self.transport = transport
+        self.news = news
     }
 
     /// A session on the real ports, for the UI target to hold. A factory here
@@ -47,28 +45,16 @@ public final class ScreenshotsEngine: ModuleEngine, @unchecked Sendable {
 
     /// The state, as a stream: the last one first, then every later one, in order.
     ///
-    /// **Registered before this returns, in the one hold of the transport's lock
-    /// that replays what it last said** (`LocalTransport.events`): reading a
-    /// state and then subscribing leaves a window in which an emit is lost, and
-    /// subscribing first would hand over an older state after a newer one. The
-    /// model takes it in its own synchronous `init`, so no emit falls between its
-    /// construction and its subscription. Ending the iteration ends the pump,
-    /// which ends the transport's stream and removes the subscriber.
-    public func stream() -> AsyncStream<ScreenshotsState> {
-        let events = localTransport.events
-        return AsyncStream { continuation in
-            let pump = Task {
-                for await event in events {
-                    guard ScreenshotsEvent(rawValue: event.name) == .screenshotsState,
-                          let state = try? JSONDecoder().decode(ScreenshotsState.self, from: event.payload)
-                    else { continue }
-                    continuation.yield(state)
-                }
-                continuation.finish()
-            }
-            continuation.onTermination = { _ in pump.cancel() }
-        }
-    }
+    /// **Registered before this returns, in the one hold of the lock that replays
+    /// what was last said** (`EngineNews.stream`): reading the state and then
+    /// subscribing leaves a window an emit falls into, and subscribing before the
+    /// replay hands over an older state after a newer one. Synchronous and not
+    /// actor-isolated, so the model takes it in its own synchronous `init`, before
+    /// its first suspension; the subscriber is counted when this returns. Ending
+    /// the iteration removes the subscriber.
+    public func stream() -> AsyncStream<ScreenshotsState> { news.stream() }
+
+    public var subscriberCount: Int { news.subscriberCount }
 
     public func activate() {
         lock.lock(); stopped = false; lock.unlock()
@@ -90,7 +76,7 @@ public final class ScreenshotsEngine: ModuleEngine, @unchecked Sendable {
 
     deinit { refreshing?.cancel() }
 
-    /// A synchronous property, for the reason `LocalTransport` has them: Swift
+    /// A synchronous property, because Swift
     /// refuses `NSLock.lock()` across a suspension, and the read is taken on
     /// both sides of one.
     private var isStopped: Bool { lock.lock(); defer { lock.unlock() }; return stopped }
@@ -103,7 +89,7 @@ public final class ScreenshotsEngine: ModuleEngine, @unchecked Sendable {
             let state = await self.read()
             guard !Task.isCancelled else { return }
             guard !self.isStopped else { return }
-            self.localTransport.emit(ScreenshotsEvent.screenshotsState, encoding: state)
+            self.news.say(state)
         }
         lock.lock(); refreshing?.cancel(); refreshing = task; lock.unlock()
     }

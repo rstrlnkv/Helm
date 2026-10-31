@@ -42,10 +42,6 @@ import Module_Uninstaller_Engine
 
     public init() {}
 
-    public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
-        productionEngine(store: store, trashChanged: {})
-    }
-
     /// The one place the production engine is built; `makeModule` needs it as
     /// the concrete type the model calls.
     private func productionEngine(store: NamespacedStore,

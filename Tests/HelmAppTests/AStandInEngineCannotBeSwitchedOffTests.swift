@@ -31,8 +31,9 @@ final class AStandInEngineCannotBeSwitchedOffTests: XCTestCase {
     private static let standInID = "test-stand-in-engine"
     private static let ordinaryID = "test-ordinary-engine"
 
+    private final class PageModel {}
+
     private final class Probe: ModuleEngine {
-        let transport: EngineTransport = LocalTransport()
         let standsIn: Bool
         var willDisableCalls = 0
         var deactivateCalls = 0
@@ -53,9 +54,11 @@ final class AStandInEngineCannotBeSwitchedOffTests: XCTestCase {
         static let glyph = ShellGlyph.settings
         let engine: Probe
         init(standsIn: Bool) { engine = Probe(standsIn: standsIn) }
-        func makeEngine(store: NamespacedStore) -> any ModuleEngine { engine }
-        func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { nil }
-        func settingsPage(_ vm: ModuleViewModel) -> AnyView { AnyView(EmptyView()) }
+        func makeModule(store: NamespacedStore) -> ModuleParts<PageModel> {
+            ModuleParts(engine: engine, model: PageModel())
+        }
+        func menuBar(_ vm: PageModel) -> MenuBarContribution? { nil }
+        func settingsPage(_ vm: PageModel) -> AnyView { AnyView(EmptyView()) }
     }
     private final class StandIn: Base {
         override class var id: ModuleID { ModuleID(AStandInEngineCannotBeSwitchedOffTests.standInID) }

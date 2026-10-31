@@ -15,9 +15,6 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
     /// settings that are already on people's machines.
     public static let moduleID = "disk"
 
-    /// Nothing reaches it: the Disk model calls this engine's methods and the
-    /// engine says nothing on it. `ModuleEngine` still asks for one.
-    public let transport: EngineTransport = LocalTransport()
     /// Every scan in flight, not the last one started: drilling into a folder
     /// the walk never reached starts a second scan beside the first.
     private let scanners = ScanRegistry<DiskScanner>()

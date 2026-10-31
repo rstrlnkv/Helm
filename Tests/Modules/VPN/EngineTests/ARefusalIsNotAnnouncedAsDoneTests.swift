@@ -115,8 +115,8 @@ final class ARefusalIsNotAnnouncedAsDoneTests: XCTestCase {
         e.connect("Old office", auto: true)
 
         var payload: VPNEngine.StatePayload?
-        for await event in e.transport.events where event.name == "state" {
-            payload = try? JSONDecoder().decode(VPNEngine.StatePayload.self, from: event.payload)
+        for await state in e.stream() {
+            payload = state
             break
         }
         guard let payload else {

@@ -23,8 +23,6 @@ import Module_Disk_Engine
 
     public init() {}
 
-    public func makeEngine(store: NamespacedStore) -> any ModuleEngine { DiskEngine(trashing: HelmTrash.moveToTrash) }
-
     /// The engine and the model that calls it, built together. Nothing is read
     /// here: the model's saved scan and its mount observers wait for the first
     /// draw (`DiskViewModel.appear()`).
@@ -37,7 +35,7 @@ import Module_Disk_Engine
     /// the person's switch and on quit.
     public func stop(_ model: DiskViewModel) { model.stop() }
 
-    /// Asked of the model, not of the engine through a cast or the wire: a model
+    /// Asked of the model, not of the engine through a cast: a model
     /// that is stopped answers nil, and a cast that missed would too, unseen.
     public func backgroundScan(_ parts: ModuleParts<DiskViewModel>) async -> ScanReport? {
         await parts.model.backgroundScan()

@@ -34,8 +34,7 @@ public extension Notification.Name {
     ///
     /// **Here rather than in `HelmApp`**, beside the type it announces and the
     /// key that type is stored under. It was declared where it is posted, one
-    /// target away from `helmTracksModuleIconStyle`, which is the shape
-    /// `EventNamesAreNotLiteralsTests` exists for: a name only one side can
+    /// target away from `helmTracksModuleIconStyle`: a name only one side can
     /// change is an error nowhere.
     static let helmSidebarStyleChanged = Notification.Name("helmSidebarStyleChanged")
 }

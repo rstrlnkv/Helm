@@ -4,7 +4,7 @@ import HelmRuntime
 /// Swift read as text, for the checks that pin something no type system says.
 ///
 /// `RepoSource` answers *which* files and hands back their lines; this answers
-/// what is in one. The family it serves is already large — an event name that
+/// what is in one. The family it serves is already large — a string that
 /// must not be a literal, a list that must agree with the tree, a control that
 /// must be reachable from the keyboard — and two of them now need more than a
 /// line at a time: a call whose arguments span four lines, and the body of one

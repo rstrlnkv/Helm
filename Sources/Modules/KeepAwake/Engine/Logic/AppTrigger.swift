@@ -61,7 +61,7 @@ enum AppTriggerRules {
     ///
     /// Bundle ids, not names: the ids are what the module stores and what it
     /// matched on, and turning one into a name is a Launch Services lookup that
-    /// belongs on the screen doing the drawing. It keeps names off the wire and
+    /// belongs on the screen doing the drawing. It keeps names out of the published state and
     /// out of the log, which is the standing rule.
     static func holding(_ rules: [AppTrigger], running: Set<String>,
                         externalDisplay: Bool, onPower: Bool) -> [String] {

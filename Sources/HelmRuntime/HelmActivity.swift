@@ -11,7 +11,7 @@ import os
 ///
 /// Written by engines, read by whoever asks — the same shape as `HelmLog`, and
 /// for the same reason: a module publishes what it is doing without anyone being
-/// able to reach in and command it. Nothing here crosses a transport, because
+/// able to reach in and command it. Nothing here takes a command, because
 /// nothing here carries a decision.
 ///
 /// Also emits `os_signpost` intervals, so the same boundaries land on the

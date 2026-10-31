@@ -37,8 +37,6 @@ import Module_Screenshots_Engine
 
     public init() {}
 
-    public func makeEngine(store: NamespacedStore) -> any ModuleEngine { ScreenshotsEngine() }
-
     public func makeModule(store: NamespacedStore) -> ModuleParts<ScreenshotsViewModel> {
         let engine = ScreenshotsEngine()
         return ModuleParts(engine: engine, model: ScreenshotsViewModel(work: engine, store: store))

@@ -291,25 +291,11 @@ final class VPNAutomationRecordingTests: XCTestCase {
         engine.connect("A", auto: true)
 
         var payload: VPNEngine.StatePayload?
-        for await event in engine.transport.events where event.name == "state" {
-            payload = try? JSONDecoder().decode(VPNEngine.StatePayload.self, from: event.payload)
+        for await state in engine.stream() {
+            payload = state
             break
         }
         XCTAssertEqual(payload?.lastAutomation,
                        VPNAutomation(at: at, name: "A", kind: .connected))
-    }
-
-    /// A state event from a build that predates the field still decodes — the
-    /// page and the engine are versioned together in one process today, and the
-    /// replayed last event outlives neither, but a payload that throws takes the
-    /// whole page's state down rather than one field of it.
-    func test_a_state_payload_without_the_field_still_decodes() throws {
-        let legacy = Data("""
-        {"connections":[],"autoConnected":[]}
-        """.utf8)
-
-        let payload = try JSONDecoder().decode(VPNEngine.StatePayload.self, from: legacy)
-
-        XCTAssertNil(payload.lastAutomation)
     }
 }

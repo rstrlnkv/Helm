@@ -26,7 +26,6 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// follow a rename (`RuleKeychain`, `RuleStamp`).
     public static let moduleID = "autopilot"
 
-    public let transport: EngineTransport = LocalTransport()
     private let store: NamespacedStore
     /// Whose rules these are, which one of the person's rule sets they are, and
     /// the only thing here that touches the keychain — `SealedRules`.

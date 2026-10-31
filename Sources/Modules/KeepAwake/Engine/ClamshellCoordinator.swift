@@ -20,7 +20,7 @@ import HelmRuntime
 /// - `sessionIsActive`, so an answer that arrives after the session ended does
 ///   not disable sleep for nothing;
 /// - `stateChanged`, because a refusal discovered in a callback has to reach
-///   the screen, and the engine owns the wire.
+///   the screen, and the engine owns the published state.
 /// `@unchecked Sendable` and **not** `@MainActor`, which is the engine's own
 /// shape and is load-bearing here: `removeSudoers` calls back on a background
 /// queue, and the check it makes there — «did the grant go with the file» —
@@ -65,8 +65,8 @@ final class ClamshellCoordinator: @unchecked Sendable {
     ///
     /// `active` going false already carried this, and carried it as *nothing has
     /// happened* — which is what the row then said, in a paragraph about what an
-    /// administrator password buys. The two states have to be told apart on the
-    /// wire, because only one of them is a switch that says one thing while the
+    /// administrator password buys. The two states have to be told apart in the
+    /// published state, because only one of them is a switch that says one thing while the
     /// machine does another, and this module's whole claim is that a lid is safe
     /// to close.
     ///
@@ -102,7 +102,7 @@ final class ClamshellCoordinator: @unchecked Sendable {
         if Thread.isMainThread { block() } else { DispatchQueue.main.async(execute: block) }
     }
 
-    /// The one writer of `grantRemains`, so a change always reaches the wire.
+    /// The one writer of `grantRemains`, so a change always reaches the published state.
     ///
     /// `releaseIfUnneeded` runs *after* the last `emitState` of a
     /// `settingsChanged`, so a value set there and not announced would sit in

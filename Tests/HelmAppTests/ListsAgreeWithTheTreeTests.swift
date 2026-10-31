@@ -27,9 +27,18 @@ final class ListsAgreeWithTheTreeTests: XCTestCase {
         let backing = InMemoryKeyValueStore()
         return ModuleRegistry.all.map { descriptor in
             (descriptor.idRaw,
-             descriptor.makeEngine(store: NamespacedStore(namespace: descriptor.idRaw,
-                                                          backing: backing)))
+             engine(of: descriptor, store: NamespacedStore(namespace: descriptor.idRaw,
+                                                           backing: backing)))
         }
+    }
+
+    /// Generic so the descriptor's `Model` is opened: `makeModule` cannot be
+    /// called on an `any ModuleDescriptor`. It builds the model beside the
+    /// engine, so a model whose init did work would do it here; no test
+    /// asserts that it does not.
+    @MainActor private func engine<D: ModuleDescriptor>(of descriptor: D,
+                                                         store: NamespacedStore) -> any ModuleEngine {
+        descriptor.makeModule(store: store).engine
     }
 
     // MARK: - The scan list
@@ -45,9 +54,10 @@ final class ListsAgreeWithTheTreeTests: XCTestCase {
         }
     }
 
-    /// **The failure this closes is silent and expensive.** A module in the list
-    /// whose engine does not handle the command falls to `default: return
-    /// Data()`; the caller decodes nothing, reads `nil`, and logs "no answer".
+    /// **This holds the engine's half of a silent, expensive failure.** A module
+    /// in the list whose descriptor does not override the scan falls to the
+    /// default, which answers `nil`; the caller reads `nil` and logs "no answer".
+    /// That the descriptor passes the call on is held by no test.
     /// The coordinator then wakes every minute, spends a day's budget per tick,
     /// and nothing anywhere says the module never had a scan to run.
     @MainActor func testEveryScannableModuleHasAnEngineThatCanScan() {

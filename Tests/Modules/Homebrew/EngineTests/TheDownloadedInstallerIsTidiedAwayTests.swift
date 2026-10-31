@@ -77,7 +77,7 @@ final class TheDownloadedInstallerIsTidiedAwayTests: XCTestCase {
         let runner = RecordingRunner()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: AllowingPrivileged(), user: "tester",
-                                    transport: LocalTransport())
+                                    news: EngineNews())
         engine.installBrew()
         let args = try XCTUnwrap(runner.args.first, "the engine launched nothing")
         XCTAssertEqual(args.first, "-c", "the installer stopped being a `bash -c` string")

@@ -48,8 +48,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private let interfaces: VPNInterfacePort
     private let exit: VPNExitPort
     private let speed: VPNSpeedPort
-    private let localTransport: LocalTransport
-    public let transport: EngineTransport
+    private let news: EngineNews<StatePayload>
 
     /// Written from the work queue and read from the UI, hence the lock — the
     /// class was `@unchecked Sendable` with no synchronisation at all, and an
@@ -113,7 +112,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// The configurations a rule cannot raise, because their secret is in the
     /// System keychain and only a person's own gesture may open it.
     ///
-    /// On the wire and drawn, not merely logged: the two changes that produced
+    /// Published and drawn, not merely logged: the two changes that produced
     /// this state — the one-time purge of the old credential cache and the refusal
     /// to prompt for an automatic connect — are both correct, and together they
     /// left a rule reaching the same dead end at every launch of its app with
@@ -211,7 +210,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// the entry is dropped the moment the tunnel is not connected.
     private var interfaceOf: [String: VPNStatusParser.Reading] = [:]
     /// **Which tunnel** a measurement is in flight for, by name, or nil — the
-    /// engine's own fact, on the wire in every payload, because
+    /// engine's own fact, in every published state, because
     /// `VPNTunnelState.measuring` says what a page inferring it from a press
     /// gets wrong. Written on the work queue at both ends of a run. A name and
     /// not a `Bool`: the flag is per tunnel, and one boolean set every entry of
@@ -248,7 +247,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                 credentials: VPNCredentialsPort? = nil,
                 apps: AppObserverPort,
                 network: NetworkWatchPort? = nil,
-                transport: LocalTransport = LocalTransport(),
+                news: EngineNews<StatePayload> = EngineNews(),
                 interfaces: VPNInterfacePort = DynamicStoreInterfaces(),
                 exit: VPNExitPort = TraceExit(),
                 speed: VPNSpeedPort = NetworkQualitySpeed(),
@@ -264,8 +263,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         self.interfaces = interfaces
         self.exit = exit
         self.speed = speed
-        self.localTransport = transport
-        self.transport = transport
+        self.news = news
     }
 
     // MARK: - ModuleEngine (module enabled/disabled)
@@ -737,7 +735,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
-    /// What the tool said, in the trail and on the wire.
+    /// What the tool said, in the trail and in the state.
     ///
     /// Both call sites discarded it. `scutil` exits 0 whatever happens and puts
     /// its complaint on stdout, so a rule pointing at a configuration that was
@@ -1142,7 +1140,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             guard self.measuringSpeed == nil else { return }
             self.measuringSpeed = name
             // Before the waiting starts, so the page draws «measuring» whether
-            // or not it asked — and the run has two ends on the wire, not one.
+            // or not it asked — and the run has two ends in the state, not one.
             self.emitState()
             self.startMeasuring(for: name)
         }
@@ -1193,32 +1191,18 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// order — a forced re-emission (`emitState(force:)`) included, which is
     /// the only answer a refused measurement gives.
     ///
-    /// **Registered before this returns, in the one hold of the transport's lock
-    /// that replays what it last said** (`LocalTransport.events`): reading the
-    /// state and then subscribing leaves a window an emit falls into, and
-    /// subscribing before the replay hands over an older state after a newer
-    /// one. Synchronous and not actor-isolated, so the model takes it in its own
-    /// synchronous `init`. The decode runs in the pump, outside the lock; ending
-    /// the iteration ends the pump, which ends the transport's stream and
-    /// removes the subscriber.
-    public func stream() -> AsyncStream<StatePayload> {
-        let events = localTransport.events
-        return AsyncStream { continuation in
-            let pump = Task {
-                for await event in events {
-                    guard VPNEvent(rawValue: event.name) == .state,
-                          let state = try? JSONDecoder().decode(StatePayload.self,
-                                                                from: event.payload)
-                    else { continue }
-                    continuation.yield(state)
-                }
-                continuation.finish()
-            }
-            continuation.onTermination = { _ in pump.cancel() }
-        }
-    }
+    /// **Registered before this returns, in the one hold of the lock that replays
+    /// what was last said** (`EngineNews.stream`): reading the state and then
+    /// subscribing leaves a window an emit falls into, and subscribing before the
+    /// replay hands over an older state after a newer one. Synchronous and not
+    /// actor-isolated, so the model takes it in its own synchronous `init`, before
+    /// its first suspension; the subscriber is counted when this returns. Ending
+    /// the iteration removes the subscriber.
+    public func stream() -> AsyncStream<StatePayload> { news.stream() }
 
-    /// What `emitState` last put on the wire — under the class's one lock.
+    public var subscriberCount: Int { news.subscriberCount }
+
+    /// What `emitState` last said — under the class's one lock.
     private var _lastEmitted: StatePayload?
 
     /// Emits the state — unless it is **equal in every field** to the last one
@@ -1247,6 +1231,6 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         lock.lock(); let isDuplicate = payload == _lastEmitted
         _lastEmitted = payload; lock.unlock()
         guard force || !isDuplicate else { return }
-        localTransport.emit(VPNEvent.state, encoding: payload)
+        news.say(payload)
     }
 }

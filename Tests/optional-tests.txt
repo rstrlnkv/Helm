@@ -135,7 +135,6 @@ BrewUsesParserTests
 ClamshellPmsetFixtureTests
 CloneShareTests
 CommandLineToolsTests
-CommandNamesAreAnsweredTests
 ConditionsInvariantTests
 ConversionTriggersTests
 CopyAllFromThePileTakesTheFinishedShotsTests
@@ -164,7 +163,7 @@ DuplicatesTests
 EachToolKeepsItsOwnColourTests
 EachToolKeepsItsOwnThicknessAndOpacityTests
 EachTunnelKeepsItsOwnVoiceTests
-EventNamesAreNotLiteralsTests
+EngineNewsReplayTests
 EveryDescriptorForwardsItsEnginesIdTests
 EveryTreeWalkIsTheSharedOneTests
 ExtensionHostBlameTests
@@ -208,8 +207,6 @@ LeftoversOfferConsistencyTests
 LeftoversWritableTests
 LineBufferUTF8Tests
 LiveExtensionScan
-LocalTransportReplayTests
-LocalTransportTests
 LogLineTests
 LogPolicyTests
 LogRotationTests
@@ -242,7 +239,6 @@ ReleaseDigestFootprintTests
 RemovalOutcomeTests
 RenamePatternSubstitutionTests
 RenameShapeTests
-ReplayOrderTests
 RevealTargetTests
 ReviewRowsOrderTests
 RuleMatcherConditionTests

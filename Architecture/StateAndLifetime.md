@@ -10,10 +10,10 @@ then goes with the module's `Live`.
 
 The host is only one of a model's two owners. A subscriber task started as
 `Task { [weak self] in await self?.observeEvents() }` resolves its weak capture once, and
-the method then holds `self` for as long as it runs — which, over a transport whose
-stream does not finish, is the life of the app. The tasks are therefore held and
+the method then holds `self` for as long as it runs — which, over a stream that does
+not finish, is the life of the app. The tasks are therefore held and
 cancelled from the class's own teardown rather than from `deinit`.
-`LocalTransport.subscriberCount` makes the guard a count that stays put rather than a
+`EngineNews.subscriberCount` makes the guard a count that stays put rather than a
 memory figure: `Tests/HelmContractTests/SubscriberPruningTests.swift` and
 `Tests/HelmAppTests/ASwitchedOffModuleLetsItsSubscriberGoTests.swift`.
 

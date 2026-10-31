@@ -614,7 +614,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// **Not in `init`, and that is a measurement rather than a taste.** The two
     /// documents are 850 KB of JSON and 15,270 packages; parsing both takes
     /// 30 ms on this Mac, optimised, three readings out of three — and `init`
-    /// runs inside `makeEngine`, which `ModuleHost.enable` calls on the main
+    /// runs inside `makeModule`, which `ModuleHost.enable` calls on the main
     /// thread at launch for every module that is switched on.
     ///
     /// **Nor from the refresh unless the refresh needs it.** The only thing in

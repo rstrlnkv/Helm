@@ -2,8 +2,7 @@
 
 Helm is a menu-bar utility suite for macOS: one accessory application that hosts
 its independent modules, which `ls Sources/Modules` lists. A module is a
-headless engine and a settings page, and the two halves speak only over a
-transport. Around them stand four foundation targets — `Sources/HelmContract`
+headless engine and a settings page with its model, which calls the engine's methods. Around them stand four foundation targets — `Sources/HelmContract`
 for what crosses the engine/host boundary,
 `Sources/HelmRuntime` for plumbing without UI, `Sources/HelmUI` for the design
 system and the strings, and `Sources/HelmLaunch` for the one thing Swift cannot
@@ -27,7 +26,7 @@ comment, not on a page.
 | What a change touches | Where it lives |
 |---|---|
 | a module's pure logic | `Sources/Modules/<Module>/Engine/Logic/` |
-| its engine, its command enum, its store | `Sources/Modules/<Module>/Engine/` |
+| its engine, its store | `Sources/Modules/<Module>/Engine/` |
 | its screen, and its descriptor with the module's tint and glyph | `Sources/Modules/<Module>/UI/` |
 | its tests, both halves | `Tests/Modules/<Module>/EngineTests/`, `Tests/Modules/<Module>/UITests/` |
 | what crosses the engine/host boundary | `Sources/HelmContract/` |
@@ -45,7 +44,7 @@ comment, not on a page.
 
 - [Targets](Architecture/Targets.md) — the package's targets, what each one holds and which may see which, as the manifest declares them.
 - [What is deliberately not here](Architecture/WhatIsDeliberatelyNotHere.md) — what Helm omits on purpose — an external dependency, a sandbox and privileged helper, a transport between host and modules, back-deployment — and why.
-- [Module pattern](Architecture/ModulePattern.md) — how a module is built from four directories and what holds its parts apart; § The boundaries, § Ports and logic, § The transport and the store, § Bulk reads, § A value crossing to the main thread.
+- [Module pattern](Architecture/ModulePattern.md) — how a module is built from four directories and what holds its parts apart; § The boundaries, § Ports and logic, § The stream and the store, § Bulk reads, § A value crossing to the main thread.
 
 ## UI shell
 

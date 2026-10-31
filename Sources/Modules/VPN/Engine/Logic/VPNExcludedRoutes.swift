@@ -35,10 +35,10 @@ public enum VPNExcludedRoutes {
     ///
     /// The summary is what travels, and the addresses stay in the engine. A
     /// range is not a name, but it is a fact about somebody's network, and this
-    /// module already refuses to put an exit address on the wire for the same
+    /// module already refuses to put an exit address into a published state for the same
     /// reason (`VPNExitPort`). It is also what a reader can do anything with:
     /// «and 10.0.0.0/8» tells them nothing that «the local network» does not.
-    public struct Summary: Codable, Equatable, Sendable {
+    public struct Summary: Equatable, Sendable {
         /// Private ranges, link-local, multicast, broadcast — the exclusions
         /// nearly every tunnel declares so that printers and NAS boxes keep
         /// working. True of a dull configuration and worth one word.

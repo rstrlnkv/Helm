@@ -23,12 +23,15 @@ public protocol ModuleEngine: AnyObject {
     /// nothing to recover. Defaulted: only a stand-in says yes.
     var standsIn: Bool { get }
     func deactivate()
-    /// Module-specific commands are sent through the typed façade over this
-    /// transport (LocalTransport in-process, XPCTransport out-of-process).
-    var transport: EngineTransport { get }
+    /// **How many models are listening to this engine right now.** Needed by the
+    /// host test that holds an `any ModuleEngine` and cannot see the engine's
+    /// own `EngineNews<…>`. Defaulted to 0, so that test's assert of 1 stays red
+    /// on a module that forgets to answer.
+    var subscriberCount: Int { get }
 }
 
 public extension ModuleEngine {
     func willDisable() {}
     var standsIn: Bool { false }
+    var subscriberCount: Int { 0 }
 }

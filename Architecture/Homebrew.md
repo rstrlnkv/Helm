@@ -39,7 +39,7 @@ right page on its first frame and not the install screen. Bench recordings over 
 `HomebrewWork` show that frame. `testWhereBrewIsSeedsTheStatusBeforeAnyRead` holds only that
 the seed reaches the model and asks the machine nothing. In the app `ModuleHost` builds the
 model before `activate()`, so the model has subscribed when the event is filed; the event then
-crosses two tasks, and where the page's first body falls against its landing is unproved. If
+reaches the model through its own task, and where the page's first body falls against its landing is unproved. If
 the page draws first, it shows the install screen until the news or `readStatus` lands. It only
 seeds `status`: once the engine's own reading has answered, a later seed is ignored, because that reading carries what the seed cannot (`interruptedOp`).
 

@@ -67,30 +67,29 @@ final class EveryStopPointEndsTheInstallOnceTests: XCTestCase {
         let ticker = FakeWaitTicker()
         let privileged: ScriptedPrivileged
         let runner = KillableRunner()
-        let transport = LocalTransport()
+        let news = EngineNews<HomebrewNews>()
         let engine: HomebrewEngine
         /// Subscribed before anything is pressed, so it holds every state the
         /// engine sent and not only the last.
-        let tape: AsyncStream<EngineEvent>
+        let tape: AsyncStream<HomebrewNews>
 
         init(holdsDialog: Bool = false) {
             tools = FakeCommandLineTools()
             privileged = ScriptedPrivileged(reply: .done, holds: holdsDialog)
             engine = HomebrewEngine(locator: WaitRig.FixedLocator(), runner: runner,
                                     privileged: privileged, user: "tester",
-                                    transport: transport, marker: InMemoryOpMarker(),
+                                    news: news, marker: InMemoryOpMarker(),
                                     tools: tools, ticker: ticker)
-            tape = transport.events
+            tape = news.stream()
         }
 
         /// Every `opState` sent since the rig was built, in order.
         func states() async -> [OpState] {
-            transport.emit(EngineEvent(name: "test.sentinel", payload: Data()))
+            news.say(.line("test.sentinel"), slot: "test.sentinel")
             var out: [OpState] = []
-            for await event in tape {
-                if event.name == "test.sentinel" { break }
-                if event.name == HomebrewEvent.opState.rawValue,
-                   let s = try? JSONDecoder().decode(OpState.self, from: event.payload) { out.append(s) }
+            for await item in tape {
+                if case .line("test.sentinel") = item { break }
+                if case .state(let s) = item { out.append(s) }
             }
             return out
         }

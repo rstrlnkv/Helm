@@ -96,7 +96,7 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
         XCTAssertFalse(engine.lidRefused)
     }
 
-    /// It has to cross the wire, or the fact exists only inside the engine — the
+    /// It has to reach the payload, or the fact exists only inside the engine — the
     /// defect `StatePayload`'s own doc comment records.
     func testTheRefusalReachesThePayload() async throws {
         try XCTSkipUnless(MacHardware.hasLid, "this Mac has no lid, so the lid is never engaged")
@@ -104,21 +104,10 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
         engine.startSession(minutes: 0)
 
         await waitUntil("the lid was refused") { engine.lidRefused }
-        let decoded = try roundTrip()
-        XCTAssertTrue(decoded.lidRefused, "the engine knew and the screen could not")
+        let payload = currentPayload()
+        XCTAssertTrue(payload.lidRefused, "the engine knew and the screen could not")
     }
 
-    /// A payload from a build that never had these fields still decodes, and
-    /// decodes to «nothing is wrong» — which is what such a build meant, since it
-    /// could not ask either.
-    func testAnOlderPayloadWithoutTheFieldsStillDecodes() throws {
-        let older = Data("""
-        {"isActive":true,"conditions":[],"clamshellActive":false,"suppressed":false}
-        """.utf8)
-        let decoded = try JSONDecoder().decode(KeepAwakeEngine.StatePayload.self, from: older)
-        XCTAssertFalse(decoded.lidRefused)
-        XCTAssertFalse(decoded.lidGrantRemains)
-    }
 
     // MARK: - The rule outlived the feature
 
@@ -248,13 +237,11 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
 
     // MARK: - Plumbing
 
-    private func roundTrip() throws -> KeepAwakeEngine.StatePayload {
-        let payload = KeepAwakeEngine.StatePayload(
+    private func currentPayload() -> KeepAwakeEngine.StatePayload {
+        KeepAwakeEngine.StatePayload(
             isActive: engine.isActive, conditions: [], clamshellActive: engine.clamshellActive,
             endDate: nil, startDate: nil, suppressed: engine.suppressed,
             lidRefused: engine.lidRefused, lidGrantRemains: engine.lidGrantRemains)
-        return try JSONDecoder().decode(KeepAwakeEngine.StatePayload.self,
-                                        from: JSONEncoder().encode(payload))
     }
 
     private func lines(containing text: String) -> Int {

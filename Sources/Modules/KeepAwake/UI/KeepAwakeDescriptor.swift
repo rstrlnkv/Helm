@@ -52,10 +52,6 @@ enum KeepAwakeHotkey {
     private var store: NamespacedStore?
     public init() {}
 
-    public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
-        keepAwakeEngine(store: store)
-    }
-
     /// The engine and the model that drinks from its stream, built together.
     /// Starts nothing: the model only subscribes, and the first state it receives
     /// is the one `activate()` — later, from the host — emits.

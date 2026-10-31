@@ -162,17 +162,17 @@ final class TheInterfaceComesFromTheToolTests: XCTestCase {
         runner.listOutput = "* (Connected) 02196763-19A0-40A0-B369-D9EA68F7F65D "
             + "VPN (llc.itdev.incy) \"incy\" [VPN:llc.itdev.incy]"
         runner.statusOutput = ["incy": Self.connected]
-        let transport = LocalTransport()
+        let news = EngineNews<VPNEngine.StatePayload>()
         let interfaces = FakeInterfaces()
         interfaces.primary = "utun8"
         interfaces.counters = ["utun8": (in: 4_000, out: 2_000)]
         let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
-                               transport: transport, interfaces: interfaces,
+                               news: news, interfaces: interfaces,
                                exit: FakeExit(), speed: FakeSpeed(), work: .inline)
 
         engine.refresh()
 
-        let facts = await lastState(on: transport)?.tunnels.first
+        let facts = await lastState(on: news)?.tunnels.first
         XCTAssertEqual(facts?.interface, "utun8", """
             the strip is absent on a Mac with a tunnel up: the interface question \
             was asked of something that cannot answer it
@@ -213,11 +213,11 @@ final class TheInterfaceComesFromTheToolTests: XCTestCase {
         let id = "02196763-19A0-40A0-B369-D9EA68F7F65D"
         runner.listOutput = "* (Connected) \(id) VPN (llc.itdev.incy) \"incy\" [VPN:llc.itdev.incy]"
         runner.statusOutput = ["incy": Self.connected]
-        let transport = LocalTransport()
+        let news = EngineNews<VPNEngine.StatePayload>()
         let interfaces = FakeInterfaces()
         interfaces.primary = "utun9"
         let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
-                               transport: transport, interfaces: interfaces,
+                               news: news, interfaces: interfaces,
                                exit: FakeExit(), speed: FakeSpeed(), work: .inline)
         engine.refresh()
 
@@ -229,7 +229,7 @@ final class TheInterfaceComesFromTheToolTests: XCTestCase {
                                                                            with: "utun9")]
         engine.refresh()
 
-        let facts = await lastState(on: transport)?.tunnels.first
+        let facts = await lastState(on: news)?.tunnels.first
         XCTAssertEqual(facts?.interface, "utun9", """
             the strip drew the interface of a tunnel that is gone — macOS raises \
             the next one on a new utunN, and the counters under that name are \

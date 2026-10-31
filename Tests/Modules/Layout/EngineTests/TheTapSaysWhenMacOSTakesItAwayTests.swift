@@ -37,7 +37,7 @@ final class TheTapSaysWhenMacOSTakesItAwayTests: XCTestCase {
     }
 
     /// The last state the engine published, which is what the settings page
-    /// reads. `LocalTransport` replays it, so a reader arriving after the fact
+    /// reads. `EngineNews<LayoutState>` replays it, so a reader arriving after the fact
     /// is handed it rather than waiting for the next one.
     private func published(by engine: LayoutEngine) async -> LayoutState? {
         for await state in engine.stream() { return state }

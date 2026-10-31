@@ -79,7 +79,7 @@ final class AStoppedScreenshotsModelReachesNoWorkTests: XCTestCase {
     }
 
     /// Fails against a `stop` that does not end the event task, because the engine's stream stays open and the
-    /// transport keeps its subscriber.
+    /// news keeps its subscriber.
     func testStopLetsTheStreamGo() async throws {
         let scene = try makeScene()
         await grace(0.1)

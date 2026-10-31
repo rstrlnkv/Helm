@@ -93,7 +93,7 @@ final class ARefusedFetchKeepsTheLastCountsTests: XCTestCase {
 
     /// **The disk is read on the first ask and not in `init`.** The two
     /// documents are 850 KB of JSON — 30 ms of parse, measured — and `init`
-    /// runs inside `makeEngine`, which the host calls on the main thread at
+    /// runs inside `makeModule`, which the host calls on the main thread at
     /// launch for every module that is switched on. Reading a file that only
     /// appears after construction is the observable form of that claim.
     func testTheDocumentsAreNotParsedUntilSomebodyAsks() throws {

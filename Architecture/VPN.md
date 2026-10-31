@@ -62,8 +62,8 @@ The defaults key `module.vpn.lastUsedName`, which earlier builds could write, is
 
 `VPNViewModel` is built with the engine by the descriptor's `makeModule` and held by the
 host. It calls the engine through `VPNWork` (`VPNViewModel.swift`), an internal port: `stream()`, `refresh()`, `press(_:on:)` for Connect and Disconnect,
-`measureSpeed(_:)` and `reloadRules()` after the page wrote the rules. There is no command
-enum or handler, so a name that does not exist is a build error. `press` is the person's
+`measureSpeed(_:)` and `reloadRules()` after the page wrote the rules. A name that
+does not exist is a build error. `press` is the person's
 door: it takes a `VPNVerb` through an exhaustive switch and always passes `auto: false`,
 and the rules (`VPNAutoConnectCore`) stay inside the engine, which calls `connect` and
 `disconnect` with `auto: true` itself. The model asks the engine nothing when it is built;
@@ -72,7 +72,7 @@ and the rules (`VPNAutoConnectCore`) stay inside the engine, which calls `connec
 The one thing the engine says to its model is `VPNEngine.StatePayload`, level-triggered,
 through `VPNEngine.stream()` in the shape of Keep Awake's (Architecture/KeepAwake.md § How
 the model reaches the engine): the latest state first, the subscriber registered in the
-one hold of the transport's lock that replays it, one task in the model. The stream adds
+one hold of `EngineNews`'s lock that replays it (`EngineNews.stream`), one task in the model. The stream adds
 no dedup of its own, so the forced re-emission of a refused measurement (`emitState(force:)`,
 which moves no field of the payload and is the only answer that run gives) reaches the
 model's stream (`TheVPNStreamReplaysTheLatestStateTests`), and the model clears its spinner on it.

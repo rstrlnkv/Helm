@@ -13,7 +13,7 @@ import Module_Uninstaller_Engine
 extension TrashedAppLeftovers: Identifiable { public var id: String { appPath } }
 
 /// The one door the host uses. `HelmApp` depends on the UI targets only — a
-/// direct edge to an engine would be "a door past the transport into an engine's
+/// direct edge to an engine would be "a door past the descriptor into an engine's
 /// internals" (Package.swift) — so the host cannot name `TrashedAppLeftovers`
 /// and must not be able to. It hands over the module's model and gets a view or
 /// nothing.

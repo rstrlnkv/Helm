@@ -34,7 +34,7 @@ a new keychain account, because Autopilot's item exists on every Mac that has ru
 module and moving it would read there as "somebody rewrote your rules".
 
 The reads of the rules come from the sweep timer, from file-system events, from the
-transport and from the watch refresh. One lock covers reading, judging against the seal
+model's calls and from the watch refresh. One lock covers reading, judging against the seal
 and recording the judgement; another covers saving payload and seal. Without the second,
 a read landing between the two writes judges new rules against an old seal and calls
 Helm's own work tampering, and unordered, "these are Helm's own rules" lands on top of

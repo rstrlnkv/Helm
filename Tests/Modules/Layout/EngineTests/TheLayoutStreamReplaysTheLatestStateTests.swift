@@ -12,19 +12,19 @@ import HelmTestSupport
 /// takes after `activate()`. The model is built when the module starts and the
 /// engine has already published; a stream that replays nothing leaves the page
 /// drawing the initial «not watching» until the next change, and a subscriber
-/// that is never given back outlives the model that made it (the transport
+/// that is never given back outlives the model that made it (the news
 /// keeps writing into a stream nobody reads). The engine runs its own
-/// `LocalTransport`, passed in, so the count of subscribers is the engine's.
+/// `EngineNews<LayoutState>`, passed in, so the count of subscribers is the engine's.
 @MainActor
 final class TheLayoutStreamReplaysTheLatestStateTests: XCTestCase {
 
-    private func engine(_ tap: FakeTap, transport: LocalTransport) -> LayoutEngine {
+    private func engine(_ tap: FakeTap, news: EngineNews<LayoutState>) -> LayoutEngine {
         LayoutEngine(tap: tap, typing: FakeTyping(), sources: FakeSources(),
                      translation: FakeTranslation(table: [:]), spell: FakeSpell(valid: []),
                      secure: FakeSecure(), activation: FakeActivation(),
                      settings: NamespacedStore(namespace: LayoutEngine.moduleID,
                                                backing: InMemoryKeyValueStore()),
-                     transport: transport)
+                     news: news)
     }
 
     /// Everything one reader was handed, in order.
@@ -42,7 +42,7 @@ final class TheLayoutStreamReplaysTheLatestStateTests: XCTestCase {
 
     func testASubscriberAfterActivationIsHandedTheStateItMissed() async {
         let tap = FakeTap()
-        let engine = engine(tap, transport: LocalTransport())
+        let engine = engine(tap, news: EngineNews())
         engine.activate()
         XCTAssertEqual(tap.starts, 1, "the tap never started, so nothing below is about a replay")
 
@@ -56,7 +56,7 @@ final class TheLayoutStreamReplaysTheLatestStateTests: XCTestCase {
 
     func testLaterStatesArriveInOrder() async {
         let tap = FakeTap()
-        let engine = engine(tap, transport: LocalTransport())
+        let engine = engine(tap, news: EngineNews())
         engine.activate()
         let reader = Reader(engine.stream())
         await waitUntil("the replay") { !reader.states.isEmpty }
@@ -78,15 +78,15 @@ final class TheLayoutStreamReplaysTheLatestStateTests: XCTestCase {
     }
 
     func testEndingTheIterationGivesTheSubscriberBack() async {
-        let transport = LocalTransport()
-        let engine = engine(FakeTap(), transport: transport)
+        let news = EngineNews<LayoutState>()
+        let engine = engine(FakeTap(), news: news)
         engine.activate()
-        XCTAssertEqual(transport.subscriberCount, 0, "precondition: nobody has subscribed")
+        XCTAssertEqual(news.subscriberCount, 0, "precondition: nobody has subscribed")
 
         let reader = Reader(engine.stream())
-        await waitUntil("the stream registers") { transport.subscriberCount == 1 }
+        await waitUntil("the stream registers") { news.subscriberCount == 1 }
         reader.task?.cancel()
-        await waitUntil("the stream is given back") { transport.subscriberCount == 0 }
+        await waitUntil("the stream is given back") { news.subscriberCount == 0 }
         engine.deactivate()
     }
 }

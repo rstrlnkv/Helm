@@ -17,15 +17,16 @@ import Foundation
 /// **The list and the capability are tied by the type system, not by a comment.**
 /// `ScanRunner.scannableModules` is three strings; before this protocol existed
 /// nothing connected them to engines that answer, and the failure mode was
-/// silent in the worst way — a module named in that list without a handler falls
-/// to `default: return Data()`, the caller decodes nothing and reads `nil`, which
+/// silent in the worst way — a module named in that list whose descriptor does not
+/// override the scan falls to the default, which answers `nil`, which the caller reads as what
 /// this codebase spells "the module could not answer". So the coordinator would
 /// wake every minute, spend a day's scan budget per tick, and log one cheerful
 /// line about a module that has never scanned anything.
 ///
 /// Conformance costs an engine nothing it was not already doing, and it lets a
-/// test say both halves: every id in the list answers, and every engine that
-/// answers is in the list.
+/// test say both halves: every id in the list has an engine that can scan, and
+/// every engine that can is in the list. That its descriptor passes the call on
+/// is held by no test.
 public protocol BackgroundScanning {
     func backgroundScan() async -> ScanReport?
 }

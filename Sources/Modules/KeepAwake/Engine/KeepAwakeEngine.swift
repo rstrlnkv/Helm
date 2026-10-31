@@ -34,12 +34,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// `ClamshellCoordinator`.
     private let lid: ClamshellCoordinator
     private let clock: Clock
-    private let localTransport: LocalTransport
-    public let transport: EngineTransport
+    private let news: EngineNews<StatePayload>
 
     public private(set) var isActive = false
     public private(set) var activeConditions: Set<ActiveCondition> = []
-    /// Forwarded, because the wire and the panel have always called it this.
+    /// Forwarded, because the state and the panel have always called it this.
     public var clamshellActive: Bool { lid.active }
     /// macOS was asked to turn sleep off and refused, and the lid row says so —
     /// see `ClamshellCoordinator.refused`.
@@ -57,7 +56,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// Read outside this file as well as inside it, and that is the point: the
     /// flag existed from the first version and was published nowhere, so a Mac
     /// that slept with the rule's app still on screen had no account of itself
-    /// anywhere. One name for it, here and on the wire.
+    /// anywhere. One name for it, here and in the state.
     public private(set) var suppressed = false
     /// The rules whose triggers are true right now — **whether or not they are
     /// being obeyed**, which is what makes this different from
@@ -75,7 +74,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     public private(set) var triggeredConditions: Set<ActiveCondition> = []
     /// The bundle ids of the app rules that are satisfied right now — so the
     /// screen can say *which* app, rather than «App». Ids rather than names:
-    /// the lookup belongs to whoever draws, and names stay off the wire.
+    /// the lookup belongs to whoever draws, and names stay out of the state.
     public private(set) var holdingApps: [String] = []
     /// The battery guard is holding everything down, and nothing this module
     /// does will run until the charge comes back or the charger goes in.
@@ -111,7 +110,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                 pointer: PointerPort,
                 clamshell: ClamshellPort,
                 clock: Clock,
-                transport: LocalTransport = LocalTransport(),
+                news: EngineNews<StatePayload> = EngineNews(),
                 batteryVeto: BatteryVetoChannel? = nil) {
         self.batteryVeto = batteryVeto
         self.settings = settings
@@ -123,8 +122,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         self.apps = apps
         self.pointer = pointer
         self.clock = clock
-        self.localTransport = transport
-        self.transport = transport
+        self.news = news
         self.lid = ClamshellCoordinator(clamshell: clamshell, store: store, settings: settings)
         // After every stored property is set, which is the first moment `self`
         // may be captured. Both are asked at the moment of use rather than read
@@ -699,35 +697,16 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// The state, as a stream: the latest one first, then every later one, in
     /// order.
     ///
-    /// **Registered before this returns, in the one hold of the transport's lock
-    /// that replays what it last said** (`LocalTransport.events`). Reading the
-    /// state and then subscribing is two steps with a window between them — an
-    /// emit that lands there is lost — and registering before the replay hands
-    /// over an older state after a newer one. Nothing here reads the engine's own
-    /// fields for a first element for that reason. State is level-triggered, so a
-    /// model built after `activate()` still starts from the truth.
-    ///
-    /// Synchronous and not actor-isolated, so the model takes it in its own
-    /// synchronous `init`, before its first suspension: no emit can fall between
-    /// the model's construction and its subscription, and the subscriber is
-    /// counted when this returns. The decode runs in the pump, outside the lock. Ending the iteration (the consumer's task cancelled) ends the
-    /// pump, which ends the transport's stream and removes the subscriber.
-    public func stream() -> AsyncStream<StatePayload> {
-        let events = localTransport.events
-        return AsyncStream { continuation in
-            let pump = Task {
-                for await event in events {
-                    guard KeepAwakeEvent(rawValue: event.name) == .state,
-                          let state = try? JSONDecoder().decode(StatePayload.self,
-                                                                from: event.payload)
-                    else { continue }
-                    continuation.yield(state)
-                }
-                continuation.finish()
-            }
-            continuation.onTermination = { _ in pump.cancel() }
-        }
-    }
+    /// **Registered before this returns, in the one hold of the lock that replays
+    /// what was last said** (`EngineNews.stream`): reading the state and then
+    /// subscribing leaves a window an emit falls into, and subscribing before the
+    /// replay hands over an older state after a newer one. Synchronous and not
+    /// actor-isolated, so the model takes it in its own synchronous `init`, before
+    /// its first suspension; the subscriber is counted when this returns. Ending
+    /// the iteration removes the subscriber.
+    public func stream() -> AsyncStream<StatePayload> { news.stream() }
+
+    public var subscriberCount: Int { news.subscriberCount }
 
     private func emitState() {
         let payload = StatePayload(isActive: isActive,
@@ -742,7 +721,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                     batteryStopped: batteryStopped,
                                     lidRefused: lidRefused,
                                     lidGrantRemains: lidGrantRemains)
-        localTransport.emit(KeepAwakeEvent.state, encoding: payload)
+        news.say(payload)
     }
 }
 

@@ -43,7 +43,7 @@ import Module_KeepAwake_Engine
 ///
 /// **Where the transaction comes from, and why it is not `.animation`.** The
 /// state does not change because a button was pressed; it changes when the
-/// engine says so, over the wire, in a published value, so there is no call
+/// engine says so, in a published value, so there is no call
 /// site to wrap in `withAnimation`. The obvious answer is
 /// `.animation(HelmMotion.disclosure, value: state)` on the block — and it does
 /// nothing. Measured in an offscreen window, ink mass in the figure band, 20 ms

@@ -20,7 +20,7 @@ import HelmContract
 /// cannot drift. `UninstallerEngine`'s default store was the seventh and was
 /// argued to be unfixable — engine-side, where the descriptor is out of reach on
 /// purpose, since an engine importing a UI target would be a door past the
-/// transport. The door was the wrong way round: the engine declares `moduleID`
+/// contract. The door was the wrong way round: the engine declares `moduleID`
 /// and the descriptor reads *it*, so nothing has to import upward. The eighth,
 /// `"app"`, stays a literal because it belongs to the host and names no module,
 /// and that is what this first test is for.

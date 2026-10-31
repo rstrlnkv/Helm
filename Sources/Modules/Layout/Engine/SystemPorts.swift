@@ -67,9 +67,8 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
     /// the teardown and the announcement are the same moment.
     private var diedHandler: (@Sendable () -> Void)?
 
-    /// Synchronous readers rather than `await`, for the reason `LocalTransport`
-    /// has them: Swift 6 refuses `NSLock.lock()` across a suspension, and a
-    /// field read on one side of a lock is a field read with no lock at all.
+    /// Synchronous readers rather than `await`, because Swift 6 refuses `NSLock.lock()` across a
+    /// suspension, and a field read on one side of a lock is a field read with no lock at all.
     private var handlers: ((@Sendable (TypingBuffer.Event) -> Void)?,
                            (@Sendable (ModifierTap.Input) -> Void)?) {
         lock.lock(); defer { lock.unlock() }

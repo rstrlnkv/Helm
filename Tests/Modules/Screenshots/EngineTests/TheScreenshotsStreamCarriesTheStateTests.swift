@@ -19,13 +19,13 @@ final class TheScreenshotsStreamCarriesTheStateTests: XCTestCase {
         func add(_ state: ScreenshotsState) { lock.withLock { states.append(state) } }
     }
 
-    private func engine(_ name: String, _ preferences: FakePreferences) -> (ScreenshotsEngine, LocalTransport) {
+    private func engine(_ name: String, _ preferences: FakePreferences) -> (ScreenshotsEngine, EngineNews<ScreenshotsState>) {
         let home = scratchDirectory(name)
         let desktop = home.appendingPathComponent("Desktop", isDirectory: true)
         try? FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
-        let transport = LocalTransport()
+        let news = EngineNews<ScreenshotsState>()
         return (ScreenshotsEngine(preferences: preferences, locations: ScreenshotsLocations(home: home, desktop: desktop),
-                                  transport: transport), transport)
+                                  news: news), news)
     }
 
     private func collect(_ engine: ScreenshotsEngine, into sink: Collected) -> Task<Void, Never> {
@@ -83,13 +83,13 @@ final class TheScreenshotsStreamCarriesTheStateTests: XCTestCase {
 
     @MainActor
     func testTheConsumersCancelLeavesNoSubscriber() async throws {
-        let (engine, transport) = engine("shots-stream-cancel", FakePreferences())
-        XCTAssertEqual(transport.subscriberCount, 0, "the control: nobody subscribed yet")
+        let (engine, news) = engine("shots-stream-cancel", FakePreferences())
+        XCTAssertEqual(news.subscriberCount, 0, "the control: nobody subscribed yet")
         let task = collect(engine, into: Collected())
-        XCTAssertEqual(transport.subscriberCount, 1, "the subscriber is registered before stream() returns")
+        XCTAssertEqual(news.subscriberCount, 1, "the subscriber is registered before stream() returns")
         await grace(0.1)
         task.cancel()
-        for _ in 0..<400 where transport.subscriberCount != 0 { try? await Task.sleep(nanoseconds: 5_000_000) }
-        XCTAssertEqual(transport.subscriberCount, 0, "the consumer went and its subscriber stayed")
+        for _ in 0..<400 where news.subscriberCount != 0 { try? await Task.sleep(nanoseconds: 5_000_000) }
+        XCTAssertEqual(news.subscriberCount, 0, "the consumer went and its subscriber stayed")
     }
 }

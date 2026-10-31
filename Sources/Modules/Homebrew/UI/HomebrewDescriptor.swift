@@ -32,10 +32,6 @@ import Module_Homebrew_Engine
 
     public typealias Model = HomebrewViewModel
 
-    public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
-        productionEngine()
-    }
-
     /// The model is built here, once per enable, so the page reads it and does
     /// not own it: leaving the page does not drop what the lists and
     /// descriptions cost to read. Its init asks the engine for nothing but its
