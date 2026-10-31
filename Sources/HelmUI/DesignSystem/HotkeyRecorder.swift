@@ -211,19 +211,19 @@ public struct HelmHotkeyRow: View {
     static func spoken(_ label: String) -> String {
         label.map { character -> String in
             switch character {
-            case "⌃": return L("Control")
-            case "⌥": return L("Option")
-            case "⇧": return L("Shift")
-            case "⌘": return L("Command")
+            case "⌃": return L(.control)
+            case "⌥": return L(.option)
+            case "⇧": return L(.shift)
+            case "⌘": return L(.command)
             default: return String(character)
             }
         }.joined(separator: ", ")
     }
 
-    private static var pressKeys: String { L("Press keys…") }
-    private static var none: String { L("None") }
-    private static var record: String { L("Set") }
-    private static var cancel: String { L("Cancel") }
-    private static var clear: String { L("Clear") }
-    private static var takenNote: String { L("Another app already uses this combination, so it does nothing here.") }
+    private static var pressKeys: String { L(.pressKeys) }
+    private static var none: String { L(.none) }
+    private static var record: String { L(.set) }
+    private static var cancel: String { L(.cancel) }
+    private static var clear: String { L(.clear) }
+    private static var takenNote: String { L(.takenNote) }
 }

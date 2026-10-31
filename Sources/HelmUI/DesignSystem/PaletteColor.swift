@@ -59,21 +59,21 @@ public enum PaletteColor: String, CaseIterable, Sendable {
     /// swatch the colour itself is the only other signal there is.
     public var label: String {
         switch self {
-        case .white: return L("White")
-        case .red: return L("Red")
-        case .orange: return L("Orange")
-        case .yellow: return L("Yellow")
-        case .green: return L("Green")
-        case .blue: return L("Blue")
+        case .white: return L(.white)
+        case .red: return L(.red)
+        case .orange: return L(.orange)
+        case .yellow: return L(.yellow)
+        case .green: return L(.green)
+        case .blue: return L(.blue)
         // Apple's own word, out of `CalendarFoundation.framework`'s table,
         // which is where Calendar's colour names live: Russian says «Лиловый»
         // where a translator reaching for the dictionary writes «Фиолетовый»,
         // and this app is meant to read like the system.
-        case .purple: return L("Purple")
-        case .brown: return L("Brown")
-        case .mint: return L("Mint")
-        case .cyan: return L("Cyan")
-        case .pink: return L("Pink")
+        case .purple: return L(.purple)
+        case .brown: return L(.brown)
+        case .mint: return L(.mint)
+        case .cyan: return L(.cyan)
+        case .pink: return L(.pink)
         }
     }
 

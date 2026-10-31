@@ -23,7 +23,7 @@ than free. `ShutterRule` (`Sources/Modules/Screenshots/Engine/Logic/ScreenshotsS
 judges the third, and reads an absent or unreadable switch as on. Changing a system shortcut is the person's act in System Settings; Helm
 opens the pane and says which boxes to untick.
 
-Words: `Sources/Modules/Screenshots/UI/Localizable.xcstrings`, `%@` keys (`timerOn`, `nameTemplate`) included; other interpolated ones in inline tables in `ScreenshotsStrings.swift`; shared words through `L()` from the kit.
+Words: `Sources/Modules/Screenshots/UI/Localizable.xcstrings`, `%@` keys (`timerOn`, `nameTemplate`) included; shared words through `HelmWord` from the kit.
 
 ## The overlay
 

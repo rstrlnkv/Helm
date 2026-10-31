@@ -107,6 +107,218 @@
         }
       }
     },
+    "confirmDeleteInUse": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ in den Papierkorb legen? Es ist gerade geladen, und die App, die es installiert hat, kann es neu anlegen. %@ stoppt es jetzt; die Datei zu verschieben nicht."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move %@ to the Trash? It is loaded now, and the app that installed it may put it back. %@ stops it now; moving the file does not."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Trasladar %@ a la papelera? Está cargado ahora y la app que lo instaló podría volver a crearlo. %@ lo detiene ahora; mover el archivo no."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Placer %@ dans la corbeille ? Il est chargé, et l’app qui l’a installé peut le recréer. %@ l’arrête maintenant ; déplacer le fichier, non."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ をゴミ箱に入れますか？現在読み込まれており、インストールしたアプリが再作成する場合があります。今すぐ止めるには %@ を押してください。ファイルを移動しても止まりません。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover %@ para o Lixo? Está carregado agora, e o app que o instalou pode recriá-lo. %@ o interrompe agora; mover o arquivo não."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переместить %@ в Корзину? Этот файл сейчас загружен, и приложение, которое его установило, может создать его заново. %@ остановит его сейчас, а перемещение файла — нет."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将 %@ 移到废纸篓？它当前已加载，安装它的应用可能会重新创建。%@ 会立即停止它；移动文件不会。"
+          }
+        }
+      }
+    },
+    "confirmDeleteUnchecked": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ in den Papierkorb legen? Helm konnte nicht prüfen, ob es noch verwendet wird."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move %@ to the Trash? Helm could not check whether anything still uses it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Trasladar %@ a la papelera? Helm no pudo comprobar si algo lo sigue usando."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Placer %@ dans la corbeille ? Helm n’a pas pu vérifier si quelque chose l’utilise encore."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ をゴミ箱に入れますか？何かがまだ使用しているか、Helm は確認できませんでした。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover %@ para o Lixo? O Helm não conseguiu verificar se algo ainda o usa."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переместить %@ в Корзину? Helm не смог проверить, использует ли его что-нибудь."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将 %@ 移到废纸篓？Helm 无法确认是否还有程序在使用它。"
+          }
+        }
+      }
+    },
+    "confirmDeleteUnreadable": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ in den Papierkorb legen? Helm konnte diese Datei nicht lesen und weiß daher nicht, was sie installiert hat."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move %@ to the Trash? Helm could not read this file, so it cannot tell what installed it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Trasladar %@ a la papelera? Helm no pudo leer este archivo, así que no sabe qué lo instaló."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Placer %@ dans la corbeille ? Helm n’a pas pu lire ce fichier et ne sait donc pas ce qui l’a installé."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ をゴミ箱に入れますか？Helm はこのファイルを読み取れず、何がインストールしたか判断できません。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover %@ para o Lixo? O Helm não conseguiu ler este arquivo, portanto não sabe o que o instalou."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переместить %@ в Корзину? Helm не смог прочитать этот файл и не знает, что его установило."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将 %@ 移到废纸篓？Helm 无法读取此文件，因此无法判断是什么安装了它。"
+          }
+        }
+      }
+    },
+    "couldNotCheck": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm konnte %@ nicht prüfen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm could not check %@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm no pudo comprobar %@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm n’a pas pu vérifier %@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm は%@を確認できませんでした。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Helm não conseguiu verificar %@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm не смог проверить %@."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm 无法检查%@。"
+          }
+        }
+      }
+    },
     "disabled": {
       "extractionState": "manual",
       "localizations": {
@@ -266,6 +478,59 @@
         }
       }
     },
+    "foundLine": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gefunden: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Found: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Encontrado: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trouvé : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "検出：%@"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Encontrado: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Найдено: %@"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找到：%@"
+          }
+        }
+      }
+    },
     "inUse": {
       "extractionState": "manual",
       "localizations": {
@@ -315,6 +580,59 @@
           "stringUnit": {
             "state": "translated",
             "value": "使用中"
+          }
+        }
+      }
+    },
+    "labelClaimedTwice": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine andere Datei beansprucht dieses Anmeldeobjekt: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Another file claims this login item: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otro archivo reclama este elemento de inicio: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un autre fichier revendique cet élément d’ouverture : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別のファイルが同じログイン項目を宣言しています：%@"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Outro arquivo reivindica este item de início: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот объект входа заявлен и в другом файле: %@"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "另一个文件也声明了此登录项：%@"
           }
         }
       }
@@ -531,6 +849,59 @@
         }
       }
     },
+    "missingTarget": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verweist auf eine fehlende Datei: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Points at a missing file: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apunta a un archivo inexistente: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pointe vers un fichier absent : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "存在しないファイルを参照: %@"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aponta para um arquivo ausente: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ссылается на отсутствующий файл: %@"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "指向缺失的文件：%@"
+          }
+        }
+      }
+    },
     "moveToTrashAndAsk": {
       "extractionState": "manual",
       "localizations": {
@@ -580,6 +951,59 @@
           "stringUnit": {
             "state": "translated",
             "value": "移到废纸篓…"
+          }
+        }
+      }
+    },
+    "movedToTrash": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In den Papierkorb gelegt: %@ — %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moved to the Trash: %@ — %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trasladado a la papelera: %@ — %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Placé dans la corbeille : %@ — %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ゴミ箱に入れました：%@・%@"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Movido para o Lixo: %@ — %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перемещено в Корзину: %@ — %@"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移到废纸篓：%@ · %@"
           }
         }
       }
@@ -1008,6 +1432,112 @@
         }
       }
     },
+    "selectedLine": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausgewählt: %@ · %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selected: %@ · %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleccionado: %@ · %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sélection : %@ · %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択：%@・%@"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecionado: %@ · %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбрано: %@ · %@"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已选择：%@ · %@"
+          }
+        }
+      }
+    },
+    "sourceLeadsElsewhere": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm hat diesen Ordner nicht gelesen: Er ist eine Verknüpfung zu %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm did not read this folder: it is a link to %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm no leyó esta carpeta: es un enlace a %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm n’a pas lu ce dossier : c’est un lien vers %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm はこのフォルダを読み取っていません：%@ へのリンクです"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Helm não leu esta pasta: é um link para %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm не прочитал эту папку: это ссылка на %@"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm 未读取此文件夹：它是指向 %@ 的链接"
+          }
+        }
+      }
+    },
     "summary": {
       "extractionState": "manual",
       "localizations": {
@@ -1163,6 +1693,59 @@
           "stringUnit": {
             "state": "translated",
             "value": "关闭"
+          }
+        }
+      }
+    },
+    "uncheckedLine": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ungeprüft: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not checked: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin comprobar: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non vérifié : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未確認：%@"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não verificado: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не проверено: %@"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未检查：%@"
           }
         }
       }

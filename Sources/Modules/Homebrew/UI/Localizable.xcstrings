@@ -266,6 +266,59 @@
         }
       }
     },
+    "brewsOwnReason": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der von Homebrew genannte Grund: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Homebrew’s reason: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El motivo que indica Homebrew: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La raison indiquée par Homebrew : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Homebrew が挙げている理由: %@"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O motivo indicado pelo Homebrew: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Причина, которую называет Homebrew: %@"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Homebrew 给出的理由：%@"
+          }
+        }
+      }
+    },
     "cameAsDependency": {
       "extractionState": "manual",
       "localizations": {
@@ -527,6 +580,112 @@
           "stringUnit": {
             "state": "translated",
             "value": "软件包"
+          }
+        }
+      }
+    },
+    "confirmRunTheFix": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ausführen?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run %@?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Ejecutar %@?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exécuter %@ ?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ を実行しますか？"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Executar %@?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выполнить %@?"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "执行 %@？"
+          }
+        }
+      }
+    },
+    "confirmUninstall": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ deinstallieren?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uninstall %@?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Desinstalar %@?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Désinstaller %@ ?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ をアンインストールしますか？"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desinstalar %@?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить %@?"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卸载 %@？"
           }
         }
       }
@@ -1114,6 +1273,59 @@
         }
       }
     },
+    "findingsCount": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Befunde: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Findings: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Observaciones: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remarques : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 件の項目"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Observações: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Замечаний: %@"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发现 %@ 项"
+          }
+        }
+      }
+    },
     "fixNotRunnable": {
       "extractionState": "manual",
       "localizations": {
@@ -1644,6 +1856,59 @@
         }
       }
     },
+    "installerFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Homebrew-Installationsprogramm wurde mit dem Code %@ beendet. Die letzten Zeilen stehen in der Konsole."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Homebrew’s installer stopped with exit code %@. Its last lines are in the console."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El instalador de Homebrew terminó con el código %@. Sus últimas líneas están en la consola."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le programme d’installation de Homebrew s’est terminé avec le code %@. Ses dernières lignes sont dans la console."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Homebrew のインストーラがコード %@ で終了しました。最後の出力はコンソールに残っています。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O instalador do Homebrew terminou com o código %@. As últimas linhas estão no console."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установщик Homebrew завершился с кодом %@. Последние строки его вывода остались в консоли."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Homebrew 安装脚本以退出码 %@ 结束。最后几行输出保留在控制台中。"
+          }
+        }
+      }
+    },
     "installingHomebrew": {
       "extractionState": "manual",
       "localizations": {
@@ -1693,6 +1958,59 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在安装 Homebrew"
+          }
+        }
+      }
+    },
+    "interruptedAtQuit": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm wurde beendet, während %@ noch lief. Der Vorgang ist womöglich nicht abgeschlossen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm quit while %@ was still running. It may not have finished."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm se cerró mientras %@ seguía en ejecución. Puede que no haya terminado."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm a quitté pendant que %@ était encore en cours. L’opération ne s’est peut-être pas terminée."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ の実行中に Helm が終了しました。完了していない可能性があります。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Helm foi encerrado enquanto %@ ainda estava em execução. A operação pode não ter sido concluída."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm завершил работу, пока выполнялось %@. Операция могла не завершиться."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm 在 %@ 仍在运行时退出。该操作可能未完成。"
           }
         }
       }
@@ -1909,6 +2227,59 @@
         }
       }
     },
+    "notInstalledBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm lädt Homebrews eigenes Installationsprogramm und führt es aus. Sind die %@ noch nicht installiert, installiert macOS sie zuerst in einem eigenen Fenster, und Helm macht weiter, sobald sie bereit sind. Zum Anlegen von /opt/homebrew fragt macOS nach einem Adminpasswort."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm downloads Homebrew’s own installer and runs it. If the %@ are not installed yet, macOS installs them first, in a window of its own, and Helm carries on when they are ready. macOS asks for an administrator password to create /opt/homebrew."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm descarga el instalador oficial de Homebrew y lo ejecuta. Si las %@ aún no están instaladas, macOS las instala primero en su propia ventana y Helm continúa cuando están listas. macOS solicita una contraseña de administración para crear /⁠opt/⁠homebrew."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm télécharge le programme d’installation officiel de Homebrew et l’exécute. Si les %@ ne sont pas encore installés, macOS les installe d’abord dans sa propre fenêtre, puis Helm continue dès qu’ils sont prêts. macOS demande un mot de passe d’administrateur pour créer /opt/homebrew."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm が Homebrew 公式のインストーラをダウンロードして実行します。%@がまだインストールされていない場合は、まず macOS が専用のウインドウでインストールし、準備ができたら Helm が続行します。/opt/homebrew を作るため、macOS が管理者パスワードを求めます。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Helm baixa o instalador oficial do Homebrew e o executa. Se as %@ ainda não estiverem instaladas, o macOS as instala primeiro em uma janela própria, e o Helm continua quando estiverem prontas. O macOS pede uma senha de administrador para criar /opt/homebrew."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm скачает официальный установщик Homebrew и запустит его. Если %@ еще не установлены, macOS сначала установит их в своем окне, а Helm продолжит, когда они будут готовы. Чтобы создать /opt/homebrew, macOS запросит пароль администратора."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm 会下载 Homebrew 官方安装脚本并运行。若尚未安装%@，macOS 会先在自己的窗口中安装，完成后 Helm 会自动继续。为创建 /opt/homebrew，macOS 会要求输入管理员密码。"
+          }
+        }
+      }
+    },
     "notInstalledTitle": {
       "extractionState": "manual",
       "localizations": {
@@ -2121,6 +2492,59 @@
         }
       }
     },
+    "otherVersionLines": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es gibt auch andere Versionslinien: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Other version lines are here too: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "También hay otras líneas de versión: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "D’autres lignes de version existent aussi : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ほかのバージョン系列もあります: %@"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Também existem outras linhas de versão: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рядом есть другие линии: %@"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还有其他版本线：%@"
+          }
+        }
+      }
+    },
     "packageNotes": {
       "extractionState": "manual",
       "localizations": {
@@ -2223,6 +2647,112 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在读取软件包列表…"
+          }
+        }
+      }
+    },
+    "packagesStatus": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pakete: %@ · Updates: %@ · Casks: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Packages: %@ · Updates: %@ · Casks: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paquetes: %@ · actualizaciones: %@ · casks: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paquets : %@ · mises à jour : %@ · casks : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "パッケージ %@・更新 %@・cask %@"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pacotes: %@ · atualizações: %@ · casks: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пакетов: %@ · Обновлений: %@ · Пакетов cask: %@"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "软件包 %@ · 更新 %@ · cask %@"
+          }
+        }
+      }
+    },
+    "packagesStatusNoUpdates": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pakete: %@ · Casks: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Packages: %@ · Casks: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paquetes: %@ · casks: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paquets : %@ · casks : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "パッケージ %@・cask %@"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pacotes: %@ · casks: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пакетов: %@ · Пакетов cask: %@"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "软件包 %@ · cask %@"
           }
         }
       }
@@ -4135,6 +4665,218 @@
         }
       }
     },
+    "toolsArrivedConsole": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die %@ sind installiert. Homebrew wird weiter installiert."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The %@ are installed. Continuing with Homebrew."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las %@ están instaladas. Continuando con Homebrew."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les %@ sont installés. Suite de l’installation de Homebrew."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@がインストールされました。Homebrew のインストールを続けます。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As %@ estão instaladas. Continuando com o Homebrew."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установлены %@. Продолжаем установку Homebrew."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已安装%@。继续安装 Homebrew。"
+          }
+        }
+      }
+    },
+    "toolsNotInstalled": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die %@ wurden nicht installiert, daher wurde auch Homebrew nicht installiert."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The %@ were not installed, so Homebrew was not installed either."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las %@ no se instalaron, así que Homebrew tampoco se instaló."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les %@ n’ont pas été installés, donc Homebrew ne l’a pas été non plus."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@がインストールされなかったため、Homebrew もインストールされませんでした。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As %@ não foram instaladas, então o Homebrew também não foi instalado."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Homebrew не установлен, потому что не установлены %@."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未安装%@，因此 Homebrew 也没有安装。"
+          }
+        }
+      }
+    },
+    "toolsWaitStoppedConsole": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm wartet nicht mehr und macht nicht von selbst weiter. Wähle zum Fortfahren erneut %@."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm stopped waiting and will not go on by itself. To continue, choose %@ again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm dejó de esperar y no continuará por sí solo. Para continuar, elige %@ de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm a cessé d’attendre et ne continuera pas seul. Pour continuer, choisissez à nouveau %@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm は待機をやめました。自動では続行しません。続けるには、もう一度%@を選択してください。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Helm parou de esperar e não continuará sozinho. Para continuar, escolha %@ novamente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm перестал ждать и сам не продолжит. Чтобы продолжить, снова выберите %@."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm 已停止等待，不会自动继续。要继续，请再次选取%@。"
+          }
+        }
+      }
+    },
+    "toolsWaitingConsole": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Homebrew benötigt die %@. macOS zeigt dafür ein eigenes Installationsfenster. Wähle darin %@. Das Fenster kann hinter diesem liegen. Helm macht selbstständig weiter, sobald sie installiert sind."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Homebrew needs the %@. macOS is showing its own installer window for them. Choose %@ there. The window may be behind this one. Helm carries on by itself once they are installed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Homebrew necesita las %@. macOS muestra su propia ventana de instalación. Elige %@ en ella. La ventana puede estar detrás de esta. Helm continuará solo cuando estén instaladas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Homebrew a besoin des %@. macOS affiche sa propre fenêtre d’installation. Choisissez %@ dans cette fenêtre. Elle peut se trouver derrière celle-ci. Helm continuera seul une fois les outils installés."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Homebrew には%@が必要です。macOS が専用のインストールウインドウを表示します。そこで%@を選択してください。ウインドウはこのウインドウの後ろにある場合があります。インストールが終わると、Helm が自動で続行します。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Homebrew precisa das %@. O macOS mostra a própria janela de instalação. Escolha %@ nela. A janela pode estar atrás desta. O Helm continua sozinho quando elas estiverem instaladas."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Homebrew нужны %@. macOS показывает свое окно установки. Выберите в нем %@. Окно может оказаться за этим окном. Helm продолжит сам, когда они будут установлены."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Homebrew 需要%@。macOS 会显示自己的安装窗口。请在其中选取%@。该窗口可能在此窗口后面。安装完成后，Helm 会自动继续。"
+          }
+        }
+      }
+    },
     "uninstall": {
       "extractionState": "manual",
       "localizations": {
@@ -4502,6 +5244,112 @@
           "stringUnit": {
             "state": "translated",
             "value": "全部升级"
+          }
+        }
+      }
+    },
+    "useInstead": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stattdessen sollte %@ verwendet werden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use %@ instead."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En su lugar conviene usar %@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il vaut mieux utiliser %@ à la place."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "代わりに %@ を使ってください。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Em vez dele, convém usar %@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вместо него стоит взять %@."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请改用 %@。"
+          }
+        }
+      }
+    },
+    "waitingForTools": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warten auf die %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting for the %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esperando las %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En attente des %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を待機中"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aguardando as %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ждем %@"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在等待%@"
           }
         }
       }

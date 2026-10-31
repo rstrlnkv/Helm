@@ -84,7 +84,7 @@ yields and announces no firing (`AStoppedVPNModelReachesNoWorkTests`,
 switched on, so the panel tile and the menu-bar ring keep following the tunnel with
 Settings closed.
 
-Words: `Sources/Modules/VPN/UI/Localizable.xcstrings`; interpolated ones in inline tables in `VPNStrings.swift`; shared words through `L()` from the kit.
+Words: `Sources/Modules/VPN/UI/Localizable.xcstrings`; shared words through `HelmWord` from the kit.
 
 ## The states of the VPN page
 

@@ -5,8 +5,8 @@ import Module_KeepAwake_Engine
 
 /// Localized strings for the Keep Awake module UI. English is the base; the
 /// module's `Localizable.xcstrings` carries all eight languages, and the
-/// few words other modules share stay in the kit's `.lproj` tables, read
-/// through `L("…")`, because a catalog's symbols are internal to its target.
+/// few words other modules share are `HelmWord`'s, because a catalog's symbols
+/// are internal to its target.
 enum KAStr {
     static var moduleName: String {
         L(.keepAwake)
@@ -40,12 +40,12 @@ enum KAStr {
     /// (Clock.app `Localizable.loctable`, key `TIMER`) and what this file
     /// already said two labels down — so one page carried both words. German
     /// and Brazilian Portuguese genuinely say `Timer` in the same table.
-    static var timer: String { L("Timer") }
+    static var timer: String { HelmWord.timer }
     static var start: String {
         L(.start)
     }
     static var stop: String {
-        L("Stop")
+        HelmWord.stop
     }
     /// Single-letter units for the narrow preset pills ("15 м", "1 ч").
     static var minutesUnitShort: String {
@@ -90,7 +90,7 @@ enum KAStr {
     static func condition(_ condition: ActiveCondition) -> String {
         switch condition {
         case .manual: return L(.manual)
-        case .timer: return L("Timer")
+        case .timer: return HelmWord.timer
         case .externalDisplay: return L(.externalDisplay)
         case .power: return L(.onPower)
         case .app: return L(.app)
@@ -198,7 +198,7 @@ enum KAStr {
         .sorted()
         .joined(separator: " · ")
     }
-    static var appsSection: String { L("Apps") }
+    static var appsSection: String { HelmWord.apps }
     static func triggerCondition(_ condition: AppTrigger.Condition) -> String {
         switch condition {
         case .always: return L(.always)
@@ -242,15 +242,12 @@ enum KAStr {
         // Every other language says "Every minute" rather than "Every 1 min",
         // and the stepper starts at one, so Russian was reading «Каждую 1 мин»
         // in the state the setting opens in.
-        let ru = n == 1 ? "Каждую минуту"
-                        : "Кажд" + Plural.russian(n, "ую", "ые", "ые") + " \(n) мин"
-        return L(n == 1 ? "Every minute" : "Every \(n) min",
-                 [.ru: ru,
-                  .es: n == 1 ? "Cada minuto" : "Cada \(n) min",
-                  .fr: n == 1 ? "Chaque minute" : "Toutes les \(n) min",
-                  .de: n == 1 ? "Jede Minute" : "Alle \(n) Min.",
-                  .ja: "\(n)分ごと", .zh: n == 1 ? "每分钟" : "每 \(n) 分钟",
-                  .pt: n == 1 ? "A cada minuto" : "A cada \(n) min"])
+        if n == 1 { return L(.everyMinute) }
+        // Russian alone has a word that changes with the figure (21, 31 … take
+        // the singular's «Каждую»); the other seven carry the same text under
+        // both keys.
+        return Plural.form(n, language: AppLanguage.current.rawValue) == .one
+            ? L(.everyMinutesOne(String(n))) : L(.everyMinutes(String(n)))
     }
     static var defaultDuration: String { L(.defaultDuration) }
     static var oneHour: String { L(.oneHour) }
@@ -302,12 +299,7 @@ enum KAStr {
     /// checks against. `HelmDates.timeOfDay` writes it in the app's language,
     /// not the system's.
     static func timerUntil(_ end: Date) -> String {
-        let time = HelmDates.timeOfDay(end)
-        return L("Timer until \(time)",
-                 [.ru: "Таймер до \(time)", .es: "Temporizador hasta las \(time)",
-                  .fr: "Minuteur jusqu’à \(time)", .de: "Timer bis \(time)",
-                  .ja: "\(time) までのタイマー", .zh: "计时至 \(time)",
-                  .pt: "Temporizador até \(time)"])
+        L(.timerUntil(HelmDates.timeOfDay(end)))
     }
     /// The second half of that line: what is still holding the Mac when the
     /// countdown reaches zero.
@@ -318,8 +310,8 @@ enum KAStr {
     /// power keeps it awake», German a capitalised noun with no article,
     /// French «ensuite c\u{2019}est écran externe qui le maintient». The
     /// interpolation is what made it ungrammatical in five languages at once —
-    /// and interpolation is also what forced the inline tables. Written whole,
-    /// each of the three is a symbol in the module's catalog.
+    /// and interpolation is what made it ungrammatical. Written whole, each of
+    /// the three is a symbol in the module's catalog.
     static func thenHeldBy(_ condition: ActiveCondition) -> String {
         switch condition {
         case .externalDisplay: return L(.thenDisplayKeeps)
@@ -551,10 +543,7 @@ enum KAStr {
     /// ru, de, fr and es put a no-break space there, while pt-BR joins (143
     /// joined, 0 spaced) and ja and zh join as a matter of course. English joins.
     static func atPercentOrLess(_ n: Int) -> String {
-        L("at \(n)% or less",
-          [.ru: "при \(n)\u{00A0}% и ниже", .es: "al \(n)\u{00A0}% o menos",
-           .fr: "à \(n)\u{00A0}% ou moins", .de: "bei \(n)\u{00A0}% oder weniger",
-           .ja: "\(n)% 以下", .zh: "\(n)% 及以下", .pt: "em \(n)% ou menos"])
+        L(.atPercentOrLess(String(n)))
     }
 
     /// The battery guard has everything stopped, said where there is room to say
@@ -580,15 +569,7 @@ enum KAStr {
     /// the sentence the system notification carries when nobody is at the
     /// screen (`batteryVetoNotice`).
     static func stoppedByBattery(_ percent: Int) -> String {
-        let at = atPercentOrLess(percent)
-        return L("The battery guard stops sessions \(at) — plug in",
-                 [.ru: "Защита аккумулятора не дает начать сеанс \(at) — нужно подключить сетевой адаптер",
-                  .es: "La protección de batería detiene las sesiones \(at) — conecta el Mac a la corriente",
-                  .fr: "La protection de batterie arrête les sessions \(at) — branchez le Mac sur secteur",
-                  .de: "Der Batterieschutz stoppt Sitzungen \(at) — schließe das Netzteil an",
-                  .ja: "バッテリー保護により\(at)ではセッションを開始できません。電源に接続してください",
-                  .zh: "电量保护会在\(at)时停止会话，请接入电源",
-                  .pt: "A proteção de bateria interrompe as sessões \(at) — conecte o Mac a uma fonte de alimentação"])
+        L(.stoppedByBattery(atPercentOrLess(percent)))
     }
 
     /// The same sentence again, for the one surface the person is not looking at.
@@ -615,12 +596,8 @@ enum KAStr {
     /// row's note is 11 pt secondary copy under a title, and the way out belongs
     /// in the banner above it rather than repeated on three rows.
     static func stoppedByBatteryShort(_ percent: Int) -> String {
-        let at = atPercentOrLess(percent)
-        return L("Stopped \(at)",
-                 [.ru: "Остановлено \(at)", .es: "Detenido \(at)", .fr: "Arrêté \(at)",
-                  .de: "\(belowPercent(percent)) gestoppt",
-                  .ja: "\(at)で停止", .zh: "\(at)时停止",
-                  .pt: "Parado \(at)"])
+        // German alone puts the phrase first, so it takes the one with its first letter raised.
+        L(.stoppedByBatteryShort(AppLanguage.current == .de ? belowPercent(percent) : atPercentOrLess(percent)))
     }
     static var resume: String { L(.resume) }
     static var turnOffLowBattery: String { L(.stopOnLowBattery) }
@@ -629,15 +606,15 @@ enum KAStr {
     ///
     /// Raised rather than written out again: the five cased languages of the
     /// eight all differ from `atPercentOrLess` in exactly that character, and ja
-    /// and zh open on the figure, where the operation is a no-op. A second table
-    /// here is how the two came to disagree about the operator once already.
+    /// and zh open on the figure, where the operation is a no-op. A second
+    /// catalog entry is how the two came to disagree about the operator once already.
     static func belowPercent(_ n: Int) -> String {
         let at = atPercentOrLess(n)
         return at.prefix(1).uppercased() + at.dropFirst()
     }
     static var activeIconColor: String { L(.activeIconColour) }
     static var ringColorNote: String { L(.activeIconColourHint) }
-    static var addApp: String { L("Add app…") }
+    static var addApp: String { HelmWord.addApp }
     static var ringTimer: String { L(.countdownRing) }
     static var ringTimerNote: String { L(.countdownRingHint) }
     static var showTimerText: String { L(.showRemainingTime) }

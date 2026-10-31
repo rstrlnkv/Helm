@@ -108,7 +108,7 @@ public enum AppPicker {
     /// without acting on their behalf still take `choose()`.
     @MainActor public static func chooseApps() -> [(bundleID: String, url: URL)] {
         let panel = NSOpenPanel()
-        panel.title = L("Choose apps")
+        panel.title = L(.chooseApps)
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
         panel.allowedContentTypes = [.application]
         panel.allowsMultipleSelection = true

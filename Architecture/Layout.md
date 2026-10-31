@@ -29,7 +29,7 @@ cancels before the engine's `deactivate()` (`TheLayoutStreamReplaysTheLatestStat
 `ASwitchedOffModuleLetsItsSubscriberGoTests`). The model lives as long as the module is
 switched on, so the panel tile keeps counting with Settings closed.
 
-Words: `Sources/Modules/Layout/UI/Localizable.xcstrings`; interpolated ones in inline tables in `LayoutStrings.swift`; shared words through `L()` from the kit.
+Words: `Sources/Modules/Layout/UI/Localizable.xcstrings`; shared words through `HelmWord` from the kit.
 
 Announcements are not on the stream. `LayoutAnnouncement` is an edge said once, at the
 moment it happens, over `AnnouncePort`; a replaying stream would say the last one again

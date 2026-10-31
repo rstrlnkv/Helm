@@ -1,5 +1,3 @@
-// Inline tables are one language per line; this file needs no line-length waiver.
-
 import Foundation
 import HelmUI
 import Module_VPN_Engine
@@ -50,24 +48,14 @@ enum VPNStr {
     /// English and are not written for a person, so they go in the log and the
     /// fact comes here.
     ///
-    /// **The marks are `Quoted`'s, not this table's.** Every row wrote its own
-    /// pair and four of them wrote the wrong one — `«…»` in English, Spanish and
-    /// Portuguese, `「…」` in Japanese — against a ruling that already exists in
-    /// `HelmUI` with macOS's own counts behind it. An interpolated name cannot
-    /// reach the `.lproj` files, so the table stays; the punctuation does not
-    /// have to be part of it.
+    /// **The marks are `Quoted`'s, not the catalog's.** The name reaches the
+    /// value already wrapped in its language's own pair, so no row spells one
+    /// and the pair has a single ruling, in `HelmUI`, with macOS's own counts
+    /// behind it.
     static func failureNoSuchService(_ name: String,
                                      language: AppLanguage = AppLanguage.current) -> String {
         let it = Quoted(name, language: language)
-        return L("\(it) is no longer in System Settings",
-                 [.ru: "\(it) больше нет в Системных настройках",
-                  .es: "\(it) ya no está en Ajustes del Sistema",
-                  .fr: "\(it) n\u{2019}est plus dans les Réglages Système",
-                  .de: "\(it) ist nicht mehr in den Systemeinstellungen",
-                  .ja: "\(it)はシステム設定にありません",
-                  .zh: "\(it)已不在系统设置中",
-                  .pt: "\(it) não está mais nos Ajustes do Sistema"],
-                 language: language)
+        return L(.failureNoSuchService(it), language: language)
     }
     /// **Two sentences, because a refusal has a verb.** «Refused to connect»
     /// for a `--nc stop` the tool would not perform tells the person who asked
@@ -84,25 +72,9 @@ enum VPNStr {
         let it = Quoted(name, language: language)
         switch verb {
         case .connect:
-            return L("macOS refused to connect \(it) — the log has what it said",
-                     [.ru: "macOS отказалась подключить \(it) — что именно, записано в журнале",
-                      .es: "macOS se negó a conectar \(it); lo que dijo está en el registro",
-                      .fr: "macOS a refusé de connecter \(it)\u{00A0}: le journal a sa réponse",
-                      .de: "macOS hat \(it) nicht verbunden — was es sagte, steht im Protokoll",
-                      .ja: "macOS が\(it)の接続を拒否しました。内容はログにあります",
-                      .zh: "macOS 拒绝连接\(it)——具体原因见日志",
-                      .pt: "o macOS recusou conectar \(it) — o que ele disse está no registro"],
-                     language: language)
+            return L(.failureRefusedConnect(it), language: language)
         case .disconnect:
-            return L("macOS refused to disconnect \(it) — the log has what it said",
-                     [.ru: "macOS отказалась отключить \(it) — что именно, записано в журнале",
-                      .es: "macOS se negó a desconectar \(it); lo que dijo está en el registro",
-                      .fr: "macOS a refusé de déconnecter \(it)\u{00A0}: le journal a sa réponse",
-                      .de: "macOS hat \(it) nicht getrennt — was es sagte, steht im Protokoll",
-                      .ja: "macOS が\(it)の切断を拒否しました。内容はログにあります",
-                      .zh: "macOS 拒绝断开\(it)——具体原因见日志",
-                      .pt: "o macOS recusou desconectar \(it) — o que ele disse está no registro"],
-                     language: language)
+            return L(.failureRefusedDisconnect(it), language: language)
         }
     }
 
@@ -145,15 +117,7 @@ enum VPNStr {
                                   language: AppLanguage = AppLanguage.current) -> String {
         let it = Quoted(name, language: language)
         let press = cardWord(.connect, language: language)
-        return L("Press \(press) once for \(it) — a rule cannot unlock its stored secret",
-                 [.ru: "Для \(it) нужно один раз нажать «\(press)» — правилу сохраненный ключ недоступен",
-                  .es: "Pulsa “\(press)” una vez en \(it): una regla no puede acceder a su clave guardada",
-                  .fr: "Appuyez une fois sur «\u{00A0}\(press)\u{00A0}» pour \(it)\u{00A0}: une règle ne peut pas accéder à sa clé enregistrée",
-                  .de: "Drücke einmal „\(press)“ für \(it) — eine Regel kann den gespeicherten Schlüssel nicht abrufen",
-                  .ja: "\(it)で一度“\(press)”を押してください。ルールでは保存された鍵を読み出せません",
-                  .zh: "请为\(it)按一次“\(press)”——规则无法取用已保存的密钥",
-                  .pt: "Clique em “\(press)” uma vez para \(it) — uma regra não consegue acessar a chave salva"],
-                 language: language)
+        return L(.secretNeedsAPress(press, it), language: language)
     }
 
     /// The word on a card, from the engine's own table — the one place this
@@ -174,7 +138,7 @@ enum VPNStr {
         switch word {
         case .connect: return L(.connect, language: language)
         case .disconnect: return L(.disconnect, language: language)
-        case .cancel: return L("Cancel", language: language)
+        case .cancel: return HelmWord.cancel(language: language)
         }
     }
 
@@ -192,15 +156,7 @@ enum VPNStr {
     static func showAllConnections(_ total: Int,
                                    language: AppLanguage = AppLanguage.current) -> String {
         let n = Count(total, language: language)
-        return L("Show all (\(n))",
-                 [.ru: "Показать все (\(n))",
-                  .es: "Mostrar todas (\(n))",
-                  .fr: "Tout afficher (\(n))",
-                  .de: "Alle anzeigen (\(n))",
-                  .ja: "すべて表示（\(n)）",
-                  .zh: "显示全部（\(n)）",
-                  .pt: "Mostrar todas (\(n))"],
-                 language: language)
+        return L(.showAllConnections(n), language: language)
     }
     /// The same button, pressed. No count: it is the row above that changes,
     /// and the number is on screen in cards.
@@ -216,29 +172,13 @@ enum VPNStr {
     /// The left door on a card, and the title of what it opens.
     static func rulesFor(_ vpn: String, language: AppLanguage = AppLanguage.current) -> String {
         let it = Quoted(vpn, language: language)
-        return L("Rules for \(it)",
-                 [.ru: "Правила для \(it)",
-                  .es: "Reglas de \(it)",
-                  .fr: "Règles de \(it)",
-                  .de: "Regeln für \(it)",
-                  .ja: "\(it) の規則",
-                  .zh: "\(it) 的规则",
-                  .pt: "Regras de \(it)"],
-                 language: language)
+        return L(.rulesFor(it), language: language)
     }
     /// The right door, and its popover's title. «About», not «for»: these are
     /// settings about what Helm says, not rules the configuration obeys.
     static func noticesFor(_ vpn: String, language: AppLanguage = AppLanguage.current) -> String {
         let it = Quoted(vpn, language: language)
-        return L("Messages about \(it)",
-                 [.ru: "Сообщения о \(it)",
-                  .es: "Mensajes sobre \(it)",
-                  .fr: "Messages à propos de \(it)",
-                  .de: "Meldungen zu \(it)",
-                  .ja: "\(it) についての通知",
-                  .zh: "关于 \(it) 的消息",
-                  .pt: "Mensagens sobre \(it)"],
-                 language: language)
+        return L(.noticesFor(it), language: language)
     }
     /// The left door when nothing points at this configuration yet.
     static var noRulesYet: String { L(.noRules) }
@@ -246,15 +186,7 @@ enum VPNStr {
     /// once, under the grid, because those rules have no card to be on.
     static func orphanedRules(_ n: Int, language: AppLanguage = AppLanguage.current) -> String {
         let count = Count(n, language: language)
-        return L("\(count) rules point at a VPN that is no longer in System Settings",
-                 [.ru: "Правил, указывающих на VPN, которого больше нет в Системных настройках: \(count)",
-                  .es: "\(count) reglas apuntan a una VPN que ya no está en Ajustes del Sistema",
-                  .fr: "\(count) règles visent une VPN qui n\u{2019}est plus dans les Réglages Système",
-                  .de: "\(count) Regeln zeigen auf ein VPN, das nicht mehr in den Systemeinstellungen ist",
-                  .ja: "システム設定にない VPN を指す規則が \(count) 件あります",
-                  .zh: "有 \(count) 条规则指向已不在系统设置中的 VPN",
-                  .pt: "\(count) regras apontam para uma VPN que já não está nos Ajustes do Sistema"],
-                 language: language)
+        return L(.orphanedRules(count), language: language)
     }
     /// Under the two picture questions in the notices popover. The one sentence
     /// a person needs about the change of model: these are this configuration's,
@@ -299,7 +231,7 @@ enum VPNStr {
         }
     }
     static var addApp: String {
-        L("Add app…")
+        HelmWord.addApp
     }
 
     /// The five words on a card's second line — macOS's own, out of the table
@@ -309,7 +241,7 @@ enum VPNStr {
     /// *Verbindung trennen* with an unbreakable space before the ellipsis.
     ///
     /// `Connected` and `Disconnected` are read here and on the banner
-    /// (`automationBannerTitle`) — one English key for one state, so the two
+    /// (`automationBannerTitle`) — one English text for one state, so the two
     /// surfaces cannot come to spell it differently.
     static func status(_ s: VPNStatus) -> String {
         switch s {
@@ -431,37 +363,13 @@ enum VPNStr {
                                      language: AppLanguage = AppLanguage.current) -> String {
         switch kind {
         case .connected:
-            return L("\(name) is connected",
-                     [.ru: "\(name) подключен",
-                   .es: "\(name) está conectado",
-                   .fr: "\(name) est connecté",
-                   .de: "„\(name)“ ist verbunden",
-                   .ja: "\(name)は接続されています",
-                   .zh: "\(name)已连接",
-                   .pt: "\(name) está conectado"],
-                     language: language)
+            return L(.automationBannerConnected(name), language: language)
         case .disconnected:
-            return L("\(name) is not connected",
-                     [.ru: "\(name) не подключен",
-                   .es: "\(name) no está conectado",
-                   .fr: "\(name) n’est pas connecté",
-                   .de: "„\(name)“ ist nicht verbunden",
-                   .ja: "\(name)は接続されていません",
-                   .zh: "\(name)未连接",
-                   .pt: "\(name) não está conectado"],
-                     language: language)
+            return L(.automationBannerDisconnected(name), language: language)
         case .dropped:
             // «оборвался», not «отключился»: the other row's news is
             // «отключается», and the pair must not be crossed.
-            return L("\(name) went down on its own",
-                     [.ru: "\(name) оборвался сам",
-                   .es: "\(name) se desconectó por sí solo",
-                   .fr: "\(name) s’est déconnecté tout seul",
-                   .de: "„\(name)“ wurde von selbst getrennt",
-                   .ja: "\(name)が自動的に切断されました",
-                   .zh: "\(name)已自行断开",
-                   .pt: "\(name) caiu sozinho"],
-                     language: language)
+            return L(.automationBannerDropped(name), language: language)
         }
     }
 

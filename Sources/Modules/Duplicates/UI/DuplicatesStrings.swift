@@ -1,6 +1,3 @@
-// Every inline table is wrapped, one language per line; the English key, which is
-// never split, is one line.
-
 import Foundation
 import HelmRuntime
 import HelmUI
@@ -17,10 +14,10 @@ enum DupStr {
     /// the sentence does not ask for one again.
     static var startHintWithFolder: String { L(.helmWillReadThisFolder) }
     static var needsAccess: String { L(.withoutFullDiskAccess) }
-    static var stop: String { L("Stop scan") }
+    static var stop: String { HelmWord.stopScan }
     /// "Basket" appears nowhere on screen in any language — the bar above these
     /// controls is headed "To remove".
-    static var basketContents: String { L("Show what is marked for removal") }
+    static var basketContents: String { HelmWord.showWhatIsMarkedForRemoval }
     /// `HelmBasket` in HelmUI: Disk draws the same bar, so its two lines are
     /// built in one place.
     static func basketLine(_ count: Int, _ size: String) -> String {
@@ -29,9 +26,9 @@ enum DupStr {
     static func basketItem(_ name: String, _ size: String) -> String {
         HelmBasket.item(name: name, size: size)
     }
-    static var moveToTrash: String { L("Move to Trash") }
-    static var systemItem: String { L("System") }
-    static var reveal: String { L("Show in Finder") }
+    static var moveToTrash: String { HelmWord.moveToTrash }
+    static var systemItem: String { HelmWord.system }
+    static var reveal: String { HelmWord.showInFinder }
     static var quickLook: String { L(.quickLook) }
     /// `HelmBasket.movedToTrash`: Disk, Duplicates and the Uninstaller end a removal on one sentence; Leftovers counts the rows as well (`LfStr.movedToTrash`).
     static func movedToTrash(_ size: String) -> String {
@@ -85,15 +82,7 @@ enum DupStr {
     static func progressLine(_ done: Int, _ total: Int,
                              language: AppLanguage = AppLanguage.current) -> String {
         let (a, b) = (Count(done, language: language), Count(total, language: language))
-        return L("\(a) of \(b) checks done",
-                 [.ru: "Проверок сделано: \(a) из \(b)",
-                  .es: "\(a) de \(b) comprobaciones hechas",
-                  .fr: "\(a) vérifications sur \(b)",
-                  .de: "\(a) von \(b) Prüfungen erledigt",
-                  .ja: "\(b) 件中 \(a) 件を確認済み",
-                  .zh: "已完成 \(a) / \(b) 项检查",
-                  .pt: "\(a) de \(b) verificações feitas"],
-                 language: language)
+        return L(.progressLine(a, b), language: language)
     }
     /// Takes the language, as `found` above does and for the same reason: the
     /// suite runs in this machine's language, so a sentence that reads
@@ -124,15 +113,7 @@ enum DupStr {
     }
     static func couldNotRead(_ n: Int, language: AppLanguage = AppLanguage.current) -> String {
         let items = Plural.items(n, language: language.rawValue)
-        return L("Helm could not read \(items), so the answer is incomplete.",
-                 [.ru: "Helm не смог прочитать \(items), поэтому ответ неполный.",
-                  .es: "Helm no pudo leer \(items), por lo que la respuesta está incompleta.",
-                  .fr: "Helm n’a pas pu lire \(items), la réponse est donc incomplète.",
-                  .de: "Helm konnte \(items) nicht lesen, die Antwort ist daher unvollständig.",
-                  .ja: "Helm は\(items)を読み取れなかったため、この結果は完全ではありません。",
-                  .zh: "Helm 无法读取\(items)，因此这不是完整的结果。",
-                  .pt: "O Helm não conseguiu ler \(items), portanto a resposta está incompleta."],
-                 language: language)
+        return L(.couldNotRead(items), language: language)
     }
     /// No count, on purpose: the walk cannot see a library macOS already knows
     /// as a package, so any figure it quoted would be short — and a number that
@@ -155,15 +136,7 @@ enum DupStr {
                       language: AppLanguage = AppLanguage.current) -> String {
         let n = Count(groups, language: language)
         let tail = onceEmptied(wasted, language: language)
-        return L("Groups: \(n) · \(tail)",
-                 [.ru: "Групп: \(n) · \(tail)",
-                  .es: "Grupos: \(n) · \(tail)",
-                  .fr: "Groupes\u{00A0}: \(n) · \(tail)",
-                  .de: "Gruppen: \(n) · \(tail)",
-                  .ja: "\(n) グループ・\(tail)",
-                  .zh: "\(n) 组 · \(tail)",
-                  .pt: "Grupos: \(n) · \(tail)"],
-                 language: language)
+        return L(.found(n, tail), language: language)
     }
     /// «\(size) once the Trash is emptied» — the tail of `found` above, on its
     /// own for the group headers: each group says what removing its extras
@@ -171,15 +144,7 @@ enum DupStr {
     /// tail is how `movedToTrash` drifted.
     static func onceEmptied(_ size: String,
                             language: AppLanguage = AppLanguage.current) -> String {
-        L("\(size) once the Trash is emptied",
-          [.ru: "\(size) после очистки Корзины",
-           .es: "\(size) al vaciar la papelera",
-           .fr: "\(size) après avoir vidé la corbeille",
-           .de: "\(size) nach dem Leeren des Papierkorbs",
-           .ja: "ゴミ箱を空にすると \(size)",
-           .zh: "清倒废纸篓后 \(size)",
-           .pt: "\(size) ao esvaziar o Lixo"],
-          language: language)
+        L(.onceEmptied(size), language: language)
     }
     static var keep: String { L(.stays) }
     /// The badge on a row whose survivor the person chose. Two words in a pill,
@@ -225,7 +190,7 @@ enum DupStr {
     }
     /// One key used to label two different actions: a group button meaning
     /// "mark this group's extras" and a row checkbox meaning "mark this copy".
-    /// One English key means one thing.
+    /// One English text means one thing.
     static var markRow: String { L(.markForRemoval) }
     static var markGroupExtras: String { L(.markTheExtraCopies) }
     /// Not "Select all", which invites exactly the reading this module
@@ -235,7 +200,7 @@ enum DupStr {
     /// **Not «Clear selection».** That key is Leftovers' and the Uninstaller's,
     /// where a checkbox is a selection; here a copy is *marked* for removal, and
     /// the module says «Mark…» everywhere else. Its own key pairs «Снять
-    /// отметки» with the three «Отметить…» buttons. One English key, one meaning.
+    /// отметки» with the three «Отметить…» buttons. One English text, one meaning.
     static var clearBasket: String { L(.clearTheMarks) }
 
     // MARK: - What an extra copy is
@@ -273,8 +238,8 @@ enum DupStr {
     /// Russian preposition produces. `Quoted` is the house's marks per language,
     /// French's unbreakable spaces and all.
     ///
-    /// Interpolated, so the table is inline — the lookup happens after the names
-    /// are already in the string.
+    /// The names go in as arguments of the catalog's `theOneInTransit`, already
+    /// quoted, so the word order around them is the catalog's.
     private static func theOneInTransit(language: AppLanguage) -> String {
         let folders = TransitFolders.named.map { path in
             SystemFolderNames.display(path: path, home: NSHomeDirectory(),
@@ -286,15 +251,7 @@ enum DupStr {
         let (downloads, desktop) = (folders.first ?? "Downloads",
                                     folders.dropFirst().first ?? "Desktop")
         let (dl, dk) = (Quoted(downloads, language: language), Quoted(desktop, language: language))
-        return L("the one in \(dl) or \(dk)",
-                 [.ru: "та, что в папке \(dl) или \(dk)",
-                  .es: "la que está en \(dl) o \(dk)",
-                  .fr: "celle dans \(dl) ou \(dk)",
-                  .de: "die in \(dl) oder \(dk)",
-                  .ja: "\(dl)または\(dk)にあるもの",
-                  .zh: "位于\(dl)或\(dk)中的那份",
-                  .pt: "a que está em \(dl) ou \(dk)"],
-                 language: language)
+        return L(.theOneInTransit(dl, dk), language: language)
     }
 
     // MARK: - What the last press did to the marks
@@ -308,15 +265,7 @@ enum DupStr {
     /// what was unmarked is on the screen the sentence is under.
     static func unmarkedSurvivors(_ count: Int,
                                   language: AppLanguage = AppLanguage.current) -> String {
-        L("Unmarked: \(count) — those copies stay now",
-          [.ru: "Снято отметок: \(count) — эти копии теперь остаются",
-           .es: "Desmarcados: \(count) — esas copias ahora se conservan",
-           .fr: "Décochés\u{00A0}: \(count) — ces copies sont désormais conservées",
-           .de: "Markierung entfernt: \(count) – diese Kopien bleiben jetzt",
-           .ja: "選択を解除: \(count) — これらのコピーは残ります",
-           .zh: "已取消勾选：\(count) — 这些副本现在会保留",
-           .pt: "Desmarcados: \(count) — essas cópias agora ficam"],
-          language: language)
+        L(.unmarkedSurvivors(String(count)), language: language)
     }
 
     /// Copies «Mark every extra copy» passed over: paths outside what Helm may
@@ -329,16 +278,8 @@ enum DupStr {
     static func skippedNotRemovable(_ count: Int,
                                     language: AppLanguage = AppLanguage.current) -> String {
         let files = Plural.files(count, language: language.rawValue)
-        return L("Skipped: \(files) — Helm may not remove those",
-                 [.ru: "Пропущено: \(files) — их нельзя удалить",
-                  .es: "Omitidos: \(files) — Helm no puede eliminarlos",
-                  .fr: "Ignorés\u{00A0}: \(files) — Helm n’a pas le droit de les supprimer",
-                  .de: "Übersprungen: \(files) – die darf Helm nicht entfernen",
-                  .ja: "スキップ: \(files) — Helm はこれらを削除できません",
-                  .zh: "已跳过：\(files) — Helm 不能移除它们",
-                  .pt: "Ignorados: \(files) — o Helm não pode removê-los"],
-                 language: language)
+        return L(.skippedNotRemovable(files), language: language)
     }
-    static var cancel: String { L("Cancel") }
-    static var close: String { L("Close") }
+    static var cancel: String { HelmWord.cancel }
+    static var close: String { HelmWord.close }
 }

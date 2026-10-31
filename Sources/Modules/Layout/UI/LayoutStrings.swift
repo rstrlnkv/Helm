@@ -1,6 +1,3 @@
-// Every inline table is wrapped, one language per line; the English key, which is
-// never split, is one line.
-
 import HelmRuntime
 import HelmUI
 import Module_Layout_Engine
@@ -25,7 +22,7 @@ enum LyStr {
     static var exceptionsHint: String {
         L(.theseAreLeftExactlyAsYou)
     }
-    static var addApp: String { L("Add app…") }
+    static var addApp: String { HelmWord.addApp }
     static var ruleOn: String { L(.fix) }
     static var ruleOff: String { L(.dontFix) }
     /// The layout picker's «leave it alone» value, and the first one offered.
@@ -45,8 +42,8 @@ enum LyStr {
     /// what five of the seven translations call the *Shortcuts app*:
     /// `Kurzbefehle`, `Raccourcis`, `Atajos`, `Atalhos`, `ショートカット`.
     /// Russian was already right, because in Russian the compound is the
-    /// ordinary name — which is why one English key fixes all five.
-    static var shortcuts: String { L("Keyboard shortcuts") }
+    /// ordinary name — which is why one English text fixes all five.
+    static var shortcuts: String { HelmWord.keyboardShortcuts }
     static var apps: String { L(.rulesForSpecificApps) }
     /// One caption for the list, and it explains the rows above it rather than
     /// describing a rule the page keeps invisible.
@@ -112,30 +109,18 @@ enum LyStr {
     /// spelling both with `tourTitle` drew «How it works [How it works]», the
     /// only `HelmSettingRow` in `Sources/Modules` with a button in its trailing
     /// slot repeating its own label.
-    static var showTour: String { L("Show") }
+    static var showTour: String { HelmWord.show }
 
-    /// The lists window's way out. Other modules spell `L("Done")` for
-    /// themselves (`command grep -rl 'L("Done")' Sources/Modules`) — a string this many screens draw belongs in `HelmUI`, and
-    /// moving it is a sweep of its own rather than a line in a module's polish.
-    static var listsDone: String { L("Done") }
+    /// The lists window's way out: the kit's word, which every module that draws a «Done» reads.
+    static var listsDone: String { HelmWord.done }
 
     static var tourTitle: String { L(.howItWorks) }
-    static var tourBack: String { L("Back") }
-    static var tourNext: String { L("Next") }
-    /// «2 of 4». Interpolated, so it keeps its own table.
+    static var tourBack: String { HelmWord.back }
+    static var tourNext: String { HelmWord.next }
+    /// «2 of 4». Its own catalog key, because Japanese and Chinese do not say it as a fraction: `%@ / %@` and `第%@步，共%@步`.
     static func tourStep(_ index: Int, of total: Int,
                          language: AppLanguage = AppLanguage.current) -> String {
-        L("\(index) of \(total)",
-          [.ru: "\(index) из \(total)",
-           .es: "\(index) de \(total)",
-           .fr: "\(index) sur \(total)",
-           .de: "\(index) von \(total)",
-           .pt: "\(index) de \(total)",
-           // `\(total)分の\(index)` is the *fraction* — «one quarter» —
-           // and not a step counter at all.
-           .ja: "\(index) / \(total)",
-           .zh: "第\(index)步，共\(total)步"],
-          language: language)
+        L(.tourStep(String(index), String(total)), language: language)
     }
     static var tourWhatTitle: String { L(.whatItDoes) }
     static var tourSwitchesTitle: String { L(.whatYouCanSwitchOn) }
@@ -261,19 +246,9 @@ enum LyStr {
     /// it: the `Show palette class IM` template (`TextInputMenuCore.bundle`)
     /// around the palette's own name — so the sentence cannot drift from the
     /// palette it opens, the same construction as `VPNStr.secretNeedsAPress`.
-    /// Interpolated, so the template keeps its own table.
+    /// Interpolated, so the template is a catalog key.
     static func showEmojiPanel(language: AppLanguage = AppLanguage.current) -> String {
-        let name = L(.emojiAndSymbols, language: language)
-        let table: [AppLanguage: String] = [
-            .ru: "Показать панель «\(name)»",
-            .es: "Mostrar \(name)",
-            .fr: "Afficher \(name)",
-            .de: "\(name) einblenden",
-            .ja: "\(name)を表示",
-            .zh: "显示\(name)",
-            .pt: "Mostrar \(name)",
-        ]
-        return language == .en ? "Show \(name)" : table[language] ?? "Show \(name)"
+        L(.showEmojiPanel(L(.emojiAndSymbols, language: language)), language: language)
     }
     /// The window's own title. Not «Settings» and not the module's name — the
     /// window holds two lists and says so, because a window titled «Keyboard»
@@ -290,18 +265,12 @@ enum LyStr {
     static func exceptionsRow(_ count: Int,
                               language: AppLanguage = AppLanguage.current) -> String {
         guard count > 0 else { return L(.noWordsYet, language: language) }
-        let table: [AppLanguage: String] = [
-            .ru: Plural.russian(count, "слово", "слова", "слов"),
-            .es: count == 1 ? "palabra" : "palabras",
-            .fr: count <= 1 ? "mot" : "mots",
-            .de: count == 1 ? "Wort" : "Wörter",
-            .pt: count == 1 ? "palavra" : "palavras",
-            .ja: "\(count)語",
-            .zh: "\(count)个词",
-        ]
-        let english = count == 1 ? "word" : "words"
-        guard language != .en, let counted = table[language] else { return "\(count) " + english }
-        return language == .ja || language == .zh ? counted : "\(count) " + counted
+        let figure = String(count)
+        switch Plural.form(count, language: language.rawValue) {
+        case .one: return L(.exceptionsRowOne(figure), language: language)
+        case .few: return L(.exceptionsRowFew(figure), language: language)
+        case .many: return L(.exceptionsRowMany(figure), language: language)
+        }
     }
 
     static func appsRow(_ count: Int,
@@ -316,25 +285,15 @@ enum LyStr {
     /// disappears the moment there is a value to read, so it cannot be the only
     /// thing naming the field.
     static var exceptionPrompt: String { L(.aWordToLeaveAlone) }
-    static var addException: String { L("Add") }
+    static var addException: String { L(.add) }
     static var audible: String { L(.playASoundWhenAWord) }
     /// Built from the current binding, never spelled by hand — the same
     /// construction as `VPNStr.secretNeedsAPress`, so the sentence cannot
     /// drift from the control it names. `gesture` is the tap key's name or
     /// the recorded chord's label; «press» covers both where «tap» does not.
-    /// Interpolated, so it keeps its own table.
+    /// Interpolated: a catalog key, the argument a `%@`.
     static func undoHint(gesture: String, language: AppLanguage = AppLanguage.current) -> String {
-        let table: [AppLanguage: String] = [
-            .ru: "Отменяется повторным нажатием «\(gesture)» — до того, как набрано что-то еще, в том приложении, где это произошло.",
-            .es: "Para deshacerlo, pulsa \(gesture) otra vez antes de escribir nada más, en la app donde ocurrió.",
-            .fr: "Pour annuler, appuyez de nouveau sur \(gesture) avant de taper autre chose, dans l’app où c’est arrivé.",
-            .de: "Zum Widerrufen \(gesture) erneut drücken, bevor du etwas anderes tippst, in der App, in der es passiert ist.",
-            .pt: "Para desfazer, pressione \(gesture) novamente antes de digitar mais nada, no app em que aconteceu.",
-            .ja: "元に戻すには、何か入力する前に、同じアプリで \(gesture) をもう一度押してください。",
-            .zh: "要撤销，请在继续输入之前，在发生更改的应用中再按一次 \(gesture)。",
-        ]
-        let english = "Undo it by pressing \(gesture) again — before you type anything else, in the app it happened in."
-        return language == .en ? english : table[language] ?? english
+        L(.undoHint(gesture), language: language)
     }
     /// The honest line for the state the old hint lied about: no tap key and
     /// no chord means no undo exists, and a sentence promising one described
@@ -385,17 +344,11 @@ enum LyStr {
     /// caption. Both spellings come from here so they cannot drift apart.
     static func wordsPutRight(count: Int,
                               language: AppLanguage = AppLanguage.current) -> String {
-        let table: [AppLanguage: String] = [
-            .ru: Plural.russian(count, "слово исправлено", "слова исправлены", "слов исправлено"),
-            .es: count == 1 ? "palabra corregida" : "palabras corregidas",
-            .fr: count <= 1 ? "mot corrigé" : "mots corrigés",
-            .de: count == 1 ? "Wort korrigiert" : "Wörter korrigiert",
-            .pt: count == 1 ? "palavra corrigida" : "palavras corrigidas",
-            .ja: "語を修正",
-            .zh: "个词已修正",
-        ]
-        let english = count == 1 ? "word put right" : "words put right"
-        return language == .en ? english : table[language] ?? english
+        switch Plural.form(count, language: language.rawValue) {
+        case .one: return L(.wordsPutRightOne, language: language)
+        case .few: return L(.wordsPutRightFew, language: language)
+        case .many: return L(.wordsPutRightMany, language: language)
+        }
     }
 
 
@@ -414,23 +367,13 @@ enum LyStr {
     /// cannot decide for itself here», not «this does not work here». The two
     /// read very differently to somebody who has just switched a language on.
     ///
-    /// Interpolated, so it keeps its own table. The names come from
+    /// Interpolated: a catalog key, the layouts a `%@`. The names come from
     /// `InputSourceInfo`, which is macOS's own name for the layout — the same
     /// rule as the pane names: read the system's spelling rather than invent
     /// one.
     static func noDictionary(layouts: String,
                              language: AppLanguage = AppLanguage.current) -> String {
-        let table: [AppLanguage: String] = [
-            .ru: "macOS не дает словаря для \(layouts), поэтому сам Helm на этой раскладке ничего не решает. Исправление клавишей работает.",
-            .es: "macOS no tiene diccionario para \(layouts), así que Helm no decide por su cuenta en esa distribución. La corrección con la tecla sigue funcionando.",
-            .fr: "macOS ne fournit pas de dictionnaire pour \(layouts)\u{00A0}: Helm ne décide donc rien de lui-même sur cette disposition. La correction à la touche fonctionne toujours.",
-            .de: "macOS hat kein Wörterbuch für \(layouts), deshalb entscheidet Helm auf dieser Belegung nichts von selbst. Die Korrektur per Taste funktioniert weiterhin.",
-            .pt: "O macOS não tem dicionário para \(layouts), então o Helm não decide sozinho nesse leiaute. A correção pela tecla continua funcionando.",
-            .ja: "macOS には \(layouts) の辞書がないため、Helm はこのレイアウトで自分から判断しません。キーによる修正は使えます。",
-            .zh: "macOS 没有 \(layouts) 的词典，所以 Helm 不会在该布局上自行判断。按键修正仍然可用。",
-        ]
-        let english = "macOS has no dictionary for \(layouts), so Helm decides nothing by itself on that layout. Fixing with the key still works."
-        return language == .en ? english : table[language] ?? english
+        L(.noDictionary(layouts), language: language)
     }
 
     /// The last change, read rather than seen.
@@ -442,19 +385,11 @@ enum LyStr {
     /// second mismatch: the caption above says «Последняя замена» and this said
     /// «Исправлено», two nouns for one event two stops apart.
     ///
-    /// Interpolated, so it keeps its own table.
+    /// Interpolated: a catalog key, the argument a `%@`. Not remembered by `L`: the pair is typed
+    /// text, and the engine forgets it with `forgetTheWord`.
     static func pairRead(before: String, after: String,
                          language: AppLanguage = AppLanguage.current) -> String {
-        let table: [AppLanguage: String] = [
-            .ru: "Было \(before), стало \(after)",
-            .es: "Antes \(before), ahora \(after)",
-            .fr: "Avant \(before), maintenant \(after)",
-            .de: "Vorher \(before), jetzt \(after)",
-            .pt: "Antes \(before), agora \(after)",
-            .ja: "\(before) を \(after) に修正しました",
-            .zh: "已将 \(before) 修正为 \(after)",
-        ]
-        return table[language] ?? "Was \(before), now \(after)"
+        L(.pairRead(before, after), language: language, remembered: false)
     }
 
     /// The fortnight's total, spelled as each language spells a counted noun.
@@ -490,53 +425,23 @@ enum LyStr {
     /// with nothing in it. Both figures, because the total answers «is this
     /// worth anything» and today's answers «is it still happening».
     ///
-    /// Interpolated, so it keeps its own table.
+    /// Interpolated: a catalog key, the argument a `%@`.
     static func fortnightSummary(total: Int, today: Int,
                                  language: AppLanguage = AppLanguage.current) -> String {
-        let words = wordsCounted(total, language: language)
-        let now = Count(today, language: language)
-        let table: [AppLanguage: String] = [
-            .ru: "Последние четырнадцать дней: \(words), из них сегодня \(now)",
-            .es: "Últimos catorce días: \(words), hoy \(now)",
-            .fr: "Quatorze derniers jours\u{00A0}: \(words), aujourd\u{2019}hui \(now)",
-            .de: "Letzte vierzehn Tage: \(words), heute \(now)",
-            .pt: "Últimos catorze dias: \(words), hoje \(now)",
-            .ja: "過去14日間：\(words)、本日 \(now)語",
-            .zh: "过去十四天：\(words)，今天 \(now)个",
-        ]
-        return table[language] ?? "Last fourteen days: \(words), \(now) of them today"
+        L(.fortnightSummary(wordsCounted(total, language: language), Count(today, language: language)),
+          language: language)
     }
 
     /// What a VoiceOver reader hears when a word is rewritten in the app they
     /// are typing in. The words themselves are in it — an announcement is
-    /// spoken and gone, the one channel with the same lifetime as the memory
-    /// the module keeps them in. The undo tail rides only when an undo gesture
-    /// actually exists. Interpolated, so it keeps its own table.
+    /// spoken and gone, so it is not remembered by `L` either: nothing outlives the engine's
+    /// own forgetting. The undo tail rides only when an undo gesture
+    /// actually exists. Interpolated: a catalog key, the arguments `%@`.
     static func fixedAnnouncement(before: String, after: String, undoable: Bool,
                                   language: AppLanguage = AppLanguage.current) -> String {
-        let fixed: [AppLanguage: String] = [
-            .en: "Fixed: \(before) → \(after).",
-            .ru: "Исправлено: \(before) → \(after).",
-            .es: "Corregido: \(before) → \(after).",
-            .fr: "Corrigé\u{00A0}: \(before) → \(after).",
-            .de: "Korrigiert: \(before) → \(after).",
-            .pt: "Corrigido: \(before) → \(after).",
-            .ja: "修正しました：\(before) → \(after)。",
-            .zh: "已修正：\(before) → \(after)。",
-        ]
-        let tail: [AppLanguage: String] = [
-            .en: "Tap the key again to undo, before you type anything else.",
-            .ru: "Отменяется повторным нажатием клавиши — до того, как набрано что-то еще.",
-            .es: "Pulsa la tecla otra vez antes de escribir nada más para deshacer.",
-            .fr: "Appuyez de nouveau sur la touche avant de taper autre chose pour annuler.",
-            .de: "Taste erneut antippen, bevor du etwas anderes tippst, um zu widerrufen.",
-            .pt: "Toque na tecla novamente antes de digitar mais nada para desfazer.",
-            .ja: "何か入力する前にもう一度キーを押すと元に戻せます。",
-            .zh: "在继续输入之前再按一次该键即可撤销。",
-        ]
-        let head = fixed[language] ?? fixed[.en] ?? ""
-        guard undoable, let more = tail[language] ?? tail[.en] else { return head }
-        return sentences(head, more, language: language)
+        let head = L(.fixedAnnouncement(before, after), language: language, remembered: false)
+        guard undoable else { return head }
+        return sentences(head, L(.fixedAnnouncementUndo, language: language), language: language)
     }
 
     /// Two sentences joined the way the language joins them: the CJK pair runs

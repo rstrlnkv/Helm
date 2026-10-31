@@ -1,12 +1,12 @@
 import Foundation
 import HelmRuntime
 
-/// Supported UI languages. English is the base (source strings live at the call
-/// site); the others come from per-string tables.
+/// Supported UI languages. English is the base; every string catalog holds the
+/// other seven beside it.
 ///
-/// The `.lproj` directories are named by the raw values (`zh`, `pt`), not by
-/// `zh-Hans` or `pt-BR`, because Helm picks the language itself rather than
-/// leaving it to the system's resolution.
+/// The catalogs' language codes are the raw values (`zh`, `pt`), not `zh-Hans`
+/// or `pt-BR`, because Helm picks the language itself rather than leaving it to
+/// the system's resolution.
 public enum AppLanguage: String, CaseIterable, Sendable {
     case en, zh, es, fr, de, ja, ru, pt
 
@@ -99,34 +99,6 @@ public enum AppLanguage: String, CaseIterable, Sendable {
     }
 }
 
-/// Localize a base (English) string, read out of `Resources/<lang>.lproj/
-/// Localizable.strings` with the English itself as the key. Usage:
-/// `L("Keep Awake")`.
-///
-/// The optional table is for the handful of call sites Swift interpolation
-/// keeps out of a `.strings` file — interpolation runs before the lookup, so
-/// `L("Step \(step) of \(total)")` would look for the literal key "Step 3 of
-/// 10". Where a table is given, it wins outright and the `.lproj` files are
-/// never consulted; where it is empty (the default, and the ordinary case),
-/// the lookup goes to `Localized`.
-public func L(_ english: String, _ table: [AppLanguage: String] = [:]) -> String {
-    L(english, table, language: AppLanguage.current)
-}
-
-/// The same, for a language named outright.
-///
-/// The suite runs in this machine's language, so a test that reads
-/// `AppLanguage.current` checks English eight times — `Quoted` and
-/// `HelmConfirm.trash` both take the language for exactly this reason, and each
-/// had to spell the lookup out again to do it.
-public func L(_ english: String, _ table: [AppLanguage: String] = [:],
-              language: AppLanguage) -> String {
-    guard table.isEmpty else {
-        return language == .en ? english : table[language] ?? english
-    }
-    return Localized.string(english, language: language)
-}
-
 /// A word from a module's own catalog, in the app's language.
 ///
 /// `String(localized:)` alone answers in the language macOS resolves for the
@@ -140,28 +112,31 @@ public func L(_ english: String, _ table: [AppLanguage: String] = [:],
 /// does not. A word drawn in a view body is paid per frame at the
 /// system's price, so each answer is kept by what identifies it — key, table,
 /// bundle, arguments and language — and only an answer not kept pays.
+///
+/// **`remembered: false` for a word that holds somebody's typed text.** The memo keeps the
+/// arguments with the answer and forgets only by count, so a word typed into a field would outlive
+/// whatever the owner of that text does to forget it. Such a word pays the system's price on every
+/// ask and leaves nothing behind.
 public func L(_ resource: LocalizedStringResource,
-              language: AppLanguage = AppLanguage.current) -> String {
+              language: AppLanguage = AppLanguage.current,
+              remembered: Bool = true) -> String {
     var resource = resource
     resource.locale = Locale(identifier: language.rawValue)
-    return ResourceAnswers.shared.string(for: resource)
+    return remembered ? ResourceAnswers.shared.string(for: resource) : String(localized: resource)
 }
 
 /// The answers `L(_:language:)` has given, bounded because a resource that
 /// carries arguments is a new entry for every value it is asked with.
 ///
 /// A `LocalizedStringResource` is not `Hashable`, and its arguments can be read
-/// only by describing `defaultValue`, which is far dearer than the search it
-/// would replace, so the dictionary is keyed by what is cheap — key, table,
-/// language — and each
-/// such family keeps a short list of `(resource, answer)` that the resource's
-/// own `==` searches. That `==` also compares the bundle and the arguments, so
-/// the same key in two catalogs (`summary`, `upToDate`) stays two answers.
+/// only by describing `defaultValue`, so the dictionary is keyed by what is
+/// plain to read — key, table, language — and each such family keeps a short
+/// list of `(resource, answer)` that the resource's own `==` searches. That `==`
+/// also compares the bundle and the arguments, so the same key in two catalogs
+/// (`summary`, `upToDate`) stays two answers.
 ///
-/// **Why the list is short.** Hashing only the visible part puts every value of
-/// one template in one hash bucket; a key hashing only that part made a hit a
-/// walk through all of them by `==`, which grows with the number of
-/// distinct arguments and ends dearer than not remembering at all. A family
+/// **Why the list is short.** The visible part puts every value of one template
+/// in one family, so a hit is a search by `==` through all of them. A family
 /// holds at most `perFamily` answers and the oldest is replaced, so a hit costs
 /// at most that many comparisons and a miss twice that, whatever the arguments
 /// are. Above `perFamily` values of one template in turn every ask misses, and
@@ -212,51 +187,6 @@ private final class ResourceAnswers: @unchecked Sendable {
         }
         answers[family] = list
         return text
-    }
-}
-
-/// The `.lproj` tables themselves: one sub-bundle per language, loaded from
-/// `Bundle.module` and cached — the same reasoning `AppLanguage.current`
-/// already carried one level up, one bundle per language rather than one per
-/// row of a hovered list.
-///
-/// Not `NSLocalizedString`: that hands the language to the system's own bundle
-/// resolution, which would answer `Locale.preferredLanguages` again rather than
-/// `AppLanguage.current`, and has no way to ask about a language other than the
-/// running one — which every localization test in this suite needs to do.
-enum Localized {
-    /// English is the key, and English is also what a missing bundle or a
-    /// missing key falls back to — so a table that never made it out of the
-    /// migration reads as untranslated English rather than a crash.
-    static func string(_ key: String, language: AppLanguage) -> String {
-        guard language != .en else { return key }
-        return table(for: language)[key] ?? key
-    }
-
-    /// The path to a language's `Localizable.strings`, so a test can read the
-    /// shipped table as data — `Bundle.module` inside a test target resolves to
-    /// the test's own bundle, not `HelmUI`'s, so this is the only way a test
-    /// outside this module can see what actually ships.
-    static func stringsFile(for language: AppLanguage) -> URL? {
-        Bundle.module
-            .url(forResource: language.rawValue, withExtension: "lproj")?
-            .appendingPathComponent("Localizable.strings")
-    }
-
-    private static let cache = LockedMemo<AppLanguage, [String: String]>()
-
-    private static func table(for language: AppLanguage) -> [String: String] {
-        cache.value(for: language) { load(language) }
-    }
-
-    private static func load(_ language: AppLanguage) -> [String: String] {
-        guard let bundleURL = Bundle.module.url(forResource: language.rawValue,
-                                                withExtension: "lproj"),
-              let bundle = Bundle(url: bundleURL),
-              let path = bundle.path(forResource: "Localizable", ofType: "strings"),
-              let dict = NSDictionary(contentsOfFile: path) as? [String: String]
-        else { return [:] }
-        return dict
     }
 }
 

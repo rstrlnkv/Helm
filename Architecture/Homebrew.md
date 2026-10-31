@@ -43,7 +43,7 @@ reaches the model through its own task, and where the page's first body falls ag
 the page draws first, it shows the install screen until the news or `readStatus` lands. It only
 seeds `status`: once the engine's own reading has answered, a later seed is ignored, because that reading carries what the seed cannot (`interruptedOp`).
 
-Words: `Sources/Modules/Homebrew/UI/Localizable.xcstrings`; interpolated ones in inline tables in `HomebrewStrings.swift`; shared words through `L()` from the kit.
+Words: `Sources/Modules/Homebrew/UI/Localizable.xcstrings`; shared words through `HelmWord` from the kit.
 
 ## Operations
 

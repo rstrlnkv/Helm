@@ -33,7 +33,7 @@ comment, not on a page.
 | plumbing two modules both want | `Sources/HelmRuntime/` |
 | a string or a control two modules both draw | `Sources/HelmUI/` |
 | a token — surface, motion, colour, radius | `Sources/HelmUI/DesignSystem/` |
-| the translations of the kit's shared words | `Sources/HelmUI/Resources/` |
+| the translations of the kit's shared words | `Sources/HelmUI/` |
 | the host's words, the changelog's entries and their translations | `Sources/HelmAppStrings/` |
 | the window, panel, status item, settings | `Sources/HelmApp/` |
 | plumbing a test target wants | `Tests/Support/` |
@@ -82,7 +82,7 @@ One page per module, in the order `ls Sources/Modules` prints.
 - [Running applications](Architecture/RunningApplications.md) — why the running and frontmost applications are read on the main thread only, and the snapshot every other thread gets.
 - [Background scans](Architecture/BackgroundScans.md) — the modules that can measure unattended and how the list and the capability are tied together.
 - [Diagnostics log](Architecture/DiagnosticsLog.md) — the log file and its policy, the activity registry, the memory trail and the log pane; § The activity registry, § The memory trail, § The log pane.
-- [Localization](Architecture/Localization.md) — the English key, the eight tables and the modules' own catalogs, the guards that watch them, and the helpers that keep the language the app's own.
+- [Localization](Architecture/Localization.md) — each catalog and its keys (`HelmRuntime`'s counted nouns stay in Swift), the shared words, the lookup and its memo, the guards that watch them, and the helpers that keep the language the app's own.
 - [State and lifetime](Architecture/StateAndLifetime.md) — what outlives a page or a thing it points at, and a value read back whole; § State that outlives a page and ends with its module, § An observer outlives the thing it points at, § A value read back whole.
 - [Stored settings](Architecture/StoredSettings.md) — a stored value nobody else may write, and a number that came from a file; § Sealed settings, § A number that came from a file.
 - [Design system](Architecture/DesignSystem.md) — what `Sources/HelmUI/DesignSystem/` holds and the rules for its tokens, surfaces, ladders, type, ink, motion and the showcase; § Tokens, § Surfaces, § Ladders, § Type, § Ink and contrast, § Own look over system behaviour, § What a page may use, § Motion, § The visual language, § Widths, § The showcase, § Apple's rules in three grades.

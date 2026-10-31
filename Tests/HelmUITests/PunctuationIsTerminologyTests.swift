@@ -20,21 +20,18 @@ import HelmTestSupport
 /// and the corner brackets stay seeded below because no language's `Quoted`
 /// produces them, so nothing else would put them in the union.
 ///
-/// Both predicates below also read every inline table (CLAUDE.md's one
-/// exception to "every string lives in `.lproj`") — a French value written at
-/// a call site is still a French value, and the mark and spacing rules do not
-/// know or care which file it came out of.
+/// Both predicates below read every catalog through `ModuleCatalogs` — the kit's, each module's, the
+/// host's and the changelog's: a value is judged by its marks and its spaces, and does not know or care
+/// which file it came out of. There is no inline table left to read.
 final class PunctuationIsTerminologyTests: XCTestCase {
 
-    private func table(for language: AppLanguage) throws -> [String: String] {
-        let path = try XCTUnwrap(Localized.stringsFile(for: language)?.path,
-                                 "no Localizable.strings for \(language.rawValue)")
-        let dict = try XCTUnwrap(NSDictionary(contentsOfFile: path) as? [String: String],
-                                 "\(language.rawValue).lproj did not parse")
-        XCTAssertGreaterThan(dict.count, 100, "\(language.rawValue).lproj carries almost nothing")
-        // The kit's table, and every module's catalog keyed by its English text — a module's words
-        // are judged by the same loop, since a quotation mark does not care which file it sits in.
-        return dict.merging(try ModuleCatalogs.tableByEnglish(for: language)) { kit, _ in kit }
+    /// Every symbol's value in `language`, named `Module.symbol` — one entry per symbol, so two symbols
+    /// that share a placeholder-bearing English are both judged.
+    private func values(for language: AppLanguage) throws -> [(name: String, value: String)] {
+        let entries = try ModuleCatalogs.entries(for: language)
+        XCTAssertGreaterThan(entries.count, 1000, "\(language.rawValue): \(entries.count) value(s) — the catalogs were not read")
+        XCTAssertTrue(entries.contains { $0.module == "HelmUI" }, "the kit's catalog was not read")
+        return entries.map { ($0.name, $0.value) }
     }
 
     /// A language's own marks, asked of `Quoted` rather than written down here.
@@ -48,8 +45,7 @@ final class PunctuationIsTerminologyTests: XCTestCase {
         Set(Quoted("", language: language).filter { !$0.isWhitespace })
     }
 
-    /// Every mark `text` carries that is not among `language`'s own — the
-    /// predicate both the `.lproj` test and the inline-table test apply.
+    /// Every mark `text` carries that is not among `language`'s own.
     private func foreignMarks(in text: String, language: AppLanguage,
                               every: Set<Character>) -> Set<Character> {
         let foreign = every.subtracting(marks(of: language))
@@ -66,9 +62,9 @@ final class PunctuationIsTerminologyTests: XCTestCase {
         let every = everyMark
         var offenders: [(AppLanguage, Character, String)] = []
         for language in AppLanguage.allCases {
-            for (key, value) in try table(for: language) {
+            for (name, value) in try values(for: language) {
                 for mark in foreignMarks(in: value, language: language, every: every) {
-                    offenders.append((language, mark, key))
+                    offenders.append((language, mark, name))
                 }
             }
         }
@@ -76,37 +72,6 @@ final class PunctuationIsTerminologyTests: XCTestCase {
                       "\(offenders.count) value(s) quote with a mark their language does not use:\n"
                       + offenders
                         .map { "  \($0.0.rawValue) \($0.1) in \"\($0.2.prefix(60))…\"" }
-                        .sorted()
-                        .joined(separator: "\n"))
-    }
-
-    /// The same rule read off every inline table's literals instead of the
-    /// `.lproj` files — the key, when there is one, stands in as `.en` because
-    /// it is the same English the `.lproj` test reads as a value elsewhere.
-    func testNoInlineTableQuotesWithAnotherLanguagesMarks() throws {
-        let every = everyMark
-        let tables = try InlineTables.tables(under: "Sources")
-        XCTAssertGreaterThanOrEqual(tables.count, InlineTables.floor,
-                                    "only \(tables.count) table(s) found — InlineTables is not reading Sources")
-        var offenders: [(String, AppLanguage, Character, String)] = []
-        for table in tables {
-            if let key = table.key {
-                for mark in foreignMarks(in: key, language: .en, every: every) {
-                    offenders.append((table.path, .en, mark, key))
-                }
-            }
-            for row in table.rows {
-                for literal in row.literals {
-                    for mark in foreignMarks(in: literal.value, language: row.language, every: every) {
-                        offenders.append(("\(table.path):\(row.line)", row.language, mark, literal.value))
-                    }
-                }
-            }
-        }
-        XCTAssertTrue(offenders.isEmpty,
-                      "\(offenders.count) inline value(s) quote with a mark their language does not use:\n"
-                      + offenders
-                        .map { "  \($0.0) \($0.1.rawValue) \($0.2) in \"\($0.3.prefix(60))…\"" }
                         .sorted()
                         .joined(separator: "\n"))
     }
@@ -147,9 +112,9 @@ final class PunctuationIsTerminologyTests: XCTestCase {
 
     func testFrenchSpacesItsPunctuationTheWayMacOSDoes() throws {
         var offenders: [String] = []
-        for (key, value) in try table(for: .fr) {
+        for (name, value) in try values(for: .fr) {
             for offence in frenchSpacingOffences(in: value) {
-                offenders.append("\(offence) in \"\(key.prefix(50))…\"")
+                offenders.append("\(offence) in \(name)")
             }
         }
         XCTAssertTrue(offenders.isEmpty,
@@ -158,27 +123,40 @@ final class PunctuationIsTerminologyTests: XCTestCase {
                       + offenders.sorted().joined(separator: "\n").prefix(4000))
     }
 
-    /// The same rule read off every inline table's French row.
-    func testFrenchInlineTablesSpaceTheirPunctuationTheWayMacOSDoes() throws {
-        let tables = try InlineTables.tables(under: "Sources")
-        let frenchRows = tables.flatMap { $0.rows }.filter { $0.language == .fr }
-        XCTAssertGreaterThanOrEqual(frenchRows.count, InlineTables.floor,
-                                    "only \(frenchRows.count) French row(s) found — InlineTables is not "
-                                    + "reading Sources")
-        var offenders: [String] = []
-        for table in tables {
-            for row in table.rows where row.language == .fr {
-                for literal in row.literals {
-                    for offence in frenchSpacingOffences(in: literal.value) {
-                        offenders.append("\(table.path):\(row.line) \(offence) in "
-                                        + "\"\(literal.value.prefix(50))…\"")
-                    }
+    /// **No module catalog writes «ё».** Russian words in a module's catalog are spelled with «е»
+    /// (`Еще`, not `Ещё`), the way the system's own lists spell them; the kit's and the host's catalogs
+    /// are not in this guard — their «ё» was shipped before it and stays (the owner's list says
+    /// which). `yoOffences` takes catalogs, so the fixture below proves it can fail.
+    static func yoOffences(in catalogs: [ModuleCatalogs.Catalog]) -> [String] {
+        var out: [String] = []
+        for catalog in catalogs where catalog.isModule {
+            for (symbol, values) in catalog.strings {
+                for (language, value) in values where value.contains(where: { "ёЁ".contains($0) }) {
+                    out.append("\(catalog.module).\(symbol) \(language): \(value.prefix(50))")
                 }
             }
         }
-        XCTAssertTrue(offenders.isEmpty,
-                      "\(offenders.count) French inline value(s) use an ordinary space where macOS "
-                      + "uses an unbreakable one:\n"
-                      + offenders.sorted().joined(separator: "\n").prefix(4000))
+        return out.sorted()
+    }
+
+    func testTheYoReadingFindsOnlyAModuleCatalogsYo() {
+        let yo = ["a": ["ru": "Ещё"]]
+        let ok = ["a": ["ru": "Еще"]]
+        func catalog(_ strings: [String: [String: String]], _ path: String) -> ModuleCatalogs.Catalog {
+            .init(module: "X", path: path, strings: strings, states: [:])
+        }
+        XCTAssertEqual(Self.yoOffences(in: [catalog(yo, "Sources/Modules/X/UI/Localizable.xcstrings")]).count, 1)
+        XCTAssertEqual(Self.yoOffences(in: [catalog(ok, "Sources/Modules/X/UI/Localizable.xcstrings")]), [])
+        XCTAssertEqual(Self.yoOffences(in: [catalog(yo, ModuleCatalogs.kitPath)]), [],
+                       "the kit's catalog is outside this guard")
+    }
+
+    func testNoModuleCatalogWritesYo() throws {
+        let catalogs = try ModuleCatalogs.all()
+        XCTAssertGreaterThanOrEqual(catalogs.filter(\.isModule).count, 10, "the modules' catalogs were not read")
+        XCTAssertTrue(catalogs.filter(\.isModule).allSatisfy { $0.strings.values.contains { $0["ru"] != nil } },
+                      "a module catalog carries no Russian, so «no ё» is said of nothing")
+        let offences = Self.yoOffences(in: catalogs)
+        XCTAssertTrue(offences.isEmpty, "\(offences.count) module value(s) write ё:\n" + offences.prefix(20).joined(separator: "\n"))
     }
 }

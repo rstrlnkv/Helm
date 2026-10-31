@@ -15,26 +15,26 @@ import SwiftUI
 /// it was written and is neither now, which is what a number in a comment does.
 public enum HelmA11y {
     public static var moveUp: String {
-        L("Move up")
+        L(.moveUp)
     }
     public static var moveDown: String {
-        L("Move down")
+        L(.moveDown)
     }
     public static var remove: String {
-        L("Remove")
+        L(.remove)
     }
     public static var moreActions: String {
-        L("More actions")
+        L(.moreActions)
     }
     public static var showInFinder: String {
-        L("Show in Finder")
+        L(.showInFinder)
     }
     /// The ⓘ beside a settings row's name (`HelmExplainer`). macOS's own word
     /// for this control, read out of its tables rather than translated: «More
     /// Info» is «Подробнее», «Weitere Infos», «En savoir plus», «Más
     /// información», «Mais informações», 「詳しい情報」, 「更多信息」.
     public static var moreInfo: String {
-        L("More Info")
+        L(.moreInfo)
     }
 
     /// The search field, which had no name at all. The header row's field (`HelmHeaderSearch`) sets this word.
@@ -54,7 +54,7 @@ public enum HelmA11y {
     /// representable, and the eight translations of that one word are the word
     /// macOS itself uses for this control in each of them.
     public static var searchField: String {
-        L("Search")
+        L(.search)
     }
 
     /// Where a row stands in a column of buttons, which VoiceOver does not say by itself ("1 of 5"). The
@@ -66,33 +66,13 @@ public enum HelmA11y {
     /// it keeps the position first, as the plain form does.
     public static func position(_ n: Int, of m: Int,
                                 language: AppLanguage = AppLanguage.current) -> String {
-        let table: [AppLanguage: String] = [
-            .ru: "\(n) из \(m)",
-            .es: "\(n) de \(m)",
-            .fr: "\(n) sur \(m)",
-            .de: "\(n) von \(m)",
-            .ja: "\(m)の\(n)",
-            .zh: "\(n)项（共\(m)项）",
-            .pt: "\(n) de \(m)",
-        ]
-        let english = "\(n) of \(m)"
-        return language == .en ? english : table[language] ?? english
+        L(.rowPosition(String(n), String(m)), language: language)
     }
 
     /// The same with a note after it — a row that cannot act says why. `note` arrives already localized.
     public static func position(_ n: Int, of m: Int, after note: String,
                                 language: AppLanguage = AppLanguage.current) -> String {
-        let table: [AppLanguage: String] = [
-            .ru: "\(n) из \(m), \(note)",
-            .es: "\(n) de \(m), \(note)",
-            .fr: "\(n) sur \(m), \(note)",
-            .de: "\(n) von \(m), \(note)",
-            .ja: "\(m)の\(n)、\(note)",
-            .zh: "\(n)项（共\(m)项），\(note)",
-            .pt: "\(n) de \(m), \(note)",
-        ]
-        let english = "\(n) of \(m), \(note)"
-        return language == .en ? english : table[language] ?? english
+        L(.rowPositionAfter(String(n), String(m), note), language: language)
     }
 
     /// Whether a disclosure is open. SwiftUI has no trait for it on macOS — the
@@ -123,8 +103,8 @@ public enum HelmA11y {
     /// `expanded. %@` — say 表示されました, so that is what Japanese keeps.
     public static func expanded(_ isExpanded: Bool) -> String {
         isExpanded
-            ? L("expanded")
-            : L("collapsed")
+            ? L(.expanded)
+            : L(.collapsed)
     }
 
     /// Calendar's own last item in this menu. The seven translations are its
@@ -148,7 +128,7 @@ public enum HelmA11y {
     /// its Portuguese «Outro…», neither of which agrees with *el color* or *a
     /// cor*. The colour *names* are in `CalendarFoundation.framework`; see
     /// `PaletteColor.label`.
-    public static var otherColour: String { L("Other colour…") }
+    public static var otherColour: String { L(.otherColour) }
 
     /// Said once, out loud, for a change nobody pressed a button to cause.
     ///

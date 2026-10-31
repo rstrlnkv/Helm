@@ -112,7 +112,6 @@ AnEmptyFolderIsNotAnUnreadableOneTests
 AnHourlySweepThatTrashedSomethingSaysSoTests
 AnIdentityIsNotAPositionTests
 AnInfoQueryIsAboutOnePackageTests
-AnInlineTableIsReadInEverySpellingTests
 AnOperationsNewsReachesTheModelTests
 AnUnreachableSecretIsNotSilenceTests
 AnUpdateNobodyIsLookingForSaysSoTests
@@ -189,7 +188,6 @@ HelmProcessTimeoutTests
 HelmTrashPhaseTests
 HexDigestTests
 InMemoryKeyValueStoreThreadingTests
-InlineTablesReadWhatSwiftCompilesTests
 InspectorStateDecisionsTests
 InstallCountsParserTests
 KeepAwakeAtRestBenchmark
@@ -274,7 +272,6 @@ SidebarLayoutTests
 StopKeepsTheTreeOnScreenTests
 StreamTailTests
 StringsCoverageTests
-StringsLiveInLprojTests
 StuckModifierTests
 SubscriberPruningTests
 SurvivorThroughTheScannerTests

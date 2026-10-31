@@ -8,7 +8,7 @@ import XCTest
 ///
 /// A row's checkbox is read out once per row, so its label must carry the file's
 /// name, say the opposite of its twin, and be a sentence in the language rather
-/// than the English key or a catalog symbol. The start screen with a folder
+/// than the English text or a catalog symbol. The start screen with a folder
 /// already chosen has a sentence of its own, which must differ from the one that
 /// asks for a folder.
 @MainActor
@@ -25,7 +25,7 @@ final class TheKitsRowWordsAndTheFolderHintReachEveryLanguageTests: XCTestCase {
             XCTAssertTrue(unmark.contains(file), "\(language): unmark lost the file name: \(unmark)")
             XCTAssertNotEqual(mark, unmark, "\(language): mark and unmark read alike")
             if language != .en {
-                XCTAssertNotEqual(mark, english, "\(language): mark is still the English key")
+                XCTAssertNotEqual(mark, english, "\(language): mark is still the English text")
             }
         }
     }

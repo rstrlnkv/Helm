@@ -13,7 +13,7 @@ comments of the code that carries them:
 - the folder colours: eight swatches keyed by path, each a light/dark pair in an ordinary and an Increase Contrast form, and every folder's wedge, row bar and hover wash is its swatch blended into the window background inside its appearance, so the ring and the list draw one colour for a folder: `DiskPalette.swift`;
 - the ring lays out one level more than it draws, and the drill lands before the animation starts: `RingView.visibleRings`, `RingView.open`.
 
-Words: `Sources/Modules/Disk/UI/Localizable.xcstrings`; interpolated ones in inline tables in `DiskStrings.swift`; shared words through `L()`.
+Words: `Sources/Modules/Disk/UI/Localizable.xcstrings`; shared words through `HelmWord`.
 
 ## How Disk's model reaches its engine
 

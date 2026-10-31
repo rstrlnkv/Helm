@@ -4,7 +4,7 @@ import Foundation
 /// build under the lock.
 ///
 /// There were four of these written by hand — the folder-name tables in
-/// `SystemFolderNames`, the `.lproj` tables in `L10n`, the number formatters in
+/// `SystemFolderNames`, the `.lproj` tables in `L10n` (gone since, into catalogs), the number formatters in
 /// `HelmBytes` and the keyboard-layout tables in Layout's `SystemPorts` — three
 /// of them under one name, and they had already stopped being the same thing:
 /// two held the lock across the build and two let go of it to build and took it
@@ -14,9 +14,9 @@ import Foundation
 /// byte formatters started.
 ///
 /// **The lock is held across the build on purpose.** The alternative saves
-/// nothing worth having: every build here is a `.strings` file, a
-/// `NumberFormatter` or fifty Carbon calls, all of them microseconds and none of
-/// them re-entrant into this memo. Holding it makes «built once» a fact rather
+/// nothing worth having: every build here is a language's sub-bundle, a
+/// `NumberFormatter`, an image, one small `.strings` file or fifty Carbon calls,
+/// none of them re-entrant into this memo. Holding it makes «built once» a fact rather
 /// than a likelihood, which is the difference the callers' comments all claimed
 /// and only some of them had.
 ///

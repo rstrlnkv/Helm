@@ -13,8 +13,8 @@ enum ScStr {
         L(.needsAccess)
     }
 
-    /// The system's own term, the same key Keyboard's page already carries.
-    static var shortcuts: String { L("Keyboard shortcuts") }
+    /// The system's own term, the kit's `HelmWord`, which Keyboard's page reads too.
+    static var shortcuts: String { HelmWord.keyboardShortcuts }
     static var captureArea: String { L(.captureArea) }
     static var captureScreen: String { L(.captureScreen) }
     static var openPanel: String { L(.openPanel) }
@@ -65,7 +65,7 @@ enum ScStr {
     static var panelArea: String { L(.panelArea) }
     static var captureButton: String { L(.captureButton) }
     static var options: String { L(.options) }
-    static var timer: String { L("Timer") }
+    static var timer: String { HelmWord.timer }
     static func timer(_ timer: CaptureTimer) -> String {
         switch timer {
         case .none: L(.timerNone)
@@ -80,7 +80,7 @@ enum ScStr {
     static var putPanelBack: String { L(.putPanelBack) }
     static var floatingThumbnail: String { L(.floatingThumbnail) }
     static var rememberSelection: String { L(.rememberSelection) }
-    static var closePanel: String { L("Close") }
+    static var closePanel: String { HelmWord.close }
 
     /// macOS's own words — Save to, Desktop, Documents, Clipboard, Other… — read
     /// out of `screencaptureui`'s `Localizable.loctable`, where the same menu is drawn.
@@ -88,7 +88,7 @@ enum ScStr {
     static var targetMacOS: String { L(.targetMacOS) }
     static var targetDesktop: String { L(.targetDesktop) }
     static var targetDocuments: String { L(.targetDocuments) }
-    static var targetClipboard: String { L("Clipboard") }
+    static var targetClipboard: String { HelmWord.clipboard }
     /// Its own key, not KeepAwake's «Other…»: one key means one thing, and
     /// Portuguese says «Outra» for a folder where a duration is «Outro».
     /// The seven translations are macOS's «Other…» from the same table.
@@ -114,7 +114,7 @@ enum ScStr {
     static var shutterSound: String { L(.shutterSound) }
     static var showCursor: String { L(.showCursor) }
     /// One key for the two things «Choose…» opens: a folder and the palette's tools.
-    static var choose: String { L("Choose…") }
+    static var choose: String { HelmWord.choose }
     static var chooseFolder: String { choose }
 
     static var folder: String { L(.folder) }
@@ -142,14 +142,7 @@ enum ScStr {
     /// Counted from the palette's list, never written: the first number is what the row shows.
     static func toolsShown(_ shown: Int, of all: Int, language: AppLanguage = AppLanguage.current) -> String {
         let (n, m) = (Count(shown, language: language), Count(all, language: language))
-        return L("\(n) of \(m)",
-                 [.ru: "\(n) из \(m)",
-                  .es: "\(n) de \(m)",
-                  .fr: "\(n) sur \(m)",
-                  .de: "\(n) von \(m)",
-                  .ja: "\(m) 個中 \(n) 個",
-                  .zh: "\(m) 个中的 \(n) 个",
-                  .pt: "\(n) de \(m)"], language: language)
+        return L(.toolsShown(n, m), language: language)
     }
     /// Under «Show floating thumbnail»: where it stands and what several of them do.
     static var thumbnailNote: String { L(.thumbnailNote) }
@@ -200,14 +193,14 @@ enum ScStr {
     /// The colours: the six Helm's palette already names, and «Black» is named in AppKit's colour panel table (`NSColorPanelExtras.loctable`), and both it and «White» in the system colour list (`Apple.clr/Apple.loctable`); in Japanese both are the system colour list's words (ブラック, ホワイト).
     static func ink(_ color: AnnotationColor) -> String {
         switch color {
-        case .red: L("Red")
-        case .orange: L("Orange")
-        case .yellow: L("Yellow")
-        case .green: L("Green")
-        case .blue: L("Blue")
-        case .purple: L("Purple")
+        case .red: HelmWord.red
+        case .orange: HelmWord.orange
+        case .yellow: HelmWord.yellow
+        case .green: HelmWord.green
+        case .blue: HelmWord.blue
+        case .purple: HelmWord.purple
         case .black: L(.inkBlack)
-        case .white: L("White")
+        case .white: HelmWord.white
         }
     }
 
@@ -256,12 +249,12 @@ enum ScStr {
     static var redo: String { L(.redo) }
     /// Preview's «Save».
     static var save: String { L(.save) }
-    static var closeEditor: String { L("Close") }
+    static var closeEditor: String { HelmWord.close }
     /// The editor's checkmark: what Return does.
-    static var done: String { L("Done") }
+    static var done: String { HelmWord.done }
     /// The editor's Pin item on the ⋯ menu, which keeps the picture on the screen as a window.
     static var pin: String { L(.pin) }
-    /// The plate at the limit of open pins; no number, so no table.
+    /// The plate at the limit of open pins; no number, so no argument.
     static var pinLimit: String { L(.pinLimit) }
     /// Copy Text: the word of `VisionKitCore.framework`'s `Localizable.loctable`, key `VK_COPY_TEXT_MENU_ITEM_TITLE`, which is Live Text's menu item
     /// (Text kopieren, Copiar texto, Copier le texte, テキストをコピー, Copiar texto, Скопировать текст, 拷贝文本; its Portuguese is the `pt_PT` table's, since `pt_BR` capitalises it).
@@ -280,14 +273,7 @@ enum ScStr {
     /// A count after a colon takes no form of a noun, so no plural helper; the digits are grouped as the language groups them.
     static func blurred(_ count: Int, language: AppLanguage = AppLanguage.current) -> String {
         let n = HelmBytes.grouped(count, language: language.rawValue)
-        return L("Blurred: \(n). Check the rest yourself.",
-                 [.ru: "Размыто мест: \(n). Остальное проверьте сами.",
-                  .es: "Desenfocado: \(n). Revisa tú el resto.",
-                  .fr: "Flouté\u{00A0}: \(n). Vérifiez le reste vous-même.",
-                  .de: "Weichgezeichnet: \(n). Prüfe den Rest selbst.",
-                  .ja: "ぼかした箇所：\(n)。残りは自分で確認してください。",
-                  .zh: "已模糊：\(n) 处。其余请自行检查。",
-                  .pt: "Desfocado: \(n). Confira você mesmo o resto."], language: language)
+        return L(.blurred(n), language: language)
     }
     /// What a screen reader calls a pin.
     static var pinnedScreenshot: String { L(.pinnedScreenshot) }
@@ -297,43 +283,22 @@ enum ScStr {
     /// The word on a thumbnail, macOS's own; a file name's word is inside `nameTemplate`.
     static var thumbnailLabel: String { L(.thumbnailLabel) }
     /// The capsule over a thumbnail: the clipboard's own word, and Finder's.
-    static var edit: String { L("Edit") }
-    static var copy: String { L("Copy") }
-    static var showInFinder: String { L("Show in Finder") }
+    static var edit: String { HelmWord.edit }
+    static var copy: String { HelmWord.copy }
+    static var showInFinder: String { HelmWord.showInFinder }
     /// The pile's capsule, the label on the row's farthest whole shot, and what a screen reader calls the pile. The
     /// count is interpolated; the verb is the kit's
     /// (`Copy`) and the noun the catalog's (`moduleName`). A pile is two shots or more; «N more» counts one as well, so
     /// the counted forms are written so that none needs a plural: German's «weitere» is wrong for one, and «mehr»
     /// is right for every count.
     static func copyAll(_ count: Int) -> String {
-        L("Copy All (\(count))",
-          [.ru: "Скопировать все (\(count))",
-           .es: "Copiar todo (\(count))",
-           .fr: "Tout copier (\(count))",
-           .de: "Alle kopieren (\(count))",
-           .ja: "すべてをコピー（\(count)）",
-           .zh: "全部复制（\(count)）",
-           .pt: "Copiar Tudo (\(count))"])
+        L(.copyAll(String(count)))
     }
     static func more(_ count: Int) -> String {
-        L("\(count) more",
-          [.ru: "еще \(count)",
-           .es: "\(count) más",
-           .fr: "\(count) de plus",
-           .de: "\(count) mehr",
-           .ja: "ほか \(count) 件",
-           .zh: "还有 \(count) 张",
-           .pt: "mais \(count)"])
+        L(.more(String(count)))
     }
     static func screenshots(_ count: Int) -> String {
-        L("\(count) screenshots",
-          [.ru: "Снимков экрана: \(count)",
-           .es: "Capturas de pantalla: \(count)",
-           .fr: "Captures d’écran\u{00A0}: \(count)",
-           .de: "Bildschirmfotos: \(count)",
-           .ja: "スクリーンショット：\(count)",
-           .zh: "截屏：\(count)",
-           .pt: "Capturas de Tela: \(count)"])
+        L(.screenshots(String(count)))
     }
     /// The ⋯ menu's Share item, which opens the system's sheet at the thumbnail.
     static var share: String { L(.share) }
@@ -344,7 +309,7 @@ enum ScStr {
     static var replaced: String { L(.replaced) }
     /// The plate over an edited picture after a first Esc.
     static var confirmClose: String { L(.confirmClose) }
-    static var dismissToast: String { L("Close") }
+    static var dismissToast: String { HelmWord.close }
     static var openSettings: String { L(.openSettings) }
     static var noPermissionTitle: String { L(.noPermissionTitle) }
     static var noPermissionBody: String {

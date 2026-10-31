@@ -4,16 +4,19 @@
 import Foundation
 import HelmUI
 
-/// The string catalogs, read as data: each module's `Sources/Modules/<Name>/UI/Localizable.xcstrings`
-/// and the host's `Sources/HelmAppStrings/Localizable.xcstrings` and `Changelog.xcstrings`.
+/// Every string catalog Helm ships, read as data: the kit's `Sources/HelmUI/Localizable.xcstrings`,
+/// each module's `Sources/Modules/<Name>/UI/Localizable.xcstrings`, and the host's
+/// `Sources/HelmAppStrings/Localizable.xcstrings` and `Changelog.xcstrings`.
 ///
-/// A catalog's symbols are internal to its target, so a test in the kit's target
-/// cannot name one — and `Bundle.module` inside a test target is the test's own
-/// bundle, never the module's. The file is what ships, and reading the file is
-/// how the guards that read the kit's `.lproj` tables see a module's
-/// words too (`StringsCoverageTests.testEveryCatalogSymbolCarriesTheEightLanguages`). Walking `Sources/Modules` rather
-/// than naming modules means a catalog added by the next module is guarded the
-/// day it lands.
+/// A catalog's symbols are internal to its target, so a test in another target cannot name one — and
+/// `Bundle.module` inside a test target is the test's own bundle, never the catalog's owner's. The file
+/// is what ships, and reading the file is how every string guard sees every word
+/// (`StringsCoverageTests.testEveryCatalogSymbolCarriesTheEightLanguages`). Walking `Sources/Modules`
+/// rather than naming modules means a catalog added by the next module is guarded the day it lands.
+///
+/// **The kit's catalog is not optional.** A module without a UI catalog is a module with no words of
+/// its own, and is skipped; the kit without one would leave every guard reading the modules alone and
+/// passing, so `all()` throws when `Sources/HelmUI/Localizable.xcstrings` is not there.
 public enum ModuleCatalogs {
 
     public struct Catalog: Sendable {
@@ -23,6 +26,44 @@ public enum ModuleCatalogs {
         public let strings: [String: [String: String]]
         /// symbol → language code → the unit's `state`, so «needs review» is not read as a translation.
         public let states: [String: [String: String]]
+
+        public init(module: String, path: String, strings: [String: [String: String]],
+                    states: [String: [String: String]]) {
+            self.module = module
+            self.path = path
+            self.strings = strings
+            self.states = states
+        }
+
+        /// A module's own catalog, as against the kit's and the host's.
+        public var isModule: Bool { path.hasPrefix("Sources/Modules/") }
+    }
+
+    /// The kit's catalog: the words two parts draw, and the host's own controls.
+    public static let kitPath = "Sources/HelmUI/Localizable.xcstrings"
+
+    /// One value of one symbol in one language, with the English it translates.
+    public struct Entry: Sendable {
+        public let module: String
+        public let symbol: String
+        public let english: String
+        public let value: String
+        /// `Module.symbol`, the name a finding is printed under.
+        public var name: String { "\(module).\(symbol)" }
+    }
+
+    /// Every symbol's value in `language`, one entry per symbol — nothing keyed by English, so two
+    /// symbols that share a placeholder-bearing English (`%1$@ of %2$@`, the kit's `rowPosition` and `Screenshots`) are
+    /// both judged and neither overwrites the other.
+    public static func entries(for language: AppLanguage) throws -> [Entry] {
+        var out: [Entry] = []
+        for catalog in try all() {
+            for (symbol, values) in catalog.strings {
+                guard let english = values["en"], let value = values[language.rawValue] else { continue }
+                out.append(Entry(module: catalog.module, symbol: symbol, english: english, value: value))
+            }
+        }
+        return out
     }
 
     public static func all() throws -> [Catalog] {
@@ -31,6 +72,12 @@ public enum ModuleCatalogs {
         var found: [(relative: String, module: String)] = names.map {
             ("Sources/Modules/\($0)/UI/Localizable.xcstrings", $0)
         }
+        let kitFile = RepoSource.root.appendingPathComponent(kitPath).path
+        guard FileManager.default.fileExists(atPath: kitFile) else {
+            throw RepoSource.Failure("\(kitPath) is not there — the kit's words are in no catalog, "
+                                    + "and a guard that read the modules alone would pass")
+        }
+        found.insert((kitPath, "HelmUI"), at: 0)
         // The host's two: its own words, and the changelog (the English sentence is the key there).
         found.append(("Sources/HelmAppStrings/Localizable.xcstrings", "HelmApp"))
         found.append(("Sources/HelmAppStrings/Changelog.xcstrings", "Changelog"))
@@ -59,27 +106,5 @@ public enum ModuleCatalogs {
             }
         }
         return Catalog(module: module, path: relative, strings: values, states: states)
-    }
-
-    /// Every catalog's values for one language, **keyed by the English value** — the shape the kit's
-    /// `.lproj` tables have, so a guard that judges values and prints a key reads both with one loop.
-    /// A symbol with no localization in the language is left out; a missing language is
-    /// `StringsCoverageTests.testEveryCatalogSymbolCarriesTheEightLanguages`' to report, not this table's.
-    public static func tableByEnglish(for language: AppLanguage) throws -> [String: String] {
-        var out: [String: String] = [:]
-        for catalog in try all() {
-            for (symbol, values) in catalog.strings {
-                guard let english = values["en"], let value = values[language.rawValue] else { continue }
-                // A template differs by its argument, so the same words in two keys (the Few and Many
-                // forms of a count, a time and a day) are one sentence twice, not one text meaning two things.
-                // Only a real placeholder (`%@`, `%1$@`) says so: a sentence with a bare percent sign is still a sentence.
-                if out[english] != nil, english.range(of: #"%(\d+\$)?@"#, options: .regularExpression) == nil {
-                    throw RepoSource.Failure("\(catalog.path): \(symbol) repeats the English «\(english)» — "
-                                            + "one English text means one thing")
-                }
-                out[english] = value
-            }
-        }
-        return out
     }
 }

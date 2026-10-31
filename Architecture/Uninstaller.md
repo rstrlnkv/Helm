@@ -57,7 +57,7 @@ The model keeps no state for a reply that never arrives, and the Apps tab has tw
 states, no apps found and a search that hides all of them: before the first answer the
 page draws a spinner and the footer says "Counting apps…" (`AppsEmpty.status(answered:loading:apps:)`).
 
-Words: `Sources/Modules/Uninstaller/UI/Localizable.xcstrings`; interpolated ones in inline tables in `UninstallerStrings.swift`; shared words through `L()`, and the removal's sentence through `HelmBasket` in `Sources/HelmUI/BasketStrings.swift`.
+Words: `Sources/Modules/Uninstaller/UI/Localizable.xcstrings`; shared words through `HelmWord`, and the removal's sentence through `HelmBasket` in `Sources/HelmUI/BasketStrings.swift`.
 
 ## The states of the Uninstaller page
 

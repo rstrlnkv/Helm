@@ -26,7 +26,7 @@ The question before a deletion names the reason it is asked. `LeftoverActions.as
 reason a row is asked about (`loadedNow`, `cannotBeRead`, `cannotBeChecked`), or nil for a leftover, which is
 moved without a question, and `LfStr.confirmDelete` switches over it with no `default:`. A row Helm could not read is asked about being unreadable, never told it is loaded.
 
-Words: `Sources/Modules/Leftovers/UI/Localizable.xcstrings`; interpolated ones in inline tables in `LeftoversStrings.swift`; shared words through `L()`.
+Words: `Sources/Modules/Leftovers/UI/Localizable.xcstrings`; shared words through `HelmWord`.
 
 ## How Leftovers' model reaches its engine
 

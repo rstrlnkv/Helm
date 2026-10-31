@@ -439,7 +439,7 @@ public enum AppStr {
     /// distinction between the two that matter for everybody else.
     ///
     /// Singular, and deliberately not the filter's «Warnings» / «Errors»: one
-    /// English key means one thing, and those two name a *filter setting*. Nil
+    /// English text means one thing, and those two name a *filter setting*. Nil
     /// for an ordinary line — a value on every row would be a word read out
     /// nine hundred times to say nothing happened.
     public static func logLevelWord(_ level: LogLevel) -> String? {
@@ -459,7 +459,7 @@ public enum AppStr {
     /// lines» was true twice over. The tail is seeded from the file now, so
     /// `total` is the last thousand lines of a log that may hold five thousand,
     /// and the same words read as «the log is 1 000 lines long». Eight languages
-    /// say it, and the fix is the English key — «Showing the last N lines», or a
+    /// say it, and the fix is the English text — «Showing the last N lines», or a
     /// count of the file — not seven corrections underneath the wrong one.
     public static func logCount(_ shown: Int, _ total: Int) -> String {
         L(.logCount(String(shown), String(total)))
@@ -485,7 +485,7 @@ public enum AppStr {
     /// Marks a section the person made, as against one seeded from a category.
     public static var yourSection: String { L(.yourSection) }
     /// Puts the seeded arrangement back. Not `reset`, which in this app means
-    /// every setting at once — one English key means one thing.
+    /// every setting at once — one English text means one thing.
     public static var restoreSections: String { L(.restoreSections) }
     /// What the sheet is for, said once at the top of it. The block on the
     /// page carried this note in its edit mode, where it was only ever read by
@@ -570,7 +570,7 @@ public enum AppStr {
     /// transliteration of jargon in a settings pop-up. What is being chosen
     /// between is a tab's name and a tab's icon, and those are the words.
     ///
-    /// **«only», so the bare word stays free.** One English key means one
+    /// **«only», so the bare word stays free.** One English text means one
     /// thing: a bare «Names» is a label any other page may need for a second
     /// meaning, and the two would share one translation. `OneEntryPerKeyTests`
     /// is the guard that was missing: a reader resolves a repeated key

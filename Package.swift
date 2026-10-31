@@ -106,8 +106,7 @@ let foundation: [Target] = [
     // contract's `StatusAppearance` values. The contract stays free of
     // everything.
     .target(name: "HelmRuntime", dependencies: ["HelmContract", "HelmLaunch"]),
-    .target(name: "HelmUI", dependencies: ["HelmContract", "HelmRuntime"],
-            resources: [.process("Resources")]),
+    .target(name: "HelmUI", dependencies: ["HelmContract", "HelmRuntime"]),
 ]
 
 /// The harness, which belongs to every test target and to no product.

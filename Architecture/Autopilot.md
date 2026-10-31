@@ -71,7 +71,7 @@ the first; `TheModelsDoorNeverWaitsOnTheEnginesQueueTests` holds the queue rule.
 "New rule" opens the editor on a draft and writes nothing; only Done saves, so Cancel leaves
 no untitled rule behind (`addRule(to:)` in `AutopilotViewModel.swift`); no guard.
 
-Words: `Sources/Modules/Autopilot/UI/Localizable.xcstrings`; interpolated ones in inline tables in `AutopilotStrings.swift`; shared words through `L()` from the kit.
+Words: `Sources/Modules/Autopilot/UI/Localizable.xcstrings`; shared words through `HelmWord` from the kit.
 
 ## The states of the Autopilot page
 

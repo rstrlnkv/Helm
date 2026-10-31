@@ -1,6 +1,3 @@
-// The file-wide line-length exemption is gone: every table here is wrapped, and
-// what must never be split — the English key — is still one line each.
-
 import HelmRuntime
 import HelmUI
 import Module_Leftovers_Engine
@@ -16,13 +13,13 @@ enum LfStr {
     static var moduleNameShort: String { L(.loginItems) }
     static var summary: String { L(.summary) }
     static var filterAll: String { L(.all) }
-    static var filterLeftovers: String { L("Leftovers") }
+    static var filterLeftovers: String { HelmWord.leftovers }
     static var statusInUse: String { L(.inUse) }
-    static var statusProtected: String { L("System") }
+    static var statusProtected: String { HelmWord.system }
     static var statusOrphaned: String { L(.leftover) }
     /// The badge on a row whose plist would not be read. Not «Unknown», which
     /// this app already uses for a VPN whose state it has not been told — one
-    /// English key means one thing, and what this one says is that the file
+    /// English text means one thing, and what this one says is that the file
     /// itself could not be read.
     static var statusUnreadable: String { L(.unreadable) }
     /// The badge on a row whose *file* was read and whose verdict still could not be
@@ -31,8 +28,8 @@ enum LfStr {
     /// «Unreadable» — that word is about this file, and this file was fine.
     static var statusUndetermined: String { L(.notChecked) }
     static var scan: String { L(.scan) }
-    static var scanning: String { L("Scanning…") }
-    static var rescan: String { L("Scan again") }
+    static var scanning: String { HelmWord.scanning }
+    static var rescan: String { HelmWord.scanAgain }
     /// Under the invitation on the first screen, so it is read once and then not
     /// again: what is in the list, and what may leave it.
     static var intro: String { L(.whatTheListHolds) }
@@ -61,15 +58,15 @@ enum LfStr {
     /// The label itself is `HelmUI`'s, because two modules draw it.
     static var openExtensions: String { HelmControlName.openExtensions }
     /// The switch on a row, both ways round. Functions rather than properties
-    /// because `confirmDeleteInUse` names this control inside a sentence, and an
-    /// inline table can only be read back in the other seven languages if the
-    /// language can be named — and because a pair should read as one.
+    /// because `confirmDeleteInUse` names this control inside a sentence, and it
+    /// can only be read back in the other seven languages if the language can be
+    /// named — and because a pair should read as one.
     static func disable(language: AppLanguage = AppLanguage.current) -> String {
         L(.turnOff, language: language)
     }
 
     static func enable(language: AppLanguage = AppLanguage.current) -> String {
-        L("Turn on", language: language)
+        HelmWord.turnOn(language: language)
     }
     static var statusDisabled: String { L(.disabled) }
     /// The menu that narrows the list, drawn beside a filter glyph. «Show» is the
@@ -78,7 +75,7 @@ enum LfStr {
     /// («Показать»), so a shared key would put the wrong aspect on one of them in
     /// every Slavic language.
     static var filter: String { L(.filter) }
-    static var cancelAction: String { L("Cancel") }
+    static var cancelAction: String { HelmWord.cancel }
     /// **The row's menu names the same act as the bar's button**, plus the
     /// ellipsis that says a question follows: the dialog's destructive button says
     /// «Move to Trash» and the report afterwards «Moved to the Trash», so the
@@ -111,28 +108,12 @@ enum LfStr {
     /// rather than blaming the file the way `confirmDeleteUnreadable` does.
     static func confirmDeleteUnchecked(_ name: String,
                                        language: AppLanguage = AppLanguage.current) -> String {
-        L("Move \(name) to the Trash? Helm could not check whether anything still uses it.",
-          [.ru: "Переместить \(name) в Корзину? Helm не смог проверить, использует ли его что-нибудь.",
-           .es: "¿Trasladar \(name) a la papelera? Helm no pudo comprobar si algo lo sigue usando.",
-           .fr: "Placer \(name) dans la corbeille\u{00A0}? Helm n’a pas pu vérifier si quelque chose l’utilise encore.",
-           .de: "\(name) in den Papierkorb legen? Helm konnte nicht prüfen, ob es noch verwendet wird.",
-           .ja: "\(name) をゴミ箱に入れますか？何かがまだ使用しているか、Helm は確認できませんでした。",
-           .zh: "将 \(name) 移到废纸篓？Helm 无法确认是否还有程序在使用它。",
-           .pt: "Mover \(name) para o Lixo? O Helm não conseguiu verificar se algo ainda o usa."],
-          language: language)
+        L(.confirmDeleteUnchecked(name), language: language)
     }
 
     static func confirmDeleteUnreadable(_ name: String,
                                         language: AppLanguage = AppLanguage.current) -> String {
-        L("Move \(name) to the Trash? Helm could not read this file, so it cannot tell what installed it.",
-          [.ru: "Переместить \(name) в Корзину? Helm не смог прочитать этот файл и не знает, что его установило.",
-           .es: "¿Trasladar \(name) a la papelera? Helm no pudo leer este archivo, así que no sabe qué lo instaló.",
-           .fr: "Placer \(name) dans la corbeille\u{00A0}? Helm n’a pas pu lire ce fichier et ne sait donc pas ce qui l’a installé.",
-           .de: "\(name) in den Papierkorb legen? Helm konnte diese Datei nicht lesen und weiß daher nicht, was sie installiert hat.",
-           .ja: "\(name) をゴミ箱に入れますか？Helm はこのファイルを読み取れず、何がインストールしたか判断できません。",
-           .zh: "将 \(name) 移到废纸篓？Helm 无法读取此文件，因此无法判断是什么安装了它。",
-           .pt: "Mover \(name) para o Lixo? O Helm não conseguiu ler este arquivo, portanto não sabe o que o instalou."],
-          language: language)
+        L(.confirmDeleteUnreadable(name), language: language)
     }
 
     /// **The clause about the switch is the load-bearing half.** «It is loaded
@@ -150,15 +131,7 @@ enum LfStr {
     static func confirmDeleteInUse(_ name: String,
                                    language: AppLanguage = AppLanguage.current) -> String {
         let off = Quoted(disable(language: language), language: language)
-        return L("Move \(name) to the Trash? It is loaded now, and the app that installed it may put it back. \(off) stops it now; moving the file does not.",
-                 [.ru: "Переместить \(name) в Корзину? Этот файл сейчас загружен, и приложение, которое его установило, может создать его заново. \(off) остановит его сейчас, а перемещение файла\u{00A0}— нет.",
-                  .es: "¿Trasladar \(name) a la papelera? Está cargado ahora y la app que lo instaló podría volver a crearlo. \(off) lo detiene ahora; mover el archivo no.",
-                  .fr: "Placer \(name) dans la corbeille\u{00A0}? Il est chargé, et l’app qui l’a installé peut le recréer. \(off) l’arrête maintenant\u{00A0}; déplacer le fichier, non.",
-                  .de: "\(name) in den Papierkorb legen? Es ist gerade geladen, und die App, die es installiert hat, kann es neu anlegen. \(off) stoppt es jetzt; die Datei zu verschieben nicht.",
-                  .ja: "\(name) をゴミ箱に入れますか？現在読み込まれており、インストールしたアプリが再作成する場合があります。今すぐ止めるには \(off) を押してください。ファイルを移動しても止まりません。",
-                  .zh: "将 \(name) 移到废纸篓？它当前已加载，安装它的应用可能会重新创建。\(off) 会立即停止它；移动文件不会。",
-                  .pt: "Mover \(name) para o Lixo? Está carregado agora, e o app que o instalou pode recriá-lo. \(off) o interrompe agora; mover o arquivo não."],
-                 language: language)
+        return L(.confirmDeleteInUse(name, off), language: language)
     }
     /// Why there is no delete button on this row, in the person's terms. Two
     /// sentences, because the two states ask different things of them: one is a
@@ -176,7 +149,7 @@ enum LfStr {
 
     /// Says what the act is, which is moving a file to the Trash.
     static var needsAdmin: String { L(.onlyAnAdministratorCanMoveThis) }
-    static var nothingFound: String { L("No leftovers found.") }
+    static var nothingFound: String { HelmWord.noLeftoversFound }
     /// The message over the empty list, one per reason there is no list.
     ///
     /// Over the enum and exhaustive, for the reason `kindName` records: a
@@ -210,20 +183,12 @@ enum LfStr {
     /// is the answer and it is on screen either way.
     static func uncheckedLine(_ n: Int, language: AppLanguage = AppLanguage.current) -> String {
         let items = Plural.items(n, language: language.rawValue)
-        return L("Not checked: \(items)",
-                 [.ru: "Не проверено: \(items)", .es: "Sin comprobar: \(items)",
-                  .fr: "Non vérifié\u{00A0}: \(items)", .de: "Ungeprüft: \(items)",
-                  .ja: "未確認：\(items)", .zh: "未检查：\(items)",
-                  .pt: "Não verificado: \(items)"], language: language)
+        return L(.uncheckedLine(items), language: language)
     }
 
     static func couldNotCheck(_ n: Int, language: AppLanguage = AppLanguage.current) -> String {
         let items = Plural.items(n, language: language.rawValue)
-        return L("Helm could not check \(items).",
-                 [.ru: "Helm не смог проверить \(items).", .es: "Helm no pudo comprobar \(items).",
-                  .fr: "Helm n’a pas pu vérifier \(items).", .de: "Helm konnte \(items) nicht prüfen.",
-                  .ja: "Helm は\(items)を確認できませんでした。", .zh: "Helm 无法检查\(items)。",
-                  .pt: "O Helm não conseguiu verificar \(items)."], language: language)
+        return L(.couldNotCheck(items), language: language)
     }
     /// Asked before the batch, because this button is the one that acts on the
     /// most load-bearing files in the app — launch agents and login items —
@@ -235,9 +200,9 @@ enum LfStr {
     static func confirmSelected(_ count: Int, _ size: String) -> String {
         HelmConfirm.trash(Plural.items(count, language: AppLanguage.current.rawValue), size)
     }
-    static var removeSelected: String { L("Move to Trash") }
-    static var selectAll: String { L("Select all") }
-    static var deselectAll: String { L("Clear selection") }
+    static var removeSelected: String { HelmWord.moveToTrash }
+    static var selectAll: String { HelmWord.selectAll }
+    static var deselectAll: String { HelmWord.clearSelection }
     /// **A badge is a mark, not a predicate.** «Runs at login» measured 137 pt of
     /// pill in German, and against the fourteen real launch-agent labels on this
     /// Mac ten of the fourteen then truncated — seven of fourteen in Russian. What
@@ -326,22 +291,14 @@ enum LfStr {
     /// the link actually goes — which is what tells them whether it is theirs.
     static func sourceLeadsElsewhere(_ destination: String,
                                      language: AppLanguage = AppLanguage.current) -> String {
-        L("Helm did not read this folder: it is a link to \(destination)",
-          [.ru: "Helm не прочитал эту папку: это ссылка на \(destination)",
-           .es: "Helm no leyó esta carpeta: es un enlace a \(destination)",
-           .fr: "Helm n’a pas lu ce dossier\u{00A0}: c’est un lien vers \(destination)",
-           .de: "Helm hat diesen Ordner nicht gelesen: Er ist eine Verknüpfung zu \(destination)",
-           .ja: "Helm はこのフォルダを読み取っていません：\(destination) へのリンクです",
-           .zh: "Helm 未读取此文件夹：它是指向 \(destination) 的链接",
-           .pt: "O Helm não leu esta pasta: é um link para \(destination)"],
-          language: language)
+        L(.sourceLeadsElsewhere(destination), language: language)
     }
 
     /// A source of the scan this process could not open. **Autopilot's key, not a
     /// second one saying the same thing**: it is the same sentence about the same
-    /// fact, and one English key means one thing.
+    /// fact, and one English text means one thing.
     static func folderUnreadable(language: AppLanguage = AppLanguage.current) -> String {
-        L("Helm cannot read this folder", language: language)
+        HelmWord.cannotReadThisFolder(language: language)
     }
 
     /// The other file that registers this row's login item.
@@ -353,26 +310,11 @@ enum LfStr {
     /// name, and Helm cannot read which registration launchd kept.
     static func labelClaimedTwice(_ other: String,
                                   language: AppLanguage = AppLanguage.current) -> String {
-        L("Another file claims this login item: \(other)",
-          [.ru: "Этот объект входа заявлен и в другом файле: \(other)",
-           .es: "Otro archivo reclama este elemento de inicio: \(other)",
-           .fr: "Un autre fichier revendique cet élément d’ouverture\u{00A0}: \(other)",
-           .de: "Eine andere Datei beansprucht dieses Anmeldeobjekt: \(other)",
-           .ja: "別のファイルが同じログイン項目を宣言しています：\(other)",
-           .zh: "另一个文件也声明了此登录项：\(other)",
-           .pt: "Outro arquivo reivindica este item de início: \(other)"],
-          language: language)
+        L(.labelClaimedTwice(other), language: language)
     }
     static func missingTarget(_ path: String,
                               language: AppLanguage = AppLanguage.current) -> String {
-        L("Points at a missing file: \(path)",
-          [.ru: "Ссылается на отсутствующий файл: \(path)",
-           .es: "Apunta a un archivo inexistente: \(path)",
-           .fr: "Pointe vers un fichier absent\u{00A0}: \(path)",
-           .de: "Verweist auf eine fehlende Datei: \(path)",
-           .ja: "存在しないファイルを参照: \(path)",
-           .zh: "指向缺失的文件：\(path)",
-           .pt: "Aponta para um arquivo ausente: \(path)"], language: language)
+        L(.missingTarget(path), language: language)
     }
     /// The bar under the list, about the selection and nothing else. It used to
     /// pair the number of rows found with the size of the selection, and a
@@ -381,24 +323,13 @@ enum LfStr {
     static func selectedLine(_ n: Int, _ size: String,
                              language: AppLanguage = AppLanguage.current) -> String {
         let items = Plural.items(n, language: language.rawValue)
-        return L("Selected: \(items) · \(size)",
-                 [.ru: "Выбрано: \(items) · \(size)",
-                  .es: "Seleccionado: \(items) · \(size)",
-                  .fr: "Sélection\u{00A0}: \(items) · \(size)",
-                  .de: "Ausgewählt: \(items) · \(size)",
-                  .ja: "選択：\(items)・\(size)",
-                  .zh: "已选择：\(items) · \(size)",
-                  .pt: "Selecionado: \(items) · \(size)"], language: language)
+        return L(.selectedLine(items, size), language: language)
     }
 
     /// What the scan turned up, beside the control that filters it.
     static func foundLine(_ n: Int, language: AppLanguage = AppLanguage.current) -> String {
         let items = Plural.items(n, language: language.rawValue)
-        return L("Found: \(items)",
-                 [.ru: "Найдено: \(items)", .es: "Encontrado: \(items)",
-                  .fr: "Trouvé\u{00A0}: \(items)", .de: "Gefunden: \(items)",
-                  .ja: "検出：\(items)", .zh: "找到：\(items)",
-                  .pt: "Encontrado: \(items)"], language: language)
+        return L(.foundLine(items), language: language)
     }
     /// Where the files went, not what the disk gained: the Trash is a folder on
     /// the same volume, so nothing is free until it is emptied. The same
@@ -414,14 +345,7 @@ enum LfStr {
     static func movedToTrash(_ count: Int, _ size: String,
                              language: AppLanguage = AppLanguage.current) -> String {
         let items = Plural.items(count, language: language.rawValue)
-        return L("Moved to the Trash: \(items) — \(size)",
-                 [.ru: "Перемещено в Корзину: \(items)\u{00A0}— \(size)",
-                  .es: "Trasladado a la papelera: \(items) — \(size)",
-                  .fr: "Placé dans la corbeille\u{00A0}: \(items) — \(size)",
-                  .de: "In den Papierkorb gelegt: \(items) — \(size)",
-                  .ja: "ゴミ箱に入れました：\(items)・\(size)",
-                  .zh: "已移到废纸篓：\(items) · \(size)",
-                  .pt: "Movido para o Lixo: \(items) — \(size)"], language: language)
+        return L(.movedToTrash(items, size), language: language)
     }
     /// **The kind, not its `rawValue`.** This took a `String` and ended in a
     /// `default` that answered "Plug-ins" — so a sixth `StaleKind` would have
@@ -431,9 +355,9 @@ enum LfStr {
     /// is exhaustive and a new case is a build error.
     static func kindName(_ kind: StaleKind) -> String {
         switch kind {
-        case .launchAgent: return L("Launch agents")
+        case .launchAgent: return HelmWord.launchAgents
         case .launchDaemon: return L(.launchDaemons)
-        case .preference: return L("Settings files")
+        case .preference: return HelmWord.settingsFiles
         case .systemExtension: return L(.systemExtensions)
         case .plugin: return L(.plugIns)
         }

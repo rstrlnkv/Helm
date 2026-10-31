@@ -16,12 +16,12 @@ public enum MenuBarIconStyle: String, CaseIterable, Sendable {
 
     public var label: String {
         switch self {
-        case .ring: return L("Ring")
-        case .doubleRing: return L("Double ring")
-        case .ringDot: return L("Ring + dot")
-        case .squircle: return L("Square")
-        case .hexagon: return L("Hexagon")
-        case .capsule: return L("Capsule")
+        case .ring: return L(.ring)
+        case .doubleRing: return L(.doubleRing)
+        case .ringDot: return L(.ringDot)
+        case .squircle: return L(.square)
+        case .hexagon: return L(.hexagon)
+        case .capsule: return L(.capsule)
         }
     }
 

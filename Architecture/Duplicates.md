@@ -18,7 +18,7 @@ The unattended walk is narrower than the watched one: it asks
 subtrees macOS guards with TCC stay out of the 0600 journal
 (`DuplicateScanner`'s `unattended`).
 
-Words: `Sources/Modules/Duplicates/UI/Localizable.xcstrings`; interpolated ones in inline tables in `DuplicatesStrings.swift`; shared words through `L()`, and what Disk says too — the basket bar's two lines, moved to the Trash, mark a named file — through `HelmBasket` in `Sources/HelmUI/BasketStrings.swift`.
+Words: `Sources/Modules/Duplicates/UI/Localizable.xcstrings`; shared words through `HelmWord`, and what Disk says too — the basket bar's two lines, moved to the Trash, mark a named file — through `HelmBasket` in `Sources/HelmUI/BasketStrings.swift`.
 
 Every control on the toolbar and the basket row keeps its label at every width: no pane the settings window gives is narrower than the widest row (`DuplicatesLayout.swift` has the numbers), and the `worst` state below is where a longer string would show.
 

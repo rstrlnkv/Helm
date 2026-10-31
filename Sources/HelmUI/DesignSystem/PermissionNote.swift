@@ -46,7 +46,7 @@ public struct HelmPermissionNote: View {
     /// content is «this needs a permission» draws the same word on a prominent
     /// button rather than inventing a second one for the same act.
     public static var grantLabel: String {
-        L("Grant…")
+        L(.grant)
     }
 }
 

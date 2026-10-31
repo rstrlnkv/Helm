@@ -163,39 +163,23 @@ public struct HelmRemovalOutcome: View {
     /// line used a comma, so the app disagreed with itself about it. CJK takes its
     /// own full stop; French an unbreakable space before the colon.
     ///
-    /// `language` is explicit, defaulting to the app's, because an inline table
-    /// cannot be read back in the other seven otherwise.
+    /// `language` is explicit, defaulting to the app's, because the other seven
+    /// cannot be read back otherwise.
     static func heading(succeeded: String?, failed: Int,
                         language: AppLanguage = AppLanguage.current) -> String {
         let items = Plural.items(failed, language: language.rawValue)
         guard let succeeded else {
-            return L("\(items) could not be moved",
-                     [.ru: "Не удалось переместить: \(items)",
-                      .es: "No se pudieron mover: \(items)",
-                      .fr: "Impossible de déplacer\u{00A0}: \(items)",
-                      .de: "Nicht verschoben: \(items)",
-                      .ja: "移動できませんでした：\(items)",
-                      .zh: "无法移动：\(items)",
-                      .pt: "Não foi possível mover: \(items)"], language: language)
+            return L(.itemsCouldNotBeMoved(items), language: language)
         }
-        return L("\(succeeded). \(items) could not be moved",
-                 [.ru: "\(succeeded). Не удалось переместить: \(items)",
-                  .es: "\(succeeded). No se pudieron mover: \(items)",
-                  .fr: "\(succeeded). Impossible de déplacer\u{00A0}: \(items)",
-                  .de: "\(succeeded). Nicht verschoben: \(items)",
-                  .ja: "\(succeeded)。移動できませんでした：\(items)",
-                  .zh: "\(succeeded)。无法移动：\(items)",
-                  .pt: "\(succeeded). Não foi possível mover: \(items)"], language: language)
+        return L(.succeededItemsCouldNotBeMoved(succeeded, items), language: language)
     }
 
     private static func more(_ n: Int) -> String {
-        L("…and \(n) more", [.ru: "…и ещё \(n)", .es: "…y \(n) más", .fr: "…et \(n) de plus",
-                             .de: "…und \(n) weitere", .ja: "…ほか \(n) 件", .zh: "…还有 \(n) 项",
-                             .pt: "…e mais \(n)"])
+        L(.andMore(String(n)))
     }
 
     private static var grant: String {
-        L("Grant…")
+        L(.grant)
     }
 
     /// The sentence this row says quietly: what is known, with nothing to act on.

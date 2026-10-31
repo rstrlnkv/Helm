@@ -23,11 +23,11 @@ public struct IconShapePicker: View {
     /// picture, so without this nothing on the page ever shows the icon as it
     /// will appear in the bar.
     public init(selection: Binding<String>,
-                title: String = L("Icon shape"),
+                title: String? = nil,
                 tintToken: String = "primary",
                 size: String = MenuBarIconSize.small.rawValue) {
         self._selection = selection
-        self.title = title
+        self.title = title ?? L(.iconShape)
         self.tintToken = tintToken
         self.size = MenuBarIconSize(stored: size)
     }
@@ -120,7 +120,7 @@ public struct IconSizePicker: View {
     public var body: some View {
         // Named even though the label is hidden: the row's `LabeledContent`
         // titles it on screen, and VoiceOver reads the control itself.
-        Picker(L("Icon size"), selection: $selection) {
+        Picker(L(.iconSize), selection: $selection) {
             ForEach(MenuBarIconSize.allCases, id: \.rawValue) { size in
                 Text(size.label).tag(size.rawValue)
             }

@@ -13,7 +13,7 @@ Each target and what it holds:
 - `HelmLaunch` — the package's only non-Swift target: the Objective-C `@try` around an `NSTask` launch, which a Swift `catch` cannot be, and, inside `HelmReadNumber`, around the call `WindowCorner` makes of a window's own number.
 - `HelmContract` — protocols, the types a module declares itself with, and `EngineNews`.
 - `HelmRuntime` — shared plumbing without UI.
-- `HelmUI` — the design system, `L()`, the `ModuleDescriptor` protocol; carries `Resources`.
+- `HelmUI` — the design system, `L()`, the `ModuleDescriptor` protocol, `HelmWord` (the shared words, `String` only) and the kit's own `Localizable.xcstrings`.
 - `Module_<X>_Engine` — a module's headless logic.
 - `Module_<X>_UI` — a module's descriptor, settings page, panel tile and view model.
 - `HelmTestSupport` — `Tests/Support`, below.

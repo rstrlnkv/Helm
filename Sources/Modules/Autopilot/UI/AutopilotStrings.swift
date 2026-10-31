@@ -1,6 +1,3 @@
-// Every inline table is wrapped, one language per line; the English key, which is
-// never split, is one line.
-
 import Foundation
 import HelmRuntime
 import HelmUI
@@ -58,7 +55,7 @@ enum ApStr {
     }
 
     static func folderUnreadable(language: AppLanguage = AppLanguage.current) -> String {
-        L("Helm cannot read this folder", language: language)
+        HelmWord.cannotReadThisFolder(language: language)
     }
 
     /// The hourly sweep still runs, which is why this says what stopped rather
@@ -123,31 +120,15 @@ enum ApStr {
     /// with neither in English, German, Japanese and Chinese. The other three
     /// read the same anywhere and are returned as they are.
     ///
-    /// Interpolated, so the table is inline, and French takes an unbreakable
-    /// space before its colon.
+    /// Two keys of the module's catalog, one template each; French takes an
+    /// unbreakable space before its colon.
     static func presetName(_ kind: PresetKind, inFolder folder: String,
                            language: AppLanguage = AppLanguage.current) -> String {
         switch kind {
         case .downloadsByKind:
-            L("\(folder) sorted by kind",
-              [.ru: "\(folder) — по типам",
-               .es: "\(folder): orden por clase",
-               .fr: "\(folder)\u{00A0}: tri par type",
-               .de: "\(folder) nach Art sortiert",
-               .ja: "\(folder)を種類別に整理",
-               .zh: "\(folder)按类型归类",
-               .pt: "\(folder): organização por tipo"],
-              language: language)
+            L(.presetNameByKind(folder), language: language)
         case .desktopByMonth:
-            L("\(folder) sorted by month",
-              [.ru: "\(folder) — по месяцам",
-               .es: "\(folder): orden por mes",
-               .fr: "\(folder)\u{00A0}: tri par mois",
-               .de: "\(folder) nach Monat sortiert",
-               .ja: "\(folder)を月別に整理",
-               .zh: "\(folder)按月份归类",
-               .pt: "\(folder): organização por mês"],
-              language: language)
+            L(.presetNameByMonth(folder), language: language)
         case .screenshots, .oldInstallers, .largeDownloads:
             presetName(kind, language: language)
         }
@@ -190,15 +171,7 @@ enum ApStr {
     /// in one language eight times.
     static func swept(_ acted: Int, _ examined: Int, notCompleted: Int = 0,
                       language: AppLanguage = AppLanguage.current) -> String {
-        let sentence = L("Acted on \(acted) of \(examined)",
-                         [.ru: "Обработано \(acted) из \(examined)",
-                          .es: "Se actuó sobre \(acted) de \(examined)",
-                          .fr: "\(acted) sur \(examined) traités",
-                          .de: "\(acted) von \(examined) bearbeitet",
-                          .ja: "\(examined) 件中 \(acted) 件を処理",
-                          .zh: "处理了 \(examined) 个中的 \(acted) 个",
-                          .pt: "Agiu sobre \(acted) de \(examined)"],
-                         language: language)
+        let sentence = L(.swept(String(acted), String(examined)), language: language)
         guard notCompleted > 0 else { return sentence }
         return sentence + " · " + historyProblems(notCompleted, language: language)
     }
@@ -259,19 +232,19 @@ enum ApStr {
 
     static var actionMove: String { L(.moveToFolder) }
     static var actionSort: String { L(.sortIntoSubfolder) }
-    static var actionRename: String { L("Rename") }
+    static var actionRename: String { HelmWord.rename }
     static var actionTag: String { L(.addTag) }
-    static var actionTrash: String { L("Move to Trash") }
+    static var actionTrash: String { HelmWord.moveToTrash }
     static var schemeKind: String { L(.byKind) }
     static var schemeMonth: String { L(.byMonth) }
     static var patternHint: String { L(.nameDateAndCounterAreReplaced) }
-    static var chooseDestination: String { L("Choose…") }
+    static var chooseDestination: String { HelmWord.choose }
 
     // MARK: - Common
 
-    static var cancel: String { L("Cancel") }
-    static var done: String { L("Done") }
-    static var edit: String { L("Edit") }
+    static var cancel: String { HelmWord.cancel }
+    static var done: String { HelmWord.done }
+    static var edit: String { HelmWord.edit }
     static var delete: String { L(.delete) }
 
     // MARK: - Names for controls that carry none on screen
@@ -297,7 +270,7 @@ enum ApStr {
     // MARK: - What it did
 
     static var historyTitle: String { L(.last30Days) }
-    static var historyClear: String { L("Clear") }
+    static var historyClear: String { HelmWord.clear }
 
     /// **Why the record is empty: three states with three different next steps**
     /// — no watched folder, every rule switched off, a running rule that has
@@ -322,15 +295,7 @@ enum ApStr {
         // for two through four in Russian, and the same trap waits in every
         // language that agrees a verb with a numeral; a colon makes the number
         // a count rather than a subject and the agreement question disappears.
-        L("not completed: \(count)",
-          [.ru: "не выполнено: \(count)",
-           .es: "sin completar: \(count)",
-           .fr: "non effectuées : \(count)",
-           .de: "nicht ausgeführt: \(count)",
-           .ja: "未実行: \(count)",
-           .zh: "未完成：\(count)",
-           .pt: "não concluídas: \(count)"],
-          language: language)
+        L(.historyProblems(String(count)), language: language)
     }
 
     /// The verb for one row. Past tense, because the row is a record of
@@ -361,23 +326,17 @@ enum ApStr {
     /// is what makes it a promise rather than an intention.
     static func putBackFiles(_ count: Int,
                              language: AppLanguage = AppLanguage.current) -> String {
-        // Interpolated, so the table is inline: the lookup happens after the
-        // number is already in the string.
-        L("Put back \(count) files",
-          [.ru: "Вернуть \(Plural.files(count, language: "ru"))",
-           .es: "Devolver \(Plural.files(count, language: "es"))",
-           .fr: "Restaurer \(Plural.files(count, language: "fr"))",
-           .de: "\(Plural.files(count, language: "de")) zurücklegen",
-           .ja: "\(Plural.files(count, language: "ja"))を戻す",
-           .zh: "放回\(Plural.files(count, language: "zh"))",
-           .pt: "Devolver \(Plural.files(count, language: "pt"))"],
-          language: language)
+        // English counts bare, as it always has; the other seven say the files
+        // in their own plural, so the argument is chosen for `language` here.
+        let files = language == .en ? String(count)
+            : Plural.files(count, language: language.rawValue)
+        return L(.putBackFiles(files), language: language)
     }
 
     /// The word on a row that has already gone back. The row stays — a history
     /// that hid what it had undone would be hiding an action.
     ///
-    /// Not "put back" again: that is the button's key, and one English key
+    /// Not "put back" again: that is the button's word, and one English text
     /// means one thing. Two keys differing only in a capital letter is the same
     /// collision wearing a disguise.
     static var putBackAlready: String { L(.backWhereItWas) }
@@ -408,25 +367,9 @@ enum ApStr {
     /// as "all of them" — and a pass is not atomic.
     static func putBackReport(_ restored: Int, notPutBack: Int,
                               language: AppLanguage = AppLanguage.current) -> String {
-        let done = L("put back: \(restored)",
-                     [.ru: "возвращено: \(restored)",
-                      .es: "devueltos: \(restored)",
-                      .fr: "restaurés : \(restored)",
-                      .de: "zurückgelegt: \(restored)",
-                      .ja: "戻した件数: \(restored)",
-                      .zh: "已放回：\(restored)",
-                      .pt: "devolvidos: \(restored)"],
-                     language: language)
+        let done = L(.putBackReportRestored(String(restored)), language: language)
         guard notPutBack > 0 else { return done }
-        return done + " · " + L("not put back: \(notPutBack)",
-                                [.ru: "не возвращено: \(notPutBack)",
-                                 .es: "sin devolver: \(notPutBack)",
-                                 .fr: "non restaurés : \(notPutBack)",
-                                 .de: "nicht zurückgelegt: \(notPutBack)",
-                                 .ja: "戻せなかった件数: \(notPutBack)",
-                                 .zh: "未放回：\(notPutBack)",
-                                 .pt: "não devolvidos: \(notPutBack)"],
-                                language: language)
+        return done + " · " + L(.putBackReportNotPutBack(String(notPutBack)), language: language)
     }
 
     /// A file that came back under a name it did not have. Told outright,
@@ -437,15 +380,7 @@ enum ApStr {
         // The marks are `Quoted`'s. Every language here punctuates quotation
         // differently and a table spelling them itself is a table that gets one
         // of them wrong.
-        L("\(Quoted(file, language: language)) came back as \(Quoted(name, language: language))",
-          [.ru: "\(Quoted(file, language: language)) вернулся как \(Quoted(name, language: language))",
-           .es: "\(Quoted(file, language: language)) volvió como \(Quoted(name, language: language))",
-           .fr: "\(Quoted(file, language: language)) est revenu sous le nom \(Quoted(name, language: language))",
-           .de: "\(Quoted(file, language: language)) kam zurück als \(Quoted(name, language: language))",
-           .ja: "\(Quoted(file, language: language)) は \(Quoted(name, language: language)) として戻りました",
-           .zh: "\(Quoted(file, language: language)) 已作为 \(Quoted(name, language: language)) 放回",
-           .pt: "\(Quoted(file, language: language)) voltou como \(Quoted(name, language: language))"],
-          language: language)
+        L(.landedAs(Quoted(file, language: language), Quoted(name, language: language)), language: language)
     }
 
     /// One file that did not go back, and why.
@@ -456,15 +391,7 @@ enum ApStr {
     /// sentence wearing their words.
     static func notPutBack(_ file: String, _ reason: String,
                            language: AppLanguage = AppLanguage.current) -> String {
-        L("\(file) — \(reason)",
-          [.ru: "\(file) — \(reason)",
-           .es: "\(file): \(reason)",
-           .fr: "\(file)\u{00a0}: \(reason)",
-           .de: "\(file) – \(reason)",
-           .ja: "\(file)：\(reason)",
-           .zh: "\(file)：\(reason)",
-           .pt: "\(file): \(reason)"],
-          language: language)
+        L(.notPutBack(file, reason), language: language)
     }
 
     /// The mark that stops a rule acting twice did not stick, so the rule will
@@ -478,15 +405,7 @@ enum ApStr {
     /// know which one is about to take the file back.
     static func turnRuleOff(_ rule: String,
                             language: AppLanguage = AppLanguage.current) -> String {
-        L("Turn off \(Quoted(rule, language: language))",
-          [.ru: "Выключить правило \(Quoted(rule, language: language))",
-           .es: "Desactivar \(Quoted(rule, language: language))",
-           .fr: "Désactiver \(Quoted(rule, language: language))",
-           .de: "\(Quoted(rule, language: language)) ausschalten",
-           .ja: "\(Quoted(rule, language: language)) をオフにする",
-           .zh: "关闭\(Quoted(rule, language: language))",
-           .pt: "Desativar \(Quoted(rule, language: language))"],
-          language: language)
+        L(.turnRuleOff(Quoted(rule, language: language)), language: language)
     }
 
     /// Why one file did not go back. Exhaustive on purpose, like the rule
@@ -561,25 +480,16 @@ enum ApStr {
                           body: clauses.joined(separator: " · "))
     }
 
-    /// Interpolated, so the table is inline: the lookup happens after the number
-    /// is already in the string — which is also why the word for the Trash is
-    /// written out here rather than composed. It is copied from the eight
-    /// translations of `L("Move to Trash")`, which are macOS's own spellings, so
-    /// a person is not shown two words for one folder; the copy is the price of
-    /// the interpolation and is the one thing in this pair to check against
-    /// those files if either ever moves.
+    /// The files are counted in `language`'s own plural before the template is
+    /// asked, and the word for the Trash is written into the template rather than
+    /// composed. It is copied from the eight translations of
+    /// `HelmWord.moveToTrash`, which are macOS's own spellings, so a person is not
+    /// shown two words for one folder; the copy is the price of the template and
+    /// is the one thing in this pair to check against those files if either ever
+    /// moves.
     static func sweepTrashed(_ count: Int,
                              language: AppLanguage = AppLanguage.current) -> String {
-        func files(_ code: String) -> String { Plural.files(count, language: code) }
-        return L("Moved \(files("en")) to the Trash",
-                 [.ru: "Отправлено в Корзину: \(files("ru"))",
-                  .es: "\(files("es")) a la papelera",
-                  .fr: "\(files("fr")) dans la corbeille",
-                  .de: "\(files("de")) in den Papierkorb gelegt",
-                  .ja: "\(files("ja"))をゴミ箱に移動しました",
-                  .zh: "已将\(files("zh"))移到废纸篓",
-                  .pt: "\(files("pt")) para o Lixo"],
-                 language: language)
+        L(.sweepTrashed(Plural.files(count, language: language.rawValue)), language: language)
     }
 
     /// Refusals and failures under one clause, deliberately. They are different
@@ -588,15 +498,6 @@ enum ApStr {
     /// they wrote did not run, because every screen otherwise looks well.
     static func sweepNotActedOn(_ count: Int,
                                 language: AppLanguage = AppLanguage.current) -> String {
-        func files(_ code: String) -> String { Plural.files(count, language: code) }
-        return L("\(files("en")) a rule could not act on",
-                 [.ru: "Правило не смогло обработать \(files("ru"))",
-                  .es: "Una regla no pudo actuar sobre \(files("es"))",
-                  .fr: "Une règle n’a pas pu traiter \(files("fr"))",
-                  .de: "Eine Regel konnte \(files("de")) nicht verarbeiten",
-                  .ja: "ルールが\(files("ja"))を処理できませんでした",
-                  .zh: "规则无法处理\(files("zh"))",
-                  .pt: "Uma regra não pôde tratar \(files("pt"))"],
-                 language: language)
+        L(.sweepNotActedOn(Plural.files(count, language: language.rawValue)), language: language)
     }
 }
