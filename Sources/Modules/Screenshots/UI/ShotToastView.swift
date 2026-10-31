@@ -88,9 +88,9 @@ struct ShotToastView: View {
         .animation(HelmMotion.interface, value: model.focus)
     }
 
-    /// How far the counter and «N more» stand out of the picture's corner, the mockup's 10 pt.
+    /// How far the counter and «N more» stand out of the picture's corner, 10 pt.
     private static let labelOut: CGFloat = 10
-    /// How far «N more» stands out of the picture's left edge, not the mockup's 10 pt (`labelOut`, which it keeps
+    /// How far «N more» stands out of the picture's left edge, not 10 pt (`labelOut`, which it keeps
     /// upward): the far shot's ring is 3 pt wider than its slot, and at 10 the capsule's left cap lay 6.5 pt past the
     /// row's cut, `rowOverhang`, and was cut flat; at 3 it lies 0.5 pt inside it.
     private static let moreOut: CGFloat = 3
@@ -167,7 +167,7 @@ struct ShotToastView: View {
         .transition(.opacity)
     }
 
-    /// The mockup's 22 pt, on no step of `HelmSpace`.
+    /// 22 pt, on no step of `HelmSpace`.
     private static let labelHeight: CGFloat = 22
 
     /// One shot, in a white frame: the thumbnail macOS shows. The caption is not on the screen; it is the value
@@ -217,8 +217,8 @@ struct ShotToastView: View {
 
     private typealias ToastShot = ShotToastModel.Shot
 
-    /// The white ring round a shot's picture, with the shadow it casts: the sheets under the top one cast the
-    /// mockup's lighter one (`lower`: 0 6 18 at .25), the top sheet's is 0 10 30 at .35.
+    /// The white ring round a shot's picture, with the shadow it casts: the sheets under the top one cast a
+    /// lighter one (`lower`: 0 6 18 at .25), the top sheet's is 0 10 30 at .35.
     private func ring(of shot: ToastShot, shadow: Double, lower: Bool = false) -> some View {
         let size = ShotThumbnail.fitted(pixels: CGSize(width: shot.image.width, height: shot.image.height))
         return RoundedRectangle(cornerRadius: Self.pictureRadius + Self.frameWidth)
@@ -237,7 +237,7 @@ struct ShotToastView: View {
     private static let shadow = 0.35
     private static let lowerShadow = 0.25
 
-    /// The mockup's 3 pt white ring and 5 pt picture corner (the ring's outer corner is 8). `HelmRadius` has
+    /// The 3 pt white ring and 5 pt picture corner (the ring's outer corner is 8). `HelmRadius` has
     /// 6 · 10 · 14 · 16 · 26, so neither corner is on the ladder, and the ring has no token.
     private static let frameWidth: CGFloat = 3
     private static let pictureRadius: CGFloat = 5

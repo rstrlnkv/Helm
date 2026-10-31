@@ -74,8 +74,8 @@ enum EditorAction: Equatable {
     case close
 }
 
-/// **Keys by physical key code, never by character.** The owner types Russian: the
-/// key that says A on an English layout says Ф on theirs and `characters` follows
+/// **Keys by physical key code, never by character.** A Russian layout types other letters: the
+/// key that says A on an English layout says Ф on it and `characters` follows
 /// the layout, so a binding written on it works for one of the two. The code names
 /// the place on the keyboard.
 enum EditorKeys {

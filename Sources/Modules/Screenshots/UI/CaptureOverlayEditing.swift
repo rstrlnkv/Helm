@@ -162,9 +162,7 @@ extension CaptureOverlay {
             remember(colour: color, for: owner)
         case .thickness(let step)?:
             style.thickness = step
-            // Q6, parked for the owner: with an object selected while the pop-over edits, a thickness pick also
-            // re-weights that object, as it always has. Whether the pop-over should edit the next stroke only is
-            // this one line; the opacity below already is the next stroke's alone.
+            // With an object selected a thickness pick also re-weights it; the opacity below is the next stroke's alone.
             current.layers.setThickness(step)
             remember()
         case .opacity(let value)?:

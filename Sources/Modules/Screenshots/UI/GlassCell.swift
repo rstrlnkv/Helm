@@ -78,17 +78,18 @@ struct GlassCell<Icon: View>: View {
         }
     }
 
-    /// The editor palette's glyph ink, from its mockup (`#3A3A3C` light, `#E5E5EA` dark): no token of the
+    /// The editor palette's glyph ink (`#3A3A3C` light, `#E5E5EA` dark): no token of the
     /// design system is that grey, so the two values live here and nowhere else.
     static var paletteInk: Color { adaptive(light: (0x3A, 0x3A, 0x3C), dark: (0xE5, 0xE5, 0xEA)) }
-    /// A disabled glyph, from the same mockup: `#B8B8BD` light, `#6C6C70` dark. Opaque, so nothing dims it twice.
+    /// A disabled glyph: `#B8B8BD` light, `#6C6C70` dark. Opaque, so nothing dims it twice.
     private static var disabledInk: Color { adaptive(light: (0xB8, 0xB8, 0xBD), dark: (0x6C, 0x6C, 0x70)) }
 
-    /// The glyph on a pressed circle and in the badge, and the ring round the badge, from the mockup: `#F7F7F7` on
+    /// The glyph on a pressed circle and in the badge, and the ring round the badge: `#F7F7F7` on
     /// light and `#1F1F21` on dark. The pressed circle itself is `paletteInk`.
     static var pressedInk: Color { adaptive(light: (0xF7, 0xF7, 0xF7), dark: (0x1F, 0x1F, 0x21)) }
     private static var badgeSize: CGFloat { 14 }
     private static var badgeRing: CGFloat { 1.5 }
+    private static var badgeGlyph: CGFloat { 8.5 }
     private static var badgeOffset: CGFloat { 3 }
     /// How far the badge and its ring reach below the circle: the offset and the ring's width.
     static var badgeReach: CGFloat { badgeOffset + badgeRing }
@@ -96,11 +97,11 @@ struct GlassCell<Icon: View>: View {
     @ViewBuilder private var badgeView: some View {
         if let badge {
             Image(systemName: badge)
-                .font(.system(size: 8.5, weight: .semibold))
+                .font(.system(size: Self.badgeGlyph, weight: .semibold))
                 .foregroundStyle(Self.pressedInk)
                 .frame(width: Self.badgeSize, height: Self.badgeSize)
                 .background(Circle().fill(Self.paletteInk))
-                // The mockup's 1.5 pt ring, so the badge does not merge with a pressed circle of its own colour.
+                // A 1.5 pt ring, so the badge does not merge with a pressed circle of its own colour.
                 .overlay(Circle().strokeBorder(Self.pressedInk, lineWidth: Self.badgeRing).padding(-Self.badgeRing))
                 .offset(x: Self.badgeOffset, y: Self.badgeOffset)
         }

@@ -7,7 +7,7 @@ import Module_Screenshots_Engine
 /// state and writes it here after every change; a click goes back out as the same
 /// `EditorAction` the keys make.
 ///
-/// The name stays from the plan, which calls the model `EditorBarModel`; the overlay's property for it is `palette`.
+/// The overlay's property for it is `palette`.
 @MainActor final class EditorBarModel: ObservableObject {
     @Published private(set) var tool: AnnotationTool?
     /// The eraser is on: its object stands raised and no tool's does, though `tool` is still the one chosen under it.
@@ -88,7 +88,7 @@ import Module_Screenshots_Engine
 /// the first responder, so the keys go on meaning what they meant a click ago. The arrow
 /// is its own cursor, for the crosshair is the overlay's.
 ///
-/// The name stays because it hosts the palette and both pop-overs, and the OverlayPanel R3 record names it.
+/// It hosts the palette, both pop-overs and the emoji grid.
 final class EditorBarHostingView<Content: View>: NSHostingView<Content> {
     override var acceptsFirstResponder: Bool { false }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -108,7 +108,15 @@ struct EditorPalette: View {
     private static let moreZone: CGFloat = 36
     private static var moreOverhang: CGFloat { (moreZone - HelmSpace.s7) / 2 }
 
-    private static let space = "palette"
+    nonisolated private static let space = "palette"
+
+    /// The gaps are 14, 16 and 14 where the ladder has 12: each is the step plus what it needs, so the step stays the
+    /// one the gap to Done is. ⋯'s two are 4 pt shorter than the visible ones, which stay the circle's to its neighbours,
+    /// so the zone is 36.
+    private static let undoGap = HelmSpace.s5 + HelmSpace.s1
+    private static let objectsGap = HelmSpace.s5 + HelmSpace.s2
+    private static var coloursGap: CGFloat { HelmSpace.s5 + HelmSpace.s1 - moreOverhang }
+    private static var moreGap: CGFloat { HelmSpace.s5 - moreOverhang }
 
     /// The capsule's height, which every cell is centred in.
     static let height: CGFloat = EditorChrome.paletteHeight
@@ -169,7 +177,7 @@ struct EditorPalette: View {
     }
 
     /// What a click on a row object sends: the tool, and from a second click on the chosen one the pop-over, centred
-    /// at `anchorX`. Putting a tool down is the key's second press, as before the pop-over had a way to open.
+    /// at `anchorX`. Putting a tool down is the key's second press.
     static func action(forClickOn tool: AnnotationTool, chosen: AnnotationTool?, anchorX: CGFloat) -> EditorAction {
         tool == chosen ? .thicknessAndOpacity(anchorX: anchorX) : .tool(tool)
     }
@@ -198,8 +206,8 @@ struct EditorPalette: View {
         CGPoint(x: zone.minX + moreOverhang, y: zone.midY + HelmSpace.s7 / 2)
     }
 
-    /// The symbol a row object takes in the ⋯ menu and on ⋯'s badge while the person has taken it off the row. A default
-    /// for the owner to change; an object with no entry here, one added to `objects` later, gets `fallbackRowSymbol`.
+    /// The symbol a row object takes in the ⋯ menu and on ⋯'s badge while the person has taken it off the row. An object with
+    /// no entry here, one added to `objects` later, gets `fallbackRowSymbol`.
     private static let rowSymbols: [AnnotationTool: String] = [.pen: "pencil.tip", .highlighter: "highlighter", .pencil: "pencil",
                                                          .spotlight: "rectangle.inset.filled"]
     private static let fallbackRowSymbol = "scribble"
@@ -239,8 +247,6 @@ struct EditorPalette: View {
     }
 
     var body: some View {
-        // The gaps are the step (12) plus what the mockup adds, one by one, so ⋯'s layout can be its 36 pt zone: its two gaps
-        // are 4 pt shorter than the visible ones, which stay the circle's to its neighbours.
         HStack(spacing: 0) {
             HStack(spacing: HelmSpace.s4) {
                 GlassCell(symbol: "arrow.uturn.backward", name: ScStr.undo, look: .greyCircle, ink: GlassCell<Image>.paletteInk) {
@@ -252,9 +258,7 @@ struct EditorPalette: View {
                 }
                 .disabled(!model.canRedo)
             }
-            // The mockup's gaps are 14, 16 and 14 where the ladder has 12: the 2 and the 4 are added to the
-            // step, so the step stays the one the gap to Done is.
-            .padding(.trailing, HelmSpace.s5 + HelmSpace.s1)
+            .padding(.trailing, Self.undoGap)
             HStack(spacing: 0) {
                 ForEach(Self.objects.filter { $0.place == .row && $0.tool != Self.lastInTheRow && model.isOnRow($0.tool) }, id: \.tool) { object in
                     objectCell(object.tool)
@@ -277,9 +281,9 @@ struct EditorPalette: View {
                     objectCell(Self.lastInTheRow)
                 }
             }
-            .padding(.trailing, HelmSpace.s5 + HelmSpace.s2)
+            .padding(.trailing, Self.objectsGap)
             colourGrid
-                .padding(.trailing, HelmSpace.s5 + HelmSpace.s1 - Self.moreOverhang)
+                .padding(.trailing, Self.coloursGap)
             // The circle is 28 pt and takes a press 36 pt wide: Done is 12 pt from the circle and 8 from the zone.
             GlassCell(symbol: "ellipsis", name: HelmA11y.moreActions, look: .greyCircle,
                       ink: model.morePressed ? GlassCell<Image>.pressedInk : GlassCell<Image>.paletteInk,
@@ -289,10 +293,10 @@ struct EditorPalette: View {
                 model.morePressed = false
             }
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: { model.moreFrame = $0 }
-            .padding(.trailing, HelmSpace.s5 - Self.moreOverhang)
+            .padding(.trailing, Self.moreGap)
             HStack(spacing: HelmSpace.s2) {
                 GlassCell(name: ScStr.done, look: .accent) { model.perform(.exit(.confirm)) } icon: {
-                    Image(systemName: "checkmark").fontWeight(.bold).foregroundStyle(.white)
+                    Image(systemName: "checkmark").fontWeight(.bold).foregroundStyle(HelmText.onFill)
                 }
                 Rectangle().fill(HelmSurface.hairline).frame(width: 1, height: HelmSpace.s6)
                 GlassCell(symbol: "xmark", name: ScStr.closeEditor, ink: GlassCell<Image>.paletteInk) { model.perform(.close) }
@@ -338,12 +342,12 @@ struct EditorPalette: View {
     static func wheelFace(showing apart: AnnotationInk?) -> some View {
         Circle()
             .fill(AngularGradient(colors: [.red, .yellow, .green, .cyan, .blue, .purple, .red], center: .center))
-            .frame(width: HelmSpace.s6 + HelmSpace.s3, height: HelmSpace.s6 + HelmSpace.s3)
+            .frame(width: EditorSwatch.diameter, height: EditorSwatch.diameter)
             .overlay {
                 if let apart {
                     Circle()
                         .fill(Color(cgColor: apart.cgColor))
-                        .overlay(Circle().strokeBorder(Color.primary.opacity(0.25), lineWidth: 0.5))
+                        .overlay(Circle().strokeBorder(EditorSwatch.edge, lineWidth: 0.5))
                         .frame(width: HelmSpace.s5, height: HelmSpace.s5)
                 }
             }
@@ -366,6 +370,11 @@ struct EditorSwatch: View {
         color == .black && scheme == .dark && blackTurnsWhiteInDark ? .white : color
     }
 
+    /// The swatch's diameter, which the wheel's face shares.
+    static let diameter: CGFloat = HelmSpace.s6 + HelmSpace.s3
+    /// The edge's ink: 1 pt on a swatch that has none of its own against the glass, 0.5 pt round the custom colour in the wheel.
+    static let edge = Color.primary.opacity(0.25)
+
     /// The lit swatch's ring, outer edge to outer edge: 24 + 2 × (2.5 gap + 2 ring). No step of the ladder has it.
     static let ringDiameter: CGFloat = 33
 
@@ -377,8 +386,8 @@ struct EditorSwatch: View {
         Button(action: press) {
             Circle()
                 .fill(Color(cgColor: shown.cgColor))
-                .frame(width: HelmSpace.s6 + HelmSpace.s3, height: HelmSpace.s6 + HelmSpace.s3)
-                .overlay(Circle().strokeBorder(Color.primary.opacity(0.25), lineWidth: edged ? 1 : 0))
+                .frame(width: EditorSwatch.diameter, height: EditorSwatch.diameter)
+                .overlay(Circle().strokeBorder(EditorSwatch.edge, lineWidth: edged ? 1 : 0))
                 // An overlay, so the ring takes no room: the grid's pitch is the swatch and the gap.
                 .overlay(Circle().strokeBorder(Color(cgColor: shown.cgColor), lineWidth: selected ? 2 : 0)
                     .frame(width: Self.ringDiameter, height: Self.ringDiameter))

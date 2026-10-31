@@ -42,8 +42,8 @@ enum EditorMenu {
     }
 
     /// Whether an action's event is a key event typing a letter of `EditorKeys.toolKeys`: `Filler.choose` drops an action
-    /// for which this is true. A menu runs a key equivalent while it is open, and the owner has decided that a tool's letter
-    /// pressed in the open menu does nothing; the editor's own keys meet the menu closed. Return and space on a highlighted
+    /// for which this is true. A menu runs a key equivalent while it is open: a tool's letter
+    /// pressed there does nothing; the editor's own keys meet the menu closed. Return and space on a highlighted
     /// item are key events too, but no letter of that table, so they are a choice (keyboard navigation, VoiceOver) and pass.
     static func isSentByAKey(_ event: NSEvent?) -> Bool {
         guard event?.type == .keyDown, let typed = event?.charactersIgnoringModifiers?.lowercased() else { return false }

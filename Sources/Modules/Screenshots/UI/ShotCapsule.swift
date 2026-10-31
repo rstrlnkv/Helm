@@ -20,14 +20,14 @@ enum ShotCapsule {
         hasFile ? [.copyAll, .reveal, .close] : [.copyAll, .close]
     }
 
-    /// Between a cell and the capsule's edge: the mockup's 4 pt, so a 28 pt cell makes a capsule 36 pt high.
+    /// Between a cell and the capsule's edge: 4 pt, so a 28 pt cell makes a capsule 36 pt high.
     static let inset = HelmSpace.s2
-    /// The divider's height and each side's air. The mockup's 22 pt is on no step of `HelmSpace`, whose steps are
+    /// The divider's height and each side's air. The 22 pt is on no step of `HelmSpace`, whose steps are
     /// 2 · 4 · 6 · 8 · 12 · 18 · 28 · 40.
     static let separatorHeight: CGFloat = 22
     static let separatorGap = HelmSpace.s2
     private static let dividerWidth: CGFloat = 1
-    /// Between one cell and the next, the mockup's 2 pt: the divider's air is its own and comes on top of it.
+    /// Between one cell and the next, 2 pt: the divider's air is its own and comes on top of it.
     static let gap = HelmSpace.s1
 
     /// The capsule's width for a number of cells, the ✕ counted: a gap between each two cells (the divider stands in

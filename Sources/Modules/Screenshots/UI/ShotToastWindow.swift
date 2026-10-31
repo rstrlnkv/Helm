@@ -57,7 +57,7 @@ extension ShotToast {
     /// The refusal's width.
     static let width: CGFloat = 252
     /// Clear round the picture for its shadow: the panel's own is off, and the picture's is drawn in this room. The
-    /// shadow's blur and its offset down, both of the mockup's, fit in it.
+    /// shadow's blur and its offset down fit in it.
     static let shadowRoom = HelmSpace.s8
 
     /// Small enough to hold for as long as the window lives without holding

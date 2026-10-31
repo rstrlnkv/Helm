@@ -348,8 +348,7 @@ import Module_Screenshots_Engine
 
     // MARK: -
 
-    /// Puts what `change` made of the model on the screen, for `seconds`. The clock starts over, as the mockup's
-    /// group does with every new shot.
+    /// Puts what `change` made of the model on the screen, for `seconds`. The clock starts over with every new shot.
     private func show(lasting seconds: Double, _ change: () -> Void) {
         dismissal?.cancel()
         // The pointer stays held across a picture that follows a picture, the write's result over its working

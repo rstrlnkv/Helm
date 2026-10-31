@@ -14,6 +14,8 @@ import Module_Screenshots_Engine
 /// `layerRect(_:)`, and where a bare point or the pointer goes to a layer, by the height.
 final class OverlayView: NSView {
     let frozen: FrozenDisplay
+    /// The overlay's one table of inks, resolved when the view is built.
+    let ink: OverlayInk
     weak var overlay: CaptureOverlay?
 
     private let imageLayer = CALayer()
@@ -143,9 +145,9 @@ final class OverlayView: NSView {
     init(frozen: FrozenDisplay, overlay: CaptureOverlay) {
         self.frozen = frozen
         self.overlay = overlay
+        ink = OverlayInk(increased: overlay.increasesContrast(), appearance: NSApplication.shared.effectiveAppearance)
         super.init(frame: CGRect(origin: .zero, size: frozen.frame.size))
         wantsLayer = true
-        let ink = OverlayInk(increased: overlay.increasesContrast(), appearance: NSApp.effectiveAppearance)
         layer?.backgroundColor = NSColor.black.cgColor
 
         imageLayer.contents = frozen.image
@@ -165,10 +167,10 @@ final class OverlayView: NSView {
         cardLayer.mask = cardMask
 
         highlightEdgeLayer.fillColor = nil
-        highlightEdgeLayer.strokeColor = ink.washEdgeUnder
+        highlightEdgeLayer.strokeColor = ink.contrastEdgeUnder
         highlightEdgeLayer.lineWidth = 3
         highlightLayer.fillColor = ink.wash
-        highlightLayer.strokeColor = ink.washEdge
+        highlightLayer.strokeColor = ink.contrastEdge
         highlightLayer.lineWidth = 1.5
 
         selectionLayer.fillColor = nil
@@ -239,6 +241,7 @@ final class OverlayView: NSView {
         let field = OverlayTextField()
         field.onEnd = { [weak overlay] in overlay?.endTyping() }
         field.restyle(style)
+        field.outline(ink)
         field.clip = layerRect(area)
         field.start(at: CGPoint(x: point.x, y: bounds.height - point.y))
         addSubview(field)
