@@ -27,6 +27,6 @@ final class ShotPanel: NSPanel {
 
     override func keyDown(with event: NSEvent) {
         // Esc is also `cancelOperation`, but only when the responder chain gets that far.
-        if event.keyCode == 53 { onEscape() } else { super.keyDown(with: event) }
+        if event.keyCode == ShotKey.escape { onEscape() } else { super.keyDown(with: event) }
     }
 }

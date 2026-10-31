@@ -32,6 +32,18 @@ struct CapturePanelView: View {
     /// is 22 x 22 and the stopwatch 21 x 23.
     private static let glyph = Font.system(size: 24, weight: .light)
     private static let smallGlyph = Font.system(size: 21, weight: .light)
+    /// The timer's seconds, its chevron and the ring's seconds: no rung of `HelmText` is these faces, 12 and 8 are no size of it and 13 has no medium.
+    private static let timerDigits = Font.system(size: 12, weight: .semibold).monospacedDigit()
+    private static let chevron = Font.system(size: 8, weight: .semibold)
+    private static let ringDigits = Font.system(size: 13, weight: .medium).monospacedDigit()
+    /// The divider: a hairline 1 pt wide, this tall, with this much room each side besides the panel's own spacing.
+    private static let dividerHeight: CGFloat = 22
+    private static let dividerInset: CGFloat = 5
+    /// The gap between the timer's stopwatch, its seconds and its chevron.
+    private static let timerGap = HelmSpace.s1 + 1
+    /// The ring's track and arc: a stroke is centred on its path, so the path is inset by half the line.
+    private static let ringTrack = Color.primary.opacity(0.2)
+    private static let ringLine: CGFloat = 2
 
     var body: some View {
         HStack(spacing: HelmSpace.s2) {
@@ -72,9 +84,8 @@ struct CapturePanelView: View {
         }
     }
 
-    /// 1 pt wide and 22 tall, with 5 pt each side besides the panel's own spacing.
     private var divider: some View {
-        Rectangle().fill(HelmSurface.hairline).frame(width: 1, height: 22).padding(.horizontal, 5)
+        Rectangle().fill(HelmSurface.hairline).frame(width: 1, height: Self.dividerHeight).padding(.horizontal, Self.dividerInset)
             // Glass like the rest between the cells: a press on it moves the panel.
             .allowsHitTesting(false)
     }
@@ -100,10 +111,10 @@ struct CapturePanelView: View {
                 model.toggleTimer()
             }
         } icon: {
-            HStack(spacing: HelmSpace.s1 + 1) {
+            HStack(spacing: Self.timerGap) {
                 Image(systemName: "stopwatch").font(Self.smallGlyph)
-                if on { Text(String(model.settings.timer.seconds)).font(.system(size: 12, weight: .semibold).monospacedDigit()) }
-                Image(systemName: "chevron.down").font(.system(size: 8, weight: .semibold))
+                if on { Text(String(model.settings.timer.seconds)).font(Self.timerDigits) }
+                Image(systemName: "chevron.down").font(Self.chevron)
             }
             .foregroundStyle(on ? .primary : .secondary)
         }
@@ -159,12 +170,11 @@ struct CapturePanelView: View {
     private func ring(_ seconds: Int) -> some View {
         let left = model.countdownLength > 0 ? Double(seconds) / Double(model.countdownLength) : 1
         return ZStack {
-            // A stroke is centred on its path: inset by half the line, the ring's outside is the 28 pt.
-            Circle().inset(by: 1).stroke(Color.primary.opacity(0.2), lineWidth: 2)
-            Circle().inset(by: 1).trim(from: 0, to: left.clamped(to: 0...1, whenNotANumber: 1))
-                .stroke(Color.primary, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+            Circle().inset(by: Self.ringLine / 2).stroke(Self.ringTrack, lineWidth: Self.ringLine)
+            Circle().inset(by: Self.ringLine / 2).trim(from: 0, to: left.clamped(to: 0...1, whenNotANumber: 1))
+                .stroke(Color.primary, style: StrokeStyle(lineWidth: Self.ringLine, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            Text(String(seconds)).font(.system(size: 13, weight: .medium).monospacedDigit())
+            Text(String(seconds)).font(Self.ringDigits)
         }
         .frame(width: HelmSpace.s7, height: HelmSpace.s7)
         .accessibilityElement(children: .ignore)

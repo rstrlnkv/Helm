@@ -138,7 +138,7 @@ final class OverlayTextField: NSTextView {
 
     override func keyDown(with event: NSEvent) {
         // Return, Enter and Esc, unless the input method is composing: then they are its own.
-        if !hasMarkedText(), [53, 36, 76].contains(event.keyCode) { onEnd(); return }
+        if !hasMarkedText(), [ShotKey.escape, ShotKey.returnKey, ShotKey.enter].contains(event.keyCode) { onEnd(); return }
         super.keyDown(with: event)
     }
 

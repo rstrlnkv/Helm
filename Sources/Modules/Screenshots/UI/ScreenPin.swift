@@ -64,7 +64,7 @@ final class PinPanel: NSPanel {
 
     override func keyDown(with event: NSEvent) {
         // Esc is also `cancelOperation`, but only when the responder chain gets that far.
-        if event.keyCode == 53 { onClose() } else { super.keyDown(with: event) }
+        if event.keyCode == ShotKey.escape { onClose() } else { super.keyDown(with: event) }
     }
 
     func move(by delta: CGPoint) {

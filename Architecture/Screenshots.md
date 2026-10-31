@@ -28,12 +28,12 @@ and needs no Accessibility. Its rules are functions of the pointer and the modif
 in `Sources/Modules/Screenshots/Engine/Logic/Selection.swift`, and the three
 coordinate spaces a capture passes through — AppKit's, CoreGraphics' and a display's
 own — are converted in `Sources/Modules/Screenshots/Engine/Logic/ScreenSpace.swift`
-and nowhere else. The window list in a freeze is a reading: a click asks the system
+and nowhere else. Its translucent and accent inks are `Sources/Modules/Screenshots/UI/OverlayInk.swift`: ink on a picture and not the kit's tokens, with a stronger set under Increase Contrast. The window list in a freeze is a reading: a click asks the system
 for the window again, and a window that has gone, or that could not be captured, is cut from the frozen frame.
 
 Selecting is drawn as macOS draws it. Nothing is dimmed until there is a selection — from the first point a drag
 has moved over, through the edit — and a window pick is never dimmed: the window, the menu bar or the Dock under the
-pointer is filled with the accent at 28 %, in the outline `WindowShape` gives it. That outline is the window's
+pointer is filled with the accent at 28 % (under Increase Contrast 40 %, with a white edge over a dark one), in the outline `WindowShape` gives it. That outline is the window's
 rectangle, because the system gives no radius for a window's corners; a rounded one would change that function
 and nothing else. The lines across the screen are drawn only while ⌥ is held, read from `flagsChanged`. A window is
 taken with its shadow, and an option-click takes it without: the flag goes through `OverlayResult.window` and

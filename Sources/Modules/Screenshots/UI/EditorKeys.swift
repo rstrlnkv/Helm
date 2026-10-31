@@ -2,6 +2,14 @@ import AppKit
 import Carbon.HIToolbox
 import Module_Screenshots_Engine
 
+/// The keys the overlay, the bar, the pin and the toast's panel name, by the system's own constants.
+enum ShotKey {
+    static let escape = UInt16(kVK_Escape)
+    static let returnKey = UInt16(kVK_Return)
+    static let enter = UInt16(kVK_ANSI_KeypadEnter)
+    static let space = UInt16(kVK_Space)
+}
+
 /// How the editor leaves, and what each way does with the picture.
 enum EditorExit: Equatable {
     /// Return: what the settings say — copy and/or save by the save target.

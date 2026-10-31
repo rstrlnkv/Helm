@@ -24,19 +24,22 @@ final class RulerLayer: CALayer {
     override init() {
         super.init()
         mask = clip
-        // The strip: white at half, a hairline of black at 28 %, ticks every 10 pt, every fifth one longer.
-        body.fillColor = NSColor.white.withAlphaComponent(0.5).cgColor
-        body.strokeColor = NSColor.black.withAlphaComponent(0.28).cgColor
         body.lineWidth = 0.8
-        ticks.strokeColor = NSColor.black.withAlphaComponent(0.45).cgColor
         ticks.lineWidth = 0.8
-        pill.fillColor = NSColor.black.withAlphaComponent(0.6).cgColor
         label.font = Self.font
         label.fontSize = Self.font.pointSize
         label.foregroundColor = NSColor.white.cgColor
         label.alignmentMode = .center
         for sublayer in [body, ticks, pill, label] as [CALayer] { strip.addSublayer(sublayer) }
         addSublayer(strip)
+    }
+
+    /// The strip's and the pill's inks, from the table.
+    func paint(_ ink: OverlayInk) {
+        body.fillColor = ink.strip
+        body.strokeColor = ink.stripEdge
+        ticks.strokeColor = ink.ticks
+        pill.fillColor = ink.pill
     }
 
     override init(layer: Any) { super.init(layer: layer) }
