@@ -439,3 +439,5 @@ and the pins (`ASwitchedOffCaptureClosesEveryWindowTests`), and a press that com
 (`AStoppedScreenshotsModelReachesNoWorkTests`, `TheStoppedModelMeetsTheOrdersNobodyPlannedTests`). The host's order is the model's `stop()`
 and then the engine's `deactivate()`; the engine's `deactivate()` touches no session, so a
 capture in flight is not left holding a closed engine.
+
+Words: `Sources/Modules/Screenshots/UI/Localizable.xcstrings`, `%@` keys (`timerOn`, `nameTemplate`) included; other interpolated ones in inline tables in `ScreenshotsStrings.swift`; shared words through `L()` from the kit.

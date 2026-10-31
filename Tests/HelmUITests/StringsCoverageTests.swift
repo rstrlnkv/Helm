@@ -80,6 +80,35 @@ final class StringsCoverageTests: XCTestCase {
                       + offenders.sorted().prefix(40).joined(separator: "\n"))
     }
 
+    /// **A catalog key that holds `%@` holds it in every language.** `testEveryCatalogSymbolCarriesTheEightLanguages`
+    /// asks that a value is there, is not empty and is marked `translated`; a translation that lost its `%@` is all three, reads fine, and
+    /// drops the timer's value or, for Screenshots' `nameTemplate`, the time from a saved file's name, since `String(format:)` fills what is left from the date on. Each
+    /// language's count of `%@` is held to the English value's, and the walk must have met the two
+    /// Screenshots keys that carry them, or it saw nothing.
+    func testEveryCatalogLanguageKeepsTheEnglishPlaceholders() throws {
+        func count(_ text: String) -> Int { text.components(separatedBy: "%@").count - 1 }
+        var offenders: [String] = []
+        var met: Set<String> = []
+        for catalog in try ModuleCatalogs.all() {
+            for (symbol, values) in catalog.strings {
+                guard let english = values["en"] else { continue }
+                let expected = count(english)
+                if expected > 0 { met.insert("\(catalog.module).\(symbol)") }
+                for language in AppLanguage.allCases {
+                    let got = values[language.rawValue].map(count) ?? 0
+                    if got != expected {
+                        offenders.append("\(catalog.module).\(symbol): \(language.rawValue) has \(got) «%@», en has \(expected)")
+                    }
+                }
+            }
+        }
+        XCTAssertTrue(met.isSuperset(of: ["Screenshots.timerOn", "Screenshots.nameTemplate"]),
+                      "the walk did not meet Screenshots' %@ keys; met: \(met.sorted())")
+        XCTAssertTrue(offenders.isEmpty,
+                      "\(offenders.count) catalog value(s) differ from English in their %@ count:\n"
+                      + offenders.sorted().prefix(40).joined(separator: "\n"))
+    }
+
     /// A word in a module's catalog and in the kit's `.lproj` is two translations of one English
     /// text, free to drift apart — and a catalog's symbols are internal, so the other module cannot
     /// reach the catalog's copy. A shared word lives in the kit, and `ModuleCatalogs.tableByEnglish`

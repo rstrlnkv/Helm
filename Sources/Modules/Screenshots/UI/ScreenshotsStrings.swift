@@ -6,93 +6,93 @@ import Module_Screenshots_Engine
 enum ScStr {
     /// macOS's own word for them — «Bildschirmfotos», «Снимки экрана» — read out
     /// of `DefaultShortcutsTable.loctable`, where the same pane is titled.
-    static var moduleName: String { L("Screenshots") }
-    static var summary: String { L("Capture the screen, an area or a window") }
+    static var moduleName: String { L(.moduleName) }
+    static var summary: String { L(.summary) }
 
     static var needsAccess: String {
-        L("Helm cannot read the screen until Screen & System Audio Recording is allowed, so the shortcuts below capture nothing.")
+        L(.needsAccess)
     }
 
     /// The system's own term, the same key Keyboard's page already carries.
     static var shortcuts: String { L("Keyboard shortcuts") }
-    static var captureArea: String { L("Capture an area") }
-    static var captureScreen: String { L("Capture the whole screen") }
-    static var openPanel: String { L("Open the capture panel") }
+    static var captureArea: String { L(.captureArea) }
+    static var captureScreen: String { L(.captureScreen) }
+    static var openPanel: String { L(.openPanel) }
     static var conflict: String {
-        L("macOS still holds this combination for one of its own shortcuts. Untick it below first.")
+        L(.conflict)
     }
 
-    static var systemSection: String { L("System shortcuts") }
+    static var systemSection: String { L(.systemSection) }
     /// Over the boxes, which are three — ⇧⌘3 and ⇧⌘4 with their clipboard
     /// twins, and box 184 — so the title names none of the combinations.
-    static var replaceTitle: String { L("macOS's own screenshot shortcuts") }
+    static var replaceTitle: String { L(.replaceTitle) }
     static var replaceBody: String {
-        L("To use them, untick their boxes below in System Settings. Helm reads that setting and never changes it.")
+        L(.replaceBody)
     }
-    static var stillOn: String { L("Still on in macOS") }
-    static var isOff: String { L("Off in macOS") }
-    static var unknown: String { L("macOS did not say") }
-    static var openSystemSettings: String { L("Open System Settings…") }
-    static var useSystemKeys: String { L("Use ⇧⌘3 and ⇧⌘4") }
+    static var stillOn: String { L(.stillOn) }
+    static var isOff: String { L(.isOff) }
+    static var unknown: String { L(.unknown) }
+    static var openSystemSettings: String { L(.openSystemSettings) }
+    static var useSystemKeys: String { L(.useSystemKeys) }
     /// Its own key and not an interpolation: the three combinations are spelled
     /// whole in each language, and the button that takes ⇧⌘5 as well says so.
-    static var useSystemKeysAndPanel: String { L("Use ⇧⌘3, ⇧⌘4 and ⇧⌘5") }
+    static var useSystemKeysAndPanel: String { L(.useSystemKeysAndPanel) }
 
     /// The four boxes macOS ticks, in macOS's own words — copied out of the
     /// Keyboard settings extension's `DefaultShortcutsTable.loctable`, which is
     /// where the list Helm sends a person to draws them.
     static func boxName(_ box: SystemBox) -> String {
         switch box {
-        case .saveScreen: L("Save picture of screen as a file")
-        case .saveArea: L("Save picture of selected area as a file")
-        case .copyScreen: L("Copy picture of screen to the clipboard")
-        case .copyArea: L("Copy picture of selected area to the clipboard")
-        case .panel: L("Screenshot and recording options")
+        case .saveScreen: L(.boxSaveScreen)
+        case .saveArea: L(.boxSaveArea)
+        case .copyScreen: L(.boxCopyScreen)
+        case .copyArea: L(.boxCopyArea)
+        case .panel: L(.boxPanel)
         }
     }
 
     /// Under macOS's box 184, which is ⇧⌘5: that shortcut is also how screen
     /// recording is reached from the keyboard, and Helm has no recording.
     static var panelBoxWarning: String {
-        L("Helm's panel takes ⇧⌘5 only when this is unticked. Unticking it also removes the keyboard shortcut for screen recording.")
+        L(.panelBoxWarning)
     }
 
     /// macOS's own words for the bar — the tooltips of its three capture buttons,
     /// «Options», «Timer», «Capture», «Show Floating Thumbnail» and «Remember Last
     /// Selection» — read out of `screencaptureui`'s `Localizable.loctable`.
-    static var panelScreen: String { L("Capture entire screen") }
-    static var panelWindow: String { L("Capture selected window") }
-    static var panelArea: String { L("Capture selected portion") }
-    static var captureButton: String { L("Capture") }
-    static var options: String { L("Options") }
+    static var panelScreen: String { L(.panelScreen) }
+    static var panelWindow: String { L(.panelWindow) }
+    static var panelArea: String { L(.panelArea) }
+    static var captureButton: String { L(.captureButton) }
+    static var options: String { L(.options) }
     static var timer: String { L("Timer") }
     static func timer(_ timer: CaptureTimer) -> String {
         switch timer {
-        case .none: L("No timer")
-        case .five: L("5 seconds")
-        case .ten: L("10 seconds")
-        case .thirty: L("30 seconds")
+        case .none: L(.timerNone)
+        case .five: L(.timerFive)
+        case .ten: L(.timerTen)
+        case .thirty: L(.timerThirty)
         }
     }
     /// The timer cell's name while the timer is on: «Timer: 5 seconds». Off, the cell is named `timer`. The length is
     /// the one argument, so the word order is the translator's and not a concatenation's.
-    static func timerOn(_ timer: CaptureTimer) -> String { String(format: L("Timer: %@"), Self.timer(timer)) }
-    static var putPanelBack: String { L("Put the Panel Back") }
-    static var floatingThumbnail: String { L("Show floating thumbnail") }
-    static var rememberSelection: String { L("Remember last selection") }
+    static func timerOn(_ timer: CaptureTimer) -> String { L(.timerOn(Self.timer(timer))) }
+    static var putPanelBack: String { L(.putPanelBack) }
+    static var floatingThumbnail: String { L(.floatingThumbnail) }
+    static var rememberSelection: String { L(.rememberSelection) }
     static var closePanel: String { L("Close") }
 
     /// macOS's own words — Save to, Desktop, Documents, Clipboard, Other… — read
     /// out of `screencaptureui`'s `Localizable.loctable`, where the same menu is drawn.
-    static var saveTo: String { L("Save to") }
-    static var targetMacOS: String { L("Same as macOS") }
-    static var targetDesktop: String { L("Desktop") }
-    static var targetDocuments: String { L("Documents") }
+    static var saveTo: String { L(.saveTo) }
+    static var targetMacOS: String { L(.targetMacOS) }
+    static var targetDesktop: String { L(.targetDesktop) }
+    static var targetDocuments: String { L(.targetDocuments) }
     static var targetClipboard: String { L("Clipboard") }
     /// Its own key, not KeepAwake's «Other…»: one key means one thing, and
     /// Portuguese says «Outra» for a folder where a duration is «Outro».
     /// The seven translations are macOS's «Other…» from the same table.
-    static var targetOther: String { L("Other folder…") }
+    static var targetOther: String { L(.targetOther) }
     static func target(_ target: SaveTarget) -> String {
         switch target {
         case .macOS: targetMacOS
@@ -103,50 +103,56 @@ enum ScStr {
         }
     }
 
-    static var format: String { L("Capture format") }
+    static var format: String { L(.format) }
     /// File-format names: the same letters in every language.
     static func format(_ format: ShotFormat) -> String {
         switch format {
-        case .png: L("PNG")
-        case .jpeg: L("JPEG")
+        case .png: L(.formatPNG)
+        case .jpeg: L(.formatJPEG)
         }
     }
-    static var shutterSound: String { L("Shutter sound") }
-    static var showCursor: String { L("Show mouse pointer") }
+    static var shutterSound: String { L(.shutterSound) }
+    static var showCursor: String { L(.showCursor) }
     /// One key for the two things «Choose…» opens: a folder and the palette's tools.
     static var choose: String { L("Choose…") }
     static var chooseFolder: String { choose }
 
-    static var folder: String { L("Save folder") }
-    static var folderNote: String { L("Where macOS keeps screenshots. Helm reads it and never changes it.") }
+    static var folder: String { L(.folder) }
+    static var folderNote: String { L(.folderNote) }
     static var folderRefused: String {
-        L("The folder macOS names cannot be used, so Helm saves to the Desktop.")
+        L(.folderRefused)
     }
     static var chosenRefused: String {
-        L("That folder cannot be used, so Helm saves to the Desktop.")
+        L(.chosenRefused)
     }
 
     // MARK: - The settings tabs and the editor's settings
 
-    /// The first tab, the gerund: `Capture` is the verb of the panel's button.
-    static var tabCapturing: String { L("Capturing") }
-    static var tabEditor: String { L("Editor") }
+    /// The first tab, the gerund: `captureButton` is the verb of the panel's button.
+    static var tabCapturing: String { L(.tabCapturing) }
+    static var tabEditor: String { L(.tabEditor) }
     /// `Colour` is already the adjective of «Colour» printing, so the row has its own key.
-    static var defaultColour: String { L("Default colour") }
+    static var defaultColour: String { L(.defaultColour) }
     static var defaultColourNote: String {
-        L("Each tool starts with this colour until one is picked for it in the editor.")
+        L(.defaultColourNote)
     }
-    static var toolsInPalette: String { L("Tools in the palette") }
+    static var toolsInPalette: String { L(.toolsInPalette) }
     /// The ⋯ is the menu button's own name; each language's table quotes it as that language does.
-    static var hiddenToolsNote: String { L("Hidden tools move to the ⋯ menu and still answer to their keys.") }
+    static var hiddenToolsNote: String { L(.hiddenToolsNote) }
     /// Counted from the palette's list, never written: the first number is what the row shows.
     static func toolsShown(_ shown: Int, of all: Int, language: AppLanguage = AppLanguage.current) -> String {
         let (n, m) = (Count(shown, language: language), Count(all, language: language))
-        return L("\(n) of \(m)", [.ru: "\(n) из \(m)", .es: "\(n) de \(m)", .fr: "\(n) sur \(m)", .de: "\(n) von \(m)",
-                                  .ja: "\(m) 個中 \(n) 個", .zh: "\(m) 个中的 \(n) 个", .pt: "\(n) de \(m)"], language: language)
+        return L("\(n) of \(m)",
+                 [.ru: "\(n) из \(m)",
+                  .es: "\(n) de \(m)",
+                  .fr: "\(n) sur \(m)",
+                  .de: "\(n) von \(m)",
+                  .ja: "\(m) 個中 \(n) 個",
+                  .zh: "\(m) 个中的 \(n) 个",
+                  .pt: "\(n) de \(m)"], language: language)
     }
     /// Under «Show floating thumbnail»: where it stands and what several of them do.
-    static var thumbnailNote: String { L("Lower right. Shots taken one after another stack up.") }
+    static var thumbnailNote: String { L(.thumbnailNote) }
 
     // MARK: - The palette, its menu and pop-overs
 
@@ -167,29 +173,29 @@ enum ScStr {
     /// French, Japanese, Portuguese and Russian; the Spanish (Emoji) and the Chinese (表情符号) are Helm's own.
     static func tool(_ tool: AnnotationTool) -> String {
         switch tool {
-        case .arrow: L("Arrow")
-        case .rectangle: L("Rectangle")
-        case .ellipse: L("Oval")
-        case .line: L("Line")
-        case .pen: L("Pen")
-        case .pencil: L("Pencil")
-        case .highlighter: L("Highlighter")
-        case .blur: L("Blur")
-        case .text: L("Text")
-        case .step: L("Steps")
-        case .spotlight: L("Spotlight")
-        case .magnifier: L("Magnifier")
-        case .emoji: L("Emoji")
+        case .arrow: L(.toolArrow)
+        case .rectangle: L(.toolRectangle)
+        case .ellipse: L(.toolEllipse)
+        case .line: L(.toolLine)
+        case .pen: L(.toolPen)
+        case .pencil: L(.toolPencil)
+        case .highlighter: L(.toolHighlighter)
+        case .blur: L(.toolBlur)
+        case .text: L(.toolText)
+        case .step: L(.toolStep)
+        case .spotlight: L(.toolSpotlight)
+        case .magnifier: L(.toolMagnifier)
+        case .emoji: L(.toolEmoji)
         }
     }
 
     /// The eraser's name, which is no tool's: the word of `PaperKit.framework`'s `Localizable.loctable`, key `Eraser` (Eraser, Radiergummi,
     /// Borrador, Gomme, 消しゴム, Borracha, Ластик, 橡皮擦); `PencilKit.framework`'s table has «Object Eraser» and «Pixel Eraser» and no bare `Eraser`.
-    static var eraser: String { L("Eraser") }
+    static var eraser: String { L(.eraser) }
 
     /// The ruler's name: key `Ruler` of `PencilKit.framework`'s `Localizable.loctable` (Ruler, Lineal, Regla, Règle, 定規, Régua, Линейка, 标尺); `PaperKit.framework`'s table
     /// has no such key. The Portuguese is the table's `pt_BR`, which `pt_PT` repeats.
-    static var ruler: String { L("Ruler") }
+    static var ruler: String { L(.ruler) }
 
     /// The colours: the six Helm's palette already names, and «Black» is named in AppKit's colour panel table (`NSColorPanelExtras.loctable`), and both it and «White» in the system colour list (`Apple.clr/Apple.loctable`); in Japanese both are the system colour list's words (ブラック, ホワイト).
     static func ink(_ color: AnnotationColor) -> String {
@@ -200,7 +206,7 @@ enum ScStr {
         case .green: L("Green")
         case .blue: L("Blue")
         case .purple: L("Purple")
-        case .black: L("Black")
+        case .black: L(.inkBlack)
         case .white: L("White")
         }
     }
@@ -209,157 +215,173 @@ enum ScStr {
     /// (Stärke, Grosor, Épaisseur, 太さ, Espessura, Толщина, 粗细) and «Opacity» key `Opacity` of `PaperKit.framework`'s
     /// `Localizable.loctable` and of AppKit's `NSColorPanelExtras.loctable` (Deckkraft, Opacidad, Opacité, 不透明度,
     /// Opacidade, Непрозрачность, 不透明度); Chinese is the tables' `zh_CN`, and their `pt_BR` and `pt_PT` agree.
-    static var thicknessLabel: String { L("Thickness") }
-    static var opacityLabel: String { L("Opacity") }
+    static var thicknessLabel: String { L(.thicknessLabel) }
+    static var opacityLabel: String { L(.opacityLabel) }
     /// The ⋯ menu's item that opens the pop-over. No table has the phrase: it is the two words above joined by the
     /// language's «and», with the ellipsis of an item that opens something.
-    static var thicknessAndOpacity: String { L("Thickness and Opacity…") }
+    static var thicknessAndOpacity: String { L(.thicknessAndOpacity) }
 
     /// The colour wheel's name. No table has the phrase («All Colors» is in none of AppKit's colour loctables, nor
     /// PaperKit's): it is «all» before the word the colour panel uses, `Colors` of `NSColorPanelExtras.loctable` (Farben,
     /// Colores, Couleurs, カラー, Цвета, 颜色, Cores), so Japanese keeps the panel's カラー and Chinese its 颜色.
-    static var allColours: String { L("All Colours") }
+    static var allColours: String { L(.allColours) }
 
     /// The eyedropper's name. Helm's own words: measured, no table macOS displays carries it; the word occurs only in accessibility
     /// tables (the symbol's name in `AccessibilitySharedSupport`'s symbol-names table, and `DesktopServicesUI`'s `Localizable` table under
     /// an accessibility key).
-    static var eyedropper: String { L("Eyedropper") }
+    static var eyedropper: String { L(.eyedropper) }
 
     /// The name of a thickness step, which the pop-over says beside its slider (the frame's «Средняя»).
     static func thickness(_ step: AnnotationThickness) -> String {
         switch step {
-        case .thin: L("Thin")
-        case .medium: L("Medium")
-        case .thick: L("Thick")
+        case .thin: L(.thicknessThin)
+        case .medium: L(.thicknessMedium)
+        case .thick: L(.thicknessThick)
         }
     }
 
     /// Fill and Save are items of the ⋯ menu (Fill inside Shapes); Copy has no control on the palette yet, and its name
     /// is kept for the one that comes. Pin is read by the ⋯ menu's Pin item and by the thumbnail capsule's Pin cell, while `PinEntry.isOffered`.
-    static var fill: String { L("Filled") }
+    static var fill: String { L(.fill) }
     /// The submenu of the ⋯ menu that holds the shapes, and the pointer's item: Preview's own words: the
     /// selection tool is the noun «Выбор», key `Selection` of Preview's `DFR-BBBAA77A32-C4EBFEA440.loctable`, and the
     /// shapes are key `TB_USD_Shapes` of its `Localizable.loctable`.
-    static var shapes: String { L("Shapes") }
-    static var select: String { L("Select") }
+    static var shapes: String { L(.shapes) }
+    static var select: String { L(.select) }
     /// The ⋯ menu's Crop, a mode of the editor and no tool: Preview's inspector toolbar item, key `PVInspectorCrop` of its
     /// `Localizable.loctable` (Обрезка, Zuschneiden, Recortar, Recadrer, 切り取り, Recortar, 裁剪), the noun as Select is.
-    static var crop: String { L("Crop") }
+    static var crop: String { L(.crop) }
     /// Preview's «Undo» and «Redo».
-    static var undo: String { L("Undo") }
-    static var redo: String { L("Redo") }
+    static var undo: String { L(.undo) }
+    static var redo: String { L(.redo) }
     /// Preview's «Save».
-    static var save: String { L("Save") }
+    static var save: String { L(.save) }
     static var closeEditor: String { L("Close") }
     /// The editor's checkmark: what Return does.
     static var done: String { L("Done") }
     /// The editor's Pin item on the ⋯ menu, which keeps the picture on the screen as a window.
-    static var pin: String { L("Pin") }
+    static var pin: String { L(.pin) }
     /// The plate at the limit of open pins; no number, so no table.
-    static var pinLimit: String { L("Too many pins are open — close one first") }
+    static var pinLimit: String { L(.pinLimit) }
     /// Copy Text: the word of `VisionKitCore.framework`'s `Localizable.loctable`, key `VK_COPY_TEXT_MENU_ITEM_TITLE`, which is Live Text's menu item
     /// (Text kopieren, Copiar texto, Copier le texte, テキストをコピー, Copiar texto, Скопировать текст, 拷贝文本; its Portuguese is the `pt_PT` table's, since `pt_BR` capitalises it).
-    static var copyText: String { L("Copy Text") }
+    static var copyText: String { L(.copyText) }
     /// What it blurs is the four kinds in the hint: the name says less than the item does.
-    static var blurPersonalText: String { L("Blur Emails and Phone Numbers") }
+    static var blurPersonalText: String { L(.blurPersonalText) }
     /// The item's hint: the whole list of what is found, and what is not. A kind added later is a new key.
     static var blurPersonalTextHint: String {
-        L("Blurs email addresses, phone numbers, card numbers and links that macOS reads in the picture. Faces, handwriting and everything else stay as they are.")
+        L(.blurPersonalTextHint)
     }
     /// The plates after a reading say what was **done**, never what the picture now is: no word for safe, hidden or clean, and a zero is not good news.
-    static var nothingBlurred: String { L("Nothing was blurred. Check the picture yourself.") }
-    static var textCopied: String { L("Text copied") }
-    static var noTextFound: String { L("No text was found") }
-    static var textUnreadable: String { L("The text could not be read") }
+    static var nothingBlurred: String { L(.nothingBlurred) }
+    static var textCopied: String { L(.textCopied) }
+    static var noTextFound: String { L(.noTextFound) }
+    static var textUnreadable: String { L(.textUnreadable) }
     /// A count after a colon takes no form of a noun, so no plural helper; the digits are grouped as the language groups them.
     static func blurred(_ count: Int, language: AppLanguage = AppLanguage.current) -> String {
         let n = HelmBytes.grouped(count, language: language.rawValue)
         return L("Blurred: \(n). Check the rest yourself.",
-                 [.ru: "Размыто мест: \(n). Остальное проверьте сами.", .es: "Desenfocado: \(n). Revisa tú el resto.",
-                  .fr: "Flouté\u{00A0}: \(n). Vérifiez le reste vous-même.", .de: "Weichgezeichnet: \(n). Prüfe den Rest selbst.",
-                  .ja: "ぼかした箇所：\(n)。残りは自分で確認してください。", .zh: "已模糊：\(n) 处。其余请自行检查。",
+                 [.ru: "Размыто мест: \(n). Остальное проверьте сами.",
+                  .es: "Desenfocado: \(n). Revisa tú el resto.",
+                  .fr: "Flouté\u{00A0}: \(n). Vérifiez le reste vous-même.",
+                  .de: "Weichgezeichnet: \(n). Prüfe den Rest selbst.",
+                  .ja: "ぼかした箇所：\(n)。残りは自分で確認してください。",
+                  .zh: "已模糊：\(n) 处。其余请自行检查。",
                   .pt: "Desfocado: \(n). Confira você mesmo o resto."], language: language)
     }
     /// What a screen reader calls a pin.
-    static var pinnedScreenshot: String { L("Pinned screenshot") }
+    static var pinnedScreenshot: String { L(.pinnedScreenshot) }
 
     // MARK: - The toast
 
-    /// The word in a file name and on a thumbnail. One key, macOS's own word.
-    static var thumbnailLabel: String { L("Screenshot") }
+    /// The word on a thumbnail, macOS's own; a file name's word is inside `nameTemplate`.
+    static var thumbnailLabel: String { L(.thumbnailLabel) }
     /// The capsule over a thumbnail: the clipboard's own word, and Finder's.
     static var edit: String { L("Edit") }
     static var copy: String { L("Copy") }
     static var showInFinder: String { L("Show in Finder") }
     /// The pile's capsule, the label on the row's farthest whole shot, and what a screen reader calls the pile. The
-    /// count is interpolated, so the eight sentences are here and not in the `.lproj` tables; the nouns and the verb
-    /// are those tables' own (`Copy`, `Screenshots`). A pile is two shots or more; «N more» counts one as well, so
+    /// count is interpolated; the verb is the kit's
+    /// (`Copy`) and the noun the catalog's (`moduleName`). A pile is two shots or more; «N more» counts one as well, so
     /// the counted forms are written so that none needs a plural: German's «weitere» is wrong for one, and «mehr»
     /// is right for every count.
     static func copyAll(_ count: Int) -> String {
-        L("Copy All (\(count))", [.ru: "Скопировать все (\(count))", .es: "Copiar todo (\(count))",
-                                  .fr: "Tout copier (\(count))", .de: "Alle kopieren (\(count))",
-                                  .ja: "すべてをコピー（\(count)）", .zh: "全部复制（\(count)）",
-                                  .pt: "Copiar Tudo (\(count))"])
+        L("Copy All (\(count))",
+          [.ru: "Скопировать все (\(count))",
+           .es: "Copiar todo (\(count))",
+           .fr: "Tout copier (\(count))",
+           .de: "Alle kopieren (\(count))",
+           .ja: "すべてをコピー（\(count)）",
+           .zh: "全部复制（\(count)）",
+           .pt: "Copiar Tudo (\(count))"])
     }
     static func more(_ count: Int) -> String {
-        L("\(count) more", [.ru: "ещё \(count)", .es: "\(count) más", .fr: "\(count) de plus",
-                            .de: "\(count) mehr", .ja: "ほか \(count) 件", .zh: "还有 \(count) 张",
-                            .pt: "mais \(count)"])
+        L("\(count) more",
+          [.ru: "еще \(count)",
+           .es: "\(count) más",
+           .fr: "\(count) de plus",
+           .de: "\(count) mehr",
+           .ja: "ほか \(count) 件",
+           .zh: "还有 \(count) 张",
+           .pt: "mais \(count)"])
     }
     static func screenshots(_ count: Int) -> String {
-        L("\(count) screenshots", [.ru: "Снимков экрана: \(count)", .es: "Capturas de pantalla: \(count)",
-                                   .fr: "Captures d’écran\u{00A0}: \(count)", .de: "Bildschirmfotos: \(count)",
-                                   .ja: "スクリーンショット：\(count)", .zh: "截屏：\(count)",
-                                   .pt: "Capturas de Tela: \(count)"])
+        L("\(count) screenshots",
+          [.ru: "Снимков экрана: \(count)",
+           .es: "Capturas de pantalla: \(count)",
+           .fr: "Captures d’écran\u{00A0}: \(count)",
+           .de: "Bildschirmfotos: \(count)",
+           .ja: "スクリーンショット：\(count)",
+           .zh: "截屏：\(count)",
+           .pt: "Capturas de Tela: \(count)"])
     }
     /// The ⋯ menu's Share item, which opens the system's sheet at the thumbnail.
-    static var share: String { L("Share…") }
-    static var saved: String { L("Saved") }
-    static var copied: String { L("Copied to the clipboard") }
-    static var savedAndCopied: String { L("Saved and copied") }
+    static var share: String { L(.share) }
+    static var saved: String { L(.saved) }
+    static var copied: String { L(.copied) }
+    static var savedAndCopied: String { L(.savedAndCopied) }
     /// What a screen reader reads of a thumbnail whose edit took its original's place.
-    static var replaced: String { L("Replaced. The original is in the Trash.") }
+    static var replaced: String { L(.replaced) }
     /// The plate over an edited picture after a first Esc.
-    static var confirmClose: String { L("Press Esc again to close without saving") }
+    static var confirmClose: String { L(.confirmClose) }
     static var dismissToast: String { L("Close") }
-    static var openSettings: String { L("Open Settings") }
-    static var noPermissionTitle: String { L("Helm cannot read the screen") }
+    static var openSettings: String { L(.openSettings) }
+    static var noPermissionTitle: String { L(.noPermissionTitle) }
     static var noPermissionBody: String {
-        L("Allow Helm under Screen & System Audio Recording, then press the shortcut again.")
+        L(.noPermissionBody)
     }
-    static var failedTitle: String { L("The screenshot was not taken") }
+    static var failedTitle: String { L(.failedTitle) }
 
     /// One sentence per thing that can go wrong, and none of them carries a path.
     static func refusal(_ reason: CaptureRefusal) -> String {
         switch reason {
         case .noPermission: noPermissionBody
-        case .captureFailed: L("The screen could not be captured.")
-        case .displayGone: L("A display went away before it could be captured.")
-        case .windowGone: L("That window is gone.")
-        case .write(.noFolder), .write(.notAFolder): L("The save folder is missing.")
-        case .write(.noPermission): L("Helm may not write to the save folder.")
-        case .write(.diskFull): L("The disk is full.")
-        case .write(.namesExhausted), .write(.failed): L("The screenshot could not be saved.")
-        case .pasteboard: L("The clipboard did not take the picture.")
-        case .encoding: L("The picture could not be made.")
+        case .captureFailed: L(.refusalCaptureFailed)
+        case .displayGone: L(.refusalDisplayGone)
+        case .windowGone: L(.refusalWindowGone)
+        case .write(.noFolder), .write(.notAFolder): L(.refusalNoFolder)
+        case .write(.noPermission): L(.refusalNoWritePermission)
+        case .write(.diskFull): L(.refusalDiskFull)
+        case .write(.namesExhausted), .write(.failed): L(.refusalNotSaved)
+        case .pasteboard: L(.refusalPasteboard)
+        case .encoding: L(.refusalEncoding)
         case .notEditable:
-            L("The screenshot was moved or changed after it was taken, so it cannot be edited here.")
+            L(.refusalNotEditable)
         // The Trash's own two words for a file that is not where it was end by naming a «Scan again» control,
         // which this module has none of: they are this module's sentence, and the one sentence also says it for a
         // folder that took no write: the person is told that the edit is a separate file, not why.
         case .notReplaced(.missing), .notReplaced(.changed), .notReplaced(.folderRefused),
              .notReplaced(.trash(.missing)), .notReplaced(.trash(.changedSinceScan)):
-            L("The screenshot was moved or changed after it was taken. Your edit is saved as a separate file.")
+            L(.refusalNotReplaced)
         case .notReplaced(.trash(let reason)): TrashReasonText.sentence(reason.rawValue)
         }
     }
 
-    /// macOS's own file-name template, with its word already in it. The English
-    /// key is the pattern and the seven translations are copied out of
-    /// `screencaptureui`'s `Localizable.loctable` — the template for the order of
-    /// the parts and the word for the noun — at development time.
-    static var nameTemplate: String { L("Screenshot %@ at %@") }
+    /// macOS's own file-name template, with its word already in it. The two `%@` are handed
+    /// back as they are: `ShotNames.base` fills them. The catalog's English is the pattern and the
+    /// seven translations are copied out of `screencaptureui`'s `Localizable.loctable` — the
+    /// template for the order of the parts and the word for the noun — at development time.
+    static var nameTemplate: String { L(.nameTemplate("%@", "%@")) }
 
     /// The word is Helm's language and the clock is the system's region, both
     /// at once: macOS names its own files by the hour cycle of the region, and a

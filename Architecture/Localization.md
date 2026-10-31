@@ -16,12 +16,13 @@ symbol from it, so a mistyped key is a build error and the call site reads `L(.s
 (`Sources/Modules/KeepAwake/UI/KeepAwakeStrings.swift`; the helper is `L(_:language:)` in
 `Sources/HelmUI/L10n.swift`, which asks the resource in `AppLanguage.current`, since
 `String(localized:)` alone answers in the language macOS resolves for the
-process, not the one the person picked in Helm, and the resource carries its own target's bundle). Symbols are
+process, not the one the person picked in Helm, and the resource carries its own target's bundle). A key whose English holds `%@` generates a function that
+takes the arguments, `L(.timerOn(length))`. Symbols are
 internal to their target, so a word that two modules or the kit draw stays in the kit's `.lproj` and
 is read through `L()`; the same English in a catalog and in the kit is a failure
 (`StringsCoverageTests`). The catalog needs no `resources:` entry: SwiftPM processes it on its own and
 `Scripts/package-app.sh` copies every `*.bundle` into `Contents/Resources`, where the target's
-`Bundle.module` finds it. An interpolated string still keeps its inline table at the call site.
+`Bundle.module` finds it. An interpolated string keeps its inline table at the call site unless its key holds `%@`, as above.
 
 Each guard faces a direction the others are blind to, and each file's header says how (the catalog halves in the doc comment of their own test method):
 

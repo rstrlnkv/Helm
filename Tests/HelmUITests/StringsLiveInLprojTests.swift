@@ -231,6 +231,9 @@ final class StringsLiveInLprojTests: XCTestCase {
         // spells it with a no-break space between the words, so German is a
         // different string and not an identity.
         "Liquid Glass": [.ru, .es, .fr, .ja, .zh, .pt],
+        // The highlighter tool's English is «Marker»; German says «Marker» too, as PencilKit's
+        // `Localizable.loctable` does (key `Marker`).
+        "Marker": [.de],
     ]
 
     func testNoTranslationIsJustTheEnglishAgainUnlessItIsMeantTo() throws {
