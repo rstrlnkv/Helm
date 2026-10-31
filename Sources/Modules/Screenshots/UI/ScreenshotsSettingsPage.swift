@@ -272,11 +272,12 @@ struct ScreenshotsSettingsPage: View {
     struct BoxStatus: View {
         let state: BoxState
         let warns: Bool
+        @Environment(\.helmTraits) private var traits
 
         var body: some View {
             Text(ScreenshotsSettingsPage.say(state))
                 .font(HelmText.rowDetail)
-                .foregroundStyle(warns ? HelmSignal.warning : HelmText.quiet)
+                .foregroundStyle(warns ? HelmSignal.warning(increased: traits.increasedContrast) : HelmText.quiet)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }

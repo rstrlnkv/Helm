@@ -69,32 +69,24 @@ public enum HelmSignal {
     /// and SwiftUI compares the same way when it decides whether a view's input
     /// changed. The **flag** above stays computed, which is what the setting
     /// needs; these do not move.
-    private static let warningOrdinary = adaptive(
+    private static let warningOrdinary = HelmSurface.pair(
         light: NSColor(srgbRed: 0.700, green: 0.380, blue: 0.097, alpha: 1), dark: .systemOrange)
-    private static let warningIncreased = adaptive(
+    private static let warningIncreased = HelmSurface.pair(
         light: NSColor(srgbRed: 0.526, green: 0.285, blue: 0.074, alpha: 1), dark: .systemOrange)
-    private static let successOrdinary = adaptive(
+    private static let successOrdinary = HelmSurface.pair(
         light: NSColor(srgbRed: 0.126, green: 0.529, blue: 0.227, alpha: 1), dark: .systemGreen)
-    private static let successIncreased = adaptive(
+    private static let successIncreased = HelmSurface.pair(
         light: NSColor(srgbRed: 0.095, green: 0.400, blue: 0.172, alpha: 1), dark: .systemGreen)
-    private static let dangerOrdinary = adaptive(
+    private static let dangerOrdinary = HelmSurface.pair(
         light: NSColor(srgbRed: 0.879, green: 0.188, blue: 0.202, alpha: 1), dark: .systemRed)
-    private static let dangerIncreased = adaptive(
+    private static let dangerIncreased = HelmSurface.pair(
         light: NSColor(srgbRed: 0.663, green: 0.142, blue: 0.154, alpha: 1),
         dark: NSColor(srgbRed: 1.000, green: 0.515, blue: 0.522, alpha: 1))
 
-    private static let dangerOnWellOrdinary = adaptive(
+    private static let dangerOnWellOrdinary = HelmSurface.pair(
         light: NSColor(srgbRed: 0.693, green: 0.148, blue: 0.159, alpha: 1),
         dark: NSColor(srgbRed: 1.000, green: 0.545, blue: 0.518, alpha: 1))
-    private static let dangerOnWellIncreased = adaptive(
+    private static let dangerOnWellIncreased = HelmSurface.pair(
         light: NSColor(srgbRed: 0.543, green: 0.116, blue: 0.125, alpha: 1),
         dark: NSColor(srgbRed: 1.000, green: 0.698, blue: 0.680, alpha: 1))
-
-    /// One colour that answers for itself in either appearance, so no call site
-    /// has to read the environment to stay legible.
-    private static func adaptive(light: NSColor, dark: NSColor) -> Color {
-        Color(nsColor: NSColor(name: nil) { appearance in
-            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
-        })
-    }
 }

@@ -1,11 +1,11 @@
 import SwiftUI
 
 public extension View {
-    /// The kit's part of a hosting root: the roots of the Settings window, `HostWindow.present` and the
-    /// menu-bar panel carry it. The environment stops at each root (an `NSHostingView` or
+    /// The kit's part of a hosting root: the roots of the Settings window, `HostWindow.present`, the
+    /// menu-bar panel and Screenshots' after-shot window carry it. The environment stops at each root (an `NSHostingView` or
     /// `NSHostingController` starts a fresh one), so a root that lacks it draws its plain `Button`s and
     /// `Toggle`s in the system's look, not Helm's. The Screenshots capture hosts (the capture overlay's
-    /// editor bar, the capture panel, the toast) keep their own drawing and do not carry it. A root may
+    /// editor bar and the capture panel) keep their own drawing and do not carry it; the toast does. A root may
     /// also carry what is its own: the panel and the Settings detail root add `helmTracksModuleIconStyle`, and
     /// the Settings roots add `RebuiltOnLanguageChange` and `TellsWindowActivity` (`SettingsWindow.swift`).
     ///

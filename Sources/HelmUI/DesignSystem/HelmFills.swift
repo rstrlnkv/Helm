@@ -54,4 +54,12 @@ public enum HelmSurface {
             return out
         })
     }
+
+    /// One colour that answers for itself in either appearance, so no call site has to read the environment to
+    /// stay legible.
+    public static func pair(light: NSColor, dark: NSColor) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
+        })
+    }
 }

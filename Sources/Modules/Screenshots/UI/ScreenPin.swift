@@ -1,8 +1,8 @@
 import AppKit
 import Module_Screenshots_Engine
 
-/// Whether a person is offered a pin anywhere. The pin is outside v1 (owner's decision, 2026-10-02): every
-/// place that would let someone ask for one builds its entry only when this is true (today the Pin item of the ⋯ menu, `EditorMenu`). To bring it back, set it to `true`
+/// Whether a person is offered a pin anywhere. The pin is outside v1 (the owner's decision): every
+/// place that would let someone ask for one builds its entry only when this is true (today the Pin item of the ⋯ menu, `EditorMenu`, and the capsule's Pin cell, `ShotCapsule.cells`). To bring it back, set it to `true`
 /// and delete this paragraph.
 enum PinEntry {
     static let isOffered = false

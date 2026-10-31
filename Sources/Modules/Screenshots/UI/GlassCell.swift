@@ -2,12 +2,12 @@ import AppKit
 import SwiftUI
 import HelmUI
 
-/// One round-edged control on a glass bar: an icon, lit with 14 % of the primary colour while it is
+/// One round-edged control on a glass bar: an icon, lit with the panel's selection fill (`HelmSurface.panelSelection`) while it is
 /// selected, and a name that is both its tooltip and its VoiceOver label. The capture panel's mode
 /// controls and the editor's palette are drawn by it, so a cell is one look on both.
 struct GlassCell<Icon: View>: View {
     enum Look {
-        /// The selected cell is a rounded square of 14 % primary.
+        /// The selected cell is a rounded square of `HelmSurface.panelSelection`.
         case plain
         /// A grey circle, always: Undo, Redo and ⋯.
         case greyCircle
@@ -69,9 +69,12 @@ struct GlassCell<Icon: View>: View {
         }
     }
 
+    /// How far a press dims a cell's label: a press, not `HelmText.inactiveOpacity`, which means an inactive window.
+    private static var pressedOpacity: Double { 0.6 }
+
     private struct Unfaded: ButtonStyle {
         func makeBody(configuration: Configuration) -> some View {
-            configuration.label.opacity(configuration.isPressed ? 0.6 : 1)
+            configuration.label.opacity(configuration.isPressed ? GlassCell.pressedOpacity : 1)
         }
     }
 
@@ -107,14 +110,12 @@ struct GlassCell<Icon: View>: View {
         func ns(_ c: (Int, Int, Int)) -> NSColor {
             NSColor(srgbRed: CGFloat(c.0) / 255, green: CGFloat(c.1) / 255, blue: CGFloat(c.2) / 255, alpha: 1)
         }
-        return Color(nsColor: NSColor(name: nil) { appearance in
-            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? ns(dark) : ns(light)
-        })
+        return HelmSurface.pair(light: ns(light), dark: ns(dark))
     }
 
     @ViewBuilder private var fill: some View {
         switch look {
-        case .plain: RoundedRectangle(cornerRadius: HelmRadius.ctl).fill(Color.primary.opacity(selected || pressed ? 0.14 : 0))
+        case .plain: RoundedRectangle(cornerRadius: HelmRadius.ctl).fill(selected || pressed ? HelmSurface.panelSelection : Color.clear)
         case .greyCircle: Circle().fill(pressed ? AnyShapeStyle(Self.paletteInk) : AnyShapeStyle(HelmSurface.onPanelFill))
         case .accent: Circle().fill(Color.accentColor)
         case .bare: Color.clear

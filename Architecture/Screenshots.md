@@ -359,7 +359,7 @@ shortcut never comes through it. Esc and a right click are one door, except that
 close at once, with layers the first press shows a plate and a second closes however
 late, and any other input withdraws the question; no clock is read.
 
-The after-shot window (`ShotToast` in `Sources/Modules/Screenshots/UI/ShotToast.swift`) holds a list of shots, oldest
+The after-shot window's root carries `helmRoot()`, so the refusal's Open Settings button is `HelmButtonStyle`'s; the capsule's cells and «N more» set their own style. The after-shot window (`ShotToast` in `Sources/Modules/Screenshots/UI/ShotToast.swift`) holds a list of shots, oldest
 first and never more than `ShotShelf.limit`: the shot past the limit pushes the oldest out, with the full picture it held if it was
 only copied. One shot is the bare picture; a shot taken while another is still up joins it, and the group is a pile in the corner
 with a counter, which a click unfolds into a row reaching leftward, `ShotShelf.visible` shots wide, scrolled past that and resting
