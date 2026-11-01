@@ -25,7 +25,7 @@ import XCTest
 /// what «Select extras» ticks — so the array the walk built decides which of
 /// somebody's three copies is offered for the Trash.
 ///
-/// **Why the existing guard did not catch it.** `SurvivingCopyTests.
+/// **Why the existing guard did not catch it.** `KeepPolicyTests.
 /// testTheOrderDoesNotDependOnTheInputOrder` reverses a pair of copies whose dates
 /// are both known and equal. Two elements cannot hold a cycle, and a rung that is
 /// silent for *both* orderings of one pair is symmetric — so that test is green for
@@ -178,7 +178,7 @@ final class TheSurvivorDoesNotDependOnWalkOrderTests: XCTestCase {
     ///
     /// So the finding is not «a `nil` date makes the ordering unstable», which would
     /// invite the wrong repair (treating an unknown date as a loss, which is the rule
-    /// `SurvivingCopyTests.testAnUnknownDateIsARungOfItsOwnAndTheCopyItIsMissingFromStays`
+    /// `KeepPolicyTests.testAnUnknownDateIsARungOfItsOwnAndTheCopyItIsMissingFromStays`
     /// exists to keep out). It takes a third copy for the silent rung to compose
     /// with a speaking one.
     func testOneDatelessCopyAgainstOneDatedCopyIsStillDecided() {

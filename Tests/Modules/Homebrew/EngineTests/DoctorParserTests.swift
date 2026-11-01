@@ -247,4 +247,181 @@ final class DoctorParserTests: XCTestCase {
         XCTAssertEqual(issues?.count, 1)
         XCTAssertEqual(issues?.first?.body.components(separatedBy: "\n").last, "  node")
     }
+
+    // MARK: - A findings's title is a whole sentence
+
+    /// **brew hard-wraps its findings, and the first physical line is not always a
+    /// whole sentence.** `DoctorParser` starts the title with the rest of the
+    /// `Warning:` line and joins the unindented lines after it until the sentence
+    /// ends (`.`, `!`, `?` or `:`); everything after is the body. For most checks
+    /// that first line is a sentence; for some it is where brew's heredoc happened
+    /// to break — and the Health tab draws a closed finding as its title alone, so
+    /// a title taken from the first physical line alone would be half a sentence
+    /// that a person reads without a click, with the other half at the top of the
+    /// body. These cases hold that join.
+    ///
+    /// Captured on this Mac, Homebrew 7.0.7, 2026-09-29 (`diagnostic.rb`'s sbin
+    /// check, whose heredoc breaks after «installed»):
+    ///
+    ///     $ env PATH=/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin HOMEBREW_NO_AUTO_UPDATE=1 \
+    ///           /opt/homebrew/bin/brew doctor > out 2>&1; echo "EXIT=$?"
+    ///     EXIT=1
+    ///
+    /// The same shape stands in brew's source for at least two more titles
+    /// (`Some frameworks can be picked up by CMake's build system and will likely`,
+    /// `A '.pydistutils.cfg' file was found in $HOME, which may cause Python`).
+    ///
+    /// The check is structural rather than a spelling of the fix: a title ends
+    /// where brew's sentence ends, and no word of the block is lost between the
+    /// title and the body.
+    private static let captured = """
+        Please note that these warnings are just used to help the Homebrew maintainers
+        with debugging if you file an issue. If everything you use Homebrew for is
+        working fine: please don't worry or file an issue; just ignore this. Thanks!
+
+        Warning: /usr/bin occurs before /opt/homebrew/bin in your PATH.
+        This means that system-provided programs will be used instead of those
+        provided by Homebrew.
+
+        The following tools exist at both paths:
+          openssl
+          pip3
+          pp
+          python3
+
+        Consider setting your PATH for example like so:
+          echo 'export PATH=/opt/homebrew/bin:$PATH' >> ~/.zshrc
+
+        Warning: Homebrew's "sbin" was not found in your PATH but you have installed
+        formulae that put executables in /opt/homebrew/sbin.
+
+        Consider setting your PATH for example like so:
+          echo 'export PATH=/opt/homebrew/sbin:$PATH' >> ~/.zshrc
+
+
+        """
+
+    private func words(_ s: String) -> [Substring] {
+        s.split(whereSeparator: \.isWhitespace)
+    }
+
+    func testEveryTitleEndsWhereBrewsSentenceEnds() throws {
+        let issues = try XCTUnwrap(DoctorParser.parse(Self.captured))
+        XCTAssertEqual(issues.count, 2, "the capture holds two findings")
+        for issue in issues {
+            let last = issue.title.last
+            XCTAssertTrue(last.map { ".!?:".contains($0) } ?? false,
+                          "a closed finding reads as half a sentence: «\(issue.title)» — "
+                          + "and its body opens on the rest: «\(issue.body.prefix(60))…»")
+        }
+    }
+
+    /// The other half of the structure: whatever moves from the body into the
+    /// title, nothing of brew's text is dropped or said twice.
+    func testTitleAndBodyTogetherAreTheWholeBlock() throws {
+        let issues = try XCTUnwrap(DoctorParser.parse(Self.captured))
+        let sbin = try XCTUnwrap(issues.last)
+        let block = """
+            Homebrew's "sbin" was not found in your PATH but you have installed
+            formulae that put executables in /opt/homebrew/sbin.
+
+            Consider setting your PATH for example like so:
+              echo 'export PATH=/opt/homebrew/sbin:$PATH' >> ~/.zshrc
+            """
+        XCTAssertEqual(words(sbin.title) + words(sbin.body), words(block))
+    }
+
+    // MARK: - A title does not run into what follows it
+
+    /// **A title joined across wrapped lines must stop where brew's sentence stops,
+    /// including when brew's first line carries no full stop at all.** `DoctorParser`
+    /// joins unindented lines onto the title until one ends with `.`, `!`, `?` or
+    /// `:`. That is right for brew's own hard-wrapped heredocs, and wrong for the
+    /// two shapes below, where what follows the first line is not the rest of its
+    /// sentence.
+    ///
+    /// 1. brew's crash report. Any exception raised inside a check lands in
+    ///    `brew.rb`'s last rescue: `onoe e` prints `Error: <message>` — a Ruby
+    ///    message, which has no full stop — then the cleaned backtrace, one frame
+    ///    per line at the left margin, then a closing notice. Captured on this Mac,
+    ///    Homebrew 7.0.7, 2026-09-29, read-only (`public_send` of a helper that
+    ///    takes an argument is the cheapest way to make a check raise without
+    ///    touching anything):
+    ///
+    ///        $ env HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_COLOR=1 \
+    ///              /opt/homebrew/bin/brew doctor user_tilde > out 2>&1; echo "EXIT=$?"
+    ///        EXIT=1                                  (571 bytes)
+    ///
+    ///    The exit is non-zero and a block is read, so the engine hands this on as
+    ///    a finding rather than nil — which is right. A join that knew only about
+    ///    terminal punctuation would make the title the message, every backtrace
+    ///    frame and the notice, in one line; the join stops at a source location
+    ///    (`DoctorParser.isBacktraceFrame`), so the frames and the notice are the
+    ///    body's.
+    ///
+    /// 2. A first sentence that ends mid-line. `check_for_pydistutils_cfg_in_home`
+    ///    (`diagnostic.rb`) wraps as «…which may cause Python» / «builds to fail.
+    ///    See:», and a join that took the whole line would take «See:» along. The
+    ///    title ends inside that line, at «fail.», and «See:» opens the body above
+    ///    the links it introduces. Composed from brew's source, not captured:
+    ///    producing it would mean creating a file in the home folder.
+    private static let crashed = """
+        Error: wrong number of arguments (given 0, expected 1)
+        /opt/homebrew/Library/Homebrew/diagnostic.rb:92:in 'Homebrew::Diagnostic::Checks#user_tilde'
+        /opt/homebrew/Library/Homebrew/cmd/doctor.rb:67:in 'Kernel#public_send'
+        /opt/homebrew/Library/Homebrew/cmd/doctor.rb:67:in 'block in Homebrew::Cmd::Doctor#run'
+        /opt/homebrew/Library/Homebrew/cmd/doctor.rb:60:in 'Array#each'
+        /opt/homebrew/Library/Homebrew/cmd/doctor.rb:60:in 'Homebrew::Cmd::Doctor#run'
+        /opt/homebrew/Library/Homebrew/brew.rb:147:in '<main>'
+        Please report this issue:
+          https://docs.brew.sh/Troubleshooting
+
+        """
+
+    private static let pydistutils = """
+        Warning: A '.pydistutils.cfg' file was found in $HOME, which may cause Python
+        builds to fail. See:
+          https://bugs.python.org/issue6138
+          https://bugs.python.org/issue4655
+
+        """
+
+    /// The capture is the one described above, byte for byte in length, so a
+    /// later edit to the literal cannot quietly turn it into a different case.
+    func testTheCrashFixtureIsTheCapture() {
+        XCTAssertEqual(Self.crashed.utf8.count, 571)
+    }
+
+    /// Structural: no line of the block that is a source location may be part
+    /// of the title. Before the title was joined this held for free; a join
+    /// that knows only about terminal punctuation takes the whole backtrace.
+    func testABacktraceIsNotPartOfTheTitle() throws {
+        let issues = try XCTUnwrap(DoctorParser.parse(Self.crashed))
+        let crash = try XCTUnwrap(issues.first)
+        XCTAssertEqual(crash.severity, .danger)
+        let frames = Self.crashed.components(separatedBy: "\n").filter { $0.contains(".rb:") }
+        XCTAssertEqual(frames.count, 6, "the capture holds six frames")
+        for frame in frames {
+            XCTAssertFalse(crash.title.contains(frame),
+                           "a backtrace frame was read as the title's sentence: «\(crash.title)»")
+        }
+    }
+
+    /// Structural: a joined title is one sentence — it does not carry a second
+    /// one that begins after a full stop in the middle of a wrapped line —
+    /// and the cut moves words rather than losing them: what the title gives
+    /// up opens the body, so title and body together are still every word of
+    /// the block. A cut that dropped the rest of the line (`See:`, the word
+    /// that introduces the links) passed the first half alone.
+    func testAJoinedTitleHoldsOneSentence() throws {
+        let issues = try XCTUnwrap(DoctorParser.parse(Self.pydistutils))
+        let issue = try XCTUnwrap(issues.first)
+        let title = issue.title
+        XCTAssertNil(title.range(of: #"[.!?] \S"#, options: .regularExpression),
+                     "the title runs past the end of brew's first sentence: «\(title)»")
+        let words: (String) -> [Substring] = { $0.split(whereSeparator: \.isWhitespace) }
+        let block = String(Self.pydistutils.dropFirst("Warning:".count))
+        XCTAssertEqual(words(title) + words(issue.body), words(block),
+                       "the cut lost or moved words: title «\(title)», body «\(issue.body)»")
+    }
 }

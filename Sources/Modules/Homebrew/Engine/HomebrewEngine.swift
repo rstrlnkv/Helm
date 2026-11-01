@@ -1322,8 +1322,9 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// marker file and launches a child — so the hop is inside, and no caller can
     /// forget it. `installBrew` blocks its thread on the administrator's
     /// password dialog for as long as a person takes, and Stop has to overtake
-    /// it (`AStopBeforeTheChildExistsTests`): a serial queue would park the Stop
-    /// behind the dialog, and a pool thread parked there is one the rest of the
+    /// it (`AStopBeforeTheChildExistsTests` in
+    /// `StoppingTheInstallAndItsAdminDialogTests.swift`): a serial queue would
+    /// park the Stop behind the dialog, and a pool thread parked there is one the rest of the
     /// app's `async` work needs. `.userInitiated` is `offTheCooperativePool`'s
     /// own default.
     public func perform(_ act: HomebrewAct) {

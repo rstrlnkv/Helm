@@ -80,7 +80,7 @@ public enum KeepReason: String, Sendable {
     /// act is deletion: the copy it cannot date is the copy it must not offer for
     /// the Trash. Read the other way round — a blank date as a loss — one such
     /// copy on an external volume was ticked in every group it appeared in, which
-    /// is the defect `SurvivingCopyTests` records.
+    /// is the defect `KeepPolicyTests` records.
     ///
     /// A rung of its own rather than a `nil` folded into `.date`, for two reasons
     /// that are one: a rung that is silent about some pairs and not others is not

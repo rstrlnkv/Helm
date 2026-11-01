@@ -78,7 +78,8 @@ Stop during the wait, `installerEnvironment` for why `HOMEBREW_NO_SUDO`.
 How far a Stop reaches is named per launch, as a `StopReach` (its doc comment):
 a brew operation names `.process`, the installer's wrapper `.wholeGroup`. What a
 Stop really reached is read against the real runner in
-`Tests/Modules/Homebrew/EngineTests/TheStopsReachIsWhatItsOperationNamesTests.swift`.
+`TheStopsReachIsWhatItsOperationNamesTests` in
+`Tests/Modules/Homebrew/EngineTests/StoppingTheInstallAndItsAdminDialogTests.swift`.
 
 ## Install counts
 

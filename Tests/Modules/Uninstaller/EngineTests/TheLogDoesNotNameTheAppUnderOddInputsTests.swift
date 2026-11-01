@@ -3,14 +3,16 @@ import HelmRuntime
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-/// **Every refusal line the shared removal loop writes for this module, at the
-/// inputs the first test did not feed in.** `TheLogDoesNotNameTheAppTests` fed
-/// one bundle in `/Applications` and a one-word message. The loop writes three
-/// kinds of line — out of scope, ancestor changed, macOS refused — and the
-/// uninstaller hands it bundles in nested folders, and leftovers named by a
-/// bundle id with no extension of their own (`~/Library/Containers/<id>`),
-/// while macOS names a refused bundle by its *display name* in its own half of
-/// the line.
+/// **The refusal lines the shared removal loop writes for this module, at the
+/// inputs `TheLogDoesNotNameTheAppTests` did not feed in.** That class feeds one
+/// bundle in `/Applications`, a bundle in a forbidden folder (the out-of-scope
+/// line) and nested bundles. The loop writes three kinds of line — out of scope,
+/// ancestor changed, macOS refused — and this class feeds the last two.
+/// Ancestor changed: a leftover whose parent was swapped. macOS refused:
+/// leftovers named by a bundle id, with an extension or with none of their own
+/// (`~/Library/Containers/<id>`), and a refusal whose sentence names the bundle
+/// by its *display name*, in Russian, or by a name too short to redact: the line
+/// leaves that sentence out.
 ///
 /// Every case asserts that its line was written before asserting what the line
 /// does not carry: the log is off in a test process, and an absence proves
@@ -61,27 +63,7 @@ final class TheLogDoesNotNameTheAppUnderOddInputsTests: XCTestCase {
         }
     }
 
-    // MARK: - Out of scope
-
-    /// `/Applications/Utilities` is on the gate's forbidden list, so a bundle
-    /// there never reaches `trashItem` and is logged by the out-of-scope line.
-    func testABundleInAForbiddenFolderIsRefusedWithoutItsName() async {
-        let path = "/Applications/Utilities/\(secret).app"
-        let result = await engine(trash: FakeTrash()).trashPaths([path])
-        XCTAssertEqual(result.failures.map(\.reason), [.outOfScope], "precondition: the gate refused it")
-        assertLogged("refused out-of-scope path: ", without: [secret])
-    }
-
-    // MARK: - Nested bundles, macOS refusing
-
-    /// A bundle one folder down and one in the home's own Applications folder:
-    /// the leaf is still the app's name.
-    func testNestedBundlesAreRefusedWithoutTheirNames() async {
-        let paths = ["/Applications/Setapp/\(secret).app", "/Users/x/Applications/\(secret).app"]
-        let result = await engine(trash: FakeTrash(failing: paths)).trashPaths(paths)
-        XCTAssertEqual(Set(result.failed), Set(paths), "precondition: macOS refused both")
-        assertLogged("trash refused ", without: [secret])
-    }
+    // MARK: - macOS refusing
 
     /// macOS's own half of the line in Russian, quoting the bundle by its file
     /// name: `Redact.naming` has to find the name inside somebody else's
@@ -138,8 +120,8 @@ final class TheLogDoesNotNameTheAppUnderOddInputsTests: XCTestCase {
     /// Mac: `trashItem` on a bundle `SecretTool.app` whose `InfoPlist.strings`
     /// says `CFBundleDisplayName = "Hidden Title"` answered «“Hidden Title”
     /// couldn’t be moved to the trash because you don’t have permission to access
-    /// it.» The redaction replaces the file's stem, which that sentence does not
-    /// contain, so the display name stays in clear.
+    /// it.» Redaction replaces the file's stem, which that sentence does not
+    /// contain, so the line carries the error's domain and code instead.
     func testARefusalQuotingTheDisplayNameDoesNotNameTheApp() async {
         let path = "/Applications/\(secret).app"
         let shown = "Hidden Title \(secret.suffix(6))"
@@ -150,7 +132,7 @@ final class TheLogDoesNotNameTheAppUnderOddInputsTests: XCTestCase {
         assertLogged("trash refused ", without: [secret, shown])
     }
 
-    /// **A name under four characters survives in macOS's half of the line.**
+    /// **A name under four characters would survive in macOS's sentence.**
     /// `Redact.naming` skips it on purpose (replacing a short word everywhere
     /// rewrites the sentence), and `Arc.app` and `Zed.app` are real products.
     func testAThreeLetterAppIsRefusedWithoutItsName() async {

@@ -13,8 +13,8 @@ import XCTest
 ///
 /// One thing it fixes in place. **The undated copy stays whatever is below the
 /// rung**, which the fixtures already in the suite could not show: in
-/// `SurvivingCopyTests` and `KeepPolicyTests` the dateless copy is also the
-/// shallower one, so both were green whether the undated rung decided or the
+/// `KeepPolicyTests` the dateless copy is also the
+/// shallower one, so its cases were green whether the undated rung decided or the
 /// depth rung did — they ask `SurvivingCopy.reason` now, which tells the two
 /// apart on the fixture they already had. This file keeps the other half: a
 /// dateless copy with every rung below it *against* it.
@@ -48,7 +48,7 @@ final class ACopyWithNoDateIsTheOneThatStaysTests: XCTestCase {
                            "/Users/r/Archive/2019/Old/Deep/z.jpg", """
                 policy «\(policy.rawValue)»: the deeper, later-sorting copy is the one whose \
                 Date Added the filesystem never recorded, and the group kept the other one. \
-                A blank date read as a loss is the rule `SurvivingCopyTests` records being \
+                A blank date read as a loss is the rule `KeepPolicyTests` records being \
                 put back — and read as silence it is the cycle \
                 `TheSurvivorDoesNotDependOnWalkOrderTests` records.
                 """)

@@ -41,7 +41,7 @@ import Module_Disk_Engine
 ///
 /// The seam is `ScanStore`'s own default, in the shape `ScanJournal` already
 /// has: a per-process directory under `$TMPDIR` when XCTest is loaded, swept the
-/// way `AbandonedJournalsTests` describes, so the redirection does not trade
+/// way `TestScratchTests` describes, so the redirection does not trade
 /// somebody's file for 452 directories of ours. `init(directory:)` is untouched
 /// by that and must stay untouched — nine tests inject through it.
 final class TheSuiteDoesNotReadTheUsersLastScanTests: XCTestCase {
