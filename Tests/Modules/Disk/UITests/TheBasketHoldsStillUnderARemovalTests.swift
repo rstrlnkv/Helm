@@ -14,9 +14,9 @@ import Module_Disk_Engine
 /// and exactly the wrong shape in trust, in a flow whose whole subject is
 /// deletion: the app quietly un-picks what somebody picked.
 ///
-/// `OneRemovalAtATimeEverywhereTests` cannot see it. That scan looks for
-/// `guard !busy` in the four trashing view models and finds one — in
-/// `emptyBasket`, which is the other method. ARCHITECTURE.md § One removal at a
+/// `OneRemovalAtATimeEverywhereTests` cannot see it. That scan reads the methods
+/// that set `busy = true`, and `toggleBasket` does not set it: `emptyBasket`,
+/// which does, is the other method. ARCHITECTURE.md § One removal at a
 /// time states the rule this breaks in a sentence about both halves: «The model
 /// refuses; the page dims. Both, or neither is reliable.»
 ///

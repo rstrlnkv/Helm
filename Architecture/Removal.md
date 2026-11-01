@@ -41,9 +41,8 @@ dims. Both, or neither is reliable. `DiskViewModel.toggleBasket` declining while
 is the same guard read from the basket's own door.
 
 `Tests/HelmAppTests/OneRemovalAtATimeEverywhereTests.swift` fails on any file under
-`Sources/Modules/` that sends a removal and holds no `guard !busy` anywhere — the file,
-not the removing method, so a guard dropped from one door of a file that keeps it at
-another passes; the files it finds are the
+`Sources/Modules/` that sends a removal and has a method setting `busy = true` with no
+`guard` on `!busy` before that line, or no such method at all; the files it finds are the
 output of `command grep -rlE 'work\.trash(Paths)?\(|uvm\.trashPaths\(' Sources/Modules/`, since the count itself
-does not belong in this sentence (CLAUDE.md § Where things go). Its doc comments say
+does not belong in this sentence. Its doc comments say
 why it scans by what a file **sends** rather than by what a type is named.

@@ -21,6 +21,7 @@ The proof follows the class of the defect, and only some classes keep theirs in 
 | an import across a boundary; a path or `§` pointer to nothing | the build's import check (ARCHITECTURE.md § The boundaries) and the checks of the tree | yes |
 | the suite itself touching this Mac: its Keychain, defaults, Trash or a person's files | a test | yes |
 | a language missing from a catalog, so the screen shows an identifier where English would have | a test | yes |
+| a catalog spelling a language the way the system's own lists do not: another language's quotation marks, an ordinary space where French has an unbreakable one, «ё» where the house writes «е» (`Changelog.xcstrings`, shipped text, is excepted from the last) | a test | yes |
 | the look: layout, size, colour, contrast, a page's states | shots before and after (§ Snapshot rules) | no |
 | motion | a recording before and after (§ Measuring motion) | no |
 | logic that costs no data | the repro or a command printing the value, before and after | no |

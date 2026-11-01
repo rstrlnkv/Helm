@@ -58,8 +58,10 @@ import Module_Uninstaller_Engine
 
     /// The engine and the model that calls it. The engine's "an app reached the
     /// Trash" goes into a stream the model reads (`listenForTrash`), newest one
-    /// kept: the signal means "look again" and carries nothing, so two that
-    /// arrive before anyone looks are one.
+    /// kept: the signal means "look again" and carries nothing, so any number
+    /// that arrive while the model is not reading (before its first read, or
+    /// while it handles an earlier one) are one. A model already waiting is
+    /// woken by each of two back to back, and looks twice.
     public func makeModule(store: NamespacedStore) -> ModuleParts<UninstallerViewModel> {
         let (arrivals, arrived) = AsyncStream.makeStream(of: Void.self,
                                                          bufferingPolicy: .bufferingNewest(1))
