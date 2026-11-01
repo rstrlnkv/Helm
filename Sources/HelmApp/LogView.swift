@@ -118,8 +118,8 @@ struct LogView: View {
         // scroll and always will — not because it has no scroll view, which it
         // does, in `lines`, but because `helmPageBar` is applied here, to the
         // outer `VStack(spacing: 0)`, with that scroll view several levels
-        // inside it. The five pages that rely on the scroll trigger hand their
-        // own `Form` straight to `helmPageHeader` instead, where the closure
+        // inside it. The pages that rely on the scroll trigger hand their own
+        // scrolling content straight to `helmPageHeader` instead, where the closure
         // fires. So before this the band was structurally incapable of
         // lighting: nothing above it against the `Divider()`s below. The header
         // in the row takes the fact as an argument because it is right here;

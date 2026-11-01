@@ -188,7 +188,7 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
 
     // MARK: - Who asks for the rule back
 
-    /// **The person's own switch, and only theirs.** The grant's lifetime is the
+    /// **The person's own switch, or «Reset all settings», and nothing else.** The grant's lifetime is the
     /// feature; until now the only falling edge that took it out was the lid
     /// option's, so somebody who switched all of Keep Awake off left the rule
     /// behind for a module they had just turned off.

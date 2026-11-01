@@ -18,8 +18,8 @@ import Module_Duplicates_Engine
 /// — and nothing in it asks whether a removal is in flight. The toolbar's Search
 /// button is drawn for `phase != .searching`, which during a removal is `.result`,
 /// so it is live and undimmed for the whole window; and in this module that
-/// window is minutes, because `DuplicatesEngine.trash` re-reads both files of
-/// every pair in full before anything moves.
+/// window is minutes, because `DuplicatesEngine.trash` verifies every pair
+/// before anything moves.
 ///
 /// Two things go with the basket. The count and the marks, which is the same
 /// harm the clear button had. And **the way out**: the page draws its busy row —

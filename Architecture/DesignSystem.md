@@ -20,10 +20,10 @@ Tokens live one family to a file in `Sources/HelmUI/DesignSystem`: `HelmFills.sw
 `ModuleTint.swift` the method, and with it `hostColour` (General, Log, About) and `whatsNewColour`,
 and `HelmTraits.swift` the one entry a kit view reads the look through: `\.helmTraits`, the
 colour scheme and the three accessibility settings in one value (`HelmAccessibility.system`
-is the one place that asks the workspace for them). Motion is the exception: `HelmButtonStyle` and
-`HelmPageHeader` take Reduce Motion through `HelmMotion.hover(entering:)`, which reads
-`HelmAccessibility.system` statically, so the showcase cannot force it. A kit view reads it rather than asking
-the workspace itself. Reduce Transparency changes two inks, the plates behind words on the capture overlay
+is the one place that asks the workspace for them). Motion is the exception: every `Animation` token of
+`HelmMotion` reads Reduce Motion from `HelmAccessibility.system` statically, so a view that animates by one
+(`HelmButtonStyle` and `HelmPageHeader` through `HelmMotion.hover(entering:)`) takes it there, and the
+showcase cannot force it. A kit view reads it rather than asking the workspace itself. Reduce Transparency changes two inks, the plates behind words on the capture overlay
 (`OverlayInk`). No kit token answers it; of the system's materials the window ground and the header tabs
 were measured to follow it, the others are assumed.
 
@@ -33,7 +33,7 @@ were measured to follow it, the others are assumed.
 `HelmSectionTitle` and `HelmMetricStrip`, and the two view modifiers
 `helmPreviewEdge(chosen:)` and `helmCard(padding:)`. `HelmRowMenu.swift` is a row's own menu of further actions, named with the row's subject because VoiceOver reads several of them on a page. `helmCard()` is the one card
 treatment: a fill, continuous corners at `HelmRadius.card`, and no border, because a grouped
-`Form` section is drawn by the system and nothing can restyle it (`command grep -rln 'Form {' Sources` lists the views still built on one). A
+`Form` section is drawn by the system and nothing can restyle it (`command grep -rlE '^ *Form \{' Sources` lists the files that still build one). A
 surface that floats over content takes `.glassEffect` rather than an edge, because glass
 carries its own edge and its own shadow and a hairline on top is a second silhouette;
 `command grep -rn '\.glassEffect(' Sources` lists the sites. The one striped list is
@@ -185,17 +185,13 @@ background instantly while the disappearing rows keep drawing over what sits bel
 ## The visual language
 
 Every screen speaks one visual language derived from the app's subject.
-`Sources/HelmUI/DesignSystem/HelmPageHeader.swift` is icon plate, title, one line of what
-the screen is for, and the screen's primary control at the far end. `HelmIconPlate` is the
+`Sources/HelmUI/DesignSystem/HelmPageHeader.swift` is icon plate, title, the module's status, and at the far end
+the page's own controls (`HelmHeaderControls`: tabs, actions, search); it has no summary line. `HelmIconPlate` is the
 symbol on the module's own colour (`descriptor.moduleTint.colour`) and stands alone in
 empty states; a verdict's plate is `HelmSignalPlate`.
 `HelmMetricStrip` is an instrument readout — monospaced figures over small-caps labels,
-split by hairlines — and it belongs to form screens, where the dials read as state; list
-screens leave it aside deliberately, their chrome being one toolbar row with the counts as
-a quiet status line in the bottom bar, which costs no vertical space. A metric strip lives
-inside the form as its first `Section` rather than pinned above it with `safeAreaInset`, so
-it inherits the system's width and container in both appearances instead of overhanging the
-rows it summarizes. `Sources/HelmUI/DesignSystem/HelmAppMark.swift` draws the mark from
+split by hairlines — and the one place the product draws it is About's instrument row,
+inside a `helmCard`. `Sources/HelmUI/DesignSystem/HelmAppMark.swift` draws the mark from
 `Resources/Icon/Helm.icon/Assets/helm-ring.svg` — the artwork the app icon is built from,
 copied in by `Scripts/package-app.sh:269` — rather than reading the icon back, because macOS
 26 resolves `.icon` variants at the system level and the light variant's white slab reads
@@ -237,8 +233,9 @@ swift build --product HelmShowcase
 `--board` is one of `buttons`, `capsules`, `toggles`, `rows`, `sections`, `hotkeys`, `notices`, `header`, `toolbar`, `surfaces`, `pickers`, `lists`, `panel`, `motion`, `palette`, `ladders`, `present`, `welcome`;
 `--appearance` one of `light`, `dark`, `light-contrast`, `dark-contrast` (without it the machine's own);
 `--language en|zh|es|fr|de|ja|ru|pt` sets `AppLanguage.override` for this process, so the kit's own words read in that language;
-`--present sheet|popover|alert|dialog` opens one presentation on the `present` board at launch. `-reduceTransparency 1` is the one argument with one dash: it is the setting itself, answered from the argument domain for this process, and it changes no Mac setting. An
-unknown argument prints the usage and exits 64. It stores nothing: arguments only, no defaults, no autosaved
+`--present sheet|popover|alert|dialog` opens one presentation on the `present` board at launch. `-reduceTransparency 1` is the one argument with one dash: it is the setting itself, answered from the argument domain for this process, and it changes no Mac setting. A
+refused argument prints the usage and exits 64: an unknown one, a value off its flag's list, a flag with no
+value, `--present` beside a `--board` other than `present` (`--present` alone selects `present`). It stores nothing: arguments only, no defaults, no autosaved
 frame, and its window is not restored. Its sample text is plain `String`s in `enum Sample`, outside the
 eight tables on purpose.
 

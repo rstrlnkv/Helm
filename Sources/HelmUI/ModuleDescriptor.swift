@@ -122,7 +122,10 @@ public extension ModuleDescriptor {
     func stop(_ model: Model) {}
     func backgroundScan(_ parts: ModuleParts<Model>) async -> ScanReport? { nil }
     /// True when the page draws across the whole pane instead of inside the
-    /// 744 pt form column, so its header knows not to centre itself.
+    /// 744 pt form column, so its header knows not to centre itself. Only a
+    /// header drawn in the page reads it; the settings window, the only mount of
+    /// a module page, draws its header in the card, which bleeds for every
+    /// page, so in the product it changes nothing.
     var pageBleeds: Bool { false }
     func statusAppearance(_ model: Model) -> StatusAppearance { .inactive }
     func attachMenuBarPresence() {}

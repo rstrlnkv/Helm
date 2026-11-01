@@ -15,8 +15,8 @@ import Module_Duplicates_Engine
 /// had no guard, so the only control on the screen that looks like a way out of
 /// a destructive act was not one.
 ///
-/// **Not academic in this module.** `DuplicatesEngine.trash` re-reads both files
-/// of every pair in full before anything moves, serially, so the window between
+/// **Not academic in this module.** `DuplicatesEngine.trash` verifies every pair
+/// before anything moves, serially, so the window between
 /// the press and the reply is proportional to the volume marked: minutes on an
 /// external drive.
 ///

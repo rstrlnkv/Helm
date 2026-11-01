@@ -148,9 +148,8 @@ final class UndoAfterNavigationTests: XCTestCase {
                        "undo puts back what was replaced, ending and all")
     }
 
-    /// And a second chord is not: by then it is somebody navigating with ⌘←
-    /// rather than asking for an undo, and the tap cannot tell those apart from
-    /// the event alone.
+    /// And a second chord on that key is not: one is forgiven, the second
+    /// invalidates the record.
     func testASecondChordIsNotForgiven() {
         let engine = engine()
         converted(engine)

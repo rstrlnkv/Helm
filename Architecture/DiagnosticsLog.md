@@ -73,9 +73,10 @@ the allocator's own books — `malloc_zone_statistics`' `size_in_use`. Every wal
 budget carries its ceiling as a file rather than as a paragraph, per entry or per item:
 `Tests/Modules/Disk/EngineTests/ScanFootprintTests.swift`,
 `Tests/Modules/Leftovers/EngineTests/AScanKeepsWhatItFoundTests.swift`,
-`Tests/Modules/Duplicates/EngineTests/WalkFootprintTests.swift` and
-`Tests/HelmRuntimeTests/ReleaseDigestFootprintTests.swift`, with
-`Tests/HelmRuntimeTests/MemoryTrailCoverageTests.swift` holding the list of phases
+`Tests/Modules/Duplicates/EngineTests/WalkFootprintTests.swift`; the streamed digest of
+an update carries a process ceiling over one large file instead, run only with
+`HELM_BENCH=1` (`Tests/HelmRuntimeTests/ReleaseDigestFootprintTests.swift`).
+`Tests/HelmRuntimeTests/MemoryTrailCoverageTests.swift` holds the list of phases
 obliged to carry a reading at all.
 
 `Tests/Support/ThreadAllocations.swift` judges one call by the requests it made and never

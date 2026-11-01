@@ -3,9 +3,10 @@ import ApplicationServices
 import Foundation
 import Security
 
-/// What Helm needs from macOS, and why. Checked on first launch so the user
-/// finds out before a removal silently leaves files behind — which is exactly
-/// how the gap was discovered.
+/// What Helm needs from macOS, and why. Read on every launch, and the person is
+/// told when the build's signature changed and a grant an enabled module needs is
+/// denied, so they find out before a removal silently leaves files behind —
+/// which is exactly how the gap was discovered.
 public enum PermissionState: String, Sendable, Equatable {
     case granted, denied
 }
@@ -219,9 +220,10 @@ public enum TrashFailure {
     private static let readOnlyVolumeCode = 642 // NSFileWriteVolumeReadOnlyError
     private static let outOfSpaceCode = 640     // NSFileWriteOutOfSpaceError
 
-    /// Classifies using the error macOS returned, not the shape of the path:
-    /// blaming Full Disk Access for every container failure sent users to a
-    /// setting they had already granted.
+    /// Classifies using the error macOS returned. The shape of the path decides
+    /// two cases only: an `.app` with an active system extension, and code 513
+    /// under a container folder. Blaming Full Disk Access for every container
+    /// failure sent users to a setting they had already granted.
     public static func reason(path: String, errorCode: Int, hasSystemExtension: Bool) -> Reason {
         // **Before the extension**, which is a test of the path's *shape* while
         // this is what macOS answered: «turn off its system extension» is an

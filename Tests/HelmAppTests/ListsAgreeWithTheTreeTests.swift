@@ -61,8 +61,8 @@ final class ListsAgreeWithTheTreeTests: XCTestCase {
     /// That the descriptor passes the call on is held by `testTheDescriptorPassesTheScanOn`
     /// in each scanner's stopped-model class; `testEveryScannableModuleHasAPassOnTest`
     /// holds that the test is there.
-    /// The coordinator then wakes every minute, spends a day's budget per tick,
-    /// and nothing anywhere says the module never had a scan to run.
+    /// The coordinator then wakes every minute, tries again once per
+    /// `ScanSchedule.retryInterval`, up to the day's runs, and nothing anywhere says the module never had a scan to run.
     @MainActor func testEveryScannableModuleHasAnEngineThatCanScan() {
         let scannable = Set(ScanRunner.scannableModules)
         for (id, engine) in engines() where scannable.contains(id) {

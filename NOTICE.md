@@ -6,7 +6,7 @@ third-party artwork, which carries its own terms.
 ## Flag artwork — flag-icons
 
 `Sources/Modules/Layout/UI/Flags/*.png` are rendered from the 4:3 SVGs of
-**flag-icons**, one per ISO 3166-1 alpha-2 region, at 128 × 96.
+**flag-icons**, one per ISO 3166-1 alpha-2 region, at 128 × 96 points (256 × 192 pixels).
 
 - Source: <https://github.com/lipis/flag-icons>
 - Copyright: © Panayiotis Lipiridis and contributors

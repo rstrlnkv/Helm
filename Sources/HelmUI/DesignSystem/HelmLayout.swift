@@ -82,9 +82,7 @@ public enum HelmLayout {
     /// the form draws the card and was 11 where the page drew it, so the
     /// connections read as having slipped up into their own title.
     ///
-    /// Also SwiftUI's number rather than ours, so
-    /// `ThePageKeepsOneRhythmTests` compares the two gaps off one photograph
-    /// instead of asserting this constant against itself.
+    /// Also SwiftUI's number rather than ours.
     public static let groupedHeaderGap: CGFloat = 10
 
     /// The widest a column of prose, facts or fields may be drawn — for the

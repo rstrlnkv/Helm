@@ -1,13 +1,13 @@
 public struct ModuleMetadata: Sendable {
     public let id: ModuleID
     public let name: String
-    /// What the sidebar calls the module, where the column is fixed and a long
-    /// name is cut off mid-word rather than wrapped. Defaults to `name`, which
+    /// What the sidebar and the panel call the module, where the column is fixed
+    /// and a long name is cut off mid-word rather than wrapped. Defaults to `name`, which
     /// is what every module but one wants; only the one named after a macOS
     /// pane with a compound name needs the short form, and macOS itself carries
     /// both ("Login Items & Extensions" in the pane, "Login Items" in a list).
-    /// Everywhere else — the page header, the panel, the icon menu — uses the
-    /// full name, because there the width is the content's to take.
+    /// Everywhere else — the page header, the icon menu — uses the full name,
+    /// because there the width is the content's to take.
     public let shortName: String
     public let summary: String
     public let sfSymbol: String

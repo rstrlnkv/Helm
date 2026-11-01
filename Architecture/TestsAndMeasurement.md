@@ -214,7 +214,7 @@ fitting size, which answers with the ideal size and reads every ramp as a step.
 The commands a session runs each have a reason that is not obvious from the command. A
 filtered run is far shorter than the suite, which is what makes running a guard before the
 suite cheap enough to actually do. `plutil -lint` refuses a catalog, so
-`python3 -m json.tool` is what follows a hand edit, and the four string guards, which the run before a commit skips, are run by name before committing. The visual
+`python3 -m json.tool` is what follows a hand edit, and the four string guards are run by name before committing, two of them (`NoOrphanTranslationsTests`, `OneEntryPerKeyTests`) because the run before a commit skips them. The visual
 harness is env-gated and belongs in the working tree only while it is being used, so
 `command grep -rn HELM_DEBUG Sources/` is empty before a commit.
 

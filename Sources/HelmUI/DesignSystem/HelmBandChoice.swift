@@ -18,7 +18,8 @@ import SwiftUI
 /// **On 26 the whole is inference, not measurement.** This Mac runs 27; whether macOS 26 looks as described
 /// is checked by the owner in a 26 virtual machine, not by anything in this tree.
 ///
-/// **One value, read in one place.** `running` is the only reading of the system's version; a flag set from
+/// **One value, read in one place.** `running` is the only reading of the system's version the band is decided
+/// from (the window's corner reads its own, which is no band); a flag set from
 /// one reading and a band drawn from another is a page with two bands or none.
 public struct HelmBandChoice: Equatable, Sendable {
     /// Helm's own light on the header row (`HelmPageHeader`).

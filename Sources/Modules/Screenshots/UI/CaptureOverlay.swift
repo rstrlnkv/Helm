@@ -60,8 +60,10 @@ struct EditorTextTools {
     var mode: Mode { didSet { render() } }
     var drag: (display: DisplayID, drag: SelectionDrag)?
     /// The remembered area the panel's Area mode opens on, drawn as a selection
-    /// that Return confirms and any new drag replaces. A reading, already cut to
-    /// the display as it is now by `RememberedSelection.landing`.
+    /// that Return confirms (`takeTarget` sends `.edited(... exit: .confirm)`,
+    /// no editor opens) and any new drag replaces; the panel's released drag is
+    /// kept here too (`mouseUp`). A reading, already cut to the display as it
+    /// is now by `RememberedSelection.landing`.
     var preselected: (display: DisplayID, rect: CGRect)?
     /// The panel's overlay: the area that was drawn when a new drag began, and comes back if that drag is not usable.
     var replacedByDrag: (display: DisplayID, rect: CGRect)?

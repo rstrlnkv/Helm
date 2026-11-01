@@ -28,7 +28,7 @@ Paths reach `RemovableScope` and `UserFileScope` through
 the leaf alone, so a stale alias is trashed rather than chased. `ScanRoot` uses its
 `resolvingWholePath`, which resolves the leaf too, because it reads what the path points
 at rather than removing the name (`PathCanonical.swift` says why). `WatchScope` canonicalises on its own, resolving the
-whole path, leaf included, as far as it exists. `PathCanonical.ancestryIdentity(of:)` returns the device-and-inode chain that
+whole path, leaf included, as far as it exists. `PathCanonical.ancestryIdentity(of:)` returns the device and inode of the directory the resolved parent chain leads to, which
 `Sources/HelmRuntime/HelmTrash.swift` re-reads immediately before each move.
 
 `UserFileScope` compares a path against its protected prefixes in **both** spellings,

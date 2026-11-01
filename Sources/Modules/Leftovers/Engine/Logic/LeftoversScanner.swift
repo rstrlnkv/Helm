@@ -71,8 +71,9 @@ struct LeftoversScanner: Sendable {
     /// Extensions are not files Helm can move: macOS removes them with the app
     /// that installed them, or from System Settings. They are listed so the
     /// user can see what loads and where it came from, never as something to
-    /// tick — hence `.inUse`/`.protectedItem`, never `.orphaned`… except when
-    /// the host app is gone, which is exactly what the user wants to know.
+    /// tick (`LeftoverActions.available` offers System Settings only) — hence
+    /// `.inUse`, never `.orphaned`… except when the host app is gone, which is
+    /// exactly what the user wants to know.
     private func systemExtensions(_ list: [SystemExtensionInfo],
                                   installed: Set<String>) -> [StaleItem] {
         var spelled: [String: Int] = [:]

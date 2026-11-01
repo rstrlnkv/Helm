@@ -7,7 +7,8 @@ import HelmAppStrings
 
 /// Owns the single `NSStatusItem`. `StatusPlan` decides which enabled module it
 /// reflects and whether the ring moves; left click toggles the shared panel,
-/// right click shows Settings/Quit.
+/// right click shows the menu `StatusMenuBuilder` builds: Settings, edit panel,
+/// the live modules by sidebar section, Quit.
 @MainActor final class StatusItemController: NSObject {
     private let host: ModuleHost
     private let statusItem: NSStatusItem

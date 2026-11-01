@@ -12,7 +12,7 @@ import Foundation
 ///
 /// Here rather than in either module for the reason `HelmConfirm.trash` is here
 /// — four modules ask that one — and so that a fix in one module is a fix in
-/// both. The heading is the shipped `"To remove"` key both modules already read.
+/// both. The heading and the punctuation are one sentence, the `basketLine` key both modules already read.
 ///
 /// `language` is explicit, defaulting to the app's, for the same reason
 /// `HelmConfirm.trash` takes it: the eight tables cannot be tested otherwise.

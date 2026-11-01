@@ -236,7 +236,7 @@ struct MenuBarSettingsView: View {
             // What Helm does when nobody is at the desk, on the one page that
             // is about Helm rather than about a module. It is the app's largest
             // difference in kind from the tools it is compared to — three
-            // modules reading the volume twice a day — and until this section
+            // modules reading the volume once a day — and until this section
             // the only place it was ever said was the log.
             //
             // Only when there is a row: with all three of those modules
@@ -443,9 +443,11 @@ struct MenuBarSettingsView: View {
     private static let permissionsAnchor = "settings.permissions"
 }
 
-/// **General's mirror of the bar menu's Appearance section**: Flat or Liquid Glass, kept in step with the
-/// menu's choice through `.helmBarAppearanceChanged`. Its own `@State`, so the page holds nothing for it. The
-/// `guard` in `onChange` keeps a choice made in the menu from being written a second time.
+/// **Flat or Liquid Glass**, written to `AppSettings.barAppearance`, whose setter posts
+/// `.helmBarAppearanceChanged` for the window's ground (`helmTracksBarAppearance`,
+/// `ShellContentView`). Its own `@State`, so the page holds nothing for it. The row is
+/// the setter's only caller, so the `guard` in `onChange` and the `onReceive` below hear
+/// nothing but this row's own write.
 struct BarAppearanceRow: View {
     @State private var choice = AppSettings.barAppearance
 

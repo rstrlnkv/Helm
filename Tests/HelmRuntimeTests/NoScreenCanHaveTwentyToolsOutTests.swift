@@ -15,8 +15,9 @@ import XCTest
 /// where the app died.
 ///
 /// `HomebrewViewModel`'s `LatestRequest` stops that screen from asking. This is
-/// the floor under every screen not yet written — a caller may still ask for
-/// more than `launchCeiling`, and what it gets is a queue.
+/// the floor under every screen not yet written that goes through `run` or
+/// `runData` — a caller may still ask for more than `launchCeiling`, and what it
+/// gets is a queue.
 final class NoScreenCanHaveTwentyToolsOutTests: XCTestCase {
 
     override func setUp() {

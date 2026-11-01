@@ -30,8 +30,6 @@ struct HelmPanelContent: View {
     /// opened for a glance, and opening it on the tab somebody happened to
     /// leave last week is a panel that answers a question nobody asked.
     @State private var activeTab = 0
-    /// The strip the panel is drawn in, top to bottom of the screen. The card
-    /// may not be taller than it, and the grid is what gives way.
     /// The card has played its entrance. Set false for the one frame the
     /// entrance animates from, then true again.
     ///
@@ -46,6 +44,8 @@ struct HelmPanelContent: View {
     @State private var showEditButton = AppSettings.showPanelEditButton
     @State private var showSettingsButton = AppSettings.showSettingsButton
     @State private var showQuitButton = AppSettings.showQuitButton
+    /// The strip the panel is drawn in, top to bottom of the screen. The card
+    /// may not be taller than it, and the grid is what gives way.
     @State private var stripHeight: CGFloat = 0
     /// The grid's natural height, so the scroll view never grows past its own
     /// content — otherwise a panel holding two widgets would be as tall as the
@@ -278,8 +278,8 @@ struct HelmPanelContent: View {
 
     private func apply(_ next: PanelLayout) {
         layout = next
-        // On every change, never on «Done». There is no Done to wait for: the
-        // panel closes when it loses focus, which is most of the ways out of it.
+        // On every change, never on «Done»: the panel can close without Done
+        // being pressed, by a click outside, Escape or the icon's own click.
         PanelLayoutStore.write(next, to: AppSettings.store)
     }
 

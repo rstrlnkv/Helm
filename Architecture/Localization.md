@@ -15,7 +15,7 @@ test follows for the language it asks in.
 
 ## The lookup and its memo
 
-The helper is `L(_ resource:language:)` in `Sources/HelmUI/L10n.swift`, which asks the resource in
+The helper is `L(_ resource:language:remembered:)` in `Sources/HelmUI/L10n.swift`, which asks the resource in
 `AppLanguage.current`, since `String(localized:)` alone answers in the language macOS resolves for the
 process, not the one the person picked in Helm, and the resource carries its own target's bundle. It
 keeps a bounded memo of its answers, because `String(localized:)` with a locale costs by the size of
@@ -23,7 +23,9 @@ the table, measured in a release build: about 57 us at 11 keys, 1 ms at the chan
 (323 KB), against 0.8 us for a held dictionary. A word in a view body is drawn per frame, and a
 changelog read through it was 436 ms. The changelog reads its language's sub-bundle once, in
 `Sources/HelmAppStrings/ChangelogData.swift`. The memo's reason is in the doc comment of
-`L(_ resource:language:)`, its limits in that of `ResourceAnswers` (`Sources/HelmUI/L10n.swift`).
+`L(_ resource:language:remembered:)`, its limits in that of `ResourceAnswers` (`Sources/HelmUI/L10n.swift`).
+`remembered: false` skips the memo for a word that holds somebody's typed text (Layout's `pairRead` and
+`fixedAnnouncement`), because the memo keeps the arguments and forgets only by count.
 
 ## Arguments and numbers
 
@@ -38,7 +40,8 @@ value with no argument prints two marks.
 ## Words two parts draw
 
 Symbols are internal to their target, so a word that two modules or the kit draw lives in the kit's
-catalog and is read through `HelmWord` (`Sources/HelmUI/HelmWord.swift`), `String` only: a
+catalog and is read through `HelmWord` (`Sources/HelmUI/HelmWord.swift`) or another type of the kit (`command grep -rlE '\bL\(\.' Sources/HelmUI`
+lists the files), `String` only: a
 property of the kit answers with the word, not with a resource. A module does pass its own resource into
 the kit's public `L`, which is how one function reads every catalog and why the resource carries its bundle. The same English
 in a catalog and in the kit is a failure (`StringsCoverageTests`), except a value holding a placeholder

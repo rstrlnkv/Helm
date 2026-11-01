@@ -3,11 +3,10 @@ import CoreGraphics
 /// **Space has one ladder: 2 · 4 · 6 · 8 · 12 · 18 · 28 · 40 pt.**
 ///
 /// Counted before it existed: twenty-four distinct padding values and thirteen
-/// distinct gaps across the settings window, against three declared tokens
-/// (`v3/audit.js`, check `space-off-the-ladder`). That is not a design with
-/// twenty-four decisions in it — it is one decision taken twenty-four times by
-/// eye, and nobody could see the difference between 10 and 12 pt anyway. The
-/// same disease the type scale had.
+/// distinct gaps across the settings window, against three declared tokens.
+/// That is not a design with twenty-four decisions in it — it is one decision
+/// taken twenty-four times by eye, and nobody could see the difference between
+/// 10 and 12 pt anyway. The same disease the type scale had.
 ///
 /// The steps are close together where they are small, because 2 pt matters at
 /// 4 pt and does not at 40, and above that each is about half again the one

@@ -5,9 +5,10 @@ folders, each only if the person switches it on, and three of them are given bac
 
 - the passwordless `pmset` rule Keep Awake's closed-lid option writes under
   `/etc/sudoers.d` — taken back by the module that put it there
-  (`KeepAwakeEngine.willDisable`), through an administrator dialog the person can
-  decline, in which case the rule stays and Helm says so rather than reporting a
-  reset that did not happen;
+  (`KeepAwakeEngine.willDisable`), through `sudo -n` when the rule permits its own
+  withdrawal and otherwise through an administrator dialog the person can decline.
+  The reset does not wait for the answer; a rule that stays is reported by Keep
+  Awake's page on the next launch, not by the reset;
 - the login items Leftovers switched off with `launchctl disable`
   (`Sources/Modules/Leftovers/Engine/SystemPorts.swift`) — switched back on from the
   module's own record of what it disabled;
@@ -32,6 +33,13 @@ and the counter `com.helm.autopilot` / `rule-seq` (Helm Dev: `dev-rule-seq`).
 bundle costs a modal dialog for each. By the time the reset reaches them the preferences
 domain is gone, so what they sealed no longer exists: what remains of a key is 32 bytes the next
 launch reads as its own.
+
+The VPN module's cached credentials (`com.helm.vpn`, accounts `<uuid>.ss` and
+`<uuid>.pw`, `Sources/Modules/VPN/Engine/SystemPorts.swift`) are not a step of the
+plan, and they do not stay either: the reset trashes the marker
+`CredentialCachePurge` keeps in Helm's Application Support folder, so the next launch with
+the module on deletes every item of that service once more and the next connect reads the System
+keychain again.
 
 The steps are `ResetPlan.Step` — `handBackWhatIsOutsideHelm`, `giveBackTheLoginItem`,
 `trashHelmsOwnFolders`, `forgetPreferences`, `relaunch` — and `ResetPlan.order` is that

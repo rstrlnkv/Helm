@@ -70,7 +70,7 @@ extension Module {
         ]
     }
 
-    /// A test target reaches one half of its module and no further: a UI test
+    /// A test target declares one half of its module and no more: a UI test
     /// gets the engine through the UI target that already depends on it.
     /// `HelmTestSupport` is the exception every test target gets, because it is
     /// the harness rather than the subject.

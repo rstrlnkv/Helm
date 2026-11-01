@@ -92,8 +92,8 @@ public enum HelmText {
     /// step above body, and the face is `figureFont`'s for the same reason —
     /// a number and its unit at one rhythm.
     ///
-    /// A token because it is used twice: the metric strip that rides every
-    /// module page, and VPN's tile strip. Both also cap the line and let it
+    /// A token because it is used twice: the metric strip (About's
+    /// instrument row), and VPN's tile strip. Both also cap the line and let it
     /// shrink, which is why the whole treatment is `helmMetricFigure()` rather
     /// than this size alone.
     ///

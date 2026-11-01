@@ -7,7 +7,8 @@ import HelmAppStrings
 /// build, offers a one-click silent update: it downloads the release `.zip`
 /// itself (self-downloaded → no quarantine, no Gatekeeper prompt), swaps the app
 /// bundle in place, and relaunches. Falls back to opening the release page when
-/// no installable zip asset is present.
+/// this build does not take published builds, when the release has no installable
+/// zip asset, and when it published no digest for that zip.
 @MainActor final class UpdateService: ObservableObject {
     static let shared = UpdateService()
 

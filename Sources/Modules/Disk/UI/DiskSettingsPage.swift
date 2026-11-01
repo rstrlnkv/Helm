@@ -106,10 +106,8 @@ struct DiskSettingsPage: View {
             }
             // 20, the same inset the header, the permission note, the scanning
             // state and the result all use. The centred 744 pt column belongs
-            // to a grouped `Form`, and this page has none: `pageBleeds` is true
-            // precisely because the header must not centre itself over
-            // full-bleed content, so a column here put the cards 32.5 pt right
-            // of the note introducing them at the default window, and 202.5 at
+            // to a grouped `Form`, and this page has none: a column here put the
+            // cards 32.5 pt right of the note introducing them at the default window, and 202.5 at
             // 1400.
             .padding(HelmLayout.formInset)
         }

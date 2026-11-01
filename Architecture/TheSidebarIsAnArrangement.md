@@ -8,7 +8,8 @@ build that is not necessarily this one.
 
 The window's sidebar and the status item's menu both draw the same store, so there
 is one arrangement rather than two that agree by habit. Neither observes
-`UserDefaults`; both listen for `.helmModuleOrderChanged`.
+`UserDefaults`: the sidebar listens for `.helmModuleOrderChanged`, and the menu
+reads the store at each right click.
 
 The drop arithmetic is pure and lives in `Sources/HelmUI/SidebarLayoutDrag.swift`
 (`SidebarLayout.flattened`, `SidebarLayout.applyingDrag(of:toFlatIndex:)`).

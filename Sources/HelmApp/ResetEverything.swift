@@ -12,9 +12,11 @@ import HelmRuntime
 /// module that put them there can take back. So the
 /// engines are asked first, while their settings still exist and while there is
 /// somebody at the screen to answer what the asking can raise. Then the saved
-/// state on disk, then the diagnostics log, then every preference — the log is
-/// worth keeping until the last moment, because if trashing the state fails the
-/// reason is in a file that still exists.
+/// state on disk and the diagnostics log go to the Trash in one call, then every
+/// preference. The log was meant to outlast the state, so that a failed trash
+/// leaves its reason in a surviving file; it does not: `HelmTrash.remove` takes
+/// the shortest path first, the log folder before Application Support, and while
+/// logging is on the next line is written to a log folder the logger makes again.
 ///
 /// **To the Trash, not to `unlink`.** Everywhere else in Helm removal is
 /// recoverable, and somebody who presses this by accident must be able to get
@@ -58,7 +60,7 @@ import HelmRuntime
                             "removed \(result.removed.count), refused \(result.refused.count)")
     }
 
-    /// Last of the removals, because until now the log was worth having.
+    /// Last of the removals, after both folders have gone to the Trash.
     private static func forgetPreferences() {
         guard let bundleID = Bundle.main.bundleIdentifier else { return }
         UserDefaults.standard.removePersistentDomain(forName: bundleID)

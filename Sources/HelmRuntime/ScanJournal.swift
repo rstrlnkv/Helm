@@ -51,8 +51,9 @@ public final class ScanJournal: @unchecked Sendable {
         case current, previous
     }
 
-    /// Thirty scans. A module scanning twice a day keeps a fortnight, which is
-    /// long enough to see a pattern and short enough that the file stays small.
+    /// Thirty scans. A completed scan holds its module for a day, so entries
+    /// stand a day or more apart and thirty keep a month or more, which is long
+    /// enough to see a pattern and short enough that the file stays small.
     public static let limit = 30
 
     private let root: URL

@@ -18,9 +18,9 @@ enum PanelLayoutStore {
     /// has to appear the first time the panel is opened rather than after
     /// somebody happens to rearrange something.
     ///
-    /// `offered` is the ids this build can draw right now, in the order the
-    /// person arranged them — the sidebar's arrangement, which is the one
-    /// order Helm has.
+    /// `offered` is the ids this build can draw right now, in the sidebar's
+    /// arrangement. It orders a first layout and the ids arriving in a later
+    /// one; a stored layout keeps its own order.
     static func read(from store: NamespacedStore, offered: [String],
                      sizes: [String: PanelWidgetSize] = [:]) -> PanelLayout {
         let stored = store.data(key).flatMap {
@@ -32,9 +32,9 @@ enum PanelLayoutStore {
 
     /// Written on every change, not on «Done».
     ///
-    /// There is no Done in this editor: the panel closes when it loses focus,
-    /// which is most of the ways out of it. A layout that only saved on a
-    /// button somebody never pressed would be a panel that forgets what you
+    /// The editor has a Done, but the panel can close without it being pressed:
+    /// a click outside, Escape, the icon's own click. A layout that only saved
+    /// on a button somebody never pressed would be a panel that forgets what you
     /// just did every time you look away from it.
     static func write(_ layout: PanelLayout, to store: NamespacedStore) {
         guard let data = try? JSONEncoder().encode(layout) else { return }

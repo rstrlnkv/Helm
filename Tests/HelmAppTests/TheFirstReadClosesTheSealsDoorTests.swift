@@ -10,8 +10,8 @@ import XCTest
 /// app ever wrote `disabledScans`, and its getter returned the default *before*
 /// touching the guard — so on every Mac the item was never created, first use
 /// was still unspent, and the first value the app ever saw was adopted and
-/// sealed as Helm's own. `defaults write com.helm.app disabledScans -array` is
-/// the whole attack: a full-volume walk under Helm's Full Disk Access, blessed.
+/// sealed as Helm's own. `defaults write com.helm.app module.app.disabledScans -array`
+/// is the whole attack: a full-volume walk under Helm's Full Disk Access, blessed.
 @MainActor
 final class TheFirstReadClosesTheSealsDoorTests: XCTestCase {
 

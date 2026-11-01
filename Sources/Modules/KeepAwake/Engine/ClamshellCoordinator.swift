@@ -331,9 +331,9 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// helper the system removes with the app — one more thing that purchase is
     /// blocking, beside `SMAppService`, notarization, the seal on
     /// `clamshellEnabled` and a stable cdhash for TCC and the keychain (ARCHITECTURE.md § Sealed
-    /// settings). Until then the answer is a sentence: `KAStr.adminNote` names
-    /// the path and the `sudo rm` that removes it, before the password is asked
-    /// for rather than after.
+    /// settings). Until then the answer is a sentence: `KAStr.lidExplainer`
+    /// names the `sudo rm` that removes it, before the password is asked for
+    /// rather than after.
     private func withdrawAtQuit(sessionWillResume: Bool) {
         guard !active,
               !store.bool(KeepAwakeSettings.Key.clamshellGuard, default: false),
@@ -522,7 +522,8 @@ final class ClamshellCoordinator: @unchecked Sendable {
         removeGrant()
     }
 
-    /// The module itself is being switched off, by hand, in Settings.
+    /// The module is being switched off by hand in Settings, or «Reset all
+    /// settings» is handing the system back.
     ///
     /// The same falling edge as the option's own, arrived at from one screen over:
     /// a module that is off will not use the grant either, and this is the last
@@ -531,11 +532,12 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// so removing the rule there put an administrator password dialog on screen
     /// on behalf of an app that was already gone (`tearDown` has the story). What
     /// tells the two apart is `ModuleEngine.willDisable`, which only the person's
-    /// own switch calls.
+    /// own switch and «Reset all settings» call.
     ///
-    /// The setting is left where it is: somebody who switches the module back on
-    /// asked for the lid option once and will be asked for the password again,
-    /// which is the same round trip switching the option off and on already makes.
+    /// On a switch-off the setting is left where it is: somebody who switches the
+    /// module back on asked for the lid option once and will be asked for the
+    /// password again, which is the same round trip switching the option off and
+    /// on already makes.
     func releaseOnModuleDisabled() {
         guard lookForTheRule() else { return }
         removeGrant()

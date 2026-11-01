@@ -24,9 +24,9 @@ public enum HelmMotion {
     private static var reduced: Bool { reduceMotion }
 
     /// The system setting, read fresh through `HelmAccessibility.system`: for AppKit code, for pages
-    /// that are not yet on `\.helmTraits`, and for the kit's own hover animation (`hover(entering:)`, which
-    /// `HelmButtonStyle` and `HelmPageHeader` call), so a kit view takes Reduce Motion from here and not
-    /// from `\.helmTraits`.
+    /// that are not yet on `\.helmTraits`, and for every `Animation` token below, which reads it through
+    /// `reduced`: a view that animates by a token (`HelmButtonStyle` and `HelmPageHeader` by `hover(entering:)`)
+    /// takes Reduce Motion from here and not from `\.helmTraits`.
     public static var reduceMotion: Bool {
         HelmAccessibility.system.reducedMotion
     }

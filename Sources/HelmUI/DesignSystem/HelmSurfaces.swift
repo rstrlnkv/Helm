@@ -144,8 +144,7 @@ public struct HelmIconPlate: View {
 /// the orange warning or green check a page answers with.
 ///
 /// It draws exactly what `HelmIconPlate` draws (it is one), so the look is
-/// pixel-identical; it exists as its own name so that the guard which holds
-/// every module plate to the module's own colour can tell the two meanings
+/// pixel-identical; it exists as its own name so that the two meanings stay
 /// apart, and so that the tint it takes is a signal from `HelmSignal` or grey
 /// and never a module's colour.
 public struct HelmSignalPlate: View {
@@ -283,14 +282,14 @@ public struct HelmMetricStrip: View {
                     Text(metric.label)
                         // 10, the scale's bottom step. It was 9 — a size on no
                         // step, under a figure that is on one, in the strip
-                        // that appears on every module page.
+                        // that About draws.
                         .font(.system(size: 10, weight: .semibold))
                         .tracking(0.7)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                         // `.tertiary` at 9 pt measured 1.87:1 light and 2.26:1
                         // dark — below every threshold, on a strip that appears
-                        // on every module page.
+                        // on About.
                         // The token, not a hand-picked opacity. 0.6 was chosen
                         // to beat `.tertiary`'s 1.87:1 and stopped at 4.09:1,
                         // short of the 4.5 these tokens exist to clear.

@@ -55,14 +55,11 @@ enum HelmGlyphCatalogue {
             ]),
         ]
     }
-
-    // Every symbol on offer, for a caller that needs to hand one out.
 }
 
-/// Choosing one of them: a category down the side, a grid beside it.
+/// Choosing one of them: a category picker over a grid.
 ///
-/// Sized for a popover off a 300 pt panel, so the grid is four across — wider
-/// and the popover is wider than the thing it belongs to.
+/// 220 pt wide, four across.
 public struct HelmGlyphPicker: View {
     private let selected: String?
     private let choose: (String) -> Void

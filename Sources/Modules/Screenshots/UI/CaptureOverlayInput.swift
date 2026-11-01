@@ -274,8 +274,9 @@ extension CaptureOverlay {
             // A held Return repeats, and a repeat is not a press that asked for anything.
             guard !event.isARepeat else { return }
             if selectionOnly { takeTarget(); return }
-            // The remembered selection stands for a selection made: Return takes it
-            // into the editor, where the next Return takes the picture.
+            // A preselection is only ever held under `selectionOnly`, which `takeTarget`
+            // above has already answered, so no caller in Sources reaches this: it would
+            // take the remembered selection into the editor, where the next Return takes the picture.
             if drag == nil, mode == .area, let preselected {
                 startEditing(display: preselected.display, rect: preselected.rect)
                 return

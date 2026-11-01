@@ -72,7 +72,7 @@ extension Notification.Name {
     /// The language the interface is drawn in, or nil for the Mac's own.
     ///
     /// **Dev builds only** — `AppBuild.isDev` gates the row that writes it, and
-    /// `apply()` below refuses to read a stored value on any other build, so a
+    /// `applyStoredLanguage()` below refuses to read a stored value on any other build, so a
     /// beta that once ran a dev build cannot come up in Japanese.
     ///
     /// It exists because checking a translation against the running app
@@ -103,7 +103,7 @@ extension Notification.Name {
     }
 
     /// nil = follow the build type (dev builds log, stable builds don't);
-    /// true/false = the user overrode it in Diagnostics.
+    /// true/false = the user overrode it in the Log page's toolbar menu.
     static var loggingOverride: Bool? {
         get {
             // -1 = follow the build type, 0/1 = explicit user choice.
@@ -145,9 +145,10 @@ extension Notification.Name {
                 // stand open: `.adopt` is granted while the keychain item does
                 // not exist, and returning here never created it. So no
                 // installation ever spent its own first use, and the first value
-                // the app saw — `defaults write com.helm.app disabledScans
-                // -array`, a full-volume walk switched on unattended — was
-                // adopted and sealed as Helm's own. Day one is Helm's.
+                // the app saw — `defaults write com.helm.app
+                // module.app.disabledScans -array`, a full-volume walk switched
+                // on unattended — was adopted and sealed as Helm's own. Day one
+                // is Helm's.
                 scanGuard.establishKey()
                 return defaultDisabledScans
             }

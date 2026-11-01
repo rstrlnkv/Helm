@@ -31,15 +31,15 @@ struct UndoRecord: Equatable, Sendable {
         !bundleID.isEmpty && valid && bundleID == event.app
     }
 
-    /// Called when anything happens that certainly moved the caret.
+    /// Called for every event but a chord on the recorded hotkey's key.
     mutating func invalidate() { valid = false }
 
-    /// Called for a chord, which may have been the undo shortcut arriving.
+    /// Called for a chord on the recorded hotkey's key, which may have been the
+    /// undo shortcut arriving. Any other chord, like any other event, invalidates.
     ///
     /// The tap sees the shortcut's own keys before Carbon delivers the action,
-    /// so a chord cannot be treated as "the caret moved" without the shortcut
-    /// killing its own record. One chord is forgiven; a second is not, because
-    /// by then it was somebody navigating rather than asking for an undo.
+    /// so that chord cannot be treated as "the caret moved" without the
+    /// shortcut killing its own record. One is forgiven; a second is not.
     mutating func soften() {
         if softened { valid = false } else { softened = true }
     }

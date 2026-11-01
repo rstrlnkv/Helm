@@ -11,7 +11,7 @@ says removing it returns, not the sum of its files.
 Acting on a finding re-reads the pair: `DuplicateVerification` is its own phase
 beside the removal. `DuplicateVerification.Batch` memoises the survivor's reading
 only, for the life of one press; the copy about to stop existing is read from disk
-in full every time.
+every time, in full unless a shared inode or a size difference has already answered.
 
 The unattended walk is narrower than the watched one: it asks
 `ScanRoot.refusesDescentInHome` of every directory it meets, so the `~/Library`

@@ -14,7 +14,8 @@ the file. It opens no phase and writes no log line of its own.
 Refusals are values rather than silences: `TrashFailure.Reason`
 (`Sources/HelmRuntime/PermissionCheck.swift`) names each reason, and `outOfScope` is
 Helm refusing before anything was attempted. `TrashFailure` classifies from the Cocoa
-error code rather than from the shape of a path.
+error code first; the shape of the path decides only an `.app` with an active system
+extension and a 513 under `/Library/Containers/` or `/Library/Group Containers/`.
 
 A folder's size never comes from `totalFileAllocatedSize`, which is zero for a directory
 on APFS (`FileWeight`); the folder is walked. What a removal returns counts a clone

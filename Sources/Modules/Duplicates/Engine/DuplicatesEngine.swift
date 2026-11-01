@@ -342,9 +342,11 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                     case .changed: stale.append(path)
                     case .unreadable: unreadable.append(path)
                     }
-                    // Every tick is a whole file read in full, so the ticks are
-                    // already paced by the disk — no throttle needed where the
-                    // search needs one per 128 KB prefix.
+                    // Every tick is a pair verified from disk, the removed side
+                    // hashed in full unless its inode or size has already
+                    // answered, so the ticks are already paced by the disk — no
+                    // throttle needed where the search needs one per 128 KB
+                    // prefix.
                     progress?(DuplicateProgress(candidates: inScope.count,
                                                 hashed: allowed.count + stale.count
                                                     + unreadable.count))

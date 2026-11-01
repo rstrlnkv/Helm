@@ -48,11 +48,10 @@ public enum HelmA11y {
     ///
     /// **The word is «Search» and nothing longer.** VoiceOver already says the
     /// role — "search field" — so a label spelling the role again reads as
-    /// "search field search field". This is the same key the Homebrew segment
-    /// draws, which is deliberate rather than an accident of the lookup: the
-    /// English text *is* the key, so a second key reading «Search» is not
-    /// representable, and the eight translations of that one word are the word
-    /// macOS itself uses for this control in each of them.
+    /// "search field search field". A second key reading «Search» is
+    /// refused: `testOneEnglishTextIsOneWordAcrossEveryCatalog` fails on
+    /// one English text under two symbols, and the eight translations of that
+    /// one word are the word macOS itself uses for this control in each of them.
     public static var searchField: String {
         L(.search)
     }
@@ -113,8 +112,9 @@ public enum HelmA11y {
     /// dictionary writes «Свой цвет…».
     ///
     /// **The English is deliberately longer than Calendar's.** Calendar draws
-    /// «Other…» and this draws «Other colour…», because the English text is the
-    /// key and `Other…` is already spoken for — the fourth answer to «for how
+    /// «Other…» and this draws «Other colour…», because one English text is one
+    /// word (`testOneEnglishTextIsOneWordAcrossEveryCatalog`) and `Other…` is
+    /// already spoken for — the fourth answer to «for how
     /// long» in KeepAwake is the same macOS word for a *time*. Two of the eight
     /// then disagree with this one: Russian says «Другое…» of a time and
     /// «Другой…» of a colour, Portuguese «Outro…» against «Outra…», and

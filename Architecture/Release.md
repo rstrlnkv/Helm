@@ -13,7 +13,7 @@ not git's own top level, one whose own `.git` an ancestor's `core.worktree` can 
 for, or one steered by a `GIT_DIR`/`GIT_WORK_TREE` from the environment; or a history a
 graft or a replacement ref has given a shorter parent chain — rather than substituting a
 number. The gate announces what it computed (`==> Build number: N`) right after, before
-the compile it guards, and `Scripts/package-app.sh:298` writes the same number into the
+the compile it guards, and `Scripts/package-app.sh:297` writes the same number into the
 plist *of the assembled bundle*, so the tree's copy and a shipped bundle's copy disagree
 by design.
 
@@ -76,16 +76,17 @@ identity at all. `Scripts/make-dmg.sh` and
 `Scripts/package-dev.sh` builds through `Scripts/package-app.sh` and installs **Helm Dev**
 beside the real app; its header says why a separate bundle. Helm Dev is the crew's copy, with its own bundle identifier and defaults domain, and every intermediate build runs there; the owner's copy is built only from work he has accepted. The release scripts are
 `Scripts/package-app.sh`, `Scripts/make-dmg.sh`, `Scripts/make-zip.sh` and
-`Scripts/package-dev.sh`; `Scripts/flags` and `Scripts/design` produce nothing
-that ships on their own, and neither does `Scripts/test.sh`.
+`Scripts/package-dev.sh`; `Scripts/design` runs inside `Scripts/make-dmg.sh` and
+`Scripts/flags` writes resources the tree commits, so neither is a release step run by
+hand, and `Scripts/test.sh` ships nothing.
 
 The push comes before the release is created, never after: the release is tagged against
 the remote HEAD, so an unpushed commit puts the tag on the wrong one. A bad dev build is
 undone by publishing the next dev number with the reverted code and its digest lines,
 never by deleting or re-tagging a release people may have downloaded. A prerelease user
-who switches to Beta sees "up to date", because Beta reads the last non-prerelease tag,
-which is lower than what they are running, so the switch appears to do nothing until the
-next beta passes them.
+who switches to Beta sees the About card say the build is newer than the channel
+(`UpdateCheck.Outcome.ahead`), because Beta reads the last non-prerelease tag, which is
+lower than what they are running, until the next beta passes them.
 
 Before a release the tree is built from a fresh `git clone`: the manifest is refused whole
 when a declared test path does not exist, so an untracked test directory makes `swift
@@ -101,7 +102,7 @@ for TCC to hang Full Disk Access on, so the permission comes loose on every rebu
 passing strict signature verification says the bundle is valid and not that it is the
 same program TCC granted.
 
-`Scripts/package-app.sh:327` signs ad-hoc (`--sign -`) unless the Mac building it
+`Scripts/package-app.sh:326` signs ad-hoc (`--sign -`) unless the Mac building it
 names an identity of its own (`Scripts/signing-identity.sh`), and a release is always
 ad-hoc — `Scripts/make-zip.sh` and `Scripts/make-dmg.sh` refuse anything else. An ad-hoc
 bundle carries no Team ID and macOS ties a granted permission to the exact binary. A
@@ -137,7 +138,10 @@ passes, and TLS protects the transport rather than the contents. No digest for t
 asset name opens the release page with the reason stated, and a digest that disagrees
 refuses the install outright (`ReleaseDigest`, `Sources/HelmRuntime/ReleaseDigest.swift`),
 and the unpacked bundle's own version is re-read as well, so a mislabelled asset cannot
-be swapped in either.
+be swapped in either. A build whose bundle identifier is not the release's
+(`AppBuild.takesPublishedBuilds`) is sent to the release page before any download, and
+`Installer.installZip` throws `identityMismatch` unless the unpacked bundle's identifier
+is the installed one's.
 
 ## What shipped
 
@@ -145,7 +149,9 @@ be swapped in either.
 bundled — nothing in `Scripts/package-app.sh` or `Package.swift` names it.
 `Sources/HelmAppStrings/ChangelogData.swift` is the same list inside the app; the two have
 drifted about which versions exist before, and `TheChangelogAndTheAppsListAgreeTests`
-now holds them to the same releases and dates. A version heading in
+now holds them to the same releases and dates; the class is on
+`Tests/optional-tests.txt`, so it runs under `HELM_FULL_SUITE=1` or by `--filter`, not in
+a default run. A version heading in
 the file is `## X.Y.Z — YYYY-MM-DD`, one line per change with `**NEW**` / `**UPD**` /
 `**FIX**` first, newest version first. `command grep -c '^### ' CHANGELOG.md` prints zero:
 the file carries no sub-headings at all.

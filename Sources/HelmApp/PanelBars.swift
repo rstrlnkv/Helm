@@ -175,7 +175,7 @@ struct PanelTabStrip: View {
     }
 }
 
-/// The bar above the grid while the panel is being arranged.
+/// The bar at the foot of the card, above the footer, while the panel is being arranged.
 /// The bar says one thing: you are editing, and here is the way out.
 struct PanelEditBar: View {
     let done: () -> Void

@@ -142,8 +142,8 @@ struct SidebarComposerSheet: View {
         // measured dead, with `.animation(_, value:)`
         // sitting on the frame and the row heights written raw underneath.
         withAnimation(HelmMotion.interface) { revision &+= 1 }
-        // The sidebar and the icon menu read the same value and cannot observe
-        // UserDefaults; this is the notification both already listen for.
+        // The sidebar cannot observe UserDefaults; this is the notification it
+        // already listens for. The icon menu reads the store at each right click.
         NotificationCenter.default.post(name: .helmModuleOrderChanged, object: nil)
     }
 

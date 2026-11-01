@@ -237,7 +237,7 @@ public enum HelmTrash {
                 var slate = counted
                 // Read before the move: afterwards the URL points at nothing.
                 let size = FileWeight.reclaimed(of: url, charging: &slate)
-                // Read the ancestry again, now, against what the gate approved. A
+                // Read the ancestry again, now, against the batch's reference. A
                 // swapped symlink lands on a *different existing* directory object, so
                 // a redirected subtree stops here rather than in someone's Documents.
                 //
@@ -245,9 +245,9 @@ public enum HelmTrash {
                 // which is the went-with-its-parent case one folder up in this same
                 // batch (the `NSFileNoSuchFileError` branch below owns that), never a
                 // redirection — trashing a path whose parent has vanished moves
-                // nothing. A parent that appeared where the gate saw none, or moved to
-                // another object, is the change that matters, and both differ from the
-                // reference.
+                // nothing. A parent that appeared where the reference saw none, or moved
+                // to another object, is the change that matters, and both differ from
+                // the reference.
                 if let now = ancestry(path), now != approvedAncestry[index] {
                     refused.append(Refusal(path: path, reason: .changedSinceScan))
                     HelmLog.shared.warn(module,

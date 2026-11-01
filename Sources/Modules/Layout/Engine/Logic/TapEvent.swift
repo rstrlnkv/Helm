@@ -5,12 +5,14 @@ import Foundation
 ///
 /// **Pure, because the order of two questions here costs text.** The port asked
 /// «is a modifier held» first and reported `.chord` if it was, so ⌘←, ⌥←, ⌘↑
-/// and ⌥Delete never reached the keycode switch below them. A chord spends
+/// and ⌥Delete never reached the keycode switch below them. A chord spent
 /// `UndoRecord.soften()`'s single forgiveness instead of invalidating, and its
 /// `movedTheCaret` is false, so the word it ended was stored: type `ghbdtn `,
 /// watch it become `привет `, press ⌥Delete to take that word out, then tap the
 /// bound key — the undo was still live, and seven backspaces plus `ghbdtn `
-/// landed in text the module had never looked at.
+/// landed in text the module had never looked at. Now only the chord on the
+/// recorded hotkey's key is forgiven; any other chord invalidates the undo and
+/// drops the stored word (`LayoutEngine.handle`).
 ///
 /// Written here rather than inside `CGKeyTap.deliver`, which is private and
 /// takes a `CGEvent`, so the arrangement could not be asked a question by any

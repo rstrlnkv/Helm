@@ -36,9 +36,8 @@ public enum PaletteColor: String, CaseIterable, Sendable {
     public var color: Color {
         switch self {
         // Not `.white`: on a light card that is 1.06:1 against the paper, held
-        // apart only by a hairline ring. The lightest *grey*, which is what v3
-        // spells `#f2f2f7` for, and it is the same in both appearances because
-        // it stands for «no tint» rather than for a colour.
+        // apart only by a hairline ring. The lightest *grey*, `#f1f1f7`, the same
+        // in both appearances because it stands for «no tint» rather than for a colour.
         case .white: return Color(hex: 0xF1F1F7)
         case .red: return Color(nsColor: .systemRed)
         case .orange: return Color(nsColor: .systemOrange)

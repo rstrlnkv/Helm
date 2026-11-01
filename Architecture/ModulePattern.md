@@ -79,7 +79,7 @@ publishes is declared there a second time; the doc comment of
 **A module's id is the engine's constant.**
 `command grep -rn 'public static let moduleID' Sources/Modules/*/Engine/` prints
 one line per engine; the descriptor forwards the id upward.
-`Tests/HelmAppTests/StoreNamespacesAreModuleIdsTests.swift:28` records the
+`Tests/HelmAppTests/StoreNamespacesAreModuleIdsTests.swift:121` records the
 registered ids and fails on a rename, since a rename orphans everything anybody
 has configured.
 
@@ -97,11 +97,14 @@ ls Sources/Modules/*/Engine/SystemPorts.swift
 ```
 
 names the modules that hold to the pattern. Three do not, for two different
-reasons: Disk and Duplicates read the file system as their whole subject, so a
-port would be a second name for `FileManager` and the reading is tested against
-a real temporary tree instead; Autopilot's two ports sit in `Engine/Logic/`
-where the pattern would put them a directory higher, and that is drift rather
-than a decision.
+reasons: Disk and Duplicates read the file system as their whole subject, so the
+walk has no port, a port there would be a second name for `FileManager`, and it is
+tested against a real temporary tree instead (Disk's `VolumeCapacityPort` sits
+with its system implementation in `Sources/Modules/Disk/Engine/Ports.swift`, and the move to the Trash
+comes in as a closure); Autopilot's ports `PresetFolderPort` and `RuleSequencePort`
+sit in `Engine/Logic/` where the pattern would put them a directory higher, and that
+is drift rather than a decision; its port `UndoFiles` sits in
+`Sources/Modules/Autopilot/Engine/UndoRunner.swift`.
 
 **A port that answers more than one thing grows a second door.** Where a system
 read comes back empty for more than one reason, the port either grows a second

@@ -10,7 +10,7 @@ import HelmUI
 /// `NSWindow`, and this is the one write that records it was seen.
 ///
 /// `onClose` runs however the window goes away, which is what the permission
-/// audit is deferred into: both want the first launch, and two things arriving
+/// audit is deferred into: both want the same launch, and two things arriving
 /// together is not an introduction.
 @MainActor final class WelcomeWindow: HostWindow {
 

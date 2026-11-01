@@ -40,10 +40,9 @@ struct ShellSidebarRows: Equatable, Sendable {
         groups.flatMap { $0.modules.map(Row.module) } + [.foot]
     }
 
-    /// Each section's modules come from `SidebarLayout.live(in:enabled:)`, the
-    /// call `SettingsWindow.swift`'s sidebar list makes too, so both read "on"
-    /// from one function. An id that is enabled but held by no section is not
-    /// listed: there is nowhere to put it.
+    /// Each section's modules come from `SidebarLayout.live(in:enabled:)`. An id
+    /// that is enabled but held by no section is not listed: there is nowhere to
+    /// put it.
     init(layout: SidebarLayout, enabled: Set<String>) {
         var seen = Set<String>()
         groups = layout.sections.compactMap { section in

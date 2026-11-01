@@ -412,7 +412,8 @@ public enum MenuBarIcon {
         // A colour the person chose themselves, stored as `#RRGGBB`. Anything
         // else — a token from a build that had names this one does not, a
         // hand-edited plist — falls back to white, which is the untinted glyph
-        // and the same answer `nil` gives.
+        // and the same answer `nil` gives. `brown`, which the colour menu
+        // offers, has no case above and takes this road too.
         default: return PaletteTint.custom(tintToken) ?? .white
         }
     }

@@ -15,8 +15,9 @@ import Foundation
 /// stale alias asks for. It is an *ancestor* that redirects that makes the
 /// spelling a lie, so only the parent chain is resolved.
 ///
-/// This is the rule `WatchScope.canonical` already applies inside Autopilot,
-/// written once here now that a second and third gate need it.
+/// `RemovableScope` and `UserFileScope` both need it, so it is written once
+/// here. `WatchScope` canonicalises on its own and resolves the leaf too, as far
+/// as it exists.
 ///
 /// The trailing separator below is the same subject one layer down — not where
 /// a path leads but which of several strings names the same place.
@@ -84,9 +85,9 @@ public enum PathCanonical {
 
     /// The identity of the directory `path`'s resolved parent chain leads to.
     ///
-    /// Read once at the gate and once immediately before the move: if the two
+    /// Read as a reference and again immediately before the move: if the two
     /// disagree, a symlinked ancestor was swapped in between (`HelmTrash.remove`
-    /// says what that narrows and what it does not).
+    /// says where it takes the reference and what that narrows).
     public static func ancestryIdentity(of path: String) -> AncestryIdentity? {
         let resolved = resolvingAncestors(path)
         let parent = (resolved as NSString).deletingLastPathComponent

@@ -6,7 +6,8 @@ import HelmUI
 import SwiftUI
 
 /// Owns module lifecycle: per-module namespaced store, enabled flag, and
-/// lazily-created engine + model for every enabled module.
+/// the engine and model built for every enabled module, at launch or when it is
+/// switched on.
 @MainActor final class ModuleHost: ObservableObject {
     static let shared = ModuleHost()
 
@@ -217,13 +218,14 @@ import SwiftUI
     /// as it was just after installing, and one of the things Helm changes
     /// beyond its two directories is the passwordless `pmset` rule Keep Awake's
     /// lid option installs. A reset that reached for `/etc/sudoers.d` itself
-    /// would be the rule in the wrong place — and could not remove it anyway,
-    /// since it is root's and comes out through an administrator dialog. So the
+    /// would be the rule in the wrong place: the file is root's, and what takes
+    /// it out, `sudo -n` or, where the rule cannot withdraw itself, an
+    /// administrator dialog, is Keep Awake's port. So the
     /// module that installed it is asked to give it back, which is exactly what
     /// `willDisable` means (`ModuleEngine.willDisable`).
     ///
-    /// **Asking is not being given.** The dialog can be declined, and what that
-    /// leaves behind is the rule; nothing here can wait for the answer, because
+    /// **Asking is not being given.** The dialog, when it is needed, can be
+    /// declined, and what that leaves behind is the rule; nothing here can wait for the answer, because
     /// `willDisable` returns before the prompt is even on screen. What this
     /// guarantees is that the ask happens, first, and with the person there —
     /// not that the machine is clean afterwards.
@@ -240,8 +242,11 @@ import SwiftUI
     /// `live` entries in the arrangement the person composed.
     var enabledModules: [Live] { orderedModuleIDs.compactMap { live[$0] } }
 
-    /// Every module id in the arrangement — one order for the sidebar, the
-    /// panel and the icon menu.
+    /// Every module id in the arrangement, which `enabledModules` reads. The icon
+    /// takes its module from them in this order, and the panel hands them to
+    /// `PanelLayoutStore.read` in it, where they order a first layout and the
+    /// arrivals; stored tiles keep the order of `panelWidgets`. The sidebar and
+    /// the icon menu read `SidebarLayoutStore` themselves.
     ///
     /// It used to be `AppSettings.moduleOrder`, and that key stopped being
     /// written when the «Module order» section was deleted: nothing in the tree

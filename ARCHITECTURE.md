@@ -8,7 +8,8 @@ for what crosses the engine/host boundary,
 system and the strings, and `Sources/HelmLaunch` for the one thing Swift cannot
 express — plus `Sources/HelmApp`, the executable that owns the window, the panel
 and the status item, with its words in `Sources/HelmAppStrings`. The whole shape is declared in `Package.swift`, and the
-boundaries in these pages are the ones the compiler enforces.
+boundaries in these pages are held by the build where it can hold them, and the import lines it cannot check by
+`TheBoundariesTheBuildCannotHoldTests`.
 
 ## How these pages are kept
 
@@ -99,7 +100,7 @@ Three documents stand beside `ARCHITECTURE.md` in the root of the tree:
 - `README.md` — what Helm is, the module table, how it is installed and built.
 - `CLAUDE.md` — the commands, the traps and what a session does before it changes
   anything: the orders whose reasons are on these pages.
-- `CHANGELOG.md` — one section per release, for the person who updated.
+- `CHANGELOG.md` — one section per release, the canonical English record.
 
 One addition is declared:
 

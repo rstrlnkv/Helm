@@ -85,8 +85,8 @@ public enum StatusPlan {
     /// used to be applied after — `min(max(Int(phase * Double(frameCount)), 0),
     /// frameCount - 1)` — where they protected nothing, because `Int(_:)` traps
     /// on a value outside `Int`'s range and on one that is not a number, and it
-    /// ran first. `spinUntil` arrives from a module over JSON as a `Date`, which
-    /// is a `Double` of seconds; nothing between that payload and this line
+    /// ran first. `spinUntil` arrives from a module as a `Date`, which
+    /// is a `Double` of seconds; nothing between that value and this line
     /// bounds it, so the same family of crashes that `Clamped` was written for
     /// reached the menu bar. That is `clamped(to:)`, and it is called rather
     /// than spelled out now that this file is on the same side of the edge.

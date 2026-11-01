@@ -58,7 +58,7 @@ import Module_Uninstaller_UI
 
         HelmLog.shared.info("app", "modules: \(ModuleRegistry.all.map(\.idRaw).joined(separator: ", "))")
 
-        // First launch: find out what macOS is withholding before a removal
+        // Every launch: find out what macOS is withholding before a removal
         // silently leaves files behind.
         PermissionAudit.host = host
         introduceOrAudit()
@@ -90,13 +90,13 @@ import Module_Uninstaller_UI
         LaunchPage.openRequested(by: statusController, enabled: host.enabledModuleIDs)
     }
 
-    /// The tour on a first launch, and the permission audit whenever the tour is
-    /// not shown.
+    /// The tour on a launch that has not seen it, then the permission audit;
+    /// without the tour, the audit at once.
     ///
-    /// The audit puts up an alert when macOS is withholding something, and on a
-    /// first launch that is the same moment the welcome window wants. Two of
-    /// them arriving together is not an introduction, it is a pile-up — so the
-    /// audit waits for the window to go away, by Done, by Skip or by the close
+    /// The audit can put up an alert, and on a launch that shows the tour that
+    /// is the same moment the welcome window
+    /// wants. Two of them arriving together is not an introduction, it is a
+    /// pile-up — so the audit waits for the window to go away, by Done, by Skip or by the close
     /// button.
     private func introduceOrAudit() {
         guard WelcomeWindow.shouldShow(store: AppSettings.store) else {

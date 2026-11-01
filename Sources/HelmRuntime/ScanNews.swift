@@ -2,7 +2,7 @@ import Foundation
 
 /// Whether what a background scan found is worth interrupting somebody for.
 ///
-/// Three modules walk the volume twice a day and the whole product of it was a
+/// Three modules walk the volume once a day and the whole product of it was a
 /// relative date on a settings page: `ScanJournal.change(module:)` computed the
 /// delta and nothing in `Sources/` called it. This is the half that was missing,
 /// and it is pure for the usual reason — every refusal below is a banner

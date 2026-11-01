@@ -21,9 +21,10 @@ public enum AppLanguage: String, CaseIterable, Sendable {
 
     /// A language chosen in Settings, overriding the system's preference.
     ///
-    /// Dev builds only, and the picker that writes it says so: this exists to
-    /// read a screen in seven languages without logging out of the Mac, which
-    /// is what checking a translation against the running app costs otherwise.
+    /// Helm sets it in Dev builds only, and the picker that writes it says so;
+    /// the showcase sets it from `--language`. It exists to read a screen in
+    /// seven languages without logging out of the Mac, which is what checking
+    /// a translation against the running app costs otherwise.
     /// Nil is the ordinary state and means «whatever this Mac is set to».
     ///
     /// Setting it drops the cache, which is the same thing the system's own
@@ -125,7 +126,7 @@ public func L(_ resource: LocalizedStringResource,
     return remembered ? ResourceAnswers.shared.string(for: resource) : String(localized: resource)
 }
 
-/// The answers `L(_:language:)` has given, bounded because a resource that
+/// The answers `L(_:language:remembered:)` has given, bounded because a resource that
 /// carries arguments is a new entry for every value it is asked with.
 ///
 /// A `LocalizedStringResource` is not `Hashable`, and its arguments can be read

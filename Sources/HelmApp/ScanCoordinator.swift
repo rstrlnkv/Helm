@@ -127,14 +127,13 @@ final class ScanCoordinator {
     ///
     /// **Sampled once, not once per module.** Every field here was read inside
     /// `verdict(for:)`, so a tick over three modules paid for each answer three
-    /// times: three `SecItemCopyMatching` round trips into securityd, because
-    /// `AppSettings.disabledScans` verifies its seal on every read and
-    /// `KeychainSealKey` caches nothing; three power readings; and six
-    /// `CGSessionCopyCurrentDictionary` calls, since `ownsTheConsole` and
-    /// `screenIsLocked` each make their own. Measured on this machine at
-    /// 0,1785 ms for the keychain read and 0,1071 ms for the session
-    /// dictionary — about 1,2 ms a tick against 0,4 hoisted, which is small and
-    /// is not the reason.
+    /// times: three seal verifications, which were three `SecItemCopyMatching`
+    /// round trips into securityd before `SealKeyCache` held the key for a
+    /// process; three power readings; and six `CGSessionCopyCurrentDictionary`
+    /// calls, since `ownsTheConsole` and `screenIsLocked` each make their own.
+    /// Measured on this machine, before the cache, at 0,1785 ms for the keychain
+    /// read and 0,1071 ms for the session dictionary — about 1,2 ms a tick
+    /// against 0,4 hoisted, which is small and is not the reason.
     ///
     /// The reason is that they were three *different* readings. Lock the screen
     /// between the first module and the third and the same tick judged them
@@ -258,11 +257,8 @@ final class ScanCoordinator {
         // for both is what made the day's second run unreachable.
         AppSettings.lastScanAttemptAt[id] = started
 
-        // `begin` with a `defer`, not the `phase` scope: that one takes a
-        // synchronous closure, and wrapping an `await` in it hands a
-        // non-`Sendable` async function across an isolation boundary. The
-        // `defer` gives the same guarantee the scope exists for — the interval
-        // closes on every path out, return and cancellation alike.
+        // `begin` with a `defer` on the next line: the interval closes on every
+        // path out, return and cancellation alike.
         HelmActivity.begin("scan.\(id)")
         defer { HelmActivity.end("scan.\(id)") }
         let report = await live.backgroundScan()
@@ -289,7 +285,7 @@ final class ScanCoordinator {
     ///
     /// **This is the call the journal was written for and never got.**
     /// `ScanJournal.change(module:)` and `list(module:_:)` had no caller
-    /// anywhere in `Sources/`: three modules walked the volume twice a day, the
+    /// anywhere in `Sources/`: three modules walked the volume once a day, the
     /// delta was computed and thrown away, and the whole product of it was a
     /// relative date on a settings page.
     ///
@@ -314,17 +310,18 @@ final class ScanCoordinator {
     /// and this reading 0.0321–0.0322 s; at 69 000, 0.0743–0.0746 s against
     /// 0.3260–0.3263 s. Four times the write, once per completed background
     /// scan — against a scan that walked the volume for minutes, off the
-    /// drawing thread, twice a day a module.
+    /// drawing thread, once a day a module.
     ///
     /// Handing `change` what `record` held in memory would buy back less than
     /// half of that and cost the property the banner rests on. Half, because
     /// `record` never holds the *previous* list: it renames a file, so a caller
     /// wanting both lists in memory has to read `previous.json` anyway. And the
     /// property, because `PrivateFile.write` reports failure in a `Bool` that
-    /// `ScanJournal` drops — so an in-memory delta announces what the journal
-    /// may not actually record, and the next tick, comparing against a
-    /// `previous` that never rotated, announces the same items over again. This
-    /// reading is the one thing that knows the write landed.
+    /// `ScanJournal.record` folds into a warning in the log and does not hand
+    /// back — so a caller holding an in-memory delta cannot tell that the
+    /// journal may not actually record it, and the next tick, comparing against
+    /// a `previous` that never rotated, announces the same items over again.
+    /// This reading is the one thing that knows the write landed.
     func tellSomebodyWhatAppeared(in id: String) {
         guard let finding = ScanNews.finding(in: journal.change(module: id)) else { return }
         let name = ModuleRegistry.descriptor(id)?.moduleMetadata.name ?? id

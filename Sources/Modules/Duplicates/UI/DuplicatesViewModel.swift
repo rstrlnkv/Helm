@@ -407,7 +407,7 @@ public enum KeepGrounds: Equatable, Sendable {
     /// respect: the removal's tick and its «Stop removal» button are drawn
     /// inside the bar those three bring up, so one press took every control that
     /// reaches a running removal off the screen. The window is minutes, because
-    /// `trash` re-reads both files of every pair before anything moves. The page
+    /// `trash` verifies every pair before anything moves. The page
     /// dims the control too; both, or neither is reliable (ARCHITECTURE.md
     /// § One removal at a time).
     public func search() {

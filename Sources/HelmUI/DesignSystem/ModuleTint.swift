@@ -29,8 +29,8 @@ import AppKit
 ///
 /// Keyboard is not a system colour at all, and neither is Screenshots' olive. `.pink` sits 0,107
 /// from `.red`, which Uninstaller keeps because red on the tool that deletes
-/// things is worth more than red anywhere else. Magenta at 320° is 0,237 away
-/// and reads at 4,33:1.
+/// things is worth more than red anywhere else. Keyboard's magenta is a literal
+/// of its own and passes the same pairwise check.
 public struct ModuleTint: Sendable {
     public typealias Component = (Double, Double, Double)
     public typealias Pair = (light: Component, dark: Component)

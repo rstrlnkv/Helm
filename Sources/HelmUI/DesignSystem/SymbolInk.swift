@@ -4,7 +4,7 @@ import CoreGraphics
 ///
 /// A symbol is drawn at a point size, but how much ink sits inside that size is
 /// the symbol designer's business, and it varies a lot. Rendered at 100 pt and
-/// measured to the ink (`Scripts/design/measure-symbols.swift`):
+/// measured to the ink:
 ///
 /// | symbol          | ink, widest side |
 /// |-----------------|------------------|
@@ -30,7 +30,7 @@ import CoreGraphics
 ///
 /// Correcting each symbol towards the mean makes them the same size to the eye,
 /// which is what "the same size" is supposed to mean. The table is measured
-/// rather than tuned; re-run the script when a symbol changes or one is added.
+/// rather than tuned; measure again when a symbol changes or one is added.
 enum SymbolInk {
 
     /// Ink measured at 100 pt, divided by 100.

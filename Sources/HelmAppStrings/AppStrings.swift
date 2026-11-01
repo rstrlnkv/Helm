@@ -433,10 +433,9 @@ public enum AppStr {
     }
     /// The level of one line, **said** rather than shown.
     ///
-    /// A row tells info from warn from error with a 6 % wash and a 3 pt rule:
-    /// nothing at all to a screen reader, which was handed the row as one
-    /// combined element whose value never named the level, and a hue-only
-    /// distinction between the two that matter for everybody else.
+    /// A row tells info from warn from error with a 6 % wash and a glyph:
+    /// nothing at all to a screen reader, which is handed the row as one
+    /// combined element, so this word is that element's value.
     ///
     /// Singular, and deliberately not the filter's «Warnings» / «Errors»: one
     /// English text means one thing, and those two name a *filter setting*. Nil

@@ -15,8 +15,8 @@ import AppKit
 /// went with it, and the first use with text selected took the process down.
 ///
 /// So the same answer `RunningApps` already gives: AppKit is read on the main
-/// thread, from the workspace notification that arrives there anyway, and every
-/// other thread reads the snapshot. There is no way to offer "who is in front,
+/// thread and every other thread reads the snapshot. This one is refreshed from
+/// the workspace notification that arrives on the main thread anyway. There is no way to offer "who is in front,
 /// right now, from a background queue", so this does not offer one. A caller off
 /// the main thread gets who was in front a moment ago — which, for deciding
 /// whether a conversion may touch the app the person is typing in, is the same

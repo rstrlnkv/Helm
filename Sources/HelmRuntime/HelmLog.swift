@@ -286,8 +286,8 @@ public final class HelmLog: @unchecked Sendable {
         }
     }
 
-    /// The last lines, for a dev build that wants to watch them arrive rather
-    /// than open the file afterwards. Guarded by the same queue as the file, so
+    /// The last lines, for the Log page, which shows them arriving rather than
+    /// sending a person to open the file afterwards. Guarded by the same queue as the file, so
     /// a reader never sees a half-written line.
     private var tail = LogTail()
     /// The most lines `recentEntries()` ever answers with.

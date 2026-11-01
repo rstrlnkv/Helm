@@ -26,7 +26,7 @@ public enum HelmProcess {
         }
     }
 
-    /// **How many tools Helm will have out at once.**
+    /// **How many tools `run` and `runData` will have out at once.**
     ///
     /// Nothing bounded this, and nothing in the app asked to: the bound existed
     /// because no screen had ever started more than a few. Homebrew's search
@@ -37,8 +37,11 @@ public enum HelmProcess {
     ///
     /// The `LatestRequest` that now sits in `HomebrewViewModel` stops that
     /// particular screen from asking. This is the floor under every screen that
-    /// has not been written yet: a caller may still ask for more than eight, and
-    /// what it gets is a queue rather than eight more processes.
+    /// has not been written yet and goes through `run` or `runData`: a caller
+    /// may still ask for more than eight, and what it gets is a queue rather
+    /// than eight more processes. **`start` takes no slot**, so a tool launched
+    /// through it (Homebrew's streamed and diagnostic runs, the updater's swap)
+    /// is not counted and not held back by this number.
     ///
     /// Eight, and it is a ceiling on *concurrency* rather than a guess at what
     /// the machine can take. These are subprocesses that spend their time
@@ -208,7 +211,10 @@ public enum HelmProcess {
     /// any work, and Homebrew's streaming port hands its pipes to a page. Both
     /// had their own `try process.run()`, which is the spelling that aborts the
     /// app: `NSTask` raises an Objective-C exception on some launch paths and a
-    /// Swift `catch` cannot see it.
+    /// Swift `catch` cannot see it. A third, Homebrew's `runCapturingDiagnostics`,
+    /// uses it for a different reason: its child ends within the call, but
+    /// `run` and `runData` discard stderr and this caller wants it read with
+    /// stdout.
     ///
     /// False rather than a throw, because the refusal is already logged here
     /// and a caller that owns the process owns what to do about it — the

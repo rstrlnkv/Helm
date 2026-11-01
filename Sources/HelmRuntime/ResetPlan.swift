@@ -26,8 +26,9 @@ public enum ResetPlan {
     /// build error, never a step that silently never happens.
     public enum Step: CaseIterable, Sendable {
         /// **The part that is not a path.** The passwordless `pmset` rule Keep
-        /// Awake's closed-lid option installs in `/etc/sudoers.d` is root's and
-        /// can only come out through an administrator dialog. A reset that
+        /// Awake's closed-lid option installs in `/etc/sudoers.d` is root's. It
+        /// comes out silently when the rule permits its own withdrawal, and
+        /// otherwise only through an administrator dialog. A reset that
         /// taught itself that filename would be the rule in the wrong place; it
         /// asks the engines instead, through the one call that means «the
         /// person is here and this is the last moment to ask»
@@ -68,7 +69,9 @@ public enum ResetPlan {
          "\(home)/Library/Logs/Helm"]
     }
 
-    /// What a reset removes, in the order it removes them.
+    /// What a reset removes. Listed in the order of `roots`, but `HelmTrash.remove`
+    /// takes the shortest path first, so the logs folder goes before Application
+    /// Support.
     public static func removablePaths(home: String) -> [String] { roots(home: home) }
 
     /// Whether a reset may touch this path at all.

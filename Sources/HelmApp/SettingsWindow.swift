@@ -245,8 +245,8 @@ enum SettingsSelection: Hashable {
         // `willSet`, so `live` still holds the old set inside it. It closes
         // the difference between the page and the bar after `live` moves, not
         // after the stored flag is written: between the store write
-        // (`ModuleHost.swift:56`) and `live[key] = nil` (`:133`) the page
-        // already draws General while the bar still reads the raw selection.
+        // (`ModuleHost.setEnabled`) and `live[key] = nil` (`ModuleHost.disable`)
+        // the page already draws General while the bar still reads the raw selection.
         liveWatch = host.$live.sink { [weak self] _ in
             guard let self else { return }
             let settled = ShellSidebarRows.settled(self.selection, enabled: host.enabledModuleIDs)
@@ -505,8 +505,10 @@ private struct ModuleDetailView: View {
         page
             // Leading, not centre. This alignment governs only content that
             // does not fill the pane, and everything here fills it — a capped
-            // column and a non-bleeding header each centre themselves,
-            // measured unmoved at 610, 810 and 1400 pt. What it does govern is
+            // column centres itself, and every header here is the card's, which
+            // bleeds. A capped column and a non-bleeding header were measured
+            // unmoved at 610, 810 and 1400 pt, before the header went to the
+            // card. What it does govern is
             // a row that wants *more* than the pane: centred, the overflow was
             // split between the two edges, so a clipped toolbar hid its path
             // under the sidebar and its buttons off the right. Pinned leading,

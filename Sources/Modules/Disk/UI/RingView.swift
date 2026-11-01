@@ -85,7 +85,7 @@ struct RingView: View {
                 .accessibilityLabel(centreLabel)
                 .accessibilityAddTraits(canGoBack ? [.isButton] : [])
                 .accessibilityAction { if canGoBack { onBack() } }
-            // `path` is empty for both free space and the folded bucket, so it
+            // `path` is empty for both free space and the `isOther` arc, so it
             // cannot be the identity: two elements would collide and one would
             // be dropped.
             ForEach(inner, id: \.startAngle) { segment in
@@ -212,8 +212,10 @@ struct RingView: View {
         }
     }
 
-    /// The segment under the cursor; free space and the folded bucket get
-    /// their own labels so the tooltip never shows a bare "…".
+    /// The segment under the cursor when it has a path. Free space and the
+    /// `isOther` arc both have an empty one, so a hover on either resolves to
+    /// the free-space segment, or to nothing when the focus has none. The
+    /// folded bucket arrives as an ordinary wedge named `…`, and prints that name.
     private var tooltipSegment: RingSegment? {
         guard let hovered else { return nil }
         return segments.first { $0.path == hovered && !$0.path.isEmpty }

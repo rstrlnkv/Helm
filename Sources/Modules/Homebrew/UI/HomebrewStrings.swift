@@ -316,8 +316,9 @@ enum HbStr {
     static var nothingSelected: String { L(.nothingSelected) }
     /// The narrow screen's way out of a selected package, back to the list.
     ///
-    /// The English text is the key, so every back control in the app that
-    /// means this word is `HelmWord.back`, one entry and one translation each.
+    /// One English text is one word (`testOneEnglishTextIsOneWordAcrossEveryCatalog`),
+    /// so every back control in the app that means this word is `HelmWord.back`,
+    /// one entry and one translation each.
     /// Which modules those are is not written here: a list or a count in prose
     /// goes stale at the next module. `command grep -rn 'HelmWord.back' Sources`
     /// answers it today.

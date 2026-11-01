@@ -157,7 +157,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         recompute()
     }
 
-    /// The person switched the module off, and is still looking at the screen.
+    /// The module is being switched off by the person's own switch, or «Reset all
+    /// settings» is handing the system back, and the person is still looking at
+    /// the screen.
     ///
     /// The grant's lifetime is the *feature*, not the process, and until now the
     /// only falling edge that took it out was the lid option's own switch — so

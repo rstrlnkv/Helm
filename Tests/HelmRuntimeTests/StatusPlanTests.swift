@@ -15,8 +15,8 @@ final class StatusPlanTests: XCTestCase {
     /// number — the process was already gone.
     ///
     /// This is the KeepAwake family one target over. `spinUntil` reaches the host
-    /// from a module, over JSON, as a `Date`, and a `Date` is a `Double` of
-    /// seconds: nothing between the payload and this line says how large. The
+    /// from a module as a `Date`, and a `Date` is a `Double` of seconds:
+    /// nothing between the value and this line says how large. The
     /// module writing it is not the check.
     ///
     /// Asserted as the property the host needs — a subscript that exists — rather

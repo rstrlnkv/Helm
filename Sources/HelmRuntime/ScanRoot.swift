@@ -11,8 +11,9 @@ import Foundation
 /// the normal case.
 ///
 /// It exists because the root is stored rather than asked for.
-/// `module.duplicates.folder` is a plain unsealed string in `com.helm.app` —
-/// verified live, holding the home directory. Until background scans it only
+/// `module.duplicates.folder` is a plain string in `com.helm.app` — verified
+/// live, holding the home directory — with its MAC beside it (`SettingGuard`),
+/// and a background scan refuses it when the seal does not match. Until background scans it only
 /// ever changed through an open panel with the person present; now it decides
 /// how far a reader reaches with nobody there, and any process running as this
 /// user can rewrite that plist.
@@ -132,7 +133,8 @@ public enum ScanRoot {
         "musiclibrary", "tvlibrary", "imovielibrary", "theater", "fcpbundle",
     ]
 
-    /// Whether a walk that nobody is watching must stop at this directory.
+    /// Whether a walk must stop at this directory, because it is an application's
+    /// database. The end of this doc says which walks ask.
     ///
     /// **The root gate cannot answer this, and that is the whole reason it
     /// exists.** `resolve` judges where a scan *begins*; on 2026-08-03 a

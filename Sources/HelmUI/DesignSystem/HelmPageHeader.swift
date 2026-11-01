@@ -240,7 +240,7 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// **Both directions are tempting and both are wrong.** Lighting every
     /// page's band always, because the older capture says the system draws its
     /// rule at rest, puts the hairline this app measured away
-    /// back over the five pages that hand
+    /// back over the pages that hand
     /// over a `Form`. Taking the declaration out, because the newer capture
     /// says the system draws none at rest, leaves every page that stands on
     /// still content waiting for a scroll that cannot come. The rule above is
@@ -303,7 +303,9 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// here, because a list written into prose is wrong from the next commit:
     /// `command grep -rn 'pageBleeds: Bool { true }' Sources` names the module
     /// descriptors that declare it, and the log, which has no descriptor,
-    /// spells `bleeds: true` at its own call to this view.
+    /// spells `bleeds: true` at its own call to this view. The header the
+    /// settings window draws in its card (`CardHeader`) passes true for every
+    /// page, so there a descriptor's declaration is not read.
     let bleeds: Bool
     /// Whether the page's content passes *under* this strip.
     ///
@@ -322,9 +324,10 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// first frame.
     ///
     /// **Not `bleeds` under another name, however alike the two look today.**
-    /// Eight things declare each — the seven module descriptors plus the log —
-    /// and on all thirteen pages the two answers coincide exactly. They are
-    /// still different questions: `bleeds` is about the header's **width**, and
+    /// Seven things declare each — six module descriptors plus the log —
+    /// and the seven declarations name the same pages; the header in the card
+    /// takes `bleeds` true on all thirteen, so only the declarations coincide.
+    /// They are still different questions: `bleeds` is about the header's **width**, and
     /// this is about the **species of the thing under it**. Folding one into
     /// the other would pass every test anybody could write today and fail
     /// silently on the first page where a full-bleed `ScrollView` or a
@@ -444,18 +447,19 @@ public struct HelmPageHeader<Trailing: View>: View {
         // derived the same way from the same plate.
         .padding(.vertical, HelmSpace.s5)
         // On the same column as the content below it. Which column that is
-        // depends on the page: a grouped Form is capped at 744 pt and centred,
-        // so its header is too — but a full-bleed page draws its toolbar at a
+        // depends on the page: outside the card a grouped Form is capped at 744 pt
+        // and centred, so its header is too — but a full-bleed page draws its toolbar at a
         // flat 20 pt inset across the whole pane, and a centred header above
         // it walks away as the window grows. Measured on a 1400 pt window: the
         // title sat 203 pt right of the controls beneath it. It has never
         // been seen because at the default window the pane is 690 pt —
-        // narrower than the column, where the two rules agree.
+        // narrower than the column, where the two rules agree. Only a header
+        // drawn in the page can get `false` here; the card's passes `true`.
         .frame(maxWidth: bleeds ? .infinity : HelmLayout.settingsColumn)
         // The lighting goes on the pane-wide frame and not the one above it:
-        // macOS lights the whole strip, and on a grouped-`Form` page the frame
-        // above is capped at the 744 pt column and centred, so a background
-        // there would be a lit band floating in an unlit pane.
+        // macOS lights the whole strip, and on a grouped-`Form` page drawn outside
+        // the card the frame above is capped at the 744 pt column and centred,
+        // so a background there would be a lit band floating in an unlit pane.
         .frame(maxWidth: .infinity, alignment: bleeds ? .leading : .center)
     }
 }

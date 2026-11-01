@@ -8,7 +8,7 @@ import Foundation
 /// moment is the *update*, and the interesting answer is which of the things
 /// the user already agreed to have quietly stopped working.
 public enum PermissionAuditPlan {
-    /// Nil when there is nothing to say — which is most launches.
+    /// Empty when there is nothing to say.
     public static func missing(fullDisk: PermissionState,
                                accessibility: PermissionState,
                                screenRecording: PermissionState,
@@ -22,8 +22,8 @@ public enum PermissionAuditPlan {
         return out
     }
 
-    /// True when this **build** has not yet said its piece — and only from the
-    /// second run on.
+    /// True when the identity of this **build** differs from the one recorded
+    /// last — and only from the second run on.
     ///
     /// The audit exists to catch a grant that went away: "it was granted
     /// yesterday and is denied today." That is a question you can only ask
