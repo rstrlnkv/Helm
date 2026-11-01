@@ -3,12 +3,14 @@ import HelmRuntime
 
 /// One thing Autopilot did to one file.
 ///
-/// The names are here and deliberately not in the log. `HelmLog` carries counts
-/// and outcomes and never a file name, which is right for a file that ships to
-/// a stranger's machine — but a history that reads "moved a file, moved a file,
-/// trashed a file" answers none of the questions somebody actually has. So this
-/// lives in the module's own store, on the machine it happened on, and the log
-/// keeps saying what it always said.
+/// The names are here, whole, in the module's own store on the machine it
+/// happened on — save a scope refusal's, whose record carries neither. `HelmLog`
+/// carries a path through `Redact.path`, which shortens only the home folder to
+/// `~` and leaves the file name in, which a log that ships to a stranger's
+/// machine should not do; only the refusal for a file outside the allowed
+/// folders is logged without one. A history
+/// that reads "moved a file, moved a file, trashed a file" answers none of the
+/// questions somebody actually has.
 public struct ActionRecord: Codable, Equatable, Sendable, Identifiable {
     public enum Kind: String, Codable, Equatable, Sendable {
         case moved, renamed, tagged, trashed, refused, failed
@@ -42,9 +44,9 @@ public struct ActionRecord: Codable, Equatable, Sendable, Identifiable {
     /// *name*, which reads well and opens nothing, and `path` is where the file
     /// was — after a move, a path nothing is at.
     ///
-    /// Empty when the module does not know where the file ended up: the Trash
-    /// renames what it takes and was never asked for the resulting URL, and a
-    /// refusal or a failure may or may not have left the file where it stood.
+    /// Empty when the module does not know where the file ended up: macOS took
+    /// a file to the Trash and did not say where it put it, and a refusal or a
+    /// failure may or may not have left the file where it stood.
     /// An offer that silently does nothing is worse than no offer.
     public let destination: String
 

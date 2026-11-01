@@ -58,8 +58,8 @@ enum LyStr {
 
     /// The tile's estimate, without the period on the end: the caption above it
     /// already carries the period, and saying it twice on a 280 pt tile reads as
-    /// two different spans. `timeIn(_:)` is the page's version, which has to carry
-    /// it because the page has no caption above the figure. Takes a language rather
+    /// two different spans. The hero names the period in the same caption line,
+    /// through `wordsIn(_:count:)`. Takes a language rather
     /// than reading `AppLanguage.current`, so a guard can ask it about German. This
     /// machine runs in Russian, so a test that reads `.current` exercises exactly
     /// one of eight — CLAUDE.md § What not to do, and what breaks if you do.

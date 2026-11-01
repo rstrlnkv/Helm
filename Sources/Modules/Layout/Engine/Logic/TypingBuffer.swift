@@ -34,6 +34,9 @@ public struct TypingBuffer {
         /// bound and forgive that one alone.
         case chord(UInt16)
         case click
+        /// Handled like `.click`, but nothing sends it: the tap reports no
+        /// change of app, and the engine's app checks (`RememberedWord`,
+        /// `typingApp`) stand in.
         case focusChange
 
         /// Whether this event is proof the caret went somewhere else.

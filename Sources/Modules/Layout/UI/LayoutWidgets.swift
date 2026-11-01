@@ -255,7 +255,7 @@ private func savedLabel(_ state: LayoutState, _ period: ConversionPeriod) -> Str
 
 /// «vtymit → меньше»: the word that was wrong, and the word that replaced it.
 ///
-/// One drawing for the tile, the page's «Last change» and the abbreviations: it keeps
+/// One drawing for the tile and the page's «Last change»: it keeps
 /// the halves apart, so the replaced word can be struck through. The arrow goes
 /// through `Text(Image(...))` so it scales with the caller's font.
 struct ConversionPair: View {

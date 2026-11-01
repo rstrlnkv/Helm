@@ -15,7 +15,7 @@ enum DkStr {
     static var scanningNow: String { HelmWord.scanning }
     static var stop: String { HelmWord.stopScan }
     static var cancel: String { HelmWord.cancel }
-    /// Leaves the scan on screen and goes back to the picker — and forgets the
+    /// Drops the scan from the screen and goes back to the picker — and forgets the
     /// saved one, which is the only way out of a scan that should not have been
     /// there: without it the module reopens on its last scan at every launch.
     static var chooseAnother: String { L(.chooseAnother) }

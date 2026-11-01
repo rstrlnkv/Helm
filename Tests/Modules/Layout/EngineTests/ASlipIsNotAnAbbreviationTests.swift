@@ -61,7 +61,7 @@ final class ASlipIsNotAnAbbreviationTests: XCTestCase {
     /// **What it still gets wrong, recorded rather than claimed away.** A
     /// three-letter abbreviation is out, but a longer one with a lowercase tail
     /// is not: `OSes`, `ТВшник`, `IPhone` all read as slips to this rule and
-    /// always did. That is why the switch ships off, and why its note names the
+    /// always did. That is why the switch's note names the
     /// boundary it has instead of promising one it does not.
     func testTheBoundaryThisRuleCannotDraw() {
         XCTAssertEqual(TypingHabits.corrected("OSes"), "Oses")

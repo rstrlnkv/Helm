@@ -113,9 +113,9 @@ import Module_Layout_Engine
     /// launch, it answers for a period rather than for one day, and the module
     /// has verbs that work from a panel.
     ///
-    /// Still `.utility` as well: the row in the utilities list is what a person
-    /// who has not added the tile sees, and it is where the module's switch
-    /// lives.
+    /// With a store the contribution is the tile and not `.utility`; `.utility`,
+    /// the compact row behind the panel's disclosure, is what comes back only
+    /// while there is no store.
     public func menuBar(_ model: LayoutViewModel) -> MenuBarContribution? {
         guard let store else { return .utility }
         return MenuBarContribution(panelTile: AnyView(

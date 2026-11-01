@@ -40,7 +40,7 @@ public enum ItemStatus: String, Codable, Sendable, Equatable {
     /// being followed: a reason that
     /// needs telling apart gets named, not read out of a shared one.
     case undetermined
-    /// The row is not an item at all: it is one of the scan's seven **source**
+    /// The row is not an item at all: it is one of the scan's eight **source**
     /// directories, which was not the directory it names, so the scan refused to
     /// walk it (`LeftoversScanner.isItsOwnPlace`).
     ///
@@ -49,7 +49,7 @@ public enum ItemStatus: String, Codable, Sendable, Equatable {
     /// whole enumeration somewhere else, under Helm's Full Disk Access — and it
     /// used to leave nothing behind: the rows were *missing* rather than unjudged,
     /// `uncheckedCount` was zero, and the page drew «No leftovers found» under a
-    /// green check over a source it had never read. One of the seven is enough,
+    /// green check over a source it had never read. One of the eight is enough,
     /// because it is the filtered list that has to be empty for that message and
     /// not the scan.
     case sourceRedirected
@@ -81,8 +81,8 @@ public enum ItemStatus: String, Codable, Sendable, Equatable {
 
     /// Whether this status is a verdict about the item at all.
     ///
-    /// Two of the five are the *absence* of one, and the page had no way to ask:
-    /// neither is `.orphaned`, so the default filter drops both, the list comes
+    /// Four of the seven are the *absence* of one, and the page had no way to ask:
+    /// none is `.orphaned`, so the default filter drops them all, the list comes
     /// out empty and «No leftovers found» — this module's strongest claim about
     /// somebody's Mac — was drawn under a green check over items nobody had
     /// judged. `LeftoversEmpty.reason` counts the unjudged ones through this.

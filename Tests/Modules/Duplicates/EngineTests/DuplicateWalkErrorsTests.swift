@@ -12,12 +12,11 @@ import HelmTestSupport
 /// subtree missing from "what is duplicated", with the log printing a plausible
 /// `walked N files` and no hint that the answer has a hole in it.
 ///
-/// So both halves are pinned here: that the walk carries on (now by a handler
-/// that says so, rather than by a default that could change under us), and that
-/// what it could not read is counted rather than swallowed.
+/// So both halves are pinned here: that the walk carries on past an unreadable
+/// directory, and that what it could not read is counted rather than swallowed.
 ///
 /// The existing fixtures chmod individual *files*, which the walk reads past
-/// without the enumerator ever failing; only an unreadable *directory* reaches
+/// without a directory being refused; only an unreadable *directory* reaches
 /// this path.
 final class DuplicateWalkErrorsTests: XCTestCase {
     private var root: URL!
@@ -46,10 +45,9 @@ final class DuplicateWalkErrorsTests: XCTestCase {
     }
 
     /// One copy of the pair per branch, and an unreadable directory in *both*
-    /// branches. The enumerator is depth-first, so whichever branch it walks
-    /// first it meets that branch's unreadable directory before it reaches the
-    /// other copy: the pair can only be found by a walk that carries on past
-    /// the error. Which branch comes first is a filesystem detail, and this
+    /// branches. A walk that gave up at the first unreadable directory could
+    /// lose the other copy: the pair can only be found by a walk that carries on
+    /// past the error. Which branch is read first is not promised, and this
     /// does not depend on it.
     private func twoBranchesEachBehindAnUnreadableDirectory() throws {
         for (branch, byte) in [("one", UInt8(7)), ("two", UInt8(7))] {

@@ -41,7 +41,6 @@ extension DiskEngine: DiskWork {}
     @Published public private(set) var segments: [RingSegment] = []
     /// True while partial snapshots are still feeding the ring.
     @Published public private(set) var live = false
-    /// Which way the last navigation went — the ring's transition mirrors it.
     /// The path we just came up out of, so the ring can fold back into the
     /// wedge that represents it instead of cross-fading. Cleared once the ring
     /// has consumed it.
@@ -58,7 +57,7 @@ extension DiskEngine: DiskWork {}
     /// the screen and showed the volume picker, which is not what it says.
     @Published public private(set) var scannedPath: String?
     @Published public var basket: [DiskEntry] = []
-    /// The second look: identical files under the focused folder. nil means
+    /// The verdict of the last removal, «Moved to the Trash — …»; nil until one has run.
     @Published public internal(set) var banner: String?
     /// Paths macOS refused. Announcing only what was freed hides these.
     /// With reasons. This was a list of bare paths, and the page printed the
@@ -329,10 +328,6 @@ extension DiskEngine: DiskWork {}
         recomputeSegments()
     }
 
-    /// Measure the same target again — what the button has always said.
-    ///
-    /// A restored tree carries its root but not the path it was scanned from,
-    /// so that is the fallback: the same place, either way.
     /// True when what was scanned is a whole volume rather than some folder on
     /// one. Free space only means something for the first.
     private var isVolumeScan: Bool {
@@ -340,6 +335,10 @@ extension DiskEngine: DiskWork {}
         return volumes.contains { $0.path == path }
     }
 
+    /// Measure the same target again — what the button has always said.
+    ///
+    /// A restored tree carries its root but not the path it was scanned from,
+    /// so that is the fallback: the same place, either way.
     public func rescan() async {
         guard let path = scannedPath ?? result?.root.path else { newScan(); return }
         basket = []
@@ -618,6 +617,11 @@ extension DiskEngine: DiskWork {}
     /// `DiskNode` keeps only the name, and the layout composes the rest back
     /// down from the focus. The paths that come out are the entries' own again,
     /// which is what the basket and `UserFileScope` see.
+    ///
+    /// Only name, size, kind and children are carried: `noAccess` and `isFolded`
+    /// stay at their defaults, so the ring draws no unreadable-folder wedge and
+    /// takes the folded bucket for a file named `…`; the list rows read both
+    /// from the entry itself.
     private static func node(from entry: DiskEntry) -> DiskNode {
         DiskNode(name: entry.name, bytes: entry.bytes,
                  isDirectory: entry.isDirectory,

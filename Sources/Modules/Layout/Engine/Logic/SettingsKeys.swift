@@ -22,8 +22,9 @@ public enum LayoutKey {
     /// UI-only, but it lives here so the list is the whole list.
     public static let indicator = "indicator"
     public static let badgeStyle = "badgeStyle"
-    /// The system input menu's «Show Input Source Name», for Helm's own
-    /// indicator: the layout's name in the menu bar instead of its badge.
+    /// The old «Show Input Source Name» switch of Helm's own indicator. Nothing
+    /// writes it now: `LanguageIndicator` carries a `true` over to
+    /// `BadgeStyle.sourceName` and erases it.
     public static let indicatorShowsName = "indicatorShowsName"
     public static let introSeen = "introSeen"
     /// What the hero was last showing. A view preference rather than a setting

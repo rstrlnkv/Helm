@@ -185,8 +185,9 @@ import SwiftUI
         let key = type(of: d).id.rawValue
         HelmLog.shared.info("host", "disable \(key)")
         let before = MemoryFootprint.current()
-        // Before the teardown, and only from here: this is the person's own
-        // switch, so it is the last moment an engine may ask them something.
+        // Before the teardown: this is the person's own switch, so it is the
+        // last moment an engine may ask them something; `handBackSystemState`
+        // is the one other caller.
         // `shutdown()` — quitting — deliberately does not call it
         // (`ModuleEngine.willDisable` has the story).
         live[key]?.engine.willDisable()

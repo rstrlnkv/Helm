@@ -2,10 +2,11 @@ import Foundation
 
 /// One conversion, as it happened.
 ///
-/// The words live here and in memory and nowhere else: they are never logged
-/// and never written to disk. A key tap sees passwords typed into fields an app
-/// forgot to mark secure, and the only safe place for that is somewhere already
-/// gone.
+/// The words live here and in memory: they are never logged, and the one way
+/// one reaches disk is «Never this word», which writes `before` into the
+/// exceptions list in cleartext (not for a `forced` conversion, below). A key
+/// tap sees passwords typed into fields an app forgot to mark secure, and the
+/// only safe place for that is somewhere already gone.
 public struct ConversionEvent: Equatable, Sendable {
     public let before: String
     public let after: String
@@ -18,7 +19,8 @@ public struct ConversionEvent: Equatable, Sendable {
     /// True when the gesture asked for this word by name, past the dictionary.
     /// The words in an automatic conversion were vouched for; a forced one is
     /// arbitrary typed text — possibly a field nothing recognised as secure —
-    /// and the page must not offer to write it to disk («Never this word»).
+    /// and neither the page nor the tile may offer to write it to disk
+    /// («Never this word»).
     public let forced: Bool
 
     public init(before: String, after: String, app: String, trailing: String = "",

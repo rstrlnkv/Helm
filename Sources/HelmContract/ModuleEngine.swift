@@ -2,7 +2,8 @@ public protocol ModuleEngine: AnyObject {
     func activate()
     /// **Somebody switched this module off, and is still at the screen.**
     ///
-    /// Called by the host from the person's own switch and from nowhere else —
+    /// Called by the host from the person's own switch and from «Reset all
+    /// settings» handing the system back (`ModuleHost.handBackSystemState`) —
     /// never from quitting, which is `deactivate()` alone. The distinction is not
     /// tidiness: `applicationWillTerminate` calls `deactivate()` on every live
     /// engine, so anything there that needs an answer from a person is a dialog

@@ -71,13 +71,15 @@ public enum KeepGrounds: Equatable, Sendable {
     /// and set again where the engine itself answers nothing, which is its own
     /// way of not finishing. The next search withdraws it on the way in.
     @Published public private(set) var searchStopped = false
-    /// The last removal was stopped by the person, between files.
+    /// The last removal was stopped by the person, between files of the
+    /// verification.
     ///
     /// Another thing the report is read as — not a success, not a refusal and
     /// not silence. Read off the *reply*, never off the
-    /// press: the stop is a request, and what actually happened before it
-    /// landed is the engine's to say. What did move before the stop is still
-    /// in `removedCount` and the banner, so the two can be true at once.
+    /// press: the stop is a request, and whether it landed in time is the
+    /// engine's to say. A stopped removal moved nothing, so `removedCount` is 0
+    /// and there is no banner; the refusals found before the stop are in
+    /// `failures`.
     @Published public private(set) var removalStopped = false
 
     /// Which search the groups belong to, so a late answer cannot resurrect
@@ -114,9 +116,9 @@ public enum KeepGrounds: Equatable, Sendable {
     /// change of membership, and a removal is exactly that — `emptyBasket`
     /// rebuilds the group from the copies that are left and the digest moves,
     /// leaving a pin nothing on screen answers to. The survivor's path is the one
-    /// copy a removal may never take (the group is rebuilt from the copies after
-    /// the first), so it is stable across the very removal the id is not — and it
-    /// is the thing the person actually chose. A path is in one group, so it
+    /// copy a removal started after the choice may never take; one already in
+    /// flight can (`Architecture/Duplicates.md`). So it is stable across the very
+    /// removal the id is not — and it is the thing the person actually chose. A path is in one group, so it
     /// names no other.
     private var pinned: Set<String> = []
 
@@ -152,7 +154,8 @@ public enum KeepGrounds: Equatable, Sendable {
     /// background scan reach no work, no search answer still in flight is shown,
     /// and the keychain is asked nothing more except by saving a chosen folder or
     /// policy, which `stop` does not refuse; a removal already handed to the
-    /// engine still lands (the host's `deactivate()` stops it, so as cancelled).
+    /// engine still lands (the host's `deactivate()` stops it, so as cancelled
+    /// if it is still verifying).
     public func stop() {
         closed = true
         _ = searches.take()
@@ -340,8 +343,8 @@ public enum KeepGrounds: Equatable, Sendable {
     /// about it. Moving the copy to the front teaches none of them anything.
     ///
     /// The group is pinned by the same act — by the chosen copy's own path, which
-    /// is the survivor a removal may never take, so the pin outlives the removal
-    /// that re-keys the group (see `pinned`).
+    /// is the survivor a removal started after the choice may never take, so the
+    /// pin outlives the removal that re-keys the group (see `pinned`).
     public func keep(_ path: String, in group: DuplicateGroup) {
         guard let index = groups.firstIndex(where: { $0.id == group.id }),
               let chosen = groups[index].copies.first(where: { $0.path == path })
@@ -665,13 +668,14 @@ public enum KeepGrounds: Equatable, Sendable {
         removalStopped = false
     }
 
-    /// Asks the engine to stop the removal in flight, between files.
+    /// Asks the engine to stop the removal in flight, between files of the
+    /// verification.
     ///
     /// Its own entry, never `cancel`: that one reaches the search, and a
     /// person stopping a removal must not silently kill a search they started
     /// after it. The press claims nothing — the basket, the groups and `busy`
     /// all stand until the reply says what actually happened, because a stop
-    /// that lands after the last file is a removal that ran to the end.
+    /// that lands once the Trash has the batch is a removal that ran to the end.
     public func stopRemoval() {
         guard busy, !closed else { return }
         work.stopRemoval()

@@ -7,7 +7,7 @@ import Module_Layout_Engine
 /// Helm's own copy of the system's input-source indicator.
 ///
 /// macOS shows one already, and its abbreviation cannot be changed: no flags,
-/// no letter style, no size. This one is the same idea with those choices given
+/// no letter style. This one is the same idea with those choices given
 /// back — and it is off by default, because two identical indicators in a row
 /// is worse than one.
 @MainActor final class LanguageIndicator: NSObject, NSMenuDelegate {
@@ -156,8 +156,7 @@ import Module_Layout_Engine
     // MARK: - Menu
 
     /// The sections macOS's own input menu draws, in its order: layouts wearing
-    /// their badges, the emoji palette door, the source-name switch, the
-    /// keyboard settings door. No Keyboard Viewer item: macOS 27 ships no such input source or bundle, and a door
+    /// their badges, the emoji palette door, the keyboard settings door. No Keyboard Viewer item: macOS 27 ships no such input source or bundle, and a door
     /// that opens nothing is worse than none.
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
@@ -170,7 +169,7 @@ import Module_Layout_Engine
             redraw()
         }
         // The rows wear the chosen badge style at one fixed size: the style is the
-        // layout's identity, the stored size is about the menu bar's density.
+        // layout's identity.
         for source in InputSourceInfo.all() {
             let entry = NSMenuItem(title: source.name, action: #selector(pick(_:)), keyEquivalent: "")
             entry.target = self

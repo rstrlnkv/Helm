@@ -97,22 +97,25 @@ public protocol SecureContextPort: Sendable {
 ///
 /// Separate from `TypingPort` because it is a different question asked of a
 /// different subsystem: typing is synthesised key events, this is the
-/// accessibility tree — and where the tree will not answer, the clipboard.
+/// accessibility tree — and where the tree will refuse a write, the clipboard.
 public protocol SelectionPort: Sendable {
     /// The selected text, or nil when nothing is selected or the app will not
     /// say. Nil is not "empty selection": one means do nothing, the other would
     /// mean replacing the caret's surroundings with something.
+    ///
+    /// Falls back to ⌘C when the tree says nothing; `fix()` does not ask this
+    /// one, it asks `selectedTextWithoutClipboard()`.
     func selectedText() -> String?
 
     /// The selection as the accessibility tree reports it, and nothing else.
     ///
     /// `selectedText()` falls back to ⌘C when the tree says nothing, which costs
     /// up to 200 ms of polling and clobbers the clipboard on the way. That is
-    /// affordable once, when somebody presses a shortcut meaning "do it". It is
     /// not affordable on the modifier tap, which fires whenever the key is
     /// tapped and has to decide in that moment whether there is a selection at
-    /// all. An app whose tree says nothing is simply treated as having no
-    /// selection, and the tap does what it always did to the last word.
+    /// all, and `fix()` serves the tap and the hotkey alike. An app whose tree
+    /// says nothing is simply treated as having no selection, and the tap does
+    /// what it always did to the last word.
     func selectedTextWithoutClipboard() -> String?
 
     /// Replaces the selection. False when the app refused, so the caller can

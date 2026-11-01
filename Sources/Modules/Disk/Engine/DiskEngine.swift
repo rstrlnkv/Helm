@@ -3,7 +3,7 @@ import HelmContract
 import HelmRuntime
 
 /// Scans volumes and folders, and trashes what the user baskets. Long work
-/// goes through `blocking` so the concurrency pool is never parked.
+/// goes through `offTheCooperativePool` so the concurrency pool is never parked.
 public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Sendable {
     /// This module's id, and the only place it is written down.
     ///

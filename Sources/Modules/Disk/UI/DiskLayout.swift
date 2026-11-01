@@ -28,7 +28,8 @@ import CoreGraphics
 /// So the layout adapts instead of compromising. Nothing is dropped that there
 /// is room for, and what goes first is what costs most for what it adds: the
 /// sentence before the ring, and the ring before the list — the list carries
-/// every fact the ring does.
+/// every fact the ring does. The ring's step is not reached today: the narrowest
+/// pane is wider than `showsRing` asks.
 struct DiskLayout {
     let availableWidth: CGFloat
 
@@ -38,7 +39,8 @@ struct DiskLayout {
     private static let barWithStatement: CGFloat = 800
 
     /// Below this the ring goes and the list takes the whole pane. A 300 pt
-    /// ring beside a squeezed list serves neither.
+    /// ring beside a squeezed list serves neither. The narrowest pane the
+    /// window gives is 772 pt, so no window size reaches that branch today.
     var showsRing: Bool { availableWidth >= Self.ringAndList }
 
     /// The sentence about the measurement is the first thing to go: it is

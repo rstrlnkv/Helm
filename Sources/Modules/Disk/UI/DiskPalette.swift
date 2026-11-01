@@ -93,7 +93,8 @@ enum DiskPalette {
     static let otherItems = Color.primary.opacity(0.10)
     /// A folder macOS would not let the scan open: the system orange, blended
     /// into the window background inside the appearance
-    /// (`HelmSurface.chosenWash`).
+    /// (`HelmSurface.chosenWash`). The ring gets no `noAccess` flag today
+    /// (`DiskViewModel.node(from:)`), so only the list row shows the warning.
     static let noAccess = HelmSurface.chosenWash(.orange)
     /// A file's dot in the list, which has no swatch of its own.
     static let fileDot = Color.secondary.opacity(0.5)

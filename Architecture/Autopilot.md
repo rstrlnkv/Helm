@@ -24,8 +24,10 @@ refuses extended attributes, or an AppleDouble `._name` sidecar something drops,
 on the `/Volumes` that `WatchScope` admits. exFAT is not among them: on macOS 27.2 an
 `hdiutil create -fs ExFAT` image took `xattr -w` and kept it, in a `._name` sidecar.
 
-Three triggers reach the runner and none covers the others; each names itself
-while it runs:
+Three triggers reach the runner (`sweep`, `watch`, `runNow`) and none covers the others;
+each names itself while it runs, and so does `preview`, the editor's dry run, which decides
+and acts on nothing. The bare `autopilot.` among the names is the settings prefix in a
+comment:
 
 ```bash
 command grep -o 'autopilot\.[a-zA-Z]*' \

@@ -184,9 +184,10 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
     /// Silence here is why this exists: both types used to fall through the
     /// keycode switch, produce no characters and return, so Layout stopped
     /// converting words and nothing anywhere said so. A timeout needs no
-    /// permission change to happen — the callback asks the accessibility server
-    /// for the frontmost app on every key, and one slow app in front is enough
-    /// to be judged too slow and switched off for the rest of the session.
+    /// permission change to happen — when a word is judged the callback asks the
+    /// accessibility server whether the field is secure, and one slow app in
+    /// front is enough to be judged too slow and switched off for the rest of
+    /// the session.
     private func theSystemDisabledUs() {
         lock.lock(); let tap = self.tap; let died = self.diedHandler; lock.unlock()
         guard let tap else { return }
@@ -667,6 +668,11 @@ public struct AXSecureContext: SecureContextPort {
 /// implement it: Electron ones, most web views, some of Apple's own. The
 /// fallback is ⌘C: it works nearly everywhere and it costs the clipboard, so it
 /// is second and it puts back what it borrowed.
+///
+/// Only `selectedText()` takes the fallback, and no shipping caller asks it:
+/// `fix()` reads through `selectedTextWithoutClipboard`, so for an app whose
+/// tree says nothing the gesture sees no selection. Writing keeps its
+/// fallback: the tree first, and ⌘V where the app refuses.
 public struct AXSelection: SelectionPort {
     private let pasteboard: any PasteboardPort
     private let focus: any FocusedTextPort
@@ -732,8 +738,9 @@ public struct AXSelection: SelectionPort {
         // or a promised file comes back as plain text or as nothing — which is
         // the harm `PasteboardSafety` exists to prevent, and it was checked
         // only where Helm writes. The ⌘C below destroys just as thoroughly, and
-        // this is the route `fix()` reaches for a selection the accessibility
-        // API will not answer for, which is most Electron apps and web views.
+        // this is the route `selectedText()` falls to for a selection the
+        // accessibility API will not answer for, which is most Electron apps and
+        // web views.
         let held = pasteboard.types
         guard PasteboardSafety.canBorrow(types: held) else {
             HelmLog.shared.warn(LayoutEngine.moduleID,

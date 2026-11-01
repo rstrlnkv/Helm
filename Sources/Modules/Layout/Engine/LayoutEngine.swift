@@ -72,11 +72,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// updater relaunches the app, which put «0 fixed today» in front of
     /// somebody who had used it all morning.
     private let ledger: LedgerStore
-    /// What the person taught the module by putting words back. Answers false
-    /// until its key arrives, which is the module as it was before it existed —
-    /// never a wait, and never a keychain dialog on the launch path.
-    /// Installed layouts macOS has no dictionary for. Asked once at activation
-    /// rather than per word: the probe costs about 150 µs and the per-word
+    /// Installed layouts macOS has no dictionary for. Asked at activation and
+    /// when Helm comes to the front, rather than per word: the probe costs about 150 µs and the per-word
     /// decision runs on the tap's own thread, where it already spends 476.
     private var noDictionary: [String] = []
     private var running = false
@@ -264,8 +261,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// Drops everything a later gesture could use to edit text that is no
     /// longer in front of the caret. A blind edit measured against a word must
     /// not outlive the word — four paths used to clear two of these three and
-    /// leave the third standing, so a refused conversion, an expanded
-    /// abbreviation or a corrected capital left a word the gesture would then
+    /// leave the third standing, so a refused conversion or a
+    /// corrected capital left a word the gesture would then
     /// delete out of the middle of the sentence that had replaced it.
     ///
     /// **Call with the lock held.** This paragraph and that sentence were
@@ -386,11 +383,10 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         wordConfirmed(completed, auto: auto, confirms: confirms)
     }
 
-    /// Three things can happen to a finished word, and exactly one does.
-    /// The order is fixed and is not a preference: an abbreviation is an
-    /// instruction somebody wrote down, a habit correction is about how the
-    /// keyboard was held, and a layout conversion is a guess — most explicit
-    /// first. Two edits to one word would be one edit the undo shortcut
+    /// Two things can happen to a finished word, and exactly one does.
+    /// The order is fixed and is not a preference: a habit correction is about
+    /// how the keyboard was held, and a layout conversion is a guess — most
+    /// explicit first. Two edits to one word would be one edit the undo shortcut
     /// cannot take back in a single press.
     private func wordConfirmed(_ completed: TypingBuffer.Completion, auto: Bool, confirms: Bool) {
         guard confirms else { return }
@@ -445,12 +441,11 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                                          with: replacement,
                                          trailing: completed.ending) else { return false }
         // `perform` forgets the word, which is what this path needs and used to
-        // spell out for itself: an expansion leaves no undo record — the app's
-        // own undo covers it, and one here would let the shortcut retype an
-        // abbreviation nobody asked to see again — and leaves no remembered
-        // word, because `brb` is not in the field any more and a gesture
-        // converting it would cut four characters out of the middle of the
-        // sentence that replaced it.
+        // spell out for itself: a correction leaves no undo record — the app's
+        // own undo covers it — and leaves no remembered word, because the
+        // uncorrected word is not in the field any more and a gesture converting
+        // it would cut characters out of the middle of the sentence that
+        // replaced it.
         let done = perform(plan)
         if done, audible { sound?.playSwitch() }
         return done
@@ -462,7 +457,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// typed.
     ///
     /// It had three — transliteration and case-walking went with them, and
-    /// `SelectionAction` records why. This comment said three long after they
+    /// `SelectionTransform` records why. This comment said three long after they
     /// were gone, which reads as two missing cases to find.
     ///
     /// A different mechanism from the word conversion and a stricter one. The
@@ -474,12 +469,11 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// `selected` is the text the caller has already read, when it has.
     ///
     /// `fix()` reads the selection off the main thread precisely because that
-    /// read can block, then hopped back and let this read it again — on the
-    /// tap's own callback thread, where `selectedText()` can fall through to
-    /// the ⌘C route and poll the pasteboard for up to 200 ms. The expensive
-    /// probe was paid twice and the second time on the one thread the comment
-    /// above `fix()` says it must never be on. `selected` is nil only when
-    /// nobody has read it yet.
+    /// read can block, and hands the text here rather than letting this read it
+    /// again on the tap's own callback thread, where `selectedText()` can fall
+    /// through to the ⌘C route and poll the pasteboard for up to 200 ms.
+    /// `selected` is nil only when nobody has read it yet; the read then happens
+    /// here, and that is the one way ⌘C is reached — `fix()` never does it.
     ///
     /// `readIn` is the app the caller read that text out of — the pin the word
     /// path has carried on `RememberedWord` since a word typed in Notes was
@@ -545,8 +539,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // Written where it was read, or not written at all.
         //
         // Everything above was decided about `bundleID`, and by now that verdict
-        // is as old as the read: up to 200 ms of pasteboard polling in this call,
-        // or a whole queue hop when `fix()` did the reading. The tap cannot
+        // is as old as the read: a whole queue hop when `fix()` did the reading,
+        // or up to 200 ms of pasteboard polling when this call did. The tap cannot
         // report the app changing in that window — a Space swipe, an alert, a
         // call joining and any program calling `activate()` are neither a
         // keystroke nor a left click — so the app is asked for again here, at the
@@ -667,8 +661,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                 exceptions: list)
         }
         guard case .convert(let replacement) = decision else {
-            // The word itself never reaches the log (§ The log carries no
-            // names); which door refused, and how long the word was, do.
+            // The word itself never reaches the log; which door refused, and how
+            // long the word was, do.
             if force {
                 HelmLog.shared.info(Self.moduleID,
                                     "gesture declined: the word is on the never-list, or its "
@@ -773,7 +767,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // tapped. What comes back to main is the acting: the frontmost app, the
         // pasteboard, the sound.
         //
-        // The text read here is carried into `transform` rather than read
+        // The text read here is carried into `convertSelection` rather than read
         // again. It used to be discarded, and the second read landed on main,
         // which is exactly the thread this hop exists to keep clear.
         DispatchQueue.global(qos: .userInitiated).async { [self] in
@@ -781,15 +775,15 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             // is the one that had the keyboard when the read began, and the read
             // is exactly the window the app can change in. The text crossed the
             // hop below on its own and landed in whoever held the keyboard on
-            // arrival — `transform` compares this against the app in front at
-            // the write. `FrontmostApp` is asked rather than `NSWorkspace`
+            // arrival — `convertSelection` compares this against the app in front
+            // at the write. `FrontmostApp` is asked rather than `NSWorkspace`
             // precisely so this question is answerable off the main thread.
             let readIn = secure.frontmostBundleID()
             // **Asked before the field is read, not after it.**
             //
             // The page's promise is that a secure field is «skipped whole», and
             // this path read it first and refused two hops later — inside
-            // `transform`, by which time the password had been pulled out of
+            // `convertSelection`, by which time the password had been pulled out of
             // the accessibility tree, carried across a queue hop and held as a
             // `String`. `AXSelection` applies no role check of its own;
             // `isSecure()` reads `kAXRoleAttribute` off the *same* focused
@@ -798,9 +792,9 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             // cannot see: an app's own password field, in a browser that never
             // escalated.
             //
-            // Free, and better than free: `transform` paid this round trip on
-            // main, which is the thread this background hop exists to keep
-            // clear and the thread the tap callback runs on. `emitState`
+            // Asked here as well, off main, before the read; `convertSelection`
+            // asks again on main, which is the thread this background hop exists
+            // to keep clear and the thread the tap callback runs on. `emitState`
             // carries the sentence about a hung app blocking for the
             // messenger's timeout; this is the same call.
             guard !secure.isSecure() else {
@@ -936,25 +930,25 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         emitState()
     }
 
-    /// **Forgets only what was actually typed.**
-    ///
-    /// `forgetTheWord` ran either way, so a refusal threw away the word, the
-    /// undo record and the page's row — for an edit the app never carried out.
-    /// The field still held what the person typed, and the module had dropped
-    /// every handle on it: the gesture that exists to fix a word by hand was
-    /// dead on exactly the word that needed fixing, and one declined undo
-    /// retired the record for good.
-    ///
-    /// Safe only because `TypingPort.perform` is all-or-nothing now — it builds
-    /// every event before posting any. Keeping state across a refusal while the
-    /// port could still half-apply would aim a blind edit at text that is no
-    /// longer there, which is worse than the defect it repairs.
+    /// Whether the event is a chord: a command, control or option key held.
     @discardableResult
     private func isAChord(_ event: TypingBuffer.Event) -> Bool {
         if case .chord = event { return true }
         return false
     }
 
+    /// **Forgets only what was actually typed.**
+    ///
+    /// A refusal used to run `forgetTheWord` all the same and throw away the
+    /// word, the undo record and the page's row, for an edit the app never
+    /// carried out: the field still held what the person typed and the module
+    /// had dropped every handle on it, so the gesture was dead on exactly the
+    /// word that needed fixing and one declined undo retired the record for good.
+    ///
+    /// Safe only because `TypingPort.perform` is all-or-nothing now: it builds
+    /// every event before posting any. State kept across a refusal while the
+    /// port could half-apply would aim a blind edit at text no longer there,
+    /// which is worse than the defect it repairs.
     @discardableResult
     private func perform(_ plan: SwitchPlan) -> Bool {
         let done = typing.perform(plan)
@@ -994,15 +988,15 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
-    /// Which installed layouts macOS cannot spell-check, asked once.
+    /// Which installed layouts macOS cannot spell-check, asked at activation
+    /// and when Helm comes to the front, never per word.
     ///
     /// The probe word is irrelevant: `isWord` answers `nil` for «no dictionary
     /// for this language» whatever it is given, and that nil is the whole
     /// question here. What it must not do is read a `false` as a missing
     /// dictionary — that is «not a word», which is the module's ordinary case.
-    /// Re-asked whenever the engine is about to judge a word, which is the
-    /// second ordinary moment the installed set can have moved under it — the
-    /// first being coming back to the app. Cheap: `DictionarySupport.missing`
+    /// Re-asked when Helm comes to the front, which is when somebody has just
+    /// finished editing their layouts. Cheap: `DictionarySupport.missing`
     /// walks the installed list and asks `isWord` once per source, and the
     /// answer only changes when somebody edits their layouts.
     private func refreshDictionarySupport() {

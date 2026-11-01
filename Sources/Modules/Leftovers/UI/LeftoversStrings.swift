@@ -41,7 +41,7 @@ enum LfStr {
     /// **What the grant buys here is judgement, not removal.**
     /// `PermissionCheck.reason` names Full Disk Access for `/Library/Containers/`
     /// and `/Library/Group Containers/` paths only, and none of the scanner's
-    /// seven sources can reach one — so no removal on this page can fail that
+    /// eight sources can reach one — so no removal on this page can fail that
     /// way, and the note promised a consequence this module cannot have. What a
     /// refused read actually costs is a verdict: `exists` answers nil, the row is
     /// `.undetermined`, and a short list of leftovers then looks exactly like a

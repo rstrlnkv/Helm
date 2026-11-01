@@ -90,14 +90,14 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     /// Stops the search in flight; its `find` answers nil.
     public func cancel() { finderBox.current?.cancel() }
 
-    /// Stops the removal in flight, between files. Its own entry, never
+    /// Stops the removal in flight, between files of the verification. Its own entry, never
     /// `cancel`: that one reaches the search, and a person stopping a removal
     /// must not silently kill a search they started after it.
     public func stopRemoval() { removalBox.current?.stop() }
 
     /// The one place a search is started.
     ///
-    /// Synchronous work on the module's own queue; nil when cancelled, because
+    /// Synchronous work run through `offTheCooperativePool`; nil when cancelled, because
     /// a partial answer to "what is duplicated" is a wrong answer rather than a
     /// smaller right one.
     ///
@@ -249,9 +249,14 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         // the files it reached before it stopped.
         Self.saveCache(cache.compactedIfStale())
         // Every copy but the survivor: that is what acting on the finding would
-        // remove. The bytes come from `wasted` rather than from adding the sizes
-        // up, because on APFS a clone shares its blocks and removing it returns
-        // nothing — the same arithmetic the page shows.
+        // remove. The report's bytes come from `wasted` rather than from adding
+        // the sizes up, because on APFS a clone shares its blocks and removing it
+        // returns nothing. Not the page's fold (`DuplicateBasket.wasted`): that
+        // one counts a clone family once over all the groups and leaves out what
+        // `UserFileScope` refuses, while this sums group by group and lists
+        // every extra. Each item carries its copy's own size, so a figure summed
+        // from the items (`ScanChange.appearedBytes`, the notification's) counts
+        // a clone in full.
         let items = groups.flatMap { group in
             group.copies.dropFirst().map { ScanItem(path: $0.path, bytes: $0.bytes) }
         }
@@ -473,16 +478,15 @@ public struct DuplicateFindings: Equatable, Sendable {
 /// A stopped removal is a fourth outcome — not a success, not a refusal, not
 /// silence — and folding it to zeroes drew nothing at all, which reads as
 /// «press it again». `cancelled` rides beside the counts rather than replacing
-/// them, because a stop can land after some files have already moved and those
-/// are still honestly counted; a reply that is both cancelled and lists what
-/// went is exactly the state the sentence has to cover.
+/// them, so the refusals found before the stop are still reported.
 public struct DuplicateRemoval: Equatable, Sendable {
     public let removed: [String]
     public let refused: [HelmTrash.Refusal]
     public let freedBytes: Int
-    /// The person pressed Stop and the engine obeyed between files. What was
-    /// already moved stays moved and is counted above; what was not yet
-    /// verified was never attempted.
+    /// The person pressed Stop and the engine obeyed between files of the
+    /// verification, before anything moved: `removed` is empty and `freedBytes`
+    /// 0. Once the first file is handed to the Trash there is no stop, and a
+    /// Stop pressed then is a removal that ran to the end.
     public let cancelled: Bool
 
     public init(removed: [String], refused: [HelmTrash.Refusal],
@@ -554,8 +558,9 @@ final class InFlightBox<Job: AnyObject>: @unchecked Sendable {
 /// The slot the running search sits in.
 typealias FinderBox = InFlightBox<DuplicateScanner>
 
-/// The one thing a running removal can be told: stop. Checked between files —
-/// a file mid-verification finishes its read — and never carried over to the
+/// The one thing a running removal can be told: stop. Checked between files of
+/// the verification — a file mid-verification finishes its read, and once the
+/// Trash has the batch nothing reads it — and never carried over to the
 /// next removal: each `trash` call starts a flag of its own in the box.
 final class RemovalStop: @unchecked Sendable {
     private let lock = NSLock()

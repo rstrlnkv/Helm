@@ -280,8 +280,10 @@ struct RingView: View {
                                   angle: angle, radius: radius)
     }
 
-    /// Depth fades toward the rim, hover lifts; free space, folded slivers and
-    /// unreadable folders stay deliberately quiet so real data reads first.
+    /// Depth fades toward the rim, hover lifts; free space and folded slivers
+    /// stay deliberately quiet so real data reads first. An unreadable folder
+    /// has its colour here, but no node carries the flag today
+    /// (`DiskViewModel.node(from:)`).
     private func color(for segment: RingSegment) -> Color {
         if segment.isFreeSpace { return DiskPalette.freeSpace }
         if segment.noAccess { return DiskPalette.noAccess }

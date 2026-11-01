@@ -503,10 +503,8 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// costs nothing says nothing — but the app's memory trail had a hole exactly
     /// the shape of this method: growth appearing between two `idle` readings with
     /// no command in between, because a timer is not a command. A reading here
-    /// turns "something happened" into "the sweep happened", and the reclaim hands
-    /// the emptied regions back to macOS at the moment the work ends rather than
-    /// leaving them resident until the next labelled operation
-    /// (docs/superpowers/plans/2026-07-29-third-pass.md has the trail).
+    /// turns "something happened" into "the sweep happened"
+    /// (ARCHITECTURE.md § The memory trail).
     @discardableResult
     public func sweepAll() -> [SweepReport] {
         let passes = HelmActivity.phase("autopilot.sweep") {

@@ -27,7 +27,7 @@ final class DuplicateScannerTests: XCTestCase {
         _ = try write("c.bin", 9)                // same size, different content
         let groups = DuplicateScanner().find(under: root.path, by: KeepRule(.standard))
         XCTAssertEqual(groups?.count, 1)
-        // The enumerator resolves /var to /private/var; compare by tail.
+        // Compare by tail: the spelling of the root is not what is under test.
         let tails = Set((groups?.first?.paths ?? []).map { ($0 as NSString).lastPathComponent })
         XCTAssertEqual(tails, ["a.bin", "b.bin"])
         _ = (a, b)

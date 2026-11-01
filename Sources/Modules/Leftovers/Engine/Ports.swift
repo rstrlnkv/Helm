@@ -29,7 +29,7 @@ public protocol LeftoversFilePort: Sendable {
     func isWritableDirectory(_ url: URL) -> Bool
     /// Where this path actually leads, with **every** symbolic link in it followed.
     ///
-    /// Asked of each of the seven directories the scan is compiled with, because a
+    /// Asked of each of the eight directories the scan is compiled with, because a
     /// name is not a place: four of them do not exist on a stock install, so any
     /// process running as the user can create one as a link to somewhere else and
     /// have the whole enumeration happen there — under Helm's Full Disk Access,

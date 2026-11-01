@@ -204,8 +204,8 @@ struct LeftoversSettingsPage: View {
     /// whichever the pane can hold.
     ///
     /// **The strip had no slack, and an `HStack` pays for that out of whatever is
-    /// flexible.** With both captions fixed, at the narrowest pane the window
-    /// allows (606 pt): «Сканировать заново» drawn 20.5 pt against the 154.0 its
+    /// flexible.** With both captions fixed, at a 606 pt pane, which the window
+    /// no longer gives: «Сканировать заново» drawn 20.5 pt against the 154.0 its
     /// words need, «Escanear de nuevo» 20.5 against 139.0, German 92.5 against
     /// 118.5 — the verb reduced to an ellipsis by two labels.
     ///
@@ -221,7 +221,8 @@ struct LeftoversSettingsPage: View {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: HelmSpace.s5) { found; unchecked }
                 unchecked
-                // Where even one will not fit — Russian at 606 pt — the strip
+                // Where even one would not fit — Russian at 606 pt, which the window
+                // no longer gives — the strip
                 // keeps its controls, and nothing said only here is lost: the
                 // screen this is about is the *empty* one, where the sentence is
                 // the message and no width can take it away.
@@ -575,7 +576,7 @@ struct LeftoversSettingsPage: View {
     ///
     /// **It was the fourth thing in the button row, and an `HStack` does not
     /// wrap** — the same defect the report above it was moved out for, one row
-    /// down. At the narrowest pane the row overflowed and what paid for it was the
+    /// down. At a 606 pt pane the row overflowed and what paid for it was the
     /// destructive button: measured against natural widths at 606 pt, «Move to
     /// Trash» came out 40.0 pt short in German, 36.0 in French, 33.5 in Spanish and
     /// 18.5 in Russian, drawn as «In den Papierkorb…» and «Переместить в Корзи…» —

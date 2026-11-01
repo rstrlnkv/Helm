@@ -63,9 +63,8 @@ enum DupStr {
     /// The button beside a running removal. Not `stop` — that key says «Stop
     /// scan», and this press must not read as one about the search.
     static var stopRemoval: String { L(.stopRemoval) }
-    /// The named outcome of a stopped removal. What did move before the stop is
-    /// the banner's to say; this sentence owns the other half — that from the
-    /// stop on, nothing else went.
+    /// The named outcome of a stopped removal: it stopped while the pairs were
+    /// being read again, so nothing went.
     static func removalStopped(language: AppLanguage = AppLanguage.current) -> String {
         L(.removalStopped, language: language)
     }
@@ -115,9 +114,8 @@ enum DupStr {
         let items = Plural.items(n, language: language.rawValue)
         return L(.couldNotRead(items), language: language)
     }
-    /// No count, on purpose: the walk cannot see a library macOS already knows
-    /// as a package, so any figure it quoted would be short — and a number that
-    /// is known to be wrong is worse than the sentence without one.
+    /// No count in the sentence: it says that libraries were passed by, not how
+    /// many.
     static func librariesNotOpened(language: AppLanguage = AppLanguage.current) -> String {
         L(.librariesNotOpened, language: language)
     }

@@ -10,7 +10,7 @@ import Foundation
 public struct SealKey: Equatable, Sendable {
     public let material: Data
     /// True only for the run that created the key. Spent after one verdict —
-    /// see `AutopilotEngine`.
+    /// see `SealedRules.takeTheOneAdoption`.
     public let firstUse: Bool
 
     public init(material: Data, firstUse: Bool) {
@@ -54,7 +54,7 @@ public enum SettingSeal {
         /// No seal, and this installation has never had one: the rules predate
         /// sealing. Accept them once and seal them — see
         /// `testRulesWithNoSealAreAdoptedOnTheRunThatCreatedTheKey` and the
-        /// paragraph on trust-on-first-use in `AutopilotEngine`.
+        /// paragraph on trust-on-first-use in `SealedRules`.
         case adopt
         /// Something other than Helm wrote these. Do not run them.
         case broken

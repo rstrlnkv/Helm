@@ -24,9 +24,9 @@ extension LeftoversEngine: LeftoversWork {}
     @Published public private(set) var failures: [HelmTrash.Refusal] = []
     /// How many actually moved — see `DiskViewModel.removedCount`.
     @Published public private(set) var removedCount = 0
-    /// How many rows this scan never reached a verdict on — `.undetermined` and
-    /// `.unreadable` together, asked of `ItemStatus.judged` rather than listed
-    /// here.
+    /// How many rows this scan never reached a verdict on — `.undetermined`,
+    /// `.unreadable` and the two source statuses, asked of `ItemStatus.judged` rather
+    /// than listed here.
     ///
     /// **Counted where the scan lands, not on every pass over `body`.** The page
     /// asks `nothingToShow` four times a pass and the scan is hundreds of rows on
@@ -35,7 +35,7 @@ extension LeftoversEngine: LeftoversWork {}
     /// question with a short-circuit; this one has none to take, because any scan
     /// can hold unjudged rows.
     ///
-    /// **Over the whole scan, not over the list.** Neither status is `.orphaned`,
+    /// **Over the whole scan, not over the list.** None of them is `.orphaned`,
     /// so the default filter is precisely what hides them: counted over
     /// `visibleItems` it would answer zero in the state it exists to report.
     @Published public private(set) var uncheckedCount = 0
@@ -73,7 +73,7 @@ extension LeftoversEngine: LeftoversWork {}
     /// Asked of `visibleItems`, which is what the `List` is built from — the page
     /// asked `items.isEmpty`, and on any ordinary Mac those differ: the scan finds
     /// hundreds of settings files in use and no leftovers at all.
-    /// `LeftoversEmpty.reason` holds the rule and says why there are three answers.
+    /// `LeftoversEmpty.reason` holds the rule and says why there are four answers.
     public var nothingToShow: LeftoversEmpty.Reason? {
         LeftoversEmpty.reason(scanned: scanned, visible: visibleItems.count,
                               hiddenByKind: hiddenByKindCount, unchecked: uncheckedCount)

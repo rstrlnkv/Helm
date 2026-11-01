@@ -13,9 +13,9 @@ import CoreGraphics
 /// It was not read for. Both types fell through `deliver`'s switch into the
 /// keycode default, produced no characters, and returned — so Layout stopped
 /// converting words with nothing said anywhere and its own switch still
-/// reading "on". A timeout needs no permission change to happen: the callback
-/// asks the accessibility server for the frontmost app, and one slow app in
-/// front is enough.
+/// reading "on". A timeout needs no permission change to happen: when a word
+/// is judged the callback asks the accessibility server whether the field is
+/// secure, and one slow app in front is enough.
 ///
 /// Here rather than in the port because it is a decision, and decisions in this
 /// module are checkable without a keyboard.

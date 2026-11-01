@@ -72,9 +72,6 @@ import SwiftUI
     /// on the person's switch and on quit.
     public func stop(_ model: AutopilotViewModel) { model.stop() }
 
-    /// Not a utility any more: how many folders it watches and what it did
-    /// today are figures worth a glance, which is the whole test for whether a
-    /// module belongs in the panel rather than behind a disclosure in it.
     /// A row in the utilities list, not a tile.
     ///
     /// It had a widget for a while — the count of watched folders, the words

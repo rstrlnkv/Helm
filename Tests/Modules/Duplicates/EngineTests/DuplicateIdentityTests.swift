@@ -2,7 +2,7 @@ import XCTest
 @testable import Module_Duplicates_Engine
 
 /// A file whose identity could not be read is unknown, and unknown must never
-/// match — the rule `DiskScanner.DeviceID.unknown` already lives by.
+/// match — the rule `BulkWalk.DeviceID.unknown` already lives by.
 ///
 /// The trap: fileID 0 is the "could not be read" sentinel, and
 /// `Duplicates.sizeGroups` collapses equal `fileID`s as "one file wearing two
@@ -10,8 +10,8 @@ import XCTest
 /// shared fileID 0 and were collapsed into one — silently removed from the
 /// duplicate search, with no refusal and no report. Worse, the collapse was
 /// keyed on the id alone, across all sizes, so a 5 MB unknown swallowed a
-/// 7 MB unknown that had a genuine 7 MB twin. The scanner now skips files it
-/// cannot stat and stays on one device, but the logic must hold on its own:
+/// 7 MB unknown that had a genuine 7 MB twin. The walk now hands the id over
+/// with each entry and stays on one device, but the logic must hold on its own:
 /// whoever feeds it a 0 must not lose a file for it.
 ///
 /// (The cross-volume sibling is not pinned here because a test cannot
@@ -25,9 +25,9 @@ final class DuplicateIdentityTests: XCTestCase {
         FileFacts(path: path, bytes: bytes, fileID: id)
     }
 
-    /// Two distinct files whose lstat failed both arrive with fileID 0. They
-    /// are not hard links of each other — nothing is known about them — so
-    /// they must stay in the running as separate candidates.
+    /// Two distinct files whose id the walk did not return both arrive with
+    /// fileID 0. They are not hard links of each other — nothing is known about
+    /// them — so they must stay in the running as separate candidates.
     func testTwoUnknownIdentitiesAreNotCollapsedAsHardLinks() {
         let groups = Duplicates.sizeGroups([
             file("/a", bytes: 5_000_000, id: 0),

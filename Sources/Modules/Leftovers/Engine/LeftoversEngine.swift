@@ -4,7 +4,7 @@ import HelmRuntime
 
 /// Finds login items, settings and plug-ins whose owner is gone, and trashes
 /// the ones the user picks. Scanning walks many directories, so it runs off the
-/// concurrency pool via `blocking`.
+/// concurrency pool via `offTheCooperativePool`.
 public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     /// This module's id, and the only place it is written down.
     ///
@@ -62,8 +62,9 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
         store.set(Array(recorded).sorted(), for: Self.recordKey)
     }
 
-    /// **The give-back.** Reached when the person switches the module off, while
-    /// the record is still there — `ResetPlan.order`
+    /// **The give-back.** Reached when the person switches the module off, and for
+    /// every live module on «Reset all settings» (`ModuleHost.handBackSystemState`),
+    /// while the record is still there — `ResetPlan.order`
     /// (`Sources/HelmRuntime/ResetPlan.swift:59`) asks the engines before it
     /// forgets preferences, and that order is why this can read anything at all.
     ///

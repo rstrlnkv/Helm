@@ -50,7 +50,7 @@ final class DiskScanner: @unchecked Sendable {
         return cancelled
     }
 
-    /// Synchronous; run it via the module's `blocking` bridge.
+    /// Synchronous; run it via `offTheCooperativePool`.
     ///
     /// Directories are walked by `BulkWalk` — a small pool of threads and one
     /// `getattrlistbulk` per directory, which is what makes this an order of

@@ -298,10 +298,10 @@ struct DuplicatesSettingsPage: View {
     /// exactly the case it exists for.
     private var removalReport: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s3) {
-            // Above the counts, because it qualifies them: what the banner
-            // says moved did move — before the stop — and this owns the
-            // other half. Read off the reply, so a removal that ran to the
-            // end never draws it.
+            // Above the counts, because it qualifies them: a stopped removal
+            // moved nothing, and the refusals below were found before the
+            // stop. Read off the reply, so a removal that ran to the end never
+            // draws it.
             if dvm.removalStopped {
                 Text(DupStr.removalStopped())
                     .font(HelmText.rowDetail)

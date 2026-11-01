@@ -32,7 +32,7 @@ import XCTest
 ///
 /// It needs no attacker. `ADirectoryThatIsNotTheOneItNamesTests` names the
 /// ordinary version itself: «anybody who has ever symlinked a plug-in folder onto
-/// another volume». One of the seven is enough, because it is the *filtered* list
+/// another volume». One of the eight is enough, because it is the *filtered* list
 /// that has to be empty for this message, not the scan.
 final class ASourceNobodyWalkedIsNotACleanMacTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")

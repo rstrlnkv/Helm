@@ -26,7 +26,6 @@ struct DiskResultView: View {
     @ViewBuilder private func content(_ layout: DiskLayout) -> some View {
         if layout.showsRing {
             HStack(spacing: 0) {
-                // The ring swaps with a zoom that mirrors the navigation:
                 // The ring is never replaced: clicking a wedge widens it until
                 // it is the whole circle and only then drills, and coming back
                 // runs the same transform backwards. A cross-fade between two
@@ -63,7 +62,8 @@ struct DiskResultView: View {
         } else {
             // Below the width where both fit, the ring is what goes. The list
             // carries every fact the ring does and needs less room to do it;
-            // a 300 pt ring beside a squeezed list serves neither.
+            // a 300 pt ring beside a squeezed list serves neither. No window gives
+            // a pane this narrow today (`DiskLayout.showsRing`).
             childList
         }
     }
@@ -200,9 +200,11 @@ private struct BreadcrumbBar: View {
             // scan reached starts a real walk of that folder, and this pair was
             // behind `live` alone — so the click looked dead, the ring changed
             // under the person when it landed, and there was nothing to press to
-            // stop it. The file count belongs to the volume walk and is absent
-            // here by construction: a folder measurement asks for no updates
-            // (`measureAndDrill` passes no sink), so nothing of it reaches `tick`.
+            // stop it. The file count belongs to the volume walk: a folder
+            // measurement asks for no updates (`measureAndDrill` passes no sink), so
+            // nothing of it reaches `tick`. But `tick` is cleared only when the next
+            // `scan(path:)` starts, so a folder measured after a finished scan still
+            // shows that scan's last count where the bar has room for it.
             if dvm.walking {
                 HStack(spacing: HelmSpace.s3) {
                     ProgressView().controlSize(.small)

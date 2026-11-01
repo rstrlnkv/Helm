@@ -29,7 +29,7 @@ final class WalkFootprintTests: XCTestCase {
     /// Small files below the size floor, so the walk looks at every one and
     /// keeps none — what is measured is the looking. Spread over directories
     /// because a real tree is not a single folder of ten thousand names, and
-    /// the enumerator's per-directory work is part of the loop being measured.
+    /// the walk's per-directory work is part of the loop being measured.
     private static let directories = 16
     private static let filesPerDirectory = 500
     private static var looked: Int { directories * filesPerDirectory + directories + kept }

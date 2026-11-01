@@ -9,7 +9,7 @@ import XCTest
 /// entirely.**
 ///
 /// `LeftoversScanner.isItsOwnPlace` is the whole defence against a planted source:
-/// four of the seven directories the scan is compiled with do not exist on a stock
+/// four of the eight directories the scan is compiled with do not exist on a stock
 /// install, so any process running as the person can create one as a link and have
 /// the enumeration happen wherever it points, under Helm's Full Disk Access, with
 /// every row still spelling the folder that was compiled in. The guard is
@@ -215,7 +215,7 @@ final class ADanglingSourceIsNotItsOwnPlaceTests: XCTestCase {
 
     /// The same planting on a source that *does* exist on a stock install — the
     /// person's own Preferences folder replaced by a link — because «four of the
-    /// seven do not exist» is the easy case and not the only one.
+    /// eight do not exist» is the easy case and not the only one.
     func testADanglingLinkOverAnOrdinarySourceIsAlsoReported() throws {
         let home = canonicalHome("leftovers-dangling-prefs")
         let planted = try link("Library/Preferences",

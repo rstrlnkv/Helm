@@ -1,10 +1,10 @@
 import Foundation
 import HelmRuntime
 
-/// Walks the places login items and settings accumulate, and reports only what
-/// is safely removable: the owner is gone, nothing Apple's, nothing in a
-/// system location. Filesystem access goes through ports so the whole walk is
-/// testable.
+/// Walks the places login items and settings accumulate, and reports everything
+/// it finds with a status (`ItemStatus`); only `.orphaned` is safely removable:
+/// the owner is gone, nothing Apple's, nothing in a system location. Filesystem
+/// access goes through ports so the whole walk is testable.
 struct LeftoversScanner: Sendable {
     private let home: URL
     private let files: LeftoversFilePort
@@ -297,7 +297,7 @@ struct LeftoversScanner: Sendable {
 
     /// Whether a directory this scan is compiled with is the directory it names.
     ///
-    /// **A name is not a place.** Seven directory names are written into this file,
+    /// **A name is not a place.** Eight directories are compiled into this scan,
     /// four of them for folders a stock install does not have — so any process
     /// running as the user can create one as a symbolic link and have the whole
     /// enumeration happen wherever it points, under Helm's Full Disk Access, while
@@ -352,7 +352,7 @@ struct LeftoversScanner: Sendable {
     /// `LeftoversEmpty.reason` answered `.nothingFound` — «No leftovers found» under
     /// a green check, over a folder that was never opened. On an ordinary Mac the
     /// default filter shows leftovers only and an honest scan finds none, so one
-    /// source of the seven is enough to turn this module's strongest claim about
+    /// source of the eight is enough to turn this module's strongest claim about
     /// somebody's Mac into a lie, and `nothingFound` gets no Scan button to answer
     /// it with.
     ///

@@ -4,7 +4,9 @@ import Foundation
 /// pattern would produce something the filesystem should not be asked to take.
 ///
 /// `{name}` the file's name without its extension, `{date}` the date it was
-/// added as `2026-07-15`, `{counter}` a three-digit sequence number.
+/// added as `2026-07-15`, `{counter}` a three-digit number, `001` unless a
+/// caller passes another, and nothing in `Sources` does. A name already taken gets its number
+/// from `FreeName`.
 ///
 /// Returning nil rather than a best effort is the point. A rename that silently
 /// becomes a move (`sub/{name}`), a file that loses its identity (an empty

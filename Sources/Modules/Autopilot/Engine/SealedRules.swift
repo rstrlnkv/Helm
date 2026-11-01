@@ -32,8 +32,10 @@ final class SealedRules: @unchecked Sendable {
     /// plist's author cannot reach.
     private let sequence: RuleSequencePort
     private let trustLock = NSLock()
-    /// Held only around `keys.key()` — see `resolvedKey`. Never held with
-    /// `trustLock`, in either order.
+    /// Held only around the two keychain reads, `keys.key()` and
+    /// `sequence.highWater()` — see `resolvedKey`. `trustLock` is taken
+    /// inside it, briefly and never across the port call; `keyLock` is never
+    /// taken with `trustLock` held.
     private let keyLock = NSLock()
     /// One decision about the stored rules at a time: reading the plist,
     /// judging it against its seal, and recording that judgement are one

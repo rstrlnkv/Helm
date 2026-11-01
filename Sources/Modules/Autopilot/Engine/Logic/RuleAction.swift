@@ -30,11 +30,13 @@ public extension RuleAction {
     /// only ever arrives through the panel, and a pattern or a tag is a field
     /// somebody can clear.
     ///
-    /// An incomplete action does not fail quietly. Every matching file comes
-    /// back `.refused` from the runner — `outOfScope` for a destination that is
-    /// nowhere, `badPattern` for a pattern that names nothing — which is a line
-    /// in the log and a row in the thirty-day history, on every sweep, for a
-    /// rule the person believes is working.
+    /// An incomplete action does not fail quietly. Reaching the runner, every
+    /// matching file would come back refused — `targetOutOfScope` (recorded as
+    /// the reason `outOfScope`) for a destination that is nowhere, `badPattern`
+    /// for a pattern that names nothing — which is a line in the log and a row
+    /// in the thirty-day history, on every sweep, for a rule the person
+    /// believes is working. It does not reach it: `storable` switches such a
+    /// rule off and the sweep is never offered it.
     var isComplete: Bool {
         func named(_ value: String) -> Bool {
             !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

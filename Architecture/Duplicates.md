@@ -43,12 +43,20 @@ calls from its `.task`, not in `init`: `makeModule` runs when the module starts.
 person's switch and on quit the host calls the descriptor's `stop(_:)`, after which the
 model reaches no work, shows no search answer still in flight and asks the keychain
 nothing more except by saving a chosen folder or policy, which `stop` does not refuse;
-a removal already handed to the engine still lands, and what moved before the stop is
-reported. The model keeps no state for a reply that never
+a removal already handed to the engine still lands, unless it is still re-reading the
+pairs, which a stop ends with nothing moved. The model keeps no state for a reply that never
 arrives: an answer is always a return.
 
 A background scan and a search the person started share the engine's one finder slot, so
 one begins by cancelling the other.
+
+While a removal runs, the marks, Keep this copy and the policy popup stay live, where
+Disk's `toggleBasket` declines (ARCHITECTURE.md § One removal at a time): `emptyBasket`
+captures the plans and the staying copies at the press and filters the basket by what
+moved afterwards, so a mark changes nothing in flight. Keep this copy on a copy that is
+already in the batch is drawn as «stays» and the copy still goes to the Trash, verified
+against the survivor the press named; the group is rebuilt without it, or goes when
+only one copy is left.
 
 
 ## The states of the Duplicates page
@@ -69,7 +77,7 @@ A scratch tree of planted duplicates is enough for every state that shows a resu
 | `start` | «Pick a folder and Helm will read what is in it…» with Choose folder; no toolbar | no folder stored |
 | `start-folder` | the folder in the toolbar, the policy row, «Helm will read what is in this folder…» with Search now | a scratch folder: `--arg module.duplicates.folder "${TMPDIR}helm-dup-scratch"` (`TMPDIR` ends in `/`; `"$TMPDIR/…"` gives `//` in the toolbar path) |
 | `no-disk-access` | the Full Disk Access note over any phase | Helm Dev without the grant (real use; the crew changes no grant) |
-| `searching` | `HelmBusyState` with the count of files read, Stop scan in the toolbar | `--press "Search now" --nth 2` on `start-folder` (transient: on a 7-file scratch tree it is over before the instrument, which waits 1 s after a press, shoots; not shot there) |
+| `searching` | `HelmBusyState` with «Reading files…» during the walk and then «N of M checks done», two checks to a candidate file (the prefix pass, the full pass); Stop scan in the toolbar | `--press "Search now" --nth 2` on `start-folder` (transient: on a 7-file scratch tree it is over before the instrument, which waits 1 s after a press, shoots; not shot there) |
 | `search-stopped` | «Search stopped — the folder was not read to the end.» | Stop scan mid-search |
 | `nothing-found` | «No duplicates here…» and the 1 MB note | a search of a scratch folder with no duplicates |
 | `result` | the 1 MB note, the «Groups: N · …» line, one section per group, its first copy marked as the one that stays | a search of a folder with planted duplicates |

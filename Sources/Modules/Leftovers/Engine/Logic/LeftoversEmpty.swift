@@ -58,8 +58,8 @@ public enum LeftoversEmpty {
     ///   - visible: rows the list would draw — after both filters.
     ///   - hiddenByKind: rows the status filter keeps and the kind filter hides.
     ///   - unchecked: rows the scan never reached a verdict on, over the whole
-    ///     scan and not over the list: they are `.undetermined` or `.unreadable`,
-    ///     so the default filter is exactly what hides them, and counting them
+    ///     scan and not over the list: none is `.judged` (an unreadable or undetermined
+    ///     file, or a source row), so the default filter is exactly what hides them, and counting them
     ///     over what is drawn would answer zero in the state this exists for.
     public static func reason(scanned: Bool, visible: Int, hiddenByKind: Int,
                               unchecked: Int) -> Reason? {

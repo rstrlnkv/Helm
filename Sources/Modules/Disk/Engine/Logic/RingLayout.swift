@@ -51,7 +51,7 @@ public enum RingLayout {
     /// `path` locates `focus`; every segment's path is composed down from it,
     /// because `DiskNode` holds only the name. These strings are not decoration —
     /// `RingSegment.path` is what a click puts in the basket and what
-    /// `RemovableScope` is later asked to judge, so a segment's path has to be
+    /// `UserFileScope` is later asked to judge, so a segment's path has to be
     /// the same string the scan was handed. `DerivedPathTests` pins that.
     public static func layout(focus: DiskNode, path: String,
                               depthLevels: Int, freeBytes: Int) -> [RingSegment] {

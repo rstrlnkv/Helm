@@ -129,7 +129,7 @@ public enum LeftoverActions {
     /// leftover. A job whose plist could not be read is one of those now, and
     /// «loaded now» is a claim about contents Helm never got to see.
     ///
-    /// Exhaustive over the status: a fifth one must be a build error here rather
+    /// Exhaustive over the status: a further one must be a build error here rather
     /// than inherit whichever sentence sits nearest.
     public static func askBeforeDeleting(_ item: StaleItem) -> AskFirst? {
         switch item.status {

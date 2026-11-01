@@ -6,7 +6,7 @@ import XCTest
 /// **A scanned directory that is a symbolic link redirects the whole scan, and the
 /// row shows the spelling the file does not have.**
 ///
-/// `LeftoversScanner` enumerates seven directories it is compiled with — three
+/// `LeftoversScanner` enumerates eight directories it is compiled with — three
 /// launch folders, `~/Library/Preferences`, four plug-in folders — and never asks
 /// whether the directory it got is the one it named. `DirectoryListing.children`
 /// hands back the contents of wherever the name leads, and the item's `path` is
@@ -91,7 +91,7 @@ final class ADirectoryThatIsNotTheOneItNamesTests: XCTestCase {
             listed \(items.map(\.path)) from /Volumes/Elsewhere. This is the ancestor case \
             `PathCanonical` exists for, one layer above the removal gate.
             """)
-        // Six of the seven sources are under the redirected `~/Library`, and each
+        // Six of the eight sources are under the redirected `~/Library`, and each
         // says so on its own row: nothing here is a file, and every one of them is
         // counted as unchecked rather than as a Mac with nothing left over.
         XCTAssertEqual(items.count { $0.status == .sourceRedirected }, 6)

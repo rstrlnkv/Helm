@@ -61,7 +61,7 @@ tests hold them (`TheDialogDescribesThePressTests`, `TrashIsNotFreedSpaceTests`)
 | `drilled-down` | breadcrumbs, Back, the ring one level in | a click on a wedge or «Look inside» |
 | `empty-folder` | «Nothing in this folder.» | drilling into an empty folder |
 | `advice` | «Recommendations», reasons per row | a scan that finds a cache or an old download |
-| `basket` | the bar «To remove», count and size, the basket popover | marking rows |
+| `basket` | the bar «To remove», count and size, a menu naming each marked row | marking rows |
 | `confirm`, `removal-report` | the question, «Moved to the Trash — …» | a removal: not shot |
 | `worst` | ru and de at the narrowest pane: header statement and breadcrumbs give way | `--arg module.app.interfaceLanguage ru` or `de` |
 | panel tile | compact, wide; tall only with two or more volumes (`DiskDescriptor.swift`) | `--panel` |

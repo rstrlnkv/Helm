@@ -3,9 +3,11 @@ import Foundation
 /// Which endings of a word are taken as "I meant that word", and which merely
 /// end it.
 ///
-/// Not every boundary is a confirmation. Moving the caret, clicking elsewhere
-/// or leaving the window says the person went somewhere else — converting then
-/// edits text they are no longer looking at.
+/// Not every boundary is a confirmation. Moving the caret or clicking elsewhere
+/// says the person went somewhere else — converting then edits text they are no
+/// longer looking at. `.focusChange` is handled the same way, but the tap never
+/// sends it: a word left in another app is caught by the app checks
+/// (`RememberedWord`).
 ///
 /// **None of it is a choice any more.** Three toggles on the settings page used
 /// to write these, and they could be set to a combination the page then had to

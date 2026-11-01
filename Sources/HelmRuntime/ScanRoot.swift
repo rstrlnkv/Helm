@@ -159,8 +159,9 @@ public enum ScanRoot {
     /// library copied from another machine, or one whose app was removed, is a
     /// plain directory to that flag and a database to everyone else.
     ///
-    /// An *interactive* scan may still go in: the person chose the folder and
-    /// is watching. This is asked on the unattended path only.
+    /// An *interactive* disk scan may still go in: the person chose the folder and
+    /// is watching, and `DiskScanner` asks this on the unattended path only. The
+    /// duplicate walk asks it on every walk, a search a person started included.
     public static func refusesDescent(into path: String) -> Bool {
         let name = (path as NSString).lastPathComponent
         let ext = (name as NSString).pathExtension.lowercased()

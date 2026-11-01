@@ -39,6 +39,7 @@ label stays in the engine: `trash` partitions through `RemovableScope` before
 two agent folders before it reaches the switch, so a caller of the model cannot go
 round them. On the person's switch the host calls the descriptor's `stop(_:)` after
 `willDisable()` has given the switches back, so a press that late writes nothing nobody gives back.
+«Reset all settings» runs `willDisable()` on every live module too, and its `stop(_:)` waits for `shutdown()` on the way out of the relaunch, so the page takes a press in between.
 
 ## The states of the Leftovers page
 

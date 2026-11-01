@@ -107,7 +107,7 @@ final class DuplicateScanner: @unchecked Sendable {
         return cancelled
     }
 
-    /// Synchronous; run it via the module's `blocking` bridge. Returns nil
+    /// Synchronous; run it via `offTheCooperativePool`. Returns nil
     /// when cancelled — a partial answer to "what is duplicated" is a wrong
     /// answer, not a smaller right one.
     /// - Parameter cache: digests kept from the last search. Nil means read
