@@ -72,21 +72,21 @@ import Module_Layout_Engine
     /// The module's own flag in the menu bar, built when the module starts
     /// running and taken away when it stops.
     ///
-    /// **Not in `makeModule`, which is where it used to be.** `refresh()` builds
-    /// a real `NSStatusItem` the moment it reads the setting as on, so anybody
+    /// **Not in `makeModule`.** `refresh()` builds
+    /// a real `NSStatusItem` the moment it reads the setting as on, so there anybody
     /// who built an engine against a store with the indicator switched on
-    /// decorated the Mac they were running on — including the offscreen render
+    /// would decorate the Mac they are running on — including the offscreen render
     /// harness, whose whole discipline is that a measurement may read this Mac
     /// and may not change it. Writing the key straight into the backing store
     /// dodges `.helmStoreChanged` and does not dodge this: no notification is
     /// involved. Building an engine and appearing in the menu bar are two acts,
     /// and the host is what performs the second one.
     ///
-    /// It also gave the module no way *off* the menu bar. building the module dropped
-    /// the previous indicator and built another, so switching Keyboard off left
-    /// the flag where it was — retained by its own observers, for the life of
-    /// the process — and only switching it on again cleaned up. `detach` is the
-    /// other half the old shape could not have.
+    /// There it would also give the module no way *off* the menu bar: building the module
+    /// drops the previous indicator and builds another, so switching Keyboard off leaves
+    /// the flag where it is — retained by its own observers, for the life of
+    /// the process — and only switching it on again cleans up. `detach` is the
+    /// other half.
     public func attachMenuBarPresence() {
         guard let store else { return }
         detachMenuBarPresence()

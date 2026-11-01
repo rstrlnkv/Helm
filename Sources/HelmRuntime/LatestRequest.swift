@@ -12,9 +12,9 @@ import Foundation
 /// the one scan that tells the truth. What has to be dropped is the older
 /// *answer*.
 ///
-/// Written out by hand in two view models before it was named — the family
-/// CLAUDE.md calls «last writer wins by scheduling», and Autopilot's tampered-rule
-/// verdict is the same shape one target over. Held by value on a `@MainActor`
+/// Written out by hand in two view models before it was named: the last writer
+/// wins by scheduling, and Autopilot's tampered-rule verdict is the same shape
+/// one target over. Held by value on a `@MainActor`
 /// object: the arithmetic is never concurrent, only the awaits between it are.
 ///
 ///     latest = LatestRequest()   // stored on the view model

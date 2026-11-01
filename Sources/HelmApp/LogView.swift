@@ -147,14 +147,14 @@ struct LogView: View {
 
     /// The three levels by id. One declaration, so the header row's segments, the
     /// level menu's items and the filter they set cannot disagree.
-    private static var levelTabs: [(id: String, level: LogLevel, title: String, symbol: String)] {
-        [("all", .info, AppStr.logLevelAll, "list.bullet"),
-         ("warn", .warn, AppStr.logLevelWarnings, "exclamationmark.triangle"),
-         ("error", .error, AppStr.logLevelErrors, "xmark.octagon")]
+    private static var levelTabs: [(id: String, level: LogLevel, title: String)] {
+        [("all", .info, AppStr.logLevelAll),
+         ("warn", .warn, AppStr.logLevelWarnings),
+         ("error", .error, AppStr.logLevelErrors)]
     }
 
     /// The level in force, as one of the three.
-    private var levelInForce: (id: String, level: LogLevel, title: String, symbol: String) {
+    private var levelInForce: (id: String, level: LogLevel, title: String) {
         Self.levelTabs.first { $0.level == minimumLevel } ?? Self.levelTabs[0]
     }
 
@@ -201,7 +201,7 @@ struct LogView: View {
     /// doing is the accessibility value.
     private func levelToolbarContent(_ page: LogPresentation) -> HelmPageToolbarContent {
         HelmPageToolbarContent(
-            tabs: Self.levelTabs.map { HelmToolbarTab(id: $0.id, title: $0.title, symbol: $0.symbol) },
+            tabs: Self.levelTabs.map { HelmToolbarTab(id: $0.id, title: $0.title) },
             selectedTab: Binding(
                 get: { levelInForce.id },
                 set: { id in minimumLevel = Self.levelTabs.first { $0.id == id }?.level ?? .info }),

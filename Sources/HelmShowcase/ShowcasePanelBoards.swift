@@ -63,9 +63,9 @@ struct ToolbarBoard: View {
     var body: some View {
         Board(name: "Header row: tabs, actions, search", caption: """
             The header row from what a page declares through helmWindowToolbar, under both bar looks. Glass is \
-            over an empty ground here: the page's own shot is the proof of the look. A tab's symbol has no \
-            reader, so it is empty. The search field's and the glass buttons' hover and press cannot be forced. In \
-            the disabled rows the tabs and the actions are disabled; the search stays enabled.
+            over an empty ground here: the page's own shot is the proof of the look. The search field's and the \
+            glass buttons' hover and press cannot be forced. In the disabled rows the tabs and the actions are \
+            disabled; the search stays enabled.
             """) {
             VStack(alignment: .leading, spacing: HelmSpace.s4) {
                 bar("flat", look: .flat, content: full())
@@ -96,10 +96,10 @@ struct ToolbarBoard: View {
 
     private func full(enabled: Bool = true, attention: Bool = false, busy: Bool = false) -> HelmPageToolbarContent {
         HelmPageToolbarContent(
-            tabs: [HelmToolbarTab(id: "one", title: Sample.short, symbol: ""),
-                   HelmToolbarTab(id: "two", title: Sample.russianTitle, symbol: "",
+            tabs: [HelmToolbarTab(id: "one", title: Sample.short),
+                   HelmToolbarTab(id: "two", title: Sample.russianTitle,
                                   needsAttention: attention, attentionNote: attention ? Sample.note : nil),
-                   HelmToolbarTab(id: "three", title: Sample.title, symbol: "")],
+                   HelmToolbarTab(id: "three", title: Sample.title)],
             selectedTab: .constant("one"), tabsEnabled: enabled,
             actions: [HelmToolbarAction(id: "refresh", title: Sample.short, symbol: "arrow.clockwise",
                                         isEnabled: enabled, isBusy: busy) {},

@@ -3,16 +3,16 @@ import HelmRuntime
 
 /// What the person believes an extra copy *is*.
 ///
-/// The module used to hold one belief and never say so: the oldest copy is the
-/// original. Measured on a live engine — a file downloaded into `~/Downloads`
-/// and then filed into `~/Pictures` came back with the download as the copy
-/// that stays, so Helm offered to delete the one somebody had deliberately put
-/// away. The rule was not the tiebreak's fault: on APFS two copies never share
+/// «The oldest copy is the original» is a belief, and it is said here. Held in
+/// silence it is wrong: measured on a live engine, a file downloaded into
+/// `~/Downloads` and then filed into `~/Pictures` comes back with the download
+/// as the copy that stays, so Helm offers to delete the one somebody has
+/// deliberately put away. No tiebreak mends it: on APFS two copies never share
 /// a date added (0,29 ms apart on parallel `cp`), so the rungs below the date
-/// were never reached and «the original» meant «whoever got to a folder first».
+/// are never reached and «the original» means «whoever got to a folder first».
 ///
 /// Two beliefs, and no third «as it was»: an order nobody chose is not a policy,
-/// it is the state this repair exists to end.
+/// it is the state this type exists to end.
 ///
 /// **The raw values are stored data.** They reach `com.helm.app.plist` and are
 /// sealed there, so renaming one silently reverts somebody's setting to the

@@ -23,9 +23,8 @@ import HelmUI
 /// an assertion about what a visible string says takes its language from `each` or
 /// `only`. `AppLanguage.current` is read only where the subject is that a call with
 /// no language answers in the app's language, or inside a body that has already set
-/// `override`. Older tests do otherwise — many set `override` by hand, and some
-/// compare an accessor with `L(…, language: AppLanguage.current)` — and moving them
-/// here is welcome, not required.
+/// `override`. Older tests do otherwise, many setting `override` by hand, and moving
+/// them here is welcome, not required.
 public extension AppLanguage {
 
     /// The body, once per language, with `override` set to it.

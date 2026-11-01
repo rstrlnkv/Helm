@@ -198,17 +198,6 @@ extension HomebrewEngine: HomebrewWork {}
             case .health: return HbStr.segHealth
             }
         }
-
-        /// The glyph the toolbar switcher draws for this segment when it is
-        /// set to show glyphs. Updates keeps the module's own «an update
-        /// exists» symbol.
-        var symbol: String {
-            switch self {
-            case .installed: return "shippingbox"
-            case .updates: return "arrow.up.circle"
-            case .health: return "stethoscope"
-            }
-        }
     }
     /// Written by the segmented picker's own binding, which never goes through
     /// `select(_:)` — so this half of the subject carries its own retirement.
@@ -298,7 +287,7 @@ extension HomebrewEngine: HomebrewWork {}
     private var pause: Task<Void, Never>?
 
     /// At most one `brew search` chain out at a time: CLAUDE.md's "never an
-    /// unbounded launch behind a control a person can press repeatedly", and
+    /// unbounded launch behind a control pressable repeatedly", and
     /// typing is such a control. `queuedSearch` holds only the latest word
     /// typed while a chain is out; an older one in between is never asked.
     private var searchOut = false
@@ -1158,7 +1147,7 @@ extension HomebrewEngine: HomebrewWork {}
     /// and here the act it guards is an irreversible deletion.
     /// Nothing is disabled while this query is out — the page's `disabled`
     /// tracks long operations, not queries — so two presses put two queries in
-    /// flight and the last continuation to resume used to win: the answer for a
+    /// flight, and without this the last continuation to resume wins: the answer for a
     /// package pressed and abandoned would raise its own confirmation dialog, or
     /// swap the title and the list under somebody reading them.
     private var uninstallAsks = LatestRequest()

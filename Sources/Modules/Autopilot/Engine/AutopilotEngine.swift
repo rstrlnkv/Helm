@@ -158,8 +158,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// Reading `folders` resolves the key, and both callers arrive on a thread
     /// that must not wait for a keychain prompt: `activate` on the main thread
     /// during launch, the setter on whatever thread the model's `save` ran on.
-    /// Only the `watcher?.watch` used to be dispatched here, which left the
-    /// blocking half on the caller.
+    /// Dispatching only the `watcher?.watch` would leave the blocking half on the caller.
     private func refreshWatch() {
         queue.async { [self] in
             let paths = folders.filter(\.enabled).map(\.path)

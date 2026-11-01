@@ -166,8 +166,8 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// is news and the request in flight was asked about the exit before it —
     /// and `Task.cancel()` does not make the cancelled one silent: the URL load
     /// throws, `regionCode()` answers nil, and the completion still runs. Two
-    /// things went wrong through that seam, and both are the family CLAUDE.md
-    /// calls «the last writer wins by scheduling»: the old run cleared
+    /// things went wrong through that seam, and in both the last writer
+    /// wins by scheduling: the old run cleared
     /// `askingExit` while the new one was out, so the next refresh started a
     /// third request; and a late answer overwrote `lastRegion` with a reading
     /// taken for a route the Mac had left. The counter is what tells the two
@@ -745,11 +745,11 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// The name is redacted in the log, like every other line this module
     /// writes; `_lastFailure` carries it unredacted because the screen is
     /// allowed to name what the person configured, and the log is not.
-    /// The verb is the module's own enum rather than the word each call site
-    /// used to hand this: `VPNFailure` carries it to the screen now, and a
-    /// sentence naming the wrong verb is what this repair was about — a refused
-    /// *stop* told the person the tunnel was down while it was up. One
-    /// declaration, so the log word and the sentence cannot drift apart.
+    /// The verb is the module's own enum rather than a word each call site
+    /// hands in: `VPNFailure` carries it to the screen, and a sentence naming the
+    /// wrong verb tells the person, on a refused *stop*, that the tunnel is down
+    /// while it is up. One declaration, so the log word and the sentence
+    /// cannot drift apart.
     private func report(_ reply: VPNCommandReply, verb: VPNVerb, name: String) {
         switch reply {
         case .accepted:

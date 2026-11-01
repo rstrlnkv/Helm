@@ -310,12 +310,12 @@ public struct SynthesisTyping: TypingPort {
 
     /// **Every event is built before any of them is posted.**
     ///
-    /// This used to post the deletes and only then build the events that type
-    /// the replacement, so the `guard let … else { return false }` inside the
-    /// second loop was reachable with the word already gone —
+    /// Posting the deletes before building the events that type the replacement
+    /// would make the `guard let … else { return false }` inside the
+    /// second loop reachable with the word already gone —
     /// `CGEvent(keyboardEventSource:virtualKey:keyDown:)` is a failable
     /// allocation against a resource this app does not own, and it can answer
-    /// nil on its own. The outcome was: the word deleted, nothing typed in its
+    /// nil on its own. The outcome: the word deleted, nothing typed in its
     /// place, `false` returned, and every caller reading that as «the app
     /// refused, nothing happened». `TypingPort.perform`'s own contract says
     /// «a partial retype is worse than none», and `LayoutEngine.convert` spends

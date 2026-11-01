@@ -126,9 +126,9 @@ struct ScreenshotsSettingsPage: View {
     private var toolbarContent: HelmPageToolbarContent {
         let holds = Self.holdsSystemKeys(model.state.boxes)
         return HelmPageToolbarContent(
-            tabs: [HelmToolbarTab(id: Tab.capturing.rawValue, title: ScStr.tabCapturing, symbol: "camera.viewfinder"),
-                   HelmToolbarTab(id: Tab.editor.rawValue, title: ScStr.tabEditor, symbol: "pencil.tip.crop.circle"),
-                   HelmToolbarTab(id: Tab.system.rawValue, title: ScStr.systemSection, symbol: "command",
+            tabs: [HelmToolbarTab(id: Tab.capturing.rawValue, title: ScStr.tabCapturing),
+                   HelmToolbarTab(id: Tab.editor.rawValue, title: ScStr.tabEditor),
+                   HelmToolbarTab(id: Tab.system.rawValue, title: ScStr.systemSection,
                                   needsAttention: holds, attentionNote: holds ? ScStr.stillOn : nil)],
             selectedTab: Binding(get: { tab.rawValue }, set: { tab = Tab(rawValue: $0) ?? tab }))
     }

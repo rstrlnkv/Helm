@@ -10,8 +10,8 @@ import Module_Leftovers_Engine
 /// calls it: `setDisabled` rescans so the row shows what launchd actually did, and
 /// `trash` rescans after a removal. Two quick toggles are therefore two scans in
 /// flight over the same `items`, and whichever the machine happens to answer last
-/// wins — the family CLAUDE.md names «last writer wins by scheduling», one module
-/// over from Autopilot's tampered-rules verdict.
+/// wins — the last writer by scheduling, one module over from Autopilot's
+/// tampered-rules verdict.
 ///
 /// The fake below is a gate per request rather than one gate, because the state
 /// this is about is *two* requests outstanding at once: a fake that could only

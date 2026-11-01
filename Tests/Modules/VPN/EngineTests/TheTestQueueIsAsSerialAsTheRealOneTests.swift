@@ -31,9 +31,7 @@ import XCTest
 /// with an exit port that answers, same binary, five consecutive processes: the
 /// refresh's state reached the news in two of them and in three it did not.
 /// The failure that produces is «the engine said nothing», which reads as a
-/// defect in the subject rather than in the harness — the shape CLAUDE.md
-/// records for Autopilot's `folders` getter, «7 failures in 70 and never twice
-/// in a row». Commit 4a3d2b81 repaired four tests in this module for a
+/// defect in the subject rather than in the harness. Commit 4a3d2b81 repaired four tests in this module for a
 /// neighbouring reason and this one was still under them.
 ///
 /// **The shipped app is not exposed**: `.background` is serial, so there is only

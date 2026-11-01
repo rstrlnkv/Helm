@@ -57,9 +57,11 @@ public enum HelmSignal {
     /// over it all move the ground toward the ink. Solved by arithmetic on assumed grounds (window
     /// `#FFFFFF` / `#1E1E1E`, the fills of `HelmSurface`) to 4.9:1 on a card under the pointer and
     /// to 7.6:1 on a card at rest under Increase Contrast; a press on a card comes to 4.68 / 4.59.
-    /// Rendered on a bench window, at rest only: 5.69 / 6.00 on a card, 6.05 / 6.51 bare (read once
-    /// by hand, no guard). Under the pointer, and on any other ground, a tinted banner among them,
-    /// 4.5:1 is unproved. Internal: only the style reads it.
+    /// Rendered on a bench, each read once by hand, no guard, light / dark: on a card at rest 5.69 /
+    /// 6.00, bare at rest 6.05 / 6.51. On the tinted banner of Autopilot's tampered state, hover and
+    /// press forced: rest 5.18 / 5.15, hover 4.70 / 4.43, pressed 4.52 / 4.23; under Increase Contrast
+    /// 6.77 / 6.37, 6.06 / 5.33, 5.77 / 5.02. So, without Increase Contrast, dark hover and pressed stand under 4.5:1 there. On
+    /// a card under the pointer, and on any other ground, 4.5:1 is unproved. Internal: only the style reads it.
     static func dangerOnWell(increased: Bool) -> Color { increased ? dangerOnWellIncreased : dangerOnWellOrdinary }
 
     /// Eight stored colours rather than eight built on demand, and the reason is

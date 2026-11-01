@@ -73,8 +73,8 @@ struct DuplicatesSettingsPage: View {
         .animation(HelmMotion.interface, value: dvm.basket.isEmpty)
         // And on the groups themselves, which is the change somebody actually
         // makes here: the other two cover the state around the list, so
-        // emptying the basket animated the bar and dropped the rows it emptied
-        // in one frame. The same line Leftovers already has.
+        // without this, emptying the basket animates the bar and drops the
+        // rows it emptied in one frame.
         .animation(HelmMotion.interface, value: dvm.groups.count)
         // And on `busy`, which brings the removal's own row — progress and
         // Stop — up and down in the bar the way the neighbours above arrive.

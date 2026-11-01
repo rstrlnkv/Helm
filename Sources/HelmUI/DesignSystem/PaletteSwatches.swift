@@ -100,7 +100,7 @@ public struct HelmPaletteSwatches: View {
         .accessibilityValue(currentLabel)
     }
 
-    /// The selection, in both directions. Choosing «Other…» does not itself
+    /// The selection, in both directions. Choosing «Other colour…» does not itself
     /// change the colour — it opens the panel, and the colour changes when one
     /// is picked there. A person who opens it and closes it again has changed
     /// nothing, which is what the same menu does in Calendar.
@@ -120,7 +120,7 @@ public struct HelmPaletteSwatches: View {
     ///
     /// A SwiftUI `ColorPicker` *is* a well — a button that opens this panel —
     /// so presenting one in a popover put a second click and a floating swatch
-    /// between «Other…» and the thing it names. Calendar opens the panel.
+    /// between «Other colour…» and the thing it names. Calendar opens the panel.
     ///
     /// Continuous, so the icon in the menu bar follows the panel while somebody
     /// is dragging around the wheel: this control's whole subject is a colour

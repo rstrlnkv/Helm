@@ -87,8 +87,7 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
     }
 
     /// Waits, in short turns, until either the deadline or a search has
-    /// arrived — a real deadline rather than one exact sleep, for the reason
-    /// CLAUDE.md gives about a timing test on a real clock.
+    /// arrived — a real deadline rather than one exact sleep.
     private func waitForASearch(_ work: Counter, _ mount: MountedRender,
                                 deadlineTurns: Int) async {
         for _ in 0..<deadlineTurns where work.searches.isEmpty { await turn(mount, 2) }

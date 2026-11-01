@@ -32,10 +32,10 @@ optional, and its class decides it: `Tests/optional-tests.txt` names such classe
 line, `Scripts/test.sh` passes each to `--skip` on every run without a `--filter`, and
 `HELM_FULL_SUITE=1` runs the full suite before a release. A name on the list that no test
 class declares fails the run, because a stale name skips nothing and says so nowhere. A
-defect found and not fixed goes to the defect log — the repository's issues, and a
-security defect to the owner's private record, never to a public issue — and not into the
-tree as a skipped test: a skip reads as a pass in a failures-only summary, and a
-reproduction nobody runs goes stale.
+defect found and not fixed goes to the defect log — the owner's private record
+`~/.helm-work/defects-private.md`, never a new public issue, the repository's open issues
+being its older entries — and not into the tree as a skipped test: a skip reads as a pass
+in a failures-only summary, and a reproduction nobody runs goes stale.
 
 ## Removal takes its traces
 

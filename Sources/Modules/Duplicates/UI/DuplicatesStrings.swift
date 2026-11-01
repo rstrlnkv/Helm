@@ -188,8 +188,8 @@ enum DupStr {
         case .byHand: return L(.keptYourChoice, language: language)
         }
     }
-    /// One key used to label two different actions: a group button meaning
-    /// "mark this group's extras" and a row checkbox meaning "mark this copy".
+    /// Two keys, because a group button means "mark this group's extras" and a
+    /// row checkbox means "mark this copy".
     /// One English text means one thing.
     static var markRow: String { L(.markForRemoval) }
     static var markGroupExtras: String { L(.markTheExtraCopies) }

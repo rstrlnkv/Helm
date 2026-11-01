@@ -66,7 +66,7 @@ enum VPNInterfaceCounters {
     /// one it sent (`VPNEngine.emitState`). A raw byte count therefore makes
     /// every re-read news: the poll behind one connect re-reads 26 times, and a
     /// live tunnel has carried another packet by each of them, so 26 payloads go
-    /// out where one used to and every mounted page re-renders for a figure
+    /// out for one connect and every mounted page re-renders for a figure
     /// nobody can see change.
     ///
     /// A kilobyte is the granularity the strip is drawn at: `HelmBytes` writes

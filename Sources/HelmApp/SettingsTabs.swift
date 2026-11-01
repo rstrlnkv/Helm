@@ -15,9 +15,9 @@ import HelmAppStrings
 enum SettingsTabs {
     /// In the order they are drawn; the ids are the ones `binding` understands.
     static var all: [HelmToolbarTab] {
-        [HelmToolbarTab(id: "general", title: AppStr.settingsTabGeneral, symbol: "gearshape"),
-         HelmToolbarTab(id: "log", title: AppStr.logPane, symbol: "text.alignleft"),
-         HelmToolbarTab(id: "about", title: AppStr.aboutHelm, symbol: "info.circle")]
+        [HelmToolbarTab(id: "general", title: AppStr.settingsTabGeneral),
+         HelmToolbarTab(id: "log", title: AppStr.logPane),
+         HelmToolbarTab(id: "about", title: AppStr.aboutHelm)]
     }
 
     /// The tab a selection stands on: Log and About for themselves, and

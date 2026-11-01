@@ -146,7 +146,7 @@ struct HomebrewManager: View {
         // Upgrade All comes and goes.
         .helmWindowToolbar(HelmPageToolbarContent(
             tabs: HomebrewViewModel.Segment.allCases.map {
-                HelmToolbarTab(id: $0.rawValue, title: $0.label, symbol: $0.symbol)
+                HelmToolbarTab(id: $0.rawValue, title: $0.label)
             },
             selectedTab: Binding(
                 get: { hb.segment.rawValue },

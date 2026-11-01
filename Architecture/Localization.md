@@ -87,6 +87,11 @@ and a pane's search terms are the phrases that find it and are never drawn. An E
 with no quotes is cheaper still than a quoted one, since the seven translations then have
 nothing to copy.
 
+A Russian value does not address the reader: no «вы», «ваш» or «вас», the sentence goes
+impersonal, and an imperative stays. «е» is written for «ё», «все» for «всё» included (`PunctuationIsTerminologyTests`);
+nothing holds the rule of address, which is no class kept by ARCHITECTURE.md § What proves what.
+`Changelog.xcstrings` is shipped text and stays as it shipped.
+
 After keys are added the French values are swept in a pass of its own with an explicit
 escape for the unbreakable space, never the literal character: a literal one does not
 survive a shell heredoc into Python, it arrives as an ordinary space and the substitution

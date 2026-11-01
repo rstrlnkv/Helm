@@ -115,8 +115,8 @@ extension DiskEngine: DiskWork {}
     ///
     /// `cancel()` and `newScan()` move this on, which is what fences the call
     /// still suspended inside `scan(path:)`: cancelling is a no-op once the
-    /// engine's walk has finished, so the answer arrives either way and used to
-    /// replace the picker the person had just asked for.
+    /// engine's walk has finished, so the answer arrives either way and, unfenced,
+    /// replaces the picker the person has just asked for.
     private var showingScan = 0
 
     private func nextScanID() -> Int {

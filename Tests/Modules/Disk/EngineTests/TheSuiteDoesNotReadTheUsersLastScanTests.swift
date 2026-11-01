@@ -15,13 +15,13 @@ import Module_Disk_Engine
 /// would otherwise write into somebody's real files". Two places in `Sources/`
 /// name `.applicationSupportDirectory`. One of them asks. This is the other.
 ///
-/// **What it cost, measured 2026-08-11.** Disk's page was given its view
-/// model by `DiskViewModel.shared(vm:)`, which had no store parameter, so
-/// `restoreLastScan()` read that file and — when the saved scan is less than a
-/// day old — drew the person's tree on a page the ratchets measure. The file on
-/// this Mac was 8 MB, decoded on a detached task, and it raced the harness's
-/// settle loop: the page-render harness read Disk at **172 layers at 17:59:50
-/// and 50 layers at 17:59:59**, same commit, same machine, nine seconds apart.
+/// **What it costs, measured 2026-08-11.** Without a store parameter, Disk's
+/// page has `restoreLastScan()` read that file and — when the saved scan is
+/// less than a day old — draw the person's tree on a page the ratchets
+/// measure. The file on this Mac was 8 MB, decoded on a detached task, and it
+/// raced the harness's settle loop: the page-render harness read Disk at
+/// **172 layers at 17:59:50 and 50 layers at 17:59:59**, same commit, same
+/// machine, nine seconds apart.
 /// The distinct off-ladder corner radius `1.25` — a `RoundedRectangle` whose 6 pt
 /// corner is clamped by a bar 2.5 pt wide, so a fact about the *byte
 /// distribution* of somebody's disk — was in the first reading and not the

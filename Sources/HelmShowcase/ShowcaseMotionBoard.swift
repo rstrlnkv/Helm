@@ -12,7 +12,7 @@ private struct MotionSamples: View {
         VStack(alignment: .leading, spacing: HelmSpace.s6) {
             Button(Sample.short) { withAnimation(HelmMotion.disclosure) { open.toggle() }; on.toggle() }
             Text(verbatim: Sample.russianNote).fixedSize(horizontal: false, vertical: true)
-                .helmAccordion(open: open, height: $height).frame(width: 320)
+                .helmAccordion(open: open, height: $height).frame(width: 320, alignment: .leading)
             HStack(spacing: HelmSpace.s6) {
                 Image(systemName: "arrow.clockwise").helmSteadySpin(true)
                 Image(systemName: "arrow.clockwise").helmSteadySpin(false)

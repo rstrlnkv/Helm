@@ -8,7 +8,7 @@ enum HbStr {
 
     static var notInstalledTitle: String { L(.notInstalledTitle) }
     /// What the page says before the press. **It names no number of password
-    /// prompts**: the sentence that used to say «once» was untrue on a Mac
+    /// prompts**: «once» is untrue on a Mac
     /// without Apple's tools, and whether Apple's own installer asks for a
     /// password on the macOS a person runs was not measured. Interpolated with
     /// Apple's own name for the tools (`appleTools`), the one argument of the catalog's sentence.

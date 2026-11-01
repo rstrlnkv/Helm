@@ -139,17 +139,17 @@ struct NoticesBoard: View {
                         HelmPermissionNote(text: Sample.russianNote) {}
                     },
                     ShowcaseRow("empty state's button", states: Self.states) { _ in
-                        HelmEmptyState(title: Sample.title) { Button(Sample.short) {} }.frame(height: 96)
+                        HelmEmptyState(title: Sample.title) { Button(Sample.short) {} }.frame(height: 80)
                     },
                     ShowcaseRow("busy state's button", states: Self.states) { _ in
-                        HelmBusyState(Sample.note) { Button(Sample.cancel) {} }.frame(height: 96)
+                        HelmBusyState(Sample.note) { Button(Sample.cancel) {} }.frame(height: 86)
                     },
                 ], columns: Self.states, cellWidth: 270)
                 HStack(alignment: .top, spacing: HelmSpace.s6) {
                     HelmEmptyState(symbol: "tray", title: Sample.title, message: Sample.note) {
                         Button(Sample.short) {}
                     }
-                    .frame(width: 300, height: 136)
+                    .frame(width: 300, height: 160)
                     HelmEmptyState(title: Sample.russian, message: Sample.russianNote)
                         .frame(width: 300, height: 136)
                     HelmBusyState(Sample.note).frame(width: 200, height: 136)

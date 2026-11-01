@@ -89,9 +89,8 @@ struct UninstallerSettingsPage: View {
     private var toolbarContent: HelmPageToolbarContent {
         HelmPageToolbarContent(
             tabs: [
-                HelmToolbarTab(id: Tab.apps.rawValue, title: UnStr.tabApps, symbol: "square.grid.2x2"),
-                HelmToolbarTab(id: Tab.orphans.rawValue, title: UnStr.tabOrphans,
-                              symbol: "doc.badge.ellipsis"),
+                HelmToolbarTab(id: Tab.apps.rawValue, title: UnStr.tabApps),
+                HelmToolbarTab(id: Tab.orphans.rawValue, title: UnStr.tabOrphans),
             ],
             selectedTab: Binding(get: { tab.rawValue }, set: { tab = Tab(rawValue: $0) ?? tab }),
             tabsEnabled: step != .review,

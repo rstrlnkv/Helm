@@ -182,10 +182,8 @@ struct DiskSettingsPage: View {
 
     @ViewBuilder private var basketRow: some View {
         // **An empty basket draws nothing here, and cannot.** `showsRemovalBar`
-        // is `!basket.isEmpty || banner != nil`, and the branch this
-        // used to hold asked for an empty basket with nothing reported — the one
-        // state in which there is no bar to draw it in. «Nothing selected» went
-        // with it, in eight languages.
+        // is `!basket.isEmpty || banner != nil`, so an empty basket with nothing
+        // reported is the one state with no bar to draw it in.
         if !dvm.basket.isEmpty {
             HStack(spacing: HelmSpace.s5) {
                 // A count is not a list. Everything about to be trashed can be
