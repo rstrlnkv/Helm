@@ -1,13 +1,12 @@
 import HelmRuntime
-import HelmUI
 import XCTest
 @testable import HelmApp
 
-/// **The three footer switches and the tab-label pop-up are settings again, and
-/// nobody's answer was lost on the way back.**
+/// **The three footer switches are settings again, and nobody's answer was lost
+/// on the way back.**
 ///
 /// They were folded into one `showPanelFooter` for one unreleased build, and the
-/// four keys went into `ObsoleteDefaults.retired` — which really deletes. So the
+/// three keys went into `ObsoleteDefaults.retired` — which really deletes. So the
 /// way back has two halves that fail differently: the keys must leave that list,
 /// or the next launch purges what a person has just chosen; and the fold has to
 /// be read before it is retired in its turn, or somebody who hid their footer is
@@ -34,7 +33,7 @@ final class ThreeSwitchesComeBackFromOneTests: XCTestCase {
     /// next launch, which is indistinguishable from never having restored it.
     func testTheRestoredKeysAreNoLongerRetired() {
         for key in ["module.app.showSettingsButton", "module.app.showPanelEditButton",
-                    "module.app.showQuitButton", "module.app.tabLabelStyle"] {
+                    "module.app.showQuitButton"] {
             XCTAssertFalse(ObsoleteDefaults.retired.contains(key), """
                 \(key) is a setting again and is still on the purge list, so the launch \
                 after the one that saves it deletes it.
@@ -121,24 +120,6 @@ final class ThreeSwitchesComeBackFromOneTests: XCTestCase {
         }
         XCTAssertNil(store.raw["module.app.showPanelFooter"],
                      "the fold's key survived the purge that is meant to end it")
-    }
-
-    // MARK: - The pop-up
-
-    /// `tabLabelStyle` was deleted outright rather than folded, so there is
-    /// nothing to migrate from: what it comes back as is its own default, and
-    /// that is the one it shipped with.
-    func testAPurgedTabLabelStyleComesBackAsNames() {
-        let store = migrated(["module.app.showPanelFooter": true])
-        XCTAssertEqual(TabLabelStyle(stored: store.string("tabLabelStyle", default: "")), .text,
-                       "a panel that had never been asked came back drawing something else")
-    }
-
-    /// And a stored answer survives the launch that restores the setting — the
-    /// half that fails if the key is left on the purge list.
-    func testAChosenTabLabelStyleSurvivesTheLaunch() {
-        let store = migrated(["module.app.tabLabelStyle": TabLabelStyle.glyph.rawValue])
-        XCTAssertEqual(TabLabelStyle(stored: store.string("tabLabelStyle", default: "")), .glyph)
     }
 
     // MARK: - Benches

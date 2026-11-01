@@ -37,7 +37,7 @@ struct ShowcaseOptions {
         }
         return """
         usage: HelmShowcase [--board \(names(Board.self))] [--appearance \(names(Appearance.self))]
-                            [--present \(names(Presentation.self))]
+                            [--present \(names(Presentation.self))] [-reduceTransparency 1]
         """
     }
 
@@ -55,6 +55,10 @@ struct ShowcaseOptions {
             case "--board": board = try value(of: flag, as: Board.self); boardGiven = true
             case "--appearance": appearance = try value(of: flag, as: Appearance.self)
             case "--present": presentation = try value(of: flag, as: Presentation.self)
+            // The argument domain has already answered: `HelmAccessibility.system` reads it in this process, with no
+            // Mac setting changed.
+            case "-reduceTransparency":
+                guard rest.popFirst() != nil else { throw Refusal(message: "\(flag) needs a value") }
             default: throw Refusal(message: "unknown argument \(flag)")
             }
         }

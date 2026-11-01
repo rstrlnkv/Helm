@@ -1,13 +1,14 @@
 import AppKit
 import SwiftUI
 
-/// The system's accessibility display settings Helm knows of. Increased Contrast and Reduce
-/// Motion change what Helm draws; nothing reads Reduce Transparency yet — the field is
-/// carried so the readers that come later find it in the same value.
+/// The system's accessibility display settings Helm knows of. Increased Contrast and Reduce Motion change
+/// Helm's tokens. Reduce Transparency changes two inks, the plates behind words on the capture overlay
+/// (`OverlayInk`). No kit token answers it; of the system's materials the window ground and the header
+/// tabs were measured to follow it, the others are assumed.
 ///
 /// **One reader.** `system` is the one place Helm asks the workspace for them;
 /// the static accessors that AppKit code and not-yet-rebuilt pages still use
-/// (`HelmSignal.warning`, `ModuleTint.colour`, `HelmMotion.reduceMotion`) read
+/// (`HelmSignal.warning`, `ModuleTint.colour`, `HelmMotion.reduceMotion`, `OverlayInk`) read
 /// it too, and a kit view reads them through `HelmTraits`.
 ///
 /// Apple's guidance on a colour you define yourself is three variants, not two:
@@ -63,7 +64,6 @@ public struct HelmTraits: Equatable, Sendable {
     public let accessibility: HelmAccessibility
 
     public var increasedContrast: Bool { accessibility.increasedContrast }
-    public var reducedTransparency: Bool { accessibility.reducedTransparency }
     public var reducedMotion: Bool { accessibility.reducedMotion }
 }
 

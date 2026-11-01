@@ -19,14 +19,18 @@ import HelmAppStrings
 /// editing, so entering the mode moved every tab out from under the cursor that
 /// had just pressed one.
 struct PanelTabStrip: View {
+    /// Padding either side of a tab's content.
+    private static let tabInset: CGFloat = 10
+    /// The space between two tabs: a selected capsule's fill is the only edge a tab has, so the gap is what keeps
+    /// two neighbours from reading as one.
+    private static let gap: CGFloat = 2
+    /// A tab's height, and the «+» square's side.
+    private static let tabHeight: CGFloat = 26
+
     let layout: PanelLayout
     /// The tab being looked at, already clamped by the panel.
     let tabIndex: Int
     let editing: Bool
-    /// What the person asked for. What the strip *wears* is `TabStripFit`'s
-    /// answer to it, which is not always the same: `automatic` is a question,
-    /// and glyphs are refused to a strip that has a tab without one.
-    let labels: TabLabelStyle
     /// The namespace the selection travels in. Handed down rather than declared
     /// here so it is the panel's, like the one the tiles travel in.
     let selection: Namespace.ID
@@ -41,30 +45,10 @@ struct PanelTabStrip: View {
     let rename: (_ tab: String, _ current: String) -> Void
     let apply: (PanelLayout) -> Void
 
-    /// Every tab's name and glyph, asked once for the whole strip.
-    ///
-    /// A name is `AppStr.tabTitle`, which is a table lookup, and the fit below
-    /// measures each of them — so both are questions about the *strip* and
-    /// neither belongs inside the loop that draws a tab. `tabButton` used to ask
-    /// for its own title again, which made every name two lookups a pass.
-    private var named: [(title: String, glyph: String?)] {
-        layout.tabs.enumerated().map { (AppStr.tabTitle($1, number: $0 + 1), $1.glyph) }
-    }
-
     var body: some View {
-        // The setting, resolved. Asked for names or for both, that is what is
-        // drawn; asked to work it out, `TabStripFit` measures these names
-        // against the panel's own width. Either way it is the one place that
-        // can answer «glyph», and it refuses to on a strip where a tab has none
-        // — that tab drew an empty padded button.
-        let named = self.named
-        let face = TabStripFit.face(for: labels, tabs: named, editing: editing,
-                                    available: helmPanelWidth - PanelGrid.padding * 2)
-        // `TabStripFit.gap` between capsules: a selected capsule's fill is the only edge a
-        // tab has, so the gap is what keeps two neighbours from reading as one.
-        return HStack(spacing: TabStripFit.gap) {
+        HStack(spacing: Self.gap) {
             ForEach(Array(layout.tabs.enumerated()), id: \.element.id) { index, tab in
-                tabButton(index, tab, named[index].title, face)
+                tabButton(index, tab, AppStr.tabTitle(tab, number: index + 1))
             }
             if editing {
                 Button {
@@ -83,7 +67,7 @@ struct PanelTabStrip: View {
                     Image(systemName: "plus")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(Color.accentColor)
-                        .frame(width: TabStripFit.tabHeight, height: TabStripFit.tabHeight)
+                        .frame(width: Self.tabHeight, height: Self.tabHeight)
                         .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
@@ -108,12 +92,10 @@ struct PanelTabStrip: View {
         }
     }
 
-    private func tabButton(_ index: Int, _ tab: PanelLayout.Tab,
-                           _ title: String, _ face: TabLabelFace) -> some View {
+    private func tabButton(_ index: Int, _ tab: PanelLayout.Tab, _ title: String) -> some View {
         // The title is handed in. The label, the tooltip, the accessibility
         // label and the rename's draft are the same sentence, and it was built
-        // four times — and once more by the fit above, which needs every name to
-        // decide whether any of them is drawn.
+        // four times.
         Button {
             // Only the selection slides, on this transaction. The grid under it
             // cuts and the card's height follows without a curve — the panel
@@ -121,8 +103,8 @@ struct PanelTabStrip: View {
             withAnimation(HelmMotion.interface) { activeTab = index }
         } label: {
             // The tab as the Liquid Glass mockup drew it (direction B): a
-            // capsule `TabStripFit.tabHeight` tall, `TabStripFit.tabInset` either side,
-            // `HelmSpace.s2` between glyph and text, and type that does **not** change weight when
+            // capsule `tabHeight` tall, `tabInset` either side,
+            // `HelmSpace.s2` between the name and the chevron, and type that does **not** change weight when
             // selected.
             //
             // Weight was the first thing tried and it is the one thing a tab
@@ -130,15 +112,9 @@ struct PanelTabStrip: View {
             // moved whenever another was picked. Selection is a fill and a
             // colour.
             HStack(spacing: HelmSpace.s2) {
-                if face.showsGlyph, let glyph = tab.glyph {
-                    Image(systemName: glyph)
-                        .font(.system(size: 13, weight: .medium))
-                }
-                if face.showsText {
-                    Text(title)
-                        .font(HelmText.rowDetail)
-                        .lineLimit(1)
-                }
+                Text(title)
+                    .font(HelmText.rowDetail)
+                    .lineLimit(1)
                 // The way to a tab's own settings, on the tab that is open. The
                 // context menu has the same three items; a chevron is what says
                 // they are there.
@@ -149,8 +125,8 @@ struct PanelTabStrip: View {
                 }
             }
             .foregroundStyle(index == tabIndex ? Color.primary : HelmText.quiet)
-            .padding(.horizontal, TabStripFit.tabInset)
-            .frame(height: TabStripFit.tabHeight)
+            .padding(.horizontal, Self.tabInset)
+            .frame(height: Self.tabHeight)
             .background {
                 if index == tabIndex {
                     // A fill, not a material. The panel is already Liquid
@@ -158,7 +134,7 @@ struct PanelTabStrip: View {
                     // glass with a shadow nothing could see. 12% rather than
                     // `wellFill`'s 5%, which measured 1.23:1 over the panel's
                     // glass and 1.04:1 in light. A capsule, because its radius is half of
-                    // `TabStripFit.tabHeight`, and `HelmRadius.panel` equals that height: the
+                    // `tabHeight`, and `HelmRadius.panel` equals that height: the
                     // selection sits concentric with the card.
                     Capsule()
                         .fill(HelmSurface.panelSelection)
@@ -170,8 +146,7 @@ struct PanelTabStrip: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        // Glyph-only tabs have nowhere to put their name; the pointer is where
-        // it goes.
+        // The pointer says the tab's name; a long one is cut in the strip.
         .help(title)
         .accessibilityLabel(title)
         .contextMenu {
@@ -202,13 +177,6 @@ struct PanelTabStrip: View {
 
 /// The bar above the grid while the panel is being arranged.
 /// The bar says one thing: you are editing, and here is the way out.
-///
-/// It carried the tab-label picker for a while — a full-width segmented
-/// control, the heaviest thing in the panel, for a decision somebody makes once,
-/// inside a mode that is about arranging widgets. It also appeared and vanished
-/// with the number of tabs, so it flickered on state it had nothing to do with,
-/// and it argued with «Готово» for the same row. It lives in Settings → Panel
-/// now, beside the other three switches about how this panel looks.
 struct PanelEditBar: View {
     let done: () -> Void
 

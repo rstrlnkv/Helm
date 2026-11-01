@@ -160,7 +160,7 @@ Two controls may share a name when the page offers one action twice (a toolbar b
 A state that is not on screen at launch is reached by `--press` (above), `--arg`, `--scroll` or
 `--panel`; `--name` only names the file. `--arg <key> <value>` is
 a launch argument after `-HelmOpenPage`, answered from the argument domain, so it overrides
-a default for the run and writes none (`--arg module.app.appearance dark`). `--scroll <fraction>`
+a default for the run and writes none (`--arg module.app.appearance dark`). `--arg reduceTransparency 1` turns Reduce Transparency on for the run: the crew changes no Mac setting, and the system's materials follow it (measured on the window ground and the header tabs). `--scroll <fraction>`
 (0 to 1) writes the page's vertical scroll bar value (`HelmReadout scroll`), because a window
 taller than the screen loses its lower part in a shot and a SwiftUI row offers no
 scroll-to-visible; a page-down action answers -25204 on a SwiftUI scroll area. The value is

@@ -160,13 +160,11 @@ public enum HelmText {
     /// The line under a row's name, and the note under a group: secondary copy
     /// that a reader takes in after the thing it describes.
     public static let rowDetail = Font.subheadline
-    /// `rowDetail` as AppKit sees it, for the two places that measure text
-    /// rather than draw it (`LeftoverPathFloor`, `TabStripFit`).
+    /// `rowDetail` as AppKit sees it, for AppKit code that works at this size.
     ///
     /// A font rather than a number: the two sides have to agree about the *same*
     /// text style — a bare 11 would keep measuring 11 while the drawn line grows
-    /// with the system's setting, and the floor would be under the thing it holds
-    /// up.
+    /// with the system's setting, and `LeftoverPathFloor` would sit under the thing it holds up.
     public static var rowDetailNSFont: NSFont { .preferredFont(forTextStyle: .subheadline) }
     /// The heading over a card, on the page rather than inside it.
     public static let sectionHeading = Font.body.weight(.semibold)

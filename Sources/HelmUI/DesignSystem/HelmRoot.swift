@@ -6,8 +6,7 @@ public extension View {
     /// `NSHostingController` starts a fresh one), so a root that lacks it draws its plain `Button`s and
     /// `Toggle`s in the system's look, not Helm's. The Screenshots capture hosts (the capture overlay's
     /// editor bar and the capture panel) keep their own drawing and do not carry it; the toast does. A root may
-    /// also carry what is its own: the panel and the Settings detail root add `helmTracksModuleIconStyle`, and
-    /// the Settings roots add `RebuiltOnLanguageChange` and `TellsWindowActivity` (`SettingsWindow.swift`).
+    /// also carry what is its own: the Settings roots add `RebuiltOnLanguageChange` and `TellsWindowActivity` (`SettingsWindow.swift`).
     ///
     /// - the accessibility tracker (`helmTracksAccessibilityDisplay()`), which keeps `\.helmTraits` current;
     /// - `HelmButtonStyle` and `HelmToggleStyle`. A style set on the control itself wins over these.

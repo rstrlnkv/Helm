@@ -55,9 +55,8 @@ public extension EnvironmentValues {
 }
 
 public extension View {
-    /// Sets `helmBarAppearance` from `current` and again whenever `.helmBarAppearanceChanged` is posted, the
-    /// way `helmTracksModuleIconStyle` follows the icon style (this one is set only at the settings pane's
-    /// root; the icon style is also set at the menu-bar panel's). No new identity: the page below is not
+    /// Sets `helmBarAppearance` from `current` and again whenever `.helmBarAppearanceChanged` is posted. It is
+    /// set only at the settings pane's root. No new identity: the page below is not
     /// rebuilt for a look it does not draw.
     func helmTracksBarAppearance(_ current: @escaping () -> HelmBarAppearance) -> some View {
         modifier(HelmBarAppearanceTracker(current: current))

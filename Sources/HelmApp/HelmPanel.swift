@@ -46,7 +46,6 @@ struct HelmPanelContent: View {
     @State private var showEditButton = AppSettings.showPanelEditButton
     @State private var showSettingsButton = AppSettings.showSettingsButton
     @State private var showQuitButton = AppSettings.showQuitButton
-    @State private var tabLabels = AppSettings.tabLabelStyle
     @State private var stripHeight: CGFloat = 0
     /// The grid's natural height, so the scroll view never grows past its own
     /// content — otherwise a panel holding two widgets would be as tall as the
@@ -671,10 +670,6 @@ struct HelmPanelContent: View {
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .coordinateSpace(name: Self.stripSpace)
-        // The panel is the surface somebody who chose plain module icons
-        // actually looks at, and until this it drew colour plates whatever they
-        // chose — the setting reached the settings sidebar and nothing else.
-        .helmTracksModuleIconStyle { AppSettings.sidebarStyle }
         .helmRoot()
         // Above everything and clipped by nothing. It used to live inside the
         // scroll view, whose bounds cut the carried tile off at the grid's
@@ -702,7 +697,6 @@ struct HelmPanelContent: View {
             showEditButton = AppSettings.showPanelEditButton
             showSettingsButton = AppSettings.showSettingsButton
             showQuitButton = AppSettings.showQuitButton
-            tabLabels = AppSettings.tabLabelStyle
         }
         // Every opening, not only the first: the view is built once and stays
         // mounted between them, so `onAppear` fires exactly once in a session
@@ -826,7 +820,7 @@ struct HelmPanelContent: View {
             // `PanelGrid.padding` plus `PanelGrid.gap` above its first widget where every other edge has `PanelGrid.padding`.
             if showsTabStrip {
                 PanelTabStrip(layout: layout, tabIndex: tabIndex, editing: editing,
-                              labels: tabLabels, selection: tabSelection,
+                              selection: tabSelection,
                               activeTab: pickedTab, pickingGlyph: $pickingGlyph,
                               rename: { tab, current in
                                   draftName = current

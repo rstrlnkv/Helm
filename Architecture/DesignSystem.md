@@ -23,7 +23,9 @@ colour scheme and the three accessibility settings in one value (`HelmAccessibil
 is the one place that asks the workspace for them). Motion is the exception: `HelmButtonStyle` and
 `HelmPageHeader` take Reduce Motion through `HelmMotion.hover(entering:)`, which reads
 `HelmAccessibility.system` statically, so the showcase cannot force it. A kit view reads it rather than asking
-the workspace itself.
+the workspace itself. Reduce Transparency changes two inks, the plates behind words on the capture overlay
+(`OverlayInk`). No kit token answers it; of the system's materials the window ground and the header tabs
+were measured to follow it, the others are assumed.
 
 ## Surfaces
 
@@ -70,7 +72,7 @@ somebody argues for rather than types. They are named rather than numbered, so a
 whose owner raised the interface text size gets a Helm window that follows. `HelmText.figureFont` is
 the one face for a figure — a byte size, a count, a version. SwiftUI draws the text; `HelmText.rowDetailNSFont` is the same style as
 AppKit sees it, for the places that measure text with it instead; `command grep -rln rowDetailNSFont Sources`
-lists them (`LeftoverPathFloor` and `TabStripFit` among them). `HelmPickerWidth` measures the
+lists them (`LeftoverPathFloor` among them). `HelmPickerWidth` measures the
 system font, not this one. The reasons are on the doc comments of `HelmText` and its members
 (`.headline` is not the heading, `rowDetailNSFont`, `figureFont`).
 
@@ -234,7 +236,7 @@ swift build --product HelmShowcase
 
 `--board` is one of `buttons`, `toggles`, `rows`, `header`, `surfaces`, `palette`, `ladders`, `present`;
 `--appearance` one of `light`, `dark`, `light-contrast`, `dark-contrast` (without it the machine's own);
-`--present sheet|popover|alert|dialog` opens one presentation on the `present` board at launch. An
+`--present sheet|popover|alert|dialog` opens one presentation on the `present` board at launch. `-reduceTransparency 1` is the one argument with one dash: it is the setting itself, answered from the argument domain for this process, and it changes no Mac setting. An
 unknown argument prints the usage and exits 64. It stores nothing: arguments only, no defaults, no autosaved
 frame, and its window is not restored. Its sample text is plain `String`s in `enum Sample`, outside the
 eight tables on purpose.

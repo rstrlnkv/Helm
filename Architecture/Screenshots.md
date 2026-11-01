@@ -33,7 +33,7 @@ and needs no Accessibility. Its rules are functions of the pointer and the modif
 in `Sources/Modules/Screenshots/Engine/Logic/Selection.swift`, and the three
 coordinate spaces a capture passes through — AppKit's, CoreGraphics' and a display's
 own — are converted in `Sources/Modules/Screenshots/Engine/Logic/ScreenSpace.swift`
-and nowhere else. Its translucent and accent inks are `Sources/Modules/Screenshots/UI/OverlayInk.swift`: ink on a picture and not the kit's tokens, with a stronger set under Increase Contrast. The window list in a freeze is a reading: a click asks the system
+and nowhere else. Its translucent and accent inks are `Sources/Modules/Screenshots/UI/OverlayInk.swift`: ink on a picture and not the kit's tokens, with a stronger set under Increase Contrast; `pill` and `plate` go solid under Reduce Transparency. The window list in a freeze is a reading: a click asks the system
 for the window again, and a window that has gone, or that could not be captured, is cut from the frozen frame.
 
 Selecting is drawn as macOS draws it. Nothing is dimmed until there is a selection — from the first point a drag

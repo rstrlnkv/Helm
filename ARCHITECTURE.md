@@ -25,10 +25,10 @@ comment, not on a page.
 
 | What a change touches | Where it lives |
 |---|---|
-| a module's pure logic | `Sources/Modules/<Module>/Engine/Logic/` |
+| a module's pure logic | a `Logic` folder under `Sources/Modules/<Module>/Engine/`, where it has any |
 | its engine, its store | `Sources/Modules/<Module>/Engine/` |
 | its screen, and its descriptor with the module's tint and glyph | `Sources/Modules/<Module>/UI/` |
-| its tests, both halves | `Tests/Modules/<Module>/EngineTests/`, `Tests/Modules/<Module>/UITests/` |
+| a module's kept tests, each directory flagged on its row in `Package.swift` | `Tests/Modules/` |
 | what crosses the engine/host boundary | `Sources/HelmContract/` |
 | plumbing two modules both want | `Sources/HelmRuntime/` |
 | a string or a control two modules both draw | `Sources/HelmUI/` |
@@ -45,7 +45,7 @@ comment, not on a page.
 
 - [Targets](Architecture/Targets.md) — the package's targets, what each one holds and which may see which, as the manifest declares them.
 - [What is deliberately not here](Architecture/WhatIsDeliberatelyNotHere.md) — what Helm omits on purpose — an external dependency, a sandbox and privileged helper, a transport between host and modules, back-deployment — and why.
-- [Module pattern](Architecture/ModulePattern.md) — how a module is built from four directories and what holds its parts apart; § The boundaries, § Ports and logic, § The stream and the store, § Bulk reads, § A value crossing to the main thread.
+- [Module pattern](Architecture/ModulePattern.md) — how a module is built from two source directories and the test directories it keeps, and what holds its parts apart; § The boundaries, § Ports and logic, § The stream and the store, § Bulk reads, § A value crossing to the main thread.
 
 ## UI shell
 

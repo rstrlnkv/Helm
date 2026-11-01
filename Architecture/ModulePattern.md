@@ -1,10 +1,11 @@
 # Module pattern
 
-A module is four directories, expanded from one `Module` entry in
-`Package.swift` (the reasons for all four being required, and for the manifest
-leaving the filesystem unread, are on the doc comment above `struct Module`):
-`Sources/Modules/<Name>/Engine`, `Sources/Modules/<Name>/UI`,
-`Tests/Modules/<Name>/EngineTests`, `Tests/Modules/<Name>/UITests`.
+A module is two source directories, `Sources/Modules/<Name>/Engine` and `Sources/Modules/<Name>/UI`, and a test directory only
+where a kept test lives, `Tests/Modules/<Name>/EngineTests` or `Tests/Modules/<Name>/UITests`, each switched on by its flag on the
+module's `Module` entry in `Package.swift`; the reasons, and why the manifest leaves the filesystem unread, are on the doc comment
+above `struct Module`. A directory with no flag is not compiled and nothing warns, so
+`Tests/HelmAppTests/ListsAgreeWithTheTreeTests.swift` reads the two against each other, and a scanning module needs its UI tests,
+because the same file looks for its stopped-model test there.
 `ls Sources/Modules` gives the modules.
 
 ## The boundaries
@@ -79,6 +80,8 @@ one line per engine; the descriptor forwards the id upward.
 `Tests/HelmAppTests/StoreNamespacesAreModuleIdsTests.swift:28` records the
 registered ids and fails on a rename, since a rename orphans everything anybody
 has configured.
+
+**A module may own windows over the displays.** Screenshots' overlay, toast and pin are panels its UI target builds itself; a window a module needs and the host owns is the other shape, `Architecture/AWindowAModuleNeedsAndTheHostOwns.md`.
 
 ## Ports and logic
 

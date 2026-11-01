@@ -1,14 +1,13 @@
 # The menu-bar panel
 
 The panel is drawn from the kit's tokens (`HelmSpace`, `HelmRadius`, `HelmSurface`, `HelmSignal`,
-`HelmMotion`, `HelmText.onFill`); what is its own is the tab-strip metrics (`TabStripFit.swift`), the edit-mode decoration, its numeric type sizes and small text styles (beside the `HelmText` faces it shares), the drawer rows' vertical inset, and the fixed sizes of its marks and glyph buttons (icon plates, the footer's glyph frame, the empty state's margin). Who draws each part:
+`HelmMotion`, `HelmText.onFill`); what is its own is the tab-strip metrics (`PanelBars.swift`), the edit-mode decoration, its numeric type sizes and small text styles (beside the `HelmText` faces it shares), the drawer rows' vertical inset, and the fixed sizes of its marks and glyph buttons (icon plates, the footer's glyph frame, the empty state's margin). Who draws each part:
 
 - **The status item** — `Sources/HelmApp/StatusItemController.swift`, its mark `MenuBarIcon`
   (`Sources/HelmUI/DesignSystem/MenuBarIcon.swift`).
 - **The window** — `PanelWindow.swift` (`KeyablePanel`, the shadow band, the width).
 - **The glass** — the card in `HelmPanel.swift`, `glassEffect`.
-- **The tabs** — `PanelTabStrip` in `PanelBars.swift`, on the metrics of
-  `Sources/HelmUI/DesignSystem/TabStripFit.swift`, which is their source.
+- **The tabs** — `PanelTabStrip` in `PanelBars.swift`, which holds their metrics.
 - **The grid** — `HelmPanel.swift` places the tiles by the rules of `Sources/HelmUI/PanelGrid.swift`.
 - **The edit chrome** — `EditChrome` in `PanelChrome.swift`: the minus, the size chips and the drawer's
   pencil chip (both `helmPillTrack`), and the padding `EditChrome.overhang` that makes room for them; the

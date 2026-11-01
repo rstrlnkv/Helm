@@ -1,7 +1,7 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
-/// **A module is four targets, and the manifest says so once.**
+/// **A module is two source targets and the test targets it keeps, and the manifest says so once.**
 ///
 /// Every module had its own nine lines repeated nine times — engine, UI, engine
 /// tests, UI tests, and an entry in `HelmApp`'s dependency list — so adding one
@@ -11,11 +11,11 @@ import PackageDescription
 /// existed only as untracked files in one checkout, and SwiftPM refuses the whole
 /// manifest without it — so the suite ran here and on nobody else's machine.
 ///
-/// The shape is deliberately not optional. All four directories are required of
-/// every module, so a missing one is a build failure on every machine on the day
-/// it is missing, rather than a module quietly having no tests. KeepAwake was
-/// exactly that: engine tests and no UI tests, while its UI target held the menu
-/// bar look, a shared view-model cache and the settings accessors.
+/// **A test target exists only where a kept test lives.** A flag true over a missing
+/// directory is a manifest SwiftPM refuses, on every machine, the day it is missing. A
+/// flag false over a directory that holds tests is the quiet way: SwiftPM says nothing
+/// and the directory is not compiled, so `ListsAgreeWithTheTreeTests` reads the two
+/// against each other.
 ///
 /// **The manifest never reads the filesystem.** It would be easy to walk
 /// `Sources/Modules` and believe what is there — and then a missing directory
@@ -25,6 +25,9 @@ struct Module {
     let name: String
     /// Only the UI half has ever carried resources.
     var uiResources: [Resource] = []
+    /// A test target only where a kept test lives; `Tests/Modules/<Name>/EngineTests` and `.../UITests`.
+    var engineTests = false
+    var uiTests = false
 
     var engine: String { "Module_\(name)_Engine" }
     var ui: String { "Module_\(name)_UI" }
@@ -33,20 +36,20 @@ struct Module {
 /// The order is the order `HelmApp` listed them in, which is roughly the order
 /// they were written.
 let modules: [Module] = [
-    Module(name: "KeepAwake"),
-    Module(name: "VPN"),
-    Module(name: "Uninstaller"),
-    Module(name: "Homebrew"),
-    Module(name: "Leftovers"),
-    Module(name: "Disk"),
-    Module(name: "Duplicates"),
-    Module(name: "Autopilot"),
+    Module(name: "KeepAwake", engineTests: true, uiTests: true),
+    Module(name: "VPN", engineTests: true, uiTests: true),
+    Module(name: "Uninstaller", engineTests: true, uiTests: true),
+    Module(name: "Homebrew", engineTests: true, uiTests: true),
+    Module(name: "Leftovers", engineTests: true, uiTests: true),
+    Module(name: "Disk", engineTests: true, uiTests: true),
+    Module(name: "Duplicates", engineTests: true, uiTests: true),
+    Module(name: "Autopilot", engineTests: true, uiTests: true),
     // flag-icons flag artwork, MIT — see NOTICE.md.
-    Module(name: "Layout", uiResources: [.copy("Flags")]),
+    Module(name: "Layout", uiResources: [.copy("Flags")], engineTests: true, uiTests: true),
     // The editor palette's Pen, Marker and Pencil artwork, from a community recreation of Apple's PencilKit picker,
     // modified for Helm — NOTICE.md records the source and the owner's decision; author and licence are placeholders there
     // for the owner.
-    Module(name: "Screenshots", uiResources: [.process("PaletteObjects.xcassets")]),
+    Module(name: "Screenshots", uiResources: [.process("PaletteObjects.xcassets")], engineTests: true, uiTests: true),
 ]
 
 extension Module {
@@ -72,18 +75,10 @@ extension Module {
     /// `HelmTestSupport` is the exception every test target gets, because it is
     /// the harness rather than the subject.
     var testTargets: [Target] {
-        [
-            .testTarget(
-                name: "\(engine)Tests",
-                dependencies: [.byName(name: engine), "HelmTestSupport"],
-                path: "Tests/Modules/\(name)/EngineTests"
-            ),
-            .testTarget(
-                name: "\(ui)Tests",
-                dependencies: [.byName(name: ui), "HelmTestSupport"],
-                path: "Tests/Modules/\(name)/UITests"
-            ),
-        ]
+        (engineTests ? [.testTarget(name: "\(engine)Tests", dependencies: [.byName(name: engine), "HelmTestSupport"],
+                                    path: "Tests/Modules/\(name)/EngineTests")] : [])
+            + (uiTests ? [.testTarget(name: "\(ui)Tests", dependencies: [.byName(name: ui), "HelmTestSupport"],
+                                      path: "Tests/Modules/\(name)/UITests")] : [])
     }
 }
 

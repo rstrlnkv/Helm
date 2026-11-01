@@ -31,17 +31,6 @@ extension Notification.Name {
         }
     }
 
-    /// Whether a module's icon is drawn on its own colour or as a plain glyph
-    /// (read by `HelmIconPlate`; the settings pane's root and the menu-bar panel's set it for it). Defaulted through `SidebarStyle(stored:)` rather than a literal
-    /// here, so the fallback for an unknown value is written once.
-    static var sidebarStyle: SidebarStyle {
-        get { SidebarStyle(stored: store.string(SidebarStyle.storageKey, default: "")) }
-        set {
-            store.set(newValue.rawValue, for: SidebarStyle.storageKey)
-            NotificationCenter.default.post(name: .helmSidebarStyleChanged, object: nil)
-        }
-    }
-
     /// The stored look of the window's bar (`HelmBarAppearance`): flat unless Liquid Glass is stored. 
     /// Nothing unattended reads it, so it is not sealed; the two functions
     /// take the store the property hands them.
@@ -301,18 +290,6 @@ extension Notification.Name {
         NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
     }
 
-    /// How the panel's tabs are labelled. App-wide rather than per tab: it is a
-    /// question about the strip, and a strip where one tab shows a word and the
-    /// next shows a symbol is not a strip. `TabStripFit` turns the answer into
-    /// what a tab actually wears, which is not always the same thing.
-    static var tabLabelStyle: TabLabelStyle {
-        get { TabLabelStyle(stored: store.string("tabLabelStyle", default: "")) }
-        set {
-            store.set(newValue.rawValue, for: "tabLabelStyle")
-            NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
-        }
-    }
-
     /// Reads what the retired keys still have to say, then lets them go.
     ///
     /// **One function because the order is the whole of it.** The unfold reads
@@ -343,9 +320,8 @@ extension Notification.Name {
     /// `default: "small"` here while `MenuBarIconSize(stored:)` fell back to
     /// `.extraSmall`: 15 pt and «L» against 13 pt and «M», two defaults for one
     /// setting. Nobody saw it, because the only reader always passed a non-empty
-    /// string — and the next person to follow `sidebarStyle`'s pattern, which is
-    /// written one property above, would have moved everybody from L to M
-    /// without touching a number. The answer is `MenuBarIconSize`'s, once.
+    /// string — and the next person to drop that literal for the type's own fallback would have
+    /// moved everybody from L to M without touching a number. The answer is `MenuBarIconSize`'s, once.
     static var menuBarIconSize: MenuBarIconSize {
         get { MenuBarIconSize(stored: store.string("menuBarIconSize", default: "")) }
         set {

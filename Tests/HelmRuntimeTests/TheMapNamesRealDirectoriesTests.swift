@@ -13,8 +13,8 @@ import XCTest
 /// next reader being sent to it.
 ///
 /// **`<Module>` is expanded, not skipped.** A row naming a per-module
-/// directory is a claim about *every* module, and the manifest already requires
-/// all four of them; checking one module would pass while nine were wrong.
+/// directory is a claim about *every* module; checking one module would pass
+/// while nine were wrong.
 final class TheMapNamesRealDirectoriesTests: XCTestCase {
 
     private static let heading = "Where things are"

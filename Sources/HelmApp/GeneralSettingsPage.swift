@@ -25,8 +25,6 @@ struct MenuBarSettingsView: View {
     @State private var launchAtLogin: LoginItemState = LoginItem.current()
     @State private var appearance: AppAppearance = AppSettings.appearance
     @State private var language: String? = AppSettings.language?.rawValue
-    @State private var sidebarStyle: SidebarStyle = AppSettings.sidebarStyle
-    @State private var tabLabels = AppSettings.tabLabelStyle
     @State private var showPanelEditButton = AppSettings.showPanelEditButton
     @State private var showSettingsButton = AppSettings.showSettingsButton
     @State private var showQuitButton = AppSettings.showQuitButton
@@ -287,28 +285,13 @@ struct MenuBarSettingsView: View {
                 }
             }
 
-            // Everything that decides how Helm looks, in one list. It was
-            // three: the theme and the module icons under «General», the
-            // menu-bar glyph under «Menu Bar» — so choosing how the app looks
-            // meant visiting two headings and knowing which held what.
+            // Everything that decides how Helm looks, in one list.
             HelmSettingsSection(AppStr.appearance) {
                 // Three pictures, the way System Settings asks the same
                 // question. It was a pop-up of three accurate words that are
                 // not what anybody is choosing between.
                 AppearancePicker(selection: $appearance, title: AppStr.lightOrDark)
                     .onChange(of: appearance) { _, choice in AppSettings.appearance = choice }
-                // Worth offering only because the tint is the module's own: a
-                // choice between four modules in one blue and grey is not one.
-                HelmSettingRow(AppStr.moduleIcons) {
-                    Picker(AppStr.moduleIcons, selection: $sidebarStyle) {
-                        Text(AppStr.moduleIconsColour).tag(SidebarStyle.colour)
-                        Text(AppStr.moduleIconsPlain).tag(SidebarStyle.plain)
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .fixedSize()
-                    .onChange(of: sidebarStyle) { _, choice in AppSettings.sidebarStyle = choice }
-                }
                 BarAppearanceRow()
                 // The picker carries its own title for VoiceOver, hidden here
                 // because the row beside it says it: a labelled control inside
@@ -334,8 +317,7 @@ struct MenuBarSettingsView: View {
             }
 
             // The panel keeps its own arrangement, so what is decided here is
-            // how it is dressed: which of the three ways out are on it, and how
-            // its tabs are labelled.
+            // how it is dressed: which of the three ways out are on it.
             HelmSettingsSection(AppStr.panel) {
                 Toggle(AppStr.showSettingsButton, isOn: $showSettingsButton)
                     .onChange(of: showSettingsButton) { _, v in
@@ -354,20 +336,6 @@ struct MenuBarSettingsView: View {
                 // of doors — and this sentence is one of exactly two places the
                 // app says the menu exists.
                 HelmSettingsNote(AppStr.panelFooterNote)
-                // Here rather than in the panel's own edit mode: it is how the
-                // panel *looks*, decided once, and that mode is about which
-                // widgets are on it.
-                HelmSettingRow(AppStr.tabLabels) {
-                    Picker(AppStr.tabLabels, selection: $tabLabels) {
-                        ForEach(TabLabelStyle.allCases, id: \.self) { style in
-                            Text(AppStr.tabLabelStyle(style)).tag(style)
-                        }
-                    }
-                    .labelsHidden()
-                    .fixedSize()
-                    .helmSectionMenu()
-                    .onChange(of: tabLabels) { _, chosen in AppSettings.tabLabelStyle = chosen }
-                }
             }
 
             // Only when there is one. `neededPermissions` filters to what the

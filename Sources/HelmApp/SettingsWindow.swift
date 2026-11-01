@@ -361,10 +361,6 @@ enum SettingsSelection: Hashable {
                 }
                 .environment(\.helmHeaderInCard, true)
                 .modifier(RebuiltOnLanguageChange(model: model))
-                // The pane, not the sidebar (its rows draw one look): a module
-                // page's header plate and its empty state are module icons, and
-                // «Module icons» is what the switch says.
-                .helmTracksModuleIconStyle { AppSettings.sidebarStyle }
                 .helmRoot()
                 // Same reason as the sidebar's, and this pane is the expensive
                 // one: it holds whichever module page was open, and LogView's

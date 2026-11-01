@@ -517,14 +517,11 @@ public enum AppStr {
         }
     }
 
-    public static var moduleIcons: String { L(.moduleIcons) }
-    public static var moduleIconsColour: String { L(.moduleIconsColour) }
-    public static var moduleIconsPlain: String { L(.moduleIconsPlain) }
     /// The two menu-bar rows, and they say **menu bar** because nothing else in
-    /// their section does. They sat under «Appearance» beside the theme and the
-    /// module icons as «Icon shape» and «Icon size», with no word anywhere on the
-    /// page saying which icon — and the app's own term for it is one Keep Awake
-    /// already uses as a heading over the same picker. `IconShapePicker`'s own
+    /// their section does. They sat under «Appearance» beside the theme as
+    /// «Icon shape» and «Icon size», with no word anywhere on the page saying
+    /// which icon — and the app's own term for it is one Keep Awake already uses
+    /// as a heading over the same picker. `IconShapePicker`'s own
     /// default title stays as it is: it is titled by that heading there.
     public static var menuBarIconShape: String { L(.menuBarIconShape) }
     public static var menuBarIconSize: String { L(.menuBarIconSize) }
@@ -560,29 +557,7 @@ public enum AppStr {
     public static var widgetSize: String { L(.widgetSize) }
     public static var addWidget: String { L(.addWidget) }
     public static var chooseUtilities: String { L(.chooseUtilities) }
-    public static var tabLabels: String { L(.tabLabels) }
     public static var tabIcon: String { L(.tabIcon) }
-    /// The pop-up's four answers.
-    ///
-    /// **Names and icons, not «Text» and «Glyph».** Glyph is the word this
-    /// codebase uses among itself; the app's own word for the thing on a tab is
-    /// the one `tabIcon` above already says, and the Russian was «Глиф» — a
-    /// transliteration of jargon in a settings pop-up. What is being chosen
-    /// between is a tab's name and a tab's icon, and those are the words.
-    ///
-    /// **«only», so the bare word stays free.** One English text means one
-    /// thing: a bare «Names» is a label any other page may need for a second
-    /// meaning, and the two would share one translation. `OneEntryPerKeyTests`
-    /// is the guard that was missing: a reader resolves a repeated key
-    /// silently.
-    public static func tabLabelStyle(_ style: TabLabelStyle) -> String {
-        switch style {
-        case .automatic: L(.tabLabelStyleAutomatic)
-        case .text: L(.tabLabelStyleNamesOnly)
-        case .glyphAndText: L(.tabLabelStyleNamesAndIcons)
-        case .glyph: L(.tabLabelStyleIconsOnly)
-        }
-    }
     public static var newTab: String { L(.newTab) }
     public static var closeTab: String { L(.closeTab) }
     public static var tabLabel: String { L(.tabLabel) }
