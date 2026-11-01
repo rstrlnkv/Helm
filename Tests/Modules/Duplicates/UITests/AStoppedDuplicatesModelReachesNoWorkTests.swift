@@ -1,4 +1,6 @@
+import HelmContract
 import HelmRuntime
+import HelmUI
 import HelmTestSupport
 import XCTest
 import Module_Duplicates_Engine
@@ -28,6 +30,20 @@ final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
     private func count(_ call: Call, in work: AnsweringWork) -> Int {
         work.calls.filter { $0 == call }.count
     }
+
+    /// The descriptor's pass-on, which the model's own `backgroundScan` does not
+    /// prove: a descriptor without the override falls to the protocol default,
+    /// which answers nil, and the coordinator then logs «no answer» every tick.
+    func testTheDescriptorPassesTheScanOn() async {
+        let work = AnsweringWork(groups: [])
+        let parts = ModuleParts(engine: NoEngine(), model: DuplicatesViewModel(work: work, store: duplicatesStore(folder: "\(home)/Downloads"),
+                                                                               settings: SettingGuard(keys: SealKeyCache(SealKeyProbe()))))
+        let report = await DuplicatesDescriptor().backgroundScan(parts)
+        XCTAssertNotNil(report, "the descriptor fell to the default: «no answer» every tick")
+        XCTAssertEqual(count(.backgroundScan, in: work), 1)
+    }
+
+    private final class NoEngine: ModuleEngine { func activate() {}; func deactivate() {} }
 
     func testAPressAfterStopReachesNoWork() async {
         let work = AnsweringWork(groups: [group])

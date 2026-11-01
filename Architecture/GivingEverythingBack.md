@@ -25,11 +25,12 @@ The launchd give-back has an edge that cannot be closed from here: a label the
 person disabled themselves *after* Helm disabled it is indistinguishable from
 Helm's own, so it is switched back on too.
 
-Two keychain keys stay: `com.helm.app` / `settings-seal`
-(`Sources/HelmRuntime/SettingsSealKey.swift`) and `com.helm.autopilot` / `rule-seal`.
+Keychain items stay: the two seal keys `com.helm.app` / `settings-seal`
+(`Sources/HelmRuntime/SettingsSealKey.swift`) and `com.helm.autopilot` / `rule-seal` (Helm Dev: `dev-rule-seal`),
+and the counter `com.helm.autopilot` / `rule-seq` (Helm Dev: `dev-rule-seq`).
 `KeychainSealKey` can read and create and not delete, and a delete on an ad-hoc-signed
 bundle costs a modal dialog for each. By the time the reset reaches them the preferences
-domain is gone, so what they sealed no longer exists: what remains is 32 bytes the next
+domain is gone, so what they sealed no longer exists: what remains of a key is 32 bytes the next
 launch reads as its own.
 
 The steps are `ResetPlan.Step` — `handBackWhatIsOutsideHelm`, `giveBackTheLoginItem`,

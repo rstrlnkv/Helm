@@ -83,7 +83,7 @@ The page id is the module id, `autopilot`, and a state is shot with its file `au
       --arg module.app.interfaceLanguage <en|ru|de> \
       --name <state>-<light|dark>[-<ru|de>] --out <dir>
 
-No state is shot from Helm Dev with a saved rule: a rule saved there writes the same keychain items (`com.helm.autopilot`, account `rule-seq`, `RuleKeychain.swift`) as the person's installed Helm and would roll back their rules. The states with folders, a report and a history are shot on a bench over a fake `AutopilotWork`, a harness of the crew outside the tree that scripts `empty`, `folders`, `report` and `history` only; Helm Dev shows only the states that need no rule. The sealed-rules refusals are held by `ARefusedRuleSetIsNotAnEmptyPageTests` and, for the history, `AHistoryNotHelmsPutsNothingBackTests`.
+No state is shot from Helm Dev with a saved rule: Helm Dev keeps its own accounts (`dev-rule-seal`, `dev-rule-seq` under `com.helm.autopilot`, chosen by the bundle identifier in `RuleKeychain.swift`), so a rule saved there no longer raises the person's installed Helm's `rule-seq`; nothing here has proved that on a running Helm Dev, and no rule is saved in it. The states with folders, a report and a history are shot on a bench over a fake `AutopilotWork`, a harness of the crew outside the tree that scripts `empty`, `folders`, `report` and `history` only; Helm Dev shows only the states that need no rule. The sealed-rules refusals are held by `ARefusedRuleSetIsNotAnEmptyPageTests` and, for the history, `AHistoryNotHelmsPutsNothingBackTests`.
 
 | state | the page shows | reached by |
 |---|---|---|

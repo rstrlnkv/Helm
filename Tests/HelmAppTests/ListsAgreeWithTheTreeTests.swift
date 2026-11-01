@@ -1,5 +1,6 @@
 import HelmContract
 import HelmRuntime
+import HelmTestSupport
 import HelmUI
 import XCTest
 @testable import HelmApp
@@ -57,7 +58,9 @@ final class ListsAgreeWithTheTreeTests: XCTestCase {
     /// **This holds the engine's half of a silent, expensive failure.** A module
     /// in the list whose descriptor does not override the scan falls to the
     /// default, which answers `nil`; the caller reads `nil` and logs "no answer".
-    /// That the descriptor passes the call on is held by no test.
+    /// That the descriptor passes the call on is held by `testTheDescriptorPassesTheScanOn`
+    /// in each scanner's stopped-model class; `testEveryScannableModuleHasAPassOnTest`
+    /// holds that the test is there.
     /// The coordinator then wakes every minute, spends a day's budget per tick,
     /// and nothing anywhere says the module never had a scan to run.
     @MainActor func testEveryScannableModuleHasAnEngineThatCanScan() {
@@ -78,6 +81,19 @@ final class ListsAgreeWithTheTreeTests: XCTestCase {
             XCTAssertTrue(scannable.contains(id),
                           "\(type(of: engine)) can scan in the background and `\(id)` "
                           + "is not in ScanRunner.scannableModules")
+        }
+    }
+
+    /// Each scanning module's descriptor passes the scan on, and a test says so.
+    /// The test reads the list: a scanner whose stopped-model class has no
+    /// such test fails here, not in silence.
+    func testEveryScannableModuleHasAPassOnTest() throws {
+        for id in ScanRunner.scannableModules {
+            let name = id.prefix(1).uppercased() + id.dropFirst()
+            let source = try RepoSource.text(
+                of: "Tests/Modules/\(name)/UITests/AStopped\(name)ModelReachesNoWorkTests.swift")
+            XCTAssertTrue(source.contains("\(name)Descriptor().backgroundScan"),
+                          "`\(id)` is scannable and no test calls its descriptor's backgroundScan")
         }
     }
 

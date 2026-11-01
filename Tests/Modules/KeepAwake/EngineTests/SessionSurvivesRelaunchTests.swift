@@ -248,6 +248,114 @@ final class SessionSurvivesRelaunchTests: XCTestCase {
         XCTAssertFalse(assertions.held)
     }
 
+    // MARK: - A deadline that is not a date
+
+    /// The session is on and the stored deadline is something Helm never writes.
+    /// Read as "no deadline" it came back as an indefinite session: the Mac held
+    /// awake for as long as nobody noticed, on the strength of a number nobody
+    /// wrote. Nothing is held and the engine is off; the record is wiped so a
+    /// second launch ends in the same state.
+    private func assertRefusedWhenDeadlineIs(_ junk: Any, _ what: String,
+                                             file: StaticString = #filePath, line: UInt = #line) {
+        store.set(true, for: KeepAwakeEngine.SessionKey.on)
+        store.set(clock.current.timeIntervalSinceReferenceDate,
+                  for: KeepAwakeEngine.SessionKey.startedAt)
+        store.set(junk, for: KeepAwakeEngine.SessionKey.endsAt)
+
+        let assertions = FakeAssertions()
+        let after = engine(assertions: assertions)
+        after.activate()
+
+        XCTAssertFalse(after.isActive, "a deadline of \(what) restored a session", file: file, line: line)
+        XCTAssertFalse(assertions.held, "a deadline of \(what) holds the Mac awake", file: file, line: line)
+        XCTAssertNil(after.endDate, file: file, line: line)
+
+        // The refusal outlives the launch: the next one finds nothing.
+        let third = engine(assertions: FakeAssertions())
+        third.activate()
+        XCTAssertFalse(third.isActive, "a deadline of \(what) came back on the second launch",
+                       file: file, line: line)
+    }
+
+    func testAStoredDeadlineOfNaNIsNotAnIndefiniteSession() {
+        assertRefusedWhenDeadlineIs(Double.nan, "NaN")
+    }
+
+    func testANegativeStoredDeadlineIsNotAnIndefiniteSession() {
+        assertRefusedWhenDeadlineIs(-1.0, "-1")
+    }
+
+    func testAStoredDeadlineOfMinusInfinityIsNotAnIndefiniteSession() {
+        assertRefusedWhenDeadlineIs(-Double.infinity, "-inf")
+    }
+
+    func testAStoredDeadlineOfAnotherTypeIsNotAnIndefiniteSession() {
+        assertRefusedWhenDeadlineIs("soon", "a string")
+    }
+
+    func testAStoredDeadlineOfPlusInfinityIsNotAnIndefiniteSession() {
+        assertRefusedWhenDeadlineIs(Double.infinity, "+inf")
+    }
+
+    /// The refusal wipes the record rather than merely refusing it again: the
+    /// second launch above would end the same way on an untouched record, so
+    /// only the store itself can tell the two apart.
+    func testARefusedRecordIsWipedFromTheStore() {
+        store.set(true, for: KeepAwakeEngine.SessionKey.on)
+        store.set(clock.current.timeIntervalSinceReferenceDate, for: KeepAwakeEngine.SessionKey.startedAt)
+        store.set(Double.nan, for: KeepAwakeEngine.SessionKey.endsAt)
+
+        engine().activate()
+
+        XCTAssertFalse(store.bool(KeepAwakeEngine.SessionKey.on, default: true))
+        XCTAssertEqual(store.object(KeepAwakeEngine.SessionKey.endsAt) as? Double, 0)
+        XCTAssertEqual(store.object(KeepAwakeEngine.SessionKey.startedAt) as? Double, 0)
+    }
+
+    /// A start nobody writes beside a deadline that is fine: the pair is refused.
+    func testAJunkStartBesideAGoodDeadlineIsNotASession() {
+        for junk in [Double.nan, -5.0, Double.infinity, "yesterday"] as [Any] {
+            store.set(true, for: KeepAwakeEngine.SessionKey.on)
+            store.set(junk, for: KeepAwakeEngine.SessionKey.startedAt)
+            store.set(clock.current.timeIntervalSinceReferenceDate + 600, for: KeepAwakeEngine.SessionKey.endsAt)
+            let assertions = FakeAssertions()
+            let after = engine(assertions: assertions)
+            after.activate()
+            XCTAssertFalse(after.isActive, "a start of \(junk) restored a session")
+            XCTAssertFalse(assertions.held, "a start of \(junk) holds the Mac awake")
+            XCTAssertFalse(store.bool(KeepAwakeEngine.SessionKey.on, default: true), "\(junk) left the record")
+        }
+    }
+
+    /// The controls: what `rememberSession` writes for an indefinite session —
+    /// exactly zero, or no key at all, in both fields — stays indefinite, or the
+    /// refusal went too far.
+    func testAZeroDeadlineWithNoStartIsStillAnIndefiniteSession() {
+        store.set(true, for: KeepAwakeEngine.SessionKey.on)
+        store.set(0.0, for: KeepAwakeEngine.SessionKey.startedAt)
+        store.set(0.0, for: KeepAwakeEngine.SessionKey.endsAt)
+
+        let assertions = FakeAssertions()
+        let after = engine(assertions: assertions)
+        after.activate()
+
+        XCTAssertTrue(after.isActive)
+        XCTAssertTrue(assertions.held)
+        XCTAssertNil(after.endDate)
+    }
+
+    func testNoStoredDatesAtAllIsStillAnIndefiniteSession() {
+        store.set(true, for: KeepAwakeEngine.SessionKey.on)
+
+        let assertions = FakeAssertions()
+        let after = engine(assertions: assertions)
+        after.activate()
+
+        XCTAssertTrue(after.isActive)
+        XCTAssertTrue(assertions.held)
+        XCTAssertNil(after.endDate)
+    }
+
     /// The control: none of the above may be satisfied by an engine that simply
     /// never activates a session.
     func testTheHarnessCanHoldASessionAtAll() {

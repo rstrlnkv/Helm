@@ -16,7 +16,7 @@ import Foundation
 /// and this type takes paths that have already passed it.
 ///
 /// Every batch removal in the app comes through here — `grep -rn
-/// 'HelmTrash.remove' Sources` says which, and a number written down in this
+/// 'HelmTrash.remove(' Sources` says which, and a number written down in this
 /// paragraph would not. Some pass `trashing`: the move itself, which the
 /// uninstaller takes as a port so its tests can run without a filesystem. The seam was declined once, on the grounds that it
 /// changed this for every caller to serve one; what the copy it left in place
@@ -25,9 +25,10 @@ import Foundation
 /// link's bytes counted once per name, and a batch whose order decided its own
 /// answer.
 ///
-/// `RuleRunner` is the one path still outside, and it is a different shape: one
-/// file at a time inside a rule it has already decided, with no batch for any of
-/// the rules here to be about.
+/// `removeOne` is the other entry: one file at a time inside a rule the caller
+/// has already decided, with no batch for the rules above to be about. It
+/// answers with where the file landed, and shares the batch's classification of
+/// a refusal; its recheck is the stricter one, see `removeOne`.
 public enum HelmTrash {
 
     /// What happened to one path.
@@ -57,7 +58,56 @@ public enum HelmTrash {
 
     /// The move as macOS makes it: what an engine passes as `trashing` in the app, and what a test replaces.
     public static let moveToTrash: @Sendable (URL) throws -> Void = {
-        try FileManager.default.trashItem(at: $0, resultingItemURL: nil)
+        _ = try moveToTrashSayingWhere($0)
+    }
+
+    /// The same move, answering where the Trash put the file. The Trash renames
+    /// what it takes when the name is occupied, so the path the file had is not a
+    /// path anything is at. Nil when macOS took it and would not say.
+    public static let moveToTrashSayingWhere: @Sendable (URL) throws -> URL? = {
+        var landed: NSURL?
+        try FileManager.default.trashItem(at: $0, resultingItemURL: &landed)
+        return landed as URL?
+    }
+
+    /// One file's answer: a sum, so a path cannot be neither or both.
+    public enum OneFile: Equatable, Sendable {
+        /// In the Trash. Nil when macOS took it and would not say where.
+        case trashed(at: URL?)
+        /// Still where it stood. `said` is the system's sentence; nil when Helm
+        /// itself stopped and nothing was attempted.
+        case refused(Refusal, said: String?)
+    }
+
+    /// `path` has passed the caller's gate; `approved` is what its parents resolved
+    /// to when it did. Compared strictly: unlike a batch, no earlier turn can have
+    /// taken the parent, so a parent gone is a change.
+    ///
+    /// No phase, no memory line and no log of its own: a sweep trashes file by
+    /// file, so a reading per file would flood the trail, and the caller records
+    /// each outcome. No ledger either, nobody reads bytes here.
+    public static func removeOne(_ path: String,
+                                 approved: PathCanonical.AncestryIdentity?,
+                                 ancestry: (String) -> PathCanonical.AncestryIdentity?,
+                                 trashing: (URL) throws -> URL?) -> OneFile {
+        // Built before the recheck, which is the last thing before the move.
+        let url = URL(fileURLWithPath: path)
+        guard ancestry(path) == approved else {
+            return .refused(Refusal(path: path, reason: .changedSinceScan), said: nil)
+        }
+        do {
+            return .trashed(at: try trashing(url))
+        } catch {
+            return .refused(refusal(of: error, path: path, hasSystemExtension: false),
+                            said: HelmFailure.describe(error))
+        }
+    }
+
+    /// What macOS's answer means for `path`; the one classification both entries use.
+    private static func refusal(of error: Error, path: String, hasSystemExtension: Bool) -> Refusal {
+        Refusal(path: path, reason: TrashFailure.reason(path: path,
+                                                        errorCode: (error as NSError).code,
+                                                        hasSystemExtension: hasSystemExtension))
     }
 
     /// Trash `allowed`, and record `outOfScope` for everything the caller's own
@@ -227,10 +277,10 @@ public enum HelmTrash {
                     // told so.
                     removed.append(path)
                 } catch {
-                    let reason = TrashFailure.reason(path: path,
-                                                     errorCode: (error as NSError).code,
-                                                     hasSystemExtension: hasSystemExtension(path))
-                    refused.append(Refusal(path: path, reason: reason))
+                    let refusal = refusal(of: error, path: path,
+                                          hasSystemExtension: hasSystemExtension(path))
+                    let reason = refusal.reason
+                    refused.append(refusal)
                     // Composed here rather than through `HelmLog.failure`, which is the
                     // same line at the same level, because **the system's half of it
                     // names the file too**: `trashItem` refusing answers «The file

@@ -1,5 +1,7 @@
 import Foundation
 import HelmRuntime
+import HelmUI
+import HelmContract
 import XCTest
 import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
@@ -41,6 +43,19 @@ final class AStoppedUninstallerModelReachesNoWorkTests: XCTestCase {
         let report = await model.backgroundScan()
         return (orphans, trash, leftovers, report)
     }
+
+    /// The descriptor's pass-on, which the model's own `backgroundScan` does not
+    /// prove: a descriptor without the override falls to the protocol default,
+    /// which answers nil, and the coordinator then logs «no answer» every tick.
+    func testTheDescriptorPassesTheScanOn() async {
+        let work = StoppedWork(apps: [app])
+        let parts = ModuleParts(engine: NoEngine(), model: model(work))
+        let report = await UninstallerDescriptor().backgroundScan(parts)
+        XCTAssertNotNil(report, "the descriptor fell to the default: «no answer» every tick")
+        XCTAssertEqual(work.count("backgroundScan"), 1)
+    }
+
+    private final class NoEngine: ModuleEngine { func activate() {}; func deactivate() {} }
 
     func testAPressAfterStopReachesNoWork() async {
         let work = StoppedWork(apps: [app])

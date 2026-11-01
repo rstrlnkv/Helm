@@ -58,13 +58,18 @@ struct RuleRunner: Sendable {
     /// the first reading from the real filesystem and swaps the disk underneath
     /// the second.
     private let ancestry: @Sendable (String) -> PathCanonical.AncestryIdentity?
+    /// The move to the Trash, answering where the file landed. A seam so a test
+    /// moves into a scratch folder and the person's own Trash is never touched.
+    private let trashing: @Sendable (URL) throws -> URL?
 
     init(home: String = NSHomeDirectory(),
          ancestry: @escaping @Sendable (String) -> PathCanonical.AncestryIdentity? = {
              PathCanonical.ancestryIdentity(of: $0)
-         }) {
+         },
+         trashing: @escaping @Sendable (URL) throws -> URL? = HelmTrash.moveToTrashSayingWhere) {
         self.home = home
         self.ancestry = ancestry
+        self.trashing = trashing
     }
 
     /// `key` is the seal key, which is what makes a stamp Helm's own rather than
@@ -160,7 +165,7 @@ struct RuleRunner: Sendable {
             return tag(name, on: url)
 
         case .trash:
-            return trash(url, at: path, approved: approved)
+            return trash(at: path, approved: approved)
         }
     }
 
@@ -222,7 +227,7 @@ struct RuleRunner: Sendable {
         }
     }
 
-    private func trash(_ url: URL, at path: String,
+    private func trash(at path: String,
                        approved: PathCanonical.AncestryIdentity?) -> RuleOutcome {
         // The engine has the last word on deletion, as everywhere else —
         // and both gates have to say yes: `WatchScope` that a rule may
@@ -230,17 +235,20 @@ struct RuleRunner: Sendable {
         // break the machine.
         let (allowed, _) = UserFileScope.partition([path])
         guard !allowed.isEmpty else { return .targetOutOfScope }
-        guard leadsWhereItLed(path, approved) else { return .refused(.changedSinceCheck) }
-        do {
-            // **The resulting URL, at last.** Passing `nil` here was what made
-            // trashing the one action with nowhere to put the file back to —
-            // the Trash renames what it takes, so the path the file had is not
-            // a path anything is at.
-            var landed: NSURL?
-            try FileManager.default.trashItem(at: url, resultingItemURL: &landed)
-            return .trashed(to: (landed as URL?)?.path ?? "")
-        } catch {
-            return .failed(HelmFailure.describe(error))
+        // The recheck of where the path leads is the entry's own, the last thing
+        // before the move.
+        switch HelmTrash.removeOne(path, approved: approved, ancestry: ancestry, trashing: trashing) {
+        case let .trashed(at):
+            return .trashed(to: at?.path ?? "")
+        case let .refused(refusal, said):
+            switch refusal.reason {
+            case .changedSinceScan: return .refused(.changedSinceCheck)
+            case .missing: return .refused(.missing)
+            case .needsFullDiskAccess, .activeSystemExtension, .noPermission, .systemRefused,
+                 .readOnlyVolume, .diskFull, .outOfScope, .unreadable:
+                // `said` is nil only for `changedSinceScan`, the arm above.
+                return .failed(said ?? refusal.reason.rawValue)
+            }
         }
     }
 
@@ -256,9 +264,9 @@ struct RuleRunner: Sendable {
     /// matters, because Helm holds Full Disk Access and the swapper need not.
     ///
     /// Device and inode of the resolved parent, which is the same recheck
-    /// `HelmTrash.remove` carries for the batch removals. **It narrows and does
-    /// not close**, for the reason stated there: one stat chain still separates
-    /// this from the syscall's own resolve. What it takes away is every wide
+    /// `HelmTrash.removeOne` makes before it moves. **It narrows and does
+    /// not close**, for the reason `HelmTrash.remove` states: one stat chain
+    /// still separates this from the syscall's own resolve. What it takes away is every wide
     /// part — everything this runner does between the gate and the act is now
     /// behind it.
     ///

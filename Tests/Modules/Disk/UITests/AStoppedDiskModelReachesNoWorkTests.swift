@@ -1,6 +1,7 @@
 import XCTest
 import HelmContract
 import HelmRuntime
+import HelmUI
 import HelmTestSupport
 import Module_Disk_Engine
 @testable import Module_Disk_UI
@@ -46,13 +47,26 @@ final class AStoppedDiskModelReachesNoWorkTests: XCTestCase {
         }
         func backgroundScan() async -> ScanReport? {
             lock.withLock { counts.background += 1 }
-            return nil
+            return ScanReport(bytes: 1, count: 1, items: [])
         }
     }
 
     private func model(_ work: DiskWork) -> DiskViewModel {
         DiskViewModel(work: work, store: ScanStore(directory: scratchDirectory("disk-stopped")))
     }
+
+    /// The descriptor's pass-on, which the model's own `backgroundScan` does not
+    /// prove: a descriptor without the override falls to the protocol default,
+    /// which answers nil, and the coordinator then logs «no answer» every tick.
+    func testTheDescriptorPassesTheScanOn() async {
+        let work = CountingWork()
+        let parts = ModuleParts(engine: NoEngine(), model: DiskViewModel(work: work, store: ScanStore(directory: scratchDirectory("disk-descriptor"))))
+        let report = await DiskDescriptor().backgroundScan(parts)
+        XCTAssertNotNil(report, "the descriptor fell to the default: «no answer» every tick")
+        XCTAssertEqual(work.background, 1)
+    }
+
+    private final class NoEngine: ModuleEngine { func activate() {}; func deactivate() {} }
 
     func testAPressAfterStopReachesNoWork() async {
         let work = CountingWork()

@@ -184,7 +184,7 @@ final class ASessionAPlistCanInventTests: XCTestCase {
     /// settings next to them, and the answer has to be «no session» rather than
     /// a crash on the way up.
     func testAValueOfTheWrongTypeUnderASessionKeyIsNoSession() {
-        for junk in ["soon", "", ["a"], 0.0] as [Any] {
+        for junk in ["soon", "", ["a"]] as [Any] {
             store.set(true, for: KeepAwakeEngine.SessionKey.on)
             store.set(junk, for: KeepAwakeEngine.SessionKey.startedAt)
             store.set(junk, for: KeepAwakeEngine.SessionKey.endsAt)
@@ -198,10 +198,10 @@ final class ASessionAPlistCanInventTests: XCTestCase {
 
             module.activate()
 
-            // «On, with no readable dates» is the same shape as a real
-            // indefinite session, so the Mac is held — what must not happen is
-            // a deadline invented out of a string.
+            // Helm never writes these: not a session, and not a deadline
+            // invented out of a string.
             XCTAssertNil(module.endDate, "a stored \(junk) became a deadline")
+            XCTAssertFalse(module.isActive, "a stored \(junk) decided the session")
         }
     }
 

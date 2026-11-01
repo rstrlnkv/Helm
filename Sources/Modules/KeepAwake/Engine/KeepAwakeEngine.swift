@@ -779,16 +779,15 @@ extension KeepAwakeEngine {
         // and lifts on the same event it always lifted on: the trigger dropping
         // and coming back, which the recompute after this decides.
         suppressed = store.bool(SessionKey.suppressed, default: false)
-        let stamp = { (seconds: Double) -> Date? in
-            seconds > 0 ? Date(timeIntervalSinceReferenceDate: seconds) : nil
-        }
-        let storedStart = stamp(store.double(SessionKey.startedAt, default: 0))
-        let storedEnd = stamp(store.double(SessionKey.endsAt, default: 0))
+        // Raw, not `store.double(default: 0)`: a value that is no number reads as
+        // 0 there, and 0 is «no deadline».
+        let storedStart = SessionRestore.Stored(store.object(SessionKey.startedAt))
+        let storedEnd = SessionRestore.Stored(store.object(SessionKey.endsAt))
 
-        switch SessionRestore.decide(manualOn: store.bool(SessionKey.on, default: false),
-                                     startDate: storedStart, endDate: storedEnd,
-                                     now: clock.now()) {
-        case .none:
+        let decision = SessionRestore.decide(manualOn: store.bool(SessionKey.on, default: false),
+                                             start: storedStart, end: storedEnd, now: clock.now())
+        switch decision {
+        case .none, .unreadable:
             let hadOne = store.bool(SessionKey.on, default: false)
             manualOn = false
             startDate = nil
@@ -800,7 +799,9 @@ extension KeepAwakeEngine {
             // answer to "why did my Mac sleep" when the app was gone longer than
             // the session had left.
             if hadOne {
-                HelmLog.shared.info(Self.moduleID, "a stored session had already ended")
+                HelmLog.shared.info(Self.moduleID, decision == .unreadable
+                    ? "refused a stored session: its dates are not ones Helm writes"
+                    : "a stored session had already ended")
             }
         case .indefinite:
             manualOn = true
@@ -809,7 +810,7 @@ extension KeepAwakeEngine {
             HelmLog.shared.info(Self.moduleID, "restored a session with no deadline")
         case .remaining(let left):
             manualOn = true
-            startDate = storedStart
+            startDate = storedStart.date
             // The deadline the module decided on, not the one it read. The two
             // differ wherever the decision bounded the stored pair — a clock
             // that moved, or a pair that is credible as a duration and absurd

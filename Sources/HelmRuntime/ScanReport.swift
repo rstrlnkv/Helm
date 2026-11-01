@@ -26,7 +26,8 @@ import Foundation
 /// Conformance costs an engine nothing it was not already doing, and it lets a
 /// test say both halves: every id in the list has an engine that can scan, and
 /// every engine that can is in the list. That its descriptor passes the call on
-/// is held by no test.
+/// is held by `testTheDescriptorPassesTheScanOn` in each scanner's stopped-model
+/// class; `testEveryScannableModuleHasAPassOnTest` holds that the test is there.
 public protocol BackgroundScanning {
     func backgroundScan() async -> ScanReport?
 }

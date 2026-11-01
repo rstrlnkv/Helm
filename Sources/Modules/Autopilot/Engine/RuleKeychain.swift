@@ -2,15 +2,33 @@ import Foundation
 import HelmRuntime
 import Security
 
-/// The keychain service both of this module's items live under.
+/// The keychain items this module's two ports address.
 ///
-/// One spelling, because it is deployed: it names the items on every Mac that
-/// has ever run Autopilot, and the two classes below would otherwise each carry
-/// a literal that only one of them needs changing to lose the other. Not derived
-/// from `AutopilotEngine.moduleID` for the same reason the doc below gives — a
-/// rename of the module must not move a keychain item somebody's rules are
-/// sealed under.
-private let ruleKeychainService = "com.helm.autopilot"
+/// The service is one spelling, because it is deployed: it names the items on
+/// every Mac that has ever run Autopilot, and the two classes below would
+/// otherwise each carry a literal that only one of them needs changing to lose
+/// the other. Not derived from `AutopilotEngine.moduleID` for the same reason the
+/// doc below gives — a rename of the module must not move a keychain item
+/// somebody's rules are sealed under.
+///
+/// **Helm Dev has accounts of its own**, because Dev shares the person's
+/// installed Helm's keychain and `rule-seq` is a counter: a rule saved in Dev
+/// would raise the mark, and Helm could then read its own rules as rolled back. Exactly
+/// `AppBuild.devIdentifier` moves; anything else, a nil identifier included,
+/// reads the deployed items. Not `AppBuild.isDev`, which is the version string
+/// and true of the person's own installed Helm.
+struct RuleKeychainItems: Equatable, Sendable {
+    /// Deployed: names items on every Mac that has run Autopilot.
+    static let service = "com.helm.autopilot"
+    let seal: String
+    let sequence: String
+
+    static func of(bundle identifier: String?) -> RuleKeychainItems {
+        AppBuild.isDevIdentifier(identifier)
+            ? RuleKeychainItems(seal: "dev-rule-seal", sequence: "dev-rule-seq")
+            : RuleKeychainItems(seal: "rule-seal", sequence: "rule-seq")
+    }
+}
 
 /// The rule-set key, in Helm's own login keychain.
 ///
@@ -23,13 +41,20 @@ private let ruleKeychainService = "com.helm.autopilot"
 /// **The service and account stay exactly what they were.** This item exists on
 /// every Mac that has ever run Autopilot, and moving it would read to all of
 /// them as "somebody rewrote your rules" — a refusal to run the person's own
-/// configuration, in the signal that exists to warn them about forgery.
+/// configuration, in the signal that exists to warn them about forgery. In Helm
+/// Dev the account is `dev-rule-seal` (`RuleKeychainItems`); no copy, no delete.
 public final class KeychainRuleKey: RuleKeyPort {
-    private let keychain = KeychainSealKey(service: ruleKeychainService,
-                                            account: "rule-seal",
-                                            category: AutopilotEngine.moduleID)
+    let items: RuleKeychainItems
+    private let keychain: KeychainSealKey
 
-    public init() {}
+    public convenience init() { self.init(items: .of(bundle: Bundle.main.bundleIdentifier)) }
+
+    init(items: RuleKeychainItems) {
+        self.items = items
+        keychain = KeychainSealKey(service: RuleKeychainItems.service,
+                                   account: items.seal,
+                                   category: AutopilotEngine.moduleID)
+    }
 
     public func key() -> RuleKey? { keychain.key() }
 }
@@ -51,13 +76,16 @@ public final class KeychainRuleKey: RuleKeyPort {
 /// It is not in `HelmRuntime` because nothing else keeps a counter yet. The day
 /// a second sealed setting needs one, this is the file it moves out of.
 public final class KeychainRuleSequence: RuleSequencePort {
+    let items: RuleKeychainItems
 
-    public init() {}
+    public convenience init() { self.init(items: .of(bundle: Bundle.main.bundleIdentifier)) }
+
+    init(items: RuleKeychainItems) { self.items = items }
 
     private var query: [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: ruleKeychainService,
-         kSecAttrAccount as String: "rule-seq"]
+         kSecAttrService as String: RuleKeychainItems.service,
+         kSecAttrAccount as String: items.sequence]
     }
 
     public func highWater() -> RuleSequence {

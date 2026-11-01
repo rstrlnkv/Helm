@@ -6,6 +6,10 @@ reading of a path's size before it moves. A module keeps its gate and whatever i
 knows that macOS's error does not say. The phase a removal runs under is composed
 rather than literal — `HelmTrash.remove` builds `"\(module).trash"` from the caller's
 id — so the shared removal path carries the name of whichever module is deleting.
+`HelmTrash.removeOne` is the entry for one file inside a decision the caller has already
+made (Autopilot's trash action): it rechecks where the path leads as the last step before
+the move, classifies a refusal the way the batch does, and returns where the Trash put
+the file. It opens no phase and writes no log line of its own.
 
 Refusals are values rather than silences: `TrashFailure.Reason`
 (`Sources/HelmRuntime/PermissionCheck.swift`) names each reason, and `outOfScope` is

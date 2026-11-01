@@ -271,7 +271,6 @@ SidebarLayoutStoreSeedAndReconcileTests
 SidebarLayoutTests
 StopKeepsTheTreeOnScreenTests
 StreamTailTests
-StringsCoverageTests
 StuckModifierTests
 SubscriberPruningTests
 SurvivorThroughTheScannerTests
