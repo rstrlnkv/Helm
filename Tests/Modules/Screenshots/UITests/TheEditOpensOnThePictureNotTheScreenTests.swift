@@ -384,6 +384,83 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         XCTAssertFalse(s.controller.isBusy)
     }
 
+    /// Empties the regions of this process's own address space that their owner has marked volatile (memory it has said
+    /// it can do without) and no other: it walks this task's regions, asks each for its purgeable state, and sets
+    /// EMPTY on those answering VOLATILE. Measured here: with the picture made from the file's path (before the
+    /// bytes were read at the opening), a file moved before this call could no longer be encoded after it.
+    /// It asserts that it emptied something, so that a walk that finds nothing cannot pass for an emptying.
+    private func emptyVolatileRegions() {
+        var emptied = 0
+        var address: mach_vm_address_t = 0
+        while true {
+            var size: mach_vm_size_t = 0
+            var info = vm_region_basic_info_data_64_t()
+            var count = mach_msg_type_number_t(MemoryLayout<vm_region_basic_info_data_64_t>.size / MemoryLayout<Int32>.size)
+            var object: mach_port_t = 0
+            let found = withUnsafeMutablePointer(to: &info) {
+                $0.withMemoryRebound(to: Int32.self, capacity: Int(count)) {
+                    mach_vm_region(mach_task_self_, &address, &size, VM_REGION_BASIC_INFO_64, $0, &count, &object)
+                }
+            }
+            guard found == KERN_SUCCESS else { break }
+            var state: Int32 = 0
+            if vm_purgable_control(mach_task_self_, vm_address_t(truncatingIfNeeded: address), VM_PURGABLE_GET_STATE, &state) == KERN_SUCCESS,
+               state & VM_PURGABLE_STATE_MASK == VM_PURGABLE_VOLATILE {
+                var empty: Int32 = VM_PURGABLE_EMPTY
+                if vm_purgable_control(mach_task_self_, vm_address_t(truncatingIfNeeded: address), VM_PURGABLE_SET_STATE, &empty) == KERN_SUCCESS {
+                    emptied += 1
+                }
+            }
+            address += size
+        }
+        XCTAssertGreaterThan(emptied, 0, "no volatile region was found to empty")
+    }
+
+    /// The editor's picture is read from the shot's file, and the file is moved while it is open: the edit must come
+    /// out of what the editor holds, not of a second read of a path that no longer leads to the shot.
+    func testARenamedFileWithTheVolatileRegionsEmptiedStillGivesTheEditASeparateFile() async throws {
+        let s = try scene()
+        let original = try await take(s, width: 400, height: 300)
+        let overlay = try await openEditor(s)
+        try FileManager.default.moveItem(at: original.url, to: s.desktop.appendingPathComponent("mine.png"))
+        emptyVolatileRegions()
+        await finish(s, overlay)
+        let said = try XCTUnwrap(refusal(s), "no plaque: \(String(describing: s.toast.model.content))")
+        XCTAssertEqual(said.body, ScStr.refusal(.notReplaced(.changed)), "the edit could not be made from the picture the editor held")
+        XCTAssertEqual(names(s.desktop), ["mine.png", original.url.lastPathComponent].sorted(), "the edit was not saved")
+        XCTAssertEqual(s.trash.asked, [])
+        XCTAssertFalse(s.controller.isBusy)
+    }
+
+    /// With marks drawn the picture is drawn under them when the edit is made, and a picture that cannot be read
+    /// again draws nothing and says nothing: the file would hold the marks alone.
+    func testAnEditWithMarksOnARenamedFileWithTheVolatileRegionsEmptiedKeepsThePictureUnderThem() async throws {
+        let s = try scene()
+        let original = try await take(s, width: 400, height: 300)
+        let overlay = try await openEditor(s)
+        draw(overlay, on: s.display(of: overlay))
+        try FileManager.default.moveItem(at: original.url, to: s.desktop.appendingPathComponent("mine.png"))
+        emptyVolatileRegions()
+        await finish(s, overlay)
+        let saved = names(s.desktop).filter { $0 != "mine.png" }
+        XCTAssertEqual(saved.count, 1, "the edit was not saved: \(names(s.desktop))")
+        let edit = try XCTUnwrap(saved.first.flatMap { image(s.desktop.appendingPathComponent($0)) }, "the edit is no picture")
+        XCTAssertTrue(isPicture(rgb(edit, 3, 3)), "the saved edit lost the picture under its marks: \(rgb(edit, 3, 3)) for \(picture)")
+        XCTAssertEqual(s.trash.asked, [])
+    }
+
+    /// The control: the same emptying with the file left in place. The edit replaces the file, as it does without it, so
+    /// this separates the emptying from the move that the two tests above add to it.
+    func testTheSameEmptyingWithTheFileInPlaceStillReplacesIt() async throws {
+        let s = try scene()
+        let original = try await take(s, width: 400, height: 300)
+        let overlay = try await openEditor(s)
+        emptyVolatileRegions()
+        await finish(s, overlay)
+        XCTAssertEqual(s.trash.moved, [original.url])
+        XCTAssertEqual(names(s.desktop), [original.url.lastPathComponent])
+    }
+
     func testTheTrashRefusingIsToldWithItsReasonAndBothFilesStay() async throws {
         let s = try scene()
         let original = try await take(s, width: 400, height: 300)

@@ -188,7 +188,10 @@ public final class CaptureSession: @unchecked Sendable {
                 HelmLog.shared.warn(category, "edit refused: the shot's file is \(verdict) at \(Redact.path(shot.url.path))")
                 return nil
             }
-            guard let source = CGImageSourceCreateWithURL(shot.url as CFURL, nil),
+            // The bytes are read here: a picture made from the path can be read from the path again, and after this
+            // process's volatile regions were emptied a moved file encoded to nothing and drew blank.
+            guard let bytes = try? Data(contentsOf: shot.url),
+                  let source = CGImageSourceCreateWithData(bytes as CFData, nil),
                   let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
                 HelmLog.shared.warn(category, "edit refused: no picture could be read from \(Redact.path(shot.url.path))")
                 return nil
