@@ -60,7 +60,7 @@ public struct HelmEmptyState<Actions: View>: View {
                 // one; the scale steps 13 · 16 · 22, and an empty state's
                 // heading is the step above a section heading and well below a
                 // hero figure.
-                Text(title).font(.system(size: 16, weight: .semibold))
+                Text(title).font(HelmText.plateTitle)
             }
             if let message {
                 Text(message)

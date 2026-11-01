@@ -15,8 +15,8 @@ import XCTest
 /// covers the rest: `.testTarget(dependencies: ["HelmApp"])`, `@testable import`,
 /// and the registry answers. Nothing needed to move for these.
 ///
-/// **Every engine builds in 55 ms with an in-memory store**, measured over all
-/// nine before this file was written, so a test may hold the real registry
+/// **Every engine builds in 55 ms with an in-memory store**, measured over the nine there were
+/// before this file was written, so a test may hold the real registry
 /// rather than a copy of it. `activate()` is never called: building is what these
 /// checks need, and starting the modules' watchers inside a test is not.
 final class ListsAgreeWithTheTreeTests: XCTestCase {

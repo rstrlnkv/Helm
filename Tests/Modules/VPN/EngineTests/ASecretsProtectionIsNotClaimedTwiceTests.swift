@@ -41,8 +41,8 @@ final class ASecretsProtectionIsNotClaimedTwiceTests: XCTestCase {
     }
 
     /// The purge deletes every `com.helm.vpn` item, and `VPNDescriptor.makeModule`
-    /// builds the port that runs it — including from two test files that build
-    /// every descriptor. The gate is a call the pure rule cannot prove is wired,
+    /// builds the port that runs it — including from every test that builds the
+    /// registry's modules. The gate is a call the pure rule cannot prove is wired,
     /// so it is read here.
     func testThePurgeStillAsksWhetherThisProcessIsTheApp() throws {
         let lines = try code()

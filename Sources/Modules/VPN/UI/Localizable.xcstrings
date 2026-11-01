@@ -590,7 +590,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Verbunden seit"
+            "value": "Verbindungsdauer"
           }
         },
         "en": {
@@ -602,13 +602,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Conectado durante"
+            "value": "Tiempo de conexión"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connecté depuis"
+            "value": "Temps de connexion"
           }
         },
         "ja": {
@@ -620,7 +620,7 @@
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Conectado há"
+            "value": "Tempo de conexão"
           }
         },
         "ru": {
@@ -632,7 +632,7 @@
         "zh": {
           "stringUnit": {
             "state": "translated",
-            "value": "已连接"
+            "value": "连接时间"
           }
         }
       }
@@ -3293,7 +3293,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der Datenverkehr verlässt diesen Mac direkt — bauen Sie unten eine Verbindung auf."
+            "value": "Der Datenverkehr verlässt diesen Mac direkt — baue unten eine Verbindung auf."
           }
         },
         "en": {

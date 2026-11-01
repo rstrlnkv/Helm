@@ -219,7 +219,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fügen Sie eine App hinzu, und der Mac bleibt wach, solange sie läuft. Eine Regel lässt sich auf Netzstrom, auf einen externen Bildschirm oder auf beides begrenzen."
+            "value": "Füge eine App hinzu, und der Mac bleibt wach, solange sie läuft. Eine Regel lässt sich auf Netzstrom, auf einen externen Bildschirm oder auf beides begrenzen."
           }
         },
         "en": {
@@ -3876,7 +3876,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bis Sie es beenden"
+            "value": "Bis du es beendest"
           }
         },
         "en": {

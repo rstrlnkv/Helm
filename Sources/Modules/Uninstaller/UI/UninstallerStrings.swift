@@ -114,8 +114,7 @@ enum UnStr {
     /// before deletion has no dialog after it, and it said nothing at all about
     /// the app — only about the files beside it.
     static var theAppItself: String { L(.theAppItself) }
-    /// Word for word what Disk calls a row it may not remove (`DkStr.systemItem`).
-    static var systemApp: String { HelmWord.system }
+    static var systemApp: String { L(.systemApp) }
     static var noLeftoversForApp: String { L(.noExtraFilesFound) }
     static var runningBadge: String { L(.running) }
     static func runningWarning(_ names: String) -> String {

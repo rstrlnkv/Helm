@@ -187,7 +187,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // the model's own task and that order is unproved. The locator and not
         // `status()`: that one takes the quit marker.
         news.say(.brew(path: locator.brewPath().flatMap { $0.isEmpty ? nil : $0 }),
-                 slot: HomebrewEvent.brewFound.rawValue)
+                 slot: HomebrewSlot.brewFound.rawValue)
         // Not in `init`, because `init` runs for every module the host knows
         // about and `activate` only for the ones that are switched on: a module
         // the person has turned off never reaches the network for readings its
@@ -835,10 +835,10 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     }
 
     private func emitLog(_ line: String) {
-        news.say(.line(line), slot: HomebrewEvent.opLog.rawValue)
+        news.say(.line(line), slot: HomebrewSlot.opLog.rawValue)
     }
     private func emitState(_ s: OpState) {
-        news.say(.state(s), slot: HomebrewEvent.opState.rawValue)
+        news.say(.state(s), slot: HomebrewSlot.opState.rawValue)
     }
 
     /// `verb` is what happened; `subject` is the package it happened to, kept

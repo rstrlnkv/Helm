@@ -95,9 +95,10 @@ public struct ModuleTint: Sendable {
     /// (`HelmAccessibility` records the measurement), and a handler that read the flag
     /// would be answering from inside a colour AppKit is free to resolve once.
     private func adaptive(light: Component, dark: Component) -> Color {
-        Color(nsColor: NSColor(name: nil) { appearance in
-            let c = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
-            return NSColor(srgbRed: c.0, green: c.1, blue: c.2, alpha: 1)
-        })
+        HelmSurface.pair(light: Self.ink(light), dark: Self.ink(dark))
+    }
+
+    private static func ink(_ c: Component) -> NSColor {
+        NSColor(srgbRed: c.0, green: c.1, blue: c.2, alpha: 1)
     }
 }

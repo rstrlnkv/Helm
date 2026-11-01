@@ -57,7 +57,7 @@ Each guard faces a direction the others are blind to; each file's header, or the
 - `Tests/HelmUITests/OneEntryPerKeyTests.swift` — a key written twice in one catalog, which the build
   passes (measured, exit 0).
 - `Tests/HelmUITests/PunctuationIsTerminologyTests.swift` — a mark or a space a language
-  does not use, in every catalog, and an «ё» in a module's catalog.
+  does not use, in every catalog, and an «ё» in every catalog but the changelog's.
 
 `Tests/Support/ModuleCatalogs.swift` reads the catalogs as data for these guards, and
 `Tests/Modules/KeepAwake/UITests/TheModuleWordsReachEveryLanguageTests.swift` shows the words

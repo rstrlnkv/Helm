@@ -186,7 +186,7 @@ final class WorkspaceAppLister: AppLister {
     /// `/System/Volumes/Preboot/Cryptexes/App/…`. Its row carries no checkbox and
     /// `setChecked` refuses the id (`SystemApp`), so it is not an offer to remove
     /// anything and there is nothing to withdraw — dropping it would only take the
-    /// row that says «System» away from a person who can see the app in Finder.
+    /// row that says «System app» away from a person who can see the app in Finder.
     private static func leadsElsewhere(_ app: URL, inside folder: URL) -> Bool {
         app.resolvingSymlinksInPath().standardizedFileURL.path
             != folder.appendingPathComponent(app.lastPathComponent).path

@@ -62,7 +62,7 @@ public enum HomebrewNews: Equatable, Sendable {
 /// The slots the engine files its three announcements in on `EngineNews`; each
 /// keeps its own last value for a late subscriber. `HomebrewEngine`'s three `say`
 /// calls are the one user.
-enum HomebrewEvent: String, Sendable {
+enum HomebrewSlot: String, Sendable {
     case opLog
     case opState
     case brewFound

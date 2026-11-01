@@ -11,9 +11,8 @@ import XCTest
 /// is triaged against before it ships, wearing the same shape as a real fault,
 /// and four of them were investigated as a defect that did not exist.
 ///
-/// The guard belongs here rather than beside those tests: any test that reaches
-/// any logging code writes, so the thing to hold still is where the log resolves
-/// its destination, not which four call sites happen to log today.
+/// The guard stands where the log resolves its destination, not at any call
+/// site: any test that switches the log on and reaches logging code writes.
 final class TheSuiteDoesNotWriteTheUsersLogTests: XCTestCase {
 
     /// Spelled out rather than read off `HelmLog`, which is the thing on trial.

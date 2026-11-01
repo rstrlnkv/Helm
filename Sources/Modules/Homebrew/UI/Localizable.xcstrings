@@ -325,7 +325,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Es kam als Abhängigkeit — Sie haben es nicht angefordert. Es sollte zusammen mit dem entfernt werden, was es mitgebracht hat."
+            "value": "Es kam als Abhängigkeit — du hast es nicht angefordert. Es sollte zusammen mit dem entfernt werden, was es mitgebracht hat."
           }
         },
         "en": {
@@ -1809,7 +1809,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "auf Ihren Wunsch"
+            "value": "auf deinen Wunsch"
           }
         },
         "en": {
@@ -2339,7 +2339,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wählen Sie ein Paket"
+            "value": "Wähle ein Paket"
           }
         },
         "en": {

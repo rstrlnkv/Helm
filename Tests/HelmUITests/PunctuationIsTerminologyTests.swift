@@ -123,13 +123,13 @@ final class PunctuationIsTerminologyTests: XCTestCase {
                       + offenders.sorted().joined(separator: "\n").prefix(4000))
     }
 
-    /// **No module catalog writes «ё».** Russian words in a module's catalog are spelled with «е»
-    /// (`Еще`, not `Ещё`), the way the system's own lists spell them; the kit's and the host's catalogs
-    /// are not in this guard — their «ё» was shipped before it and stays (the owner's list says
-    /// which). `yoOffences` takes catalogs, so the fixture below proves it can fail.
+    /// **No catalog writes «ё», the changelog's apart.** Russian words in the kit's, the host's and every
+    /// module's catalog are spelled with «е» (`Еще`, not `Ещё`), the way the system's own lists spell them
+    /// (the owner: kit and host too). `Changelog.xcstrings` is out by name: it is shipped text, and no
+    /// changelog text is composed here. `yoOffences` takes catalogs, so the fixture below proves it can fail.
     static func yoOffences(in catalogs: [ModuleCatalogs.Catalog]) -> [String] {
         var out: [String] = []
-        for catalog in catalogs where catalog.isModule {
+        for catalog in catalogs where catalog.module != "Changelog" {
             for (symbol, values) in catalog.strings {
                 for (language, value) in values where value.contains(where: { "ёЁ".contains($0) }) {
                     out.append("\(catalog.module).\(symbol) \(language): \(value.prefix(50))")
@@ -139,24 +139,26 @@ final class PunctuationIsTerminologyTests: XCTestCase {
         return out.sorted()
     }
 
-    func testTheYoReadingFindsOnlyAModuleCatalogsYo() {
+    func testTheYoReadingFindsEveryCatalogsYoButTheChangelogs() {
         let yo = ["a": ["ru": "Ещё"]]
         let ok = ["a": ["ru": "Еще"]]
-        func catalog(_ strings: [String: [String: String]], _ path: String) -> ModuleCatalogs.Catalog {
-            .init(module: "X", path: path, strings: strings, states: [:])
+        func catalog(_ strings: [String: [String: String]], _ module: String) -> ModuleCatalogs.Catalog {
+            .init(module: module, path: "", strings: strings, states: [:])
         }
-        XCTAssertEqual(Self.yoOffences(in: [catalog(yo, "Sources/Modules/X/UI/Localizable.xcstrings")]).count, 1)
-        XCTAssertEqual(Self.yoOffences(in: [catalog(ok, "Sources/Modules/X/UI/Localizable.xcstrings")]), [])
-        XCTAssertEqual(Self.yoOffences(in: [catalog(yo, ModuleCatalogs.kitPath)]), [],
-                       "the kit's catalog is outside this guard")
+        XCTAssertEqual(Self.yoOffences(in: [catalog(yo, "X")]).count, 1)
+        XCTAssertEqual(Self.yoOffences(in: [catalog(ok, "X")]), [])
+        XCTAssertEqual(Self.yoOffences(in: [catalog(yo, "HelmUI")]).count, 1)
+        XCTAssertEqual(Self.yoOffences(in: [catalog(yo, "HelmApp")]).count, 1)
+        XCTAssertEqual(Self.yoOffences(in: [catalog(yo, "Changelog")]), [],
+                       "the changelog's catalog is outside this guard")
     }
 
-    func testNoModuleCatalogWritesYo() throws {
+    func testNoCatalogButTheChangelogWritesYo() throws {
         let catalogs = try ModuleCatalogs.all()
-        XCTAssertGreaterThanOrEqual(catalogs.filter(\.isModule).count, 10, "the modules' catalogs were not read")
-        XCTAssertTrue(catalogs.filter(\.isModule).allSatisfy { $0.strings.values.contains { $0["ru"] != nil } },
-                      "a module catalog carries no Russian, so «no ё» is said of nothing")
+        XCTAssertGreaterThanOrEqual(catalogs.count, 12, "the catalogs were not read")
+        XCTAssertTrue(catalogs.allSatisfy { $0.strings.values.contains { $0["ru"] != nil } },
+                      "a catalog carries no Russian, so «no ё» is said of nothing")
         let offences = Self.yoOffences(in: catalogs)
-        XCTAssertTrue(offences.isEmpty, "\(offences.count) module value(s) write ё:\n" + offences.prefix(20).joined(separator: "\n"))
+        XCTAssertTrue(offences.isEmpty, "\(offences.count) value(s) write ё:\n" + offences.prefix(40).joined(separator: "\n"))
     }
 }

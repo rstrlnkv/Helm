@@ -156,7 +156,7 @@ struct SidebarComposerSheet: View {
                     // sheet's title and reads at the same rank. It was 15,
                     // which is on no step and was invisible only because the
                     // ratchet did not read the app shell.
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(HelmText.plateTitle)
                 Spacer()
                 Button(AppStr.done) { dismiss() }
                     .keyboardShortcut(.defaultAction)

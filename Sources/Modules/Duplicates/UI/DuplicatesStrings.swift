@@ -27,7 +27,7 @@ enum DupStr {
         HelmBasket.item(name: name, size: size)
     }
     static var moveToTrash: String { HelmWord.moveToTrash }
-    static var systemItem: String { HelmWord.system }
+    static var systemFile: String { L(.systemFile) }
     static var reveal: String { HelmWord.showInFinder }
     static var quickLook: String { L(.quickLook) }
     /// `HelmBasket.movedToTrash`: Disk, Duplicates and the Uninstaller end a removal on one sentence; Leftovers counts the rows as well (`LfStr.movedToTrash`).
@@ -271,8 +271,8 @@ enum DupStr {
     /// Copies «Mark every extra copy» passed over: paths outside what Helm may
     /// remove at all.
     ///
-    /// Says what Helm may not do rather than what the file is — «System» is a
-    /// label on a row, and this is a sentence about a press. The count carries
+    /// Says what Helm may not do rather than what the file is — «System file» is
+    /// the tooltip of a row's disabled checkbox, and this is a sentence about a press. The count carries
     /// its noun through `Plural`, because after the colon it is still a counted
     /// noun in six of the eight languages.
     static func skippedNotRemovable(_ count: Int,

@@ -191,7 +191,7 @@ struct DuplicatesView: View {
                     .labelsHidden()
                     .disabled(!UserFileScope.isRemovable(path))
                     .help(UserFileScope.isRemovable(path) ? DupStr.markRow
-                                                           : DupStr.systemItem)
+                                                           : DupStr.systemFile)
             }
         }
         .contextMenu {

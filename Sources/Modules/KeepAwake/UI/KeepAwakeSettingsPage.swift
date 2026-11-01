@@ -583,8 +583,8 @@ struct KeepAwakeSettingsPage: View {
     ///
     /// Both palettes open on orange, which is the same answer twice rather than
     /// a disagreement: two rings on two different colours, neither chosen, would
-    /// read as a fault. The `isEmpty` branch is for a store that answers nothing
-    /// at all; it is not a fallback the defaults can reach.
+    /// read as a fault. The `isEmpty` branch is reached only by an empty string in
+    /// the store, which Helm never writes; a store that answers nothing gives the default.
     private var timerColorSwatches: some View {
         HelmPaletteSwatches(KAStr.timerColor,
                             selection: timerTintColor.isEmpty ? activeTintColor : timerTintColor) { token in

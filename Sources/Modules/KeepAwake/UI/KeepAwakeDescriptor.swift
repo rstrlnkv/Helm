@@ -157,9 +157,9 @@ enum KeepAwakeHotkey {
                 title = TimerProgress.label(remaining: end.timeIntervalSinceNow)
             }
             // The countdown's own colour, which always has a value: orange
-            // unless somebody changed it. The `isEmpty` guard is kept for a
-            // store that answers nothing at all — it is not the fallback the
-            // comment here used to claim, because a stored tint is never empty.
+            // unless somebody changed it. The `isEmpty` guard is reached only by
+            // an empty string in the store, which Helm never writes; a store that
+            // answers nothing gives the default.
             let timerTint = MenuBarLook.timerTint(store)
             if !timerTint.isEmpty { tint = timerTint }
         }

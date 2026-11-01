@@ -368,7 +368,6 @@ final class StringsCoverageTests: XCTestCase {
         "Spotlight": [.de],
         "Start": [.de],
         "Style": [.fr],
-        "System": [.de],
         "Tab": [.de],
         "Tag": [.fr, .de],
         // «Text» is the German word, spelled as English spells it.

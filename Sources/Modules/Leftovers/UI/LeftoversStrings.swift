@@ -15,7 +15,7 @@ enum LfStr {
     static var filterAll: String { L(.all) }
     static var filterLeftovers: String { HelmWord.leftovers }
     static var statusInUse: String { L(.inUse) }
-    static var statusProtected: String { HelmWord.system }
+    static var statusProtected: String { L(.systemEntry) }
     static var statusOrphaned: String { L(.leftover) }
     /// The badge on a row whose plist would not be read. Not «Unknown», which
     /// this app already uses for a VPN whose state it has not been told — one

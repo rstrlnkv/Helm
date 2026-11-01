@@ -1356,7 +1356,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Appをゴミ箱から戻しても、これらのファイルは戻りません。"
+            "value": "App をゴミ箱から戻しても、これらのファイルは戻りません。"
           }
         },
         "pt": {
@@ -1491,7 +1491,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entferne…"
+            "value": "Wird entfernt…"
           }
         },
         "en": {
@@ -2170,6 +2170,59 @@
           "stringUnit": {
             "state": "translated",
             "value": "按大小排序"
+          }
+        }
+      }
+    },
+    "systemApp": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System app"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Del sistema"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Système"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "システム"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do sistema"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Системное"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "系统"
           }
         }
       }

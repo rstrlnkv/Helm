@@ -34,9 +34,6 @@ public enum ModuleCatalogs {
             self.strings = strings
             self.states = states
         }
-
-        /// A module's own catalog, as against the kit's and the host's.
-        public var isModule: Bool { path.hasPrefix("Sources/Modules/") }
     }
 
     /// The kit's catalog: the words two parts draw, and the host's own controls.

@@ -43,7 +43,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Системное расширение приложения ещё работает — выключите его в «Объектах входа и расширениях»."
+            "value": "Системное расширение приложения еще работает — выключите его в «Объектах входа и расширениях»."
           }
         },
         "zh": {
@@ -149,7 +149,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "…и ещё %@"
+            "value": "…и еще %@"
           }
         },
         "zh": {
@@ -1527,7 +1527,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тёмное"
+            "value": "Темное"
           }
         },
         "zh": {
@@ -3435,7 +3435,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Файл защищён или принадлежит другому пользователю. Откройте «Свойства» в Finder: снимите защиту или измените права доступа."
+            "value": "Файл защищен или принадлежит другому пользователю. Откройте «Свойства» в Finder: снимите защиту или измените права доступа."
           }
         },
         "zh": {
@@ -5513,59 +5513,6 @@
         }
       }
     },
-    "system": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "System"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "System"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Del sistema"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Système"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "システム"
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Do sistema"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Системный"
-          }
-        },
-        "zh": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "系统"
-          }
-        }
-      }
-    },
     "takenNote": {
       "extractionState": "manual",
       "localizations": {
@@ -5926,7 +5873,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Helm не смог прочитать файл или ту копию, что остаётся, — ничего не перемещено. Проверьте, что оба открываются, и повторите попытку."
+            "value": "Helm не смог прочитать файл или ту копию, что остается, — ничего не перемещено. Проверьте, что оба открываются, и повторите попытку."
           }
         },
         "zh": {

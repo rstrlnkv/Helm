@@ -24,9 +24,9 @@ enum HelmGlyphCatalogue {
                 "folder", "doc", "tray", "archivebox",
                 "calendar", "clock", "checklist", "briefcase",
             ]),
-            // Not "System": that word is a tag on four other screens, meaning a
-            // file macOS owns — and its translations are adjectival there
-            // («Системный», "Del sistema"). One English text means one thing.
+            // Not "System": in Russian, Spanish and Portuguese the four
+            // "System …" tags of other screens are adjectives («Системный»,
+            // "Del sistema"), and this word would need a noun.
             //
             // The name is kept and the two symbols that were not hardware are
             // the ones that went: a gear and a wrench were the only members a

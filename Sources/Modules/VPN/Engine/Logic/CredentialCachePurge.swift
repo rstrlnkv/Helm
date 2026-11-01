@@ -14,7 +14,7 @@ import HelmRuntime
 /// run of anything that linked this module:
 ///
 /// - `VPNDescriptor.makeModule` builds `VPNSystemPorts()` unconditionally, which
-///   constructs `KeychainCredentials`, whose `init` purged. Two test files build
+///   constructs `KeychainCredentials`, whose `init` purged. Tests build
 ///   every descriptor's module, so `swift test` deleted the
 ///   person's real VPN secrets.
 /// - The latch was `UserDefaults.standard`, which is the *calling process's*

@@ -7,8 +7,8 @@ import Foundation
 /// host's dialogs is the same button, and three spellings of it drift. A page's
 /// own strings file reads its shared words from here and its own words from its
 /// own table. `HelmControlName` and `HelmSectionName` are the same shape for the
-/// names of controls and of sections; these are not controls (`System`,
-/// `Stopped` and the colours are not), hence a name of their own.
+/// names of controls and of sections; these are not controls (`Stopped`
+/// and the colours are not), hence a name of their own.
 ///
 /// `String` only: a catalog's symbols are internal to the target that owns it,
 /// and what crosses from the kit's words to a caller is a `String`, so no bundle
@@ -47,7 +47,6 @@ public enum HelmWord {
     public static var stop: String { L(.stop) }
     public static var stopScan: String { L(.stopScan) }
     public static var stopped: String { L(.stopped) }
-    public static var system: String { L(.system) }
     public static var timer: String { L(.timer) }
     public static var blue: String { L(.blue) }
     public static var green: String { L(.green) }

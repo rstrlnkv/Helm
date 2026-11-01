@@ -52,7 +52,7 @@ enum DkStr {
         basketed ? HelmBasket.unmark(name: name, language: language)
                  : HelmBasket.mark(name: name, language: language)
     }
-    static var systemItem: String { HelmWord.system }
+    static var systemItem: String { L(.systemItem) }
     static var emptyFolder: String { L(.nothingInThisFolder) }
     static var noAccess: String { L(.noAccess) }
     static var scanNeedsAccess: String { L(.scanNeedsFullDiskAccess) }
