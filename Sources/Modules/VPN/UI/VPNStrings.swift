@@ -223,6 +223,9 @@ enum VPNStr {
     /// «the running copy could not be read» or «it is signed as something else»
     /// would have the page inventing a problem under a rule whose app is not even
     /// running. Those go to the log, where the moment is part of the record.
+    ///
+    /// No view draws it: the rules popover shows no note, and every refusal
+    /// reaches only the log.
     static func ruleTrustNote(_ verdict: VPNRuleTrust.Verdict) -> String? {
         switch verdict {
         case .act, .runningInstanceUnreadable, .mismatch: return nil

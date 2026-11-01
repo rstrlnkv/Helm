@@ -56,8 +56,8 @@ import Module_Uninstaller_Engine
                                  store: store, trashChanged: trashChanged)
     }
 
-    /// The engine and the model that calls it. The engine's "an app reached the
-    /// Trash" goes into a stream the model reads (`listenForTrash`), newest one
+    /// The engine and the model that calls it. The engine's "look at the Trash
+    /// again" goes into a stream the model reads (`listenForTrash`), newest one
     /// kept: the signal means "look again" and carries nothing, so any number
     /// that arrive while the model is not reading (before its first read, or
     /// while it handles an earlier one) are one. A model already waiting is

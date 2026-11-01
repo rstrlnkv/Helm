@@ -23,8 +23,8 @@ enum ScStr {
     }
 
     static var systemSection: String { L(.systemSection) }
-    /// Over the boxes, which are three — ⇧⌘3 and ⇧⌘4 with their clipboard
-    /// twins, and box 184 — so the title names none of the combinations.
+    /// Over the boxes — ⇧⌘3 and ⇧⌘4, box 184 and a clipboard twin while it conflicts — so the title names none of the
+    /// combinations.
     static var replaceTitle: String { L(.replaceTitle) }
     static var replaceBody: String {
         L(.replaceBody)
@@ -38,7 +38,7 @@ enum ScStr {
     /// whole in each language, and the button that takes ⇧⌘5 as well says so.
     static var useSystemKeysAndPanel: String { L(.useSystemKeysAndPanel) }
 
-    /// The four boxes macOS ticks, in macOS's own words — copied out of the
+    /// The five boxes macOS ticks, in macOS's own words — copied out of the
     /// Keyboard settings extension's `DefaultShortcutsTable.loctable`, which is
     /// where the list Helm sends a person to draws them.
     static func boxName(_ box: SystemBox) -> String {
@@ -233,8 +233,7 @@ enum ScStr {
         }
     }
 
-    /// Fill and Save are items of the ⋯ menu (Fill inside Shapes); Copy has no control on the palette yet, and its name
-    /// is kept for the one that comes. Pin is read by the ⋯ menu's Pin item and by the thumbnail capsule's Pin cell, while `PinEntry.isOffered`.
+    /// Fill and Save are items of the ⋯ menu (Fill inside Shapes); Copy is the capsule's cell, read in `ScStr.copy`. Pin is read by the ⋯ menu's Pin item and by the thumbnail capsule's Pin cell, while `PinEntry.isOffered`.
     static var fill: String { L(.fill) }
     /// The submenu of the ⋯ menu that holds the shapes, and the pointer's item: Preview's own words: the
     /// selection tool is the noun «Выбор», key `Selection` of Preview's `DFR-BBBAA77A32-C4EBFEA440.loctable`, and the

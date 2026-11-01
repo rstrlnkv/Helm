@@ -11,6 +11,11 @@ import Module_Homebrew_Engine
 /// nothing to put back: it is the same irreversible deletion the Uninstall
 /// button performs, which raises a confirmation naming the package.
 ///
+/// **No page path produces `["cleanup"]` today.** `DoctorFixCandidate` has one
+/// heading, whose subcommand is `uninstall`, so a fix the page draws is an
+/// `uninstall <name>`; the `cleanup` entry here and on `DoctorFix.Allowed` is
+/// a rule no heading reaches.
+///
 /// **The unrecognised command asks too.** `DoctorFix.judge` is what decides
 /// whether a command may run at all and it is argument-exact, so nothing
 /// outside the two entries reaches this today. That is a fact about today's
@@ -103,7 +108,8 @@ extension HomebrewSettingsPage {
     /// rather than doing it, and `FixAsk` is what knows which of the two this
     /// press is — so the mark is read off the same answer that decides whether
     /// the dialog is raised, and cannot claim a question that never comes.
-    /// `brew cleanup` runs on the press and keeps the bare word.
+    /// `brew cleanup` would run on the press and keep the bare word; no page
+    /// path produces it today (`FixAsk`).
     static func runLabel(_ fix: DoctorFix) -> String {
         switch FixAsk.of(fix.argv) {
         case .runsOnThePress: return HbStr.runTheFix

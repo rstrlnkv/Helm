@@ -8,7 +8,9 @@ import Foundation
 ///
 /// **Absence means inherit.** The three settings this sits over — the rules'
 /// notice, a drop's notice, the ring — are single values an installed build
-/// already holds, and every card reads them until somebody changes that card.
+/// already holds, and every card reads them until somebody changes that card
+/// (a card's notice choice also rewrites the module-wide value, see
+/// `VPNSettings.noticeBook`).
 /// Moving them into per-connection records would take a one-time migration
 /// keyed to whichever configuration happened to be first, and this repository
 /// has paid for one-time writes before: they run twice, or never, and the
@@ -17,7 +19,7 @@ import Foundation
 ///
 /// **Keyed by the configuration's id, never its name.** The module learned this
 /// the expensive way on the rules: a name is what somebody types in System
-/// Settings and can retype, and `VPNRules.orphaned` exists because of it.
+/// Settings and can retype, and `VPNTenants.orphaned` exists because of it.
 /// `scutil --nc list` gives each service a UUID, `VPNConnection.id` carries it,
 /// and a rename costs nothing here.
 ///

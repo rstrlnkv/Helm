@@ -11,7 +11,7 @@ extension View {
     /// what it had read when it opened. Each screen answered that with the same
     /// eight lines — and its own spelling of both keys and both defaults.
     /// - Parameter batteryFloor: the panel's copy of the guard's threshold —
-    ///   it appears in a sentence («Stopped below 30 %») that can be on screen
+    ///   it appears in a sentence («Stopped at 30% or less») that can be on screen
     ///   while somebody changes the number on the settings page. Optional,
     ///   because the settings page owns that control and has no copy to keep.
     func keepAwakeAutomationMirror(_ store: NamespacedStore,

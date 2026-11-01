@@ -105,8 +105,9 @@ private final class GroupPass: @unchecked Sendable {
 ///
 /// **Nothing logs a capture, and one thing here is a phase in the activity trail:** the move of an edit's
 /// original to the Trash, which `HelmTrash.remove` opens as it does for every module. The log is for what was
-/// refused — no grant, a failed write, a folder that was refused, an original that was not replaced — and a line
-/// per press would be noise in the file a person attaches to a bug report. Paths go through `Redact`.
+/// refused — no grant, a failed write, a folder that was refused, an original that was not replaced — and for the
+/// warnings of a picture delivered all the same, and a line per press would be noise in the file a person attaches
+/// to a bug report. Paths go through `Redact`. The reading of text, which this session hands to its port, is a phase of its own.
 public final class CaptureSession: @unchecked Sendable {
     private let capture: ScreenCapturing
     private let writer: ShotWriting
@@ -365,7 +366,7 @@ public final class CaptureSession: @unchecked Sendable {
                     if layer.tool == .blur {
                         // Opaque whole pixels on the bitmap's own grid: nothing of the picture shows at an edge.
                         // A box with no pixel on the display is skipped; a box that has pixels and
-                        // got no tile makes the file refused (nil), so it is never written with that box undrawn.
+                        // got no tile makes `draw` return nil, so no file is written with that box undrawn (and `overlayFinished` says nothing of it).
                         guard Pixelate.pixels(of: layer.frame, scale: scale, width: display.width, height: display.height) != nil
                         else { continue }
                         guard let tile = Pixelate.tile(of: display, rect: layer.frame, blockPoints: layer.blockPoints, scale: scale)

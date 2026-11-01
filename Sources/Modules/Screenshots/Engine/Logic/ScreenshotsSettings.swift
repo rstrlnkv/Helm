@@ -1,8 +1,11 @@
 import Foundation
 import HelmRuntime
 
-/// Where a capture goes. **One setting decides it**: there is no second key for
-/// "and the clipboard", so a screen and an area can never disagree about it.
+/// Where a capture's file goes, and whether it makes one. **One setting decides it, unless the exit says otherwise**: ⌘S and
+/// an edit of a shot with a file make one whatever it says. There is no second key for "and the clipboard". Whether a
+/// capture is also copied is the capture's own (`CaptureSession.deliver`'s `copies`): an area, a window and a display
+/// from the overlay are copied under every target unless the editor's exit narrows it, a whole screen (the full-screen
+/// shortcut, the panel's Screen) only under `clipboard`.
 ///
 /// `macOS` is the state of a store nothing was written into — the folder
 /// `com.apple.screencapture` names, read and never written — which is why an

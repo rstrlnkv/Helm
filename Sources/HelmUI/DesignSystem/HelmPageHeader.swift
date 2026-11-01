@@ -336,8 +336,8 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// `DuplicatesSettingsPage` opens on a permission note — so a computed
     /// answer would flicker the band exactly where the page changes shape
     /// under a stationary pointer. The price is paid knowingly and in one
-    /// place: on Uninstaller's objects tab the band is lit over a list that
-    /// does scroll under it. That is an over-reach the design pass chose, not
+    /// place: on Uninstaller's page the band is lit over lists that do
+    /// scroll under it. That is an over-reach the design pass chose, not
     /// an oversight to repair.
     let standsOnStillContent: Bool
     /// The module's state, said after the name: a badge while it is active, a quiet word while it is idle.

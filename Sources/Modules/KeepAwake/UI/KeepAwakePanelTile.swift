@@ -248,7 +248,7 @@ struct KeepAwakePanelTile: View {
     @ViewBuilder private var suppressedRow: some View {
         Group {
             // The battery wins. Both can be true — a rule is paused *and* the
-            // charge is under the floor — and of the two only one explains why
+            // charge is at or under the floor — and of the two only one explains why
             // nothing at all is happening. No button beside it either:
             // «Resume» while the guard is in force is a control that cannot do
             // what it says, and the notice goes by itself when the charger goes
@@ -397,12 +397,10 @@ struct KeepAwakePanelTile: View {
     /// module's default duration (0 = indefinite, which isn't a timer value)
     /// and finally 30.
     ///
-    /// The remembered value is capped here, where it is read, for the reason
-    /// `KeepAwakeSettings` clamps its two: it goes straight into `startPayload`,
-    /// and `startSession` turns minutes into seconds with a multiply that
-    /// **traps** on `Int` overflow — so a hand-edited `Int.max` in the plist is
-    /// the app terminating when Start is pressed, not a very long timer. The
-    /// key is the tile's own and the engine never reads it, which is why it
+    /// The remembered value is capped here, where it is read, to what the tile
+    /// itself can produce (`maxCustomMinutes`), so a hand-edited `Int.max` in
+    /// the plist reaches the engine as that; `startSession` clamps again before
+    /// its `minutes * 60`. It goes straight into `vm.start(minutes:)`. The key is the tile's own and the engine never reads it, which is why it
     /// stays out of the settings type; that is about who reads it, not about
     /// whether the file can be trusted.
     ///
@@ -427,8 +425,8 @@ struct KeepAwakePanelTile: View {
     /// Free-form duration entry, opened from the menu's «Other…» entry: the
     /// field the settings page draws, in the prompt both surfaces share.
     private var customTimeEditor: some View {
-        // Unlike the page's, this number is a *setting* — what the switch
-        // starts next time — so zero is not «Indefinite» here, it is a
+        // Unlike the page's, this number is a *setting* — what the Start
+        // button starts next time — so zero is not «Indefinite» here, it is a
         // duration the tile could not act on; the prompt disables its verb at 0,
         // so `applyCustomTime` is never reached with it.
         HelmDurationPrompt(KAStr.customTimeTitle, minutes: $editedMinutes,

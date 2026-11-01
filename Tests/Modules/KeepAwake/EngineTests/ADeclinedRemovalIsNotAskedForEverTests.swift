@@ -13,8 +13,8 @@ import HelmTestSupport
 /// reverse channel sitting unread in the same method.
 ///
 /// `releaseIfUnneeded()` is called from the `settingsChanged` command, which the
-/// settings page sends **for every control it draws** — a stepper sends one per
-/// press. `removalInFlight` covers the seconds a dialog is on screen and is
+/// settings page sends **for every control it draws** — a slider sends one per
+/// change. `removalInFlight` covers the seconds a dialog is on screen and is
 /// cleared when it is answered, deliberately, «because a declined removal has to
 /// be askable again». Nothing decides *when* it is asked again: the answer is
 /// «on the next edit of any setting in the module», which is the same five
@@ -110,7 +110,7 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
                       "precondition: Cancel leaves our file exactly where it was")
 
         // Three ordinary edits of some other control — the battery floor's
-        // stepper sends one of these per press.
+        // slider sends one of these per change.
         for _ in 0..<3 {
             engine.settingsChanged()
             await settle()

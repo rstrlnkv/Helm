@@ -118,7 +118,7 @@ public struct KeepAwakeSettings {
     public var jiggleEnabled: Bool { store.bool(Key.jiggleEnabled, default: false) }
     public func setJiggleEnabled(_ on: Bool) { store.set(on, for: Key.jiggleEnabled) }
 
-    /// Clamped on read, which is where it has to hold: the stepper cannot offer
+    /// Clamped on read, which is where it has to hold: the menu cannot offer
     /// less than a minute, and a plist can say anything — and 0 is a nudge loop
     /// running as fast as the timer can wake up.
     ///
@@ -127,7 +127,7 @@ public struct KeepAwakeSettings {
     /// `Int.max` is not a very long interval but the app terminating the moment
     /// a session with jiggle on starts. A day is the ceiling because a jiggle
     /// further apart than that is indistinguishable from the switch being off,
-    /// and the stepper's own top is 60.
+    /// and the menu's own top is 60.
     public var jiggleIntervalMinutes: Int {
         store.int(Key.jiggleIntervalMinutes, default: 5).clamped(to: 1...TimerPolicy.longestSessionMinutes)
     }
@@ -145,9 +145,10 @@ public struct KeepAwakeSettings {
     /// the main thread sat in `SecItemCopyMatching` → `SecKeychainItemCopyContent`,
     /// called from this getter, called from `KeepAwakeEngine.init` — the app
     /// stopped at «enable keep-awake» and went no further, behind a system
-    /// keychain dialog. **The bundle is ad-hoc signed** (`package-app.sh` →
-    /// `--sign -`, no Team ID), so its code identity changes with every build
-    /// and a keychain ACL written by one build never matches the next; that
+    /// keychain dialog. **A released bundle is ad-hoc signed** (`package-app.sh` →
+    /// `--sign -`, no Team ID; a local build is too unless this Mac names an
+    /// identity (`signing-identity.sh` says where)), so its code identity changes with every
+    /// build and a keychain ACL written by one build never matches the next; that
     /// dialog is not a one-off, it is every install. And a person who dismisses
     /// it loses the lid feature with nothing on screen saying why.
     ///
@@ -158,8 +159,11 @@ public struct KeepAwakeSettings {
     /// So it waits for a Developer ID, which an `SMAppService` helper,
     /// notarization and TCC grants surviving an install also wait for. Until then the plist is what it is, and the
     /// mitigation that *did* ship is the one that matters most: the
-    /// administrator dialog needs a gesture, so a forged value cannot summon a
-    /// password prompt — it can only engage a grant the person already gave.
+    /// administrator dialog needs a gesture — a start press, or the option's own
+    /// rising edge — so a forged value cannot raise a password prompt by itself.
+    /// It can engage a grant the person already gave, and with no grant, on a
+    /// Mac with a lid, a start press that takes the Mac from not held to held
+    /// reaches `engage`, which raises the dialog.
     public var clamshellEnabled: Bool { store.bool(Key.clamshellEnabled, default: false) }
     public func setClamshellEnabled(_ on: Bool) { store.set(on, for: Key.clamshellEnabled) }
 
@@ -170,7 +174,7 @@ public struct KeepAwakeSettings {
     public var batteryGuardEnabled: Bool { store.bool(Key.batteryGuardEnabled, default: true) }
     public func setBatteryGuardEnabled(_ on: Bool) { store.set(on, for: Key.batteryGuardEnabled) }
 
-    /// Clamped to the stepper's own range. A stored 0 or a negative leaves
+    /// Clamped to the slider's own range. A stored 0 or a negative leaves
     /// `percent <= threshold` unable to fire, which switches the guard off while
     /// the page still draws it on — and the guard is the only thing that ever
     /// ends an unattended session. A stored 101 ends every session on battery
@@ -182,10 +186,10 @@ public struct KeepAwakeSettings {
         store.set(percent, for: Key.batteryGuardPercent)
     }
 
-    /// 0 is "indefinitely" and stays reachable; the ceiling is `jiggleInterval`'s
-    /// reason one field over — `startSession` turns these minutes into seconds
-    /// with the same trapping multiply, and it is reached from the panel tile's
-    /// main button.
+    /// 0 is "indefinitely" and stays reachable; the ceiling is
+    /// `TimerPolicy.longestSessionMinutes`, the one `startSession` clamps to
+    /// before it turns minutes into seconds. This is the length the panel's
+    /// switch and the global shortcut start.
     public var defaultDurationMinutes: Int {
         store.int(Key.defaultDurationMinutes, default: 0).clamped(to: 0...TimerPolicy.longestSessionMinutes)
     }

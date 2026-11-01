@@ -46,9 +46,9 @@ let modules: [Module] = [
     Module(name: "Autopilot", engineTests: true, uiTests: true),
     // flag-icons flag artwork, MIT — see NOTICE.md.
     Module(name: "Layout", uiResources: [.copy("Flags")], engineTests: true, uiTests: true),
-    // The editor palette's Pen, Marker and Pencil artwork, from a community recreation of Apple's PencilKit picker,
-    // modified for Helm — NOTICE.md records the source and the owner's decision; author and licence are placeholders there
-    // for the owner.
+    // The editor palette's Pen, Marker, Pencil, Eraser and Ruler artwork, from a community recreation of Apple's PencilKit
+    // picker, modified for Helm, and the Spotlight, its shape drawn for Helm — NOTICE.md records the source and the owner's decision;
+    // author and licence are placeholders there for the owner.
     Module(name: "Screenshots", uiResources: [.process("PaletteObjects.xcassets")], engineTests: true, uiTests: true),
 ]
 

@@ -41,15 +41,19 @@ grant with no revocation is `/opt/homebrew`'s ownership change
 (`SudoersRule`) that ends with an argument-exact entry permitting only its own
 removal, `/bin/rm -f` on the one literal path (`SudoersRule.removeArguments`), so the grant carries its own revocation, which it has to because dragging
 the application to the Trash runs no code. Who may *raise* the password prompt
-is a separate question from what the prompt runs: `ClamshellCoordinator.consumeEdge()`
-answers an `Edge`, and the engine reads it before its own active guard, so an edge
+is a separate question from what the prompt runs: `KeepAwakeEngine.startSession` is a
+gesture (`recompute(byGesture: true)` reaches `engage(mayPrompt: true)` on the edge to
+held when the Mac has a lid and the stored option is on; with no grant, `engage` raises the dialog), and `ClamshellCoordinator.consumeEdge()`
+answers an `Edge`, which the engine reads before its own active guard, so an edge
 that happens while the module is idle is consumed rather than saved up, the
 rising edge installs, the falling edge withdraws, and neither is inferred from a
 value that stays true after a dialog was declined.
 
 `KeepAwakeSettings.clamshellEnabled` is not sealed, for the reason its doc comment
-gives; the mitigation that ships instead is that edge: a forged value can engage a
-grant the person already gave, and cannot summon a password dialog.
+gives; the mitigation that ships instead is the gesture: a forged value can engage a
+grant the person already gave, and cannot raise a password dialog by itself, but with
+no grant a start press that takes the Mac from not held to held (any control or
+the shortcut) on a Mac with a lid, with the stored option on, does; so does the option's rising edge as `consumeEdge` reads it at a settings edit during a session.
 
 `PmsetClamshellPort` is the only code that runs the grant's privileged commands, and no test runs it: every engine test builds the engine with
 a fake `ClamshellPort` (`FakeClamshell` or a test's own), and `HelmProcess.run` is called directly, so there is no point at which a test can record argv. Three things in it are held by
@@ -150,7 +154,7 @@ live tiles (VPN profile names, disk): it is proof for the owner's eyes, never ke
 | `automatic-apps` | held by three app rules, two apps running | app rules for apps that are running; the apps are real use |
 | `stop-two-step` | 30 minutes, a rule holds, timer ends automation | a timed session while a rule holds; the rule's condition is real use |
 | `suppressed` | rule applies and is paused | a person pauses a rule that holds; `--press` |
-| `battery-veto` | stopped by the battery guard | the battery falling below the guard, or a person on battery raising the floor slider (5...50) above the charge |
+| `battery-veto` | stopped by the battery guard | the battery falling to the guard's figure or less, or a person on battery raising the floor slider (5...50) to the charge or above |
 | `lid-refused` | closed-lid option on, macOS refused | real use only: a sudoers rule that answers `disablesleep 0` but not `disablesleep 1` (not what Helm wrote), or the administrator dialog accepted and the call still failing |
 | `left-behind` | lid option off, its sudoers rule still there; an unreadable rules value | the rule: real use, left by an earlier run that could not withdraw it; the unreadable rules value: a stored value that does not parse (`--arg module.keep-awake.autoAppRules garbage`, or a damaged settings file) |
 | `worst` | three conditions, eight app rules (one not installed), lid held, longest numbers | a person sets the largest numbers the page offers and the most app rules; the clamp maximum (1440 minutes) is reached only by a stored value, e.g. `--arg module.keep-awake.jiggleIntervalMinutes '<integer>1440</integer>'`; the app not installed is real use: an app removed after its rule was added |

@@ -188,7 +188,7 @@ struct KeepAwakeSettingsPage: View {
                 // per tick for a string that changes when an app launches is
                 // work nobody asked for.
                 appNames: vm.holdingApps.map { AppInfo.resolve($0).name },
-                // Both are passed, or «Stopped below 20 %» sits in a branch
+                // Both are passed, or «Stopped at 20% or less» sits in a branch
                 // nothing can reach: pressing «15 min» at 5 % would be silence
                 // here while the panel said why. The floor is the drawn one, so
                 // the sentence names the number the row below shows.

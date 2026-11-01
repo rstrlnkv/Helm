@@ -44,7 +44,7 @@ enum HbStr {
     static var segUpdates: String { L(.segUpdates) }
     /// What `brew doctor` found. Not "Doctor" — that is Homebrew's own name for
     /// the subcommand and names a tool rather than a question; the segment
-    /// beside three lists of packages is about the state of the machine.
+    /// beside two lists of packages is about the state of the machine.
     static var segHealth: String { L(.segHealth) }
 
     /// One prompt for all three tabs, including Состояние, where the same
@@ -111,9 +111,9 @@ enum HbStr {
     /// what it therefore does not know rather than what it wishes were true.
     /// Drawn where «No packages installed.» and «No results.» used to stand
     /// over a query that refused — which is the module's own rule, written in
-    /// `refreshDoctor`'s doc comment and honoured in one segment of four: "no
-    /// issues" and "the question could not be put" are the same empty list and
-    /// must never be one sentence on screen.
+    /// `doctor`'s doc comment in `HomebrewViewModel.swift` and honoured on
+    /// Состояние: "no issues" and "the question could not be put" are the same
+    /// empty list and must never be one sentence on screen.
     ///
     /// Three keys and not one, because one key means one thing: what is not
     /// known differs, and several of the eight languages inflect the three
@@ -363,12 +363,12 @@ enum HbStr {
     static var columnPackage: String { L(.columnPackage) }
     static var tileLicence: String { L(.tileLicence) }
     /// How much disk the installed package occupies. **Walked, not read**:
-    /// `brew info --json=v2` carries no size in either direction, so this tile
+    /// `brew info --json=v2` carries no size in either direction, so this row
     /// is the only fact in the tier that arrives after the rest. Its value goes
     /// through `Bytes`, so the unit is the app's own language rather than the
     /// system's.
     static var tileOnDisk: String { L(.tileOnDisk) }
-    /// What the tile above says while the walk is out — and only while it is
+    /// What the row above says while the walk is out — and only while it is
     /// out, for the package on screen (`SizeReading`). A state, not a figure:
     /// this is the one thing the tier says about a number nobody has yet, and it
     /// is said only because the walk really is running.
@@ -493,8 +493,9 @@ enum HbStr {
     /// from draws the verb alone.
     static var runTheFix: String { L(.runTheFix) }
     /// Run, when pressing it raises a question first — `uninstallAsking`'s
-    /// reason. Not for `brew cleanup`, which runs on the press:
-    /// `HomebrewSettingsPage.runLabel` is where the two are told apart.
+    /// reason. Not for `brew cleanup`, which would run on the press and which
+    /// no page path produces today: `HomebrewSettingsPage.runLabel` is where
+    /// the two are told apart.
     static var runTheFixAsking: String { L(.runTheFixAsking) }
     /// The question a press on Run raises when the command is one this build
     /// has no sentence for — `FixAsk.unrecognised`, which nothing on

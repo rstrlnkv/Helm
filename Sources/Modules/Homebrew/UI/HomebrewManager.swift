@@ -227,7 +227,8 @@ struct HomebrewManager: View {
         // Both halves of this segment, and `brew config` first on purpose: it
         // is one fast local run where `brew doctor` is the slowest query in the
         // module, so asking it first puts the Configuration heading on screen
-        // while the Checkup one is still saying what it is waiting for.
+        // while the verdict is still saying what it is waiting for (the first
+        // ask: a later one keeps the old verdict until the new reading lands).
         case .health:
             await hb.refreshConfig()
             await hb.refreshDoctor()

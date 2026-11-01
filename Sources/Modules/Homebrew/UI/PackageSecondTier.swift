@@ -27,10 +27,10 @@ import Module_Homebrew_Engine
 /// directory that lands after this tier has already been drawn once.
 ///
 /// It is also the one input with three states rather than two. While that walk
-/// is out for the package on screen, the tile is there and says the figure is
-/// being counted; when it answers, the figure replaces the word in the tile that
+/// is out for the package on screen, the row is there and says the figure is
+/// being counted; when it answers, the figure replaces the word in the row that
 /// is already there; when there was nothing to measure — a cask, a keg that
-/// would not open, a package that is not installed — there is no tile at all,
+/// would not open, a package that is not installed — there is no row at all,
 /// the same as every other absent fact here. `SizeReading` is what carries the
 /// difference, and `PackageFacts` is where it is spent.
 struct PackageSecondTier: View {

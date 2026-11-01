@@ -12,7 +12,7 @@ enum ShotKey {
 
 /// How the editor leaves, and what each way does with the picture.
 enum EditorExit: Equatable {
-    /// Return: what the settings say — copy and/or save by the save target.
+    /// Return: always copies, and writes a file by the save target (an edit of a shot that had a file writes one whatever the target says).
     case confirm
     /// ⌘C: the clipboard only.
     case copy

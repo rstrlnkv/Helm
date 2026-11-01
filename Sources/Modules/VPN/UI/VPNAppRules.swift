@@ -6,8 +6,8 @@ import HelmRuntime
 import HelmUI
 import Module_VPN_Engine
 
-/// The per-app automation half of the VPN settings page: the list of rules, what
-/// each row says when it cannot fire, and the picker that writes one.
+/// The per-app automation half of the VPN settings page: saving the rules and
+/// the picker that writes one.
 ///
 /// Its own file because the page reached the length limit, and this is where it
 /// divides: everything above is about the connections this Mac has, and

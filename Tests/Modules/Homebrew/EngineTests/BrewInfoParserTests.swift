@@ -133,7 +133,7 @@ final class BrewInfoParserTests: XCTestCase {
     }
 
     /// **A blank value is not a fact, and nothing downstream can tell the two
-    /// apart.** `"license": ""` drew a «Лицензия» tile with nothing under it —
+    /// apart.** `"license": ""` drew a «Лицензия» row with nothing under it —
     /// which reads as Homebrew having been asked and having had no answer — and
     /// `"deprecation_replacement_formula": ""` drew «Вместо него стоит взять .».
     /// The optionals on `PackageInfo` exist to make that unrepresentable, so the

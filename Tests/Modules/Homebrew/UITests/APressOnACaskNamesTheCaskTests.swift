@@ -10,8 +10,8 @@ import HelmTestSupport
 ///
 /// `TheDoorRunsWhatItNamesTests` starts at the act, so it cannot see the model
 /// build one: a model that dropped the kind on the way (`isCask: false` for every
-/// ref) would uninstall a formula that happens to share the cask's name, the
-/// app's one irreversible branch. These read what the model hands the work.
+/// ref) would uninstall a formula that happens to share the cask's name, an
+/// irreversible branch. These read what the model hands the work.
 /// Defect class kept: the model's press names a different kind than the row.
 @MainActor
 final class APressOnACaskNamesTheCaskTests: XCTestCase {

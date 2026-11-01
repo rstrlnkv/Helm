@@ -5,7 +5,7 @@ import HelmRuntime
 /// How long a session may be is the engine's question, not the picker's.
 ///
 /// Every number a person can choose is already bounded where they choose it —
-/// the settings stepper, the panel tile's presets, `TimerPolicy.extendedMinutes`
+/// the settings menu, the panel tile's presets, `TimerPolicy.extendedMinutes`
 /// for the "+15" button. `startSession` itself took the number on trust and
 /// multiplied it:
 ///

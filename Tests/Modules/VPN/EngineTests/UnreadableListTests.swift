@@ -8,8 +8,8 @@ import HelmRuntime
 /// "No VPNs are configured" and "scutil did not answer" are different facts,
 /// and until now they were the same empty array.
 ///
-/// `ScutilRunner.run` returns only the tool's stdout and throws the exit status
-/// away, and `parseList` skips every line it cannot read — so a failed read
+/// `refreshNow` reads only the stdout `ScutilRunner.run` returns and never its
+/// exit status, and `parseList` skips every line it cannot read — so a failed read
 /// produced `[]`, exactly like a machine with nothing configured. Two things
 /// then went wrong at once, and the second is the worse one:
 ///

@@ -69,7 +69,7 @@ struct HomebrewInspector: View {
     /// **The one builder for what a package draws — there is no second one.**
     ///
     /// Scrolled, because the second tier is as long as the package makes it:
-    /// openssl@3 answers with three tiles, a homepage, a tap, two notes, a
+    /// openssl@3 answers with three rows, a homepage, a tap, two notes, a
     /// dependency chip and four lines of caveats, and below `HomebrewSplit`'s
     /// threshold this has the console under it as well. A fixed column simply
     /// clipped the caveats.
@@ -137,7 +137,7 @@ struct HomebrewInspector: View {
                 // and a document this build cannot read are one nil
                 // (`HomebrewEngine.info`), none of which has measured
                 // anything. So there is no spinner in place of the package
-                // and no tile with nothing in it: the tier is absent.
+                // and no row with nothing in it: the tier is absent.
                 if let info = hb.info { PackageSecondTier(info: info, size: hb.size) }
             }
             .helmInspectorColumn()

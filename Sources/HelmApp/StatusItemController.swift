@@ -47,7 +47,7 @@ import HelmAppStrings
         // `refreshIcon` hands `StatusPlan.choose` the modules in the user's
         // order, read at call time — so a reorder changes the answer while
         // nothing asks for it again. Latent today: `KeepAwakeDescriptor` is the
-        // only descriptor that overrides `statusAppearance`, so the fallback to
+        // only descriptor whose `statusAppearance` sets `tintToken`, so the fallback to
         // the first tinted module finds it whatever the order. It stops being
         // latent the day a second module tints the icon, and that is not the
         // day to remember this.
@@ -70,7 +70,7 @@ import HelmAppStrings
     private func resubscribeToModules() {
         moduleCancellables.removeAll()
         for live in host.enabledModules {
-            // Only a module that tints the icon has anything to say here.
+            // A module with no `statusChanges` has nothing to say here.
             guard let changes = live.statusChanges() else { continue }
             changes
                 // objectWillChange fires BEFORE the property is written, so

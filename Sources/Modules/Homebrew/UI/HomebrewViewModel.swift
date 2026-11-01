@@ -133,7 +133,7 @@ extension HomebrewEngine: HomebrewWork {}
     /// reason.** `brew info` carries no size in either direction, so this is a
     /// walk of the package's own Cellar directory and it lands after the rest of
     /// the inspector — the one wait in the tier long enough that arriving with
-    /// no warning reads as a tile appearing out of nowhere. An `Int?` could not
+    /// no warning reads as a row appearing out of nowhere. An `Int?` could not
     /// say that: «nothing is selected», «a walk is out» and «the walk answered
     /// nothing» were one nil, so the page could not tell a measurement that is
     /// happening from one that is not. `SizeReading` carries the difference;
@@ -147,7 +147,7 @@ extension HomebrewEngine: HomebrewWork {}
     ///
     /// **Never `.measured(0)`.** The engine folds a missing keg, a directory
     /// that would not open and a cask into nil (`HomebrewEngine.size`), which
-    /// lands here as `.notMeasured`, because a zero in a tile is not a gap on
+    /// lands here as `.notMeasured`, because a zero in a row is not a gap on
     /// the page — it is a measurement, and it says the package occupies nothing.
     @Published private(set) var size: SizeReading = .notMeasured
 
@@ -231,9 +231,10 @@ extension HomebrewEngine: HomebrewWork {}
 
     /// What is selected in each segment, as a `BrewKey` id.
     ///
-    /// Per segment, because the three lists hold different things: the
-    /// package being read in Установленные is not the finding being read in
-    /// Состояние, and coming back to a segment should find what was left there.
+    /// Per package segment, because the two lists hold different things: what
+    /// is selected in Установленные is not what is selected in Обновления, and
+    /// coming back to a segment should find what was left there. Состояние
+    /// selects nothing: its findings open in `HomebrewHealthPage`.
     @Published private(set) var selection: [Segment: String] = [:] {
         didSet { if selection[segment] != oldValue[segment] { subjectMoved() } }
     }
@@ -464,8 +465,8 @@ extension HomebrewEngine: HomebrewWork {}
     /// pressing Cancel and without leaving the page — Back on the narrow
     /// screen, a click on another row, and the segmented picker — and none of
     /// the three is a later press, so `LatestRequest` does not retire the query
-    /// on its own and the answer arrived to raise the app's only irreversible
-    /// deletion over a list, a different package or a different segment
+    /// on its own and the answer arrived to raise an irreversible
+    /// deletion's question over a list, a different package or a different segment
     /// (`MovingOffThePackageRetiresAnUninstallAskTests`). Both fields observe
     /// this rather than each gesture: the two are the only writers of the pair,
     /// and a fourth gesture cannot forget to call it.
@@ -567,10 +568,10 @@ extension HomebrewEngine: HomebrewWork {}
         // number `brew info` never said.
         guard let version = answer?.installedVersion, !version.isEmpty else { return }
         // **Said before the ask, and it is the ask that earns it.** This line
-        // and the one under it are one gesture: the tile says a walk is running
+        // and the one under it are one gesture: the row says a walk is running
         // exactly while a walk is running, so there is no state in which the
         // page claims to be counting and nothing is. A package with no installed
-        // version never reaches here, which is why a search hit gets no tile
+        // version never reaches here, which is why a search hit gets no row
         // instead of a promise about a keg that does not exist.
         size = .measuring
         let measured = await door?.measure(ref, version: version)
@@ -581,7 +582,7 @@ extension HomebrewEngine: HomebrewWork {}
         // answer belongs to a package nobody is looking at.
         guard infoAsks.isLatest(token) else { return }
         // A refusal is `.notMeasured` and not a lingering «counting»: the walk
-        // is over, there is no figure, and the tile goes rather than sitting
+        // is over, there is no figure, and the row goes rather than sitting
         // there for ever saying something is still happening.
         size = measured.map(SizeReading.measured) ?? .notMeasured
     }
@@ -616,7 +617,7 @@ extension HomebrewEngine: HomebrewWork {}
     /// **A row a query has just hidden is a row that has to stop being
     /// selected.** `reconcile(_:against:)` runs when a list is *replaced*;
     /// this runs when the *filter* moves instead, and it is the one that
-    /// keeps `askToUninstall` from raising its dialog — the app's only
+    /// keeps `askToUninstall` from raising its dialog — an
     /// irreversible deletion — over a row the list no longer shows. Dropping
     /// the selection runs `subjectMoved()` through `selection`'s own
     /// `didSet`, which is what retires an ask still out at the engine.
@@ -834,7 +835,7 @@ extension HomebrewEngine: HomebrewWork {}
         if config != nil { await refreshConfig() }
         // And what `brew info` said, which an upgrade rewrites: the first tier
         // takes its version from the list above, so a kept answer left the
-        // heading reading 3.7.0 with the tile under it still saying 3.6.4 — one
+        // heading reading 3.7.0 with the row under it still saying 3.6.4 — one
         // screen carrying two accounts of one package. Last, so the ask goes
         // out against the selection the reconciles above have settled on.
         //
@@ -945,8 +946,8 @@ extension HomebrewEngine: HomebrewWork {}
         config = answer
     }
 
-    /// **A refusal replaces the issues rather than keeping them.** The other
-    /// three lists keep their last answer when a query is refused, because a
+    /// **A refusal replaces the issues rather than keeping them.** The installed
+    /// and outdated lists keep their last answer when a query is refused, because a
     /// stale package list is still a list of packages and the page says nothing
     /// about it either way. This one is different in kind: the list *is* the
     /// claim about the machine's health, and holding two issues on screen under
@@ -986,8 +987,9 @@ extension HomebrewEngine: HomebrewWork {}
 
     /// The press on Run, which is not the same thing as running it.
     ///
-    /// `FixAsk` decides — `brew cleanup` goes straight to the engine, and
-    /// anything that takes a package off this Mac raises the question the
+    /// `FixAsk` decides — `brew cleanup` would go straight to the engine (no
+    /// fix the page draws is that command today), and anything that takes a
+    /// package off this Mac raises the question the
     /// Uninstall button has raised since somebody noticed it removed an
     /// application on a single click. The judgement is `FixAsk.of`'s and not
     /// this method's, so a test reads it without a `body` in the way.
@@ -1185,11 +1187,14 @@ extension HomebrewEngine: HomebrewWork {}
     /// Sends the uninstall the dialog was raised for, and clears the reading
     /// with it.
     ///
-    /// The only door in this target to `brew uninstall`: a row's button asks
-    /// (`askToUninstall`) and this is the press on the dialog it raised, so the
-    /// deletion cannot be reached without the sentence saying what it takes
-    /// with it. The `uninstall(_:)` that used to sit beside it was a second,
-    /// unconfirmed one, with no caller left outside this type.
+    /// One of two doors in this target to `brew uninstall`, the other being
+    /// `confirmFix` for an `uninstall <name>` fix. A row's button asks
+    /// (`askToUninstall`, which reads what depends on the package) and this is
+    /// the press on the dialog it raised, so through this door the deletion
+    /// cannot be reached without the sentence saying what it takes with it; the
+    /// fix's dialog asks too, and does not read the dependents. The
+    /// `uninstall(_:)` that used to sit beside it was a third, unconfirmed
+    /// one, with no caller left outside this type.
     func confirmUninstall() {
         guard let pkg = pendingUninstall else { return }
         cancelUninstall()

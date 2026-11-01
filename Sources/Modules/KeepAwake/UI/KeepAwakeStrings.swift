@@ -235,12 +235,12 @@ enum KAStr {
     }
     static var keepDisplayOn: String { L(.keepTheDisplayOn) }
     static var movePointer: String { L(.moveThePointer) }
-    /// "Каждые 1 мин" is wrong, and the stepper starts at 1: the Russian
+    /// "Каждые 1 мин" is wrong, and the menu starts at 1: the Russian
     /// quantifier agrees with the last digit, with the 11–14 exception
     /// `Plural.russian` already knows.
     static func everyMinutes(_ n: Int) -> String {
         // Every other language says "Every minute" rather than "Every 1 min",
-        // and the stepper starts at one, so Russian was reading «Каждую 1 мин»
+        // and the menu starts at one, so Russian was reading «Каждую 1 мин»
         // in the state the setting opens in.
         if n == 1 { return L(.everyMinute) }
         // Russian alone has a word that changes with the figure (21, 31 … take
@@ -317,7 +317,7 @@ enum KAStr {
         case .externalDisplay: return L(.thenDisplayKeeps)
         case .power: return L(.thenPowerKeeps)
         case .app: return L(.thenAppKeeps)
-        // `SessionHero.holderAfterTimer` only ever answers one of the three
+        // `SessionHero.afterTimer` only ever answers `.heldBy` with one of the three
         // above; the switch is exhaustive so a fourth automatic condition is a
         // build error here rather than a sentence nobody wrote.
         case .manual, .timer: return ""
@@ -551,7 +551,7 @@ enum KAStr {
     /// width under it.
     ///
     /// **The short form was the whole notice, and it named no way out.** «Stopped
-    /// at 20 % or less» is a fact; the person reading it has pressed a button and
+    /// at 20% or less» is a fact; the person reading it has pressed a button and
     /// watched nothing happen, and what they need next is *plug in* — the veto
     /// lifts by itself the moment the charger goes in, which is the one thing
     /// none of the three surfaces said. The panel keeps the short form, because
@@ -560,7 +560,7 @@ enum KAStr {
     ///
     /// **And it then said what the 40 pt headline above it already said.** Under
     /// the veto the page draws `heroIdle` — «The Mac sleeps as usual» — and hides
-    /// the reason line beneath it, so «Nothing keeps the Mac awake at 20 % or
+    /// the reason line beneath it, so «Nothing keeps the Mac awake at 20% or
     /// less» was one fact stated twice on one screen with the weaker,
     /// smaller copy underneath: exactly the duplication `heroIdle`'s own comment
     /// records being removed once already. What the headline cannot say is

@@ -55,6 +55,10 @@ public struct VPNSettings {
     /// is a person's to switch off. The cost is exact and is stated under the
     /// switch: with this off *and* the notice set to nothing, a rule fires with
     /// no sign at all.
+    ///
+    /// The switch is a card's, written to the book; this is the value a
+    /// configuration without an entry inherits. `setAutomationSpin` and
+    /// `setSpinTint` have no caller in `Sources`, only tests.
     public var automationSpin: Bool { store.bool("automationSpin", default: false) }
     public func setAutomationSpin(_ on: Bool) { store.set(on, for: "automationSpin") }
 
@@ -84,8 +88,11 @@ public struct VPNSettings {
     /// would demote `.system` to the menu-bar label for someone who granted the
     /// permission months ago. The cost of mirroring is that the person can
     /// revoke banners in System Settings and this will not hear about it, so it
-    /// has to be refreshed from `AutomationNotice.prepare` — a read, never a
-    /// request — when the module comes up.
+    /// has to be refreshed: `VPNViewModel.refreshBannerAuthorization` reads macOS,
+    /// prompting nobody, and writes it, from the settings page's `.task` and,
+    /// while that page is up, when the app becomes active, and `VPNViewModel.choose` writes it after
+    /// `AutomationNotice.prepare`, which requests the permission for the mode
+    /// that posts banners. Nothing writes it when the module comes up.
     public var bannerAuthorized: Bool { store.bool("bannerAuthorized", default: false) }
     public func setBannerAuthorized(_ authorized: Bool) {
         store.set(authorized, for: "bannerAuthorized")
@@ -97,9 +104,14 @@ public struct VPNSettings {
     /// where the rules are keyed by bundle id.
     ///
     /// The global settings above (the two notices, the spin and its colours)
-    /// stay exactly where they are and keep meaning what they mean: whatever the book has no entry for inherits them
+    /// stay where they are: whatever the book has no entry for inherits them
     /// (`VPNNoticeBook`). So an installed build that has never opened the new
     /// popover behaves as it did, and there is no migration to run twice.
+    ///
+    /// A card's notice choice writes its book entry and also, through
+    /// `VPNViewModel.choose`, the module-wide `automationNotice` or `dropNotice`,
+    /// which every configuration without an entry inherits. The ring switch and
+    /// the colours write the book alone.
     public var noticeBook: VPNNoticeBook {
         VPNNoticeBook.decode(store.string("noticeBook", default: "{}"))
     }

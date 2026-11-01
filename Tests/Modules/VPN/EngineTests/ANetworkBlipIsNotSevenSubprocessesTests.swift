@@ -7,8 +7,8 @@ import HelmRuntime
 import XCTest
 @testable import Module_VPN_Engine
 
-/// **One network event is one re-read. `SCDynamicStore` does not deliver one
-/// event.**
+/// **The notifications that arrive before a re-read runs are one re-read.
+/// `SCDynamicStore` does not deliver one event.**
 ///
 /// Measured in the owner's own `~/Library/Logs/Helm/helm.log`, not reasoned
 /// about: `network state changed; re-reading` arrives in bursts of up to seven

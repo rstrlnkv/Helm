@@ -54,10 +54,11 @@ extension VPNEngine {
 
 /// What the page's tile strip draws, as one value.
 ///
-/// Its own type rather than six loose fields on the payload: they are true of
-/// *one* tunnel — the one holding the default route — and six optionals side by
-/// side invite a reader to mix a name from one refresh with a byte count from
-/// the next.
+/// Its own type rather than six loose fields on the payload: each value is true of
+/// *one* tunnel — the engine builds one for each connected tunnel the tool has
+/// named an interface for, and `StatePayload.tunnels` lists them — and six
+/// optionals side by side invite a reader to mix a name from one refresh with a
+/// byte count from the next.
 public struct VPNTunnelState: Equatable, Sendable {
     public let name: String
     public let interface: String
@@ -93,8 +94,9 @@ public struct VPNTunnelState: Equatable, Sendable {
     ///
     /// It began as a `@Published` flag on the view model, set on the press and
     /// cleared by the arrival of any state — a local boolean standing in for a
-    /// live fact somebody else owns, which is the family CLAUDE.md names in
-    /// § Anything that can stop being true on its own owns a channel to say so.
+    /// live fact somebody else owns, which is the family ARCHITECTURE.md
+    /// § Module pattern names: a port that can change under the app has a reverse
+    /// channel.
     /// It could be wrong in three ways at once: a page opened while a run was
     /// going knew nothing about it, a run outliving the page that started it
     /// spun a spinner nobody would clear, and — the one that shipped — a run the

@@ -27,7 +27,8 @@ final class TheSaveTargetIsOneSettingTests: XCTestCase {
 
     /// Every target, through the full-screen shortcut and through a hand-off of
     /// an area (`saves: true, copies: true`, which is what the overlay's hand-off
-    /// asks): the same answer, because the same setting is the only thing asked.
+    /// asks): the target alone decides the file. The clipboard does not follow it alike: the hand-off copies under
+    /// every target, the full-screen shortcut only under the clipboard target.
     func testEachTargetMakesItsOwnFileOrItsOwnCopyAndNothingElse() async throws {
         let home = scratchDirectory("shots-one-setting")
         let chosen = home.appendingPathComponent("Chosen", isDirectory: true)

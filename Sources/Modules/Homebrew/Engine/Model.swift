@@ -172,15 +172,19 @@ public enum OpPhase: String, Sendable { case idle, running, done, failed }
 /// A named outcome, never silence: each of these used to be a bare `return` (a
 /// press that did nothing, visibly forever) or an exit code indistinguishable
 /// from a build failure. The engine names the reason; the UI owns the words, so
-/// the eight languages live where `L()` can reach them.
+/// the eight languages live where `L()` can reach them. Two console lines are
+/// the exception, written by the engine in English: `runOp` and `installBrew`
+/// refusing a press while another operation runs, and `installBrew` refusing
+/// an account name, which concludes with no reason.
 public enum OpFailureReason: String, Sendable, CaseIterable {
     /// brew vanished between `status()` and the press — Homebrew's own
     /// uninstaller ran in a terminal while Helm's window sat open.
     case brewMissing
     /// The person pressed Stop; the exit code is the signal, not a defect.
-    /// (A timed-out *query* never comes through here: queries answer nil and
-    /// the log names the outcome — an operation state about no operation
-    /// would loop the view model's refresh-on-failure.)
+    /// (A timed-out *query* never comes through here: queries answer nil, or
+    /// `descriptions` an empty dictionary, and the log names the outcome — an
+    /// operation state about no operation would loop the view model's
+    /// refresh-on-failure.)
     case stopped
     /// A `brew doctor` fix the engine re-judged and would not run.
     ///

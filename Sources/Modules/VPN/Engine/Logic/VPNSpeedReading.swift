@@ -12,9 +12,9 @@ public struct VPNSpeedReading: Equatable, Sendable {
     public let up: Int
     /// Apple's responsiveness figure, in round trips per minute — **nil when the
     /// tool did not print one**, which is what it does for a link it could not
-    /// characterise. It used to be stored as `0`, a figure, in the type whose own
-    /// rule below is «every field or nothing»: nobody measured a responsiveness
-    /// of zero, and nobody measured one at all.
+    /// characterise. It used to be stored as `0`, a figure, in a type whose
+    /// throughput figures `parse` requires: nobody measured a responsiveness of
+    /// zero, and nobody measured one at all.
     public let rpm: Int?
     public let at: Date
     /// **How long the run that produced this took**, or nil when nobody timed
@@ -43,7 +43,8 @@ public struct VPNSpeedReading: Equatable, Sendable {
         self.took = took
     }
 
-    /// **Every field or nothing.** A run that was killed at its deadline prints
+    /// **Both throughput figures or nothing**; responsiveness is the one figure
+    /// that may be missing. A run that was killed at its deadline prints
     /// part of its JSON, and a reading built out of the half that arrived claims
     /// the link is 0 Mbit/s in the direction nobody measured.
     ///
@@ -61,9 +62,10 @@ public struct VPNSpeedReading: Equatable, Sendable {
               let upMbit = whole(up / 1_000_000)
         else { return nil }
         // Responsiveness is the one figure the tool omits on a link it could not
-        // characterise, and its absence is the reading's own nil. A figure that
-        // is *there* and unreadable is a different matter: the document is then
-        // saying something impossible, and none of it is worth keeping.
+        // characterise, and its absence is the reading's own nil. A number that
+        // is *there* and cannot be held (negative, out of range) is a different
+        // matter: the document is then saying something impossible, and none of
+        // it is worth keeping.
         var rpm: Int?
         if let responsiveness = json["responsiveness"] as? Double {
             guard let value = whole(responsiveness) else { return nil }

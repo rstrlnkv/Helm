@@ -11,8 +11,8 @@ public enum UninstallStep: Equatable, Sendable { case pick, review }
 /// engine's place without a Mac's applications in reach.
 ///
 /// Every answer is the return value, so there is nothing to subscribe to and no
-/// reply that can be lost. The one thing the engine says unasked, that an app
-/// reached the Trash, does not come through here: the descriptor hands the model
+/// reply that can be lost. The one thing the engine says unasked, "look at the
+/// Trash again", does not come through here: the descriptor hands the model
 /// a stream of it (`UninstallerViewModel.listenForTrash`).
 protocol UninstallerWork: AnyObject, Sendable {
     func listApps() async -> [InstalledApp]
@@ -38,7 +38,7 @@ extension UninstallerEngine: UninstallerWork {}
 /// through here.
 @MainActor public final class UninstallerViewModel: ObservableObject {
     private let work: any UninstallerWork
-    /// The engine's "an app reached the Trash", one value per signal. The
+    /// The engine's "look at the Trash again", one value per signal. The
     /// descriptor makes it with the engine; `listenForTrash` reads it.
     private let arrivals: AsyncStream<Void>
     private var listening: Task<Void, Never>?
@@ -150,8 +150,8 @@ extension UninstallerEngine: UninstallerWork {}
         openOffer = nil
     }
 
-    /// Takes the engine's "an app reached the Trash" while the model lives. With
-    /// an offer open the arrival is the offer's; without one it is `arrived`,
+    /// Takes the engine's "look at the Trash again" while the model lives. With
+    /// an offer open the signal is the offer's; without one it is `arrived`,
     /// which is the host's sweep. One iteration of the stream, ever: a second
     /// call only replaces the handler.
     public func listenForTrash(_ arrived: @escaping @MainActor () -> Void) {
@@ -356,10 +356,10 @@ extension UninstallerEngine: UninstallerWork {}
         // the review stays as it is.
         guard let result = await trashPaths(paths, quittingRunningApps: forceQuit) else { return }
 
-        // Nothing moved: an app in the batch was up and nobody had allowed Helm
-        // to quit it. The review stays, its `running` flags are replaced by what
-        // the engine has just read, and the offer the person needs — quit it, or
-        // tick the force quit — is the one already on this screen.
+        // Nothing moved: an app in the batch was up, with no quit allowed or
+        // still up after the quit. The review stays, its `running` flags are replaced by what
+        // the engine has just read, and the offer the person needs — quit it, or,
+        // where no quit was allowed, tick the force quit — is the one already on this screen.
         guard result.stillRunning.isEmpty else {
             let up = Set(result.stillRunning)
             groups = groups.map {

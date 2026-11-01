@@ -147,9 +147,9 @@ extension VPNEngine: VPNWork {}
         return settings.spinTint(for: kind, connectionID: id)
     }
 
-    /// Whether the menu-bar ring turns when a rule fires. Read at every ask
-    /// rather than cached, like `notice`, so a change in Settings applies to
-    /// the next firing instead of to the next launch.
+    /// Whether the menu-bar ring turns when a rule fires, module-wide: what a
+    /// configuration without a book entry inherits, and nothing in the app writes
+    /// it. Read at every ask rather than cached, like `notice`.
     var automationSpin: Bool {
         spinForTesting ?? settings?.automationSpin ?? false
     }
@@ -207,9 +207,10 @@ extension VPNEngine: VPNWork {}
 
     /// The person picked a mode.
     ///
-    /// The only place in Helm that asks macOS for the notification permission,
-    /// and it asks only for the mode that needs one — `AutomationNotice.prepare`
-    /// reads the state for the other two. macOS grants that prompt once ever, so
+    /// The only place in this module that asks macOS for the notification
+    /// permission (`NoticeChannel.tell` asks for other news), and it asks only for
+    /// the mode that needs one — `AutomationNotice.prepare` reads the state for
+    /// the other two. macOS grants that prompt once ever, so
     /// asking at launch, or on every visit to this page, spends it on somebody
     /// who was not asking for notifications.
     @discardableResult
@@ -354,8 +355,8 @@ extension VPNEngine: VPNWork {}
 
     /// The banner, in the mode that posts one.
     ///
-    /// It rides the same arrival as the ring and the label, so a firing reaches
-    /// all three channels or none — `.system` hides the menu-bar name because
+    /// It rides the same arrival as the ring and the label, so what a
+    /// firing says on any channel comes from that one arrival — `.system` hides the menu-bar name because
     /// the banner is meant to carry it, and a banner wired anywhere else would
     /// leave that mode saying nothing at all.
     ///

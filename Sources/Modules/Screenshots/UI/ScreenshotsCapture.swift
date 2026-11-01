@@ -473,7 +473,7 @@ struct CapturedShot {
 
     /// Where a finished picture is delivered: copied and/or saved, the shutter, the
     /// thumbnail. A window or a whole display arrives here straight from the overlay
-    /// and does both; an area is **not** picked here any more — its seam is
+    /// and asks for both; an area is **not** picked here any more — its seam is
     /// `OverlayResult.edited`, which composes the editor's layers over the crop and
     /// then calls this with the two things its exit asked for (Return asks for both
     /// and so behaves as this always did, ⌘C only copies, ⌘S only saves). The

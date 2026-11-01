@@ -296,7 +296,8 @@ public struct SystemDockBounds: DockBounds {
 /// is how a screenshot replaces one taken in the same second.
 ///
 /// A volume that does not do RENAME_EXCL may answer `ENOTSUP` (`renamex_np(2)`:
-/// «flags has a value that is not supported by the file system»), and a hard
+/// «flags has a value that is not supported by the file system») or `EINVAL`
+/// («flags has an invalid value»), and on either a hard
 /// link — which fails on an existing name just as atomically — takes its place.
 /// No such volume was tried here, so that branch is written from the manual and
 /// not exercised.

@@ -21,17 +21,20 @@ import HelmContract
 public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// This module's id, and the only place it is written down.
     ///
-    /// It is the `module.homebrew.*` prefix of every setting this module has
-    /// ever saved and the category its log lines file under.
+    /// It is the `module.homebrew.*` prefix of the settings saved for this
+    /// module (today only `module.homebrew.enabled`, which `ModuleHost` writes)
+    /// and the category its log lines file under.
     /// `HomebrewDescriptor.id` is built from this rather than repeating it, so the
     /// two spellings are one. **The string itself never changes** — it names
     /// stored settings already on people's machines.
     public static let moduleID = "homebrew"
 
-    /// What a query that reads only the disk runs with.
+    /// What `list`, `desc`, `uses`, `info` and `config` run with, and `doctor`
+    /// through `doctorEnvironment`.
     ///
-    /// `brew list --versions` and `brew desc` answer about packages already
-    /// installed; neither reading changes when the catalogue is refreshed. Left
+    /// `brew list --versions` answers about packages already installed and
+    /// `brew desc` describes the names it is given; neither reading changes
+    /// when the catalogue is refreshed. Left
     /// to itself brew may refresh it anyway, which turns a question about this
     /// disk into a download nobody asked for — and on a Mac with no network at
     /// all, into a failure to answer something brew already knew.
@@ -42,7 +45,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// on a warm machine, because brew refreshes periodically rather than per
     /// call, so those runs were not paying for a refresh either. A doc comment
     /// here once carried a duration figure read off `helm.log`; the lines it
-    /// cited are `homebrew.outdated`, which is the one query this constant
+    /// cited are `homebrew.outdated`, which is one of the two queries this constant
     /// deliberately excludes — the figure belongs on the deadline comment in
     /// `SystemPorts.swift` instead. No timing claim belongs here that has not
     /// been measured on the queries this actually covers.
@@ -294,7 +297,11 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     /// Whether the runner's deadline passed — with the outcome named in the
     /// log, because "brew is hung" shown as an empty list is a lie about the
-    /// machine (`ATimedOutQueryIsANamedRefusalTests`).
+    /// machine (`ATimedOutQueryIsANamedRefusalTests`). The line says "keeping
+    /// the last answer" for every query that comes through here; the callers
+    /// that keep one are the installed, outdated and configuration readings, and
+    /// the descriptions: the model keeps what it held, because `load` writes
+    /// only the keys found.
     private func timedOut(_ status: Int32, query: String) -> Bool {
         guard status == HelmProcess.timedOutStatus else { return false }
         HelmLog.shared.warn(Self.moduleID, "\(query) timed out — keeping the last answer")
@@ -610,7 +617,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// **nil is never remembered.** «Nothing was measured» is a live fact about
     /// a directory — a refusal that may be lifted, a keg that may arrive — and
-    /// a remembered nil would keep the tile absent for the life of the app.
+    /// a remembered nil would keep the row absent for the life of the app.
     func size(name: String, isCask: Bool, version: String) -> Int? {
         let key = BrewKey.of(name: name, isCask: isCask) + "@" + version
         lock.lock(); let remembered = sizes[key]; lock.unlock()
@@ -1300,7 +1307,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// keeps one figure per `name@version` for its own life; the version is the
     /// half that makes a kept figure honest, since an upgrade replaces the keg the
     /// walk measured. The page already holds it — it is `PackageInfo`'s
-    /// `installedVersion`, the very tile this figure is drawn beside — so nothing
+    /// `installedVersion`, the very row this figure is drawn beside — so nothing
     /// has to be read twice to name it. Never empty: a package with no installed
     /// version has no keg to walk.
     ///

@@ -4,7 +4,7 @@ import HelmRuntime
 
 /// Orchestrates app listing, leftover scanning, and trashing against side-effecting
 /// ports. The module's model calls its methods directly (`UninstallerWork`); the
-/// one thing it says unasked, that an app reached the Trash, goes out through
+/// one thing it says unasked, "look at the Trash again", goes out through
 /// `trashChanged`. Not a toggle — no active state, so it never tints the menu bar.
 public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @unchecked Sendable {
     /// This module's id, and the only place it is written down.
@@ -24,8 +24,9 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     private let running: RunningAppsPort
     private let extensions: SystemExtensionPort
     private let store: NamespacedStore
-    /// The only mutable field here, and main-actor confinement is what makes the
-    /// `@unchecked Sendable` above true. `activate` and `deactivate` are called
+    /// The one mutable field without a lock, and main-actor confinement is what
+    /// makes the `@unchecked Sendable` above true of it; the others are under
+    /// `watchLock` and `openedWorkerLock`. `activate` and `deactivate` are called
     /// from `ModuleHost`, which is `@MainActor`, and `setWatchingTrash` is called
     /// only by the `@MainActor` model.
     private var watcher: FolderWatcher?
@@ -38,12 +39,13 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     private var watcherStarted: Bool?
     private var trashReadable: Bool?
     /// Told that something reached the Trash that could have been an app, or
-    /// that the offer was switched on. May be called from any queue.
+    /// that the offer was switched on: "look again". May be called from any queue.
     private let trashChanged: @Sendable () -> Void
 
 
-    /// `store` holds one thing: which trashed apps the person has already declined
-    /// to clean up after. Defaulted to memory so the tests that build this engine
+    /// `store` holds three things: which trashed apps the person has already
+    /// declined to clean up after, the Trash-offer switch, and the remembered sort
+    /// order. Defaulted to memory so the tests that build this engine
     /// directly keep working — and a fresh record per test is what a test wants
     /// anyway.
     public init(home: URL, apps: AppLister, fs: FileSystemPort, trash: TrashPort,
@@ -133,8 +135,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                             "Helm cannot read the Trash, so the offer will not appear")
     }
 
-    /// Stopped here and not only in `deinit`: the stream holds this object, so a
-    /// `deinit` that waits for the stream to go away waits forever.
+    /// Stopped here rather than left to the watcher's `deinit`, which runs only
+    /// once the engine itself is released.
     public func deactivate() {
         watcher?.stop()
         watcher = nil
@@ -265,9 +267,9 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         // Prefix globs overlap the exact candidates they generalise; the same
         // directory must not be listed (or trashed) twice.
         var seenPaths: Set<String> = []
-        // Every candidate below is derived from the app's bundle id, and the
-        // facts that can refute a claim on one refute the claim on all of them,
-        // so they are gathered once per scan rather than per candidate — and
+        // The candidates built from the app's bundle id are judged by facts that
+        // can refute a claim on one and so refute the claim on all of them, so
+        // they are gathered once per scan rather than per candidate — and
         // only when there is something to judge, since an app with no leftovers
         // should not pay for a directory listing.
         var ownership: LeftoverOwnership?
@@ -577,10 +579,11 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     ///
     /// The review screen's `running` flag is `ScanResult.runningNow`, read when
     /// the review was built, and it is stale in both directions by the time
-    /// anybody presses anything: an app the person has since quit leaves the
-    /// button dead, and an app started since then has its bundle moved out from
-    /// under a live process — which then writes its preferences on exit and puts
-    /// back the leftovers this batch has just taken. That is the family CLAUDE.md
+    /// anybody presses anything: an app the person has since quit still shows
+    /// as running, and an app started since then does not, so on the flag alone
+    /// its bundle would be moved out from under a live process — which then
+    /// writes its preferences on exit and puts back the leftovers this batch has
+    /// just taken. That is the family CLAUDE.md
     /// names: a local flag standing in for a live external fact. The flag is not
     /// made fresher; the question is asked where the answer is used, and again
     /// after the quitting — which is itself long enough to have changed it.

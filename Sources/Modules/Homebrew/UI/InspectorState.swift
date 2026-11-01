@@ -345,8 +345,8 @@ struct InspectorSubject: Equatable {
     let id: String
     let name: String
     let isCask: Bool
-    /// One version installed, "a → b" outdated, the installed version for a
-    /// hit already on this Mac, "" for a hit that is not.
+    /// One version installed, "a → b" outdated, "" for a hit (the hits are
+    /// already filtered to what is not on this Mac).
     let version: String
     /// nil until the `brew desc` batch answers — never an empty string, which
     /// the view would draw as a blank line that later fills and re-flows.
@@ -355,11 +355,11 @@ struct InspectorSubject: Equatable {
     let action: Action
 }
 
-/// One tile of the package view's second tier: a label, and a value that was
+/// One row of the package view's second tier: a label, and a value that was
 /// actually read.
 ///
 /// A value type rather than a view, for the reason `InspectorState` above gives:
-/// which tiles an answer earns is the whole of the decision.
+/// which rows an answer earns is the whole of the decision.
 struct PackageFact: Equatable {
     let label: String
     let value: String
@@ -379,34 +379,34 @@ struct PackageFact: Equatable {
 /// `PackageFacts` refuses.
 ///
 /// A fourth state for «the walk was refused» would be a distinction with nothing
-/// to say: the tile is absent either way, and a person who never saw one cannot
+/// to say: the row is absent either way, and a person who never saw one cannot
 /// tell «no walk» from «a walk that failed» because neither is a fact about the
 /// package. So a refusal lands back on `.notMeasured`, deliberately.
 ///
 /// Never `.measured(0)` from the engine: a missing keg, a directory that would
 /// not open and a cask are all nil there (`HomebrewEngine.size`), because a zero
-/// in a tile is not a gap on the page — it is a measurement, and it says the
+/// in a row is not a gap on the page — it is a measurement, and it says the
 /// package occupies nothing.
 enum SizeReading: Equatable, Sendable {
-    /// Nothing has been walked and nothing is being walked: no tile.
+    /// Nothing has been walked and nothing is being walked: no row.
     case notMeasured
-    /// A walk is in flight **for the package on screen now**: the tile is there
+    /// A walk is in flight **for the package on screen now**: the row is there
     /// and says so.
     case measuring
     /// The walk answered, in bytes.
     case measured(Int)
 }
 
-/// Which tiles `brew info`'s answer earns — and no others.
+/// Which rows `brew info`'s answer earns — and no others.
 ///
-/// **An absent fact is an absent tile.** Installed and not installed are two
+/// **An absent fact is an absent row.** Installed and not installed are two
 /// different sets rather than one set with holes in it: "Version" over the
 /// catalogue's number is a different sentence from "Installed version" over what
 /// is on disk, and a package that is not installed has no install date and
-/// nobody asked for it. Inside each set every tile is still dropped when its own
+/// nobody asked for it. Inside each set every row is still dropped when its own
 /// fact is nil, because the fields are optional for reasons that happen
 /// constantly rather than rarely — a cask's document records neither a licence
-/// nor who asked for it, so a cask simply has fewer tiles than a formula.
+/// nor who asked for it, so a cask simply has fewer rows than a formula.
 ///
 /// A placeholder would be worse than the gap in both directions: a dash reads as
 /// "Homebrew answered and had nothing", and a zero reads as a measurement.
@@ -416,11 +416,11 @@ enum SizeReading: Equatable, Sendable {
 /// own Cellar directory that lands later than everything else — a separate
 /// parameter rather than a field of `PackageInfo`.
 ///
-/// **It is also the one tile that may stand for a state rather than a figure,
+/// **It is also the one row that may stand for a state rather than a figure,
 /// and only for the one state that is really happening.** `.measuring` means a
-/// walk is out *now, for this package*, so the tile says the figure is being
+/// walk is out *now, for this package*, so the row says the figure is being
 /// counted and then swaps it in place; `.notMeasured` covers everything else —
-/// nothing selected, not installed, the walk refused — and earns no tile at all,
+/// nothing selected, not installed, the walk refused — and earns no row at all,
 /// by exactly the rule the four above obey. There is deliberately still no «you
 /// will know once it is installed» for a package that is not here: nothing is
 /// walking, nothing ever will, and that sentence promises a number that never
@@ -453,10 +453,10 @@ enum PackageFacts {
                 facts.append(PackageFact(label: HbStr.tileLicence, value: licence))
             }
         }
-        // Last, and in both sets: it is the tile that arrives last, and a grid
-        // whose earlier tiles moved when it landed would re-flow the page under
+        // Last, and in both sets: it is the row that arrives last, and a list
+        // whose earlier rows moved when it landed would re-flow the page under
         // somebody's eyes. Holding the place while the walk is out is the other
-        // half of that — the figure then swaps into a tile that is already
+        // half of that — the figure then swaps into a row that is already
         // there rather than pushing one in beside the others.
         //
         // `Bytes` and not a formatter of its own — a Foundation one built with

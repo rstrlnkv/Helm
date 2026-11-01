@@ -8,12 +8,9 @@ import XCTest
 import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
-/// **Part 2 replaces the body of `CaptureController.handOff` and nothing else,
-/// and until it does the body is this: the picture is copied *and* saved.** Every
-/// pick from the overlay — an area, a window, a whole display by Return — arrives
-/// at that one call. Whatever «After a full-screen capture» says is for the full-screen shortcut,
-/// which never goes through it, so a setting that means «clipboard only» must not
-/// leak into the area path and leave the file unwritten.
+/// **With its defaults, `CaptureController.handOff` copies the picture under every target and saves it by the save target.** Every
+/// pick from the overlay — an area, a window, a whole display by Return — arrives at that one call, the editor's Pin apart. The full-screen
+/// shortcut never goes through it.
 ///
 /// The thumbnail is switched off in every store here, because the toast is a real
 /// panel and this must not put one on the screen of whoever runs it.
@@ -77,9 +74,8 @@ final class TheHandOffCopiesAndSavesTests: XCTestCase {
         }
     }
 
-    /// One setting decides where a capture goes, and an area follows it like a
-    /// screen does: the clipboard target is a copy and no file, every other is a
-    /// copy and a file until the editor's own buttons take that over.
+    /// The save target decides the file of an area: the clipboard target makes none, every other makes one. The copy
+    /// is made under every target; this is the hand-off's default, which the editor's exits narrow.
     func testTheOneSaveTargetDecidesWhatAnAreaMakes() async throws {
         for target in SaveTarget.allCases {
             let (controller, board, disk) = controller(saving: target)

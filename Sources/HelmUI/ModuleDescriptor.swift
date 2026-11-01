@@ -89,11 +89,12 @@ import HelmRuntime
     func currentPermissions() -> [ModulePermission]
     /// Desired host status-icon appearance for the model's current state. Default = inactive (white ring).
     func statusAppearance(_ model: Model) -> StatusAppearance
-    /// Fires when the value `statusAppearance` reads has changed.
+    /// Fires when what `statusAppearance` or `activity` reads may have changed:
+    /// the host redraws the icon, and the page header re-reads the badge.
     ///
-    /// A module that tints the menu-bar icon keeps its own view state, so the
-    /// host cannot watch a shared object for it. Only Keep Awake answers this;
-    /// the default is nil, which means "this module never changes the icon".
+    /// A module whose icon or badge follows its own view state keeps that state
+    /// out of the host's reach, so the host cannot watch a shared object for it.
+    /// The default is nil, which means "the host has nothing to watch here".
     func statusChanges(_ model: Model) -> AnyPublisher<Void, Never>?
     /// The global shortcuts this module owns. Default: none.
     ///

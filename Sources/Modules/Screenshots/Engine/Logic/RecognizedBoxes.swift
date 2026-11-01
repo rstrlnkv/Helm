@@ -58,7 +58,7 @@ public enum RecognizedBoxes {
         let right = (padded.maxX / grid).rounded(.up) * grid, bottom = (padded.maxY / grid).rounded(.up) * grid
         var box = CGRect(x: left, y: top, width: right - left, height: bottom - top).intersection(source.pixels)
         guard !box.isNull, box.width > 0, box.height > 0 else { return nil }
-        // A box of one pixel is none the mosaic can make (`Pixelate.tile`) and the file would be refused for it: where the
+        // A box of one pixel is none the mosaic can make (`Pixelate.tile`) and `CaptureSession.draw` would return nil for it, so no file would be made: where the
         // rounding and the area's edge leave one, it grows inward to two pixels across, or the find is dropped when the area has no room.
         if box.width < 2, box.height < 2 {
             guard source.pixels.width >= 2 else { return nil }

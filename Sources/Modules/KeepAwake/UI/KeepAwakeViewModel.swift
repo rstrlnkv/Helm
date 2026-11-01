@@ -43,8 +43,8 @@ import Module_KeepAwake_Engine
     /// The lid option is off and the `/etc/sudoers.d` rule it needed is still
     /// there, because the removal was declined.
     @Published public private(set) var lidGrantRemains = false
-    /// Any rule at all — the condition under which Stop silences a rule as
-    /// well as ending the session.
+    /// Any rule at all — the input `StopPress` weighs when it decides whether
+    /// Stop silences a rule as well as ending the session.
     public var ruleHolds: Bool { !triggeredConditions.isEmpty }
     /// What the lid row's note says, from the three facts the engine publishes
     /// about it. The rule is `LidRowNote`'s, out in the engine's logic.
@@ -112,17 +112,17 @@ import Module_KeepAwake_Engine
     /// be a manual session, which outlives the rule that is actually true.
     func resumeAutomation() { engine.resumeAutomation() }
 
-    /// Change a setting and tell the engine to re-read it.
+    /// Change a setting and tell the engine it changed.
     ///
-    /// The pair is the point: the engine keeps what it read, so a write nobody
-    /// announces is a setting that starts working at the next launch. The
-    /// settings page and the panel tile each carried their own copy of these two
-    /// lines.
+    /// The pair is the point: the settings are read at every access, but the
+    /// engine re-applies a running session's assertion, lid and jiggle only when
+    /// `settingsChanged` is called. The settings page and the panel tile each
+    /// carried their own copy of these two lines.
     func save(in store: NamespacedStore, _ change: (KeepAwakeSettings) -> Void) {
         change(KeepAwakeSettings(store: store))
         engine.settingsChanged()
     }
 
-    /// Tell the engine to re-read settings a view wrote itself.
+    /// Tell the engine that a view wrote settings itself.
     func settingsChanged() { engine.settingsChanged() }
 }

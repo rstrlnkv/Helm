@@ -25,9 +25,8 @@ import HelmRuntime
 /// screen, and a tunnel that simply never came up.
 ///
 /// The sibling path had already learned this. `UnreadableListTests` exists
-/// because `--nc list` answering nothing looked exactly like a Mac with no VPN,
-/// and its own comment says the runner «returns only the tool's stdout and
-/// throws the exit status away». The list was fixed; the two commands were not.
+/// because `--nc list` answering nothing looked exactly like a Mac with no VPN.
+/// The list was fixed; the two commands were not.
 final class ARefusedCommandIsNotSilenceTests: XCTestCase {
 
     // MARK: - The reading

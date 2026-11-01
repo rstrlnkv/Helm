@@ -279,8 +279,8 @@ private struct FindingRow: View {
 /// `role: .destructive` is what makes `HelmButtonStyle` draw it red, and in a
 /// menu or a dialog behave as one; `askToRunFix` is what makes
 /// it *behave* differently, and `FixAsk` decides which of the two commands on
-/// the allowlist that means — `brew cleanup` still runs on the press, because a
-/// cached download comes back.
+/// the allowlist that means — `brew cleanup` would run on the press, because a
+/// cached download comes back; no fix the page draws is that command today.
 ///
 /// **It names what it will run in the tooltip and to VoiceOver**, because a
 /// closed row shows the button at the far edge from its title and the command

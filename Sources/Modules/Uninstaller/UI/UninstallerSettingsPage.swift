@@ -59,10 +59,10 @@ struct UninstallerSettingsPage: View {
 
     var body: some View {
         pageBody
-            // The band stands on a stack of bands — the search row, the
-            // permission note, a step's own chrome — and never on a scroll
-            // view, so it is lit from the first frame. The Objects tab is the
-            // one place that over-reports, knowingly:
+            // Declared for every tab and step, so the band is lit from the first
+            // frame: over the permission note when there is one, otherwise over
+            // what the tab draws first, which is a list that scrolls under it,
+            // knowingly, where a list comes first.
             // `HelmPageHeader.standsOnStillContent` says why it is kept.
             .helmPageStandsOnStillContent()
             .helmTracksFullDiskAccess($diskAccess)

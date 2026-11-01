@@ -104,8 +104,8 @@ public protocol InstalledAppsPort: Sendable {
 /// being in use and becomes a leftover with a tick beside it, and no disabled label
 /// means a login item somebody switched off loses the badge that says so. Two
 /// facts — «nothing is loaded» and «nobody asked» — and a dropped exit status made
-/// them one (§ Anything that can stop being true on its own owns a channel to say
-/// so). Nothing is promoted to `.orphaned` on a reading that did not happen.
+/// them one (ARCHITECTURE.md § Module pattern: an unreadable system answer is not
+/// folded toward the permissive side). Nothing is promoted to `.orphaned` on a reading that did not happen.
 public protocol LoadedItemsPort: Sendable {
     /// The full list, so the module can name them instead of counting them.
     func installedExtensions() -> [SystemExtensionInfo]?

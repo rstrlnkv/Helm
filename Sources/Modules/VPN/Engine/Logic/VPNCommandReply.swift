@@ -23,9 +23,7 @@ import HelmRuntime
 ///
 /// The sibling path had already learned this. `UnreadableListTests` exists
 /// because `--nc list` answering nothing looked exactly like a Mac with no VPN
-/// configured; its own comment says «`ScutilRunner.run` returns only the tool's
-/// stdout and throws the exit status away». The list was fixed and the two
-/// commands were not.
+/// configured. The list was fixed and the two commands were not.
 public enum VPNCommandReply: Equatable, Sendable {
     /// `scutil` said nothing, which is what it says when it did the thing.
     case accepted

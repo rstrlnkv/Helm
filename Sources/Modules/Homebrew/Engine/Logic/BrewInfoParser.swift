@@ -75,7 +75,7 @@ enum BrewInfoParser {
         var installedOnRequest: Bool?
         // **The version is the fact the rest hang off.** Every reader keys "is
         // this package here" on `installedVersion` (`PackageFacts.of` decides the
-        // whole tile set on it), so a date or a "came as a dependency" read from
+        // whole set of rows on it), so a date or a "came as a dependency" read from
         // a record whose version is unreadable is a fact about a package
         // reported as not installed — one screen with two accounts of one
         // package, which is the shape this module's other defects took.
@@ -122,7 +122,7 @@ enum BrewInfoParser {
     /// **An empty string is not an absent fact, and nothing downstream can tell
     /// the two apart.** `PackageInfo` carries optionals precisely so that "brew
     /// had nothing to say" is a shape the page cannot draw — and a `""` walks
-    /// straight past that: `"license": ""` drew a licence tile with nothing
+    /// straight past that: `"license": ""` drew a licence row with nothing
     /// under it, which reads as Homebrew having been asked and having had no
     /// answer, and `"deprecation_replacement_formula": ""` drew "use  instead".
     /// So blankness is collapsed here, at the one place the document is read,

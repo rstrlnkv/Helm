@@ -24,8 +24,9 @@ enum VPNListParser {
 
     /// Whether this output is an answer at all.
     ///
-    /// `ScutilRunner` hands back the tool's stdout and drops its exit status, so
-    /// a read that failed arrives here as an empty string — and an empty string
+    /// Callers hand this only the stdout of the result `ScutilRunner` returns, and
+    /// its exit status is not read, so a read that failed arrives here as an
+    /// empty string — and an empty string
     /// parses, perfectly happily, into "this Mac has no VPNs". The two are not
     /// the same fact and the caller must not confuse them: the page told a user
     /// their connections were gone while both were up, and the drop detection,

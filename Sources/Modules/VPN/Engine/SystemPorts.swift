@@ -190,15 +190,15 @@ public final class DynamicStoreNetworkWatch: NetworkWatchPort {
 // MARK: - KeychainCredentials
 
 /// Production `VPNCredentialsPort`: reads the shared-secret/password an
-/// L2TP/IPSec VPN needs so `scutil --nc start` connects silently instead of
-/// prompting for the IPSec shared secret.
+/// L2TP/IPSec VPN needs, so that a start does not prompt for the IPSec shared
+/// secret.
 ///
 /// macOS gates every read of a VPN secret in the System keychain by a
 /// third-party app behind a prompt (System Settings is exempt as an Apple
 /// binary). So we read the System keychain at most ONCE, cache the values in
 /// Helm's own login-keychain items (which we can read back without a prompt),
-/// and use the cache thereafter. Returns nil for VPNs without a stored shared
-/// secret (e.g. IKEv2). Secrets stay in memory / the keychain, never logged.
+/// and use the cache thereafter. Answers `.notNeeded` for VPNs without a stored
+/// shared secret (e.g. IKEv2). Secrets stay in memory / the keychain, never logged.
 public final class KeychainCredentials: VPNCredentialsPort {
     /// Service used for Helm's own cached copy of a VPN's credentials.
     private let helmVPNKeychainService = "com.helm.vpn"
@@ -629,7 +629,7 @@ public final class NetworkQualitySpeed: VPNSpeedPort {
             // exits **0**, and carries no throughput keys at all. So this guard
             // catches only the tool that could not be launched or was killed at
             // its deadline; what refuses an answer that is not one is the
-            // parser's «every field or nothing», which is where the check
+            // parser's «both throughput figures or nothing», which is where the check
             // belongs — the tool has more ways to fail successfully than a
             // status can enumerate.
             guard result.status == 0 else { return nil }

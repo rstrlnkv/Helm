@@ -94,7 +94,8 @@ public struct UninstallResult: Equatable, Sendable {
     public let failures: [TrashFailureInfo]
 
     /// The application bundles in the batch that were still running when it came
-    /// to move them, and which nobody had allowed Helm to quit. Non-empty means
+    /// to move them, with no quit allowed or still up after the quit that was.
+    /// Non-empty means
     /// **nothing moved**: a leftover in the batch carries no link back to the app
     /// it belongs to, so there is no such thing as "the rest of it" — see
     /// `UninstallPlan.verdict`.

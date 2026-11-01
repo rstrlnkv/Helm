@@ -77,8 +77,8 @@ public enum VPNRules {
     ///
     /// **Picking an app that already has a rule is how a rule from before
     /// identities existed is repaired.** It used to be ignored outright (`where
-    /// rules[bundleID] == nil`), so «choose the app again» — which is what the row
-    /// under such a rule now says — was advice the page had no way to carry out.
+    /// rules[bundleID] == nil`), so choosing the app again could not repair such a
+    /// rule.
     /// The identity is written and every choice the person made is left as it was.
     ///
     /// A bundle whose signature could not be read at all gets no rule: a rule that
@@ -105,7 +105,8 @@ public enum VPNRules {
         return rules.filter { names.contains($0.value.vpnName) }
     }
 
-    /// How many rules can fire — what a dial labelled *automatic* is counting.
+    /// How many rules can fire — what a dial labelled *automatic* would count.
+    /// No caller in `Sources`; tests call it.
     ///
     /// It used to count `autoConnected`, the connections a rule has up at this
     /// instant, so the strip read "0" directly above the list of rules the
@@ -116,9 +117,11 @@ public enum VPNRules {
         rules.values.count { $0.timing != .off }
     }
 
-    /// Rules naming a VPN the system no longer has. They stop firing the
-    /// moment a connection is renamed or removed, and dropping them quietly
-    /// is how someone ends up trusting automation that has not run for weeks.
+    /// Rules naming a VPN the system no longer has. `valid` drops them from the
+    /// engine's rules at its next reload, and dropping them quietly is how
+    /// someone ends up trusting automation that has not run for weeks.
+    /// No caller in `Sources`: the page asks `VPNTenants.orphaned`, which answers
+    /// none for an empty list of connections.
     public static func orphaned(_ rules: [String: VPNAppRule],
                                 against connections: [VPNConnection]) -> [String: VPNAppRule] {
         let names = Set(connections.map(\.name))

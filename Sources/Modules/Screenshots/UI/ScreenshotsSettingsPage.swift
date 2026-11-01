@@ -190,7 +190,7 @@ struct ScreenshotsSettingsPage: View {
 
     // MARK: - The system's own
 
-    /// The boxes the section draws: the two Helm replaces always, and a
+    /// The boxes the section draws: the boxes Helm replaces always (`SystemBox.replaced`), and a
     /// clipboard twin (29, 31) only while it holds a combination Helm holds — recorded here or shipped as the default.
     /// The conflict note says «Untick it below first» for any box macOS holds, so
     /// the box it means has to be below — and a twin that conflicts with nothing

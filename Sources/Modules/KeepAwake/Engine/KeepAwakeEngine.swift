@@ -67,10 +67,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// the page drew «Not applying right now» under a banner saying the rule
     /// was paused. Two accounts of one rule on one screen.
     ///
-    /// Non-empty is also precisely the condition under which `stopSession()`
-    /// silences a rule as well as ending the session — a fact the hero could
-    /// only state in its `.automatic` branch, because that was the only branch
-    /// that could see any conditions at all.
+    /// Non-empty means the same three expressions `stopSession()` asks afresh as «a rule holds», the input
+    /// `StopPress` weighs when it decides whether Stop silences a rule as well as
+    /// ending the session — a fact the hero could only state in its `.automatic`
+    /// branch, because that was the only branch that could see any conditions at
+    /// all.
     public private(set) var triggeredConditions: Set<ActiveCondition> = []
     /// The bundle ids of the app rules that are satisfied right now — so the
     /// screen can say *which* app, rather than «App». Ids rather than names:
@@ -232,14 +233,14 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     /// The one verb the keyboard has, and it has to be able to undo itself.
     ///
-    /// Measured before this branch existed: with a rule holding the Mac, ⌥⌘K
-    /// paused the rule; ⌥⌘K again did **not** put it back — it started a
-    /// session by hand, so the shortcut oscillated between «rule paused» and
+    /// Measured before this branch existed: with a rule holding the Mac, the
+    /// global shortcut paused the rule; pressed again it did **not** put it back —
+    /// it started a session by hand, so the shortcut oscillated between «rule paused» and
     /// «held by hand for ever» and could never reach «just the rule». Off,
     /// then on, has to be where you started.
     ///
-    /// **Which is why this one is not the stepped Stop below.** ⌥⌘K, the panel's
-    /// header switch and the menu-bar item all read as on/off, and a switch that
+    /// **Which is why this one is not the stepped Stop below.** The shortcut, the
+    /// panel's header switch and the menu-bar item all read as on/off, and a switch that
     /// needed two presses to go off would spring back once in front of the person
     /// pressing it. A sequence needs a control that can show which step it is on;
     /// this one has nowhere to show it.
@@ -256,7 +257,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// The engine has the last word on how long a session may be.
     ///
     /// Every number a person can pick is bounded where they pick it — the
-    /// settings stepper, the tile's presets, `TimerPolicy.extendedMinutes` for
+    /// settings menu, the tile's presets, `TimerPolicy.extendedMinutes` for
     /// the "+15" — and the engine is not only called from those: `minutes * 60`
     /// **traps** on `Int` overflow. A clamp in every view is a clamp in no
     /// engine.
@@ -362,7 +363,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     ///   holding sleep the ordinary way.
     private func recompute(byGesture: Bool = false) {
         // The battery guard is a **veto, not a suppression.** While the charge is
-        // under the floor nothing may hold the Mac — and the moment the charger
+        // at or under the floor nothing may hold the Mac — and the moment the charger
         // goes in the veto lifts by itself, because it is recomputed rather than
         // remembered. Written as `stopSession()` it borrowed the person's verb:
         // `suppressed` means somebody said stop, and suppression only lifts when
@@ -448,6 +449,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// active, so toggling keepDisplayOn / clamshell / jiggle takes effect now
     /// (not only on the next session).
     ///
+    /// The lid half does not ask `MacHardware.hasLid`, which `recompute` asks
+    /// before it engages: a stored `clamshellEnabled` on a Mac with no lid
+    /// reaches `lid.engage` here at each settings edit during a session while
+    /// the lid is not active.
+    ///
     /// Answers the lid option's edge, because the *release* needs the same
     /// reading and there is only one of it per `settingsChanged` — see
     /// `ClamshellCoordinator.consumeEdge`.
@@ -510,7 +516,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         let rules = settings.appTriggers
         guard !rules.isEmpty else { return [] }
         // A rule may be narrowed to "only at the desk" or "only plugged in",
-        // so the same inputs the other conditions use are passed in.
+        // so the same inputs the other conditions use are passed in. The display
+        // one is the raw reading, not asked of `MacHardware.hasBuiltInDisplay`
+        // as `externalDisplayCondition` asks it: on a Mac with no display of its
+        // own, any display attached satisfies it.
         return AppTriggerRules.holding(
             rules,
             running: Set(apps.runningBundleIDs()),
@@ -579,7 +588,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         if !holdingApps.isEmpty { triggeredConditions.insert(.app) }
     }
 
-    /// True while the charge is under the floor the person set.
+    /// True while the charge is at or under the floor the person set.
     private func batteryVetoes() -> Bool {
         guard MacHardware.hasBattery else { return false }
         // No reading is two states and `isOnMains` tells them apart, the same
@@ -674,8 +683,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     }
 
     /// What a settings edit does, in the order it does it — **the one spelling
-    /// of it**. The engine keeps what it read, so a write nobody announces here
-    /// starts working at the next launch.
+    /// of it**. `KeepAwakeSettings` reads the store at every access, so a write
+    /// nobody announces here is seen by the next `recompute` or read; what only
+    /// this call does is re-apply a running session's assertion, lid and jiggle,
+    /// and hand the option's falling edge to `lid.releaseIfUnneeded`.
     public func settingsChanged() {
         recompute()
         let edge = reconcileActiveSettings()
@@ -731,7 +742,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 /// finds.
 ///
 /// An extension rather than more of the class above, for the reason the
-/// notification one below gives: this is a concern of its own — three keys, two
+/// notification one below gives: this is a concern of its own — four keys, two
 /// methods, and the only part of this engine addressed to a process five minutes
 /// in the future. Same file, because every field it writes is `private` to it.
 extension KeepAwakeEngine {

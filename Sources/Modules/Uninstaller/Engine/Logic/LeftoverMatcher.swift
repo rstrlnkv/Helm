@@ -16,7 +16,7 @@ enum LeftoverMatcher {
     /// A bundle id and a display name are free-form strings read off disk —
     /// `CFBundleDisplayName` is whatever the app's plist says. Two shapes are
     /// not merely useless but dangerous, because the review screen arrives with
-    /// every candidate pre-ticked:
+    /// every candidate built from the bundle id pre-ticked and offers the rest:
     ///
     /// - empty: `appendingPathComponent("")` returns the parent unchanged, so
     ///   the candidate becomes the shared `Application Support` folder itself,

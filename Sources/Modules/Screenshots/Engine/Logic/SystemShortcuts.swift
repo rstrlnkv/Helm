@@ -21,8 +21,8 @@ public enum CarbonModifier {
 
 /// One of the boxes macOS ticks for its own screenshot shortcuts.
 ///
-/// `id` is the symbolic hotkey's number. 28 and 30 are the two Helm replaces —
-/// ⌘⇧3 and ⌘⇧4 — and 29 and 31 are their clipboard twins, which stay with
+/// `id` is the symbolic hotkey's number. 28 and 30 are the two that gate Helm owning
+/// ⌘⇧3 and ⌘⇧4 (`capture`; `replaced` draws 184 as well), and 29 and 31 are their clipboard twins, which stay with
 /// macOS. 184 is ⌘⇧5, "Screenshot and recording options": macOS's own panel,
 /// which is also how a person reaches screen recording from the keyboard.
 public enum SystemBox: Int, CaseIterable, Sendable {

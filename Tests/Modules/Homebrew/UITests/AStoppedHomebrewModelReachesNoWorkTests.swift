@@ -13,7 +13,7 @@ import HelmTestSupport
 /// on the person's switch and on quit. A page still on screen, or a task already
 /// queued, may press a control after that. A stopped model reaches no work, a
 /// stream task left running keeps a subscriber on a stream nobody reads, and an
-/// answer that was already out must not raise the app's one irreversible
+/// answer that was already out must not raise an irreversible
 /// question over a page that is gone. Defect class kept: a stopped model still
 /// talks to the engine, still listens to it, or still asks on an answer it
 /// heard late.

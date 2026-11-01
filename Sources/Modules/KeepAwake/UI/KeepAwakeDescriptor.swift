@@ -86,10 +86,10 @@ enum KeepAwakeHotkey {
         return MenuBarContribution(panelTile: AnyView(KeepAwakePanelTile(vm: vm, store: s)))
     }
 
-    /// Three sizes, and the middle one is the tile this module has always
-    /// drawn. 1×1 is the countdown alone; 2×N is the tile with the two
-    /// automation conditions unfolded under it, which at 2×1 are behind a
-    /// disclosure because the tile has to stay short.
+    /// Two sizes, and the 2×1 is the tile this module has always
+    /// drawn. 1×1 is the countdown alone; 2×1 is the tile, with the two
+    /// automation conditions behind a disclosure because it has to stay short.
+    /// There is no 2×N: see the `.tall` branch.
     public func panelWidget(_ size: PanelWidgetSize, _ vm: KeepAwakeViewModel) -> AnyView? {
         let s = resolved(store)
         switch size {

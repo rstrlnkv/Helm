@@ -13,9 +13,10 @@ import Security
 /// tunnel and a quit took one down — so a bundle nobody signed could switch
 /// somebody's VPN off by starting and stopping.
 ///
-/// Here rather than in the module because two targets read it and neither may own
-/// the other's copy: `AppPicker` records the identity of the bundle a person
-/// chose, and VPN's app observer reads the identity of what is actually running.
+/// Here rather than in the module because `HelmRuntime` reads it too, and cannot
+/// import a module: `VPNAppRules` records the identity of the bundle a person chose
+/// through `AppPicker`, VPN's app observer reads the identity of what is actually
+/// running, and `AppBuild` reads the cdhash of the same struct.
 ///
 /// **What this buys and what it does not.** A team identifier is issued by Apple
 /// and cannot be claimed by somebody else's build, so for any app from the App
@@ -43,7 +44,7 @@ public struct CodeIdentity: Codable, Equatable, Sendable {
     /// executable. Nil when there is nothing there, or nothing signed.
     ///
     /// A **static** read of the bundle on disk, on purpose, and the same read is
-    /// used at both ends: the picker reads the bundle a person chose and the
+    /// used at both ends: `VPNAppRules` reads the bundle a person chose and the
     /// observer reads the bundle of the instance that is running. A dynamic read
     /// of a running process (`SecCodeCopyGuestWithAttributes` by pid) answers for
     /// more processes — measured on this Mac, 127 of 128 running applications

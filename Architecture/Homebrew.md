@@ -6,9 +6,12 @@ of run are governed differently on purpose.
 The read-only queries carry a deadline (`ShellProcessRunner.defaultQueryTimeout`);
 past it `HelmProcess` answers `HelmProcess.timedOutStatus` with no output. The
 long operations (install, uninstall, upgrade, upgrade all, doctor fix, and
-installing brew itself) stream and no clock ends them. A timed-out query answers nil and the
-view model keeps what it had, so a full Cellar is not drawn as "no packages"; the
-refusal is a named line in the log instead. The one query that retries halves its
+installing brew itself) stream and no clock ends them. A timed-out query answers nil
+(`descriptions` an empty dictionary); the view model keeps what it held of the installed and
+outdated lists, the configuration and the descriptions, so a full Cellar is not drawn as "no
+packages", and the refusal is a named line in the log. The doctor reading becomes refused; the
+hits of a search and the `info` of a package were cleared before they were asked and stay empty.
+The one query that retries halves its
 batch rather than its timeout.
 
 ## The model
@@ -83,8 +86,9 @@ Stop really reached is read against the real runner in
 
 ## Install counts
 
-The module reaches one other place on the network, and unprompted rather than on
-a press: `FilePopularityStore` fetches Homebrew's two published analytics documents
+The module reaches one other place on the network unprompted, and one more on a
+press: `installBrew` downloads Homebrew's installer from `raw.githubusercontent.com`.
+Unprompted, `FilePopularityStore` fetches Homebrew's two published analytics documents
 from `formulae.brew.sh` at most once a day. The fetch is started by the engine's
 `activate`, so a module the person has switched off never makes it; under a test
 runner the transfer refuses, so a suite run asks the endpoint nothing. Nothing the

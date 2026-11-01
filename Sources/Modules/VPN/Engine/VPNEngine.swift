@@ -9,8 +9,11 @@ import HelmRuntime
 /// `SCNetworkConnectionStart` for a start that carries a secret) and per-app
 /// auto-connect (VPNAutoConnectCore) against the injected ports. `activate()`/
 /// `deactivate()` are the MODULE lifecycle (host enables/disables the module);
-/// they also start/stop the auto-connect app observation. Blocking work runs
-/// on `VPNWorkQueue`, which says why it exists.
+/// `activate()` also starts the auto-connect app observation, and `deactivate()`
+/// stops, of the two observers, only the network watch: `AppObserverPort` has no stop, so the app
+/// observation lasts until the port is released and `appsChangedNow` answers
+/// nothing while the engine is not running. Blocking work runs on
+/// `VPNWorkQueue`, which says why it exists.
 ///
 /// **This file is over `file_length` and `type_body_length`, and stays over,
 /// deliberately** — a warning nobody has explained is a warning the next person
@@ -146,8 +149,10 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private var hasReadTheList = false
     /// Where this Mac appears to be, from outside. **A fact about the machine's
     /// exit, not about a tunnel**, so it stays one value however many are up: it
-    /// decorates whichever holds the route, and is dropped when one falls,
-    /// because the route may have moved with it.
+    /// decorates whichever holds the route, and is dropped when a tunnel Helm
+    /// stamped falls (`stampWhatCameUp`) or when the route moves
+    /// (`noticeTheRouteAndAskWhereWeAre`), because the route may have moved with
+    /// it.
     private var lastRegion: String?
     /// When the last exit request that **came back empty** was started, and
     /// whether one is still out.
@@ -294,17 +299,19 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         network?.startObserving { [weak self] in self?.networkChanged() }
     }
 
-    /// How long the store has to go quiet before the list is re-read.
+    /// How long after a burst's first notification the list is re-read. Later
+    /// notifications do not move it, so a burst that outlasts it gets a second
+    /// re-read.
     ///
     /// A quarter of a second, chosen against what the store actually delivers
     /// rather than picked: the bursts in the owner's log arrive inside a single
     /// second — seven, seven, seven, six — and one connect is followed by five
-    /// to eleven notifications in under half a second. Long enough to swallow a
+    /// to eleven notifications in under half a second. Meant to swallow a
     /// burst, short enough to be invisible beside the 0.7 s the poll already
     /// waits between its own re-reads.
     private static let networkSettle: TimeInterval = 0.25
 
-    /// **One re-read per burst, not one per notification.**
+    /// **One re-read per settle, not one per notification.**
     ///
     /// `SCDynamicStore` does not deliver one event for one thing happening: a
     /// tunnel coming up moves the global IPv4 entity, each service's IPv4
@@ -317,8 +324,9 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// The port carries no detail about what changed, so deciding how often to
     /// re-read is the engine's job and nobody else's. The flag is the whole
     /// coalescer: the first notification of a burst arms the re-read and says
-    /// so once in the log, the rest of the burst are free, and the re-read
-    /// clears the flag before it runs so a later change re-arms it.
+    /// so once in the log, the notifications that arrive before that re-read
+    /// runs are free, and the re-read clears the flag before it runs so a later
+    /// change re-arms it.
     private func networkChanged() {
         lock.lock()
         let alreadyArmed = _networkChangePending
@@ -327,7 +335,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // An observer that never fires and an observer that fires and finds
         // nothing changed look identical from outside the process, and the
         // release process triages dev builds against the log. One line per
-        // burst, no names in it.
+        // arming, no names in it.
         guard !alreadyArmed else { return }
         HelmLog.shared.info(Self.moduleID, "network state changed; re-reading")
         work.run(after: Self.networkSettle) { [weak self] in
@@ -376,8 +384,8 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// The blocking half, always on the work queue.
     private func refreshNow() {
         let output = runner.run(["--nc", "list"]).output
-        // Silence is not an answer. `scutil`'s exit status never reaches us, so
-        // a read that failed looks exactly like a Mac with no VPNs — and acting
+        // Silence is not an answer. Only the output of `--nc list` is read here,
+        // never the status in the result, so a read that failed looks exactly like a Mac with no VPNs — and acting
         // on it does two kinds of damage: the page announces that the user's
         // connections are gone while they are up, and the drop detection below,
         // which asks what is missing from this list, decides that everything
@@ -840,10 +848,12 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// Notes the moment a tunnel came up, and forgets what belonged to one that
     /// has gone.
     ///
-    /// **`scutil` cannot answer «since when».** The list says `Connected` and
-    /// nothing more, so the only honest stamp is Helm's own observation: a
-    /// service down at the last reading and up at this one. Which also means one
-    /// already up when the process started carries no stamp — see `wasDown`.
+    /// **`--nc list` cannot answer «since when».** The list says `Connected` and
+    /// nothing more; `--nc status` does (`VPNStatusParser.Reading.since`, which
+    /// `VPNTunnelState.init` prefers), so this stamp is the fallback for a tool
+    /// that does not answer: Helm's own observation of a service down at the last
+    /// reading and up at this one. One already up when the process started
+    /// carries no such stamp — see `wasDown`.
     private func stampWhatCameUp(_ parsed: [VPNConnection]) {
         for connection in parsed where connection.status.isConnected {
             guard raisedAt[connection.id] == nil, wasDown(connection.id) else { continue }

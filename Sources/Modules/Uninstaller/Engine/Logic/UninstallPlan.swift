@@ -51,8 +51,9 @@ public enum UninstallPlan {
         case needsQuit([String])
     }
 
-    /// A running app holds open files and would come back on relaunch, so it
-    /// blocks removal until the user agrees to force-quit it.
+    /// A running app holds open files and would come back on relaunch, so the
+    /// review warns of it, and the button's help says to quit it until the user
+    /// agrees to force-quit it.
     public static func readiness(_ groups: [UninstallGroup], forceQuit: Bool) -> Readiness {
         guard !groups.isEmpty else { return .empty }
         let running = groups.filter(\.running).map(\.app.name)
@@ -87,8 +88,8 @@ public enum UninstallPlan {
     /// `readiness` above answers the same question from `ScanResult.runningNow`,
     /// which is a reading taken when the review was built and stale in both
     /// directions by the time anybody presses anything — an app quit since then
-    /// leaves the button dead, and an app started since then has its bundle moved
-    /// out from under it. That one dims a button; this one decides what moves.
+    /// still shows as running, and an app started since then does not. That one
+    /// words the warning and the button's help; this one decides what moves.
     ///
     /// **A refusal takes the whole batch.** The batch is a flat list of paths: a
     /// leftover carries no link back to the app it was found for, so "move

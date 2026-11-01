@@ -85,9 +85,8 @@ struct KeepAwakeHero: View {
     let defaultDurationMinutes: Int
     let suppressed: Bool
     /// A rule's trigger is true right now, whatever state the figure is in.
-    /// The engine's own word for it, because that is the exact condition under
-    /// which Stop silences the rule as well as ending the session — see
-    /// `KeepAwakeEngine.ruleHolds`.
+    /// The view model's `ruleHolds`, which is the input `StopPress` weighs when
+    /// it decides whether Stop silences the rule as well as ending the session.
     let ruleHolds: Bool
     /// «The timer pauses the automation rules when it finishes», the setting.
     ///
@@ -141,7 +140,7 @@ struct KeepAwakeHero: View {
     /// Free-form minutes, and the popover that takes them.
     ///
     /// Not stored anywhere. The panel remembers its custom duration because the
-    /// panel's number *is* a setting — it is what its switch starts next time.
+    /// panel's number *is* a setting — it is what its Start button starts next time.
     /// Here the number is an instruction carried out on the spot, and a page
     /// that reopened holding somebody's «47» from last week would be offering a
     /// choice they had already used up.
@@ -447,7 +446,7 @@ struct KeepAwakeHero: View {
     /// reads as a blink.
     @ViewBuilder private var suppressionRow: some View {
         // The battery wins. Both can be true — a rule is paused *and* the
-        // charge is under the floor — and of the two only one explains why
+        // charge is at or under the floor — and of the two only one explains why
         // nothing at all is happening; «resume» would be a button that cannot
         // do what it says while the guard is in force.
         Group {

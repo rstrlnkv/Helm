@@ -12,9 +12,11 @@ import XCTest
 /// app, the VPN and the timing, and
 /// nothing fires.
 ///
-/// Two of the five verdicts belong to the rule itself and can be drawn from the
-/// page with nothing running; the other three depend on what is running at that
-/// instant, which the page does not know and must not guess at.
+/// Two of the five verdicts belong to the rule itself and have a sentence, which
+/// needs nothing running; the other three depend on what is running at that
+/// instant, which the page does not know and must not guess at. No view draws
+/// the sentence: the rules popover shows no note, and every refusal reaches only
+/// the log.
 @MainActor
 final class ARuleThatCannotFireSaysSoTests: XCTestCase {
 
@@ -28,7 +30,7 @@ final class ARuleThatCannotFireSaysSoTests: XCTestCase {
                           + "signed were given the same advice, and only one of them can act on it")
     }
 
-    /// The row draws nothing for a rule that is fine, and nothing for the two
+    /// There is no note for a rule that is fine, nor for the two
     /// verdicts that are about this instant rather than about the rule: a note
     /// saying "the running copy could not be read" under a rule whose app is not
     /// running at all would be a page inventing a problem.
@@ -38,8 +40,8 @@ final class ARuleThatCannotFireSaysSoTests: XCTestCase {
         XCTAssertNil(VPNStr.ruleTrustNote(.mismatch))
     }
 
-    /// And the note the page actually asks for comes from the rule, so a rule
-    /// stored before identities existed is the one that shows it.
+    /// And the note comes from the rule's own identity, so a rule stored before
+    /// identities existed is the one that has it.
     func testTheNoteForAStoredRuleComesFromItsOwnIdentity() {
         let legacy = VPNAppRule(vpnName: "Office")
         XCTAssertEqual(VPNStr.ruleTrustNote(VPNRuleTrust.judge(rule: legacy, running: nil)),

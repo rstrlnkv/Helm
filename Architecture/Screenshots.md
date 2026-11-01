@@ -30,10 +30,9 @@ Words: `Sources/Modules/Screenshots/UI/Localizable.xcstrings`, `%@` keys (`timer
 The overlay (`Sources/Modules/Screenshots/UI/CaptureOverlay.swift`) is one
 non-activating key panel per display, so it reads the keyboard and the pointer itself
 and needs no Accessibility. Its rules are functions of the pointer and the modifiers
-in `Sources/Modules/Screenshots/Engine/Logic/Selection.swift`, and the three
+in `Sources/Modules/Screenshots/Engine/Logic/Selection.swift`. Of the three
 coordinate spaces a capture passes through — AppKit's, CoreGraphics' and a display's
-own — are converted in `Sources/Modules/Screenshots/Engine/Logic/ScreenSpace.swift`
-and nowhere else. Its translucent and accent inks are `Sources/Modules/Screenshots/UI/OverlayInk.swift`: ink on a picture and not the kit's tokens, with a stronger set under Increase Contrast; `pill` and `plate` go solid under Reduce Transparency. The window list in a freeze is a reading: a click asks the system
+own — global, display-local and pixel conversions are in `Sources/Modules/Screenshots/Engine/Logic/ScreenSpace.swift`; a flip out of AppKit's space is spelled where it is needed: `DockStrip`, `SCKCapture`'s Dock placement and the overlay's own views (`OverlayView.local`, `CaptureOverlay.local(_:in:frame:)`) flip a point or a rectangle for themselves. Its translucent and accent inks are `Sources/Modules/Screenshots/UI/OverlayInk.swift`: ink on a picture and not the kit's tokens, with a stronger set under Increase Contrast; `pill` and `plate` go solid under Reduce Transparency. The window list in a freeze is a reading: a click asks the system
 for the window again, and a window that has gone, or that could not be captured, is cut from the frozen frame.
 
 Selecting is drawn as macOS draws it. Nothing is dimmed until there is a selection — from the first point a drag
@@ -66,8 +65,9 @@ per display; «Put the Panel Back» forgets the stored move and the one made sin
 `busy` flag for the bar, its countdown and the overlay, so a second press at any stage is dropped.
 
 **Window and Area are picked on the frozen screen with the panel still up.** Pressing either mode freezes the screen at
-once and opens the overlay with `selectionOnly` set: the person only picks (a window under the pointer, or an area that
-stays drawn until a new drag replaces it, which a click that never moved does not), the palette never appears and
+once and opens the overlay with `selectionOnly` set: the person picks an area, which stays drawn until a new drag replaces it
+(a click that never moved does not) and waits for Capture or Return, or a window under the pointer, which a click takes
+at once, with ⌥ without its shadow, while Capture and Return take it with its shadow. The palette never appears and
 `startEditing` is never called. Capture is drawn only when `CaptureOverlay.hasTarget` says there is something to take;
 Return on the panel does not ask, and takes the target there is, or with no overlay open yet opens one. The shot goes
 through the ordinary `handOff`, with no editor. With no timer the panel closes at the pick: an area is cut from that
@@ -91,8 +91,10 @@ A picture is written to a temporary name and moved into place with RENAME_EXCL
 name taken is one more number to try and nothing is ever overwritten. The capture is
 deliberately not a phase in the activity registry and logs nothing when it works: the
 log holds refusals — no grant, a refused write, a refused folder, an original that was not
-replaced — with paths through `Redact`. The one phase the module has is the removal's,
-which `HelmTrash.remove` opens for every module that hands it a path.
+replaced — with paths through `Redact`, and the warnings of a picture that is delivered all the same (a frame without the pointer, a Dock that did not
+answer, a window cut from the frozen frame). The module has two phases: the removal's, `screenshots.trash`, which
+`HelmTrash.remove` opens for every module that hands it a path, and `screenshots.recognize` of the text reading
+(§ Reading the text of the area), which also writes a memory line.
 
 **«Edit» replaces the file a shot wrote, and writes over nothing to do it.** The writer
 answers with a `WrittenShot`: the file's URL and a `ShotReading` — device and inode, size,
@@ -158,8 +160,9 @@ It is drawn by `Pixelate` (`Sources/Modules/Screenshots/Engine/Logic/Pixelate.sw
 its block's bytes, and no block is drawn from fewer than two pixels; the grid starts at the display's own pixel (0, 0), so the cut of the
 file and the display on the screen share their blocks, a block the box's edge cuts takes the mean of its pixels inside the box, an end strip
 narrower than half a block joins the block beside it (`Pixelate.edges`), and the box is rounded outward to whole pixels and drawn opaque.
-A box of a single pixel has no mean to be drawn: `Pixelate.tile` is nil, and `CaptureSession.draw` then returns nil and the
-delivery is refused, while a box with no pixel on the display is skipped, as it hides nothing. `CaptureSession.draw` takes the display's image beside the cut, and the overlay lays
+A box of a single pixel has no mean to be drawn: `Pixelate.tile` is nil, and `CaptureSession.draw` then returns nil, and
+`annotated` with it: no file is written, and `CaptureController.overlayFinished` has no branch for that, so the
+person is shown no refusal and no toast and the log gets no line, while a box with no pixel on the display is skipped, as it hides nothing. `CaptureSession.draw` takes the display's image beside the cut, and the overlay lays
 the same `Pixelate.tile` as the `contents` of a layer of its own, masked by the selection: a layer of the view that is not a shape layer.
 
 The text (`AnnotationTool.text`) is one line of the system font in semibold, its size by the step (`AnnotationThickness.points(for:)`), in the colour and the opacity
@@ -365,10 +368,10 @@ the old one) or when another reading has begun since (`serial`). A reading that 
 The seam is split by what was picked. An area arrives as `OverlayResult.edited`, and
 `CaptureController.overlayFinished` in `Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`
 composes it and calls `CaptureController.handOff` with what the exit asked for: Return
-copies and saves by the save target as it always did, the copy key only copies, the
+always copies and writes a file by the save target (an edit of a shot that had a file writes one whatever the target says), the copy key only copies, the
 save key only saves — to the macOS folder when the target is the clipboard — and Share…, from the ⋯ menu, does what
 Return does and then opens the system's sheet at the thumbnail (`thenShare`). A window or a
-whole display still arrives at `handOff` directly and does both, and the full-screen
+whole display still arrives at `handOff` directly and asks for both, and the full-screen
 shortcut never comes through it. Esc and a right click are one door, except that in an Edit a right click beside the picture or on another display does nothing (the ways out of an Edit are Done, ✕ and Esc): with no layers they
 close at once, with layers the first press shows a plate and a second closes however
 late, and any other input withdraws the question; no clock is read.
@@ -394,7 +397,7 @@ cleared; a switched-off module holds no combination (ARCHITECTURE.md § The stre
 
 ## The after-shot window
 
-The after-shot window's root carries `helmRoot()`, so the refusal's Open Settings button is `HelmButtonStyle`'s; the capsule's cells and «N more» set their own style. The after-shot window (`ShotToast` in `Sources/Modules/Screenshots/UI/ShotToast.swift`) holds a list of shots, oldest
+The after-shot window's root carries `helmRoot()`, so the refusal's Open Settings button is `HelmButtonStyle`'s; the capsule's cells and «N more» set their own style. The after-shot window (`ShotToast` in `Sources/Modules/Screenshots/UI/ShotToast.swift`) holds, in its `ShotToastModel`, a list of shots, oldest
 first and never more than `ShotShelf.limit`: the shot past the limit pushes the oldest out, with the full picture it held if it was
 only copied. One shot is the bare picture; a shot taken while another is still up joins it, and the group is a pile in the corner
 with a counter, which a click unfolds into a row reaching leftward, `ShotShelf.visible` shots wide, scrolled past that and resting
@@ -417,7 +420,7 @@ Edit (only where there is a file with its reading, or a held picture, to open on
 while it is up, the view that reports the hover is the picture and the capsule together, and on a picture narrower than the capsule both stand against the picture's trailing edge.
 A click on the picture is Edit (on a folded pile it unfolds the row): `CaptureSession.openEdit` lays the shot over a fresh freeze of the display under the pointer (`PictureOnScreen` in
 `Sources/Modules/Screenshots/Engine/Freeze.swift`), reduced on the screen when it is larger than the display less `PictureOnScreen.margin` (24 pt at the sides; above and below the palette, its gap and `EditorChrome`'s margin, each side capped at a quarter of the display's side, so that the palette is placed outside the picture and never stands on it) and centred on the whole display, and the overlay opens in the editor on the picture's own
-rectangle, which is also the bounds of its area; the shot stands like a window on the dimmed screen, with a shadow round it (black at 0.5, radius 24, drop 8, masked outside the picture; no rounding, which would cut pixels or the handles, and no border; the design system has no shadow token, so the numbers are the overlay's own, `CaptureOverlay`'s `cardShadowOpacity`, `cardShadowRadius` and `cardShadowDrop`), and a press on the screen beside it closes nothing and draws nothing; the export draws over the picture at its own size (`CaptureSession.annotated(_:local:layers:)`). A drag
+rectangle, which is also the bounds of its area; the shot stands like a window on the dimmed screen, with a shadow round it (black at 0.5, radius 24, drop 8, masked outside the picture; no rounding, which would cut pixels or the handles, and no border; the design system has no shadow token, so the numbers are the overlay's own, `OverlayView`'s `cardShadowOpacity`, `cardShadowRadius` and `cardShadowDrop`), and a press on the screen beside it closes nothing and draws nothing; the export draws over the picture at its own size (`CaptureSession.annotated(_:local:layers:)`). A drag
 carries the file when one was written and else the full picture as a PNG, never the reduced copy, and nothing while the
 write is not done (`ShotToastModel.drag(of:)`). The window's life is a clock that three holds stop, the pointer over the
 picture or the pile, the Share sheet, and the editor open on a shot taken from a group; it starts over with every new shot and is
@@ -446,8 +449,7 @@ window's; it is moved by dragging, scaled about the pointer by the scroll and ma
 ⌥ and the scroll, both bounded. `PinBoard` holds them with one observer of the displays, installed
 with the first pin and removed with the last, which brings a pin wholly onto one screen when a display
 goes (`PinGeometry.rehome`). `CaptureController.cancel` — Esc or the close control on the capture bar —
-closes no pin; only `CaptureController.teardown`, called when the module is switched off or its view model is
-replaced, does. Nothing about a pin is stored.
+closes no pin; only `CaptureController.teardown`, called by `ScreenshotsViewModel.stop` when the module is switched off and at quit, does. Nothing about a pin is stored.
 
 ## How Screenshots' model reaches its engine
 

@@ -15,13 +15,16 @@ all on a refusal or a Mac mid-boot (`AShortListPrunesNoNoticeBookTests`).
 A per-app rule is bound to a signature rather than to a bundle identifier
 (`Sources/HelmRuntime/CodeIdentity.swift` says what that buys), judged at launch
 only by `VPNRuleTrust.judge`. Its answer is a `VPNRuleTrust.Verdict` rather than a
-boolean, so a rule that does not act says which refusal it was, and a rule with no
-recorded identity refuses rather than trusting the name.
+boolean, so the log line of a rule that did not fire says which refusal it was (the
+rules popover draws no note for it), and a rule with no recorded identity refuses
+rather than trusting the name.
 
 The tool is asked before the app announces. `scutil --nc start`/`stop` exit `0`
 whatever happens and put their answer on stdout, so the port hands back the whole
 process result and `Sources/Modules/VPN/Engine/Logic/VPNCommandReply.swift` reads the
-status and the stdout together before anything is announced.
+status and the stdout together before anything is announced. `--nc list`,
+`--nc status` and `--nc show` are read for their stdout alone, with no deadline:
+`ScutilRunner.run` and `KeychainCredentials.credentials` call `HelmProcess.run` without a `timeout`.
 
 A secret never rides in an argument list: `scutil --nc start` takes `--user`, `--password` and
 `--secret` only as arguments and has no terminal form, so the start that carries one goes to the
@@ -48,7 +51,7 @@ reaches.
 
 The speed reading is a press rather than a timer, and runs off the serial work
 queue and the cooperative pool (`VPNEngine`'s doc on the measurement).
-`VPNSpeedReading` takes every field or none. Names reach the log through
+`VPNSpeedReading` takes both throughput figures or none; responsiveness may be missing. Names reach the log through
 `Redact.vpn`; counts and outcomes are free. An engine refuses a payload equal in
 every field to the last one it sent (`emitState`).
 

@@ -1,8 +1,9 @@
 import Foundation
 import HelmRuntime
 
-/// Credentials some VPNs (L2TP/IPSec) need at connect time; nil for VPNs that
-/// connect on their own (IKEv2). Secrets never logged.
+/// Credentials some VPNs (L2TP/IPSec) need at connect time; a VPN that connects
+/// on its own (IKEv2) is answered `VPNCredentialRead.notNeeded`. Secrets never
+/// logged.
 public struct VPNCredentials: Equatable, Sendable {
     public var user: String?
     public var password: String?
@@ -87,7 +88,8 @@ public enum VPNStartAnswer: Equatable, Sendable {
     case refused(code: Int32)
 }
 
-/// Supplies --user/--password/--secret for a keychain-backed VPN.
+/// Supplies the user, password and secret for a keychain-backed VPN: a `.ready`
+/// goes to `VPNRunnerPort.start(_:supplying:)` in process, as no argument.
 ///
 /// - Parameter promptingAllowed: whether this read may reach somewhere macOS
 ///   guards with a dialog. **False for anything a rule started.** The secret

@@ -8,8 +8,11 @@ A path a pattern produced is a candidate rather than a finding, and glob results
 are filtered against the installed set two ways at once:
 `AppLister.installedBundleIDs()` reads the directory listing and
 `AppLister.isKnownToSystem` asks LaunchServices, which sees what a listing cannot.
-The exact candidates go through the same filter, via
-`AppLister.installedPaths(forBundleID:)`, because their hazard is different.
+The exact candidates built from the bundle id go through the same filter, via
+`AppLister.installedPaths(forBundleID:)`, because their hazard is different. The two
+built from the display name (`Application Support/<name>`, `Logs/<name>`) pass
+unfiltered and arrive unticked: a name is a guess, and the rules weigh an id
+(`ANameIsAGuessNotAnOwnershipQuestionTests`).
 `Sources/Modules/Uninstaller/Engine/Logic/LeftoverOwnership.swift` is where that
 verdict is formed and holds the rules; `OrphanDetector.swift` and `SystemApp.swift`
 in the same folder say why they are conservative and why macOS's own apps never
@@ -36,12 +39,13 @@ reached around: `trashPaths` asks who is up, quits, asks again, partitions throu
 `RemovableScope` and only then hands each path to `HelmTrash.remove` through the
 `trashItem` port.
 
-The one thing the engine says unasked, that an app reached the Trash, is not a call of
-the model's. The engine is built with a `trashChanged` closure; the descriptor makes it
+The one thing the engine says unasked, "look at the Trash again", is not a call of
+the model's. It goes out when a path that could be an app reaches the Trash and when
+the person switches the offer on. The engine is built with a `trashChanged` closure; the descriptor makes it
 yield into a one-slot `AsyncStream` that the model reads in `listenForTrash`, once for
 the life of the module. With the Trash offer open the arrival goes to the offer, which
 takes the new app into the list it shows; otherwise it goes to the host's handler, which
-opens the window. The offer registers on the model (`openOffer`) before its first read,
+sweeps and opens the window only if the sweep finds something. The offer registers on the model (`openOffer`) before its first read,
 so an arrival between the read and the registration is not lost.
 `AStoppedUninstallerModelReachesNoWorkTests.testAnArrivalWithTheOfferOpenGoesToTheOffer`
 holds the routing.

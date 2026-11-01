@@ -176,8 +176,9 @@ struct EditorTextTools {
     /// a right click do not go through `perform` and leave it as it was.
     var arrowReleasedObject = false
 
-    /// The capture panel's overlay: the person only picks here — a window under the pointer, or an area that stays as
-    /// drawn until a new drag replaces it — and the panel's Capture (or Return) takes it. **The palette never appears and
+    /// The capture panel's overlay: the person picks here an area, which stays as drawn until a new drag replaces it and
+    /// which the panel's Capture (or Return) takes, or a window, which a click takes at once (⌥: without its shadow) and
+    /// Capture (or Return) takes with it. **The palette never appears and
     /// `startEditing` is never called**, so there is no editor and no layer, and an area leaves as a plain crop.
     let selectionOnly: Bool
     /// Whether there is something for Capture to take (`hasTarget`), told at every change; the panel shows its button by it.

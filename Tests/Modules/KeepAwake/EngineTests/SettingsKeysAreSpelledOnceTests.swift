@@ -117,7 +117,7 @@ final class SettingsKeysAreSpelledOnceTests: XCTestCase {
     }
 
     /// The jiggle timer is a `while` interval: a stored 0 is a loop that fires as
-    /// fast as it can wake up. The clamp is the module's, not the stepper's —
+    /// fast as it can wake up. The clamp is the module's, not the menu's —
     /// the page's own copy of it was the seventh duplicate.
     func test_a_jiggle_interval_below_a_minute_is_read_as_a_minute() {
         for stored in [0, -3] {
