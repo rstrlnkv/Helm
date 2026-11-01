@@ -20,6 +20,9 @@ application.appearance = options.appearance.flatMap { NSAppearance(named: $0.nam
 var accessibility = HelmAccessibility.system
 if let appearance = options.appearance { accessibility.increasedContrast = appearance.increasedContrast }
 
+// The kit's own words read in this language, whatever the Mac's: a setter over a lock and a field, no defaults.
+if let language = options.language { AppLanguage.override = language }
+
 let host = HostWindow(onClose: { NSApp.terminate(nil) })
 host.present(ShowcaseBoards.view(for: options).environment(\.helmAccessibility, accessibility),
              title: "HelmShowcase", styleMask: [.titled, .closable, .miniaturizable])

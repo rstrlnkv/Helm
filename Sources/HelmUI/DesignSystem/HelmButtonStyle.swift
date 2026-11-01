@@ -23,7 +23,7 @@ import SwiftUI
 /// **The capsule variant.** `helmCapsuleButtons()` on a container turns every plain `Button` inside it into the
 /// same well with a capsule for its shape and its content shape; nothing else about the style changes. The
 /// pages that ask are Keep Awake's, Layout's and VPN's heroes, for the rows of buttons under them; `HelmShowcase` draws it on
-/// its buttons board. Every other plain `Button` keeps the `HelmRadius.ctl` corner.
+/// its capsules board. Every other plain `Button` keeps the `HelmRadius.ctl` corner.
 ///
 /// **The chosen well.** `helmChosen(_:)` marks the chosen button of a row of positional choices, or a door whose popover is open, with its well
 /// `HelmSurface.chosenWash` of the accent, opaque and blended inside the appearance, the ink stays primary (white on

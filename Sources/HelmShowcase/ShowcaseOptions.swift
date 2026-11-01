@@ -1,9 +1,13 @@
 import AppKit
+import HelmUI
 
 /// What the command line asks of one showcase launch. The showcase stores nothing: the board, the
 /// appearance and the presentation are arguments and die with the process.
 struct ShowcaseOptions {
-    enum Board: String, CaseIterable { case buttons, toggles, rows, header, surfaces, palette, ladders, present }
+    enum Board: String, CaseIterable {
+        case buttons, capsules, toggles, rows, sections, hotkeys, notices, header, toolbar, surfaces, pickers, lists, panel
+        case motion, palette, ladders, present, welcome
+    }
 
     /// Light and dark are `NSApp.appearance`; the contrast pair adds the kit's accessibility value
     /// (`main.swift`), because the appearance alone does not reach `\.helmTraits` (`HelmTraits.swift`).
@@ -30,6 +34,7 @@ struct ShowcaseOptions {
     private(set) var board = Board.buttons
     private(set) var appearance: Appearance?
     private(set) var presentation: Presentation?
+    private(set) var language: AppLanguage?
 
     static var usage: String {
         func names<T: CaseIterable & RawRepresentable>(_: T.Type) -> String where T.RawValue == String {
@@ -37,7 +42,8 @@ struct ShowcaseOptions {
         }
         return """
         usage: HelmShowcase [--board \(names(Board.self))] [--appearance \(names(Appearance.self))]
-                            [--present \(names(Presentation.self))] [-reduceTransparency 1]
+                            [--present \(names(Presentation.self))] [--language \(names(AppLanguage.self))]
+                            [-reduceTransparency 1]
         """
     }
 
@@ -55,6 +61,7 @@ struct ShowcaseOptions {
             case "--board": board = try value(of: flag, as: Board.self); boardGiven = true
             case "--appearance": appearance = try value(of: flag, as: Appearance.self)
             case "--present": presentation = try value(of: flag, as: Presentation.self)
+            case "--language": language = try value(of: flag, as: AppLanguage.self)
             // The argument domain has already answered: `HelmAccessibility.system` reads it in this process, with no
             // Mac setting changed.
             case "-reduceTransparency":

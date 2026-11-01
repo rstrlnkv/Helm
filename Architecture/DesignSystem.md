@@ -234,8 +234,9 @@ swift build --product HelmShowcase
 .build/debug/HelmShowcase --board buttons --appearance dark
 ```
 
-`--board` is one of `buttons`, `toggles`, `rows`, `header`, `surfaces`, `palette`, `ladders`, `present`;
+`--board` is one of `buttons`, `capsules`, `toggles`, `rows`, `sections`, `hotkeys`, `notices`, `header`, `toolbar`, `surfaces`, `pickers`, `lists`, `panel`, `motion`, `palette`, `ladders`, `present`, `welcome`;
 `--appearance` one of `light`, `dark`, `light-contrast`, `dark-contrast` (without it the machine's own);
+`--language en|zh|es|fr|de|ja|ru|pt` sets `AppLanguage.override` for this process, so the kit's own words read in that language;
 `--present sheet|popover|alert|dialog` opens one presentation on the `present` board at launch. `-reduceTransparency 1` is the one argument with one dash: it is the setting itself, answered from the argument domain for this process, and it changes no Mac setting. An
 unknown argument prints the usage and exits 64. It stores nothing: arguments only, no defaults, no autosaved
 frame, and its window is not restored. Its sample text is plain `String`s in `enum Sample`, outside the
@@ -245,8 +246,9 @@ Hover and pressed are forced by `\.helmShownInteraction` (`HelmInteraction.swift
 sidebar row and the page header read and which defaults to `.live`; the inactive column sets
 `\.helmWindowAppearsActive`. What cannot be forced is named on each board: the system switch's hover and
 pressed, the focus ring (it needs the key window and Full Keyboard Access, so the focus column is drawn live), the
-open content of a `Menu`, and a real inactive window for a system control. `HotkeyRecorder` is not on a board,
-because it writes to a store. A still of it is taken of the window's region (`screencapture -R`, not `-l`; the window is centred when SwiftUI has sized it, so the region is whole), as
+open content of a `Menu`, a real inactive window for a system control, and a press where a control has only the system's plain one.
+`HelmHotkeyRow` stands on `hotkeys` over `HelmHotkeyRecorder.unsaved`, a store in memory, so a press keeps nothing; its recording face and `HelmExplainer`'s open popover come from a press (`HelmReadout press`). A modifier that only reads a permission or watches a notification draws nothing and is on no board.
+A board is `fixedSize`, so one taller than the screen cannot be photographed whole: a board that outgrows the screen splits in two, it does not scroll. A still of a board is taken by window number (`screencapture -x -o -l <id>`, the id from `HelmReadout window <pid>`, `-o` leaving out the shadow); `-R` is for a window whose material is active, which `-l` mis-renders, as
 `Architecture/TestsAndMeasurement.md` § Two screen instruments says; `Scripts/shoot.sh` launches Helm Dev
 and does not take it.
 

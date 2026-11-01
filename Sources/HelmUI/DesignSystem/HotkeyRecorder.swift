@@ -135,6 +135,15 @@ public extension Notification.Name {
     }
 }
 
+public extension HelmHotkeyRecorder {
+    /// A recorder over a store that dies with it, for a view that shows the row and keeps nothing: the showcase
+    /// stores nothing and cannot name `HelmRuntime`'s store. Nothing in the product calls it.
+    static func unsaved(label: String?) -> HelmHotkeyRecorder {
+        HelmHotkeyRecorder(store: NamespacedStore(namespace: "app", backing: InMemoryKeyValueStore()),
+                           prefix: "row", fallbackLabel: label)
+    }
+}
+
 /// One row: what the shortcut does, what it is, and how to change it.
 ///
 /// It also says when macOS refused the combination. A shortcut another app has

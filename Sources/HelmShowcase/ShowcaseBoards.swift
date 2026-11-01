@@ -9,6 +9,9 @@ enum Sample {
     static let long = "Restore every module to its defaults"
     static let russian = "Восстановить параметры по умолчанию для всех модулей"
     static let note = "A note under a title, quieter than it."
+    /// A removal's `succeededText`: the kit draws it as given; it adds the full stop only to the failed
+    /// heading with something removed.
+    static let moved = "Moved to the Trash — 1,2 ГБ"
     static let russianTitle = "Своё время"
     static let russianVerb = "Начать"
     static let russianHour = "ч"
@@ -23,13 +26,28 @@ enum Sample {
     static let alert = "alert"
     static let dialog = "dialog"
     static let menu = "menu"
+    /// The label `ChoiceCards` was measured against, and a name with spaces: no bundle id is spelled so, so
+    /// `HelmAppRuleRow` finds no app and draws the generic icon and this text.
+    static let russianCard = "Имя в строке меню"
+    static let ruleApp = "Приложение с длинным именем"
+    static let figure = "1 234,5 МБ"
+    /// Computed: the type is not `Sendable`, a `static let` would not build.
+    static var explainer: HelmExplainer.Content {
+        .init(title: russianTitle, blocks: [.text(russianNote), .command("ls -l /private/tmp")])
+    }
+    static func refusals(_ count: Int) -> [HelmRemovalFailure] {
+        (1...count).map { .init(path: "/private/tmp/sample-\($0).txt", reason: russianNote) }
+    }
 
     /// A module's tint for the boards that need one: the numbers are a copy of `KeepAwakeDescriptor`'s,
     /// not read from it (the showcase depends on `HelmUI` alone), so a change to that
     /// descriptor does not reach this.
-    static let tint = ModuleTint(
+    private static let moduleTint = ModuleTint(
         ordinary: (light: (0.871, 0.478, 0.131), dark: (0.854, 0.486, 0.155)),
         increasedContrast: (light: (0.699, 0.384, 0.105), dark: (0.687, 0.391, 0.125)))
+
+    /// The one place a board reads that tint, in the contrast the board is drawn in.
+    static func tint(_ traits: HelmTraits) -> Color { moduleTint.colour(increased: traits.increasedContrast) }
 }
 
 /// A column of the state matrices. `focus` is drawn live (Tab to it, with Full Keyboard Access on); the
@@ -58,6 +76,11 @@ enum ShowcaseState: CaseIterable {
     }
 }
 
+extension [ShowcaseState] {
+    /// The columns of a board whose rows have no selected look: there it would repeat rest.
+    static let unselected = ShowcaseState.allCases.filter { $0 != .selected }
+}
+
 /// One row of a matrix: a label and what to draw in each column it supports; the rest show a dash.
 struct ShowcaseRow {
     let label: String
@@ -72,7 +95,7 @@ struct ShowcaseRow {
     }
 }
 
-private struct Matrix: View {
+struct Matrix: View {
     let rows: [ShowcaseRow]
     var columns: [ShowcaseState] = ShowcaseState.allCases
     var cellWidth: CGFloat = 118
@@ -113,7 +136,7 @@ private struct Matrix: View {
 }
 
 /// A board's frame: its name, a caption saying what cannot be forced on it, then the content.
-private struct Board<Content: View>: View {
+struct Board<Content: View>: View {
     let name: String
     let caption: String
     @ViewBuilder let content: Content
@@ -136,13 +159,23 @@ enum ShowcaseBoards {
     @MainActor static func view(for options: ShowcaseOptions) -> AnyView {
         switch options.board {
         case .buttons: AnyView(ButtonsBoard())
+        case .capsules: AnyView(CapsulesBoard())
         case .toggles: AnyView(TogglesBoard())
         case .rows: AnyView(RowsBoard())
+        case .sections: AnyView(SectionsBoard())
+        case .hotkeys: AnyView(HotkeysBoard())
+        case .notices: AnyView(NoticesBoard())
         case .header: AnyView(HeaderBoard())
+        case .toolbar: AnyView(ToolbarBoard())
         case .surfaces: AnyView(SurfacesBoard())
+        case .pickers: AnyView(PickersBoard())
+        case .lists: AnyView(ListsBoard())
+        case .panel: AnyView(PanelBoard())
+        case .motion: AnyView(MotionBoard())
         case .palette: AnyView(PaletteBoard())
         case .ladders: AnyView(LaddersBoard())
         case .present: AnyView(PresentBoard(initial: options.presentation))
+        case .welcome: AnyView(WelcomeBoard())
         }
     }
 }
@@ -157,48 +190,98 @@ private struct ButtonsBoard: View {
             system's). The default action names .borderedProminent itself. Focus is the live system ring: it \
             needs the key window and Full Keyboard Access. The inactive column sets the kit's own window \
             value; a system control draws its inactive look only in a real inactive window. The window is not \
-            the key window when it is photographed: the default action is grey there, the focus column is \
-            the rest look, and the system rows' own hover and pressed look cannot be forced, so those \
-            columns show them at rest. HotkeyRecorder is left out: it writes to a store, and the showcase \
-            stores nothing.
+            the key window when it is photographed (a bare binary asked to activate stays inactive): the \
+            default action is grey there, the focus column is the rest look, and the system rows' own \
+            hover and pressed look cannot be forced, so those columns show them at rest. A press where a control has \
+            only the system's plain one is not forced either. There is no selected column: a button's chosen \
+            look is helmChosen, on capsules, with the destructive and capsule rows. The short busy label row \
+            holds a spinner in hover, pressed and disabled, the long Russian one in both of its.
             """) {
+            VStack(alignment: .leading, spacing: HelmSpace.s6) {
             Matrix(rows: [
-                ShowcaseRow("kit") { _ in Button(Sample.short) {} },
-                ShowcaseRow("system .bordered") { _ in Button(Sample.short) {}.buttonStyle(.bordered) },
+                ShowcaseRow("kit", states: .unselected) { _ in Button(Sample.short) {} },
+                ShowcaseRow("system .bordered", states: .unselected) { _ in Button(Sample.short) {}.buttonStyle(.bordered) },
                 ShowcaseRow("kit, long Russian", states: [.rest, .hover, .pressed, .disabled]) { _ in
                     Button(Sample.russian) {}.multilineTextAlignment(.center)
                 },
-                ShowcaseRow("kit .large") { _ in Button(Sample.short) {}.controlSize(.large) },
-                ShowcaseRow("system .large") { _ in
+                ShowcaseRow("system, long Russian", states: [.rest, .disabled]) { _ in
+                    Button(Sample.russian) {}.buttonStyle(.bordered).multilineTextAlignment(.center)
+                },
+                ShowcaseRow("kit .large", states: .unselected) { _ in Button(Sample.short) {}.controlSize(.large) },
+                ShowcaseRow("system .large", states: .unselected) { _ in
                     Button(Sample.short) {}.buttonStyle(.bordered).controlSize(.large)
                 },
-                ShowcaseRow("kit destructive") { _ in Button(Sample.delete, role: .destructive) {} },
+                ShowcaseRow("default action", states: .unselected) { _ in
+                    Button(Sample.short) {}.keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
+                },
+                ShowcaseRow("icon only, named", states: [.rest, .hover, .pressed, .disabled]) { _ in
+                    Button { } label: { Image(systemName: "gearshape") }.accessibilityLabel(Sample.title)
+                },
+                ShowcaseRow("busy label", states: [.rest, .hover, .pressed, .disabled]) { state in
+                    Button {} label: { HelmBusyLabel(Sample.russianVerb, busy: state != .rest) }
+                },
+            ], columns: .unselected)
+            Matrix(rows: [
+                ShowcaseRow("busy label, long Russian", states: [.rest, .disabled]) { _ in
+                    Button {} label: { HelmBusyLabel(Sample.russian, busy: true) }.multilineTextAlignment(.center)
+                },
+            ], columns: [.rest, .disabled], cellWidth: 240)
+            }
+        }
+    }
+}
+
+// MARK: - Capsules
+
+private struct CapsulesBoard: View {
+    var body: some View {
+        Board(name: "Capsules and destructive", caption: """
+            The capsule family: helmCapsuleButtons, helmChosen (the chosen well wins over the pointer and \
+            over disabled: in the capsule row, a matrix of its own, the chosen button's well is the same in \
+            every column, its ink dims in disabled, and the other two change), the destructive buttons of \
+            the kit and of the system, the row menu and the remove button. There is no selected column: the chosen look is the capsule row. The \
+            system's hover and pressed look cannot be forced; the row menu's open content cannot either, and \
+            the remove button has only the system's plain press. Focus is the live ring and needs the key \
+            window and Full Keyboard Access.
+            """) {
+            VStack(alignment: .leading, spacing: HelmSpace.s6) {
+            Matrix(rows: [
+                ShowcaseRow("kit destructive", states: .unselected) { _ in Button(Sample.delete, role: .destructive) {} },
                 ShowcaseRow("kit capsule (Keep Awake hero)", states: [.rest, .hover, .pressed, .disabled]) { _ in
                     Button(Sample.short) {}.controlSize(.large).helmCapsuleButtons()
                 },
-                ShowcaseRow("kit capsule row, one chosen") { _ in
+                ShowcaseRow("kit capsule destructive", states: .unselected) { _ in
+                    Button(Sample.delete, role: .destructive) {}.helmCapsuleButtons()
+                },
+                ShowcaseRow("system destructive", states: .unselected) { _ in
+                    Button(Sample.delete, role: .destructive) {}.buttonStyle(.bordered)
+                },
+                ShowcaseRow("capsule, long Russian", states: [.rest, .hover, .pressed, .disabled]) { _ in
+                    Button(Sample.russian) {}.multilineTextAlignment(.center).helmCapsuleButtons()
+                },
+                ShowcaseRow("destructive, long Russian", states: [.rest, .hover, .pressed, .disabled]) { _ in
+                    Button(Sample.russian, role: .destructive) {}.multilineTextAlignment(.center)
+                },
+                ShowcaseRow("row menu (HelmRowMenu)", states: .unselected) { _ in
+                    HelmRowMenu(subject: Sample.title) { Button(Sample.short) {} }
+                },
+                ShowcaseRow("remove button", states: [.rest, .focus, .disabled, .inactive]) { _ in
+                    HelmRemoveButton(label: Sample.title) {}
+                },
+                ShowcaseRow("remove button, 28 pt target", states: [.rest, .focus, .disabled, .inactive]) { _ in
+                    HelmRemoveButton(label: Sample.title, target: 28) {}
+                },
+            ], columns: .unselected)
+            Matrix(rows: [
+                ShowcaseRow("kit capsule row, one chosen", states: [.rest, .hover, .pressed, .disabled]) { _ in
                     HStack(spacing: HelmSpace.s3) {
                         Button(Sample.short) {}.helmChosen(true)
                         Button(Sample.title) {}.helmChosen(false)
                         Button(Sample.delete) {}.helmChosen(false)
                     }.helmCapsuleButtons()
                 },
-                ShowcaseRow("kit capsule destructive") { _ in
-                    Button(Sample.delete, role: .destructive) {}.helmCapsuleButtons()
-                },
-                ShowcaseRow("system destructive") { _ in
-                    Button(Sample.delete, role: .destructive) {}.buttonStyle(.bordered)
-                },
-                ShowcaseRow("default action") { _ in
-                    Button(Sample.short) {}.keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
-                },
-                ShowcaseRow("icon only, named", states: [.rest, .hover, .pressed, .disabled]) { _ in
-                    Button { } label: { Image(systemName: "gearshape") }.accessibilityLabel(Sample.title)
-                },
-                ShowcaseRow("row menu (HelmRowMenu)") { _ in
-                    HelmRowMenu(subject: Sample.title) { Button(Sample.short) {} }
-                },
-            ])
+            ], columns: [.rest, .hover, .pressed, .disabled], cellWidth: 240)
+            }
         }
     }
 }
@@ -235,7 +318,9 @@ private struct TogglesBoard: View {
             HelmToggleStyle sets the row; the switch is the system's, so its hover and pressed look cannot be \
             forced and those columns are dashes. Selected is the switch on; every other column is off. In a \
             window that is not the key window the switch on loses its accent fill and its track differs from the off \
-            one only slightly (1.12:1 in light), and the focus column is the rest look.
+            one only slightly (1.12:1 in light), and the focus column is the rest look. The checkbox is the \
+            system's and its slot is the empty space where a row has none; the pills' hover and press are \
+            the system's plain press, not forced.
             """) {
             VStack(alignment: .leading, spacing: HelmSpace.s6) {
             Matrix(rows: [
@@ -246,6 +331,12 @@ private struct TogglesBoard: View {
                 ShowcaseRow("labels hidden, named", states: Self.switchStates) { state in
                     Toggle(Sample.short, isOn: .constant(state == .selected)).labelsHidden()
                         .accessibilityLabel(Sample.title)
+                },
+                ShowcaseRow("checkbox above its slot", states: Self.switchStates) { state in
+                    VStack(alignment: .leading, spacing: HelmSpace.s2) {
+                        Toggle(Sample.short, isOn: .constant(state == .selected)).toggleStyle(.checkbox)
+                        HStack(spacing: HelmSpace.s3) { HelmCheckboxSlot(); Text(verbatim: Sample.short) }
+                    }
                 },
             ], columns: Self.switchStates, cellWidth: 220)
             PillChoiceSamples()
@@ -269,7 +360,8 @@ private struct RowsBoard: View {
         Board(name: "Rows", caption: """
             The sidebar row's pressed state is the system's, so that column is a dash; selected keeps its \
             fill in an inactive window and dims the glyph and name (the last sidebar row, selected and \
-            inactive together). Focus is the rest look in a window that is not the key window.
+            inactive together). Focus is the rest look in a window that is not the key window. The settings \
+            sections and the banners are on sections and notices.
             """) {
             VStack(alignment: .leading, spacing: HelmSpace.s6) {
                 Matrix(rows: [
@@ -305,39 +397,6 @@ private struct RowsBoard: View {
                 }
                 .helmCard()
                 .frame(width: 560)
-                HelmSettingsSection(Sample.title) {
-                    Toggle(Sample.short, isOn: .constant(true))
-                    HelmSettingRow(Sample.title) {
-                        Picker(Sample.title, selection: .constant(1)) {
-                            Text(verbatim: "A").tag(1)
-                            Text(verbatim: "B").tag(2)
-                        }
-                        .pickerStyle(.segmented).labelsHidden().fixedSize()
-                    }
-                    HelmSettingRow(Sample.title) {
-                        Picker(Sample.title, selection: .constant(1)) {
-                            Text(verbatim: "A").tag(1)
-                            Text(verbatim: "B").tag(2)
-                        }
-                        .labelsHidden().fixedSize().helmSectionMenu()
-                    }
-                    AppearancePicker(selection: .constant(.light), title: Sample.title)
-                    HelmSettingsNote(Sample.note)
-                }
-                .frame(width: 560)
-                HelmSettingsSection {
-                    Toggle(Sample.short, isOn: .constant(false))
-                    HelmSettingsNote(Sample.russianNote)
-                }
-                .frame(width: 560)
-                HelmSettingsSection(Sample.russian) {
-                    HelmSettingRow(Sample.russian, note: Sample.russianNote, mark: .attention) {
-                        Button(Sample.short) {}
-                    }
-                }
-                .frame(width: 560)
-                HelmBanner(Sample.long) { Button(Sample.short) {} }.frame(width: 560)
-                HelmBanner(Sample.russian, compact: true) { Button(Sample.short) {} }.frame(width: 320)
             }
         }
     }
@@ -360,7 +419,8 @@ private struct HeaderBoard: View {
             Hover is forced by the kit's seam, and the band also needs the window to be key, so only the hover \
             row sets the key state itself; every other row reads the window's own state. The inactive row is the settings window's \
             header, which dims in a window that is not the active one; the public header view alone does not \
-            dim (it takes no window value), and that row has no trailing control and bleeds to the edge like the settings window's.
+            dim (it takes no window value), and that row has no trailing control and bleeds to the edge like the settings window's. \
+            No band is macOS 26's look; over a scroll view the band waits for content. Tabs, actions and search are on toolbar.
             """) {
             VStack(alignment: .leading, spacing: HelmSpace.s5) {
                 header("rest")
@@ -369,17 +429,22 @@ private struct HeaderBoard: View {
                 header("disabled trailing control", disabled: true)
                 header("long Russian title", title: Sample.russian)
                 header("bleeds, stands on still content", bleeds: true, still: true)
+                header("macOS 26: no band").environment(\.helmBandChoice, .onMacOS(26))
+                VStack(alignment: .leading, spacing: HelmSpace.s2) {
+                    Text(verbatim: "over a scroll view").font(.caption).foregroundStyle(.secondary)
+                    ScrollView { Color.clear.frame(width: 760, height: 240) }
+                        .helmPageHeader(symbol: "gearshape", tint: Sample.tint(traits), title: Sample.title)
+                        .frame(width: 760, height: 100)
+                }
             }
         }
     }
-
-    private var tint: Color { Sample.tint.colour(increased: traits.increasedContrast) }
 
     private var inactiveHeader: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s2) {
             Text(verbatim: "inactive window").font(.caption).foregroundStyle(.secondary)
             Color.clear.frame(width: 760, height: 0)  // the header reserves its own height above it
-                .helmCardHeader(symbol: "gearshape", tint: tint, title: Sample.title, status: nil)
+                .helmCardHeader(symbol: "gearshape", tint: Sample.tint(traits), title: Sample.title, status: nil)
                 .environment(\.helmWindowAppearsActive, false)
         }
     }
@@ -389,7 +454,7 @@ private struct HeaderBoard: View {
                         still: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: HelmSpace.s2) {
             Text(verbatim: name).font(.caption).foregroundStyle(.secondary)
-            HelmPageHeader(symbol: "gearshape", tint: tint, title: title, bleeds: bleeds,
+            HelmPageHeader(symbol: "gearshape", tint: Sample.tint(traits), title: title, bleeds: bleeds,
                            standsOnStillContent: still) {
                 Button(Sample.short) {}.disabled(disabled)
             }
@@ -403,12 +468,16 @@ private struct HeaderBoard: View {
 
 private struct SurfacesBoard: View {
     @Environment(\.helmTraits) private var traits
+    private static let states: [ShowcaseState] = [.rest, .disabled, .inactive]
 
     var body: some View {
         Board(name: "Surfaces and marks", caption: """
             Components that take no pointer state: each drawn in its variants, tinted with the kit's own \
             signal colours and the sample module tint. Light and dark, and the contrast pair, come from \
-            --appearance.
+            --appearance. The columns of the matrix are drawn by one expression and nothing here reads the \
+            pointer, isEnabled or the window, so the claim "no such state" is on the screen; that two cells \
+            match to the pixel is not claimed. HelmAppMark's ring is the fallback stroke: an unbundled binary has no helm-ring.svg. \
+            The empty and busy states are on notices.
             """) {
             VStack(alignment: .leading, spacing: HelmSpace.s6) {
                 HStack(alignment: .top, spacing: HelmSpace.s6) {
@@ -416,7 +485,7 @@ private struct SurfacesBoard: View {
                         HelmBadge(Sample.short, tint: warning, emphasis: .prominent)
                     }
                     HelmAppHero(active: true, tagline: Sample.russianNote, spoken: Sample.title) {
-                        HelmBadge(Sample.short, tint: tint, emphasis: .prominent)
+                        HelmBadge(Sample.short, tint: Sample.tint(traits), emphasis: .prominent)
                     }
                     .frame(width: 300)
                 }
@@ -424,37 +493,47 @@ private struct SurfacesBoard: View {
                     Text(verbatim: Sample.note).helmCard().frame(width: 200)
                     Text(verbatim: Sample.note).helmCard().helmPreviewEdge(chosen: true).frame(width: 200)
                     Text(verbatim: Sample.note).helmCard().helmPreviewEdge().frame(width: 200)
-                    HelmIconPlate(symbol: "gearshape", tint: tint)
-                    HelmIconPlate(symbol: "gearshape", tint: tint, active: false)
-                    HelmSignalPlate(symbol: "checkmark", tint: success)
                     HelmAppMark(size: 44)
+                    HelmWallpaper(dark: false).frame(width: 74, height: 46).helmPreviewEdge()
+                    HelmWallpaper(dark: true).frame(width: 74, height: 46).helmPreviewEdge(chosen: true)
+                    Text(verbatim: Sample.short).padding(.horizontal, HelmSpace.s4).padding(.vertical, HelmSpace.s1)
+                        .helmPillTrack()
                 }
-                HStack(spacing: HelmSpace.s5) {
-                    HelmBadge(Sample.short)
-                    HelmBadge(Sample.short, tint: warning)
-                    HelmBadge(Sample.short, tint: danger, emphasis: .prominent)
-                    HelmBadge(Sample.russian, tint: success)
-                    HelmStatusDot(active: true)
-                    HelmStatusDot(active: true, size: .widget)
-                    HelmStatusDot(active: false)
-                }
+                Matrix(rows: [
+                    ShowcaseRow("icon plate, on and off", states: Self.states) { _ in
+                        HStack {
+                            HelmIconPlate(symbol: "gearshape", tint: Sample.tint(traits))
+                            HelmIconPlate(symbol: "gearshape", tint: Sample.tint(traits), active: false)
+                        }
+                    },
+                    ShowcaseRow("signal plate", states: Self.states) { _ in
+                        HelmSignalPlate(symbol: "checkmark", tint: success)
+                    },
+                    ShowcaseRow("badges", states: Self.states) { _ in
+                        HStack {
+                            HelmBadge(Sample.short)
+                            HelmBadge(Sample.short, tint: warning)
+                            HelmBadge(Sample.short, tint: danger, emphasis: .prominent)
+                        }
+                    },
+                    ShowcaseRow("badge, long Russian", states: Self.states) { _ in
+                        HelmBadge(Sample.russian, tint: success)
+                    },
+                    ShowcaseRow("status dots", states: Self.states) { _ in
+                        HStack {
+                            HelmStatusDot(active: true)
+                            HelmStatusDot(active: true, size: .widget)
+                            HelmStatusDot(active: false)
+                        }
+                    },
+                ], columns: Self.states, cellWidth: 180)
                 HelmSectionTitle(Sample.title)
-                HelmMetricStrip([.init("12", Sample.short), .init("3.4", Sample.title, tint: tint),
+                HelmMetricStrip([.init("12", Sample.short), .init("3.4", Sample.title, tint: Sample.tint(traits)),
                                  .init("0", Sample.russian)]).frame(width: 560)
-                HStack(alignment: .top, spacing: HelmSpace.s6) {
-                    HelmEmptyState(symbol: "tray", title: Sample.title, message: Sample.note) {
-                        Button(Sample.short) {}
-                    }
-                    .frame(width: 300, height: 220)
-                    HelmEmptyState(symbol: "tray", title: Sample.russian, message: Sample.russianNote)
-                        .frame(width: 300, height: 220)
-                    HelmBusyState(Sample.note).frame(width: 200, height: 220)
-                }
             }
         }
     }
 
-    private var tint: Color { Sample.tint.colour(increased: traits.increasedContrast) }
     private var success: Color { HelmSignal.success(increased: traits.increasedContrast) }
     private var warning: Color { HelmSignal.warning(increased: traits.increasedContrast) }
     private var danger: Color { HelmSignal.danger(increased: traits.increasedContrast) }
@@ -470,7 +549,8 @@ private struct PaletteBoard: View {
             Fills over the window ground, the three inks, the signal colours and one sample module tint \
             (sample values a copy of KeepAwake's descriptor, not read from it; the real \
             ones are declared by each descriptor). Signal and tint \
-            follow Increase Contrast through --appearance light-contrast and dark-contrast.
+            follow Increase Contrast through --appearance light-contrast and dark-contrast. The row of \
+            images is PaletteColor.swatchImage, the pre-coloured menu swatches.
             """) {
             VStack(alignment: .leading, spacing: HelmSpace.s6) {
                 HStack(spacing: HelmSpace.s5) {
@@ -483,6 +563,8 @@ private struct PaletteBoard: View {
                     fill("barPick", HelmSurface.barPick)
                     fill("rowSelection", HelmSurface.rowSelection)
                     fill("rowHover", HelmSurface.rowHover)
+                    fill("barPlate", HelmSurface.barPlate)
+                    fill("chosenWash", HelmSurface.chosenWash(.accentColor))
                 }
                 VStack(alignment: .leading, spacing: HelmSpace.s2) {
                     Text(verbatim: "primary \(Sample.note)")
@@ -494,7 +576,17 @@ private struct PaletteBoard: View {
                     ink("warning", HelmSignal.warning(increased: traits.increasedContrast))
                     ink("success", HelmSignal.success(increased: traits.increasedContrast))
                     ink("danger", HelmSignal.danger(increased: traits.increasedContrast))
-                    ink("module tint", Sample.tint.colour(increased: traits.increasedContrast))
+                    ink("module tint", Sample.tint(traits))
+                    VStack(spacing: HelmSpace.s2) {
+                        RoundedRectangle(cornerRadius: HelmRadius.ctl).fill(Color.accentColor).frame(width: 80, height: 56)
+                            .overlay { Text(verbatim: Sample.short).foregroundStyle(HelmText.onFill) }
+                        Text(verbatim: "onFill").font(.caption2).foregroundStyle(.secondary)
+                    }
+                }
+                HStack(spacing: HelmSpace.s3) {
+                    ForEach(PaletteColor.offered, id: \.rawValue) { colour in
+                        Image(nsImage: colour.swatchImage)
+                    }
                 }
             }
         }
@@ -519,7 +611,10 @@ private struct PaletteBoard: View {
 
 private struct LaddersBoard: View {
     var body: some View {
-        Board(name: "Ladders and type", caption: "HelmSpace steps as widths, HelmRadius steps as corners, HelmText faces.") {
+        Board(name: "Ladders and type", caption: """
+            HelmSpace steps as widths, HelmRadius steps as corners, HelmText faces, and the figure modifiers \
+            over a Russian figure and sentence.
+            """) {
             VStack(alignment: .leading, spacing: HelmSpace.s6) {
                 HStack(alignment: .bottom, spacing: HelmSpace.s5) {
                     ForEach(Array([HelmSpace.s1, HelmSpace.s2, HelmSpace.s3, HelmSpace.s4, HelmSpace.s5,
@@ -550,6 +645,16 @@ private struct LaddersBoard: View {
                     Text(verbatim: "1 234").font(HelmText.metricFont)
                     Text(verbatim: "42").font(HelmText.heroFont)
                     Text(verbatim: Sample.russian).font(HelmText.rowTitle)
+                    Text(verbatim: Sample.title).font(HelmText.plateTitle)
+                    Text(verbatim: Sample.title).font(HelmText.entryHeading)
+                    Text(verbatim: "checkmark.circle").font(HelmText.statusGlyph)
+                    Text(verbatim: Sample.note).font(HelmText.smallPrint)
+                    Text(verbatim: Sample.note).font(HelmText.pictureCaption)
+                    Text(verbatim: "ls -l /private/tmp").font(HelmText.code)
+                    Text(verbatim: "42").font(HelmText.heroFigureFont)
+                    Text(verbatim: Sample.figure).helmFigure()
+                    Text(verbatim: Sample.figure).helmMetricFigure()
+                    Text(verbatim: Sample.russianNote).helmHeroSentence().frame(width: 320)
                 }
             }
         }
