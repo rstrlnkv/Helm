@@ -124,6 +124,7 @@ Nothing is connected, disconnected or typed to reach a state, and the module nev
 | `notices popover` | the two questions, each with the picture of its mode and a pop-up, the ring switch and colours | `--press` on the card's right door |
 | `tile` | the 2×1 panel tile, one row and switch per connection | `--panel`, the VPN widget at 2×1; the bench's `tile` |
 | `compact` | the 1×1 widget: how many are up out of how many exist | `--panel`, the VPN widget at 1×1; the bench's `compact` |
+| `worst` | de, nine configurations, two tunnels up: the verdict on one line, the tunnel switcher and "Measure speed" on one row, four readings on one row, six cards in two columns and "Show all (9)". Long configuration names, `many` in ru, `many` at the narrowest pane: not rendered, the bench's names are seven letters at most and `bench.sh` passes no width; at 772 pt only `two-up` in en was shot | the bench's `many` with its language argument |
 
 **Motion.** The hero reveals by `HelmMotion.disclosure` over a clipped measured height. The grid's "Show all" mounts and unmounts its cards on `HelmMotion.interface`, there is no measured height there. The banners and the popovers change sharply: the banners are `Form` rows whose height the table sets, and a popover's frame is drawn by AppKit outside ours, so a reveal there would be clipped from the wrong side or not at all.
 

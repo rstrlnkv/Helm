@@ -26,8 +26,11 @@ import XCTest
 /// import under any `#if`, whose condition is not evaluated. Not counted:
 /// `canImport(…)`, `.import`, a backticked `import`, an `import:` label.
 ///
-/// **AppKit is not pinned here.** An import line cannot tell a system call
-/// from a drawing; that half is read in review.
+/// **AppKit is pinned by path.** An engine imports AppKit, or Cocoa, which
+/// brings it, only in `Sources/Modules/<Name>/Engine/SystemPorts.swift`, one
+/// level under the engine's folder and no deeper. What an import line cannot
+/// tell is whether a line in that file is a system call or a drawing; that
+/// half is read in review.
 final class TheBoundariesTheBuildCannotHoldTests: XCTestCase {
 
     private static let importRule = try! NSRegularExpression(pattern:
@@ -88,6 +91,20 @@ final class TheBoundariesTheBuildCannotHoldTests: XCTestCase {
                        "the reader found no import in some module's engine — the check below is over nothing there")
         let offences = engines.filter { Self.isUI($0.module) }.map(\.place)
         XCTAssertTrue(offences.isEmpty, "an engine imports UI:\n" + offences.joined(separator: "\n"))
+    }
+
+    /// AppKit's place in an engine is its `SystemPorts.swift`, the file directly
+    /// under `Engine`; `Cocoa` brings AppKit with it and counts the same. The
+    /// last assertion is the check's canary: a reader that sees no engine AppKit
+    /// import at all would pass the rest over nothing.
+    func testEngineAppKitImportsStandOnlyInSystemPorts() throws {
+        let appKit = try Self.found(where: Self.isEngineSource).filter { ["AppKit", "Cocoa"].contains($0.module) }
+        let offences = appKit.filter { !$0.path.hasSuffix("/Engine/SystemPorts.swift") || $0.path.split(separator: "/").count != 5 }
+            .map(\.place)
+        XCTAssertTrue(offences.isEmpty,
+                      "an engine imports AppKit outside its Engine/SystemPorts.swift:\n" + offences.joined(separator: "\n"))
+        XCTAssertFalse(appKit.isEmpty,
+                       "the reader found no AppKit import in any engine — the check above is over nothing")
     }
 
     func testTheHostImportsNoEngine() throws {

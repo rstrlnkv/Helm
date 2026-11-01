@@ -1,5 +1,7 @@
 # Localization
 
+## Catalogs and the words kept in Swift
+
 A target that draws words keeps them in its own `Localizable.xcstrings`: all eight languages in one file,
 and the key is an identifier, not the English. Three places keep words in Swift. Layout's `wordsCounted` and
 Autopilot's `DayUnit.afterComparison` compose theirs in code. `HelmRuntime` does too: `Sources/HelmRuntime/Plural.swift`
@@ -11,6 +13,8 @@ symbol from it, so a mistyped key is a build error (measured: a key deleted from
 where the changelog's `Changelog.xcstrings` sits beside its `Localizable.xcstrings`) and each module's. `Tests/Support/EachLanguage.swift` states the rule a new
 test follows for the language it asks in.
 
+## The lookup and its memo
+
 The helper is `L(_ resource:language:)` in `Sources/HelmUI/L10n.swift`, which asks the resource in
 `AppLanguage.current`, since `String(localized:)` alone answers in the language macOS resolves for the
 process, not the one the person picked in Helm, and the resource carries its own target's bundle. It
@@ -21,6 +25,8 @@ changelog read through it was 436 ms. The changelog reads its language's sub-bun
 `Sources/HelmAppStrings/ChangelogData.swift`. The memo's reason is in the doc comment of
 `L(_ resource:language:)`, its limits in that of `ResourceAnswers` (`Sources/HelmUI/L10n.swift`).
 
+## Arguments and numbers
+
 A key whose English holds `%@` generates a function that takes the arguments, `L(.timerOn(length))`.
 Numbers go in as strings: `%lld` groups digits by locale (`1 499 308` with a no-break space) where
 `\(n)` writes `1499308`, a change of bytes, so a plural in a module is, but for those two sites, a key per form picked by `Plural.form`
@@ -28,6 +34,8 @@ Numbers go in as strings: `%lld` groups digits by locale (`1 499 308` with a no-
 `files` and `days` in that file keep their words in Swift (above), and `Plural.russian` takes its three from the caller. A value that holds an argument
 writes a literal percent sign as `%%`, one without writes it single: measured on a copy, `%%` in a
 value with no argument prints two marks.
+
+## Words two parts draw
 
 Symbols are internal to their target, so a word that two modules or the kit draw lives in the kit's
 catalog and is read through `HelmWord` (`Sources/HelmUI/HelmWord.swift`), `String` only: a
@@ -40,12 +48,16 @@ into `Contents/Resources`, where the target's `Bundle.module` finds it. A catalo
 target, never an executable: a test target over an executable compiles its testable variant without
 the catalogs, so `L(.x)` there fails `swift build --build-tests` (`Architecture/Targets.md`).
 
+## The changelog's key and a missing language
+
 The changelog's key is the English sentence, not an identifier: its entries (count them with
 `python3 -c "import json;print(len(json.load(open('Sources/HelmAppStrings/Changelog.xcstrings'))['strings']))"`) have no natural name,
 the symbol stays readable, and a language the file lacks falls back to the sentence. For a word an
 identifier key is the other way round: a missing *language* builds (measured, exit 0) and the screen
 shows the identifier where English would have, so `StringsCoverageTests` is the only thing that
 sees it.
+
+## The guards
 
 Each guard faces a direction the others are blind to; each file's header, or the doc comment of the test method, says how:
 
@@ -63,6 +75,8 @@ Each guard faces a direction the others are blind to; each file's header, or the
 `Tests/Modules/KeepAwake/UITests/TheModuleWordsReachEveryLanguageTests.swift` shows the words
 come out of the built target in the language asked.
 
+## One English text means one thing
+
 One English text means one thing. Where a second meaning needs the same word, the English
 is written differently, because several languages had independently drawn distinctions
 the English had lost and the translators were right to diverge. A sentence that names a
@@ -71,12 +85,16 @@ rename carries the sentence with it. What interpolation carries is a name rather
 verb: a verb inflected against eight grammars would be right in roughly one of them, so
 each variant is a full key with its own eight translations.
 
+## Formatters and the app's language
+
 Everything the language shapes goes through a helper keyed by the app's language — never
 a `Foundation` formatter built with no locale, which answers in the system's language, and
 never one held in a `static let`, which keeps the language the app started in:
 `HelmBytes` (in `Sources/HelmRuntime`) for sizes and counts, `Quoted` for quotation
 marks, `HelmDates` for ages and spans. A pop-up's width is measured by `HelmPickerWidth`
 rather than written down, because no number chosen in one language survives eight.
+
+## Terminology from the system's own tables
 
 Terminology is looked up rather than remembered: the units, the permission panes, the
 module names, the quotation marks and a screen reader's vocabulary
@@ -87,10 +105,14 @@ and a pane's search terms are the phrases that find it and are never drawn. An E
 with no quotes is cheaper still than a quoted one, since the seven translations then have
 nothing to copy.
 
+## Russian values
+
 A Russian value does not address the reader: no «вы», «ваш» or «вас», the sentence goes
 impersonal, and an imperative stays. «е» is written for «ё», «все» for «всё» included (`PunctuationIsTerminologyTests`);
 nothing holds the rule of address, which is no class kept by ARCHITECTURE.md § What proves what.
 `Changelog.xcstrings` is shipped text and stays as it shipped.
+
+## The French pass
 
 After keys are added the French values are swept in a pass of its own with an explicit
 escape for the unbreakable space, never the literal character: a literal one does not

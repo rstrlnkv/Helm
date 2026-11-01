@@ -28,10 +28,12 @@ an import of a target reached through a declared one, which is how `HelmApp`,
 declaring every module's UI target, could import every engine.
 `Tests/HelmRuntimeTests/TheBoundariesTheBuildCannotHoldTests.swift` reads the
 imports instead; its doc comment lists the spellings it counts. AppKit reaches
-only system calls, in the files
-`command grep -rln '^import AppKit' Sources/Modules/*/Engine/` names, most of
-them a module's Sources/Modules/<Name>/Engine/SystemPorts.swift; that is read
-in review, because an import line cannot tell a system call from a drawing.
+only system calls, and its place is a module's
+Sources/Modules/<Name>/Engine/SystemPorts.swift, directly under `Engine`:
+`testEngineAppKitImportsStandOnlyInSystemPorts` in the same test refuses an
+AppKit or Cocoa import anywhere else in an engine. What stays in review is
+whether a line of a ports file is a system call or a drawing, because an import
+line cannot tell them apart.
 
 **A model calls its engine.** A module's model holds the engine, usually through an
 internal port, and calls its methods; a command needs no name, because the compiler

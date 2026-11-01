@@ -11,14 +11,13 @@ import SwiftUI
 /// hierarchical-style hazard that the Motion rules warn about inside animated
 /// blocks.
 ///
-/// The ratios below are measured (`Scripts/design/contrast.swift`) against
-/// what the app draws, not against pure black on pure white: `Color.primary`
-/// is `labelColor`, which is 85% black, and it lands on
-/// `windowBackgroundColor`. Arithmetic against pure black on pure white is too
-/// generous — 0.60 measures 4.09:1 rather than 5.74:1, and 0.45 measures
-/// 2.69:1 rather than 3.35:1, below the threshold it would claim to clear. The
-/// opacities are solved for the target in the worse of the two appearances
-/// rather than chosen and described afterwards.
+/// The ratios below are measured against what the app draws, not against
+/// pure black on pure white: `Color.primary` is `labelColor`, which is 85%
+/// black, and it lands on `windowBackgroundColor`. Arithmetic against pure
+/// black on pure white is too generous — 0.60 measures 4.09:1 rather than
+/// 5.74:1, and 0.45 measures 2.69:1 rather than 3.35:1, below the threshold
+/// it would claim to clear. The opacities are solved for the target in the
+/// worse of the two appearances rather than chosen and described afterwards.
 ///
 /// **Four settings sizes, not more.** Text sizes and weights chosen a call
 /// site at a time drift apart. The ones under "The settings type

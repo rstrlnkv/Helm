@@ -520,3 +520,4 @@ Every state here is shot on the crew's bench, over a fake port and a synthetic f
 | `ed-colours`, `ed-colour-apart` | eight inks, wheel, eyedropper; a colour the grid lacks in the wheel's centre | the wheel; a pick |
 | `ed-text`, `ed-text-clipped` | the field, outlined; cut by the area | the text tool, a press |
 | `ed-emoji` | the grid above the palette | Emoji in ⋯ |
+| `worst` | de: two refused shortcuts, each sentence on one line; the three tabs on one row with the dot; the permission refusal, title on two lines, body on three, in its card; three shots and "2 mehr". A long folder path, fr, the narrowest pane: not rendered, the bench's folder is `/bench/shots` and its window is 892 pt | a shortcut macOS holds, a refused capture, a click on a pile of five, in the longest language |

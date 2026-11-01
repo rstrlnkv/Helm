@@ -57,7 +57,7 @@ The page id is the module id, `layout`, and a state is shot with its file `layou
       --arg module.app.interfaceLanguage <en|ru|de> \
       --name <state>-<light|dark>[-<ru|de>] --out <dir>
 
-Nothing is typed and no grant is changed to reach a state; the tour is left with "Got it" unpressed, because it writes `introSeen`.
+Nothing is typed and no grant is changed to reach a state; the tour is left with "Got it" unpressed, because it writes `introSeen`. The page opens only with `module.layout.enabled` on: where Helm Dev has Layout off the launch is refused (`launch page refused: layout is switched off`, no window), so each shot below also passes `--arg module.layout.enabled '<true/>'`.
 
 | state | the page shows | reached by |
 |---|---|---|
@@ -71,6 +71,7 @@ Nothing is typed and no grant is changed to reach a state; the tour is left with
 | `last-change` | the "Last change" row, the pair, the note, Never this word | needs typing; not shot |
 | `no-dictionary` | the warning line under the behaviour | only on a Mac with a layout macOS has no dictionary for; not shot |
 | `lists` | the lists window: words (empty: the "no words" line), apps (the built-in refusals this Mac has, the add button), Done | `--press "<the Words row's name>"`, read from `HelmReadout ax` first; the lists window (520 × 452 on screen) may read `onscreen no`, and then `shoot.sh` shoots the settings window: take the lists window's id from `HelmReadout window <pid>` and capture it with `screencapture -x -o -l <id>` |
+| `worst` | de at the narrowest pane, 772 pt: the all-time number, its caption on one line, five capsules on one row, the card column as wide as at 892 pt, the correct-while-typing row's detail on two lines, the capitals row's on one; below the fold seen at 892 pt only: the hotkey row keeps its three controls. ru and fr at 772 pt, a number the dev ledger does not hold, a long language in `lists`: not rendered, one still was kept, and the ledger's words are what they are | `--arg module.app.interfaceLanguage de --arg module.app.sidebarWidth '<real>320</real>' --arg module.layout.heroPeriod allTime`, and `--arg module.layout.enabled '<true/>'` where Helm Dev has Layout off; the minimum window is the stored frame's |
 
 The menu-bar indicator has no page. Its states are `off` (no status item), one per badge style, its menu with and without the emoji item (Accessibility granted or not), and the badge corrected on menu open, with its once-per-run log line. Its change is an image swap in AppKit with no animation, so there is no motion to record; the menu cannot be opened by `HelmReadout`, so it is not shot.
 
