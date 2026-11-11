@@ -216,4 +216,50 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
         XCTAssertEqual(model.pendingFix, unrecognised, "control: the unrecognised ask raised no question")
         XCTAssertEqual(work.dependentsAsked, [], "an unrecognised command read what depends on a package")
     }
+
+    // MARK: - The question waits for the reading
+
+    /// **The dialog is raised with its list or not at all.** While the read is
+    /// out nothing stands; a dialog raised first would show «nothing needs it»
+    /// for as long as `brew uses` takes, and Run would be one click from a
+    /// deletion the person has not been told the cost of.
+    func testTheFixDialogIsNotRaisedWhileTheDependentsReadIsOut() async {
+        let work = FakeHomebrewWork()
+        work.dependents = ["aria2", "node"]
+        work.park("readDependents")
+        let model = HomebrewViewModel(work: work)
+        let fix = DoctorFix(argv: ["uninstall", "openssl@3"], kind: .runnable)
+        let ask = Task { await model.askToRunFix(fix) }
+        await eventually("the read is out") { work.calls.contains("readDependents openssl@3") }
+        XCTAssertEqual(work.dependentsAsked, [PackageRef(name: "openssl@3", isCask: false)],
+                       "control: the read is not out")
+        XCTAssertNil(model.pendingFix, "the fix's dialog was raised before the dependents came back")
+        XCTAssertEqual(model.dependentsOfPending, [])
+
+        work.release("readDependents")
+        await ask.value
+        XCTAssertEqual(model.pendingFix, fix, "the answer did not raise the question")
+        XCTAssertEqual(model.dependentsOfPending, ["aria2", "node"])
+        XCTAssertEqual(fired(work), [])
+    }
+
+    /// The Uninstall button's door through the same function, the same rule.
+    func testTheUninstallDialogIsNotRaisedWhileTheDependentsReadIsOut() async {
+        let work = FakeHomebrewWork()
+        work.dependents = ["aria2", "node"]
+        work.park("readDependents")
+        let model = HomebrewViewModel(work: work)
+        let wget = BrewPackage(name: "wget", version: "1.25", isCask: false)
+        let ask = Task { await model.askToUninstall(wget) }
+        await eventually("the read is out") { work.calls.contains("readDependents wget") }
+        XCTAssertEqual(work.dependentsAsked, [PackageRef(name: "wget", isCask: false)],
+                       "control: the read is not out")
+        XCTAssertNil(model.pendingUninstall, "the uninstall dialog was raised before the dependents came back")
+        XCTAssertEqual(model.dependentsOfPending, [])
+
+        work.release("readDependents")
+        await ask.value
+        XCTAssertEqual(model.pendingUninstall, wget, "the answer did not raise the question")
+        XCTAssertEqual(model.dependentsOfPending, ["aria2", "node"])
+    }
 }
