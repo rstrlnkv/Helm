@@ -42,29 +42,8 @@ final class APathWhoseLeafIsANameTests: XCTestCase {
         XCTAssertEqual(shown, "~/Library/Application Support/" + Redact.app("AcmeTool"))
     }
 
-    /// The other half of the line: macOS composes its refusal out of the file name,
-    /// so the message names the software even after the path has been redacted.
-    func testAMessageQuotingTheFileIsRedactedToo() {
-        let message = "NSCocoaErrorDomain 4 “The file “com.acme.tool.plist” doesn’t exist.”"
-        let shown = Redact.naming(message, software: "/Users/x/Library/Preferences/com.acme.tool.plist",
-                                  leaf: .softwareName)
-
-        XCTAssertFalse(shown.contains("com.acme.tool"), shown)
-        XCTAssertTrue(shown.contains("doesn’t exist"), "the diagnosis has to survive: \(shown)")
-        XCTAssertEqual(Redact.naming(message, software: "/Users/x/Library/Preferences/com.acme.tool.plist",
-                                     leaf: .fileName),
-                       message, "a module whose leaf is a document reads exactly as before")
-    }
-
-    /// **The floor, and why it is not a hole.** Replacing every occurrence of a
-    /// two-character name inside a sentence rewrites the sentence; in the *path* the
-    /// leaf is delimited, so it is replaced whatever its length.
-    func testAVeryShortNameIsLeftInAMessageAndStillTaggedInThePath() {
-        let message = "NSCocoaErrorDomain 513 “Ax needs an administrator.”"
-        XCTAssertEqual(Redact.naming(message, software: "/Users/x/Library/QuickLook/Ax.qlgenerator",
-                                     leaf: .softwareName),
-                       message, "two characters cannot be replaced across prose without wrecking it")
-
+    /// In the *path* the leaf is delimited, so it is replaced whatever its length.
+    func testAVeryShortNameIsStillTaggedInThePath() {
         let shown = Redact.path("/Users/x/Library/QuickLook/Ax.qlgenerator",
                                 leaf: .softwareName, home: home)
         XCTAssertEqual(shown, "~/Library/QuickLook/" + Redact.app("Ax") + ".qlgenerator")

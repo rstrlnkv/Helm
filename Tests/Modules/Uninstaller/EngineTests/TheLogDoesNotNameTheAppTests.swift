@@ -46,9 +46,8 @@ final class TheLogDoesNotNameTheAppTests: XCTestCase {
                        "the log names the application: \(logged)")
     }
 
-    /// The part of the name the tests below look for; long enough that
-    /// `Redact.naming` does not skip it for being short, unique so another
-    /// run's line cannot match.
+    /// The part of the name the tests below look for; unique so another run's
+    /// line cannot match.
     private let secretTool = "SecretTool\(UUID().uuidString.prefix(6))"
 
     private func engine(trash: TrashPort) -> UninstallerEngine {

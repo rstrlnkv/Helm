@@ -11,7 +11,7 @@ import XCTest
 /// Ancestor changed: a leftover whose parent was swapped. macOS refused:
 /// leftovers named by a bundle id, with an extension or with none of their own
 /// (`~/Library/Containers/<id>`), and a refusal whose sentence names the bundle
-/// by its *display name*, in Russian, or by a name too short to redact: the line
+/// by its *display name*, in Russian, or by a name of three letters: the line
 /// leaves that sentence out.
 ///
 /// Every case asserts that its line was written before asserting what the line
@@ -19,9 +19,8 @@ import XCTest
 /// nothing about a line that was never there.
 final class TheLogDoesNotNameTheAppUnderOddInputsTests: XCTestCase {
 
-    /// The part of the name the tests look for; long enough that `Redact.naming`
-    /// does not skip it for being short, unique so another run's line cannot
-    /// match.
+    /// The part of the name the tests look for; unique so another run's line
+    /// cannot match.
     private let secret = "SecretTool\(UUID().uuidString.prefix(6))"
 
     override func setUp() {
@@ -66,8 +65,8 @@ final class TheLogDoesNotNameTheAppUnderOddInputsTests: XCTestCase {
     // MARK: - macOS refusing
 
     /// macOS's own half of the line in Russian, quoting the bundle by its file
-    /// name: `Redact.naming` has to find the name inside somebody else's
-    /// sentence.
+    /// name: the sentence is not logged, so the name inside it cannot reach the
+    /// log.
     func testARussianRefusalQuotingTheNameIsRedacted() async {
         let path = "/Applications/\(secret).app"
         let said = "Не удалось переместить объект «\(secret)» в Корзину, "
@@ -132,9 +131,10 @@ final class TheLogDoesNotNameTheAppUnderOddInputsTests: XCTestCase {
         assertLogged("trash refused ", without: [secret, shown])
     }
 
-    /// **A name under four characters would survive in macOS's sentence.**
-    /// `Redact.naming` skips it on purpose (replacing a short word everywhere
-    /// rewrites the sentence), and `Arc.app` and `Zed.app` are real products.
+    /// **A three-letter name reaches the log in no form.** `Arc.app` and
+    /// `Zed.app` are real products; the refusal line carries the code and Helm's
+    /// classification, never the system's sentence, so the length of the name
+    /// decides nothing.
     func testAThreeLetterAppIsRefusedWithoutItsName() async {
         let path = "/Applications/Qzx.app"
         let said = "“Qzx” couldn’t be moved to the trash because you don’t have "

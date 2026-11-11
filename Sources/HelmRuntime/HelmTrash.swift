@@ -291,15 +291,17 @@ public enum HelmTrash {
                     // And for a module whose leaf names software, **not the system's
                     // sentence at all**: macOS quotes a bundle by its *display name*
                     // («“Hidden Title” couldn’t be moved…»), which is not the file's
-                    // name, and a name under four characters is never replaced inside
-                    // a sentence. The domain, the code and Helm's own classification
-                    // say everything the sentence did; the sentence itself reaches the
-                    // screen through the engine's own record of it.
+                    // name, so no replacement could find it. The domain, the code and
+                    // Helm's own classification quote no name, so the line carries
+                    // those and the system's sentence stays out of the log. The
+                    // sentence reaches a screen only through a caller's own record of
+                    // it: the Uninstaller keeps it per path (`saidByPath`) and shows
+                    // it; the Leftovers module keeps none (`Refusal` carries the
+                    // reason alone), so there it is shown nowhere.
                     let said = leaf == .softwareName
                         ? "\((error as NSError).domain) \((error as NSError).code), \(reason.rawValue)"
                         : HelmFailure.describe(error)
-                    HelmLog.shared.error(module, "trash refused \(Redact.path(path, leaf: leaf)): "
-                        + Redact.naming(said, software: path, leaf: leaf))
+                    HelmLog.shared.error(module, "trash refused \(Redact.path(path, leaf: leaf)): \(said)")
                 }
             }
 
