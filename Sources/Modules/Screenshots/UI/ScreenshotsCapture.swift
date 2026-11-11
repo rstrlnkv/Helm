@@ -379,7 +379,8 @@ struct CapturedShot {
                     image = await session.annotated(freeze, display: display, local: local, layers: layers,
                                                     detached: exit == .pin)
                 }
-                if let image, !Task.isCancelled {
+                guard !Task.isCancelled else { return }
+                if let image {
                     // No `default:`: a new exit must say here what it does, or it would be a save.
                     switch exit {
                     case .confirm, .copy, .save, .share:
@@ -389,12 +390,16 @@ struct CapturedShot {
                     case .pin:
                         pin(image, display: display, local: local, in: freeze)
                     }
+                } else {
+                    failed("the edited shot could not be made (exit \(exit))")
                 }
             case .wholeDisplay(let display):
                 if let frame = freeze.frames.first(where: { $0.id == display }),
                    let image = session.crop(freeze, display: display,
                                             local: Selection.wholeDisplay(CGRect(origin: .zero, size: frame.frame.size))) {
                     await handOff(CapturedShot(image: image, kind: .display))
+                } else {
+                    failed("the whole-display shot could not be made")
                 }
             case .window(let id, let shadow):
                 let picked = await session.window(id, in: freeze, shadow: shadow)
@@ -408,6 +413,12 @@ struct CapturedShot {
             // a press begun since is not this one's to release.
             if !Task.isCancelled { busy = false }
         }
+    }
+
+    /// A shot the person asked for and the module could not make: a warning in the log and the toast's refusal, never silence.
+    private func failed(_ what: String) {
+        HelmLog.shared.warn(ScreenshotsEngine.moduleID, what)
+        toast.showRefusal(.captureFailed)
     }
 
     /// What takes a picked target from the screen as it is **after** the countdown, or nil for a result that is no target.

@@ -216,7 +216,8 @@ final class TheBlurOfAFindCoversTheFindsPixelsInTheFileTests: XCTestCase {
     }
 
     /// An area whose far edge is one pixel past a grid line, and a find whose ink lies wholly in the last pixel of both axes: the box the
-    /// rounding leaves is one pixel, which the mosaic cannot make (a block of one pixel is its own pixel) and for which `CaptureSession.draw` returns nil, so no file is made.
+    /// rounding leaves is one pixel, which `Pixelate.tile` grows by a neighbouring display pixel (`grown`), so its block is the mean of two
+    /// and the file is made.
     func testAFindInTheLastPixelOfAnAreaThatEndsPastAGridLineDoesNotRefuseTheFile() async throws {
         let local = CGRect(x: 20, y: 20, width: 201, height: 201)
         let out = try await survivors(scale: 1, local: local, boxes: [CGRect(x: 0.9985, y: 0.0, width: 0.0015, height: 0.0015)])

@@ -366,7 +366,7 @@ public final class CaptureSession: @unchecked Sendable {
                     if layer.tool == .blur {
                         // Opaque whole pixels on the bitmap's own grid: nothing of the picture shows at an edge.
                         // A box with no pixel on the display is skipped; a box that has pixels and
-                        // got no tile makes `draw` return nil, so no file is written with that box undrawn (and `overlayFinished` says nothing of it).
+                        // got no tile (the bitmap could not be made) makes `draw` return nil, so no file is written with that box undrawn.
                         guard Pixelate.pixels(of: layer.frame, scale: scale, width: display.width, height: display.height) != nil
                         else { continue }
                         guard let tile = Pixelate.tile(of: display, rect: layer.frame, blockPoints: layer.blockPoints, scale: scale)

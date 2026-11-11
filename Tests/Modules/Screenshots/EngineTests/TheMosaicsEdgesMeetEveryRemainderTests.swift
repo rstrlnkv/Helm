@@ -54,8 +54,24 @@ final class TheMosaicsEdgesMeetEveryRemainderTests: XCTestCase {
         let tile = Pixelate.tile(of: display, rect: rect, blockPoints: points, scale: scale)
         let cw = min(x + w, display.width) - x, ch = min(y + h, display.height) - y
         guard cw > 0, ch > 0 else { XCTAssertNil(tile, name); return }
-        guard cw * ch > 1 else { refused += 1; XCTAssertNil(tile, "\(name): one pixel must give no tile"); return }
         guard let tile else { XCTFail("\(name): no tile for \(cw)x\(ch) pixels"); return }
+        guard cw * ch > 1 else {
+            refused += 1
+            // A box of one pixel grows by a neighbour inside the display (the right one, else the left):
+            // the tile is two pixels, each the mean of the two, never the pixel as it was.
+            let gx = x + 1 < display.width ? x : x - 1, gy = y, gw = 2, gh = 1  // the fixture's display is wider than one pixel
+            XCTAssertEqual(tile.pixels, CGRect(x: gx, y: gy, width: gw, height: gh), "\(name): the grown box")
+            let a = source[gy * display.width + gx], b = source[(gy + gh - 1) * display.width + gx + gw - 1]
+            let mean = [16, 8, 0].reduce(UInt32(0)) { $0 | UInt32((Int(a >> UInt32($1) & 0xFF) + Int(b >> UInt32($1) & 0xFF) + 1) / 2) << UInt32($1) }
+            let got = read(tile.image)
+            XCTAssertEqual(got.count, 2, name)
+            for colour in got { for shift in [16, 8, 0] {
+                XCTAssertLessThanOrEqual(abs(Int(colour >> UInt32(shift) & 0xFF) - Int(mean >> UInt32(shift) & 0xFF)), 1,
+                                         "\(name): the grown tile is not the mean of the box pixel and its neighbour")
+            } }
+            XCTAssertNotEqual(got.first, source[y * display.width + x], "\(name): the box's pixel is in the tile as it was")
+            return
+        }
         checked += 1
         XCTAssertEqual(tile.pixels, CGRect(x: x, y: y, width: cw, height: ch), name)
         let out = read(tile.image)

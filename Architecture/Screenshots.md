@@ -160,9 +160,7 @@ It is drawn by `Pixelate` (`Sources/Modules/Screenshots/Engine/Logic/Pixelate.sw
 its block's bytes, and no block is drawn from fewer than two pixels; the grid starts at the display's own pixel (0, 0), so the cut of the
 file and the display on the screen share their blocks, a block the box's edge cuts takes the mean of its pixels inside the box, an end strip
 narrower than half a block joins the block beside it (`Pixelate.edges`), and the box is rounded outward to whole pixels and drawn opaque.
-A box of a single pixel has no mean to be drawn: `Pixelate.tile` is nil, and `CaptureSession.draw` then returns nil, and
-`annotated` with it: no file is written, and `CaptureController.overlayFinished` has no branch for that, so the
-person is shown no refusal and no toast and the log gets no line, while a box with no pixel on the display is skipped, as it hides nothing. `CaptureSession.draw` takes the display's image beside the cut, and the overlay lays
+A box that clips to a single pixel grows by one neighbouring pixel inside the display (`Pixelate.grown`, called by `Pixelate.tile`, so the screen and the file grow it alike, a hand-drawn box as much as a find), and its block is the mean of two, not that pixel verbatim; on a display of one pixel there is no neighbour, `tile` is nil and the export refuses as for any bitmap that cannot be made (a box larger than one pixel is never changed). A bitmap that cannot be made makes `CaptureSession.draw` return nil, and `annotated` with it; `CaptureController.overlayFinished` then logs a warning and shows the `captureFailed` refusal. A box with no pixel on the display is skipped, as it hides nothing. `CaptureSession.draw` takes the display's image beside the cut, and the overlay lays
 the same `Pixelate.tile` as the `contents` of a layer of its own, masked by the selection: a layer of the view that is not a shape layer.
 
 The text (`AnnotationTool.text`) is one line of the system font in semibold, its size by the step (`AnnotationThickness.points(for:)`), in the colour and the opacity
@@ -343,7 +341,7 @@ is not on it: the measure found them on smaller pictures in English and Russian 
 `CardNumbers`: thirteen to nineteen digits in whole groups divided by one or two spaces (the no-break, narrow, thin, figure and ideographic ones too) or a single hyphen, non-breaking hyphen or en dash, that pass the Luhn check, one line at a time, so a number wrapped over two lines is not found and a number glued
 to other digits is not taken for one. **A find that wraps is blurred only on its first line,** a link, an e-mail address or a phone number as much as a card: the detector runs on one line at a time, and a rule that
 carried a match on to the next line by where that line starts would blur the first word after every link that ends a line, so it was not built. A find is a box padded and rounded outward to the mosaic's grid (`RecognizedBoxes`), made to hide a string and not to outline it, with the step its text's height calls for
-(the smallest whose block is at least that high; text taller than 24 points gets the thickest, which is lower than the text, and no fourth step exists; a box the mosaic cannot make, one pixel, grows inward to two or the find is dropped);
+(the smallest whose block is at least that high; text taller than 24 points gets the thickest, which is lower than the text, and no fourth step exists; a box of one pixel is grown by `Pixelate.tile`, not here);
 a find lying wholly under a blur already placed whose block is at least the step it would get, or inside another find, is not made again, so a blur of the person's own with lower blocks than the text is no cover. One reading makes at most 500 boxes
 (`PersonalFinds.limit`), and the plate says `Blurred: 500` at the cap as it does for exactly 500 finds: at that number the rest may not have been blurred. **Nothing runs by itself:** the finds go in as ordinary blur layers (`AnnotationEditing.insert(blurs:)`), all of
 them one undo step, which the person sees before Done and can delete or add to, and no setting and no save does it for them.
@@ -371,7 +369,7 @@ composes it and calls `CaptureController.handOff` with what the exit asked for: 
 always copies and writes a file by the save target (an edit of a shot that had a file writes one whatever the target says), the copy key only copies, the
 save key only saves — to the macOS folder when the target is the clipboard — and Share…, from the ⋯ menu, does what
 Return does and then opens the system's sheet at the thumbnail (`thenShare`). A window or a
-whole display still arrives at `handOff` directly and asks for both, and the full-screen
+whole display still arrives at `handOff` directly and asks for both (a picture that cannot be made, for an area, a pin or a whole display, is a log warning and the `captureFailed` refusal on the toast, never silence), and the full-screen
 shortcut never comes through it. Esc and a right click are one door, except that in an Edit a right click beside the picture or on another display does nothing (the ways out of an Edit are Done, ✕ and Esc): with no layers they
 close at once, with layers the first press shows a plate and a second closes however
 late, and any other input withdraws the question; no clock is read.

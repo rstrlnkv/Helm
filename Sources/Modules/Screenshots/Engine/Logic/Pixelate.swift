@@ -4,7 +4,7 @@ import Foundation
 /// The blur tool's picture: a mosaic of the pixels under a box, computed from the bytes.
 ///
 /// **A mosaic and not a blur.** Every pixel of a block is replaced by the mean of that block's two or more pixels;
-/// a block of one pixel is never drawn. The mean is rounded, so it can equal one of the block's pixels. It is taken
+/// no block is of one pixel. The mean is rounded, so it can equal one of the block's pixels. It is taken
 /// here, from bytes (a downscale is a filter's weighted sum and not the mean), by the one function the screen and
 /// the export both call, so neither can show a block the other does not.
 ///
@@ -17,8 +17,10 @@ import Foundation
 /// and no others, so a strip the edge leaves is the mean of its own picture and not of the picture beside it,
 /// which a whole-block mean would pull into the strip. No pixel outside the box is read. A strip narrower than half a block (`edges`) joins its
 /// neighbour, in each axis, so a corner the box's edge leaves one pixel past a grid line is not a block of one
-/// pixel, which would be that pixel verbatim. A box narrower than half a block in an axis is one block in it; a box
-/// of a single pixel has no block of two pixels to be the mean of, and `tile` is nil for it.
+/// pixel, which would be that pixel verbatim. A box narrower than half a block in an axis is one block in it. A box
+/// that clips to a single pixel **grows by one neighbouring pixel inside the display** (`grown`), the right one, else
+/// the left, else below, else above, so its block is the mean of two and is not that pixel alone; on a display of one
+/// pixel there is no neighbour and the tile is nil, which the export refuses and does not draw the pixel verbatim.
 ///
 /// **Whole pixels.** The box is rounded outward to the pixels it touches and clipped to the display, and the tile
 /// is opaque: the export draws it with no antialiasing, so there is no half-covered pixel with the picture in it.
@@ -54,6 +56,15 @@ public enum Pixelate {
         return CGRect(x: x0, y: y0, width: x1 - x0, height: y1 - y0)
     }
 
+    /// `part` as it is, or, when it is a single pixel, with one neighbouring pixel inside a `width` × `height` display
+    /// added; nil for a single pixel on a display of one pixel, which has no neighbour.
+    static func grown(_ part: CGRect, width: Int, height: Int) -> CGRect? {
+        guard part.width == 1, part.height == 1 else { return part }
+        if width >= 2 { return CGRect(x: part.maxX < CGFloat(width) ? part.minX : part.minX - 1, y: part.minY, width: 2, height: 1) }
+        if height >= 2 { return CGRect(x: part.minX, y: part.maxY < CGFloat(height) ? part.minY : part.minY - 1, width: 1, height: 2) }
+        return nil
+    }
+
     /// Where a run of `length` pixels that starts at pixel `start` of the display breaks into blocks of `side`: 0, each
     /// grid line inside it, `length`. An end strip narrower than half a block (`side / 2`, rounded up, and never under
     /// two) is joined to its neighbour and so is not a block of a pixel or two.
@@ -69,9 +80,11 @@ public enum Pixelate {
     }
 
     /// The mosaic of the box `rect` over `display`, `blockPoints` a block at `scale` pixels to a point; nil when
-    /// the box has no pixel on the display, it is one pixel (no block of two pixels), or the bitmap cannot be made.
+    /// the box has no pixel on the display, the display has only one pixel under a box of one, or the bitmap cannot be made.
+    /// A box of a single pixel is grown first (`grown`), here and so for the screen and the file alike.
     public static func tile(of display: CGImage, rect: CGRect, blockPoints: CGFloat, scale: CGFloat) -> Tile? {
-        guard let part = pixels(of: rect, scale: scale, width: display.width, height: display.height),
+        guard let clipped = pixels(of: rect, scale: scale, width: display.width, height: display.height),
+              let part = grown(clipped, width: display.width, height: display.height),
               let cut = display.cropping(to: part) else { return nil }
         let side = block(points: blockPoints, scale: scale)
         let w = cut.width, h = cut.height, left = Int(part.minX), top = Int(part.minY)
@@ -88,7 +101,7 @@ public enum Pixelate {
                 for c in 1..<columns.count {
                     let x = columns[c - 1], xEnd = columns[c]
                     let count = (yEnd - y) * (xEnd - x)
-                    guard count > 1 else { return nil }
+                    guard count > 1 else { return nil }  // never reached: `grown` leaves no block of one
                     var sum = [0, 0, 0, 0]
                     for row in y..<yEnd {
                         var at = row * w * 4 + x * 4
