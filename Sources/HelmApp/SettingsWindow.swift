@@ -442,10 +442,10 @@ private struct SettingsDetail: View {
         case .none, .general:
             // General and About put nothing in the row but the tabs.
             MenuBarSettingsView()
-                .helmWindowToolbar(tabs, token: "general")
+                .helmWindowToolbar(tabs)
         case .about:
             AboutHelmView()
-                .helmWindowToolbar(tabs, token: "about")
+                .helmWindowToolbar(tabs)
         case .log:
             LogView(settingsTabs: tabs)
         case .module(let id):

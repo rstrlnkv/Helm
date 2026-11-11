@@ -79,7 +79,7 @@ struct ScreenshotsSettingsPage: View {
             }
         }
         .formStyle(.grouped)
-        .helmWindowToolbar(toolbarContent, token: ScreenshotsDescriptor.id.rawValue)
+        .helmWindowToolbar(toolbarContent)
         .helmIdlesOffScreen()
         .helmTracksScreenRecording($screenRecording)
         .task { model.refresh() }

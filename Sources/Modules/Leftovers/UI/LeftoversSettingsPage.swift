@@ -112,7 +112,7 @@ struct LeftoversSettingsPage: View {
         }
         // The page's controls, in the header row of the window's card, through the contract every module page
         // shares (`HelmWindowToolbar.swift` in `HelmUI`) — see `toolbarContent` below for what each carries.
-        .helmWindowToolbar(toolbarContent, token: LeftoversDescriptor.id.rawValue)
+        .helmWindowToolbar(toolbarContent)
         // **No curve on the page, on the tab or on the count.** «Leftovers» and
         // «All» are one `List` whose rows `visibleItems` changes, and a rescan or
         // a removal changes the same list, so a curve on the whole page (keyed to

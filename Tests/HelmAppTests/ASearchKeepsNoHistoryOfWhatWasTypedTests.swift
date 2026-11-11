@@ -59,14 +59,13 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
 
     private struct Pane: View {
         let page: Page
-        let token: String
         var body: some View {
             Text("the list")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .helmWindowToolbar(HelmPageToolbarContent(search: HelmToolbarSearch(
                     prompt: "Search packages",
                     text: Binding(get: { page.text }, set: { page.text = $0 }),
-                    onSubmit: { page.submits += 1 })), token: token)
+                    onSubmit: { page.submits += 1 })))
         }
     }
 
@@ -80,7 +79,7 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
     /// history.
     func testTheFieldCarriesNoAutosaveNameAndRecordsNoRecents() throws {
         let page = Page()
-        let fixture = LivePageUnderTheHeaderFixture(Pane(page: page, token: "test.searchHistory"), selection: .module("test.searchHistory"),
+        let fixture = LivePageUnderTheHeaderFixture(Pane(page: page), selection: .module("test.searchHistory"),
                                                   width: 1060, height: 400)
         defer { fixture.drop() }
         fixture.settle(20)
@@ -169,7 +168,7 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
     /// domain, under the planted key.
     func testAnAutosaveNameOnThisFieldWouldPutTypedWordsInTheSettingsFile() throws {
         let page = Page()
-        let fixture = LivePageUnderTheHeaderFixture(Pane(page: page, token: "test.searchHistoryCanary"), selection: .module("test.searchHistoryCanary"),
+        let fixture = LivePageUnderTheHeaderFixture(Pane(page: page), selection: .module("test.searchHistoryCanary"),
                                                   width: 1060, height: 400)
         defer { fixture.drop() }
         fixture.settle(20)

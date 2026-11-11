@@ -126,8 +126,8 @@ struct LogView: View {
         // the card's row is drawn at the pane's root, a view away, and a preference is how it hears.
         .helmPageStandsOnStillContent()
         .helmPageBar(title: AppStr.settingsPane)
-        // The token is the page's own key. Declared unconditionally: this page's shape never changes.
-        .helmWindowToolbar(toolbarContent(page), token: "log")
+        // Declared unconditionally: this page's shape never changes.
+        .helmWindowToolbar(toolbarContent(page))
         .onAppear {
             refresh()
             // One second: the log is read, not animated, and a person watching

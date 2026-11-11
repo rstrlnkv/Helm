@@ -149,7 +149,7 @@ struct UninstallerSettingsPage: View {
         // only under `tab == .apps && step == .pick`.** Dropping the field shifted every other item sharing the
         // bar, Refresh included. The header row keeps the declared width of every action (`HelmHeaderActions`),
         // and `filtered` still only narrows the Apps tab's list at `step == .pick`.
-        .helmWindowToolbar(toolbarContent, token: UninstallerDescriptor.id.rawValue)
+        .helmWindowToolbar(toolbarContent)
         .animation(HelmMotion.interface, value: step)
     }
 

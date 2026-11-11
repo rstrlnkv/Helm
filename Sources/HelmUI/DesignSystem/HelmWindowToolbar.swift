@@ -261,14 +261,11 @@ public struct HelmPageToolbarKey: PreferenceKey {
 public extension View {
     /// **The one way a page's toolbar content reaches the window.**
     ///
-    /// `token` is the page's own key — a module's engine identifier, or a literal for one of the three
-    /// non-module pages.
-    ///
     /// **Now a preference, read by the header row in the card** (`helmCardHeader`, `HelmPageHeader.swift`):
     /// the page sits in the same hosting view as the row, so what it declares travels up the tree and the row
     /// reads it with `overlayPreferenceValue`, which asks nothing of the value — a `perform` closure is never
-    /// `Equatable`. `token` is not read; it stays so that no page changes.
-    func helmWindowToolbar(_ content: HelmPageToolbarContent?, token: AnyHashable) -> some View {
+    /// `Equatable`.
+    func helmWindowToolbar(_ content: HelmPageToolbarContent?) -> some View {
         preference(key: HelmPageToolbarKey.self, value: content)
     }
 }

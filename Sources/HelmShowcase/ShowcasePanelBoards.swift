@@ -87,7 +87,7 @@ struct ToolbarBoard: View {
         VStack(alignment: .leading, spacing: HelmSpace.s2) {
             Text(verbatim: name).font(.caption).foregroundStyle(.secondary)
             Color.clear.frame(width: 1260, height: 0)
-                .helmWindowToolbar(content, token: name)
+                .helmWindowToolbar(content)
                 .helmCardHeader(symbol: "gearshape", tint: Sample.tint(traits), title: title, status: status)
                 .environment(\.helmBarAppearance, look)
                 .environment(\.helmWindowAppearsActive, active)

@@ -25,7 +25,7 @@ final class TheHeaderSearchSubmitsOnReturnOnlyTests: XCTestCase {
                 .helmWindowToolbar(HelmPageToolbarContent(search: HelmToolbarSearch(
                     prompt: "Search",
                     text: Binding(get: { page.text }, set: { page.text = $0 }),
-                    onSubmit: { page.submits += 1 })), token: "test.returnOnly")
+                    onSubmit: { page.submits += 1 })))
         }
     }
 

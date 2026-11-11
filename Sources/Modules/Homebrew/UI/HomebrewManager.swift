@@ -175,7 +175,7 @@ struct HomebrewManager: View {
                 text: Binding(get: { hb.query }, set: { hb.query = $0 })) {
                 hb.searchNow()
             }
-        ), token: HomebrewDescriptor.id.rawValue)
+        ))
         // On the page rather than on the picker: a toolbar item's view is
         // hosted by the window's toolbar and its lifetime is the toolbar's,
         // so a change handler hung on it is not something this page can

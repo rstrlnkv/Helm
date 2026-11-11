@@ -3,7 +3,7 @@
 In the settings window a page's header and its controls live in a row at the top of the card, drawn by `SettingsDetail` (`helmCardHeader`, `Sources/HelmUI/DesignSystem/HelmPageHeader.swift`): the name and status on the left, the page's tabs, actions and search on the right (`HelmHeaderTabs`, `HelmHeaderActions`, `HelmHeaderSearch`), always whole, with no folding and no collapsed search. The window wears no `NSToolbar`. Where pages share one tab strip and declare different runs — the settings window's General, Log and About — the strip stands in one place: the window declares, for the pages that share the strip, the widest run (`LogView.trailingRun`, its width `HelmTrailingRun.width`) as `reserves`, the row keeps at least that width for the actions and the search, and the strip ends 12 pt before it; a module page reserves only what it declares, since its tabs do not change its actions or its search (`HelmPageToolbarContent.reserves`, `HelmHeaderControls`).
 
 A page says what it wants — tabs, actions, search — through
-`.helmWindowToolbar(_:token:)`
+`.helmWindowToolbar(_:)`
 (`Sources/HelmUI/DesignSystem/HelmWindowToolbar.swift`), which publishes it as the preference `HelmPageToolbarKey`; the row reads it with `overlayPreferenceValue`, because the value carries closures cut from the page's state at its last body and a copy kept behind an `==` would hold the old ones. A module's UI target
 never imports `HelmApp`. A page that never calls it shows the name and, for a status-bearing module, its status, and nothing else;
 that is not an error state. `command grep -rln '\.helmWindowToolbar(' Sources` lists the files that publish.
