@@ -215,6 +215,21 @@ extension VPNEngine: VPNWork {}
         return record(await AutomationNotice.prepare(for: notice, port: port))
     }
 
+    /// A card's choice, for the configuration `id` alone: its book entry is
+    /// written, then macOS is asked (`choose`) for the mode's permission. The
+    /// kind names the setting: `.dropped` is the tunnel that fell over, anything
+    /// else is the rules. Returns the book as stored, for the page to draw.
+    @discardableResult
+    func chooseNotice(_ notice: VPNNotice, for kind: VPNAutomation.Kind,
+                      on id: String) -> VPNNoticeBook {
+        let book = settings?.noticeBook ?? VPNNoticeBook()
+        let written = kind == .dropped ? book.setting(id, drop: notice)
+                                       : book.setting(id, notice: notice)
+        settings?.setNoticeBook(written)
+        Task { await choose(notice) }
+        return written
+    }
+
     /// Re-reads what macOS says now, prompting nobody.
     ///
     /// The mirror is a memory of an answer, and the person can revoke banners

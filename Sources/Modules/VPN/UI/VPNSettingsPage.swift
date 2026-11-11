@@ -296,12 +296,10 @@ struct VPNSettingsPage: View {
                 persist()
             },
             setNotice: { chosen in
-                write(book.setting(c.id, notice: chosen))
-                Task { await vm.choose(chosen) }
+                noticeBook = vm.chooseNotice(chosen, for: .connected, on: c.id)
             },
             setDropNotice: { chosen in
-                write(book.setting(c.id, drop: chosen))
-                Task { await vm.choose(chosen) }
+                noticeBook = vm.chooseNotice(chosen, for: .dropped, on: c.id)
             },
             setSpin: { on in write(book.setting(c.id, spin: on)) },
             setTint: { kind, token in write(book.setting(c.id, tint: token, for: kind)) })

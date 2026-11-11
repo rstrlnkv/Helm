@@ -40,16 +40,26 @@ final class ACardsNoticeIsNotTheModulesTests: XCTestCase {
     func testSettingOneTunnelsDropToNothingLeavesTheOthersAndTheDefault() async {
         let (vm, settings, _) = await fixture()
         let moduleDrop = settings.dropNotice, moduleRules = settings.notice
-        // What the card does: its book entry, then the permission question.
-        settings.setNoticeBook(settings.noticeBook.setting("id-A", drop: .silent))
-        await vm.choose(.silent)
+        // The card's own path: its book entry, then the permission question.
+        vm.chooseNotice(.silent, for: .dropped, on: "id-A")
 
+        let book = settings.noticeBook
+        XCTAssertEqual(book.shown(for: "id-A", rules: moduleRules, drop: moduleDrop).drop, .silent,
+                       "the choice did not reach this card's entry")
+        XCTAssertEqual(book.shown(for: "id-B", rules: moduleRules, drop: moduleDrop).drop, moduleDrop,
+                       "another card's entry was written")
         XCTAssertEqual(vm.notice(for: .dropped, on: "Office"), .silent)
         XCTAssertEqual(vm.notice(for: .dropped, on: "Home"), moduleDrop,
                        "another tunnel's drop was silenced by this card")
-        XCTAssertNotEqual(vm.notice(for: .dropped, on: "Home"), .silent)
         XCTAssertEqual(settings.dropNotice, moduleDrop)
         XCTAssertEqual(settings.notice, moduleRules)
+    }
+
+    /// An empty book shows what is inherited, whatever that is.
+    func testAnEmptyBookShowsTheInheritedValues() {
+        let shown = VPNNoticeBook().shown(for: "id-A", rules: .system, drop: .menuBar)
+        XCTAssertEqual(shown.rules, .system)
+        XCTAssertEqual(shown.drop, .menuBar)
     }
 
     func testAnOlderPayloadWithoutABookBehavesAsItDid() async {
