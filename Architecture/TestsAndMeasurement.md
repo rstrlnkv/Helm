@@ -39,19 +39,19 @@ in a failures-only summary, and a reproduction nobody runs goes stale.
 
 ## Removal takes its traces
 
-When code leaves the tree, its tests and its lines on these pages and in `CLAUDE.md` leave
-in the same commit; its lines in the crew's knowledge leave in the same change and reach
-Core Crew's git when the owner commits them. A test of removed code no longer builds, and a
+When code leaves the tree, its tests and its lines on these pages leave
+in the same commit; the project's rules and knowledge notes, which live outside the tree,
+lose their lines in the same change. A test of removed code no longer builds, and a
 backticked Swift file name, a path with an extension `DocumentsNameTheTreeTests` knows
 (slashed, or bare with a `:line`), a directory in the map or a `§` pointer left behind
 fails the checks of the tree, and a class left on `Tests/optional-tests.txt` fails the run;
 any other name, a bare type or a name in a doc comment, fails nothing, so the commit that
 removes a name first runs
-`command grep -rn '<name>' ARCHITECTURE.md Architecture CLAUDE.md README.md Sources Tests Scripts .claude/crew/knowledge`
+`command grep -rn '<name>' ARCHITECTURE.md Architecture README.md Sources Tests Scripts`
 and takes every line it prints — a mention, not a caller, the one question `grep` answers
 here (ARCHITECTURE.md § Why the commands are run). Nothing is kept for later: git holds
 what was removed. A module archived rather than dropped is tagged `archive/<module>` on its
-last commit; a lesson in the crew's knowledge that outlives it stays, its address the old
+last commit; a lesson in the knowledge notes that outlives it stays, its address the old
 path followed by «in the tag `archive/<module>`», read with `git show archive/<module>:<path>`.
 
 ## Readings and mutants

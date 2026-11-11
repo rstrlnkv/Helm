@@ -92,7 +92,7 @@ bash Scripts/package-app.sh     # build + sign → $TMPDIR/helm-package/Helm.app
 `bash Scripts/test.sh` runs `swift test` less the classes `Tests/optional-tests.txt` names
 (`HELM_FULL_SUITE=1` runs them all), keeps the whole log and reads it for you — the
 closing lines of a run speak for its last bundle and not for the suite;
-[CLAUDE.md](CLAUDE.md) says everything else.
+[ARCHITECTURE.md](ARCHITECTURE.md) says everything else.
 
 ## Licence
 

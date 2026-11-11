@@ -28,8 +28,8 @@ DerivedData/
 /.claude/
 
 # Only `docs/` stays out of the tree: plans and specs are a record of decisions
-# being made, not of what the program is. ARCHITECTURE.md, CLAUDE.md,
-# CHANGELOG.md and README.md describe the program itself and belong in the
+# being made, not of what the program is. ARCHITECTURE.md, CHANGELOG.md
+# and README.md describe the program itself and belong in the
 # repository with it.
 /docs
 

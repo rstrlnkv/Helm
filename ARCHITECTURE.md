@@ -67,7 +67,7 @@ One page per module, in the order `ls Sources/Modules` prints.
 - [Duplicates](Architecture/Duplicates.md) — the keep policies that decide which of several identical files is the extra one; its model calls the engine directly (Architecture/Duplicates.md § How Duplicates' model reaches its engine, § The states of the Duplicates page).
 - [Homebrew](Architecture/Homebrew.md) — how another program's package manager is run, with read-only queries and other runs governed differently; § The model, § Operations, § Installing Homebrew, § Install counts, § Searching for a package, § The Health tab, § The states of the Homebrew page.
 - [KeepAwake](Architecture/KeepAwake.md) — holding sleep off through pure logic units orchestrated by one engine; § How the model reaches the engine, § The closed lid, § Vetoes and the notice, § Rules read from the machine, § State a person asked for outlives the process, § Its states.
-- [Layout](Architecture/Layout.md) — the four limits on a module that reads every keystroke and types into other applications; its model calls the engine directly (Architecture/Layout.md § How Layout's model reaches its engine, § The states of the Layout page).
+- [Layout](Architecture/Layout.md) — shown to the user as "Keyboard" (`LyStr.moduleName`); the four limits on a module that reads every keystroke and types into other applications; its model calls the engine directly (Architecture/Layout.md § How Layout's model reaches its engine, § The states of the Layout page).
 - [Leftovers](Architecture/Leftovers.md) — what it will offer to remove: login items and plug-in files whose owner is gone; § How Leftovers' model reaches its engine, § The states of the Leftovers page.
 - [Screenshots](Architecture/Screenshots.md) — freezing the displays, picking an area, a window, the Dock or the menu bar, and the inline editor over the frozen picture; § The overlay, § The capture panel, § Writing a shot and replacing it, § The editor and its layers, § Marks that are no stroke, § The palette, § The eraser and the ruler, § The pop-overs, § The area and Crop, § Reading the text of the area, § Leaving the editor, § The settings page, § The after-shot window, § Pin, § How Screenshots' model reaches its engine, § The states of the Screenshots page and its windows.
 - [Uninstaller](Architecture/Uninstaller.md) — deciding whether a path belongs to the application being removed; its model calls the engine directly (Architecture/Uninstaller.md § How the Uninstaller's model reaches its engine, § The states of the Uninstaller page).
@@ -95,11 +95,9 @@ One page per module, in the order `ls Sources/Modules` prints.
 
 ## What else to read
 
-Three documents stand beside `ARCHITECTURE.md` in the root of the tree:
+Two documents stand beside `ARCHITECTURE.md` in the root of the tree:
 
 - `README.md` — what Helm is, the module table, how it is installed and built.
-- `CLAUDE.md` — the commands, the traps and what a session does before it changes
-  anything: the orders whose reasons are on these pages.
 - `CHANGELOG.md` — one section per release, the canonical English record.
 
 One addition is declared:
@@ -107,9 +105,6 @@ One addition is declared:
 - `NOTICE.md` — the third-party artwork Helm ships and the terms it carries.
   `Sources/Modules/Layout/UI/Flags/` is the material it covers.
 
-Work on this tree goes through the crew's lead role. A plan carried out by a skill's own
-implementers commits on its own and goes round the engineer, tester and verifier roles, so
-the crew's journal records none of it, and a spec or plan such a skill writes has nowhere
-to live here: Helm keeps no specs in the tree. A worktree sits inside the tree, under its
+Helm keeps no specs or plans in the tree. A worktree sits inside the tree, under its
 own folder, so anything outside the tree is reached by its full path — one level up from a
 worktree is not where a sibling checkout is, and nothing links a worktree for you.

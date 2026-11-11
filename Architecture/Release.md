@@ -66,7 +66,7 @@ attached with a `sha256` line for each in the notes, which `Scripts/make-zip.sh`
 `Scripts/make-dmg.sh` each print. The zip is what the in-app updater downloads for a
 silent install; the dmg is the manual drag-install path.
 
-`Scripts/package-app.sh:258` builds
+`Scripts/package-app.sh` builds with
 `swift build -c release --product HelmApp --explicit-target-dependency-import-check error`,
 assembles and signs in `$TMPDIR/helm-package`, and leaves a copy in `build/` for
 inspection. Only the signed copy under `$TMPDIR` is installed: it is the bundle the
@@ -102,7 +102,7 @@ for TCC to hang Full Disk Access on, so the permission comes loose on every rebu
 passing strict signature verification says the bundle is valid and not that it is the
 same program TCC granted.
 
-`Scripts/package-app.sh:326` signs ad-hoc (`--sign -`) unless the Mac building it
+`Scripts/package-app.sh` signs with `--sign "$SIGN_IDENTITY"`, which is ad-hoc (`-`) unless the Mac building it
 names an identity of its own (`Scripts/signing-identity.sh`), and a release is always
 ad-hoc — `Scripts/make-zip.sh` and `Scripts/make-dmg.sh` refuse anything else. An ad-hoc
 bundle carries no Team ID and macOS ties a granted permission to the exact binary. A
