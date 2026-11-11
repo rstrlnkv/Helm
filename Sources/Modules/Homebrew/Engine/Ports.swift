@@ -295,3 +295,44 @@ public struct NoPackageWeight: PackageWeight {
     public init() {}
     public func bytes(ofPackage name: String, isCask: Bool) -> Int? { nil }
 }
+
+/// **One brew operation at a time for the whole process**, not per engine.
+///
+/// The host builds a new `HomebrewEngine` on every enable, and a package
+/// operation is not terminated by a switch-off — it runs to its end. So an
+/// engine switched off and a fresh one switched on can exist together, each with
+/// its own idea of "idle", while the first one's `brew` still changes the
+/// Cellar, which has no lock of its own. The engines share one gate: an
+/// operation takes it at the start (`beginBusy`) and gives it back at the end
+/// (`endBusy`, after the marker is cleared, so a late clear can never delete the
+/// next operation's marker), and `status()` takes no marker while anyone holds it.
+///
+/// The app passes `.process`; every other construction gets a gate of its own,
+/// so tests share no state (`HomebrewEngine.init`).
+public final class OperationGate: @unchecked Sendable {
+    public static let process = OperationGate()
+
+    private let lock = NSLock()
+    private var holder: ObjectIdentifier?
+
+    public init() {}
+
+    /// Whether `owner` now holds the gate: false when another one does.
+    func take(_ owner: AnyObject) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        if holder != nil { return false }
+        holder = ObjectIdentifier(owner)
+        return true
+    }
+
+    /// Gives the gate back — only if `owner` is the one holding it.
+    func release(_ owner: AnyObject) {
+        lock.lock(); defer { lock.unlock() }
+        if holder == ObjectIdentifier(owner) { holder = nil }
+    }
+
+    var isHeld: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return holder != nil
+    }
+}

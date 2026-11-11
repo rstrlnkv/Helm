@@ -493,7 +493,8 @@ final class AStopReachesTheInstallerItselfTests: XCTestCase {
 /// The second half is `deactivate()` reaching past the wait: while
 /// `install.sh` runs it ends it the way Stop does, while the password dialog
 /// is up it leaves nothing to launch after it, and while an ordinary package
-/// operation runs it touches nothing.
+/// operation runs it terminates nothing, and no operation starts until the
+/// module is activated again.
 final class EveryStopPointEndsTheInstallOnceTests: XCTestCase {
 
     private final class Count: @unchecked Sendable {
@@ -665,7 +666,8 @@ final class EveryStopPointEndsTheInstallOnceTests: XCTestCase {
                 XCTAssertEqual(rig.tools.requestCount, expectedRequests,
                                "\(what): Apple's window was asked for after the ending")
 
-                // The gate: the next press, on a Mac that now has the tools, reaches the dialog.
+                // The gate: the module comes back, and the next press, on a Mac that now has the tools, reaches the dialog.
+                rig.engine.activate()
                 rig.tools.onRead = nil; rig.tools.onInstallerRead = nil; rig.tools.onRequest = nil
                 rig.tools.gitExecutable = true
                 rig.engine.installBrew()
@@ -707,7 +709,10 @@ final class EveryStopPointEndsTheInstallOnceTests: XCTestCase {
                       "the log does not say who ended it: \(homebrewLines)")
 
         rig.engine.install(name: "wget", isCask: false)
-        XCTAssertEqual(rig.runner.handles.count, 2, "the gate stayed shut after the switch-off")
+        XCTAssertEqual(rig.runner.handles.count, 1, "an operation was launched for a module that is off")
+        rig.engine.activate()
+        rig.engine.install(name: "wget", isCask: false)
+        XCTAssertEqual(rig.runner.handles.count, 2, "the gate stayed shut after the module came back")
     }
 
     /// A second switch-off, or a Stop after it, while the installer is still
@@ -745,8 +750,9 @@ final class EveryStopPointEndsTheInstallOnceTests: XCTestCase {
         let terminal = await rig.states().filter { $0.phase != .running }
         XCTAssertEqual(terminal.count, 1, "ended \(terminal.count) times: \(terminal)")
         XCTAssertEqual(terminal.first?.reason, .stopped)
+        rig.engine.activate()
         rig.engine.install(name: "wget", isCask: false)
-        XCTAssertEqual(rig.runner.handles.count, 1, "the gate stayed shut after the switch-off")
+        XCTAssertEqual(rig.runner.handles.count, 1, "the gate stayed shut after the module came back")
     }
 
     // MARK: - A switch-off during anything else
@@ -1085,6 +1091,7 @@ final class StoppingTheWaitRaisesNoDialogTests: XCTestCase {
         XCTAssertTrue(rig.privileged.scripts.isEmpty,
                       "a module that is switched off raised the administrator dialog")
 
+        rig.engine.activate()
         rig.engine.installBrew()
         XCTAssertEqual(rig.privileged.scripts.count, 1, "deactivation left the gate shut")
     }

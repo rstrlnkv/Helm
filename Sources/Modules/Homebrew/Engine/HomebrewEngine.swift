@@ -118,6 +118,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     private let weight: PackageWeight
     private let tools: CommandLineToolsPort
     private let ticker: WaitTicker
+    /// Shared by every engine of the process in the app (`OperationGate.process`).
+    private let gate: OperationGate
 
     private let lock = NSLock()
     private var busy = false
@@ -139,8 +141,14 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// Whether the running operation is the install of Homebrew itself, the one
     /// long operation `deactivate()` ends: it is the one that can raise a
     /// password dialog and start `install.sh` on its own, later, for a module
-    /// the person has switched off. Set with the gate, cleared with it.
+    /// the person has switched off. A package operation or a doctor fix is left
+    /// to finish: terminating a half-built `brew` run is how a broken Cellar is
+    /// made (`AQuitMidOperationIsReportedTests`). Set with the gate, cleared with it.
     private var installing = false
+    /// Whether the module is switched off: set by `deactivate()`, cleared by
+    /// `activate()`. While it is set the gate admits no operation, so nothing
+    /// launches a child for a module that is off (`beginBusy`). Under `lock`.
+    private var off = false
     /// What each package was last measured to occupy, keyed `f:name@version`.
     ///
     /// Under the same `lock` as every other field here, read and written in
@@ -170,7 +178,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
                 popularity: PopularityReading = NoPopularity(),
                 weight: PackageWeight = NoPackageWeight(),
                 tools: CommandLineToolsPort = ToolsAlreadyInstalled(),
-                ticker: WaitTicker = NoWaitTicker()) {
+                ticker: WaitTicker = NoWaitTicker(),
+                gate: OperationGate = OperationGate()) {
         self.locator = locator
         self.runner = runner
         self.privileged = privileged
@@ -181,6 +190,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         self.weight = weight
         self.tools = tools
         self.ticker = ticker
+        self.gate = gate
     }
 
     public func activate() {
@@ -214,6 +224,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // lock, never this one, so holding this one across the creation cannot
         // deadlock.
         lock.lock()
+        off = false
         // Cancel before assigning: two activations without a deactivation
         // between them would otherwise orphan the first fetch with nothing left
         // holding it to cancel.
@@ -225,7 +236,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     public func deactivate() {
         cancelTheRefresh()
-        endTheInstall()
+        endTheOperation()
     }
 
     /// The backstop for the routes that do not go through `deactivate()`.
@@ -242,8 +253,9 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         _ = wait
     }
 
-    /// A module switched off while Homebrew is being installed ends the
-    /// operation as stopped, wherever it is — **whether or not there is a wait
+    /// A module switched off shuts the gate (`off`) for **every** kind of
+    /// operation, so nothing starts after it, and ends the **install of
+    /// Homebrew** as stopped, wherever it is — **whether or not there is a wait
     /// to take**. The flag is set under the lock for any busy install, and every
     /// step that would ask Apple, raise the administrator dialog or launch
     /// `install.sh` reads it first (`stoppedBeforeLaunch`), so a switch-off that
@@ -251,8 +263,15 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// reading finds a check waiting for it. The wait, when there is one, is
     /// released here, so no later tick can raise a password dialog from a module
     /// that is off; a child that already runs is terminated, as Stop does.
-    private func endTheInstall() {
+    ///
+    /// **A package operation or a doctor fix is not terminated**: it finishes on
+    /// its own, `busy` stays true and the marker stays until its exit. The exit
+    /// reaches `concludeOp` because `runOp`'s `onExit` holds the engine strongly
+    /// — a weak hold lost it with the engine the host drops — so the marker is
+    /// cleared when the child is gone, and not before.
+    private func endTheOperation() {
         lock.lock()
+        off = true
         guard busy, installing else { lock.unlock(); return }
         stopRequested = true
         let wait = toolsWait
@@ -284,8 +303,9 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         let path = locator.brewPath()
         // Not while an operation runs: the marker belongs to the launch after
         // this one, and the page refreshes its status freely.
-        lock.lock(); let running = busy; lock.unlock()
-        let interrupted = running ? nil : marker.take()
+        // Any engine's, not only this one's: a child of the engine this one
+        // replaced may still be running, and its marker is not a report yet.
+        let interrupted = gate.isHeld ? nil : marker.take()
         if let interrupted {
             // The label names a package; the log carries counts and outcomes.
             HelmLog.shared.warn(Self.moduleID,
@@ -738,15 +758,27 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     private func beginBusy(installingBrew: Bool = false) -> Bool {
         lock.lock(); defer { lock.unlock() }
-        if busy { return false }
+        if busy || off || !gate.take(self) { return false }
         busy = true
         stopRequested = false
         installing = installingBrew
         HelmActivity.begin(Self.operationPhase)
         return true
     }
+    /// Names why `beginBusy` said no: a module that is off, or an operation
+    /// that is running. Only the second is a line for the console.
+    private func refuseLaunch(_ verb: String) {
+        lock.lock(); let isOff = off; lock.unlock()
+        if isOff {
+            HelmLog.shared.warn(Self.moduleID, "\(verb) refused: the module is switched off")
+            return
+        }
+        HelmLog.shared.warn(Self.moduleID, "\(verb) refused: another operation is running")
+        emitLog("⚠︎ Another operation is already running.")
+    }
     private func endBusy() {
         lock.lock(); busy = false; installing = false; current = nil; lock.unlock()
+        gate.release(self)
         HelmActivity.end(Self.operationPhase)
         HelmLog.shared.memory("homebrew.operation")
     }
@@ -822,7 +854,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     }
 
     /// Whether a Stop — or the module's switch-off, which sets the same flag
-    /// (`endTheInstall`) — arrived before this operation had a child, in which
+    /// (`endTheOperation`) — arrived before this operation had a child, in which
     /// case the operation ends here and the launch must not happen.
     ///
     /// For a package operation that window is a spawn, measured in
@@ -858,16 +890,11 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     private func runOp(verb: String, subject: String? = nil,
                        label: String, launch: String, args: [String],
                        env: [String: String] = HomebrewEngine.operationEnvironment) {
-        guard beginBusy() else {
-            HelmLog.shared.warn(Self.moduleID, "\(verb) refused: another operation is running")
-            emitLog("⚠︎ Another operation is already running.")
-            return
-        }
+        guard beginBusy() else { refuseLaunch(verb); return }
         let what = subject.map { "\(verb) \(Redact.pkg($0))" } ?? verb
         HelmLog.shared.info(Self.moduleID, "\(what) started")
         emitState(OpState(phase: .running, label: label))
-        startChild(label: label, launch: launch, args: args, env: env, reach: .process) { [weak self] code in
-            guard let self else { return }
+        startChild(label: label, launch: launch, args: args, env: env, reach: .process) { code in
             let stopped = self.concludeOp(code: code, label: label)
             self.logEnd(what, code: code, stopped: stopped)
         }
@@ -1014,11 +1041,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // One label, read by every way this operation can end — including the
         // marker, which is compared against nothing but itself.
         let label = Self.installBrewLabel
-        guard beginBusy(installingBrew: true) else {
-            HelmLog.shared.warn(Self.moduleID, "\(label) refused: another operation is running")
-            emitLog("⚠︎ Another operation is already running.")
-            return
-        }
+        guard beginBusy(installingBrew: true) else { refuseLaunch(label); return }
         HelmLog.shared.info(Self.moduleID, "\(label) started")
         emitState(OpState(phase: .running, label: label))
         // `user` is NSUserName(), which on a managed Mac is whatever the
@@ -1249,8 +1272,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // to find their password, with a live Stop button on the page the whole
         // time; `startChild` is where a press that landed during it is read.
         startChild(label: label, launch: "/bin/bash", args: ["-c", installer],
-                   env: Self.installerEnvironment, reach: .wholeGroup) { [weak self] code in
-            guard let self else { return }
+                   env: Self.installerEnvironment, reach: .wholeGroup) { code in
             let stopped = self.concludeOp(code: code, label: label,
                                           reason: code == 0 ? nil : .installerFailed)
             self.logEnd(label, code: code, stopped: stopped)

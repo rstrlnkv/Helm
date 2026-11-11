@@ -33,7 +33,7 @@ order it was said.
 
 The host calls the descriptor's `stop(_:)` before the engine's `deactivate()`. A closed
 model hears nothing and asks nothing, so an install that `deactivate()` ends is not
-followed by a re-read of a module going off. The page's Stop button is
+followed by a re-read of a module going off. `deactivate()` shuts the gate to every operation until `activate()` and ends the install of Homebrew as Stop does (one SIGTERM, the exit read as the person's stop). A package operation or a doctor fix is not terminated, because a half-built `brew` run can leave the Cellar broken: it finishes on its own, `busy` stays true and the quit marker stays until its exit, which the engine still hears (it is held strongly by the exit), and then the marker is cleared. The busy gate is shared by every engine of the process (`OperationGate`, passed as `.process` by the descriptor, a fresh one per engine elsewhere): the host builds a new engine on every enable, so a fresh engine beside one still running is refused like a second press, and its `status()` takes no marker while any engine holds the gate. An operation clears its marker before it gives the gate back, so a late exit cannot delete a newer marker; the marker file keeps its format (a label), and one left by a real quit is read by the next launch's first `status()` as before. The page's Stop button is
 `stopOperation()`; `stop()` is the seam's.
 
 Where brew is arrives first: `activate()` files it from the locator (`HomebrewNews.brew`; no

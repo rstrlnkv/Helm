@@ -50,7 +50,8 @@ import Module_Homebrew_Engine
         return HomebrewEngine(locator: ports.locator, runner: ports.runner,
                               privileged: ports.privileged, user: NSUserName(),
                               marker: ports.marker, popularity: ports.popularity,
-                              weight: ports.weight, tools: ports.tools, ticker: ports.ticker)
+                              weight: ports.weight, tools: ports.tools, ticker: ports.ticker,
+                              gate: .process)
     }
 
     public func menuBar(_ model: HomebrewViewModel) -> MenuBarContribution? { .utility }
