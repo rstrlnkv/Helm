@@ -4,50 +4,19 @@ build/
 *.xcodeproj/xcuserdata/
 DerivedData/
 
-# `.claude/` is ignored whole, not just its two crew links. The crew is
-# local: the agent briefs live on disk and are not part of the project's
-# history, because they are how one person drives this repository, not
-# something it ships. Where `install.sh` has run over a tree, `agents` and
-# `crew` under `.claude` are symbolic links into Core Crew for that same
-# reason — it creates both under "2. Project trees and their worktrees"
-# (`link_dir "$t/.claude/agents" ...` and `link_dir "$t/.claude/crew" ...`),
-# and `ls -la .claude` in a checkout it has run against shows the pair
-# pointing into Core Crew.
-#
-# The rest of `.claude/` has to stay out for its own reason: where Claude
-# Code has made them, `worktrees/` holds worktree checkouts and
-# `settings.local.json` sits beside them as a plain file — nothing in this
-# repository creates either. A linked worktree's own `.git` is a text
-# pointer at the main tree's `.git/worktrees/<name>`, not a repository of
-# its own, but git still treats the directory as one: in a clone carrying
-# only this `.gitignore`, `git add -A` without this line would stage
-# `settings.local.json` and add a worktree checkout as an embedded git
-# repository, with a warning from git itself. `.claude` is itself an
-# ordinary directory, so the pattern takes a trailing slash, the same as
-# `.build/` and `build/` above and `/.superpowers/` below.
+# `.claude/` is ignored whole: Claude Code keeps `worktrees/` (linked worktree
+# checkouts, which git would otherwise add as embedded repositories) and
+# `settings.local.json` (named in `.worktreeinclude`) there, and nothing in
+# this repository creates either.
 /.claude/
 
-# Only `docs/` stays out of the tree: plans and specs are a record of decisions
-# being made, not of what the program is. ARCHITECTURE.md, CHANGELOG.md
-# and README.md describe the program itself and belong in the
-# repository with it.
+# Plans and specs are a record of decisions being made, not of what the program
+# is; the project's pages live in Core. `docs/superpowers/` falls under this.
 /docs
 
-# Brainstorm sessions write HTML mockups here. They are working material for one
-# design conversation — the decisions that survive them land in `docs/`, and the
-# mockups themselves are worth keeping on disk and out of the history.
+# The superpowers skills write brainstorm mockups here, working material for
+# one conversation.
 /.superpowers/
-
-# The same reasoning as `/.superpowers/`, for the directory a design pass writes
-# into when it works in the tree instead of beside it: HTML mockups, the canvas
-# they were arranged on, and the screenshots taken to settle one question —
-# `flagoff/` and `safearea/` are each a photographed investigation whose answer
-# is now a sentence in `ARCHITECTURE.md` or a test, which is where an answer
-# belongs. Keeping the pictures is worth it; keeping them in the history is not,
-# and at several megabytes they would be paid for on every clone for ever. Out
-# of the tree rather than deleted, because a photograph is the only evidence for
-# some of what this app knows about how macOS draws.
-/design/
 
 # Xcode writes `.swiftpm/` the first time it opens this package, and what lands
 # there is two genres in one directory. `xcode/xcshareddata/xcschemes/Helm.xcscheme`
@@ -58,12 +27,12 @@ DerivedData/
 # moves. Ignoring only the per-user halves is the line `*.xcodeproj/xcuserdata/`
 # already draws above, rather than a second policy for the same question.
 .swiftpm/**/xcuserdata/
-# corecrew: internal Claude files and secrets stay out of this repo
+
+# Internal agent rules and secrets stay out of this repo: `CLAUDE.local.md`
+# and `AGENTS.md` are symlinks to `<Core>/<project>/CLAUDE.md`.
 CLAUDE.md
 CLAUDE.local.md
 AGENTS.md
-.claude/
-docs/superpowers/
 .env
 .env.*
 !.env.example
