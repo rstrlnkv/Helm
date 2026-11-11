@@ -388,9 +388,37 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
     /// it can do without) and no other: it walks this task's regions, asks each for its purgeable state, and sets
     /// EMPTY on those answering VOLATILE. Measured here: with the picture made from the file's path (before the
     /// bytes were read at the opening), a file moved before this call could no longer be encoded after it.
-    /// It asserts that it emptied something, so that a walk that finds nothing cannot pass for an emptying.
-    private func emptyVolatileRegions() {
-        var emptied = 0
+    ///
+    /// It allocates a purgeable region of its own, writes into it, marks it VOLATILE and asserts that the walk itself
+    /// emptied it. Whether ImageIO or CoreGraphics leave a volatile region of theirs at this point depends on the
+    /// system's caches (the earlier "emptied something" precondition failed on about one run in three), so the walk is
+    /// proven to run and to empty by a region that is certain to be there; the system's own volatile regions, when
+    /// present, are emptied by the same walk. The kernel itself may purge a volatile region before the walk reaches it
+    /// (measured: about one run in twenty); that attempt proves nothing and is made again with a fresh region, up to
+    /// `attempts` times. The region proves the walk, not the editor: whether the editor's decoded picture is ever
+    /// purgeable is the system's choice, and what the tests below prove is that the editor does not need a second
+    /// read of the file whichever regions the system took back.
+    private func emptyVolatileRegions(attempts: Int = 50) {
+        let length = mach_vm_size_t(getpagesize()) * 4
+        for _ in 0..<attempts {
+            var own: mach_vm_address_t = 0
+            guard mach_vm_allocate(mach_task_self_, &own, length, VM_FLAGS_ANYWHERE | VM_FLAGS_PURGABLE) == KERN_SUCCESS else {
+                return XCTFail("no purgeable region could be allocated")
+            }
+            defer { mach_vm_deallocate(mach_task_self_, own, length) }
+            UnsafeMutableRawPointer(bitPattern: UInt(own))?.storeBytes(of: 0x5A, as: UInt8.self)
+            var volatile: Int32 = VM_PURGABLE_VOLATILE
+            guard vm_purgable_control(mach_task_self_, vm_address_t(truncatingIfNeeded: own), VM_PURGABLE_SET_STATE, &volatile) == KERN_SUCCESS else {
+                return XCTFail("the region could not be marked volatile")
+            }
+            if emptyEveryVolatileRegion(watching: own) { return }
+        }
+        XCTFail("the walk never emptied the test's own volatile region in \(attempts) attempts")
+    }
+
+    /// One walk; true when the region at `own` was found VOLATILE and set EMPTY by it.
+    private func emptyEveryVolatileRegion(watching own: mach_vm_address_t) -> Bool {
+        var ownEmptied = false
         var address: mach_vm_address_t = 0
         while true {
             var size: mach_vm_size_t = 0
@@ -407,13 +435,17 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
             if vm_purgable_control(mach_task_self_, vm_address_t(truncatingIfNeeded: address), VM_PURGABLE_GET_STATE, &state) == KERN_SUCCESS,
                state & VM_PURGABLE_STATE_MASK == VM_PURGABLE_VOLATILE {
                 var empty: Int32 = VM_PURGABLE_EMPTY
-                if vm_purgable_control(mach_task_self_, vm_address_t(truncatingIfNeeded: address), VM_PURGABLE_SET_STATE, &empty) == KERN_SUCCESS {
-                    emptied += 1
+                if vm_purgable_control(mach_task_self_, vm_address_t(truncatingIfNeeded: address), VM_PURGABLE_SET_STATE, &empty) == KERN_SUCCESS,
+                   address == own {
+                    // Read back: the call's success is not the state it left.
+                    var now: Int32 = 0
+                    ownEmptied = vm_purgable_control(mach_task_self_, vm_address_t(truncatingIfNeeded: address), VM_PURGABLE_GET_STATE, &now) == KERN_SUCCESS
+                        && now & VM_PURGABLE_STATE_MASK == VM_PURGABLE_EMPTY
                 }
             }
             address += size
         }
-        XCTAssertGreaterThan(emptied, 0, "no volatile region was found to empty")
+        return ownEmptied
     }
 
     /// The editor's picture is read from the shot's file, and the file is moved while it is open: the edit must come
