@@ -6,8 +6,9 @@ time, so its boundary is a set of refusals rather than a set of capabilities.
 Rules live in a plist any process running as the user can write, so they are sealed
 with a key from Helm's own login keychain (`RuleKeychain.swift`); how the seal is
 judged, migrated and locked is ARCHITECTURE.md § Sealed settings. A rule set whose
-seal disagrees decodes to `[]`, so none of its rules runs, and `rulesRefused` on
-`AutopilotEngine` is the same verdict as a flag.
+seal disagrees decodes to `[]`, so none of its rules runs, and `AutopilotEngine.status`
+carries the verdict as `refusal`, which the page reads to draw a card saying the
+rules could not be read.
 
 `WatchScope` bounds what even a rule Helm itself sealed may reach, and the action
 set is closed: there is no script action, and `command grep -rn 'case script\|runScript\|shellAction' Sources/Modules/Autopilot/`

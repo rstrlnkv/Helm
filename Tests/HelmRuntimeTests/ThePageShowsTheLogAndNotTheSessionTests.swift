@@ -12,7 +12,7 @@ import XCTest
 /// The tail is seeded from the file now, and **the seed is the one place a log
 /// line is parsed back apart** — `write` still keeps the parts and hands them
 /// over, which is the rule this seed is the stated exception to. Everything below
-/// is about that parse: that it is the exact inverse of `LogLine.format`, that a
+/// is about that parse: that it is the exact inverse of `LogLine.line`, that a
 /// line it cannot read is kept rather than guessed at, and that a file which is
 /// missing, empty, huge, half-written or refused are five different answers.
 final class ThePageShowsTheLogAndNotTheSessionTests: XCTestCase {
@@ -29,8 +29,7 @@ final class ThePageShowsTheLogAndNotTheSessionTests: XCTestCase {
     /// The line the file would carry for this entry — spelled by the app's own
     /// formatter, never by a second copy of the format written here.
     private func line(_ entry: LogEntry) -> String {
-        LogLine.format(date: entry.date, level: entry.level, category: entry.category,
-                       message: entry.message, site: entry.site, timeZone: utc)
+        LogLine.line(entry, timeZone: utc)
     }
 
     // MARK: - The parse is the inverse of the format

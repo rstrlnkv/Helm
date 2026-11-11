@@ -6,7 +6,7 @@ import HelmTestSupport
 
 /// **The two triggers disagreed about what a rule means.**
 ///
-/// The sweep and the dry run read a folder through `FolderReader.facts(in:)`,
+/// The sweep and the dry run read a folder through `FolderReader.reading(in:)`,
 /// whose enumerator is built with `.skipsHiddenFiles` and
 /// `.skipsPackageDescendants` — so an `.app` is one thing and a dotfile is not
 /// there at all. The FSEvents leg took the path it was handed and asked for its
@@ -87,7 +87,7 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
     // MARK: - What the sweep can see
 
     func testTheSweepNeverOffersABundleResourceOrAHiddenFile() {
-        let found = reader.facts(in: root.path, depth: 8).map(\.name).sorted()
+        let found = reader.reading(in: root.path, depth: 8).files.map(\.name).sorted()
 
         XCTAssertEqual(found, ["Reader.app", "plain.pdf", "project", "report.pdf"],
                        "the sweep's own reader changed what it can see")
@@ -114,7 +114,7 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
             // Resolved on both sides: the enumerator hands back `/private/var/…`
             // for a scratch directory under `/var`, which is one path spelled two
             // ways and not a disagreement about any file.
-            let swept = Set(reader.facts(in: root.path, depth: depth).map { resolved($0.path) })
+            let swept = Set(reader.reading(in: root.path, depth: depth).files.map { resolved($0.path) })
             let admitted = Set(everyPathInTheTree()
                 .filter { reader.admits(URL(fileURLWithPath: $0), under: watched) }
                 .map(resolved))

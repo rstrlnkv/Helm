@@ -150,12 +150,12 @@ final class TheDescriptorWalkHoldsItsGroundTests: XCTestCase {
         try write("Deep/" + chain.joined(separator: "/") + "/leaf.pdf", in: home)
         let reader = FolderReader(home: home.path)
 
-        let deep = Set(reader.facts(in: root.path, depth: Int.max).map(\.name))
+        let deep = Set(reader.reading(in: root.path, depth: Int.max).files.map(\.name))
         XCTAssertTrue(deep.contains("d\(FolderReader.deepest)"), "the ceiling's own level is offered")
         XCTAssertFalse(deep.contains("d\(FolderReader.deepest + 1)"), "the walk went past its ceiling")
         XCTAssertFalse(deep.contains("leaf.pdf"))
         // A depth under the ceiling is the depth asked for.
-        XCTAssertEqual(reader.facts(in: root.path, depth: 8).count, 8)
+        XCTAssertEqual(reader.reading(in: root.path, depth: 8).files.count, 8)
     }
 
     // MARK: - A folder saved as a link meets its own bucket

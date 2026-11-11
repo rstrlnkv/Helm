@@ -285,7 +285,6 @@ public enum AppStr {
     public static func scanNeverRun(language: AppLanguage = AppLanguage.current) -> String {
         L(.scanNeverRun, language: language)
     }
-    public static var scanNeverRun: String { scanNeverRun() }
 
     public static func scanLastRun(_ when: String,
                             language: AppLanguage = AppLanguage.current) -> String {

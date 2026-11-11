@@ -7,7 +7,7 @@ import Foundation
 /// for `write`: the live path holds the parts and hands them over. A *seed* has
 /// no parts to hold. The file is all there is, so it parses — here, once, in a
 /// type whose name says so — and `LogSeed`'s obligation in exchange is to be the
-/// exact inverse of `LogLine.format` rather than an approximate reader of it.
+/// exact inverse of `LogLine.line` rather than an approximate reader of it.
 /// `ThePageShowsTheLogAndNotTheSessionTests` holds the round trip.
 ///
 /// **A line it cannot read is kept whole and claims nothing.** Dropping it would
@@ -32,7 +32,7 @@ enum LogSeed {
         case unreadable(String)
     }
 
-    /// The stamp `LogLine.format` writes, read the other way — and read once a
+    /// The stamp `LogLine.line` writes, read the other way — and read once a
     /// minute rather than once a line.
     ///
     /// **Measured 2026-08-14**, three readings in a `-O` binary on this Mac:
@@ -98,7 +98,7 @@ enum LogSeed {
                                message: message, site: site))
     }
 
-    /// The site `LogLine.format` puts last, and only when the tail really has its
+    /// The site `LogLine.line` puts last, and only when the tail really has its
     /// shape: two spaces, then `Name.swift:123 function(…)` in brackets at the very
     /// end. A message ending in «(exit 2)» keeps its brackets — `HelmFailure`
     /// writes those, and stealing them would be inventing a source location.

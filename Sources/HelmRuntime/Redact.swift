@@ -115,10 +115,6 @@ public enum Redact {
         "framework", "systemextension", "pkg", "bom", "log", "db", "lockfile"
     ]
 
-    public static func paths(_ paths: [String], home: String = NSHomeDirectory()) -> String {
-        paths.map { self.path($0, home: home) }.joined(separator: ", ")
-    }
-
     /// A short stable tag for a name that should not be written down.
     ///
     /// FNV-1a rather than `Hasher`, which is seeded per process: two lines in

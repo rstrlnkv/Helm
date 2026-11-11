@@ -46,8 +46,8 @@ public enum ScanNews {
     ///
     /// **Space that *went* is silent too.** The floor is asked of what appeared
     /// alone, so somebody who emptied their Downloads folder is not congratulated
-    /// for it by an app that had nothing to do with it — a rule written against
-    /// `ScanChange.isSomething` gets that case wrong.
+    /// for it by an app that had nothing to do with it — a rule that asked
+    /// only whether anything changed gets that case wrong.
     ///
     /// There is deliberately no `startedByHand` parameter. The journal has one
     /// writer, `ScanCoordinator`, and it is the unattended path — so anything

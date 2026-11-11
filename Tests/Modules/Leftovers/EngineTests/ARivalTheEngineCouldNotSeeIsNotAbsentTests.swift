@@ -2,22 +2,19 @@ import Foundation
 import XCTest
 @testable import Module_Leftovers_Engine
 
-/// **The engine's last word on a shared switch is read through the one call that
-/// folds «refused» back into «empty».**
+/// **The engine's last word on a shared switch is read through the entries alone,
+/// which fold «refused» back into «empty».**
 ///
 /// `TheEngineRefusesASharedSwitchTests` holds the rule: `launchctl disable
 /// gui/<uid>/<label>` is aimed at a label, two files can register one label, Helm
 /// cannot read which of the two launchd kept, so neither may be switched. The
 /// engine asks it of the disk at the moment of the press, through
 /// `LaunchClaims.onDisk`, and `onDisk` opened the two agent folders with
-/// `files.children(of:)` until 2026-09-08.
+/// `files.contents(of:).entries` until 2026-09-08.
 ///
-/// `children(of:)` is `contents(of:).entries`, and the port's own documentation
-/// says what that costs:
-///
-/// > What is in the directory, for a caller that walks what it finds and **draws
-/// > no conclusion from an empty answer** — every reader of a *source* draws one,
-/// > so every reader of a source asks `contents(of:)`.
+/// `contents(of:).entries` is the list with the reason for an empty one thrown
+/// away, which is fine for a caller that walks what it finds and draws no
+/// conclusion from an empty answer, and wrong for every reader of a *source*.
 ///
 /// `onDisk` draws the strongest conclusion in the module from an empty answer: no
 /// second file registers this label, therefore the press may go through. A folder

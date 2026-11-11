@@ -68,28 +68,15 @@ final class HelmFailureTests: XCTestCase {
         XCTAssertTrue(HelmFailure.osStatus(999_999).contains("999999"))
     }
 
-    func testSuccessIsNotAFailure() {
-        XCTAssertNil(HelmFailure.osStatusIfFailed(0))
-        XCTAssertNotNil(HelmFailure.osStatusIfFailed(-25300))
-    }
-
-    // MARK: - errno
-
-    func testErrnoIsNamedNotNumbered() {
-        let described = HelmFailure.posix(2)   // ENOENT
-        XCTAssertTrue(described.contains("2"), described)
-        XCTAssertTrue(described.lowercased().contains("no such file"), described)
-    }
-
     // MARK: - The line the log writes
 
     /// Every failure says where it came from, so a report can be traced to a
     /// line without guessing which of four call sites produced the wording.
     func testTheSiteIsCarriedIntoTheMessage() {
-        let line = LogLine.format(date: Date(), level: .error, category: "disk",
-                                  message: "trash refused",
-                                  site: LogSite(file: "DiskEngine.swift", line: 105,
-                                                function: "trash(_:)"))
+        let line = LogLine.line(LogEntry(date: Date(), level: .error, category: "disk",
+                                     message: "trash refused",
+                                     site: LogSite(file: "DiskEngine.swift", line: 105,
+                                                   function: "trash(_:)")))
         XCTAssertTrue(line.contains("DiskEngine.swift:105"), line)
         XCTAssertTrue(line.contains("trash(_:)"), line)
         XCTAssertTrue(line.contains("trash refused"), line)
@@ -102,8 +89,7 @@ final class HelmFailureTests: XCTestCase {
     }
 
     func testALineWithoutASiteIsUnchanged() {
-        let line = LogLine.format(date: Date(), level: .info, category: "app",
-                                  message: "started")
+        let line = LogLine.line(LogEntry(date: Date(), level: .info, category: "app", message: "started"))
         XCTAssertTrue(line.hasSuffix("[info] [app] started"), line)
     }
 
@@ -111,8 +97,8 @@ final class HelmFailureTests: XCTestCase {
     func testAMultiLineFailureStaysOneLine() {
         let error = NSError(domain: "D", code: 1,
                             userInfo: [NSLocalizedDescriptionKey: "first\nsecond"])
-        let line = LogLine.format(date: Date(), level: .error, category: "x",
-                                  message: HelmFailure.describe(error))
+        let line = LogLine.line(LogEntry(date: Date(), level: .error, category: "x",
+                                     message: HelmFailure.describe(error)))
         XCTAssertFalse(line.contains("\n"), line)
     }
 }

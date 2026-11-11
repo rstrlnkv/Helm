@@ -6,7 +6,7 @@ import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
 /// **The view model's «failed to trash» line is the second place an app's name
-/// reached the log.** `Redact.paths` strips the home prefix and nothing else; the
+/// reached the log.** `Redact.path` strips the home prefix and nothing else; the
 /// leaf of these paths is an app's name or a bundle id.
 @MainActor
 final class TheFailedLineDoesNotNameTheAppTests: XCTestCase {

@@ -29,12 +29,6 @@ public struct ScanChange: Equatable, Sendable {
     public let hadPrevious: Bool
 
     public var appearedBytes: Int { appeared.reduce(0) { $0 + $1.bytes } }
-    public var wentBytes: Int { went.reduce(0) { $0 + $1.bytes } }
-    public var stayedBytes: Int { stayed.reduce(0) { $0 + $1.bytes } }
-
-    /// Whether there is anything to say. A journal row reading "nothing changed"
-    /// is worth drawing; a *delta* reading "+0, −0" is noise.
-    public var isSomething: Bool { !appeared.isEmpty || !went.isEmpty }
 }
 
 /// Comparing two lists of what a scan found.

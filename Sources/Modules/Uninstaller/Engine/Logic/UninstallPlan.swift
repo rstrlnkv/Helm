@@ -32,14 +32,6 @@ public enum ReviewRow: Equatable, Sendable, Identifiable {
         case .leftover(let leftover): return leftover.path
         }
     }
-
-    /// A checkbox is an offer to decline, and the bundle cannot be declined:
-    /// removing an app without removing the app is not a thing this screen does.
-    public var isTickable: Bool {
-        if case .leftover = self { return true }
-        return false
-    }
-
 }
 
 /// Pure rules behind the batch uninstall flow.

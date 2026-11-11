@@ -74,17 +74,6 @@ public protocol LeftoversFilePort: Sendable {
     func readPlist(_ url: URL) -> PlistData?
 }
 
-public extension LeftoversFilePort {
-    /// What is in the directory, for a caller that walks what it finds and draws
-    /// no conclusion from an empty answer — every reader of a *source* draws one,
-    /// so every reader of a source asks `contents(of:)`.
-    ///
-    /// Written once here rather than in each conformance, so «the entries» and
-    /// «did it open» cannot come apart in a fake the way they came apart in the
-    /// port.
-    func children(of url: URL) -> [URL] { contents(of: url).entries }
-}
-
 /// Installed apps and their bundle ids — the yardstick for "is anyone still
 /// using this".
 public protocol InstalledAppsPort: Sendable {

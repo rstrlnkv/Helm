@@ -113,15 +113,6 @@ public enum LogLine {
         return formatter
     }
 
-    /// The five parts as they were always spelled, for a caller holding parts
-    /// rather than an entry.
-    static func format(date: Date, level: LogLevel, category: String,
-                       message: String, site: LogSite? = nil,
-                       timeZone: TimeZone = .current) -> String {
-        line(LogEntry(date: date, level: level, category: category, message: message, site: site),
-             using: stamper(timeZone))
-    }
-
     /// The one place a line is spelled. An entry rather than five parameters,
     /// because the five parts of a line *are* a `LogEntry` — carrying them
     /// separately alongside the type that holds them is how the tail came to be

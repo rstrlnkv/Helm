@@ -71,9 +71,12 @@ final class ReleaseDigestTests: XCTestCase {
         XCTAssertFalse(ReleaseDigest.matches(fileAt: gone, expected: good))
     }
 
-    /// The line the release script writes is the line the parser reads.
-    func testTheEmittedLineRoundTrips() {
-        let line = ReleaseDigest.line(asset: asset, sha256: good)
-        XCTAssertEqual(ReleaseDigest.parse(notes: line, asset: asset), good)
+    /// The line the release scripts print, to the character: `echo "sha256
+    /// $(basename "$ZIP") $(/usr/bin/shasum -a 256 "$ZIP" | cut -d" " -f1)"` in
+    /// `Scripts/make-zip.sh`, the same for the image in `Scripts/make-dmg.sh`,
+    /// pasted in the release notes between other lines.
+    func testTheLineTheScriptsPrintIsTheLineTheParserReads() {
+        let printed = "sha256 \(asset) \(good)"
+        XCTAssertEqual(ReleaseDigest.parse(notes: "Notes\n\n\(printed)\n", asset: asset), good)
     }
 }

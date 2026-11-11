@@ -99,16 +99,6 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
-    /// Why the stored rule set is not being run, or `nil` when it is. Read
-    /// through `status`, which is how the page draws a card saying the rules
-    /// could not be read instead of an empty state saying there were never any.
-    public var refusal: RuleRefusal? { rules.refusal }
-
-    /// The same fact as a flag, which is how ARCHITECTURE.md § Autopilot names
-    /// it. Derived, never stored beside `refusal`: two spellings of one verdict
-    /// is how the two would come to disagree.
-    public var rulesRefused: Bool { refusal != nil }
-
     /// Throw away a rule set that was not written by Helm, so the page can be
     /// used again. The one thing the card above the folder list may send.
     public func discardRefusedRules() { rules.discardRefused() }

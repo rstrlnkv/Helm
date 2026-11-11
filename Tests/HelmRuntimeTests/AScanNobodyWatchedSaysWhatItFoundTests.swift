@@ -58,7 +58,7 @@ final class AScanNobodyWatchedSaysWhatItFoundTests: XCTestCase {
     }
 
     /// Space that was *freed* is not news either, and it is the case a rule
-    /// written against `isSomething` alone would get wrong: the person emptied
+    /// that asked only whether anything changed would get wrong: the person emptied
     /// their Downloads folder and Helm congratulated them for it.
     func testSpaceThatWentIsNotAnnounced() {
         let freed = change(previous: [item("/gone", 90_000_000_000)], current: [])

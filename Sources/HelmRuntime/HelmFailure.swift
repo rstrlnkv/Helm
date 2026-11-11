@@ -95,19 +95,6 @@ public enum HelmFailure {
         return text.map { "OSStatus \(status) “\(oneLine($0))”" } ?? "OSStatus \(status)"
     }
 
-    /// nil for `noErr`, so a call site can log only when there is something to
-    /// log: `if let failure = HelmFailure.osStatusIfFailed(status) { … }`.
-    public static func osStatusIfFailed(_ status: Int32) -> String? {
-        status == 0 ? nil : osStatus(status)
-    }
-
-    /// A POSIX errno, named. `2` is nothing; `ENOENT (2) No such file or
-    /// directory` is a diagnosis.
-    public static func posix(_ code: Int32) -> String {
-        let text = String(cString: strerror(code))
-        return "errno \(code) “\(oneLine(text))”"
-    }
-
     // MARK: -
 
     /// A Swift error described by itself — except for the two whose description

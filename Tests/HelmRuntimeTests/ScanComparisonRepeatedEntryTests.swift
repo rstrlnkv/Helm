@@ -36,6 +36,6 @@ final class ScanComparisonRepeatedEntryTests: XCTestCase {
         let change = ScanComparison.between(previous: [item("/a", 10)],
                                             current: [item("/a", 10), item("/a", 10)])
         XCTAssertEqual(change.stayed.map(\.path), ["/a"])
-        XCTAssertEqual(change.stayedBytes, 10)
+        XCTAssertEqual(change.stayed.map(\.bytes), [10])
     }
 }

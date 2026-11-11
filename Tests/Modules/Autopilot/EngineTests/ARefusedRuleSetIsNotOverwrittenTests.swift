@@ -131,7 +131,7 @@ final class ARefusedRuleSetIsNotOverwrittenTests: XCTestCase {
         keys = TestRuleKey(established: true)
         let next = engine()
         XCTAssertEqual(next.folders.map(\.id), [], "precondition: the tampered set is refused")
-        XCTAssertTrue(next.rulesRefused, "precondition: and the engine knows why")
+        XCTAssertNotNil(next.status.refusal, "precondition: and the engine knows why")
 
         next.folders = onePress()
 
@@ -152,11 +152,11 @@ final class ARefusedRuleSetIsNotOverwrittenTests: XCTestCase {
         // The page's own first act, and what makes the engine judge the plist:
         // `AutopilotViewModel.load` asks for the folders.
         XCTAssertEqual(next.folders.map(\.id), [], "precondition: the tampered set is refused")
-        XCTAssertTrue(next.rulesRefused, "precondition: and the engine knows why")
+        XCTAssertNotNil(next.status.refusal, "precondition: and the engine knows why")
 
         next.folders = onePress()
 
-        XCTAssertTrue(next.rulesRefused,
+        XCTAssertNotNil(next.status.refusal,
                       "the refused write took the only warning the person gets with it")
     }
 
@@ -171,11 +171,11 @@ final class ARefusedRuleSetIsNotOverwrittenTests: XCTestCase {
         // The page's own first act, and what makes the engine judge the plist:
         // `AutopilotViewModel.load` asks for the folders.
         XCTAssertEqual(next.folders.map(\.id), [], "precondition: the tampered set is refused")
-        XCTAssertTrue(next.rulesRefused, "precondition: and the engine knows why")
+        XCTAssertNotNil(next.status.refusal, "precondition: and the engine knows why")
 
         next.discardRefusedRules()
 
-        XCTAssertFalse(next.rulesRefused, "the discard left the engine still refusing")
+        XCTAssertNil(next.status.refusal, "the discard left the engine still refusing")
         next.folders = onePress()
         XCTAssertEqual(next.folders.map(\.id), ["fresh"], "and the page still cannot save")
         XCTAssertEqual(storedRuleIDs(), [], "the discarded set was not replaced")
@@ -193,7 +193,7 @@ final class ARefusedRuleSetIsNotOverwrittenTests: XCTestCase {
         let next = engine()
         XCTAssertEqual(next.folders.map(\.id), [], "precondition: nothing runs without the key")
 
-        XCTAssertEqual(next.refusal, .noKey, "an unreadable key was reported as tampering")
+        XCTAssertEqual(next.status.refusal, .noKey, "an unreadable key was reported as tampering")
         XCTAssertEqual(storedRuleIDs(), ["invoices", "shots"], "the rules were touched")
     }
 }

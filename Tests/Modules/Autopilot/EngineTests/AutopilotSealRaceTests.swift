@@ -71,7 +71,7 @@ private final class HoldingStore: KeyValueStore, @unchecked Sendable {
 /// The rule set is read from the sweep timer, from FSEvents, from the model's
 /// door and from the watch refresh — four callers, none of them serialised with the
 /// others. Each read decides whether the stored rules are Helm's own and records
-/// that decision in `rulesRefused`, which is the only signal a person has that
+/// that decision in the status's `refusal`, which is the only signal a person has that
 /// something else wrote their rules. So the reads have to be ordered against
 /// each other: a decision taken about the file as it was is not allowed to be
 /// the last word about the file as it is.
@@ -132,7 +132,7 @@ final class AutopilotSealRaceTests: XCTestCase {
     /// the read that saw the edit, and its verdict — "these are Helm's own
     /// rules", true of the file it read and of nothing since — lands last.
     ///
-    /// `rulesRefused` is what tells a person their rules were tampered with, so
+    /// The status's `refusal` is what tells a person their rules were tampered with, so
     /// the last write winning by accident is not a test problem.
     func testAReadThatBeganBeforeTheEditDoesNotGetTheLastWord() throws {
         let helm = try engineWithAHeldRead()
@@ -147,7 +147,7 @@ final class AutopilotSealRaceTests: XCTestCase {
         _ = helm.folders
 
         wait(for: [earlier], timeout: 5)
-        XCTAssertTrue(helm.rulesRefused,
+        XCTAssertNotNil(helm.status.refusal,
                       "a verdict about the rules as they were overwrote the verdict about the edit")
     }
 

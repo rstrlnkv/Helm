@@ -30,7 +30,6 @@ public enum HelmWord {
     public static var done: String { L(.done) }
     public static var edit: String { L(.edit) }
     public static func cannotReadThisFolder(language: AppLanguage) -> String { L(.cannotReadThisFolder, language: language) }
-    public static var cannotReadThisFolder: String { cannotReadThisFolder(language: AppLanguage.current) }
     public static var keyboardShortcuts: String { L(.keyboardShortcuts) }
     public static var launchAgents: String { L(.launchAgents) }
     public static var leftovers: String { L(.leftovers) }
