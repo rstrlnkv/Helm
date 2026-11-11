@@ -50,10 +50,9 @@ public struct DiskEntry: Codable, Equatable, Sendable, Identifiable {
     /// integer add traps in release too. A bound here makes a single figure
     /// harmless; it does not make a sum of thousands of them so, which is why
     /// every sum a saved file can reach saturates (`Sequence.saturatingSum()`, and
-    /// `RingLayout` for its own), and why `DiskAdvice.Target` is held to the same
-    /// ceiling where the advice is decoded in its current form (`targets`). An advice
-    /// row in the older form, with no `targets` key, is not clamped: a known defect,
-    /// `Q-legacy-advice` in the defect log.
+    /// `RingLayout` for its own). `DiskAdvice.Target` is held to `0...byteCeiling` in
+    /// its initialiser, so every advice figure is, in the current form (`targets`)
+    /// and in the older one with only `bytes`, which decodes as one target.
     public static let byteCeiling = 1 << 50
 
     public init(name: String, path: String, bytes: Int, isDirectory: Bool,

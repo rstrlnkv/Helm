@@ -101,17 +101,20 @@ final class ASavedFileCannotTrapTheSumsTests: XCTestCase {
         XCTAssertEqual(row.bytes, Int.max, "the total is held at the top of an integer")
     }
 
-    /// Two rows that each weigh nearly an integer, both in the basket: the question
-    /// the dialog asks sums them.
-    func testTheRemovalQuestionOverTwoHugeRowsSaturates() {
-        let heavy = DiskAdvice(name: "a", path: "/v/a", bytes: Int.max - 1, kind: .cache)
-        let other = DiskAdvice(name: "b", path: "/v/b", bytes: Int.max - 1, kind: .cache)
-        let basket = [heavy, other].map {
+    /// More rows at the ceiling than an integer holds, all in the basket: the
+    /// question the dialog asks sums them. Each row is held to the ceiling by
+    /// `Target`, so two rows can no longer overflow it.
+    func testTheRemovalQuestionOverManyHugeRowsSaturates() {
+        let count = Int.max / DiskEntry.byteCeiling + 2
+        let rows = (0..<count).map {
+            DiskAdvice(name: "a\($0)", path: "/v/a\($0)", bytes: Int.max - 1, kind: .cache)
+        }
+        let basket = rows.map {
             DiskEntry(name: $0.name, path: $0.path, bytes: 1, isDirectory: true,
                       noAccess: false, children: [])
         }
-        let question = DiskRemovalPlan.question(basket: basket, advice: [heavy, other])
-        XCTAssertEqual(question.paths.count, 2, "precondition: both rows are asked about")
+        let question = DiskRemovalPlan.question(basket: basket, advice: rows)
+        XCTAssertEqual(question.paths.count, count, "precondition: every row is asked about")
         XCTAssertEqual(question.bytes, Int.max)
     }
 }
