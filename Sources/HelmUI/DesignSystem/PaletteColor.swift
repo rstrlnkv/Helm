@@ -33,25 +33,34 @@ public enum PaletteColor: String, CaseIterable, Sendable {
         .white, .red, .orange, .yellow, .green, .blue, .purple, .brown,
     ]
 
-    public var color: Color {
+    /// The colour as the menu-bar glyph and its text are drawn: the system's own,
+    /// and plain white for `.white` — the untinted glyph, not the swatch's grey.
+    /// The one table both `color` and `MenuBarIcon.nsColor(tintToken:)` read, and
+    /// exhaustive, so a new case cannot reach either as white by default.
+    public var nsColor: NSColor {
         switch self {
+        case .white: return .white
+        case .red: return .systemRed
+        case .orange: return .systemOrange
+        case .yellow: return .systemYellow
+        case .green: return .systemGreen
+        case .blue: return .systemBlue
+        case .purple: return .systemPurple
+        case .brown: return .systemBrown
+        // Retired: reachable only from a stored value written before the
+        // palette became Calendar's.
+        case .mint: return .systemMint
+        case .cyan: return .systemCyan
+        case .pink: return .systemPink
+        }
+    }
+
+    public var color: Color {
         // Not `.white`: on a light card that is 1.06:1 against the paper, held
         // apart only by a hairline ring. The lightest *grey*, `#f1f1f7`, the same
         // in both appearances because it stands for «no tint» rather than for a colour.
-        case .white: return Color(hex: 0xF1F1F7)
-        case .red: return Color(nsColor: .systemRed)
-        case .orange: return Color(nsColor: .systemOrange)
-        case .yellow: return Color(nsColor: .systemYellow)
-        case .green: return Color(nsColor: .systemGreen)
-        case .blue: return Color(nsColor: .systemBlue)
-        case .purple: return Color(nsColor: .systemPurple)
-        case .brown: return Color(nsColor: .systemBrown)
-        // Retired: reachable only from a stored value written before the
-        // palette became Calendar's.
-        case .mint: return Color(nsColor: .systemMint)
-        case .cyan: return Color(nsColor: .systemCyan)
-        case .pink: return Color(nsColor: .systemPink)
-        }
+        if self == .white { return Color(hex: 0xF1F1F7) }
+        return Color(nsColor: nsColor)
     }
     /// The colour's name in the user's language. It was `rawValue.capitalized`
     /// — the one user-visible string in the app that skipped `L()` — and on a
