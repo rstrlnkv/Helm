@@ -40,7 +40,7 @@ final class TheBatchIsToldWhatStaysTests: XCTestCase {
     }
 
     private func engine() -> DuplicatesEngine {
-        DuplicatesEngine(settings: suiteSealGuard(), trashing: { _ in })
+        DuplicatesEngine(settings: suiteSealGuard(), trashing: { try FileManager.default.removeItem(at: $0) })
     }
 
     /// The fixture is what it claims to be — without this every assertion below

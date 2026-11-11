@@ -37,7 +37,7 @@ final class DiskTrashArithmeticTests: XCTestCase {
         let measured = try XCTUnwrap(DiskScanner().scan(root: folder.path)).bytes
         XCTAssertGreaterThan(measured, 0, "the scan has to have measured something")
 
-        let removal = await DiskEngine(trashing: { _ in }).trash([folder.path])
+        let removal = await DiskEngine(trashing: { try FileManager.default.removeItem(at: $0) }).trash([folder.path])
 
         XCTAssertEqual(removal.removed, [folder.path])
         XCTAssertTrue(removal.refused.isEmpty, "\(removal.refused)")

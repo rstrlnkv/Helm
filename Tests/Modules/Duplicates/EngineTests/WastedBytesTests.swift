@@ -73,7 +73,7 @@ final class WastedBytesTests: XCTestCase {
     private func freedByRemovingTheExtras(of group: DuplicateGroup) -> Int {
         HelmTrash.remove(allowed: Array(group.paths.dropFirst()),
                          sharedWith: [group.paths[0]],
-                         module: "test", trashing: { _ in }).freedBytes
+                         module: "test", trashing: { try FileManager.default.removeItem(at: $0) }).freedBytes
     }
 
     /// And the pre-filter still finds them: a duplicate must not be lost to a

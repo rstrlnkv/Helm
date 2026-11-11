@@ -44,8 +44,8 @@ final class TrashRecorder: @unchecked Sendable {
     var count: Int { lock.lock(); defer { lock.unlock() }; return urls.count }
     var paths: [String] { lock.lock(); defer { lock.unlock() }; return urls.map(\.path) }
     func add(_ url: URL) { lock.lock(); urls.append(url); lock.unlock() }
-    /// The `trashing:` argument that records instead of moving.
-    var trashing: @Sendable (URL) throws -> Void { { self.add($0) } }
+    /// The `trashing:` argument that records, then removes the file as a real move leaves it.
+    var trashing: @Sendable (URL) throws -> Void { { self.add($0); try FileManager.default.removeItem(at: $0) } }
 }
 
 /// For a construction whose test reaches no removal: a move through it is a

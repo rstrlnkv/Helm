@@ -56,7 +56,16 @@ final class ATrashRuleGoesThroughHelmTrashTests: XCTestCase {
 
     func testAMoveThatWillNotSayWhereGivesAnEmptyPlace() throws {
         let file = try write("b.pdf")
-        XCTAssertEqual(run(file) { _ in nil }, .trashed(to: ""))
+        XCTAssertEqual(run(file) { try FileManager.default.removeItem(at: $0); return nil }, .trashed(to: ""))
+    }
+
+    /// A move that returns and leaves the file is not `.trashed`: the rule's
+    /// history would otherwise say a file was trashed that is still in Downloads.
+    func testAMoveThatReturnsAndLeavesTheFileIsAFailureNotTrashed() throws {
+        let file = try write("f.pdf")
+        let outcome = run(file) { _ in nil }
+        guard case .failed = outcome else { return XCTFail("\(outcome)") }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
     }
 
     func testAFileGoneBetweenTheChecksAndTheMoveIsMissing() throws {

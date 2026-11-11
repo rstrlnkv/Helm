@@ -93,7 +93,7 @@ final class TheBannerCountsWhatTheDiskGivesBackTests: XCTestCase {
         XCTAssertGreaterThan(allocated, 0)
 
         let result = HelmTrash.remove(allowed: [original, clone], module: "test",
-                                      trashing: { _ in })
+                                      trashing: { try FileManager.default.removeItem(at: $0) })
 
         XCTAssertEqual(result.removed.count, 2, "precondition: both were weighed")
         XCTAssertEqual(result.freedBytes, allocated,
@@ -104,6 +104,6 @@ final class TheBannerCountsWhatTheDiskGivesBackTests: XCTestCase {
     /// what is under test is the arithmetic, which `HelmTrash` computes before
     /// the move and would compute the same way after it.
     private func engine() -> DuplicatesEngine {
-        DuplicatesEngine(settings: suiteSealGuard(), trashing: { _ in })
+        DuplicatesEngine(settings: suiteSealGuard(), trashing: { try FileManager.default.removeItem(at: $0) })
     }
 }

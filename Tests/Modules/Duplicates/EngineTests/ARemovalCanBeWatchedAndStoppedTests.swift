@@ -94,7 +94,7 @@ final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
     /// Stop with no removal running is a no-op, not a crash and not a stop
     /// stored up for the next press.
     func testStopWithNothingRunningStopsNothingLater() async throws {
-        let engine = DuplicatesEngine(settings: suiteSealGuard(), trashing: { _ in })
+        let engine = DuplicatesEngine(settings: suiteSealGuard(), trashing: { try FileManager.default.removeItem(at: $0) })
         stopRemoval(of: engine)
 
         let plans = try plans(1)

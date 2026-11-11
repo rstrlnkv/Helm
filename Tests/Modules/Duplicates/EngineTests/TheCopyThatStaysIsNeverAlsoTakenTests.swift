@@ -63,7 +63,7 @@ final class TheCopyThatStaysIsNeverAlsoTakenTests: XCTestCase {
     /// A plan list that names each copy as the other's survivor takes them both,
     /// and the content stops existing anywhere.
     func testABatchThatNamesEachCopyAsTheOthersSurvivorKeepsOneOfThem() async {
-        let result = await DuplicatesEngine(settings: suiteSealGuard(), trashing: { _ in })
+        let result = await DuplicatesEngine(settings: suiteSealGuard(), trashing: { try FileManager.default.removeItem(at: $0) })
             .trash([DuplicatePlan(remove: first, keep: second),
                     DuplicatePlan(remove: second, keep: first)])
 
@@ -80,7 +80,7 @@ final class TheCopyThatStaysIsNeverAlsoTakenTests: XCTestCase {
     /// this module answers to. Whichever copy the engine decides to keep, the
     /// plan that named it has to come back with a reason beside it.
     func testTheCopyThatIsKeptComesBackAsARefusalRatherThanBeingDropped() async {
-        let result = await DuplicatesEngine(settings: suiteSealGuard(), trashing: { _ in })
+        let result = await DuplicatesEngine(settings: suiteSealGuard(), trashing: { try FileManager.default.removeItem(at: $0) })
             .trash([DuplicatePlan(remove: first, keep: second),
                     DuplicatePlan(remove: second, keep: first)])
 

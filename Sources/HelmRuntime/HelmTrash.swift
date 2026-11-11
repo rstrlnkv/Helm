@@ -86,6 +86,9 @@ public enum HelmTrash {
     /// No phase, no memory line and no log of its own: a sweep trashes file by
     /// file, so a reading per file would flood the trail, and the caller records
     /// each outcome. No ledger either, nobody reads bytes here.
+    ///
+    /// `trashing` throws the way `FileManager` does and **leaves the item gone**:
+    /// a return with the item still standing is refused (`moveChecked`).
     public static func removeOne(_ path: String,
                                  approved: PathCanonical.AncestryIdentity?,
                                  ancestry: (String) -> PathCanonical.AncestryIdentity?,
@@ -96,16 +99,78 @@ public enum HelmTrash {
             return .refused(Refusal(path: path, reason: .changedSinceScan), said: nil)
         }
         do {
-            return .trashed(at: try trashing(url))
+            return .trashed(at: try moveChecked(path) { try trashing(url) })
         } catch {
             return .refused(refusal(of: error, path: path, hasSystemExtension: false),
                             said: HelmFailure.describe(error))
         }
     }
 
+    /// What `lstat` says stands at a path. Three answers, because two of them
+    /// were one nil: nothing there (`ENOENT`, or a parent that is no folder) and
+    /// «could not read» (`EACCES` and the rest) are different facts, and only the
+    /// first may go on to the move.
+    private enum Look: Equatable {
+        case nothing
+        case item(dev: UInt64, ino: UInt64)
+        case unreadable
+    }
+
+    private static func look(_ path: String) -> Look {
+        var st = stat()
+        guard lstat(path, &st) == 0 else {
+            return errno == ENOENT || errno == ENOTDIR ? .nothing : .unreadable
+        }
+        return .item(dev: UInt64(bitPattern: Int64(st.st_dev)), ino: UInt64(st.st_ino))
+    }
+
+    /// The two refusals Helm makes of its own around a move, as errors so both
+    /// entries classify them where they classify macOS's.
+    private static let guardDomain = "HelmTrash.guard"
+    private enum Guard: Int {
+        case unreadable = 1, stillInPlace
+
+        var error: NSError {
+            NSError(domain: HelmTrash.guardDomain, code: rawValue, userInfo: [
+                NSLocalizedDescriptionKey: self == .unreadable
+                    ? "the item could not be read at the moment of the move"
+                    : "reported moved, still in place",
+            ])
+        }
+    }
+
+    /// The one place a move is checked, for `remove` and `removeOne` alike.
+    ///
+    /// A move that did not throw is not a move that happened: a sealed or
+    /// system-protected place can answer success and leave the item. So the item
+    /// found at `path` is read before the move (by `lstat`, which does not follow
+    /// a final symlink, as `fileExists` would) and the path again after it; the
+    /// same device and inode still there is a refusal. A *different* file under
+    /// the name is what a caller's replacement put there, and is not.
+    ///
+    /// A path that cannot be read before the move is not attempted, and one that
+    /// cannot be read after it is not believed: both `.unreadable`, a false
+    /// refusal at worst. Nothing there before the move goes on to it, so macOS
+    /// gives the reason it always did.
+    private static func moveChecked<T>(_ path: String, _ move: () throws -> T) throws -> T {
+        let before = look(path)
+        if before == .unreadable { throw Guard.unreadable.error }
+        let result = try move()
+        guard case .item = before else { return result }
+        switch look(path) {
+        case before: throw Guard.stillInPlace.error
+        case .unreadable: throw Guard.unreadable.error
+        default: return result
+        }
+    }
+
     /// What macOS's answer means for `path`; the one classification both entries use.
     private static func refusal(of error: Error, path: String, hasSystemExtension: Bool) -> Refusal {
-        Refusal(path: path, reason: TrashFailure.reason(path: path,
+        if (error as NSError).domain == guardDomain {
+            return Refusal(path: path, reason: (error as NSError).code == Guard.unreadable.rawValue
+                           ? .unreadable : .systemRefused)
+        }
+        return Refusal(path: path, reason: TrashFailure.reason(path: path,
                                                         errorCode: (error as NSError).code,
                                                         hasSystemExtension: hasSystemExtension))
     }
@@ -120,8 +185,10 @@ public enum HelmTrash {
     ///
     /// `trashing` is the move, and the only reason it is a parameter: a module
     /// that reaches the filesystem through a port has to be able to hand that
-    /// port over here rather than keep a second copy of this loop. It throws the
-    /// way `FileManager` does, because what this does with a failure is read its
+    /// port over here rather than keep a second copy of this loop. It **leaves the
+    /// item gone**: a return with the same item still standing is refused
+    /// (`moveChecked`), as is a path unreadable before the move. It throws the way
+    /// `FileManager` does, because what this does with a failure is read its
     /// `NSError` code — a port that reports an outcome instead wraps it back up.
     ///
     /// `ancestry` names the directory each path's parent chain resolves to. It is
@@ -255,7 +322,7 @@ public enum HelmTrash {
                     continue
                 }
                 do {
-                    try trashing(url)
+                    try moveChecked(path) { try trashing(url) }
                     removed.append(path)
                     // The one place the batch's ledger grows: what it has charged
                     // is exactly what it has taken.

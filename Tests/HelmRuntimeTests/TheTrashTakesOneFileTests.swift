@@ -43,8 +43,9 @@ final class TheTrashTakesOneFileTests: XCTestCase {
 
     func testAMoveThatWillNotSayWhereIsStillTrashed() {
         var calls = 0
-        let answer = HelmTrash.removeOne(file.path, approved: reading(file.path), ancestry: reading) { _ in
+        let answer = HelmTrash.removeOne(file.path, approved: reading(file.path), ancestry: reading) { url in
             calls += 1
+            try FileManager.default.removeItem(at: url)
             return nil
         }
         XCTAssertEqual(calls, 1)

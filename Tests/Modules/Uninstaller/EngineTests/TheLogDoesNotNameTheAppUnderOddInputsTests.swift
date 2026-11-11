@@ -186,6 +186,8 @@ private final class SwappingTrash: TrashPort, @unchecked Sendable {
     init(on: String, swap: @escaping () -> Void) { self.on = on; self.swap = swap }
     func trashItem(_ url: URL) -> TrashOutcome {
         if url.path == on { swap() }
+        // Gone from its place, as a real move leaves it: `HelmTrash.remove` asks.
+        try? FileManager.default.removeItem(at: url)
         return .success
     }
 }
