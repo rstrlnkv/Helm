@@ -52,9 +52,30 @@ public enum VPNRuleTrust {
     ///   rule-level verdicts do not depend on it. The engine, at a launch, is
     ///   the only caller.
     public static func judge(rule: VPNAppRule, running: CodeIdentity?) -> Verdict {
-        guard let recorded = rule.identity else { return .noIdentityRecorded }
-        guard recorded.isVerifiable else { return .appNotSigned }
+        let recorded: CodeIdentity
+        switch bound(rule) {
+        case .refused(let verdict): return verdict
+        case .identity(let identity): recorded = identity
+        }
         guard let running, running.isVerifiable else { return .runningInstanceUnreadable }
         return running == recorded ? .act : .mismatch
+    }
+
+    /// The refusal that stands before anything is running: `.noIdentityRecorded` or
+    /// `.appNotSigned`, nil when the rule may yet act. **`judge` asks this first, and
+    /// the engine publishes it** (`StatePayload.ruleRefusals`), so the rules popover's
+    /// note and the log line of a launch that did nothing come from one expression.
+    public static func refusal(of rule: VPNAppRule) -> Verdict? {
+        if case .refused(let verdict) = bound(rule) { return verdict }
+        return nil
+    }
+
+    /// The identity the rule is bound to, or the refusal that stands before anything
+    /// runs: the one place that unwraps it and the one place that refuses.
+    private enum Bound { case identity(CodeIdentity), refused(Verdict) }
+
+    private static func bound(_ rule: VPNAppRule) -> Bound {
+        guard let recorded = rule.identity else { return .refused(.noIdentityRecorded) }
+        return recorded.isVerifiable ? .identity(recorded) : .refused(.appNotSigned)
     }
 }

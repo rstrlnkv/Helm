@@ -41,6 +41,7 @@ extension VPNEngine: VPNWork {}
     /// somebody presses Connect once, and the engine stops attempting a
     /// `--nc start` it knows cannot work (`VPNSecretBook`).
     @Published private(set) var secretsBehindAPrompt: [String] = []
+    @Published private(set) var ruleRefusals: [String: VPNRuleTrust.Verdict] = [:]
     /// Every connected tunnel that has an interface reading, the one carrying
     /// the default route first. Empty when nothing is up — the strip is absent
     /// then, rather than empty.
@@ -333,6 +334,7 @@ extension VPNEngine: VPNWork {}
         autoConnected = Set(p.autoConnected)
         lastFailure = p.lastFailure
         secretsBehindAPrompt = p.secretsBehindAPrompt
+        ruleRefusals = p.ruleRefusals
         tunnels = p.tunnels
         // **The engine says whether a run is going; this only repeats it.**
         // Comparing the reading against the last one is true of neither awkward

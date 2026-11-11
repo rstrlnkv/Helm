@@ -85,6 +85,9 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// the same lock as the two books above it, and for the same reason: written
     /// from the work queue, read by the page.
     private var _secrets = VPNSecretBook()
+    /// Which rule cannot fire however its app launches, and why — written with
+    /// `core.rules` by `reloadRulesNow`, under the lock, published by `emitState`.
+    private var _ruleRefusals: [String: VPNRuleTrust.Verdict] = [:]
     private var _lastAutomation: VPNAutomation?
     /// The two pieces of work that leave the module's own queue — under the lock
     /// because they are started on the work queue and cancelled from the host's
@@ -122,6 +125,13 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// nothing but `~/Library/Logs/Helm/helm.log` to say so.
     public var secretsBehindAPrompt: [String] {
         lock.lock(); defer { lock.unlock() }; return _secrets.names
+    }
+
+    /// The rules that will not fire however their app launches, by bundle identifier
+    /// (`VPNRuleTrust.refusal(of:)`): drawn as a note in the rules popover, where
+    /// until now only the log said so.
+    public var ruleRefusals: [String: VPNRuleTrust.Verdict] {
+        lock.lock(); defer { lock.unlock() }; return _ruleRefusals
     }
 
     public var connections: [VPNConnection] {
@@ -812,6 +822,10 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private func reloadRulesNow() {
         refreshNow()
         core.rules = VPNRules.valid(VPNRules.decode(settings.rulesJSON), against: connections)
+        lock.lock()
+        _ruleRefusals = core.rules.compactMapValues(VPNRuleTrust.refusal(of:))
+        lock.unlock()
+        emitState()
     }
 
     private func appsChanged() {
@@ -1269,6 +1283,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                                     lastAutomation: lastAutomation,
                                     lastFailure: lastFailure,
                                     secretsBehindAPrompt: secretsBehindAPrompt,
+                                    ruleRefusals: ruleRefusals,
                                     tunnels: tunnelStates())
         lock.lock(); let isDuplicate = payload == _lastEmitted
         _lastEmitted = payload; lock.unlock()

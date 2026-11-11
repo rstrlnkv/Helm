@@ -15,9 +15,11 @@ all on a refusal or a Mac mid-boot (`AShortListPrunesNoNoticeBookTests`).
 A per-app rule is bound to a signature rather than to a bundle identifier
 (`Sources/HelmRuntime/CodeIdentity.swift` says what that buys), judged at launch
 only by `VPNRuleTrust.judge`. Its answer is a `VPNRuleTrust.Verdict` rather than a
-boolean, so the log line of a rule that did not fire says which refusal it was (the
-rules popover draws no note for it), and a rule with no recorded identity refuses
-rather than trusting the name.
+boolean, so the log line of a rule that did not fire says which refusal it was, and a rule
+with no recorded identity refuses rather than trusting the name. The two verdicts
+that need nothing running (`VPNRuleTrust.refusal(of:)`, which `judge` asks first)
+are also published per rule (`StatePayload.ruleRefusals`) and drawn as a note under
+that rule's row in the rules popover; the two that need a running app stay in the log.
 
 The tool is asked before the app announces. `scutil --nc start`/`stop` exit `0`
 whatever happens and put their answer on stdout, so the port hands back the whole

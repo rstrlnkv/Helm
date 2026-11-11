@@ -2598,6 +2598,112 @@
         }
       }
     },
+    "ruleWillNotFireNoIdentity": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird nicht ausgelöst: keine Signatur gespeichert, App erneut wählen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Will not fire: no signature recorded, pick the app again"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se activará: no hay firma registrada, elige la app de nuevo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ne se déclenchera pas\u00a0: aucune signature enregistrée, choisissez de nouveau l’app"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "作動しません：署名が記録されていません。アプリをもう一度選んでください"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não será acionada: nenhuma assinatura registrada, escolha o app de novo"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не сработает: подпись не записана, выберите приложение заново"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不会触发：未记录签名，请重新选择该应用"
+          }
+        }
+      }
+    },
+    "ruleWillNotFireNotSigned": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird nicht ausgelöst: Die App ist nicht signiert"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Will not fire: this app is not signed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se activará: esta app no está firmada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ne se déclenchera pas\u00a0: cette app n’est pas signée"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "作動しません：このアプリは署名されていません"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não será acionada: este app não está assinado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не сработает: приложение не подписано"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不会触发：此应用未签名"
+          }
+        }
+      }
+    },
     "rulesFor": {
       "extractionState": "manual",
       "localizations": {

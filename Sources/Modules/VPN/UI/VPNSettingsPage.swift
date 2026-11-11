@@ -268,6 +268,7 @@ struct VPNSettingsPage: View {
             connection: c,
             strip: mine,
             timings: rules.mapValues(\.timing),
+            refusals: vm.ruleRefusals,
             heldByHelm: c.status.isConnected && vm.autoConnected.contains(c.name),
             notice: shown.rules,
             dropNotice: shown.drop,

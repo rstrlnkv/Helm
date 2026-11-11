@@ -25,6 +25,9 @@ extension VPNEngine {
         /// Configurations Helm has a secret for and may not read unattended —
         /// `VPNSecretBook`. Sorted by the engine, so the page draws in one order.
         public var secretsBehindAPrompt: [String] = []
+        /// Rules that will not fire, by bundle identifier, and the engine's own
+        /// reason (`VPNRuleTrust.refusal(of:)`). A trusted rule has no entry.
+        public var ruleRefusals: [String: VPNRuleTrust.Verdict] = [:]
         /// Every connected tunnel that has an interface reading, the one
         /// carrying the default route first.
         ///
@@ -40,12 +43,14 @@ extension VPNEngine {
 
         init(connections: [VPNConnection], autoConnected: [String],
              lastAutomation: VPNAutomation?, lastFailure: VPNFailure? = nil,
-             secretsBehindAPrompt: [String] = [], tunnels: [VPNTunnelState] = []) {
+             secretsBehindAPrompt: [String] = [],
+             ruleRefusals: [String: VPNRuleTrust.Verdict] = [:], tunnels: [VPNTunnelState] = []) {
             self.connections = connections
             self.autoConnected = autoConnected
             self.lastAutomation = lastAutomation
             self.lastFailure = lastFailure
             self.secretsBehindAPrompt = secretsBehindAPrompt
+            self.ruleRefusals = ruleRefusals
             self.tunnels = tunnels
         }
 

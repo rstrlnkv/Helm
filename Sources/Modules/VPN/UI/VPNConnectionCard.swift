@@ -23,6 +23,9 @@ struct VPNConnectionCard: View {
     let strip: VPNTenants.Strip
     /// The timing of each application in the strip, for the popover's rows.
     let timings: [String: VPNAppRule.Timing]
+    /// Which of those rules will not fire, and why — the engine's own verdicts
+    /// (`VPNEngine.StatePayload.ruleRefusals`); a trusted rule is absent.
+    let refusals: [String: VPNRuleTrust.Verdict]
     /// Whether this tunnel is up **and** Helm's own doing.
     let heldByHelm: Bool
     /// What this configuration announces, resolved through `VPNNoticeBook` —
@@ -290,26 +293,48 @@ struct VPNConnectionCard: View {
     private func ruleRow(_ bundleID: String) -> some View {
         let info = AppInfo.resolve(bundleID)
         let timing = timings[bundleID] ?? .launchAndQuit
-        return HStack(spacing: HelmSpace.s4) {
-            Image(nsImage: info.icon).resizable().frame(width: Self.appIcon, height: Self.appIcon)
-                .accessibilityHidden(true)
-            Text(info.name).font(HelmText.rowTitle).lineLimit(1)
-            Spacer(minLength: HelmSpace.s4)
-            Picker("\(info.name) — \(VPNStr.rulePickerWhen)", selection: Binding(
-                get: { timing },
-                set: { setTiming(bundleID, $0) })) {
-                ForEach(VPNAppRule.Timing.allCases, id: \.self) { option in
-                    Text(VPNStr.ruleTiming(option)).tag(option)
+        let note = refusals[bundleID].flatMap { VPNStr.ruleWillNotFire($0) }
+        return VStack(alignment: .leading, spacing: HelmSpace.s2) {
+            HStack(spacing: HelmSpace.s4) {
+                Image(nsImage: info.icon).resizable().frame(width: Self.appIcon, height: Self.appIcon)
+                    .accessibilityHidden(true)
+                Text(info.name).font(HelmText.rowTitle).lineLimit(1)
+                Spacer(minLength: HelmSpace.s4)
+                Picker("\(info.name) — \(VPNStr.rulePickerWhen)", selection: Binding(
+                    get: { timing },
+                    set: { setTiming(bundleID, $0) })) {
+                    ForEach(VPNAppRule.Timing.allCases, id: \.self) { option in
+                        Text(VPNStr.ruleTiming(option)).tag(option)
+                    }
                 }
+                .labelsHidden()
+                // Trailing, because a macOS pop-up hugs its title inside the width it
+                // is given.
+                .frame(width: Self.timingWidth, alignment: .trailing)
+                rowMenu(bundleID, appName: info.name)
             }
-            .labelsHidden()
-            // Trailing, because a macOS pop-up hugs its title inside the width it
-            // is given.
-            .frame(width: Self.timingWidth, alignment: .trailing)
-            rowMenu(bundleID, appName: info.name)
+            // Under the whole row, indented past the icon: the name column is the
+            // narrowest thing in it, and a sentence there wraps to a word a line.
+            if let note {
+                // The kit's banner voice (`HelmBanner`, compact): the mark carries the
+                // signal, the words carry the meaning in `quiet`.
+                HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s3) {
+                    Image(systemName: "exclamationmark.triangle.fill").font(HelmText.rowDetail)
+                        .foregroundStyle(HelmSignal.warning(increased: traits.increasedContrast))
+                        .accessibilityHidden(true)
+                    Text(note).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.leading, Self.appIcon + HelmSpace.s4)
+                .accessibilityHidden(true)
+            }
         }
         .padding(.horizontal, HelmSpace.s5)
         .padding(.vertical, HelmSpace.s3)
+        // One rule for VoiceOver: the name, then why it will not fire. The pop-up and
+        // the menu keep their own labels, reached inside the row.
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(note.map { "\(info.name), \($0)" } ?? info.name)
     }
 
     /// Move and remove, named with the application it acts on.

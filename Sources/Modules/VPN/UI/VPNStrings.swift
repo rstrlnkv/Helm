@@ -167,6 +167,17 @@ enum VPNStr {
     /// pop-up; moving a rule is this menu's item.
     static var moveRule: String { L(.moveToAnotherVPN) }
     static var removeRule: String { L(.removeRule) }
+    /// Under a rule that cannot fire however its app launches, one sentence per
+    /// reason the engine tells apart (`VPNRuleTrust.refusal(of:)`). The two
+    /// launch-time verdicts need a running app, so no row can carry them: nil.
+    static func ruleWillNotFire(_ verdict: VPNRuleTrust.Verdict,
+                                language: AppLanguage = AppLanguage.current) -> String? {
+        switch verdict {
+        case .appNotSigned: return L(.ruleWillNotFireNotSigned, language: language)
+        case .noIdentityRecorded: return L(.ruleWillNotFireNoIdentity, language: language)
+        case .act, .runningInstanceUnreadable, .mismatch: return nil
+        }
+    }
     /// In place of the card's status word when Helm itself is the reason that tunnel is up —
     /// the engine's own book, not a tunnel somebody dialled by hand. One
     /// sentence about the tunnel rather than one mark per application.
