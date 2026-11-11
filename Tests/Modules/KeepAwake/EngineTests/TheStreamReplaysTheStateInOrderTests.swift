@@ -34,7 +34,7 @@ final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
         raced = KeepAwakeEngine(settings: settings, store: store, assertions: assertions,
                                 displayInfo: displayInfo, displayObserver: displayObserver,
                                 power: power, apps: apps, pointer: pointer,
-                                clamshell: clamshell, clock: clock, news: shared)
+                                clamshell: clamshell, clock: clock, lidInfo: FakeLidInfo(), news: shared)
     }
 
     private static func state(_ n: Int) -> KeepAwakeEngine.StatePayload {
@@ -240,6 +240,6 @@ final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
         KeepAwakeEngine(settings: settings, store: store, assertions: assertions,
                         displayInfo: displayInfo, displayObserver: displayObserver,
                         power: power, apps: apps, pointer: pointer,
-                        clamshell: clamshell, clock: clock, news: shared)
+                        clamshell: clamshell, clock: clock, lidInfo: FakeLidInfo(), news: shared)
     }
 }

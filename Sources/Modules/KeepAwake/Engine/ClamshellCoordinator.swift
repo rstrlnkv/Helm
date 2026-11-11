@@ -387,13 +387,13 @@ final class ClamshellCoordinator: @unchecked Sendable {
         // perfectly well, and the lid is the only part that needs the rule.
         guard mayPrompt else {
             HelmLog.shared.info(KeepAwakeEngine.moduleID, "closed-lid sleep needs an administrator "
-                                + "rule; not asking for one outside a deliberate start")
+                                + "rule; not asking for one outside the lid switch")
             return
         }
         // While a prompt is up the system still says the rule is missing, so
         // without this the person got one dialog per click for a single
         // decision. A *declined* prompt is a different state: the flag clears
-        // when the prompt is answered, so the next session asks again.
+        // when the prompt is answered, so the next turn of the lid switch asks again.
         guard !installInFlight else { return }
         installInFlight = true
         clamshell.installSudoers { [weak self] granted in

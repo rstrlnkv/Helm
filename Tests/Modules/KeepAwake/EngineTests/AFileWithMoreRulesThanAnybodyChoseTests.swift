@@ -163,7 +163,7 @@ final class AFileWithMoreRulesThanAnybodyChoseTests: XCTestCase {
                                      displayInfo: FakeDisplayInfo(),
                                      displayObserver: FakeDisplayObserver(),
                                      power: FakePower(), apps: apps, pointer: FakePointer(),
-                                     clamshell: FakeClamshell(), clock: FakeClock())
+                                     clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
 
         engine.activate()
 

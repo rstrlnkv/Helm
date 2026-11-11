@@ -135,7 +135,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
                                  assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(), power: FakePower(),
                                  apps: FakeApps(), pointer: FakePointer(),
-                                 clamshell: clamshell, clock: FakeClock())
+                                 clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
         engine.activate()
     }
 
@@ -268,8 +268,9 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
     /// lid is safe to close on the strength of a rule that has just been
     /// removed. It asks for it back instead, which is the same answer
     /// `APmsetThatRefusedIsNotASuccessTests` demands when the rule disappears
-    /// behind the app's back for any other reason.
-    func testARuleRemovedWhileTheOptionWentBackOnIsAskedForAgain() async {
+    /// behind the app's back for any other reason — but only the person's own
+    /// turn of the lid switch may raise the dialog for it, never a Start press.
+    func testARuleRemovedWhileTheOptionWentBackOnIsAskedForAgainByTheSwitchNotByStart() async {
         await switchTheOption(false)
         XCTAssertEqual(clamshell.removeCount, 1, "precondition: a removal is in flight")
 
@@ -282,10 +283,19 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
         await engine.drainClamshellForTests()
         await drainMain()
 
+        XCTAssertTrue(engine.isActive, "precondition: the press started a session")
+        XCTAssertEqual(clamshell.installCount, 0,
+                       "a Start press raised the administrator dialog for the vanished rule")
+        XCTAssertFalse(engine.clamshellActive, "the session holds the Mac without the lid rule")
+
+        engine.lidSwitchTurned(false)
+        engine.lidSwitchTurned(true)
+        await engine.drainClamshellForTests()
+        await drainMain()
+
         XCTAssertEqual(clamshell.installCount, 1,
-                       "the session began with the lid option on and a rule that is no longer "
-                       + "there, and nothing went to look")
-        XCTAssertTrue(engine.clamshellActive)
+                       "the person turned the lid switch on over a rule that is no longer "
+                       + "there, and nothing went to ask for it")
     }
 
     /// Everything already on the main queue has run. The engine posts its

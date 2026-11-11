@@ -25,6 +25,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     private let store: NamespacedStore
     private let assertions: SleepAssertions
     private let displayInfo: DisplayInfoPort
+    private let lidInfo: LidInfoPort
+    /// True only inside `lidSwitchTurned`: the edge it records may prompt.
+    private var switchGesture = false
     private let displayObserver: DisplayObserverPort
     private let power: PowerInfoPort
     private let apps: AppRunningPort
@@ -111,6 +114,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                 pointer: PointerPort,
                 clamshell: ClamshellPort,
                 clock: Clock,
+                lidInfo: LidInfoPort,
                 news: EngineNews<StatePayload> = EngineNews(),
                 batteryVeto: BatteryVetoChannel? = nil) {
         self.batteryVeto = batteryVeto
@@ -118,6 +122,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         self.store = store
         self.assertions = assertions
         self.displayInfo = displayInfo
+        self.lidInfo = lidInfo
         self.displayObserver = displayObserver
         self.power = power
         self.apps = apps
@@ -285,9 +290,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             endDate = nil
         }
         rememberSession()
-        // The one path where an administrator dialog is expected: somebody
-        // pressed a button a moment ago and is still looking at the screen.
-        recompute(byGesture: true)
+        // Start never raises the administrator dialog: only the lid switch's
+        // own gesture does (`lidSwitchTurned`). Without a grant the session
+        // holds the Mac without the lid rule.
+        recompute()
     }
 
     /// The Stop button, and the one press of it that is happening now.
@@ -352,18 +358,14 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - Core recompute
 
-    /// - Parameter byGesture: this recompute follows something the person just
-    ///   did. **Only a gesture may raise an administrator password dialog.**
-    ///   Engaging the closed-lid setting installs a NOPASSWD sudoers rule, and
-    ///   that was reached from here on every false→true edge of `isActive` —
-    ///   including the edges a *rule* causes. So a watched app launching put a
-    ///   real system password prompt on screen with nothing on it naming the
-    ///   app, the rule or Helm, at a moment the person had touched nothing; and
-    ///   any process running as this user could choose that moment by launching
-    ///   the app. Automatic paths still engage when the grant already exists —
-    ///   that costs no dialog — and otherwise say so in the log and carry on
-    ///   holding sleep the ordinary way.
-    private func recompute(byGesture: Bool = false) {
+    /// Never raises an administrator password dialog: engaging the closed-lid
+    /// setting installs a NOPASSWD sudoers rule, and only the person's gesture
+    /// on the lid switch may ask for it (`lidSwitchTurned`, through
+    /// `reconcileActiveSettings`). A Start press, a rule starting a session and
+    /// a store value written from outside engage only when the grant already
+    /// exists — that costs no dialog — and otherwise say so in the log and carry
+    /// on holding sleep the ordinary way.
+    private func recompute() {
         // The battery guard is a **veto, not a suppression.** While the charge is
         // at or under the floor nothing may hold the Mac — and the moment the charger
         // goes in the veto lifts by itself, because it is recomputed rather than
@@ -431,8 +433,8 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             HelmLog.shared.info(Self.moduleID, "holding sleep: \(ConditionLabel.of(r.conditions))"
                                 + (settings.keepDisplayOn ? ", display too" : ""))
             noteIfTheAssertionWasRefused(assertions.preventSleep(display: settings.keepDisplayOn))
-            if MacHardware.hasLid, settings.clamshellEnabled {
-                lid.engage(mayPrompt: byGesture)
+            if lidInfo.hasLid(), settings.clamshellEnabled {
+                lid.engage(mayPrompt: false)
             }
             if settings.jiggleEnabled { scheduleJiggle() }
             scheduleBatteryWatch()
@@ -451,10 +453,8 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// active, so toggling keepDisplayOn / clamshell / jiggle takes effect now
     /// (not only on the next session).
     ///
-    /// The lid half does not ask `MacHardware.hasLid`, which `recompute` asks
-    /// before it engages: a stored `clamshellEnabled` on a Mac with no lid
-    /// reaches `lid.engage` here at each settings edit during a session while
-    /// the lid is not active.
+    /// The lid half asks `lidInfo.hasLid()` like `recompute`: a stored
+    /// `clamshellEnabled` on a Mac with no lid never reaches `lid.engage`.
     ///
     /// Answers the lid option's edge, because the *release* needs the same
     /// reading and there is only one of it per `settingsChanged` — see
@@ -465,9 +465,12 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         guard isActive else { return edge }
         assertions.release()
         noteIfTheAssertionWasRefused(assertions.preventSleep(display: settings.keepDisplayOn))
-        if settings.clamshellEnabled, !lid.active {
-            lid.engage(mayPrompt: edge == .rising)
-        } else if !settings.clamshellEnabled, lid.active {
+        let wantsLid = settings.clamshellEnabled && lidInfo.hasLid()
+        if wantsLid, !lid.active {
+            // The rising edge prompts only when the person's own gesture on the
+            // switch made it, not when a store value changed under us.
+            lid.engage(mayPrompt: edge == .rising && switchGesture)
+        } else if !wantsLid, lid.active {
             lid.disengage()
         }
         if settings.jiggleEnabled, jiggleToken == nil {
@@ -494,11 +497,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     }
 
     private func externalDisplayCondition() -> Bool {
-        // The page hides this rule on a Mac with no display of its own, and the
-        // engine has to agree — a stored `true` from a machine that was a
-        // laptop last week, or from a hand-edited plist, would otherwise hold a
-        // Mac mini awake for ever through a row nobody can see to switch off.
-        guard MacHardware.hasBuiltInDisplay else { return false }
+        // The page hides this rule on a Mac with no lid, and the engine has to
+        // agree — a stored `true` from a machine that was a laptop last week,
+        // or from a hand-edited plist, would otherwise hold a Mac mini awake
+        // for ever through a row nobody can see to switch off.
+        guard lidInfo.hasLid() else { return false }
         return settings.autoExternalDisplay
             && ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags())
     }
@@ -519,13 +522,14 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         guard !rules.isEmpty else { return [] }
         // A rule may be narrowed to "only at the desk" or "only plugged in",
         // so the same inputs the other conditions use are passed in. The display
-        // one is the raw reading, not asked of `MacHardware.hasBuiltInDisplay`
-        // as `externalDisplayCondition` asks it: on a Mac with no display of its
-        // own, any display attached satisfies it.
+        // one asks `lidInfo.hasLid()` the way `externalDisplayCondition` does,
+        // so the two agree. On a Mac with no lid it is false: «external display» means nothing there, and the rule must not
+        // fire from a display attached to a desktop.
         return AppTriggerRules.holding(
             rules,
             running: Set(apps.runningBundleIDs()),
-            externalDisplay: ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags()),
+            externalDisplay: lidInfo.hasLid()
+                && ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags()),
             // The same reading as `powerCondition` above. This site was left on
             // `snapshot()` when that fix landed, so a rule narrowed to «only
             // when plugged in» stayed dead on every Mac without a battery —
@@ -682,6 +686,19 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // busy, and **no background scan would ever run** for anybody with this
         // switch on. `ScanCoordinator` subtracts what it hears here.
         NotificationCenter.default.post(name: .helmPointerNudged, object: nil)
+    }
+
+    /// The person's own gesture on the lid switch: the one entry through which
+    /// the switch writes `clamshellEnabled`. Today it is the store write and
+    /// `settingsChanged()` the page used to make itself. The engine learns of the
+    /// gesture two ways: the option's edge (`consumeEdge`) and `switchGesture`,
+    /// set here; `edge == .rising && switchGesture` is what tells the switch
+    /// from an outside write to the same key.
+    public func lidSwitchTurned(_ on: Bool) {
+        settings.setClamshellEnabled(on)
+        switchGesture = true
+        defer { switchGesture = false }
+        settingsChanged()
     }
 
     /// What a settings edit does, in the order it does it — **the one spelling

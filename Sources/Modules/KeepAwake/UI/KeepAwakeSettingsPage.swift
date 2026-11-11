@@ -232,7 +232,7 @@ struct KeepAwakeSettingsPage: View {
     /// change about it.
     @ViewBuilder private var automationSection: some View {
         HelmSettingsSection(KAStr.automation) {
-            // Hidden on a Mac that has no display of its own. «Keep awake with
+            // Hidden on a Mac that has no lid. «Keep awake with
             // an external display» is a rule about being docked, and a mini or
             // a Studio has no notion of docked: every display it has is
             // external, so the rule is unconditionally true there and amounts
@@ -241,7 +241,7 @@ struct KeepAwakeSettingsPage: View {
             // The hardware, not the current display list: a laptop with the lid
             // shut reports only external displays too, and hiding the rule on
             // that evidence would take it away exactly when somebody docked.
-            if MacHardware.hasBuiltInDisplay {
+            if MacHardware.hasLid {
                 ruleRow(KAStr.condition(.externalDisplay), on: $autoExternalDisplay,
                         satisfiedBy: .externalDisplay) { v in
                     vm.save(in: store) { $0.setAutoExternalDisplay(v) }
@@ -278,7 +278,7 @@ struct KeepAwakeSettingsPage: View {
                     Toggle(KAStr.keepAwakeLidClosed, isOn: $clamshellEnabled)
                         .labelsHidden()
                         .onChange(of: clamshellEnabled) { _, v in
-                            vm.save(in: store) { $0.setClamshellEnabled(v) }
+                            vm.lidSwitchTurned(v)
                         }
                 }
             }

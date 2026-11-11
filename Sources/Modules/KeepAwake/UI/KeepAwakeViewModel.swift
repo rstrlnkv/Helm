@@ -123,6 +123,10 @@ import Module_KeepAwake_Engine
         engine.settingsChanged()
     }
 
+    /// The person's gesture on the lid switch; the engine writes the option and
+    /// applies it (`KeepAwakeEngine.lidSwitchTurned`).
+    func lidSwitchTurned(_ on: Bool) { engine.lidSwitchTurned(on) }
+
     /// Tell the engine that a view wrote settings itself.
     func settingsChanged() { engine.settingsChanged() }
 }

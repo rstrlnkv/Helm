@@ -42,7 +42,7 @@ final class ASessionWithSecondsLeftIsNotOverTests: XCTestCase {
                         displayObserver: FakeDisplayObserver(),
                         power: FakePower(), apps: FakeApps(),
                         pointer: FakePointer(), clamshell: FakeClamshell(),
-                        clock: clock)
+                        clock: clock, lidInfo: FakeLidInfo())
     }
 
     /// A session with 39 seconds left is a session. It comes back, it holds the

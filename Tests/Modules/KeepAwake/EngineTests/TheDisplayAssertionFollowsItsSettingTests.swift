@@ -43,7 +43,7 @@ final class TheDisplayAssertionFollowsItsSettingTests: XCTestCase {
                                  displayObserver: FakeDisplayObserver(),
                                  power: FakePower(), apps: FakeApps(),
                                  pointer: FakePointer(), clamshell: FakeClamshell(),
-                                 clock: FakeClock())
+                                 clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
     /// What the settings page does: write the store, then send the command.

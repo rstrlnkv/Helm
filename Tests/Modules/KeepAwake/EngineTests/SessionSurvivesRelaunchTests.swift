@@ -40,7 +40,7 @@ final class SessionSurvivesRelaunchTests: XCTestCase {
                         displayObserver: FakeDisplayObserver(),
                         power: FakePower(), apps: FakeApps(),
                         pointer: FakePointer(), clamshell: FakeClamshell(),
-                        clock: clock)
+                        clock: clock, lidInfo: FakeLidInfo())
     }
 
     // MARK: - It comes back

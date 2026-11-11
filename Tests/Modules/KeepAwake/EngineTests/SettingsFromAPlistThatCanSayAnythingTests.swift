@@ -243,7 +243,7 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
                         displayInfo: FakeDisplayInfo(),
                         displayObserver: FakeDisplayObserver(),
                         power: FakePower(), apps: FakeApps(),
-                        pointer: FakePointer(), clamshell: FakeClamshell(), clock: FakeClock())
+                        pointer: FakePointer(), clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
     // MARK: - Reading never writes

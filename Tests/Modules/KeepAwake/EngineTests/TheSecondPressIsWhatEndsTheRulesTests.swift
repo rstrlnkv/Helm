@@ -45,7 +45,7 @@ final class TheSecondPressIsWhatEndsTheRulesTests: XCTestCase {
                         assertions: assertions, displayInfo: FakeDisplayInfo(),
                         displayObserver: FakeDisplayObserver(), power: FakePower(),
                         apps: apps, pointer: FakePointer(),
-                        clamshell: FakeClamshell(), clock: clock)
+                        clamshell: FakeClamshell(), clock: clock, lidInfo: FakeLidInfo())
     }
 
     private func timerEndsAutomation(_ on: Bool) {

@@ -64,7 +64,7 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
                                  assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(), power: FakePower(),
                                  apps: FakeApps(), pointer: FakePointer(),
-                                 clamshell: clamshell, clock: FakeClock())
+                                 clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
     override func tearDown() {

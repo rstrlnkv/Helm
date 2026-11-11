@@ -49,7 +49,7 @@ final class TheAssertionNeverOutlivesTheSessionTests: XCTestCase {
         engine = KeepAwakeEngine(settings: settings, store: store, assertions: assertions,
                                  displayInfo: displayInfo, displayObserver: displayObserver,
                                  power: power, apps: apps, pointer: FakePointer(),
-                                 clamshell: FakeClamshell(), clock: clock)
+                                 clamshell: FakeClamshell(), clock: clock, lidInfo: FakeLidInfo())
     }
 
     func testTheAssertionAndTheStateAgreeAfterEveryMove() async {

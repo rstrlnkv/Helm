@@ -52,7 +52,7 @@ final class AnAppRuleOnPowerWithNoBatteryTests: XCTestCase {
                                  displayObserver: FakeDisplayObserver(),
                                  power: power, apps: apps,
                                  pointer: FakePointer(), clamshell: FakeClamshell(),
-                                 clock: FakeClock())
+                                 clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
     /// A Mac Studio: no power source list at all, so `snapshot()` answers nil,

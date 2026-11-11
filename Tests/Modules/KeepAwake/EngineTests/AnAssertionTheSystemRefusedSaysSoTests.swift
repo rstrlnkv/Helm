@@ -47,7 +47,7 @@ final class AnAssertionTheSystemRefusedSaysSoTests: XCTestCase {
                         displayObserver: FakeDisplayObserver(),
                         power: FakePower(), apps: FakeApps(),
                         pointer: FakePointer(), clamshell: FakeClamshell(),
-                        clock: FakeClock())
+                        clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
     /// IOKit said no. The one place that can account for a Mac that slept

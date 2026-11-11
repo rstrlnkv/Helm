@@ -49,7 +49,7 @@ final class AChargeNobodyCanReadIsNotZeroTests: XCTestCase {
                                  displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(),
                                  power: power, apps: apps, pointer: FakePointer(),
-                                 clamshell: FakeClamshell(), clock: FakeClock())
+                                 clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
     /// IOKit answered, and the answer had nothing in it.

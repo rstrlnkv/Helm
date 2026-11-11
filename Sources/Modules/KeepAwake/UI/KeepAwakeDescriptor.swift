@@ -72,7 +72,7 @@ enum KeepAwakeHotkey {
             assertions: ports.assertions, displayInfo: ports.displayInfo,
             displayObserver: ports.displayObserver, power: ports.power,
             apps: ports.apps, pointer: ports.pointer,
-            clamshell: ports.clamshell, clock: ports.clock,
+            clamshell: ports.clamshell, clock: ports.clock, lidInfo: ports.lidInfo,
             // The battery veto is the one event with nobody in front of the
             // screen, so it is the one that posts a system notification — and
             // the sentence comes from here, because `L()` is `HelmUI`'s and the

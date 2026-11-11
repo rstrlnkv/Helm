@@ -64,7 +64,7 @@ final class APausedRuleSurvivesARelaunchTests: XCTestCase {
                         displayObserver: FakeDisplayObserver(),
                         power: FakePower(), apps: apps,
                         pointer: FakePointer(), clamshell: FakeClamshell(),
-                        clock: clock)
+                        clock: clock, lidInfo: FakeLidInfo())
     }
 
     /// The control, first: without the pause the rule really does take the Mac

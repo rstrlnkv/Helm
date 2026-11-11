@@ -44,7 +44,7 @@ final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
                                  displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(),
                                  power: power, apps: apps, pointer: FakePointer(),
-                                 clamshell: FakeClamshell(), clock: clock)
+                                 clamshell: FakeClamshell(), clock: clock, lidInfo: FakeLidInfo())
     }
 
     private func onMains() {

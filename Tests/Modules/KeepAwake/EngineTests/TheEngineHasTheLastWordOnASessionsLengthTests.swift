@@ -36,7 +36,7 @@ final class TheEngineHasTheLastWordOnASessionsLengthTests: XCTestCase {
                         displayObserver: FakeDisplayObserver(),
                         power: FakePower(), apps: FakeApps(),
                         pointer: FakePointer(), clamshell: FakeClamshell(),
-                        clock: clock)
+                        clock: clock, lidInfo: FakeLidInfo())
     }
 
     /// Asserted as the property the arithmetic needs rather than as a

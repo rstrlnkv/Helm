@@ -128,7 +128,7 @@ final class TheDrawingThreadNeverWaitsForPmsetTests: XCTestCase {
                         displayObserver: FakeDisplayObserver(),
                         power: FakePower(), apps: apps,
                         pointer: FakePointer(), clamshell: clamshell,
-                        clock: clock)
+                        clock: clock, lidInfo: FakeLidInfo())
     }
 
     /// The control: with neither anchor, launch asks `pmset` nothing at all —

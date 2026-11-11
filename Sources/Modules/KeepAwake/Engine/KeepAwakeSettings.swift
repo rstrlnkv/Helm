@@ -159,11 +159,10 @@ public struct KeepAwakeSettings {
     /// So it waits for a Developer ID, which an `SMAppService` helper,
     /// notarization and TCC grants surviving an install also wait for. Until then the plist is what it is, and the
     /// mitigation that *did* ship is the one that matters most: the
-    /// administrator dialog needs a gesture — a start press, or the option's own
-    /// rising edge — so a forged value cannot raise a password prompt by itself.
-    /// It can engage a grant the person already gave, and with no grant, on a
-    /// Mac with a lid, a start press that takes the Mac from not held to held
-    /// reaches `engage`, which raises the dialog.
+    /// administrator dialog needs a gesture — only the lid switch's own, as
+    /// `KeepAwakeEngine.lidSwitchTurned` reports it — so a forged value cannot
+    /// raise a password prompt by itself. It can engage a grant the person
+    /// already gave.
     public var clamshellEnabled: Bool { store.bool(Key.clamshellEnabled, default: false) }
     public func setClamshellEnabled(_ on: Bool) { store.set(on, for: Key.clamshellEnabled) }
 

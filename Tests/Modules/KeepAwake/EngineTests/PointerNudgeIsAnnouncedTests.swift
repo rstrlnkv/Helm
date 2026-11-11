@@ -43,7 +43,7 @@ final class PointerNudgeIsAnnouncedTests: XCTestCase {
                                  displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(),
                                  power: FakePower(), apps: FakeApps(),
-                                 pointer: pointer, clamshell: FakeClamshell(), clock: clock)
+                                 pointer: pointer, clamshell: FakeClamshell(), clock: clock, lidInfo: FakeLidInfo())
     }
 
     /// Fires the jiggle timer once, at the interval the settings ask for.

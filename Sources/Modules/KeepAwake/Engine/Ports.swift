@@ -57,6 +57,12 @@ public protocol PowerInfoPort: AnyObject {
     func stopObserving()
 }
 
+/// Whether this Mac has a lid at all — a fact about the hardware, asked at each
+/// use. `MacHardware.hasLid` (a battery is present) in production; a port so a
+/// Mac with no lid can be stood up in a test. Not a reading that can fail: the
+/// system answer is a plain yes or no, so there is no third state to name.
+public protocol LidInfoPort: AnyObject { func hasLid() -> Bool }
+
 public protocol DisplayObserverPort: AnyObject {
     func startObserving(_ onChange: @escaping @Sendable () -> Void)
     func stopObserving()

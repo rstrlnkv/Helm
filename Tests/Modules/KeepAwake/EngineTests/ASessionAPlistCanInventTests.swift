@@ -28,7 +28,7 @@ final class ASessionAPlistCanInventTests: XCTestCase {
                         assertions: assertions, displayInfo: FakeDisplayInfo(),
                         displayObserver: FakeDisplayObserver(), power: FakePower(),
                         apps: FakeApps(), pointer: FakePointer(),
-                        clamshell: FakeClamshell(), clock: FakeClock())
+                        clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
     // MARK: - One boolean, and the Mac never sleeps again
@@ -194,7 +194,7 @@ final class ASessionAPlistCanInventTests: XCTestCase {
                                          displayObserver: FakeDisplayObserver(),
                                          power: FakePower(), apps: FakeApps(),
                                          pointer: FakePointer(), clamshell: FakeClamshell(),
-                                         clock: clock)
+                                         clock: clock, lidInfo: FakeLidInfo())
 
             module.activate()
 

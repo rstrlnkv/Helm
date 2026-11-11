@@ -41,10 +41,12 @@ grant with no revocation is `/opt/homebrew`'s ownership change
 (`SudoersRule`) that ends with an argument-exact entry permitting only its own
 removal, `/bin/rm -f` on the one literal path (`SudoersRule.removeArguments`), so the grant carries its own revocation, which it has to because dragging
 the application to the Trash runs no code. Who may *raise* the password prompt
-is a separate question from what the prompt runs: `KeepAwakeEngine.startSession` is a
-gesture (`recompute(byGesture: true)` reaches `engage(mayPrompt: true)` on the edge to
-held when the Mac has a lid and the stored option is on; with no grant, `engage` raises the dialog), and `ClamshellCoordinator.consumeEdge()`
-answers an `Edge`, which the engine reads before its own active guard, so an edge
+is a separate question from what the prompt runs: only the person's gesture on the lid switch
+(`KeepAwakeEngine.lidSwitchTurned`, its rising edge during a running session) may raise it. A Start press
+(`startSession`), a rule starting a session and a store value written from outside never do: `recompute` calls
+`engage(mayPrompt: false)`, which engages silently when a passwordless grant exists and otherwise holds the Mac
+without the lid rule. On a Mac with no lid (`LidInfoPort`) nothing reaches `lid.engage`, and both the per-app and the global
+«external display» condition are false. `ClamshellCoordinator.consumeEdge()` answers an `Edge`, which the engine reads before its own active guard, so an edge
 that happens while the module is idle is consumed rather than saved up, the
 rising edge installs, the falling edge withdraws, and neither is inferred from a
 value that stays true after a dialog was declined.
@@ -52,8 +54,7 @@ value that stays true after a dialog was declined.
 `KeepAwakeSettings.clamshellEnabled` is not sealed, for the reason its doc comment
 gives; the mitigation that ships instead is the gesture: a forged value can engage a
 grant the person already gave, and cannot raise a password dialog by itself, but with
-no grant a start press that takes the Mac from not held to held (any control or
-the shortcut) on a Mac with a lid, with the stored option on, does; so does the option's rising edge as `consumeEdge` reads it at a settings edit during a session.
+no grant only the lid switch's own gesture does (`lidSwitchTurned`, its rising edge as `consumeEdge` reads it at a settings edit during a session, on a Mac with a lid). A start press does not, with the stored option on or off.
 
 `PmsetClamshellPort` is the only code that runs the grant's privileged commands, and no test runs it: every engine test builds the engine with
 a fake `ClamshellPort` (`FakeClamshell` or a test's own), and `HelmProcess.run` is called directly, so there is no point at which a test can record argv. Three things in it are held by
@@ -103,9 +104,9 @@ the state it names is true. A second spelling of the decision in a view is a but
 
 ## Rules read from the machine
 
-"External display" (the rule's row) is meaningless on a Mac with no display of its own (every display is external, the rule would mean never sleep),
-and the stored flag survives on a machine whose plist was written as a laptop. Every place that counts or draws the rule asks `MacHardware.hasBuiltInDisplay`
-first: the engine (`externalDisplayCondition`), the settings row, the panel tile and the mark column (`MarkableRules.onThisMac`); `AutomationMirror` only
+"External display" (the rule's row) is meaningless on a Mac with no lid (every display of a mini, a Studio or an iMac is external, the rule would mean never sleep),
+and the stored flag survives on a machine whose plist was written as a laptop. Every place that counts or draws the rule asks whether the Mac has a lid (`lidInfo.hasLid()` in the engine, `MacHardware.hasLid` in the views)
+first: the engine (`externalDisplayCondition`, `holdingAppRules`), the settings row, the panel tile and the mark column (`MarkableRules.onThisMac`); `AutomationMirror` only
 copies the stored flag into the views' state. A new reader of the flag that does not ask counts a rule that has no row, and the card indents its rows for a
 mark nobody can put there.
 
@@ -159,7 +160,7 @@ live tiles (VPN profile names, disk): it is proof for the owner's eyes, never ke
 | `left-behind` | lid option off, its sudoers rule still there; an unreadable rules value | the rule: real use, left by an earlier run that could not withdraw it; the unreadable rules value: a stored value that does not parse (`--arg module.keep-awake.autoAppRules garbage`, or a damaged settings file) |
 | `worst` | three conditions, eight app rules (one not installed), lid held, longest numbers | a person sets the largest numbers the page offers and the most app rules; the clamp maximum (1440 minutes) is reached only by a stored value, e.g. `--arg module.keep-awake.jiggleIntervalMinutes '<integer>1440</integer>'`; the app not installed is real use: an app removed after its rule was added |
 
-`worst` has no launch sample: the one that drew it was removed (f1951bed), so every part of it is set by a person or by `--arg`, which reaches settings only. Do not put `module.keep-awake.clamshellEnabled` in an unattended shot: while a rule holds the Mac awake, a grant already installed runs `pmset disablesleep 1` for real (`KeepAwakeEngine.recompute`, the `MacHardware.hasLid, settings.clamshellEnabled` branch, `lid.engage(mayPrompt: byGesture)`), and a `--press` on a start control without a grant raises the administrator dialog.
+`worst` has no launch sample: the one that drew it was removed (f1951bed), so every part of it is set by a person or by `--arg`, which reaches settings only. Do not put `module.keep-awake.clamshellEnabled` in an unattended shot: while a rule holds the Mac awake, a grant already installed runs `pmset disablesleep 1` for real (`KeepAwakeEngine.recompute`, the `lidInfo.hasLid(), settings.clamshellEnabled` branch (`lidInfo` is a `LidInfoPort`, `MacHardware.hasLid` in production), `lid.engage(mayPrompt: false)`); a `--press` on a start control never raises the administrator dialog.
 
 Longest strings come from the language: add `--arg module.app.interfaceLanguage ru`, and once with `de` for the German wrap.
 
@@ -168,5 +169,4 @@ when none of the three shows the part a state is for whole, add `--scroll 0.25` 
 for `idle-no-rules`, `timed-long`, `indefinite`, `automatic-apps`, `suppressed`, `battery-veto`
 and `worst`.
 
-Rows read from the machine itself are shown or hidden by the Mac the shot is taken on: a Mac without a battery, a lid or a
-built-in display (`MacHardware`), and the pointer row's reading of the real Accessibility grant.
+Rows read from the machine itself are shown or hidden by the Mac the shot is taken on: a Mac without a battery or a lid (`MacHardware`), and the pointer row's reading of the real Accessibility grant.

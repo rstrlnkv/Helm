@@ -107,6 +107,13 @@ public final class CGDisplayInfo: DisplayInfoPort {
     }
 }
 
+// MARK: - MacLidInfo
+
+public final class MacLidInfo: LidInfoPort {
+    public init() {}
+    public func hasLid() -> Bool { MacHardware.hasLid }
+}
+
 // MARK: - IOPSPowerInfo
 
 public final class IOPSPowerInfo: PowerInfoPort {
@@ -396,6 +403,7 @@ public final class PmsetClamshellPort: ClamshellPort {
 public struct KeepAwakeSystemPorts {
     public let assertions = IOKitSleepAssertions()
     public let displayInfo = CGDisplayInfo()
+    public let lidInfo = MacLidInfo()
     public let displayObserver = ScreenParamsObserver()
     public let power = IOPSPowerInfo()
     public let apps = WorkspaceAppPort()

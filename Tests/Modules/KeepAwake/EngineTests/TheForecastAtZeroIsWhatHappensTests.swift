@@ -46,7 +46,7 @@ final class TheForecastAtZeroIsWhatHappensTests: XCTestCase {
                                  displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(),
                                  power: FakePower(), apps: apps, pointer: FakePointer(),
-                                 clamshell: FakeClamshell(), clock: clock)
+                                 clamshell: FakeClamshell(), clock: clock, lidInfo: FakeLidInfo())
     }
 
     /// Exactly what `KeepAwakeSettingsPage.timedNote` computes, from exactly
