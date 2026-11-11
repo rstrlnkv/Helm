@@ -297,7 +297,12 @@ struct RuleEditor: View {
                     Spacer()
                     // The action, and where it lands: the action alone does not
                     // say which subfolder "sort by kind" means.
-                    if let destination = row.destination {
+                    if let reason = row.refusal {
+                        Text(ApStr.historyRefusal(reason))
+                            .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
+                            .lineLimit(1).truncationMode(.tail)
+                        Text("←").font(HelmText.rowDetail).foregroundStyle(HelmText.separator)
+                    } else if let destination = row.destination {
                         Text(destination)
                             .font(HelmText.code)
                             .foregroundStyle(HelmText.quiet)

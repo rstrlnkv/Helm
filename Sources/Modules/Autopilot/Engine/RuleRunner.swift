@@ -30,13 +30,19 @@ public enum RuleOutcome: Equatable, Sendable {
     case targetOutOfScope
     case failed(String)
 
-    public enum Refusal: String, CaseIterable, Equatable, Sendable {
+    public enum Refusal: String, CaseIterable, Codable, Equatable, Sendable {
         /// The file is not somewhere a rule may reach — the one thing a refusal for
         /// scope can mean *here*. Its record carries no name and no path
         /// (`RuleOutcome.targetOutOfScope` is the other half).
         case outOfScope
         /// A rename pattern the filesystem should not be asked to take.
         case badPattern
+        /// Every `{counter}` number from 001 to 999 is already used in the
+        /// folder; the search stops there rather than walk on.
+        case counterNumbersUsedUp
+        /// The folder the file is in could not be listed, so which numbers are
+        /// used is unknown: no guess, no rename.
+        case folderUnreadable
         case missing
         /// Where the path leads changed between the gate and the act — a
         /// symlinked ancestor was swapped in the window, so the gate approved
@@ -78,7 +84,11 @@ struct RuleRunner: Sendable {
     /// carried out and the rule gets another turn at the same file next sweep,
     /// which is what an unstampable volume already looks like. Unreachable from
     /// the module's own triggers, which have no rules to run without a key.
-    func run(_ plan: RulePlan, at path: String, key: Data?) -> RuleOutcome {
+    ///
+    /// `counters` is the pass's `{counter}` numbering, shared by every file of
+    /// one sweep; alone, a call is a pass of one.
+    func run(_ plan: RulePlan, at path: String, key: Data?,
+             counters: CounterBook = CounterBook()) -> RuleOutcome {
         // The file itself has to be somewhere a rule may reach, whatever the
         // rule says — the rules are JSON in a plist any process can write, so
         // this is the only place the question is settled. `WatchScope` rather
@@ -99,7 +109,7 @@ struct RuleRunner: Sendable {
         guard stamp?.isStamped(path, by: plan.rule.id) != true else { return .alreadyDone }
         let approved = ancestry(path)
 
-        let outcome = perform(plan, at: path, approved: approved)
+        let outcome = perform(plan, at: path, approved: approved, counters: counters)
         switch outcome {
         case .refused, .targetOutOfScope, .failed, .alreadyDone:
             break
@@ -131,7 +141,8 @@ struct RuleRunner: Sendable {
     }
 
     private func perform(_ plan: RulePlan, at path: String,
-                         approved: PathCanonical.AncestryIdentity?) -> RuleOutcome {
+                         approved: PathCanonical.AncestryIdentity?,
+                         counters: CounterBook) -> RuleOutcome {
         let url = URL(fileURLWithPath: path)
         switch plan.action {
         case let .move(to: destination):
@@ -159,7 +170,7 @@ struct RuleRunner: Sendable {
                         approved: approved)
 
         case let .rename(pattern):
-            return rename(url, pattern: pattern, plan.facts, approved: approved)
+            return rename(url, pattern: pattern, plan.facts, approved: approved, counters: counters)
 
         case let .addTag(name):
             return tag(name, on: url)
@@ -170,11 +181,17 @@ struct RuleRunner: Sendable {
     }
 
     private func rename(_ url: URL, pattern: String, _ facts: FileFacts,
-                        approved: PathCanonical.AncestryIdentity?) -> RuleOutcome {
-        guard let name = RenamePattern.apply(pattern, to: facts) else {
-            return .refused(.badPattern)
+                        approved: PathCanonical.AncestryIdentity?,
+                        counters: CounterBook) -> RuleOutcome {
+        let folder = url.deletingLastPathComponent()
+        let name: String
+        switch counters.name(for: pattern, facts: facts, in: folder.path) {
+        case let .name(chosen): name = chosen
+        case .unusable: return .refused(.badPattern)
+        case .exhausted: return .refused(.counterNumbersUsedUp)
+        case .unreadable: return .refused(.folderUnreadable)
         }
-        let target = url.deletingLastPathComponent().appendingPathComponent(name)
+        let target = folder.appendingPathComponent(name)
         // A pattern can name the file it is renaming — `{name}` does, and so
         // does any pattern mid-edit. Numbering it would make `a.pdf` into
         // `a 2.pdf`, then `a 2 2.pdf`, one file per sweep forever.

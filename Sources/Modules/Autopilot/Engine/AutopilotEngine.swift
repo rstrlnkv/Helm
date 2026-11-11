@@ -431,9 +431,10 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         let pass = UUID().uuidString
         var acted = 0, refused = 0, failed = 0
         var records: [ActionRecord] = []
+        let counters = CounterBook()
         for plan in plans {
             let path = plan.facts.path
-            let outcome = runner.run(plan, at: path, key: key)
+            let outcome = runner.run(plan, at: path, key: key, counters: counters)
             if let record = ActionRecord.of(plan, outcome, run: pass) { records.append(record) }
             switch outcome {
             case .moved, .renamed, .tagged, .trashed:
@@ -542,9 +543,10 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                 let key = rules.keyMaterial
                 // One batch of events is one pass, the way one sweep is.
                 let pass = UUID().uuidString
+                let counters = CounterBook()
                 for path in Set(changed) {
                     guard let plan = self.plan(for: path, among: watched) else { continue }
-                    let outcome = runner.run(plan, at: path, key: key)
+                    let outcome = runner.run(plan, at: path, key: key, counters: counters)
                     if let record = ActionRecord.of(plan, outcome, run: pass) {
                         records.append(record)
                     }
@@ -703,7 +705,10 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// not been saved, and a preview of the saved version would answer a question
     /// nobody asked. Runs on every keystroke in the rule editor.
     public func dryRun(_ draft: WatchedFolder) async -> [PreviewRow] {
-        await offQueue { self.preview(draft).map(PreviewRow.init) }
+        await offQueue {
+            let counters = CounterBook()
+            return self.preview(draft).map { PreviewRow($0, counters: counters) }
+        }
     }
 
     /// Nil for a folder the engine does not hold, or one that is switched off.

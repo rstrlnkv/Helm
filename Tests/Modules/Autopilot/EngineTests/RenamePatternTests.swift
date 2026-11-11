@@ -93,8 +93,8 @@ final class RenamePatternSubstitutionTests: XCTestCase {
     }
 
     /// A counter is what makes a pattern usable on more than one file. The
-    /// caller may supply it, because only the caller knows how many came
-    /// before; no caller in `Sources` does, and `{counter}` there is `001`.
+    /// caller supplies it here; `CounterBook.name(for:facts:in:)` is what the runner
+    /// and the preview use to pick the lowest one the folder does not hold.
     func testTheCounterIsPaddedAndSupplied() {
         let f = facts("shot.png")
         XCTAssertEqual(RenamePattern.apply("{name}-{counter}", to: f, counter: 7),

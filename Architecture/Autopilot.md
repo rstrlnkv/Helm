@@ -18,7 +18,7 @@ prints nothing. The reasons are on the doc comments of `RuleAction.swift` and
 A stamp that will not stick is logged and tolerated, which is survivable only
 because sorting, moving and tagging recognise a file already where the rule would
 put it, and renaming tells "already done" from "do it again" by inspecting the name
-against `RenameShape.swift`.
+against `RenameShape.swift`. `{counter}` in a rename pattern is the lowest number from 001 to 999 that no same-extension file in the folder wears, case folded (`CounterBook.swift`): one listing per folder and one parse per folder, pattern and extension, per pass, each number marked used as it is handed out, and the dry run goes through the same book as `RuleRunner`. Every number worn is the refusal `counterNumbersUsedUp`, a folder that cannot be listed is `folderUnreadable`; neither guesses. The shape reads `{counter}` as any run of three or more digits, so a second sweep over `photo-001`, `photo-002` renames nothing (and `invoice-2024` counts as already shaped by `invoice-{counter}`, on purpose).
 
 Which volumes cannot keep the stamp is not every removable one: a filesystem that
 refuses extended attributes, or an AppleDouble `._name` sidecar something drops,

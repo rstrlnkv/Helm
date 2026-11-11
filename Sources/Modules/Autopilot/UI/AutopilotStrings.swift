@@ -445,6 +445,8 @@ enum ApStr {
         switch reason {
         case .outOfScope: L(.refusedOutsideTheAllowedFolders, language: language)
         case .badPattern: L(.refusedUnusableRenamePattern, language: language)
+        case .counterNumbersUsedUp: L(.refusedEveryCounterNumberIsUsed, language: language)
+        case .folderUnreadable: L(.refusedTheFolderCouldNotBeRead, language: language)
         case .missing: L(.refusedTheFileIsNoLonger, language: language)
         case .changedSinceCheck: L(.refusedThePathChangedUnderneath, language: language)
         }

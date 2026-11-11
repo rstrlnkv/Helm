@@ -4241,6 +4241,59 @@
         }
       }
     },
+    "refusedEveryCounterNumberIsUsed": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "abgelehnt: alle Zählernummern bis 999 sind in diesem Ordner belegt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "refused: every counter number up to 999 is already used in this folder"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "rechazado: ya se usan todos los números de contador hasta el 999 en esta carpeta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "refusé\u00a0: tous les numéros de compteur jusqu’à 999 sont déjà utilisés dans ce dossier"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拒否：このフォルダでは999までのカウンター番号がすべて使用済みです"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "recusado: todos os números de contador até 999 já estão em uso nesta pasta"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "отказано: все номера счетчика до 999 в этой папке уже заняты"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已拒绝：此文件夹中999以内的计数编号均已被使用"
+          }
+        }
+      }
+    },
     "refusedOutsideTheAllowedFolders": {
       "extractionState": "manual",
       "localizations": {
@@ -4343,6 +4396,59 @@
           "stringUnit": {
             "state": "translated",
             "value": "已拒绝：文件已不存在"
+          }
+        }
+      }
+    },
+    "refusedTheFolderCouldNotBeRead": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "abgelehnt: Ordner nicht lesbar"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "refused: the folder could not be read"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "rechazado: no se pudo leer la carpeta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "refusé\u00a0: le dossier n’a pas pu être lu"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拒否：フォルダを読み取れませんでした"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "recusado: não foi possível ler a pasta"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "отказано: папку не удалось прочитать"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已拒绝：无法读取该文件夹"
           }
         }
       }
