@@ -100,7 +100,7 @@ public struct DuplicateGroup: Equatable, Sendable, Identifiable {
     /// set however it is arranged.
     ///
     /// A digest and not the paths themselves: an identity travels into places a
-    /// path may not go — the log carries no names — and it stays one short
+    /// path may not go, and it stays one short
     /// string for a group of forty copies. Separated by NUL, which is the one
     /// byte a POSIX path cannot hold, so two copies cannot be run together into
     /// the spelling of a third.

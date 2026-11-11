@@ -16,7 +16,7 @@ extern NSErrorDomain const HelmLaunchErrorDomain;
 /// The one key the error carries: the exception's **name**, and nothing else.
 ///
 /// A reason string carries whatever `NSTask` was given — an argument, an
-/// environment value, a path — and this app's log carries no names (`Redact`).
+/// environment value, a path — which the log does not need (`Redact`).
 /// A name is a Foundation constant, so `NSInvalidArgumentException` says
 /// everything a reader can act on and can be logged as it stands.
 extern NSString *const HelmLaunchExceptionNameKey;

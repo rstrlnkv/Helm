@@ -22,6 +22,12 @@ alone. The tag is a salted FNV-1a rather than a hash of the bare name, because a
 hash of a name drawn from a small public list is an index into that list; the salt is per
 install, in a `0600` file beside the log.
 
+`Redact.path` is not a tag: it writes only the home folder as `~`, and the folders and file
+names of a person's own documents (Autopilot, Disk, Duplicates) stay in the line. Two
+exceptions are tagged: a scan root outside home (`LogRoot.label`) and a software leaf
+(`Redact.path(_:leaf:)`, Uninstaller and Leftovers). That is the owner's decision of
+11.11.2026, and the Log page's note says it (`logRedactionNote`).
+
 Two things follow the file rather than the process. The one-time purge records that it
 has run in a file beside the log rather than in `UserDefaults`, which is namespaced per
 process: a latch belongs to what it guards, not to whoever asks, and any binary linking

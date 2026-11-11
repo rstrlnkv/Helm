@@ -301,8 +301,9 @@ final class ScanCoordinator {
     /// volume, which is a test of the filesystem.
     ///
     /// The log line beside it carries counts and a size and no path — the
-    /// journal it read names every file the scan found, and `HelmLog` carries no
-    /// names. The banner may name the person's folder; the log may not.
+    /// journal it read names every file the scan found, and a log line is not where
+    /// a scan's whole result belongs. The banner may name the person's folder; the
+    /// log line keeps to counts.
     ///
     /// **`change` reads back off disk what `record` has just written, and that
     /// is deliberate — measured and kept.** Measured 2026-08-21 (54635be9),

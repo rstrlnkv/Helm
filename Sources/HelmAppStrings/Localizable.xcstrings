@@ -3611,49 +3611,49 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Das Protokoll hält fest, was Helm getan hat, nicht was du hast: App-Namen, VPN-Namen und Pfade werden ersetzt, bevor etwas geschrieben wird."
+            "value": "Das Protokoll hält fest, was Helm getan hat. App- und VPN-Namen werden vor dem Schreiben durch kurze Kürzel ersetzt. Pfade werden nicht verborgen: Die Namen deiner Ordner und Dateien können erscheinen, wobei dein Benutzerordner als ~ geschrieben wird."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The log records what Helm did, not what you have: app names, VPN names and paths are replaced before anything is written."
+            "value": "The log records what Helm did. App and VPN names are replaced by short tags before anything is written. Paths are not hidden: the names of your folders and files can appear, with your home folder written as ~."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El registro anota lo que hizo Helm, no lo que tienes: los nombres de apps, los nombres de VPN y las rutas se sustituyen antes de escribir nada."
+            "value": "El registro anota lo que hizo Helm. Los nombres de apps y de VPN se sustituyen por etiquetas cortas antes de escribir nada. Las rutas no se ocultan: pueden aparecer los nombres de tus carpetas y archivos, y tu carpeta de inicio se escribe como ~."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le journal note ce que Helm a fait, pas ce que vous avez : les noms d’apps, les noms de VPN et les chemins sont remplacés avant toute écriture."
+            "value": "Le journal note ce que Helm a fait. Les noms d’apps et de VPN sont remplacés par de courtes étiquettes avant toute écriture. Les chemins ne sont pas masqués : les noms de vos dossiers et fichiers peuvent apparaître, et votre dossier Départ est écrit ~."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ログに残るのは Helm が何をしたかであり、あなたが何を持っているかではありません。App 名、VPN 名、パスは書き込む前に置き換えられます。"
+            "value": "ログには Helm が何をしたかが残ります。App 名と VPN 名は、書き込む前に短いタグに置き換えられます。パスは隠されません。フォルダ名やファイル名が表示されることがあり、ホームフォルダは ~ と書かれます。"
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "O registro anota o que o Helm fez, não o que você tem: nomes de apps, nomes de VPN e caminhos são substituídos antes de qualquer gravação."
+            "value": "O registro anota o que o Helm fez. Os nomes de apps e de VPN são substituídos por etiquetas curtas antes de qualquer gravação. Os caminhos não são ocultados: os nomes das suas pastas e arquivos podem aparecer, e sua pasta pessoal é escrita como ~."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "В журнал попадает то, что делает Helm, а не то, что лежит на диске: имена приложений, названия VPN и пути подменяются еще до записи."
+            "value": "В журнал попадает то, что делает Helm. Имена приложений и названия VPN до записи заменяются короткими метками. Пути не скрываются: могут быть видны имена ваших папок и файлов, а папка пользователя записывается как ~."
           }
         },
         "zh": {
           "stringUnit": {
             "state": "translated",
-            "value": "日志记录的是 Helm 做了什么，而不是你有什么：应用名称、VPN 名称和路径在写入前都会被替换。"
+            "value": "日志记录的是 Helm 做了什么。应用名称和 VPN 名称在写入前会被替换为简短标签。路径不会被隐藏：你的文件夹名和文件名可能会出现，个人文件夹显示为 ~。"
           }
         }
       }

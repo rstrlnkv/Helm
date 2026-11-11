@@ -6,9 +6,10 @@ import HelmRuntime
 /// The names are here, whole, in the module's own store on the machine it
 /// happened on — save a scope refusal's, whose record carries neither. `HelmLog`
 /// carries a path through `Redact.path`, which shortens only the home folder to
-/// `~` and leaves the file name in, which a log that ships to a stranger's
-/// machine should not do; only the refusal for a file outside the allowed
-/// folders is logged without one. A history
+/// `~` and leaves the file name in, which is by decision (11.11.2026): the
+/// log keeps file names and says so on the Log page; only the refusal for a
+/// source file outside the allowed folders is logged without one (by rule id),
+/// while a target outside them is logged with its path. A history
 /// that reads "moved a file, moved a file, trashed a file" answers none of the
 /// questions somebody actually has.
 public struct ActionRecord: Codable, Equatable, Sendable, Identifiable {

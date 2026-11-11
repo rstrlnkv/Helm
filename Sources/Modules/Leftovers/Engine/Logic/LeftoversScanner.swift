@@ -316,7 +316,7 @@ struct LeftoversScanner: Sendable {
     /// `PathCanonical` requires.
     ///
     /// The refusal is logged by kind and by nothing else: the path is the thing
-    /// somebody planted, and the log carries no names. **And the log is not where
+    /// somebody planted, and this line carries no names. **And the log is not where
     /// it ends** — `opening` turns the same refusal into a row, because a person
     /// reading a green tick is not reading the log (`ItemStatus.sourceRedirected`).
     private func isItsOwnPlace(_ directory: URL, _ kind: StaleKind) -> Bool {
