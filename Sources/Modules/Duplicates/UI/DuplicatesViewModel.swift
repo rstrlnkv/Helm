@@ -209,11 +209,16 @@ public enum KeepGrounds: Equatable, Sendable {
     /// reply's own `if chosen != policy` cannot cover that — at the moment it
     /// runs the two are still the same value.
     ///
+    /// **Not while a removal is running**, whichever door the value came through:
+    /// the re-ordering could promote a copy the running request is about to trash,
+    /// and a late keychain reading would otherwise do it unasked. Nothing moved,
+    /// so a refused `choose` stores nothing either.
+    ///
     /// Answers whether anything moved, so the caller that also *stores* the
     /// choice keeps its early return without spelling the comparison twice.
     @discardableResult
     private func apply(_ chosen: KeepPolicy) -> Bool {
-        guard chosen != policy else { return false }
+        guard !busy, chosen != policy else { return false }
         policy = chosen
         rearrange()
         return true
@@ -280,6 +285,10 @@ public enum KeepGrounds: Equatable, Sendable {
     /// nobody at the desk. The seal is written with the value: the engine refuses
     /// a policy it did not write, so a value saved without its MAC would leave
     /// every unattended scan on the default while this page said otherwise.
+    ///
+    /// Refused while a removal runs (in `apply`, which the stored-policy reading
+    /// shares), like `keep`: the rearrangement could promote a copy the running
+    /// request is about to trash.
     public func choose(_ chosen: KeepPolicy) {
         guard apply(chosen) else { return }
         DuplicatesSettings.setKeepPolicy(chosen, in: store, guardedBy: settings)
@@ -345,7 +354,12 @@ public enum KeepGrounds: Equatable, Sendable {
     /// The group is pinned by the same act — by the chosen copy's own path, which
     /// is the survivor a removal started after the choice may never take, so the
     /// pin outlives the removal that re-keys the group (see `pinned`).
+    ///
+    /// **Not while a removal is running.** `emptyBasket` captured its paths at the
+    /// first line, so a copy moved to the front here would be shown as staying
+    /// while the engine trashes it; the press is refused, as `clearBasket` does.
     public func keep(_ path: String, in group: DuplicateGroup) {
+        guard !busy else { return }
         guard let index = groups.firstIndex(where: { $0.id == group.id }),
               let chosen = groups[index].copies.first(where: { $0.path == path })
         else { return }
@@ -365,7 +379,11 @@ public enum KeepGrounds: Equatable, Sendable {
     /// It releases the pin as well as re-ordering: a group left pinned to an
     /// order the rule happens to agree with would silently step over the next
     /// policy change, and nothing on screen would say why.
+    ///
+    /// Refused while a removal runs, for the reason `keep` is: re-ordering could
+    /// promote a copy the running request is about to trash.
     public func restoreRecommendation(for group: DuplicateGroup) {
+        guard !busy else { return }
         guard let index = groups.firstIndex(where: { $0.id == group.id }) else { return }
         unpin(groups[index])
         groups[index] = ordered(groups[index], by: KeepRule(policy))
@@ -513,7 +531,10 @@ public enum KeepGrounds: Equatable, Sendable {
 
     public func isBasketed(_ path: String) -> Bool { basket.contains(path) }
 
+    /// Refused while a removal runs, like `clearBasket`: the batch is already out,
+    /// so a mark changed here would make the page say what the request does not.
     public func toggleBasket(_ path: String) {
+        guard !busy else { return }
         if let index = basket.firstIndex(of: path) {
             basket.remove(at: index)
         } else if UserFileScope.isRemovable(path) {

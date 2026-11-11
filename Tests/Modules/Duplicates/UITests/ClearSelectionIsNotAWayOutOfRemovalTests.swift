@@ -73,12 +73,12 @@ final class ClearSelectionIsNotAWayOutOfRemovalTests: XCTestCase {
     /// the control away rather than deferred it.
     func testClearingTheSelectionWorksOnceTheRemovalIsAnswered() async {
         let (dvm, work) = await removalInFlight()
-        dvm.toggleBasket(second)
-        XCTAssertEqual(dvm.basket, [extra, second], "precondition: two are marked")
-
         work.releaseParked()
         for _ in 0..<200 where dvm.busy { await Task.yield() }
         XCTAssertFalse(dvm.busy, "precondition: the removal came back")
+        // Marking is refused while the removal runs, so it is done after.
+        dvm.toggleBasket(second)
+        XCTAssertFalse(dvm.basket.isEmpty, "precondition: something is marked")
 
         dvm.clearBasket()
 

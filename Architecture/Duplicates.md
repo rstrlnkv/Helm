@@ -50,13 +50,15 @@ arrives: an answer is always a return.
 A background scan and a search the person started share the engine's one finder slot, so
 one begins by cancelling the other.
 
-While a removal runs, the marks, Keep this copy and the policy popup stay live, where
-Disk's `toggleBasket` declines (ARCHITECTURE.md § One removal at a time): `emptyBasket`
-captures the plans and the staying copies at the press and filters the basket by what
-moved afterwards, so a mark changes nothing in flight. Keep this copy on a copy that is
-already in the batch is drawn as «stays» and the copy still goes to the Trash, verified
-against the survivor the press named; the group is rebuilt without it, or goes when
-only one copy is left.
+While a removal runs, the marks (`toggleBasket`), Keep this copy, Restore the
+recommendation and the policy popup are refused by the model and their controls dim,
+as Disk's `toggleBasket` declines (ARCHITECTURE.md § One removal at a time):
+`emptyBasket` captures the plans and the staying copies at the press, so a mark or a
+re-ordering made afterwards would draw «stays» on a copy the engine still sends to the
+Trash. The refusal sits in `apply`, which the stored-policy reading shares, so a late
+keychain answer cannot re-order the groups either. `basketExtras` and
+`basketAllExtras` stay live: they only add marks outside the batch, and what moved
+afterwards is filtered out of the basket.
 
 
 ## The states of the Duplicates page

@@ -136,6 +136,7 @@ struct DuplicatesView: View {
                 Button(DupStr.restoreRecommendation) { dvm.restoreRecommendation(for: group) }
                     .controlSize(.small)
                     .fixedSize()
+                    .disabled(dvm.busy)
             }
             Button(DupStr.markGroupExtras) { dvm.basketExtras(of: group) }
                 .controlSize(.small)
@@ -160,6 +161,7 @@ struct DuplicatesView: View {
                     .accessibilityHidden(true)
             } else {
                 KeepThisCopyButton(keep: keep)
+                    .disabled(dvm.busy)
             }
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 Text((path as NSString).lastPathComponent)
@@ -189,7 +191,7 @@ struct DuplicatesView: View {
                        isOn: basketBinding(path))
                     .toggleStyle(.checkbox)
                     .labelsHidden()
-                    .disabled(!UserFileScope.isRemovable(path))
+                    .disabled(dvm.busy || !UserFileScope.isRemovable(path))
                     .help(UserFileScope.isRemovable(path) ? DupStr.markRow
                                                            : DupStr.systemFile)
             }
@@ -197,14 +199,17 @@ struct DuplicatesView: View {
         .contextMenu {
             if !stays {
                 Button(DupStr.keepThisCopy) { keep() }
+                    .disabled(dvm.busy)
             }
             Button(DupStr.quickLook) { preview(path) }
             Button(DupStr.reveal) { reveal(path) }
         }
         // The same actions where VoiceOver can reach them, since the menu
         // above needs a right-click.
+        // Left out while a removal runs, since an accessibility action cannot
+        // be dimmed and one that cannot be taken would be a control that lies.
         .accessibilityActions {
-            if !stays {
+            if !stays && !dvm.busy {
                 Button(DupStr.keepThisCopy) { keep() }
             }
             Button(DupStr.quickLook) { preview(path) }
@@ -229,14 +234,20 @@ struct DuplicatesView: View {
 private struct KeepThisCopyButton: View {
     let keep: () -> Void
     @State private var hovering = false
+    // `.plain` has no disabled look of its own; the kit's is `HelmButtonStyle`'s,
+    // so this reads the flag and does the same: faint ink, no hover preview
+    // (`.onHover` still fires on a disabled control).
+    @Environment(\.isEnabled) private var enabled
 
-    private var symbol: String { hovering ? "circle.fill" : "circle" }
+    private var lit: Bool { hovering && enabled }
+    private var symbol: String { lit ? "circle.fill" : "circle" }
 
     var body: some View {
         Button(action: keep) {
             Image(systemName: symbol)
                 .helmSymbolSwap(symbol)
-                .foregroundStyle(hovering ? HelmSignal.success : HelmText.quiet)
+                .foregroundStyle(!enabled ? HelmText.faint
+                                          : lit ? HelmSignal.success : HelmText.quiet)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)

@@ -39,7 +39,8 @@ of the one that landed first. That refusal has to live in the model and not only
 dimmed control, because a control's disabled state lags the redraw and never reaches a
 row's own context menu, which draws from the same data. The model refuses; the page
 dims. Both, or neither is reliable. `DiskViewModel.toggleBasket` declining while `busy`
-is the same guard read from the basket's own door.
+is the same guard read from the basket's own door; Duplicates' `toggleBasket`, `keep`, `choose` and
+`restoreRecommendation` decline too, and their controls dim.
 
 `Tests/HelmAppTests/OneRemovalAtATimeEverywhereTests.swift` fails on any file under
 `Sources/Modules/` that sends a removal and has a method setting `busy = true` with no

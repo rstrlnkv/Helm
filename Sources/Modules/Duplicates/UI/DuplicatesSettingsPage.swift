@@ -181,6 +181,7 @@ struct DuplicatesSettingsPage: View {
                 }
             }
             .labelsHidden()
+            .disabled(dvm.busy)
             .frame(width: DuplicatesLayout.policyPickerWidth())
             Spacer(minLength: 0)
         }
@@ -332,6 +333,7 @@ struct DuplicatesSettingsPage: View {
                         Text(DupStr.basketItem((path as NSString).lastPathComponent,
                                                Bytes(dvm.bytes(of: path))))
                     }
+                    .disabled(dvm.busy)
                 }
             } label: {
                 Text(DupStr.basketLine(dvm.basket.count, Bytes(dvm.basketBytes)))
