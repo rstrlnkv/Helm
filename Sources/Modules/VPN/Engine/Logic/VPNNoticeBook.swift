@@ -9,7 +9,7 @@ import Foundation
 /// **Absence means inherit.** The three settings this sits over — the rules'
 /// notice, a drop's notice, the ring — are single values an installed build
 /// already holds, and every card reads them until somebody changes that card
-/// (a card's notice choice also rewrites the module-wide value, see
+/// (a card's choice writes only its own book entry, see
 /// `VPNSettings.noticeBook`).
 /// Moving them into per-connection records would take a one-time migration
 /// keyed to whichever configuration happened to be first, and this repository

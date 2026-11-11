@@ -196,7 +196,12 @@ extension VPNEngine: VPNWork {}
     /// asks this so that cannot happen quietly.
     var reachesBanners: Bool { notices != nil }
 
-    /// The person picked a mode.
+    /// The person picked a mode on a card.
+    ///
+    /// Writes nothing: the card's choice is its book entry (`VPNSettingsPage`),
+    /// and the module-wide `automationNotice` / `dropNotice` every configuration
+    /// without an entry inherits is not this choice's to change — it silenced
+    /// the other tunnels under a control that says «this connection only».
     ///
     /// The only place in this module that asks macOS for the notification
     /// permission (`NoticeChannel.tell` asks for other news), and it asks only for
@@ -205,11 +210,7 @@ extension VPNEngine: VPNWork {}
     /// asking at launch, or on every visit to this page, spends it on somebody
     /// who was not asking for notifications.
     @discardableResult
-    func choose(_ notice: VPNNotice, for kind: VPNAutomation.Kind = .connected) async
-        -> NoticeAuthorization? {
-        // The kind names the *setting*, not one event: `.dropped` is the tunnel
-        // that fell over, anything else is the rules.
-        if kind == .dropped { settings?.setDropNotice(notice) } else { settings?.setNotice(notice) }
+    func choose(_ notice: VPNNotice) async -> NoticeAuthorization? {
         guard let port = notices else { return nil }
         return record(await AutomationNotice.prepare(for: notice, port: port))
     }

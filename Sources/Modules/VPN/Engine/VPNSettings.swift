@@ -8,12 +8,11 @@ public struct VPNSettings {
     public func setRulesJSON(_ json: String) { store.set(json, for: "vpnAppRules") }
 
     /// How loudly a *rule* firing is announced — an app launched, an app quit,
-    /// and Helm did what it was told.
+    /// and Helm did what it was told. Nothing in the app writes it any more
+    /// (a card writes its book entry); an old install's stored value is honoured
+    /// here, for every configuration without an entry.
     public var notice: VPNNotice {
-        VPNNotice(rawValue: store.string("automationNotice", default: "")) ?? .menuBar
-    }
-    public func setNotice(_ notice: VPNNotice) {
-        store.set(notice.rawValue, for: "automationNotice")
+        VPNNotice(rawValue: store.string(Self.automationNoticeKey, default: "")) ?? .menuBar
     }
 
     /// How loudly a tunnel **falling over by itself** is announced.
@@ -34,10 +33,7 @@ public struct VPNSettings {
     /// that mode, and a page showing "Notification" selected for a mode that has
     /// never been allowed says something the app will not do.
     public var dropNotice: VPNNotice {
-        VPNNotice(rawValue: store.string("dropNotice", default: "")) ?? .menuBar
-    }
-    public func setDropNotice(_ notice: VPNNotice) {
-        store.set(notice.rawValue, for: "dropNotice")
+        VPNNotice(rawValue: store.string(Self.dropNoticeKey, default: "")) ?? .menuBar
     }
 
     /// The one both sides read, so no caller decides for itself which of the
@@ -61,6 +57,8 @@ public struct VPNSettings {
     public var automationSpin: Bool { store.bool(Self.automationSpinKey, default: false) }
     /// Nothing in `Sources` writes it; the tests plant it under this name.
     static let automationSpinKey = "automationSpin"
+    static let automationNoticeKey = "automationNotice"
+    static let dropNoticeKey = "dropNotice"
 
     /// The colour the ring turns in, per kind of firing. A tunnel going up and
     /// a tunnel going down are the two things worth telling apart at a glance,
@@ -105,10 +103,11 @@ public struct VPNSettings {
     /// (`VPNNoticeBook`). So an installed build that has never opened the new
     /// popover behaves as it did, and there is no migration to run twice.
     ///
-    /// A card's notice choice writes its book entry and also, through
-    /// `VPNViewModel.choose`, the module-wide `automationNotice` or `dropNotice`,
-    /// which every configuration without an entry inherits. The ring switch and
-    /// the colours write the book alone.
+    /// A card's notice choice, the ring switch and the colours write the book
+    /// alone: the module-wide `automationNotice` and `dropNotice`, which every
+    /// configuration without an entry inherits, are written by nothing in the
+    /// app — an old install's stored value is honoured, a new one reads `.menuBar`. A book entry with no value for a kind is the «none» that inherits;
+    /// an older payload has no book at all and decodes to an empty one.
     public var noticeBook: VPNNoticeBook {
         VPNNoticeBook.decode(store.string("noticeBook", default: "{}"))
     }

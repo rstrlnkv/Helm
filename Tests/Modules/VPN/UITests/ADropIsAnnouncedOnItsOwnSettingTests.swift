@@ -27,8 +27,8 @@ final class ADropIsAnnouncedOnItsOwnSettingTests: XCTestCase {
         let work = FakeVPNWork()
         let store = NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore())
         let settings = VPNSettings(store: store)
-        settings.setNotice(rules)
-        settings.setDropNotice(drop)
+        settings.store.set(rules.rawValue, for: VPNSettings.automationNoticeKey)
+        settings.store.set(drop.rawValue, for: VPNSettings.dropNoticeKey)
         let port = FakeAutomationNotice(state: .authorized)
         let model = VPNViewModel(work: work, settings: settings, notices: port)
         // What macOS says now, rather than the stored mirror — the same read the

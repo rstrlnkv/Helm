@@ -33,8 +33,8 @@ final class ADropIsItsOwnNewsTests: XCTestCase {
 
     /// The whole point: silence for the rules is not silence for a drop.
     func testSilencingTheRulesLeavesTheDropAlone() {
-        settings.setNotice(.silent)
-        settings.setDropNotice(.system)
+        settings.store.set(VPNNotice.silent.rawValue, for: VPNSettings.automationNoticeKey)
+        settings.store.set(VPNNotice.system.rawValue, for: VPNSettings.dropNoticeKey)
 
         XCTAssertEqual(settings.notice(for: .connected), .silent)
         // **This used to read `.silent`, on the argument that a quit rule is a
@@ -53,8 +53,8 @@ final class ADropIsItsOwnNewsTests: XCTestCase {
     /// And the other way, so the guard above is not simply "the drop is always
     /// louder".
     func testSilencingTheDropLeavesTheRulesAlone() {
-        settings.setNotice(.system)
-        settings.setDropNotice(.silent)
+        settings.store.set(VPNNotice.system.rawValue, for: VPNSettings.automationNoticeKey)
+        settings.store.set(VPNNotice.silent.rawValue, for: VPNSettings.dropNoticeKey)
 
         XCTAssertEqual(settings.notice(for: .connected), .system)
         XCTAssertEqual(settings.notice(for: .dropped), .silent)
@@ -63,10 +63,10 @@ final class ADropIsItsOwnNewsTests: XCTestCase {
     /// Two settings, two accounts. Writing one must not write the other — the
     /// failure this catches is a single stored key read through two names.
     func testTheTwoAreStoredApart() {
-        settings.setNotice(.silent)
+        settings.store.set(VPNNotice.silent.rawValue, for: VPNSettings.automationNoticeKey)
         XCTAssertEqual(settings.dropNotice, .menuBar,
                        "setting the rules' mode moved the drop's")
-        settings.setDropNotice(.system)
+        settings.store.set(VPNNotice.system.rawValue, for: VPNSettings.dropNoticeKey)
         XCTAssertEqual(settings.notice, .silent,
                        "setting the drop's mode moved the rules'")
     }

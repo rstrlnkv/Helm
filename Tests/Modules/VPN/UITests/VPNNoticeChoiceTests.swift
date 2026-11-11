@@ -36,7 +36,6 @@ final class VPNNoticeChoiceTests: XCTestCase {
         let port = FakeAutomationNotice()
         let (vm, settings) = model(port)
         await vm.choose(.menuBar)
-        XCTAssertEqual(settings.notice, .menuBar)
         XCTAssertEqual(port.requests, 0, "macOS was asked for a permission nobody needed")
     }
 
@@ -44,9 +43,9 @@ final class VPNNoticeChoiceTests: XCTestCase {
     func testTheBannerModeAsksMacOSAndRemembersTheAnswer() async {
         let port = FakeAutomationNotice(state: .authorized)
         let (vm, settings) = model(port)
+        settings.store.set(VPNNotice.system.rawValue, for: VPNSettings.automationNoticeKey)
         await vm.choose(.system)
         XCTAssertEqual(port.requests, 1)
-        XCTAssertEqual(settings.notice, .system)
         XCTAssertTrue(settings.bannerAuthorized, "macOS said yes and the mirror did not hear it")
         XCTAssertEqual(vm.effectiveNotice(for: .connected, on: ""), .system)
     }
@@ -56,6 +55,7 @@ final class VPNNoticeChoiceTests: XCTestCase {
     func testARefusalIsRememberedAndFallsBackToTheLabel() async {
         let port = FakeAutomationNotice(state: .denied)
         let (vm, settings) = model(port)
+        settings.store.set(VPNNotice.system.rawValue, for: VPNSettings.automationNoticeKey)
         await vm.choose(.system)
         XCTAssertFalse(settings.bannerAuthorized)
         XCTAssertEqual(vm.bannerAuthorization, .denied,
