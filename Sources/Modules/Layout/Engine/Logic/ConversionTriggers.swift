@@ -5,8 +5,7 @@ import Foundation
 ///
 /// Not every boundary is a confirmation. Moving the caret or clicking elsewhere
 /// says the person went somewhere else — converting then edits text they are no
-/// longer looking at. `.focusChange` is handled the same way, but the tap never
-/// sends it: a word left in another app is caught by the app checks
+/// longer looking at. A word left in another app is caught by the app checks
 /// (`RememberedWord`).
 ///
 /// **None of it is a choice any more.** Three toggles on the settings page used
@@ -42,7 +41,7 @@ public enum ConversionTriggers {
         // chord: ⌘Space — the gesture someone makes on noticing the wrong
         // layout — used to arrive as a plain space and budget a backspace for a
         // character that never reached the field.
-        case .navigation, .chord, .click, .focusChange: return false
+        case .navigation, .chord, .click: return false
         case .character, .backspace: return false
         }
     }

@@ -86,7 +86,7 @@ final class SettingsKeysAreSpelledOnceTests: XCTestCase {
         let stored = try? XCTUnwrap(onDisk("autoAppRules") as? String)
         XCTAssertEqual(settings.appTriggers,
                        [AppTrigger(bundleID: "com.apple.Music", needsPower: true)])
-        XCTAssertEqual(AppTriggerRules.decode(stored ?? ""),
+        XCTAssertEqual((AppTriggerRules.readable(stored ?? "") ?? []),
                        [AppTrigger(bundleID: "com.apple.Music", needsPower: true)],
                        "the rules did not land under \"autoAppRules\" as JSON")
 

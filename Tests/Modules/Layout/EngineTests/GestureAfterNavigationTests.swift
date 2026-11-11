@@ -59,9 +59,10 @@ private final class ArrowSources: LayoutSourcePort, @unchecked Sendable {
 /// The gesture has a second outcome and it reads the same blind edit off a
 /// different field. With no undo record to spend, `fix()` falls through to
 /// `convertLastWord()`, which reaches for `lastCompleted` — the word that most
-/// recently *ended*. `handle()` clears that field for `.click` and
-/// `.focusChange` and sets it for everything else, so a bare arrow, Home, End,
-/// Tab or Escape *stores* the word it just ended instead of dropping it.
+/// recently *ended*. `handle()` used to clear that field for `.click` alone and
+/// set it for everything else, so a bare arrow, Home, End, Tab or Escape
+/// *stored* the word it just ended instead of dropping it. It now clears it
+/// whenever `movedTheCaret` is true, which covers `.navigation` and `.click`.
 ///
 /// Both fields carry the same promise. `RememberedWord`'s own doc says
 /// converting it "is only correct while the caret is still where the word left
@@ -119,9 +120,9 @@ final class GestureAfterNavigationTests: XCTestCase {
     /// reason not to close it.
     ///
     /// `handle()` overwrites the remembered word on *every* event that is not a
-    /// click or a focus change, and the overwrite is `finished.map { … }` — so
-    /// any second event, having nothing in the buffer to finish, writes nil and
-    /// clears it by accident. The word is therefore only exposed while the
+    /// caret move or a chord other than the shortcut, and the overwrite is
+    /// `finished.map { … }` — so any second event, having nothing in the buffer
+    /// to finish, writes nil and clears it by accident. The word is therefore only exposed while the
     /// caret move is the *most recent* thing that happened, which is exactly the
     /// shape of the gesture: press ↑ or Home or Escape, then tap the key. A
     /// second arrow, or one more character, hides it again.

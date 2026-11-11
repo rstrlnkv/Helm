@@ -6,13 +6,13 @@ import HelmRuntime
 ///
 /// That second clause is the only answer any screen gives to what happens when
 /// the countdown reaches zero, and it is computed by
-/// `SessionHero.holderAfterTimer(conditions:timerEndsAutomation:)` from the
+/// `SessionHero.afterTimer(conditions:timerEndsAutomation:)` from the
 /// conditions the engine published. The engine decides the same question for
 /// itself, elsewhere and differently:
 ///
 ///     TimerPolicy.onExpiry(hasAutoCondition:suppressed:timerEndsAutomation:)
 ///
-/// The two read a different number of inputs. `holderAfterTimer` knows nothing
+/// The two read a different number of inputs. `afterTimer` knows nothing
 /// about `suppressed`, and `Conditions.resolve` puts `.app` in the published set
 /// whenever the app is running and a session is on — suppressed or not. So the
 /// forecast and the outcome agree for exactly one reason: `startSession` clears
@@ -54,8 +54,12 @@ final class TheForecastAtZeroIsWhatHappensTests: XCTestCase {
     /// a second declaration of the page and would go on agreeing with itself
     /// after the real one stopped.
     private func whatThePageSaysWillHoldItAtZero() -> ActiveCondition? {
-        SessionHero.holderAfterTimer(conditions: engine.activeConditions,
-                                     timerEndsAutomation: settings.timerEndsAutomation)
+        if case .heldBy(let condition) = SessionHero.afterTimer(
+            conditions: engine.activeConditions,
+            timerEndsAutomation: settings.timerEndsAutomation) {
+            return condition
+        }
+        return nil
     }
 
     // MARK: - The two answers are one answer

@@ -62,7 +62,7 @@ final class RulesFromAnOlderVersionStillDecodeTests: XCTestCase {
 
         XCTAssertNil(AppTriggerRules.readable(oneFieldShort),
                      "precondition: a rule missing a required key is refused")
-        XCTAssertEqual(AppTriggerRules.decode(oneFieldShort), [],
+        XCTAssertEqual((AppTriggerRules.readable(oneFieldShort) ?? []), [],
                        "and the rule beside it, which is perfectly readable, goes with it")
     }
 }

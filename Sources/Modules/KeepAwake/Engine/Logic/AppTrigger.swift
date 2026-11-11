@@ -46,12 +46,6 @@ public struct AppTrigger: Codable, Equatable, Sendable, Identifiable {
 }
 
 enum AppTriggerRules {
-    static func isHolding(_ rules: [AppTrigger], running: Set<String>,
-                          externalDisplay: Bool, onPower: Bool) -> Bool {
-        !holding(rules, running: running, externalDisplay: externalDisplay,
-                 onPower: onPower).isEmpty
-    }
-
     /// **Which** rules are satisfied, not merely whether any is.
     ///
     /// The screen said «App» — the only rule type anybody actually uses, and
@@ -74,8 +68,6 @@ enum AppTriggerRules {
         guard let data = try? JSONEncoder().encode(rules) else { return "[]" }
         return String(decoding: data, as: UTF8.self)
     }
-
-    static func decode(_ raw: String) -> [AppTrigger] { readable(raw) ?? [] }
 
     /// The most rules this module will read, and the longest a bundle id may be.
     ///

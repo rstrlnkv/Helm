@@ -80,7 +80,7 @@ final class KeepAwakeAtRestBenchmark: XCTestCase {
                              "an indefinite session should arm the battery guard")
     }
 
-    // MARK: - 2. AppTriggerRules.decode: how often
+    // MARK: - 2. AppTriggerRules.readable: how often
 
     /// `KeepAwakeSettings.appTriggers` is a computed property — it decodes the
     /// stored JSON on every read, with nothing cached between calls, and
