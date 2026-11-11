@@ -217,6 +217,7 @@ OneBuildPerKeyTests
 OneConversationWithMacOSAboutABannerTests
 OneEntryPerKeyTests
 OnePressOfConnectIsAskedForTests
+OpeningHelmAgainOpensSettingsTests
 OpeningThePageAsksWhatItAlwaysAskedTests
 OtherSourceTests
 OutdatedQueryAllocationBenchmark

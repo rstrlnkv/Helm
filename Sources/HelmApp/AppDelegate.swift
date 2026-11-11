@@ -208,6 +208,23 @@ import Module_Uninstaller_UI
             HelmLog.shared.memory("sample")
         }
     }
+
+    /// Opening Helm again (Finder, Spotlight, Launchpad, `open -a`) does not start a
+    /// second copy of a running app: the running one is sent this reopen event.
+    /// Helm is an accessory app with no window of its own until Settings is
+    /// opened, so without this handler the open did nothing and Helm looked dead.
+    ///
+    /// With nothing on screen it asks for Settings through the notification every
+    /// other caller uses (`StatusItemController` listens). With a window up there
+    /// is nothing to ask for. `false` either way: the default reopen has nothing
+    /// to add. A miniaturised window is not visible, so it takes the asking path:
+    /// `bringForward()` activates and orders Settings front; whether that also
+    /// restores a minimised window is not verified (to check in Helm Dev).
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { NotificationCenter.default.post(name: .helmOpenSettings, object: nil) }
+        return false
+    }
+
     /// Quitting must not leave the machine changed.
     ///
     /// Keep Awake's lid option runs `sudo pmset disablesleep 1`, which is
@@ -221,6 +238,7 @@ import Module_Uninstaller_UI
     /// instance — the IOKit assertions, the event tap, the folder watchers and
     /// the power observers are all released the same way, by the code that
     /// already knows how.
+
     func applicationWillTerminate(_ notification: Notification) {
         HelmLog.shared.info("app", "terminating")
         // The coordinator owns a repeating tick and a notification observer, and
