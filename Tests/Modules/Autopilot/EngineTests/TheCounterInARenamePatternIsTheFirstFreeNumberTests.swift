@@ -241,6 +241,18 @@ final class TheCounterInARenamePatternIsTheFirstFreeNumberTests: XCTestCase {
         XCTAssertEqual(outcome, [.renamed(to: "photo-002.pdf")])
     }
 
+    /// The file's own extension is folded as well as the listed ones: `X.PDF`
+    /// is the same extension as the worn `photo-001.pdf`, and the new name
+    /// keeps the file's own spelling of it.
+    func testAFileWithAnUppercaseExtensionTakesTheNumberWornInLowerCase() throws {
+        let (home, root) = try folder()
+        try put(["photo-001.pdf", "X.PDF"], in: root)
+
+        let outcome = sweep("photo-{counter}", over: ["X.PDF"], in: root, home: home)
+
+        XCTAssertEqual(outcome, [.renamed(to: "photo-002.PDF")])
+    }
+
     /// Two folders in one pass are numbered apart: the second folder's first
     /// file is `001`, not the next number of the first folder.
     func testTwoFoldersOfOnePassAreNumberedApart() throws {
@@ -289,6 +301,17 @@ final class TheCounterInARenamePatternIsTheFirstFreeNumberTests: XCTestCase {
         XCTAssertEqual(shape.numbers(in: stem), [7])
         XCTAssertFalse(shape.matches(String(repeating: "ab-", count: 83) + "x7"))
         XCTAssertEqual(shape.numbers(in: "a-b-c-d-001-"), [])
+    }
+
+    /// Eight adjacent free-length holes and one literal against a 120-character
+    /// stem: about 120 choose 7 ways of dividing it unmemoised, which does not
+    /// finish; once per (position, part) it is instant. Asserted by answers only.
+    func testEightAdjacentNameHolesOnALongStemStillAnswer() {
+        let shape = RenameShape(resolved: String(repeating: "{name}", count: 8) + "-{counter}")
+        let stem = String(repeating: "a", count: 120) + "-007"
+
+        XCTAssertEqual(shape.numbers(in: stem), [7])
+        XCTAssertEqual(shape.numbers(in: String(repeating: "a", count: 120) + "-x07"), [])
     }
 
     func testANumberIsWornOnlyWhereTheShapeCanPutIt() {
