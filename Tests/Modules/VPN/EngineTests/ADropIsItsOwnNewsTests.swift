@@ -76,20 +76,12 @@ final class ADropIsItsOwnNewsTests: XCTestCase {
     /// chose for a tunnel going down, not in a default nobody set. Deriving the
     /// key from `rawValue` would have opened a third one silently.
     func testADropTurnsTheRingInTheColourChosenForATunnelGoingDown() {
-        settings.setSpinTint("purple", for: .disconnected)
+        settings.store.set("purple", for: VPNSettings.spinTintKey(.disconnected))
 
         XCTAssertEqual(settings.spinTint(for: .dropped), "purple",
                        "a tunnel that fell over turned the ring in a colour nobody picked")
         XCTAssertEqual(settings.spinTint(for: .connected), "green",
                        "precondition: the connect colour is untouched, so the assertion above "
                        + "is about the drop and not about one shared key")
-    }
-
-    /// Setting it *through* `.dropped` writes the same one, so the settings page
-    /// and a firing cannot disagree about where the colour lives.
-    func testSettingTheColourThroughTheDropKindWritesTheOneRowThePageDraws() {
-        settings.setSpinTint("red", for: .dropped)
-
-        XCTAssertEqual(settings.spinTint(for: .disconnected), "red")
     }
 }

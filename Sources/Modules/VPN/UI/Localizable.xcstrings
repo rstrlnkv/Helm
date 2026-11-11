@@ -319,59 +319,6 @@
         }
       }
     },
-    "chooseThisAppAgainTo": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wähle diese App erneut aus, um ihre Identität zu bestätigen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose this app again to confirm which app it is"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vuelve a elegir esta app para confirmar su identidad"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choisissez à nouveau cette app pour confirmer son identité"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "このアプリをもう一度選んで、どのアプリかを確認してください"
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Escolha este app novamente para confirmar sua identidade"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Приложение нужно выбрать заново, чтобы подтвердить его подлинность"
-          }
-        },
-        "zh": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "请重新选择此应用以确认其身份"
-          }
-        }
-      }
-    },
     "connect": {
       "extractionState": "manual",
       "localizations": {
@@ -3124,59 +3071,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "出口国家未知"
-          }
-        }
-      }
-    },
-    "thisAppIsNotSigned": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Diese App ist nicht signiert — die Regel greift nie"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This app is not signed — this rule never fires"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Esta app no está firmada: la regla no se ejecuta"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cette app n’est pas signée — la règle ne se déclenche pas"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "このアプリは署名されていません。このルールは動作しません"
-          }
-        },
-        "pt": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Este app não está assinado — a regra nunca dispara"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Приложение не подписано — правило не срабатывает"
-          }
-        },
-        "zh": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "此应用未签名，此规则不会生效"
           }
         }
       }

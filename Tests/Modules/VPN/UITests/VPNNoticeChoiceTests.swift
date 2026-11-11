@@ -48,7 +48,7 @@ final class VPNNoticeChoiceTests: XCTestCase {
         XCTAssertEqual(port.requests, 1)
         XCTAssertEqual(settings.notice, .system)
         XCTAssertTrue(settings.bannerAuthorized, "macOS said yes and the mirror did not hear it")
-        XCTAssertEqual(vm.effectiveNotice, .system)
+        XCTAssertEqual(vm.effectiveNotice(for: .connected, on: ""), .system)
     }
 
     /// A refusal must not leave the loudest mode silent: the label takes over,
@@ -60,7 +60,7 @@ final class VPNNoticeChoiceTests: XCTestCase {
         XCTAssertFalse(settings.bannerAuthorized)
         XCTAssertEqual(vm.bannerAuthorization, .denied,
                        "the page has no way to tell the person macOS refused")
-        XCTAssertEqual(vm.effectiveNotice, .menuBar,
+        XCTAssertEqual(vm.effectiveNotice(for: .connected, on: ""), .menuBar,
                        "a refused banner became silence rather than the menu-bar name")
     }
 

@@ -88,15 +88,14 @@ extension VPNEngine: VPNWork {}
     /// than a way to call a banner back.
     private(set) var announcement: Task<Void, Never>?
 
-    /// How loudly a firing is announced. Read from the store at every ask
-    /// rather than cached, so a change in Settings applies to the next firing
-    /// instead of to the next launch.
-    var notice: VPNNotice { noticeForTesting ?? settings?.notice ?? .menuBar }
-
-    /// …and the one for a tunnel that fell over by itself, which is a separate
-    /// setting because it is separate news. `noticeForTesting` covers both: a
-    /// test that sets a mode is setting the module's voice, and one that wants
-    /// them to differ passes `dropNotice`.
+    /// How loudly a firing is announced, for a tunnel that fell over by itself
+    /// or any other. Read from the store at every ask rather than cached, so a
+    /// change in Settings applies to the next firing instead of to the next
+    /// launch. The drop is a separate setting because it is separate news.
+    /// `noticeForTesting` covers the rules' mode and the drop's alike: a test
+    /// that sets a mode is setting the module's voice, and one that wants the
+    /// two to differ passes `dropNotice`.
+    ///
     /// Through `VPNNotice.mode`, which is the same rule the store reads: this end
     /// used to answer «the drop setting for a drop, the rules' setting for
     /// everything else» in its own words, and a teardown Helm performed then took
@@ -149,7 +148,7 @@ extension VPNEngine: VPNWork {}
 
     /// Whether the menu-bar ring turns when a rule fires, module-wide: what a
     /// configuration without a book entry inherits, and nothing in the app writes
-    /// it. Read at every ask rather than cached, like `notice`.
+    /// it. Read at every ask rather than cached, like `notice(for:)`.
     var automationSpin: Bool {
         spinForTesting ?? settings?.automationSpin ?? false
     }
@@ -175,18 +174,10 @@ extension VPNEngine: VPNWork {}
     /// The mode as it will actually behave, which is not always the mode that
     /// was chosen: `.system` without the permission is the menu-bar label, and
     /// anything that acts on the choice has to ask this rather than the raw one.
-    var effectiveNotice: VPNNotice {
-        notice.effective(bannerAuthorized: bannerAuthorized)
-    }
-
-    /// The same, for the firing in hand. A tunnel that fell over answers to its
-    /// own setting, and the menu-bar name is decided from the firing's kind
-    /// rather than from the rules' mode.
-    func effectiveNotice(for kind: VPNAutomation.Kind) -> VPNNotice {
-        notice(for: kind).effective(bannerAuthorized: bannerAuthorized)
-    }
-
-    /// The same for a firing, on the configuration it happened on.
+    ///
+    /// For the firing in hand, on the configuration it happened on: a tunnel that
+    /// fell over answers to its own setting, and the menu-bar name is decided from
+    /// the firing's kind rather than from the rules' mode.
     func effectiveNotice(for kind: VPNAutomation.Kind, on name: String) -> VPNNotice {
         notice(for: kind, on: name).effective(bannerAuthorized: bannerAuthorized)
     }

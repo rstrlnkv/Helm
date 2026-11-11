@@ -189,8 +189,7 @@ final class TheToolKnewSinceWhenAllAlongTests: XCTestCase {
     /// clause appears on a configuration it is not true of.
     func testATunnelThatExcludesNothingSummarisesToNothing() {
         XCTAssertEqual(VPNExcludedRoutes.summarize([]), .none)
-        XCTAssertTrue(VPNExcludedRoutes.summarize([]).isEmpty)
-        XCTAssertFalse(VPNExcludedRoutes.summarize([
-            .init(destination: "10.0.0.0")]).isEmpty)
+        XCTAssertNotEqual(VPNExcludedRoutes.summarize([
+            .init(destination: "10.0.0.0")]), .none)
     }
 }

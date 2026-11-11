@@ -45,7 +45,7 @@ final class ADropIsAnnouncedOnItsOwnSettingTests: XCTestCase {
         work.say(payload)
         for _ in 0..<500 where model.lastAutomation == nil { await Task.yield() }
         await model.announcement?.value
-        return (port.posted, model.effectiveNotice(for: kind).showsMenuBarName
+        return (port.posted, model.effectiveNotice(for: kind, on: firing.name).showsMenuBarName
                 ? model.lastAutomation?.name : nil)
     }
 

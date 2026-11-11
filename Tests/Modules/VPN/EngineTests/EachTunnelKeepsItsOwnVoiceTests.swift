@@ -18,7 +18,7 @@ import XCTest
 ///
 /// **Keyed by the configuration's id, not its name.** This module has already
 /// paid for that distinction once: a rule keyed by name is orphaned the moment
-/// somebody renames the configuration in System Settings (`VPNRules.orphaned`
+/// somebody renames the configuration in System Settings (`VPNTenants.orphaned`
 /// exists for it). `scutil` gives every service a UUID and `VPNConnection.id`
 /// carries it, so a rename here costs nothing.
 final class EachTunnelKeepsItsOwnVoiceTests: XCTestCase {
@@ -90,18 +90,5 @@ final class EachTunnelKeepsItsOwnVoiceTests: XCTestCase {
         let book = VPNNoticeBook().setting("A", notice: .silent)
         XCTAssertEqual(book.notice(for: "A", kind: .connected,
                                    rules: global.rules, drop: global.drop), .silent)
-        XCTAssertEqual(book.entryCount, 1)
-    }
-
-    /// Setting a value back to what it inherits removes the entry rather than
-    /// recording agreement: a book that grows an entry per glance is a book that
-    /// pins today's default for ever.
-    func testChoosingWhatItAlreadyInheritsForgetsTheEntry() {
-        let book = VPNNoticeBook().setting("A", notice: .silent)
-        XCTAssertEqual(book.entryCount, 1)
-        let cleared = book.clearing("A")
-        XCTAssertEqual(cleared.entryCount, 0)
-        XCTAssertEqual(cleared.notice(for: "A", kind: .connected,
-                                      rules: global.rules, drop: global.drop), .menuBar)
     }
 }

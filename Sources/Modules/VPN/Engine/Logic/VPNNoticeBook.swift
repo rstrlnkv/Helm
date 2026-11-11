@@ -59,10 +59,6 @@ public struct VPNNoticeBook: Equatable, Codable {
 
     public init(entries: [String: Entry] = [:]) { self.entries = entries }
 
-    /// For the tests, and for a screen that wants to say «3 of your
-    /// configurations speak differently».
-    public var entryCount: Int { entries.count }
-
     // MARK: - Reading
 
     /// How loudly this configuration announces a firing of `kind`.
@@ -125,15 +121,6 @@ public struct VPNNoticeBook: Equatable, Codable {
     public func setting(_ id: String, tint token: String,
                         for kind: VPNAutomation.Kind) -> VPNNoticeBook {
         kind.goingUp ? setting(id, tintUp: token) : setting(id, tintDown: token)
-    }
-
-    /// Back to inheriting. Removes the record rather than storing agreement with
-    /// today's default — a book that grows an entry per glance pins that default
-    /// for ever.
-    public func clearing(_ id: String) -> VPNNoticeBook {
-        var copy = self
-        copy.entries[id] = nil
-        return copy
     }
 
     // MARK: - The store

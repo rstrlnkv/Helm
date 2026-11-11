@@ -33,7 +33,7 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
         let settings = VPNSettings(store: store)
         settings.setNotice(.menuBar)
         settings.setDropNotice(.menuBar)
-        settings.setAutomationSpin(true)
+        settings.store.set(true, for: VPNSettings.automationSpinKey)
         book(settings)
         let vm = VPNViewModel(work: work, settings: settings)
         let payload = VPNEngine.StatePayload(
@@ -117,7 +117,7 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
     /// constant spelled twice.
     func testAnUntouchedTunnelFollowsTheModuleWideColour() {
         let vm = model([("id-A", "Office")], book: { settings in
-            settings.setSpinTint("blue", for: .connected)
+            settings.store.set("blue", for: VPNSettings.spinTintKey(.connected))
         })
         XCTAssertEqual(vm.spinTint(for: .connected, on: "Office"), "blue")
     }
@@ -146,7 +146,6 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
                           + "to the store and never read")
         }
         for moduleWide in ["model.automationSpin\n", "model.automationSpin ",
-                           "model.effectiveNotice(for: firing.kind)",
                            "model.spinTint(for: firing.kind)"] {
             XCTAssertFalse(source.contains(moduleWide),
                            "the firing path still reads «\(moduleWide)» module-wide")

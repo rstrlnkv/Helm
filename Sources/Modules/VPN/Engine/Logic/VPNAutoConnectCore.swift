@@ -41,9 +41,4 @@ struct VPNAutoConnectCore {
         running[rule.vpnName] = set
         if set.isEmpty && rule.disconnectOnQuit { disconnect(rule.vpnName) }
     }
-
-    /// The VPNs with ≥1 mapped app currently running.
-    var activeVPNs: Set<String> {
-        Set(running.filter { !$0.value.isEmpty }.keys)
-    }
 }

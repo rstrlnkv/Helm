@@ -54,7 +54,6 @@ final class VPNAutoConnectDriftTests: XCTestCase {
     func test_remapping_a_running_app_neither_strands_the_old_vpn_nor_cuts_the_new_one() {
         var core = VPNAutoConnectCore(rules: ["a": VPNAppRule(vpnName: "Work")])
         core.appLaunched("a", connect: { _ in })
-        XCTAssertEqual(core.activeVPNs, ["Work"])
 
         // The user re-points the rule at another VPN while the app keeps running.
         core.rules = ["a": VPNAppRule(vpnName: "Home")]
@@ -62,10 +61,8 @@ final class VPNAutoConnectDriftTests: XCTestCase {
         var disconnects: [String] = []
         core.appTerminated("a", disconnect: { disconnects.append($0) })
 
-        XCTAssertFalse(disconnects.contains("Home"),
-                       "quitting the app disconnected a VPN it was never launched against")
-        XCTAssertTrue(core.activeVPNs.isEmpty,
-                      "the old VPN is stranded as active forever: \(core.activeVPNs)")
+        XCTAssertEqual(disconnects, ["Work"],
+                       "the quit must take down the VPN the launch raised, and no other")
     }
 
     /// Guard against the obvious over-correction: a real 1→0 transition must

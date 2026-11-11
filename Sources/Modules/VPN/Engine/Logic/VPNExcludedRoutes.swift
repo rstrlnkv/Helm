@@ -62,7 +62,6 @@ public enum VPNExcludedRoutes {
         /// a status read that failed produces no `Reading` at all, so there is
         /// no third state to represent here.
         public static let none = Summary(localNetwork: false, apple: false, others: 0)
-        public var isEmpty: Bool { self == .none }
     }
 
     /// Apple's network, as one `/8`. A constant with its own name because the

@@ -57,10 +57,10 @@ public struct VPNSettings {
     /// no sign at all.
     ///
     /// The switch is a card's, written to the book; this is the value a
-    /// configuration without an entry inherits. `setAutomationSpin` and
-    /// `setSpinTint` have no caller in `Sources`, only tests.
-    public var automationSpin: Bool { store.bool("automationSpin", default: false) }
-    public func setAutomationSpin(_ on: Bool) { store.set(on, for: "automationSpin") }
+    /// configuration without an entry inherits.
+    public var automationSpin: Bool { store.bool(Self.automationSpinKey, default: false) }
+    /// Nothing in `Sources` writes it; the tests plant it under this name.
+    static let automationSpinKey = "automationSpin"
 
     /// The colour the ring turns in, per kind of firing. A tunnel going up and
     /// a tunnel going down are the two things worth telling apart at a glance,
@@ -68,16 +68,13 @@ public struct VPNSettings {
     public func spinTint(for kind: VPNAutomation.Kind) -> String {
         store.string(Self.spinTintKey(kind), default: kind.goingUp ? "green" : "orange")
     }
-    public func setSpinTint(_ token: String, for kind: VPNAutomation.Kind) {
-        store.set(token, for: Self.spinTintKey(kind))
-    }
     /// **Two keys for three kinds.** `.dropped` is a third kind of news and not
     /// a third colour: the ring says which way the tunnel went, and there are
     /// two ways. Deriving the key from `rawValue` would have opened a
     /// `spinTint.dropped` nobody sets, so a tunnel that fell over would have
     /// turned the ring in the default orange while the person's own colour for
     /// a tunnel going down sat in the store unread.
-    private static func spinTintKey(_ kind: VPNAutomation.Kind) -> String {
+    static func spinTintKey(_ kind: VPNAutomation.Kind) -> String {
         "spinTint.\(kind.goingUp ? "connected" : "disconnected")"
     }
 

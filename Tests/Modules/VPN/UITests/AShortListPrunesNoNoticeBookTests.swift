@@ -21,7 +21,8 @@ final class AShortListPrunesNoNoticeBookTests: XCTestCase {
                                                           backing: InMemoryKeyValueStore()))
         settings.setNoticeBook(settings.noticeBook.setting("1", notice: .silent))
         let before = VPNNoticeBook.encode(settings.noticeBook)
-        XCTAssertEqual(settings.noticeBook.entryCount, 1, "precondition: the book holds a choice")
+        XCTAssertNotEqual(before, VPNNoticeBook.encode(VPNNoticeBook()),
+                          "precondition: the book holds a choice")
 
         let work = FakeVPNWork()
         let model = VPNViewModel(work: work, settings: settings)

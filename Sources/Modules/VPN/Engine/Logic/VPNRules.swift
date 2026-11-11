@@ -104,28 +104,4 @@ public enum VPNRules {
         let names = Set(connections.map(\.name))
         return rules.filter { names.contains($0.value.vpnName) }
     }
-
-    /// How many rules can fire — what a dial labelled *automatic* would count.
-    /// No caller in `Sources`; tests call it.
-    ///
-    /// It used to count `autoConnected`, the connections a rule has up at this
-    /// instant, so the strip read "0" directly above the list of rules the
-    /// person had written. Whether one is firing right now is the green dot's
-    /// answer; this is the other question. A rule set to `.off` is written down
-    /// and inert, and counting it would be the same lie the other way round.
-    public static func automationCount(_ rules: [String: VPNAppRule]) -> Int {
-        rules.values.count { $0.timing != .off }
-    }
-
-    /// Rules naming a VPN the system no longer has. `valid` drops them from the
-    /// engine's rules at its next reload, and dropping them quietly is how
-    /// someone ends up trusting automation that has not run for weeks.
-    /// No caller in `Sources`: the page asks `VPNTenants.orphaned`, which answers
-    /// none for an empty list of connections.
-    public static func orphaned(_ rules: [String: VPNAppRule],
-                                against connections: [VPNConnection]) -> [String: VPNAppRule] {
-        let names = Set(connections.map(\.name))
-        return rules.filter { !names.contains($0.value.vpnName) }
-    }
-
 }
