@@ -993,23 +993,36 @@ extension HomebrewEngine: HomebrewWork {}
     /// Uninstall button has raised since somebody noticed it removed an
     /// application on a single click. The judgement is `FixAsk.of`'s and not
     /// this method's, so a test reads it without a `body` in the way.
-    func askToRunFix(_ fix: DoctorFix) {
+    ///
+    /// An `uninstall <name>` fix reads what depends on the package first, through
+    /// `askAboutRemoving` — the same reading, and the same list under the same
+    /// sentence, as the Uninstall button's dialog. A fix names one package, so
+    /// there is one list.
+    func askToRunFix(_ fix: DoctorFix) async {
         switch FixAsk.of(fix.argv) {
         case .runsOnThePress: runDoctorFix(fix)
-        case .uninstalls, .unrecognised: pendingFix = fix
+        case let .uninstalls(name):
+            // A doctor heading names a formula; a cask's dependents are `[]` anyway.
+            await askAboutRemoving(PackageRef(name: name, isCask: false)) { self.pendingFix = fix }
+        case .unrecognised: pendingFix = fix
         }
     }
 
     /// Closes the question without running anything. Called by the dialog's
     /// Cancel and by the page going away, for `cancelUninstall`'s reason: this
     /// object outlives the page, and a question left standing is one the next
-    /// visit opens with.
-    func cancelFix() { pendingFix = nil }
+    /// visit opens with. Also abandons a dependents read still out and clears
+    /// the list, as `cancelUninstall` does; `confirmFix` relies on both.
+    func cancelFix() {
+        _ = uninstallAsks.take()
+        pendingFix = nil
+        dependentsOfPending = []
+    }
 
     /// The press on the dialog Run raised. The only door to a destructive fix.
     func confirmFix() {
         guard let fix = pendingFix else { return }
-        pendingFix = nil
+        cancelFix()
         runDoctorFix(fix)
     }
 
@@ -1162,16 +1175,24 @@ extension HomebrewEngine: HomebrewWork {}
     /// — leaves the list empty and the dialog says only what it always said;
     /// it must not invent a reassurance out of a query that never answered.
     func askToUninstall(_ pkg: BrewPackage) async {
+        await askAboutRemoving(PackageRef(name: pkg.name, isCask: pkg.isCask)) { self.pendingUninstall = pkg }
+    }
+
+    /// The one place a confirmation for `brew uninstall` is built, for both
+    /// doors: reads the dependents, and only then calls `raise`, which sets the
+    /// dialog's own pending value. `dependentsOfPending` is shared by the two
+    /// dialogs, so each draws the same "still needed by" content.
+    private func askAboutRemoving(_ ref: PackageRef, raise: () -> Void) async {
         guard !closed else { return }
         let mine = uninstallAsks.take()
-        let answer = await door?.readDependents(of: PackageRef(name: pkg.name, isCask: pkg.isCask))
+        let answer = await door?.readDependents(of: ref)
         // Both halves or neither, and only for the press still being waited on:
         // the package named in the title and the names under it are one reading
         // of one Cellar, and a dialog carrying two presses' worth is a sentence
         // about a package that is not the one about to be deleted.
         guard uninstallAsks.isLatest(mine) else { return }
         dependentsOfPending = answer ?? []
-        pendingUninstall = pkg
+        raise()
     }
 
     /// Closes the dialog and abandons whatever reading is still out — a token
@@ -1192,7 +1213,7 @@ extension HomebrewEngine: HomebrewWork {}
     /// (`askToUninstall`, which reads what depends on the package) and this is
     /// the press on the dialog it raised, so through this door the deletion
     /// cannot be reached without the sentence saying what it takes with it; the
-    /// fix's dialog asks too, and does not read the dependents. The
+    /// fix's dialog asks too, through the same `askAboutRemoving`. The
     /// `uninstall(_:)` that used to sit beside it was a third, unconfirmed
     /// one, with no caller left outside this type.
     func confirmUninstall() {

@@ -291,7 +291,7 @@ private struct HealthRunButton: View {
 
     var body: some View {
         let command = HomebrewSettingsPage.commandLine(fix)
-        Button(HomebrewSettingsPage.runLabel(fix), role: .destructive) { hb.askToRunFix(fix) }
+        Button(HomebrewSettingsPage.runLabel(fix), role: .destructive) { Task { await hb.askToRunFix(fix) } }
         .disabled(hb.running)
         .help(command)
         .accessibilityHint(command)

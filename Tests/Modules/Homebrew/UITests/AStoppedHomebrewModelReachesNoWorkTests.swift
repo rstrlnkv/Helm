@@ -54,8 +54,8 @@ final class AStoppedHomebrewModelReachesNoWorkTests: XCTestCase {
         model.upgradeAll()
         model.installBrew()
         pressStopButton(model)
-        model.askToRunFix(DoctorFix(argv: ["cleanup"], kind: .runnable))
-        model.askToRunFix(DoctorFix(argv: ["uninstall", "wget"], kind: .runnable))
+        await model.askToRunFix(DoctorFix(argv: ["cleanup"], kind: .runnable))
+        await model.askToRunFix(DoctorFix(argv: ["uninstall", "wget"], kind: .runnable))
         model.confirmFix()
         let live: [HomebrewAct] = [
             .install(PackageRef(name: "wget", isCask: false)),
@@ -79,8 +79,8 @@ final class AStoppedHomebrewModelReachesNoWorkTests: XCTestCase {
         model.upgradeAll()
         model.installBrew()
         pressStopButton(model)
-        model.askToRunFix(DoctorFix(argv: ["cleanup"], kind: .runnable))
-        model.askToRunFix(DoctorFix(argv: ["uninstall", "wget"], kind: .runnable))
+        await model.askToRunFix(DoctorFix(argv: ["cleanup"], kind: .runnable))
+        await model.askToRunFix(DoctorFix(argv: ["uninstall", "wget"], kind: .runnable))
         model.confirmFix()
         await grace()
         XCTAssertEqual(work.acts, live, "a stopped model pressed something on the engine")

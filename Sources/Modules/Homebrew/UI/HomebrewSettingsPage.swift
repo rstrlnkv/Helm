@@ -74,7 +74,7 @@ struct HomebrewSettingsPage: View {
             Button(HbStr.runTheFix, role: .destructive) { hb.confirmFix() }
             Button(HbStr.cancel, role: .cancel) { hb.cancelFix() }
         } message: {
-            if let note = hb.pendingFix.flatMap({ Self.fixQuestionNote($0) }) { Text(note) }
+            if let note = hb.pendingFix.flatMap({ Self.fixQuestionNote($0, dependents: hb.dependentsOfPending) }) { Text(note) }
         }
         // Removing a cask removes an application, so it asks first.
         .confirmationDialog(hb.pendingUninstall.map { HbStr.confirmUninstall($0.name) } ?? "",
@@ -84,16 +84,7 @@ struct HomebrewSettingsPage: View {
             Button(HbStr.uninstall, role: .destructive) { hb.confirmUninstall() }
             Button(HbStr.cancel, role: .cancel) { hb.cancelUninstall() }
         } message: {
-            // Two sentences, and the second only when there is something to say:
-            // a heading over an empty list reads as a reassurance that nothing
-            // depends on this, which a refused query has not earned.
-            if hb.dependentsOfPending.isEmpty {
-                Text(HbStr.uninstallIsPermanent)
-            } else {
-                Text(HbStr.uninstallIsPermanent + "\n\n"
-                     + HbStr.stillNeededBy + "\n"
-                     + hb.dependentsOfPending.joined(separator: ", "))
-            }
+            Text(Self.uninstallNote(dependents: hb.dependentsOfPending))
         }
     }
 
