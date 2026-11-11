@@ -279,4 +279,23 @@ final class TheLidSwitchAsksOutsideASessionTests: XCTestCase {
         XCTAssertFalse(engine.lidGrantRemains, "no grant was left behind")
         XCTAssertEqual(clamshell.installCalls, 1, "a cancel is not asked again")
     }
+
+    /// A gesture is not enough, idle or not: it must also *turn the switch on*.
+    /// The same gesture on a key that is already on makes no rising edge, so it
+    /// asks nothing more.
+    @MainActor
+    func testIdleTheGestureOnASwitchAlreadyOnAsksNothingMore() async {
+        engine.lidSwitchTurned(true)
+        await waitUntil("the lid asked for the rule") { clamshell.installCalls == 1 }
+        clamshell.finishInstall(granted: false)
+        drainMain()
+        await engine.drainClamshellForTests()
+        XCTAssertTrue(KeepAwakeSettings(store: store).clamshellEnabled, "precondition: the switch is already on")
+        XCTAssertFalse(engine.isActive, "precondition: no session")
+        XCTAssertEqual(clamshell.installCalls, 1, "precondition: one ask so far")
+        engine.lidSwitchTurned(true)
+        await engine.drainClamshellForTests()
+        drainMain()
+        XCTAssertEqual(clamshell.installCalls, 1, "a gesture with no rising edge raised the dialog again")
+    }
 }
