@@ -15,6 +15,11 @@ public final class ScutilRunner: VPNRunnerPort {
     public func run(_ args: [String]) -> HelmProcess.Result {
         HelmProcess.run("/usr/sbin/scutil", args)
     }
+    /// The query form: a `scutil` still running at `timeout` is terminated and
+    /// the answer is `HelmProcess.timedOutStatus` with no output.
+    public func read(_ args: [String], timeout: TimeInterval) -> HelmProcess.Result {
+        HelmProcess.run("/usr/sbin/scutil", args, timeout: timeout)
+    }
 
     /// The start that carries a secret, in this process: `scutil --nc start`
     /// takes `--user`, `--password` and `--secret` only as arguments, which every
@@ -203,6 +208,10 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// Service used for Helm's own cached copy of a VPN's credentials.
     private let helmVPNKeychainService = "com.helm.vpn"
 
+    /// Asks `scutil --nc show` through the module's runner, so the read has the
+    /// same deadline and the same seam as every other.
+    private let runner: VPNRunnerPort
+
     public convenience init() { self.init(purge: Self.purgeItemsWithTheOldAccessList) }
 
     /// The purge as an action, so a test can watch when it runs without ever
@@ -229,7 +238,8 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// holds whatever thread it is on for as long as a person looks at it,
     /// which is the one thing the cooperative pool's thread-per-core must never
     /// be spent on.
-    init(purge: @escaping @Sendable () -> Void) {
+    init(purge: @escaping @Sendable () -> Void, runner: VPNRunnerPort = ScutilRunner()) {
+        self.runner = runner
         DispatchQueue.global(qos: .utility).async(execute: purge)
     }
 
@@ -272,8 +282,24 @@ public final class KeychainCredentials: VPNCredentialsPort {
         }
     }
 
+    /// Answers `.notNeeded` for four reasons the answer does not separate: no
+    /// secret kept, an empty `--nc show`, a failed one, a timed-out one. The two
+    /// failures log a warning naming the exit status or the timeout, which is
+    /// the only way to tell them from the first (`VPNCredentialRead.notNeeded`).
     public func credentials(for name: String, promptingAllowed: Bool) -> VPNCredentialRead {
-        let show = HelmProcess.run("/usr/sbin/scutil", ["--nc", "show", name]).output
+        let shown = runner.read(["--nc", "show", name], timeout: vpnReadDeadline)
+        // A read that ran out of time or failed is an absence, as an empty
+        // answer always was here (`.notNeeded`) — but it is logged, which the
+        // empty answer was not. A connect that needed the secret then goes
+        // without it and nothing reports the failure (`--nc start` answers
+        // nothing either way), so a rule connect records and announces
+        // "connected" with no tunnel (defects page, `vpn-show-unreadable`).
+        if shown.status != 0 {
+            HelmLog.shared.warn(VPNEngine.moduleID, "the configuration of \(Redact.vpn(name)) could not be read "
+                + "(\(shown.status == HelmProcess.timedOutStatus ? "timed out after \(Int(vpnReadDeadline)) s" : "exit status \(shown.status)")); "
+                + "connecting without a supplied secret")
+        }
+        let show = shown.status == 0 ? shown.output : ""
         // No `AuthPassword` line: this configuration keeps no secret Helm has to
         // supply, and `--nc start` connects it on its own. `.notNeeded` rather
         // than the nil this used to be — see `VPNCredentialRead`, and the

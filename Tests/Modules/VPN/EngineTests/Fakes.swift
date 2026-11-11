@@ -92,6 +92,12 @@ final class FakeRunner: VPNRunnerPort {
         return startAnswer
     }
 
+    /// A query answers as a command does: this fake never runs out of time.
+    /// A read that does is scripted in `AHungScutilDoesNotParkTheModuleTests`.
+    func read(_ args: [String], timeout: TimeInterval) -> HelmProcess.Result {
+        run(args)
+    }
+
     func run(_ args: [String]) -> HelmProcess.Result {
         onRun?(args)
         issued.append(args)

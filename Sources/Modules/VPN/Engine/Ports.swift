@@ -35,6 +35,14 @@ public enum VPNCredentialRead: Equatable, Sendable {
     case ready(VPNCredentials)
     /// This configuration keeps no secret Helm supplies. `scutil --nc start`
     /// connects it on its own, and there is nothing to say to anybody.
+    ///
+    /// **Four reasons collapse into this one answer:** the configuration keeps
+    /// no secret (the ordinary case), `scutil --nc show` printed nothing, it
+    /// exited non-zero, or it timed out. Owner decision 2026-11-11: they stay
+    /// one answer; the last two log a warning naming the status or the timeout,
+    /// and that line is what tells them apart. A connect that needed the secret
+    /// then goes without it and nothing reports the failure: a rule connect
+    /// records and announces "connected" with no tunnel.
     case notNeeded
     /// There is a secret and this read did not get it: it lives in the System
     /// keychain, which macOS gates behind an authorization dialog. For an
@@ -63,8 +71,18 @@ public enum VPNCredentialRead: Equatable, Sendable {
 /// this user while the child lives, and it has no terminal form. The secret goes
 /// to the system in process instead (`SCNetworkConnectionStart`), so the answer
 /// is its own enum: the tool's printed sentence does not exist on this path.
+///
+/// **Two entry points, because a read and a command are not bounded alike.**
+/// `read(_:timeout:)` is for the queries (`--nc list`, `status`, `show`): a
+/// `scutil` that does not answer is ended at the deadline and the answer is
+/// `HelmProcess.timedOutStatus` with no output, so the module's one serial queue
+/// is never parked behind it. `run(_:)` is for `--nc start` and `stop`, which
+/// change state and keep the timing they always had.
 public protocol VPNRunnerPort: AnyObject {
+    /// A command, unbounded.
     func run(_ args: [String]) -> HelmProcess.Result
+    /// A read-only query, ended at `timeout` seconds with `timedOutStatus`.
+    func read(_ args: [String], timeout: TimeInterval) -> HelmProcess.Result
     /// Starts the configuration called `name`, handing the system `credentials`
     /// without any process seeing them. The answer names three reasons and no
     /// text: no configuration by that name in the list the system gave, the
@@ -72,6 +90,12 @@ public protocol VPNRunnerPort: AnyObject {
     /// the system refusing the start with its `SCError`, or the start taken.
     func start(_ name: String, supplying credentials: VPNCredentials) -> VPNStartAnswer
 }
+
+/// How long a read-only `scutil` query may take: it is local IPC to the network
+/// configuration daemon and answers in milliseconds, so five seconds clears a
+/// loaded Mac many times over and still frees the queue inside one sitting
+/// (Homebrew's ninety seconds is for queries that reach the network).
+public let vpnReadDeadline: TimeInterval = 5
 
 /// What `VPNRunnerPort.start(_:supplying:)` found. **No text, so no name in
 /// it** — the system's error is a number, and a number names nobody's VPN.

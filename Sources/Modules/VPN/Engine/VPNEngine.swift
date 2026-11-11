@@ -381,11 +381,26 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         work.run { [weak self] in self?.refreshNow() }
     }
 
+    /// One line for a read that did not answer, naming why; the caller keeps
+    /// its last answer.
+    private func logFailedRead(_ what: String, _ status: Int32) {
+        let why = status == HelmProcess.timedOutStatus
+            ? "timed out after \(Int(vpnReadDeadline)) s" : "exit status \(status)"
+        HelmLog.shared.warn(Self.moduleID, "\(what) read failed (\(why)); keeping the last answer")
+    }
+
     /// The blocking half, always on the work queue.
     private func refreshNow() {
-        let output = runner.run(["--nc", "list"]).output
-        // Silence is not an answer. Only the output of `--nc list` is read here,
-        // never the status in the result, so a read that failed looks exactly like a Mac with no VPNs — and acting
+        let read = runner.read(["--nc", "list"], timeout: vpnReadDeadline)
+        // A read that ran out of time or exited non-zero is not an answer even
+        // if it printed a list: the exit status is read with the output.
+        guard read.status == 0 else {
+            logFailedRead("connection list", read.status)
+            return
+        }
+        let output = read.output
+        // Silence is not an answer: an empty list from a tool that exited 0
+        // looks exactly like a Mac with no VPNs — and acting
         // on it does two kinds of damage: the page announces that the user's
         // connections are gone while they are up, and the drop detection below,
         // which asks what is missing from this list, decides that everything
@@ -936,7 +951,12 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         for connection in parsed
         where connection.status.isConnected
             && (interfaceOf[connection.id] == nil || primary == nil) {
-            let output = runner.run(["--nc", "status", connection.name]).output
+            let read = runner.read(["--nc", "status", connection.name], timeout: vpnReadDeadline)
+            guard read.status == 0 else {
+                logFailedRead("status of \(Redact.vpn(connection.name))", read.status)
+                continue
+            }
+            let output = read.output
             // Nil stays nil: a tunnel that is still coming up names no interface
             // yet, and the next refresh — there is always one, the poll sees to
             // that — asks again. A *re-read* that answers nothing keeps what was

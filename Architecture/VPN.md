@@ -23,8 +23,11 @@ The tool is asked before the app announces. `scutil --nc start`/`stop` exit `0`
 whatever happens and put their answer on stdout, so the port hands back the whole
 process result and `Sources/Modules/VPN/Engine/Logic/VPNCommandReply.swift` reads the
 status and the stdout together before anything is announced. `--nc list`,
-`--nc status` and `--nc show` are read for their stdout alone, with no deadline:
-`ScutilRunner.run` and `KeychainCredentials.credentials` call `HelmProcess.run` without a `timeout`.
+`--nc status` and `--nc show` are read through `VPNRunnerPort.read(_:timeout:)` with a five-second
+deadline (`vpnReadDeadline`): `ScutilRunner` passes it to `HelmProcess.run(timeout:)`, which ends a hung
+`scutil` and answers `HelmProcess.timedOutStatus`, so the work queue is never parked. The exit status is
+read with the stdout; a timed-out or non-zero read logs a line naming why and keeps the last answer, and an
+unreadable `--nc show` is the same absence as before (`.notNeeded`) but logged.
 
 A secret never rides in an argument list: `scutil --nc start` takes `--user`, `--password` and
 `--secret` only as arguments and has no terminal form, so the start that carries one goes to the
