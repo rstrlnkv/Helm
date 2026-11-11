@@ -214,8 +214,8 @@ struct RingView: View {
 
     /// The segment under the cursor when it has a path. Free space and the
     /// `isOther` arc both have an empty one, so a hover on either resolves to
-    /// the free-space segment, or to nothing when the focus has none. The
-    /// folded bucket arrives as an ordinary wedge named `…`, and prints that name.
+    /// the free-space segment, or to nothing when the focus has none. The scan's
+    /// folded bucket is an `isOther` arc too (`RingLayout`), so it hovers the same way.
     private var tooltipSegment: RingSegment? {
         guard let hovered else { return nil }
         return segments.first { $0.path == hovered && !$0.path.isEmpty }
@@ -284,8 +284,7 @@ struct RingView: View {
 
     /// Depth fades toward the rim, hover lifts; free space and folded slivers
     /// stay deliberately quiet so real data reads first. An unreadable folder
-    /// has its colour here, but no node carries the flag today
-    /// (`DiskViewModel.node(from:)`).
+    /// has its colour here, and `DiskViewModel.node(from:)` carries the flag.
     private func color(for segment: RingSegment) -> Color {
         if segment.isFreeSpace { return DiskPalette.freeSpace }
         if segment.noAccess { return DiskPalette.noAccess }

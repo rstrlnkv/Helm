@@ -618,14 +618,13 @@ extension DiskEngine: DiskWork {}
     /// down from the focus. The paths that come out are the entries' own again,
     /// which is what the basket and `UserFileScope` see.
     ///
-    /// Only name, size, kind and children are carried: `noAccess` and `isFolded`
-    /// stay at their defaults, so the ring draws no unreadable-folder wedge and
-    /// takes the folded bucket for a file named `…`; the list rows read both
-    /// from the entry itself.
+    /// `noAccess` and `isFolded` are carried too: without them the ring drew
+    /// no unreadable-folder wedge and took the folded bucket for a file named `…`.
     private static func node(from entry: DiskEntry) -> DiskNode {
         DiskNode(name: entry.name, bytes: entry.bytes,
                  isDirectory: entry.isDirectory,
-                 children: entry.children.map(node(from:)))
+                 children: entry.children.map(node(from:)),
+                 isFolded: entry.isFolded, noAccess: entry.noAccess)
     }
 
 }

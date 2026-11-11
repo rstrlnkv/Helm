@@ -45,7 +45,8 @@ public struct RingGeometry: Sendable, Equatable {
 /// Pure sunburst math: focus node → arcs. Drawing and hit-testing share it,
 /// so a segment is clickable exactly where it is painted.
 public enum RingLayout {
-    /// Segments narrower than this fold into an "other" arc per parent.
+    /// Segments narrower than this fold into an "other" arc per parent; the scan's
+    /// own folded bucket (`isFolded`) is drawn as that same "other" arc.
     static let minimumVisibleAngle = 2.0 * .pi / 360.0 * 2.0   // 2°
 
     /// `path` locates `focus`; every segment's path is composed down from it,
@@ -93,6 +94,15 @@ public enum RingLayout {
                 // Saturating, like the free-space sum above: narrow children can
                 // together outweigh an integer when the tree was decoded from a file.
                 foldedBytes = foldedBytes.saturatingAdding(max(child.bytes, 0))
+                continue
+            }
+            if child.isFolded {
+                // The scan's own bucket is the same "other" wedge as the fold below.
+                out.append(RingSegment(name: "…", path: "", bytes: child.bytes,
+                                       startAngle: cursor, endAngle: cursor + span,
+                                       ring: ring, isDirectory: false, isOther: true,
+                                       isFreeSpace: false, noAccess: false))
+                cursor += span
                 continue
             }
             let childPath = ScanPath.child(of: parentPath, name: child.name)
