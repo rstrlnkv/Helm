@@ -147,8 +147,12 @@ final class AutopilotSealRaceTests: XCTestCase {
         _ = helm.folders
 
         wait(for: [earlier], timeout: 5)
-        XCTAssertNotNil(helm.status.refusal,
-                      "a verdict about the rules as they were overwrote the verdict about the edit")
+        // Not `status`: it re-judges the plist and would heal a stale verdict
+        // before this looked at it. `discardRefusedRules` acts on the recorded
+        // verdict alone and does nothing unless it says "tampered".
+        helm.discardRefusedRules()
+        XCTAssertNil(backing.object(forKey: payloadKey),
+                     "a verdict about the rules as they were overwrote the verdict about the edit: the discard found nothing to refuse")
     }
 
     // MARK: - Why it holds

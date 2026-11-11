@@ -156,8 +156,13 @@ final class ARefusedRuleSetIsNotOverwrittenTests: XCTestCase {
 
         next.folders = onePress()
 
-        XCTAssertNotNil(next.status.refusal,
-                      "the refused write took the only warning the person gets with it")
+        // Not `status`: it re-judges the plist, which the refused write left
+        // alone, and would answer "tampered" whatever the write did to the
+        // recorded verdict. `discardRefusedRules` acts on the recorded verdict
+        // alone, so a warning the write cleared leaves the rules in place.
+        next.discardRefusedRules()
+        XCTAssertNil(backing.raw[payloadKey],
+                     "the refused write took the only warning the person gets with it")
     }
 
     /// The way out, and the only one: an explicit discard. Without it the page
