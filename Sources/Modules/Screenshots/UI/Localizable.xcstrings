@@ -3234,6 +3234,59 @@
         }
       }
     },
+    "refusalFileGone": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Bildschirmfoto wurde nach der Aufnahme bewegt oder gelöscht und kann hier nicht verwendet werden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The screenshot was moved or deleted after it was taken, so it cannot be used here."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La captura se movió o se eliminó después de hacerla, así que no se puede usar aquí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La capture a été déplacée ou supprimée après avoir été prise, elle ne peut donc pas être utilisée ici."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スクリーンショットは撮影後に移動または削除されたため、ここでは使用できません。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A captura foi movida ou excluída depois de feita, por isso não pode ser usada aqui."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Снимок переместили или удалили после съемки, поэтому его нельзя использовать здесь."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "截屏在拍摄后被移动或删除，因此无法在此使用。"
+          }
+        }
+      }
+    },
     "refusalNoFolder": {
       "extractionState": "manual",
       "localizations": {
@@ -3499,6 +3552,59 @@
         }
       }
     },
+    "refusalOneFileGone": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildschirmfoto %@ wurde nach der Aufnahme bewegt oder gelöscht und ist nicht in der Kopie."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Screenshot %@ was moved or deleted after it was taken, so it is not in the copy."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La captura %@ se movió o se eliminó después de hacerla, así que no está en la copia."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La capture %@ a été déplacée ou supprimée après avoir été prise, elle n’est donc pas dans la copie."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スクリーンショット %@ は撮影後に移動または削除されたため、コピーに含まれていません。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A captura %@ foi movida ou excluída depois de feita, por isso não está na cópia."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Снимок %@ переместили или удалили после съемки, поэтому его нет в копии."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "截屏 %@ 在拍摄后被移动或删除，因此未包含在复制内容中。"
+          }
+        }
+      }
+    },
     "refusalPasteboard": {
       "extractionState": "manual",
       "localizations": {
@@ -3548,6 +3654,59 @@
           "stringUnit": {
             "state": "translated",
             "value": "剪贴板未接受该图片。"
+          }
+        }
+      }
+    },
+    "refusalSomeFilesGone": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Bildschirmfotos %@ wurden nach der Aufnahme bewegt oder gelöscht und sind nicht in der Kopie."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Screenshots %@ were moved or deleted after they were taken, so they are not in the copy."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las capturas %@ se movieron o se eliminaron después de hacerlas, así que no están en la copia."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les captures %@ ont été déplacées ou supprimées après avoir été prises, elles ne sont donc pas dans la copie."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スクリーンショット %@ は撮影後に移動または削除されたため、コピーに含まれていません。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As capturas %@ foram movidas ou excluídas depois de feitas, por isso não estão na cópia."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Снимки %@ переместили или удалили после съемки, поэтому их нет в копии."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "截屏 %@ 在拍摄后被移动或删除，因此未包含在复制内容中。"
           }
         }
       }

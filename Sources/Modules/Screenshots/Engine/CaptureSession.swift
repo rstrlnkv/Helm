@@ -22,6 +22,12 @@ public enum CaptureRefusal: Sendable, Equatable {
     /// The edit is saved and the original was not replaced. Where each reason leaves the two is told by
     /// `ReplaceRefusal`: the original is where it was and the edit beside it, except where a case says otherwise.
     case notReplaced(ReplaceRefusal)
+    /// One shot's file was not found, moved or deleted since it was written, and the shot holds no picture of its own
+    /// (a written shot keeps its path and its thumbnail only): Pin and the single Copy have nothing to use.
+    case fileGone
+    /// «Copy All» left these shots out because their file was not found: zero-based places in the list handed to
+    /// `CaptureSession.copyAll`. The others were written, in one write, unless every file is gone, and then none was.
+    case filesGone([Int])
 }
 
 /// Why an edit did not take its original's place.
@@ -53,6 +59,8 @@ public struct Delivery: @unchecked Sendable {
     /// The original of an edit went to the Trash and the file here has its name. Not set when the name was taken
     /// between the two: the file here is then beside it, and nothing is said of the name.
     public var replaced = false
+    /// The board was written. Can be true together with a `.filesGone` refusal: the shots that were found were
+    /// written and the gone ones are named.
     public var copied = false
     public var refusals: [CaptureRefusal] = []
     /// The first picture that was made, for the thumbnail.
@@ -458,9 +466,11 @@ public final class CaptureSession: @unchecked Sendable {
     }
 
     /// Every shot of a group on the clipboard in **one write** (`ShotPasteboard.copy(pngs:)`), in the order given.
-    /// A shot with a file is read back from it, as the single shot's Copy is. **All or none:** a shot that cannot
-    /// be read or encoded refuses the whole copy with `.encoding`, since a board holding fewer pictures than the
-    /// control counted would say nothing of the missing one.
+    /// A shot with a file is read back from it, as the single shot's Copy is. **Three outcomes.** A shot whose file is
+    /// found and cannot be read or encoded refuses the whole copy with `.encoding` (and so does a group with no shot),
+    /// since a board holding fewer pictures than the control counted would say nothing of the missing one. A shot whose
+    /// file is not found is left out and told, `.filesGone` with its place, next to the write of the others
+    /// (`copied` is true); with every file gone nothing is written and `.filesGone` comes back alone.
     ///
     /// **One pass at a time, and a displaced one stops at its next picture.** A press while an earlier pass is still
     /// reading stops that pass (`GroupPass`) and waits behind it on a queue of its own, so two never run side by
@@ -476,32 +486,55 @@ public final class CaptureSession: @unchecked Sendable {
             latestPass?.stop()
             latestPass = pass
         }
-        let pngs: [Data]? = await withTaskCancellationHandler {
+        let encoded: Encoded? = await withTaskCancellationHandler {
             await withCheckedContinuation { continuation in
                 groupQueue.async { continuation.resume(returning: Self.encodeAll(shots, until: pass)) }
             }
         } onCancel: { pass.stop() }
         if pass.isStopped { return delivery }
-        guard let pngs, !pngs.isEmpty else {
+        guard let encoded else {
             HelmLog.shared.warn(category, "a group's picture could not be read or encoded")
             delivery.refusals.append(.encoding)
             return delivery
         }
         guard !Task.isCancelled else { return delivery }
-        switch pasteboard.copy(pngs: pngs) {
-        case .accepted: delivery.copied = true
-        case .refused:
-            HelmLog.shared.warn(category, "the clipboard refused the group's pictures")
-            delivery.refusals.append(.pasteboard)
+        if encoded.pngs.isEmpty && encoded.gone.isEmpty {
+            HelmLog.shared.warn(category, "a group with no picture was asked to be copied")
+            delivery.refusals.append(.encoding)
+            return delivery
+        }
+        if !encoded.pngs.isEmpty {
+            switch pasteboard.copy(pngs: encoded.pngs) {
+            case .accepted: delivery.copied = true
+            case .refused:
+                HelmLog.shared.warn(category, "the clipboard refused the group's pictures")
+                delivery.refusals.append(.pasteboard)
+            }
+        }
+        if !encoded.gone.isEmpty {
+            HelmLog.shared.warn(category, "\(encoded.gone.count) of a group's files were not found")
+            delivery.refusals.append(.filesGone(encoded.gone))
         }
         return delivery
     }
 
-    /// Nil when a picture could not be read or encoded, and when the pass was stopped before the last.
-    private static func encodeAll(_ shots: [ShotSource], until pass: GroupPass) -> [Data]? {
-        var all: [Data] = []
-        for shot in shots {
+    /// What one pass of `encodeAll` made: the pictures of the shots that were found, in order, and the places of those
+    /// whose file was not.
+    private struct Encoded {
+        var pngs: [Data] = []
+        var gone: [Int] = []
+    }
+
+    /// Nil when a picture could not be read or encoded, and when the pass was stopped before the last. A file that is
+    /// not there is not that: it is left out and its place is told.
+    private static func encodeAll(_ shots: [ShotSource], until pass: GroupPass) -> Encoded? {
+        var all = Encoded()
+        for (place, shot) in shots.enumerated() {
             if pass.isStopped { return nil }
+            if case .file(let url) = shot, !FileManager.default.fileExists(atPath: url.path) {
+                all.gone.append(place)
+                continue
+            }
             let png: Data? = autoreleasepool {
                 switch shot {
                 case .picture(let image): return encode(image, as: .png)
@@ -512,7 +545,7 @@ public final class CaptureSession: @unchecked Sendable {
                 }
             }
             guard let png else { return nil }
-            all.append(png)
+            all.pngs.append(png)
         }
         return all
     }

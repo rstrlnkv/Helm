@@ -511,7 +511,7 @@ struct CapturedShot {
 
     /// The capsule's Copy: the shot's full picture to the clipboard, from memory or read back from its file.
     private func copyFromThumbnail() {
-        guard let image = toast.fullPicture() else { toast.showRefusal(.encoding); return }
+        guard let image = toast.fullPicture() else { toast.showRefusal(toast.currentFileIsGone ? .fileGone : .encoding); return }
         copyTask?.cancel()
         copyTask = Task {
             let delivery = await session.deliver(image, saves: false, copies: true)

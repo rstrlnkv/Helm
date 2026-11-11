@@ -67,6 +67,13 @@ extension ShotToast {
         return CGImageSourceCreateImageAtIndex(source, 0, nil)
     }
 
+    /// The shot an action is about holds no picture and its file is not where it was written: there is nothing to
+    /// read it back from, and the person is told so rather than that the picture could not be made.
+    var currentFileIsGone: Bool {
+        guard model.refusal == nil, let shot = model.current, shot.full == nil, let file = shot.file else { return false }
+        return !FileManager.default.fileExists(atPath: file.path)
+    }
+
     /// Where every finished shot's full picture is, oldest first: what «Copy All» hands to the session, which reads
     /// the files itself, one at a time.
     func sources() -> [ShotSource] {
@@ -78,6 +85,7 @@ extension ShotToast {
 
     /// The picture as a pin, where the thumbnail stands; the shot leaves the window.
     func pin() {
+        if currentFileIsGone { showRefusal(.fileGone); return }
         guard let image = fullPicture(), let shot = model.current,
               let view = model.unfolded ? model.focused : model.anchor, let window = view.window else { return }
         // The picture's own rect: the view is larger than the picture while the capsule is up over a small shot.

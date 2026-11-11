@@ -147,7 +147,7 @@ import Module_Screenshots_Engine
         switch reason {
         case .noPermission: title = ScStr.noPermissionTitle
         // A shot that was taken and could not be opened or replaced: «not taken» would be untrue of it.
-        case .notEditable, .notReplaced: title = ScStr.thumbnailLabel
+        case .notEditable, .notReplaced, .fileGone, .filesGone: title = ScStr.thumbnailLabel
         case .captureFailed, .displayGone, .windowGone, .write, .pasteboard, .encoding: title = ScStr.failedTitle
         }
         return .refusal(title: title, body: ScStr.refusal(reason), offersSettings: permission)

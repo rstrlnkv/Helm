@@ -316,6 +316,8 @@ enum ScStr {
     }
     static var failedTitle: String { L(.failedTitle) }
 
+    private static var locale: Locale { Locale(identifier: AppLanguage.current.rawValue) }
+
     /// One sentence per thing that can go wrong, and none of them carries a path.
     static func refusal(_ reason: CaptureRefusal) -> String {
         switch reason {
@@ -338,6 +340,16 @@ enum ScStr {
              .notReplaced(.trash(.missing)), .notReplaced(.trash(.changedSinceScan)):
             L(.refusalNotReplaced)
         case .notReplaced(.trash(let reason)): TrashReasonText.sentence(reason.rawValue)
+        case .fileGone: L(.refusalFileGone)
+        case .filesGone(let places):
+            // The shots' numbers in the pile, from one, as the person counts them: «Screenshot 2», «Screenshots 1 and 3».
+            // One key per count, because the noun and the verb of each language change with it, and the numbers are
+            // the language's own (a list formatter keyed by the app's language, built per call, never held).
+            if places.count == 1 {
+                L(.refusalOneFileGone((places[0] + 1).formatted(.number.locale(locale))))
+            } else {
+                L(.refusalSomeFilesGone(places.map { $0 + 1 }.formatted(.list(memberStyle: .number, type: .and).locale(locale))))
+            }
         }
     }
 
