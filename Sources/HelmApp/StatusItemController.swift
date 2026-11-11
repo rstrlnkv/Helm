@@ -37,7 +37,11 @@ import HelmAppStrings
             button.toolTip = "Helm"
         }
 
+        // `@Published` publishes in `willSet`: `enabledModules` and the icon
+        // read `host.live`, which still holds the old set inside the sink. One
+        // main-queue hop lets the write land first, so both read the new set.
         hostCancellable = host.$live
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.resubscribeToModules() }
         styleObserver = NotificationCenter.default.addObserver(
             forName: .helmMenuBarStyleChanged, object: nil, queue: .main
