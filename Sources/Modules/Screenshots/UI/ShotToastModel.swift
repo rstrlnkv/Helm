@@ -103,11 +103,6 @@ import Module_Screenshots_Engine
     /// More than one shot, folded.
     var isPile: Bool { refusal == nil && shots.count > 1 && !unfolded }
 
-    var reading: ShotReading? {
-        get { current?.reading }
-        set { if let id = current?.id { update(id) { $0.reading = newValue } } }
-    }
-
     // MARK: - The list
 
     /// A new shot, the newest. The one past `ShotShelf.limit` pushes the oldest out, and with it everything that
@@ -161,11 +156,6 @@ import Module_Screenshots_Engine
         // A path that is gone is not carried: the drop would receive a name with nothing behind it.
         if let file = shot.file { return FileManager.default.fileExists(atPath: file.path) ? .file(file) : nil }
         return shot.full.map { .picture($0) }
-    }
-
-    var dragPayload: ShotDrag? {
-        guard refusal == nil, let current else { return nil }
-        return drag(of: current)
     }
 
     /// What a drag that began on this shot carries beside the shot itself: every other shot of a folded pile, which

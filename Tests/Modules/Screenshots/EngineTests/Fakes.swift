@@ -8,6 +8,13 @@ import XCTest
 // be denied, lose a display, lose a window between the freeze and the click, and
 // hand back a black window — each of those is something the real one does.
 
+extension ShotWrite {
+    /// The file that was written, nil for a refusal; the product reads the `.written` case itself.
+    var url: URL? {
+        if case .written(let shot) = self { shot.url } else { nil }
+    }
+}
+
 /// A picture of one colour, so a test can tell one display's frame from another's.
 func makeImage(width: Int, height: Int, red: UInt8 = 0, green: UInt8 = 0, blue: UInt8 = 0) -> CGImage {
     let space = CGColorSpaceCreateDeviceRGB()

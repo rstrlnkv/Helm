@@ -33,11 +33,6 @@ enum DuplicateVerification {
         case unreadable
     }
 
-    /// One pair, read fresh on both sides — `Batch` with a memo nobody shares.
-    static func verify(remove: String, keep: String) -> Verdict {
-        Batch().verify(remove: remove, keep: keep)
-    }
-
     /// One removal's verifications, with the survivor read once per batch.
     ///
     /// A group of N copies names the same survivor N−1 times, and reading it

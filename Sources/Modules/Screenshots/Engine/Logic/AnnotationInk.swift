@@ -46,9 +46,5 @@ public struct AnnotationInk: Sendable, Hashable {
     public var swatch: AnnotationColor? { AnnotationColor.allCases.first { AnnotationInk($0) == self } }
 
     public static let red = AnnotationInk(AnnotationColor.red)
-    public static let orange = AnnotationInk(AnnotationColor.orange)
     public static let yellow = AnnotationInk(AnnotationColor.yellow)
-    public static let green = AnnotationInk(AnnotationColor.green)
-    public static let blue = AnnotationInk(AnnotationColor.blue)
-    public static let purple = AnnotationInk(AnnotationColor.purple)
 }

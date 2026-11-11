@@ -159,12 +159,6 @@ public struct DuplicateGroup: Equatable, Sendable, Identifiable {
     public init(copies: [Copy]) {
         self.copies = copies
     }
-
-    /// Where every copy is known to occupy the same amount — a fixture, or a
-    /// group being rebuilt from paths alone.
-    public init(bytes: Int, paths: [String]) {
-        self.copies = paths.map { Copy(path: $0, bytes: bytes) }
-    }
 }
 
 /// The second look inside the disk: files that are the same file twice.
@@ -234,15 +228,12 @@ enum Duplicates {
         }
     }
 
-    /// One group, assembled the one way.
+    /// One group, assembled the one way, by `DuplicateScanner.find` and by the tests that need a group without a disk.
     ///
-    /// There are two pipelines over the same three passes: this file's
-    /// `groups`, which the unit tests drive, and `DuplicateScanner.find`, which
-    /// the engine drives concurrently. When `SurvivingCopy` replaced the
-    /// alphabetical rule it was wired into the first and not the second, so the
+    /// When `SurvivingCopy` replaced the alphabetical rule it was wired into a
+    /// second pipeline the unit tests drove and not into the scanner, so the
     /// page explained one rule in its tooltip while the app followed another.
-    /// Both call this now, and a change to which copy survives cannot land in
-    /// one line and miss the other.
+    /// That pipeline is gone and this is the one place a group is built.
     static func group(_ identical: [FileFacts], by rule: KeepRule) -> DuplicateGroup {
         // Each copy with what it occupies, because `wasted` promises what
         // removing the extras frees and the removal reports the same measure.
@@ -262,22 +253,5 @@ enum Duplicates {
             DuplicateGroup.Copy(path: fact.path, bytes: fact.allocated,
                                 cloneFamily: fact.cloneFamily, added: fact.added)
         })
-    }
-
-    /// The whole pipeline: size → prefix hash → full hash → groups, largest
-    /// waste first. `partial` and `full` are injected so the pipeline can be
-    /// tested without a disk and driven with real hashing in production.
-    static func groups(files: [FileFacts], minBytes: Int, by rule: KeepRule,
-                       partial: (FileFacts) -> String?,
-                       full: (FileFacts) -> String?) -> [DuplicateGroup] {
-        var result: [DuplicateGroup] = []
-        for candidates in sizeGroups(files, minBytes: minBytes, by: rule) {
-            for byPrefix in refine(candidates, by: partial) {
-                for identical in refine(byPrefix, by: full) {
-                    result.append(group(identical, by: rule))
-                }
-            }
-        }
-        return result.sorted { $0.wasted > $1.wasted }
     }
 }

@@ -57,7 +57,7 @@ final class TheCopyThatStaysIsNeverAlsoTakenTests: XCTestCase {
         let b = try XCTUnwrap(attributes.attributesOfItem(atPath: second)[.systemFileNumber]
                                 as? UInt64)
         XCTAssertNotEqual(a, b, "the fixture is one file under two names, not two copies")
-        XCTAssertEqual(DuplicateVerification.verify(remove: first, keep: second), .identical)
+        XCTAssertEqual(DuplicateVerification.Batch().verify(remove: first, keep: second), .identical)
     }
 
     /// A plan list that names each copy as the other's survivor takes them both,

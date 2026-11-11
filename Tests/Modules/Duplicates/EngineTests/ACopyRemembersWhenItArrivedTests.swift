@@ -14,7 +14,7 @@ import HelmTestSupport
 /// It is `Date?`: a volume that does not record it has no date to carry.
 final class ACopyRemembersWhenItArrivedTests: XCTestCase {
 
-    /// The assembly point both pipelines go through: what the walk read must
+    /// The assembly point the scanner goes through: what the walk read must
     /// reach the copy. Pure, so no volume can excuse it.
     func testTheGroupTakesEachCopysDateFromTheFactsItWasBuiltFrom() {
         let older = Date(timeIntervalSince1970: 1_600_000_000)
@@ -42,7 +42,7 @@ final class ACopyRemembersWhenItArrivedTests: XCTestCase {
 
 /// And the same date through the scanner the engine actually calls — the half
 /// that has been wired wrong before: `SurvivingCopy` reached
-/// `Duplicates.groups` and not `DuplicateScanner.find`, and the page explained
+/// the pipeline the unit tests drove and not `DuplicateScanner.find`, and the page explained
 /// one rule while the app followed another.
 final class TheScannerCarriesTheDateItReadTests: XCTestCase {
     private var root: URL!

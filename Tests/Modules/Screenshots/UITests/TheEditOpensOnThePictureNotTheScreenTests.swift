@@ -247,8 +247,8 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         guard case .picture(_, let caption, let shown)? = s.toast.model.content else { return XCTFail("\(String(describing: s.toast.model.content))") }
         XCTAssertEqual(caption, ScStr.replaced)
         XCTAssertEqual(shown, original.url)
-        XCTAssertEqual(s.toast.model.reading, FileShotWriter().reading(of: original.url), "the thumbnail holds the file as it is now")
-        XCTAssertNotEqual(s.toast.model.reading, original.reading)
+        XCTAssertEqual(s.toast.model.current?.reading, FileShotWriter().reading(of: original.url), "the thumbnail holds the file as it is now")
+        XCTAssertNotEqual(s.toast.model.current?.reading, original.reading)
         XCTAssertFalse(s.controller.isBusy)
     }
 
@@ -497,7 +497,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         XCTAssertNil(refusal(s))
         guard case .picture(_, let caption, _)? = s.toast.model.content else { return XCTFail("\(String(describing: s.toast.model.content))") }
         XCTAssertEqual(caption, ScStr.replaced)
-        XCTAssertEqual(s.toast.model.reading, FileShotWriter().reading(of: original.url))
+        XCTAssertEqual(s.toast.model.current?.reading, FileShotWriter().reading(of: original.url))
         XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: s.trash.folder.path).count, 2)
     }
 
@@ -646,7 +646,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         let beside = s.desktop.appendingPathComponent(original.url.deletingPathExtension().lastPathComponent + " (1).png")
         XCTAssertEqual(file.path, beside.path, "the thumbnail's file is the edit, where it is")
         XCTAssertEqual(try Data(contentsOf: original.url), stranger, "the stranger was written over")
-        XCTAssertEqual(s.toast.model.reading, FileShotWriter().reading(of: beside), "the thumbnail holds the edit's own reading")
+        XCTAssertEqual(s.toast.model.current?.reading, FileShotWriter().reading(of: beside), "the thumbnail holds the edit's own reading")
         XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: s.trash.folder.path).count, 1, "the original is in the Trash")
 
         // A second Edit, from this thumbnail.

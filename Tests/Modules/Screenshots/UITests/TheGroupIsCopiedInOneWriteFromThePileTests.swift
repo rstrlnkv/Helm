@@ -209,13 +209,13 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
         XCTAssertFalse(model.othersDragged(with: third.id).isEmpty)
         s.toast.showRefusal(.pasteboard)
         XCTAssertTrue(model.othersDragged(with: third.id).isEmpty, "a drag from under a plaque carried the group")
-        XCTAssertNil(model.dragPayload)
+        XCTAssertNil(model.current.flatMap { model.drag(of: $0) })
     }
 
     func testASingleShotsDragCarriesNothingBesideIt() async throws {
         let s = try scene()
         let only = try await s.take(width: 400)
         XCTAssertTrue(s.toast.model.othersDragged(with: only.id).isEmpty)
-        XCTAssertNotNil(s.toast.model.dragPayload)
+        XCTAssertNotNil(s.toast.model.current.flatMap { s.toast.model.drag(of: $0) })
     }
 }

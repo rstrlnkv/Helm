@@ -34,11 +34,6 @@ public enum PaletteItems {
         return picks
     }
 
-    /// Whether `item` is on the palette: its pick, or its default.
-    public static func isShown(_ item: PaletteItem, in store: NamespacedStore) -> Bool {
-        picks(store)[item] ?? item.shownByDefault
-    }
-
     /// The items not taken off, in the order of the cases: every case with no pick against it, so this is a name list, not
     /// what the palette draws, which is the objects `EditorPalette.objects` places in its row. The palette and the settings
     /// page both read this one answer.

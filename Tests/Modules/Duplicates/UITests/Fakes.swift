@@ -16,6 +16,13 @@ import Module_Duplicates_Engine
 // Merging the two would make `DuplicateSearchRaceTests` vacuous rather than
 // shorter.
 
+extension DuplicateGroup {
+    /// A group where every copy occupies the same amount.
+    init(bytes: Int, paths: [String]) {
+        self.init(copies: paths.map { Copy(path: $0, bytes: bytes) })
+    }
+}
+
 // MARK: - Answers, or parks
 
 /// A search or a removal as the work saw it.

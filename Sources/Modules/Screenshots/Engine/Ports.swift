@@ -120,11 +120,6 @@ public struct WrittenShot: Sendable, Equatable {
 public enum ShotWrite: Sendable, Equatable {
     case written(WrittenShot)
     case refused(WriteRefusal)
-
-    /// The file that was written, nil for a refusal.
-    public var url: URL? {
-        if case .written(let shot) = self { shot.url } else { nil }
-    }
 }
 
 /// Writing one picture into a folder without ever replacing a file.
