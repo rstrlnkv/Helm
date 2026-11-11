@@ -251,6 +251,10 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         toolsWait = nil
         lock.unlock()
         _ = wait
+        // An engine dropped in the tools wait (no child, a weak tick) would
+        // keep the process-wide gate shut for good. Owner-checked: a no-op
+        // when this engine holds nothing.
+        gate.release(self)
     }
 
     /// A module switched off shuts the gate (`off`) for **every** kind of
@@ -305,7 +309,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // this one, and the page refreshes its status freely.
         // Any engine's, not only this one's: a child of the engine this one
         // replaced may still be running, and its marker is not a report yet.
-        let interrupted = gate.isHeld ? nil : marker.take()
+        let interrupted = gate.takeMarkerIfFree(marker)
         if let interrupted {
             // The label names a package; the log carries counts and outcomes.
             HelmLog.shared.warn(Self.moduleID,

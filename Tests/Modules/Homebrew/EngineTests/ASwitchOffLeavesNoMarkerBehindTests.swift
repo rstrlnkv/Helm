@@ -262,6 +262,33 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
         XCTAssertEqual(runner.handles.count, 2)
     }
 
+    /// An engine dropped without `deactivate()` while the install waits for
+    /// Apple's tools (the one busy state with no child, its tick holding the
+    /// engine weakly) must give the shared gate back in `deinit`: otherwise
+    /// the app refuses every operation until it is relaunched.
+    func testAnEngineDroppedInTheToolsWaitGivesTheGateBack() {
+        let runner = Runner()
+        let gate = OperationGate()
+        let ticker = FakeWaitTicker()
+        weak var dropped: HomebrewEngine?
+        autoreleasepool {
+            let a = HomebrewEngine(locator: FixedLocator(), runner: runner, privileged: AllowingPrivileged(),
+                                   user: "tester", marker: SpyMarker(), tools: FakeCommandLineTools(),
+                                   ticker: ticker, gate: gate)
+            dropped = a
+            a.installBrew()
+            XCTAssertEqual(ticker.live, 1, "precondition: the install is parked in the tools wait")
+            XCTAssertTrue(gate.isHeld, "precondition: the waiting install holds the gate")
+        }
+        XCTAssertNil(dropped, "the engine was not freed, so deinit did not run")
+
+        let b = HomebrewEngine(locator: FixedLocator(), runner: runner, privileged: AllowingPrivileged(),
+                               user: "tester", marker: SpyMarker(), gate: gate)
+        b.upgradeAll()
+        XCTAssertEqual(runner.handles.count, 1, "the dropped engine's gate stayed shut")
+        runner.exitAll(code: 0)
+    }
+
     private final class HookedRunner: ProcessRunner, @unchecked Sendable {
         let inner: Runner
         var onList: (@Sendable () -> Void)?
