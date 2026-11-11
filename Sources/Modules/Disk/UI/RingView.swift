@@ -13,6 +13,8 @@ struct RingView: View {
     /// True while the scan is still feeding the ring.
     let growing: Bool
     @Binding var hovered: String?
+    /// The arc itself under the pointer, for the tooltip → `tooltipSegment`.
+    @State private var hoveredArc: RingSegment?
     var onSelect: (RingSegment) -> Void
     var onBack: () -> Void
     /// False at the scan root, where the middle of the ring leads nowhere —
@@ -137,9 +139,13 @@ struct RingView: View {
                 switch phase {
                 case .active(let point):
                     hoverPoint = point
-                    hovered = segment(at: point, center: center, side: side)?.path
+                    hoveredArc = segment(at: point, center: center, side: side)
+                    // The shared binding is keyed by path for the list; an arc with
+                    // none (free space, "other") names no row.
+                    hovered = hoveredArc.flatMap { $0.path.isEmpty ? nil : $0.path }
                 case .ended:
                     hoverPoint = nil
+                    hoveredArc = nil
                     hovered = nil
                 }
             }
@@ -212,14 +218,14 @@ struct RingView: View {
         }
     }
 
-    /// The segment under the cursor when it has a path. Free space and the
-    /// `isOther` arc both have an empty one, so a hover on either resolves to
-    /// the free-space segment, or to nothing when the focus has none. The scan's
-    /// folded bucket is an `isOther` arc too (`RingLayout`), so it hovers the same way.
+    /// The arc under the cursor, as the whole segment: free space and every
+    /// `isOther` arc (the sliver fold, the scan's folded bucket) have an empty path,
+    /// so a path cannot tell them apart. If a re-layout (the morph) replaces the arcs
+    /// the stored one is no longer in `segments` and the tooltip goes until the
+    /// pointer moves again; it never lands on another arc.
     private var tooltipSegment: RingSegment? {
-        guard let hovered else { return nil }
-        return segments.first { $0.path == hovered && !$0.path.isEmpty }
-            ?? segments.first { $0.isFreeSpace && hovered.isEmpty }
+        guard let hoveredArc, segments.contains(hoveredArc) else { return nil }
+        return hoveredArc
     }
 
     private func tooltip(for segment: RingSegment) -> some View {
