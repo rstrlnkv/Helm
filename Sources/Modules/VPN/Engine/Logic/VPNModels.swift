@@ -50,6 +50,9 @@ public struct VPNFailure: Equatable, Sendable {
         /// gets the fact rather than the tool's own words, which are English
         /// and are not written for a person.
         case refused
+        /// The configuration could not be read (`VPNCredentialRead.unreadable`), so
+        /// Helm did not connect: said of a person's press only.
+        case secretUnreadable
     }
     public let name: String
     public let reason: Reason

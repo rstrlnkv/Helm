@@ -134,12 +134,16 @@ final class FakeCreds: VPNCredentialsPort {
     var map: [String: VPNCredentials] = [:]
     /// Readable only where a prompt is allowed: the System keychain.
     var behindAPrompt: [String: VPNCredentials] = [:]
+    /// Names whose credential read failed: the tool answered nothing usable, so
+    /// nobody knows whether a secret is kept (`VPNCredentialRead.unreadable`).
+    var unreadable: Set<String> = []
     /// Every ask, so a test can see that nothing was asked at all — which is a
     /// different fact from any of the three answers.
     private(set) var asks: [(name: String, promptingAllowed: Bool)] = []
 
     func credentials(for name: String, promptingAllowed: Bool) -> VPNCredentialRead {
         asks.append((name, promptingAllowed))
+        if unreadable.contains(name) { return .unreadable }
         if let cached = map[name] { return answer(cached) }
         guard let stored = behindAPrompt[name] else {
             // Neither tier has anything: the configuration keeps no secret Helm

@@ -581,6 +581,18 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             // skips it leaves the screen holding whatever it had.
             emitState()
             return
+        case .unreadable:
+            HelmLog.shared.warn(Self.moduleID, "the secret of \(Redact.vpn(name)) could not be read; "
+                + "not attempted")
+            // Only the person's press is answered on screen; a rule has no one
+            // pressing, and the log line is its record.
+            if !auto {
+                lock.lock()
+                _lastFailure = VPNFailure(name: name, reason: .secretUnreadable, verb: .connect)
+                lock.unlock()
+            }
+            emitState()
+            return
         }
         report(reply, verb: .connect, name: name)
         // **Announced after the tool answered, and only what it did.** This

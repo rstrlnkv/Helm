@@ -27,7 +27,10 @@ status and the stdout together before anything is announced. `--nc list`,
 deadline (`vpnReadDeadline`): `ScutilRunner` passes it to `HelmProcess.run(timeout:)`, which ends a hung
 `scutil` and answers `HelmProcess.timedOutStatus`, so the work queue is never parked. The exit status is
 read with the stdout; a timed-out or non-zero read logs a line naming why and keeps the last answer, and an
-unreadable `--nc show` is the same absence as before (`.notNeeded`) but logged.
+unreadable `--nc show` (timed out or non-zero) is `VPNCredentialRead.unreadable`, not `.notNeeded`:
+a connect on it neither starts nor announces (`VPNSecretBook.Step.unreadable`), leaves the secret book
+untouched so the next connect asks again, and logs that the secret could not be read; a person's press
+sets `lastFailure` with `VPNFailure.Reason.secretUnreadable`. `.notNeeded` is a show that ran to the end and kept no secret.
 
 A secret never rides in an argument list: `scutil --nc start` takes `--user`, `--password` and
 `--secret` only as arguments and has no terminal form, so the start that carries one goes to the

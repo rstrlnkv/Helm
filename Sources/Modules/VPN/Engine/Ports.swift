@@ -13,8 +13,8 @@ public struct VPNCredentials: Equatable, Sendable {
     }
 }
 
-/// What a credential read found — **three answers, because the nil it replaced
-/// was two of them.**
+/// What a credential read found — **four answers, because the nil it replaced
+/// was two of them and a failed read was a third.**
 ///
 /// `credentials(for:promptingAllowed:)` used to answer `VPNCredentials?`, and nil
 /// meant either «this configuration keeps no secret Helm has to supply» (IKEv2,
@@ -24,6 +24,12 @@ public struct VPNCredentials: Equatable, Sendable {
 /// nobody is told). Folded together, the engine could report neither: saying
 /// something about every nil would put a warning under every automatic connect on
 /// the machine, and saying nothing is what shipped.
+///
+/// **`.unreadable` is its own case because it is neither of those.** A read that
+/// timed out or failed says nothing about whether a secret is kept, so folding it
+/// into `.notNeeded` started a connect that may need one and announced it, and
+/// folding it into `.behindAPrompt` told the person to press Connect for a prompt
+/// that is not the problem. The engine neither starts nor announces on it.
 ///
 /// This is the repair ARCHITECTURE.md § Module pattern records for
 /// `PowerSource.supply()`, in the same shape:
@@ -36,14 +42,21 @@ public enum VPNCredentialRead: Equatable, Sendable {
     /// This configuration keeps no secret Helm supplies. `scutil --nc start`
     /// connects it on its own, and there is nothing to say to anybody.
     ///
-    /// **Four reasons collapse into this one answer:** the configuration keeps
-    /// no secret (the ordinary case), `scutil --nc show` printed nothing, it
-    /// exited non-zero, or it timed out. Owner decision 2026-11-11: they stay
-    /// one answer; the last two log a warning naming the status or the timeout,
-    /// and that line is what tells them apart. A connect that needed the secret
-    /// then goes without it and nothing reports the failure: a rule connect
-    /// records and announces "connected" with no tunnel.
+    /// **Two reasons give this answer:** `scutil --nc show` ran to the end and
+    /// printed no `AuthPassword` field — the configuration keeps no secret (the
+    /// ordinary case) — or printed nothing at all. A show that exited non-zero or
+    /// timed out is not either: that is `.unreadable`.
     case notNeeded
+    /// The configuration could not be read, so nobody knows whether a secret is
+    /// kept: `scutil --nc show` timed out or exited non-zero (whatever it
+    /// printed before — a half-printed `AuthPassword` field is not trusted).
+    /// Owner decision 2026-11-11: **a connect on this answer neither starts nor
+    /// announces.** A start without a secret the configuration may need reports
+    /// success whether it worked or not, so a rule connect recorded and announced
+    /// "connected" with no tunnel. The person's press says so
+    /// (`VPNFailure.Reason.secretUnreadable`); a rule's connect logs it. Not
+    /// `.behindAPrompt`: no prompt is the problem, and the next connect asks again.
+    case unreadable
     /// There is a secret and this read did not get it: it lives in the System
     /// keychain, which macOS gates behind an authorization dialog. For an
     /// automatic connect that is Helm declining to ask — not the tool refusing —

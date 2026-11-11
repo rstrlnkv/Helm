@@ -91,6 +91,8 @@ enum VPNStr {
         switch failure.reason {
         case .noSuchService: return failureNoSuchService(failure.name, language: language)
         case .refused: return failureRefused(failure.name, verb: failure.verb, language: language)
+        case .secretUnreadable:
+            return L(.failureSecretUnreadable(Quoted(failure.name, language: language)), language: language)
         }
     }
 

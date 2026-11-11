@@ -282,24 +282,24 @@ public final class KeychainCredentials: VPNCredentialsPort {
         }
     }
 
-    /// Answers `.notNeeded` for four reasons the answer does not separate: no
-    /// secret kept, an empty `--nc show`, a failed one, a timed-out one. The two
-    /// failures log a warning naming the exit status or the timeout, which is
-    /// the only way to tell them from the first (`VPNCredentialRead.notNeeded`).
+    /// Answers `.unreadable` when `--nc show` timed out or exited non-zero (a
+    /// warning names the status or the timeout, the name redacted);
+    /// `.notNeeded` only for a show that ran to the end and kept no secret —
+    /// no `AuthPassword` field, or no output at all.
     public func credentials(for name: String, promptingAllowed: Bool) -> VPNCredentialRead {
         let shown = runner.read(["--nc", "show", name], timeout: vpnReadDeadline)
-        // A read that ran out of time or failed is an absence, as an empty
-        // answer always was here (`.notNeeded`) — but it is logged, which the
-        // empty answer was not. A connect that needed the secret then goes
-        // without it and nothing reports the failure (`--nc start` answers
-        // nothing either way), so a rule connect records and announces
-        // "connected" with no tunnel (defects page, `vpn-show-unreadable`).
+        // A read that ran out of time or failed is not an empty one: nobody knows
+        // whether a secret is kept, and a connect that went without it would
+        // report success whether it worked or not (`--nc start` answers nothing
+        // either way) — so a rule connect recorded and announced "connected" with
+        // no tunnel. The engine neither starts nor announces on `.unreadable`.
         if shown.status != 0 {
             HelmLog.shared.warn(VPNEngine.moduleID, "the configuration of \(Redact.vpn(name)) could not be read "
                 + "(\(shown.status == HelmProcess.timedOutStatus ? "timed out after \(Int(vpnReadDeadline)) s" : "exit status \(shown.status)")); "
-                + "connecting without a supplied secret")
+                + "the secret is not known")
+            return .unreadable
         }
-        let show = shown.status == 0 ? shown.output : ""
+        let show = shown.output
         // No `AuthPassword` line: this configuration keeps no secret Helm has to
         // supply, and `--nc start` connects it on its own. `.notNeeded` rather
         // than the nil this used to be — see `VPNCredentialRead`, and the

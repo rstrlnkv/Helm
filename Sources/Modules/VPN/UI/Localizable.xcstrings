@@ -1167,6 +1167,59 @@
         }
       }
     },
+    "failureSecretUnreadable": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm konnte die gespeicherten Einstellungen von %@ nicht lesen und hat deshalb keine Verbindung aufgebaut"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm could not read the saved settings of %@, so it did not connect"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm no pudo leer los ajustes guardados de %@, así que no conectó"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm n’a pas pu lire les réglages enregistrés de %@ ; il n’a donc pas établi la connexion"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm が%@の保存済みの設定を読み取れなかったため、接続しませんでした"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "o Helm não conseguiu ler os ajustes salvos de %@ e por isso não conectou"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm не смог прочитать сохраненные настройки %@, поэтому подключение не выполнено"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm 无法读取%@已保存的设置，因此未连接"
+          }
+        }
+      }
+    },
     "failureRefusedConnect": {
       "extractionState": "manual",
       "localizations": {

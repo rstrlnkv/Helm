@@ -238,14 +238,10 @@ final class AHungScutilDoesNotParkTheModuleTests: XCTestCase {
         KeychainCredentials(purge: {}, runner: runner)
     }
 
-    /// The answer is `.notNeeded` (connect goes on without a supplied secret).
-    /// That folds «this read timed out» into «this configuration keeps no
-    /// secret», which are different facts: for an L2TP service whose shared
-    /// secret lives in the System keychain the connect then goes to
-    /// `scutil --nc start` with nothing and fails with no sentence about why
-    /// beyond the log line below. This test pins today's answer and the log
-    /// line; the defects page row `vpn-show-unreadable` will change the answer
-    /// to a separate `.unreadable` case, and this assertion with it.
+    /// The answer is `.unreadable` (defects page row `vpn-show-unreadable`,
+    /// owner decision 2026-11-11): «this read timed out» is not «this
+    /// configuration keeps no secret», and a connect must not go on as if it
+    /// were. The log line names the timeout either way.
     func testAShowThatNeverAnswersReturnsWithinTheBoundAndSaysSo() {
         runner.handler = { _, _ in .hang }
         let credentials = Unsafe(credentialsOnThis())
@@ -254,7 +250,7 @@ final class AHungScutilDoesNotParkTheModuleTests: XCTestCase {
             answer.value = credentials.value.credentials(for: "Quiet Office", promptingAllowed: false)
         }, "the credential read is still waiting on `scutil --nc show` after \(Int(bound)) s")
         XCTAssertEqual(runner.count(of: ["--nc", "show", "Quiet Office"]), 1, "precondition: the show read was made")
-        XCTAssertEqual(answer.value, .notNeeded)
+        XCTAssertEqual(answer.value, .unreadable)
         XCTAssertTrue(namesATimeout(vpnLog()), "no log line names the timeout: \(vpnLog())")
         XCTAssertFalse(vpnLog().contains { $0.contains("quiet office") },
                        "the log line carries the connection's name: \(vpnLog())")
