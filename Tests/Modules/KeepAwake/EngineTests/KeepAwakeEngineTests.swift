@@ -36,7 +36,7 @@ class KeepAwakeEngineRig: XCTestCase {
         engine = KeepAwakeEngine(settings: settings, store: store, assertions: assertions,
                                   displayInfo: displayInfo, displayObserver: displayObserver,
                                   power: power, apps: apps, pointer: pointer,
-                                  clamshell: clamshell, clock: clock)
+                                  clamshell: clamshell, clock: clock, lidInfo: FakeLidInfo())
     }
 }
 
@@ -119,11 +119,12 @@ final class KeepAwakeEngineTests: KeepAwakeEngineRig {
 
     @MainActor
     func test_clamshell_async_install_completing_after_stop_does_not_disable_sleep() async {
-        KeepAwakeSettings(store: store).setClamshellEnabled(true)
+        KeepAwakeSettings(store: store).setClamshellEnabled(false)
         clamshell.sudoersInstalled = false // forces the async installSudoers path
 
         engine.activate()
         engine.startSession(minutes: 0)
+        engine.lidSwitchTurned(true) // only the person's gesture on the switch asks
         await waitUntil("the lid asked for the rule") { clamshell.installCompletion != nil }
         XCTAssertNotNil(clamshell.installCompletion, "install should have been requested")
         XCTAssertTrue(clamshell.disableSleepCalls.isEmpty, "must not disable sleep before install completes")
@@ -184,8 +185,8 @@ final class KeepAwakeToggleTests: KeepAwakeEngineRig {
 
     // MARK: - The one entrance the hotkey and the panel switch both use
 
-    /// `toggleSession` had no test at all, and it is what `KeepAwakeCommand
-    /// .toggle` runs — the global hotkey, and the switch at the top of the
+    /// `toggleSession` had no test at all, and it is what the model's
+    /// `toggle()` calls — the global hotkey, and the switch at the top of the
     /// panel tile. Everything under it was covered and the door itself was not.
     func test_toggle_starts_a_session_at_the_default_duration() {
         store.set(25, for: "defaultDurationMinutes")
@@ -240,7 +241,7 @@ final class PowerObserverTeardownTests: XCTestCase {
                                      displayObserver: FakeDisplayObserver(),
                                      power: power, apps: FakeApps(),
                                      pointer: FakePointer(), clamshell: FakeClamshell(),
-                                     clock: FakeClock())
+                                     clock: FakeClock(), lidInfo: FakeLidInfo())
         engine.activate()
         XCTAssertTrue(power.observing, "the engine watches the power source while it is on")
 

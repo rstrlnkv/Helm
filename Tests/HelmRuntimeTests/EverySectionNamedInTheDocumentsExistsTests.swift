@@ -112,7 +112,7 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
     private static let notation = "\u{A7} X is a heading"
 
     func testEveryBarePointerOfClaudeNamesAHeadingOfArchitecture() throws {
-        let claude = try RepoSource.text(of: "CLAUDE.md")
+        let claude = try StandingDocuments.rules()
         let headings = try StandingDocuments.headings(of: "ARCHITECTURE")
         XCTAssertGreaterThan(headings.count, 20, "the hub's and its pages' headings were not read")
 
@@ -132,16 +132,16 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
     }
 
     func testEveryNamedPointerOfTheStandingDocumentsNamesAHeading() throws {
-        let headingsByDocument = [
-            "ARCHITECTURE": try StandingDocuments.headings(of: "ARCHITECTURE"),
-            "CLAUDE": try StandingDocuments.headings(of: "CLAUDE"),
-        ]
+        var headingsByDocument = ["ARCHITECTURE": try StandingDocuments.headings(of: "ARCHITECTURE")]
+        // No rules file (fresh clone, CI): pointers into it are not judged, the rest are.
+        if RepoSource.rulesEntry() != nil { headingsByDocument["CLAUDE"] = try StandingDocuments.headings(of: "CLAUDE") }
         var read = 0
         var dead: [String] = []
         for file in StandingDocuments.all() {
             for pointer in Parser.named(in: try RepoSource.text(of: file)) {
                 read += 1
-                if Parser.resolve(pointer.rest, headings: headingsByDocument[pointer.document] ?? []) == nil {
+                guard let known = headingsByDocument[pointer.document] ?? (pointer.document == "CLAUDE" ? nil : []) else { continue }
+                if Parser.resolve(pointer.rest, headings: known) == nil {
                     dead.append("\(file) — \(pointer.document) \u{A7}\(pointer.rest.prefix(50))")
                 }
             }
@@ -152,7 +152,7 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
     }
 
     func testClaudeStaysInsideItsCeiling() throws {
-        let size = try RepoSource.text(of: "CLAUDE.md").utf8.count
+        let size = try StandingDocuments.rules().utf8.count
         XCTAssertGreaterThan(size, 4_000,
             "CLAUDE.md is \(size) bytes — an emptied file is under every ceiling, and the rules are gone")
         XCTAssertLessThanOrEqual(size, Self.claudeCeilingBytes,

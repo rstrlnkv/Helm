@@ -13,7 +13,7 @@ import Module_Disk_Engine
 @MainActor
 final class TheBasketTotalSaturatesTests: XCTestCase {
     func testTwoRowsNearAnIntegerSumToTheTopOfOne() {
-        let dvm = DiskViewModel(vm: ModuleViewModel(transport: AnsweringTransport(volumes: [])),
+        let dvm = DiskViewModel(work: AnsweringWork(volumes: []),
                                 store: ScanStore(directory: scratchDirectory("disk-basket-total")))
         dvm.basket = [folder("/v/a", bytes: Int.max - 1), folder("/v/b", bytes: Int.max - 1)]
         XCTAssertEqual(dvm.basket.count, 2, "precondition: both rows are in the basket")

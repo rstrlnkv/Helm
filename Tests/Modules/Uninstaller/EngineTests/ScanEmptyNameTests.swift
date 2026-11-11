@@ -32,7 +32,7 @@ final class ScanEmptyNameTests: XCTestCase {
         let engine = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
                                        apps: NoApps(), fs: fs,
                                        trash: NoTrash(), running: NoRunning())
-        let result = try await engine.scan(bundleID: "com.acme.tool",
+        let result = await engine.scan(bundleID: "com.acme.tool",
                                            appPath: "/Applications/Tool.app",
                                            appName: "")
         XCTAssertEqual(result.leftovers.map(\.path), [],
@@ -49,7 +49,7 @@ final class ScanEmptyNameTests: XCTestCase {
         let engine = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
                                        apps: NoApps(), fs: fs,
                                        trash: NoTrash(), running: NoRunning())
-        let result = try await engine.scan(bundleID: "com.acme.tool",
+        let result = await engine.scan(bundleID: "com.acme.tool",
                                            appPath: "/Applications/Tool.app",
                                            appName: "Tool")
         XCTAssertEqual(result.leftovers.map(\.path), [])

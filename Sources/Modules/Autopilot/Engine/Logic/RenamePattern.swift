@@ -4,7 +4,13 @@ import Foundation
 /// pattern would produce something the filesystem should not be asked to take.
 ///
 /// `{name}` the file's name without its extension, `{date}` the date it was
-/// added as `2026-07-15`, `{counter}` a three-digit sequence number.
+/// added as `2026-07-15`, `{counter}` the first number no file in the folder
+/// the file stays in wears: `001`, and when that is worn there, `002`, `003`...
+/// up to `maxCounter`. This type writes whatever number it is handed; the
+/// choice is `CounterBook`'s, once per folder per sweep, and past `maxCounter`
+/// the rename is refused, never searched further. `FreeName` stays the last
+/// guard at the move, for a name taken between the search and the act, and for
+/// a pattern with no `{counter}` that lands on a bystander.
 ///
 /// Returning nil rather than a best effort is the point. A rename that silently
 /// becomes a move (`sub/{name}`), a file that loses its identity (an empty
@@ -16,16 +22,30 @@ enum RenamePattern {
     /// only reason applying a pattern twice can produce two different names.
     static let nameToken = "{name}"
 
+    /// The token `RenameShape` reads as any run of three or more digits: the
+    /// number a name carries is the sweep's business, not the shape's.
+    static let counterToken = "{counter}"
+
+    /// Three digits are what `%03d` writes without widening; a folder holding
+    /// `001`...`999` of one pattern is somebody's scripted output, and the
+    /// search stops there instead of walking on forever.
+    static let maxCounter = 999
+
+    /// `{date}` resolved for this file; `{name}` and `{counter}` still holes.
+    static func resolving(_ pattern: String, _ facts: FileFacts) -> String {
+        pattern.replacingOccurrences(of: "{date}", with: day.string(from: facts.added))
+    }
+
     static func apply(_ pattern: String, to facts: FileFacts,
                       counter: Int = 1) -> String? {
-        // Everything but the file's own name, substituted once: what is left is
-        // both the template for this run and the shape of every name this
-        // pattern has produced for this file before.
-        let resolved = pattern
-            .replacingOccurrences(of: "{date}", with: Self.day.string(from: facts.added))
-            .replacingOccurrences(of: "{counter}", with: String(format: "%03d", counter))
+        // Everything but the file's own name and number, substituted once: what
+        // is left is both the template for this run and the shape of every name
+        // this pattern has produced for this file before.
+        let resolved = Self.resolving(pattern, facts)
         let stem = (facts.name as NSString).deletingPathExtension
-        var name = resolved.replacingOccurrences(of: nameToken, with: stem)
+        var name = resolved
+            .replacingOccurrences(of: counterToken, with: String(format: "%03d", counter))
+            .replacingOccurrences(of: nameToken, with: stem)
         name = name.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !name.isEmpty else { return nil }

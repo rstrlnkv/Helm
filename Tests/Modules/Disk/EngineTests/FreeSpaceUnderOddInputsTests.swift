@@ -38,7 +38,7 @@ final class FreeSpaceUnderOddInputsTests: XCTestCase {
     func testTheScansFreeWedgeIsTheListsFreeFigure() async throws {
         let root = scratchDirectory("disk-free-wedge")
         try Data(count: 4096).write(to: root.appendingPathComponent("a.bin"))
-        let engine = DiskEngine(capacity: AnyPathCapacity(boot))
+        let engine = DiskEngine(capacity: AnyPathCapacity(boot), trashing: neverTrashes)
 
         let listed = try XCTUnwrap(engine.volumes().first?.freeBytes)
         let scan = await engine.scan(path: root.path)
@@ -52,6 +52,21 @@ final class FreeSpaceUnderOddInputsTests: XCTestCase {
             """)
     }
 
+    /// A scan nobody listens to still counts what it walked: `filesScanned` is
+    /// read from the counter the progress callback writes, and that callback is
+    /// passed whether or not there is a sink for updates. Dropping it with the
+    /// sink gave every background scan and every folder measurement a count of 0.
+    func testAScanWithoutUpdatesStillCountsItsFiles() async throws {
+        let root = scratchDirectory("disk-silent-count")
+        for name in ["a.bin", "b.bin", "c.bin"] {
+            try Data(count: 4096).write(to: root.appendingPathComponent(name))
+        }
+        let engine = DiskEngine(capacity: AnyPathCapacity(boot), trashing: neverTrashes)
+        let scan = await engine.scan(path: root.path, updates: nil)
+        let result = try XCTUnwrap(scan, "the scan returned nothing")
+        XCTAssertGreaterThan(result.filesScanned, 0, "a scan with no sink for updates counted no files")
+    }
+
     // MARK: - A disk that is not the boot volume
 
     /// An exFAT disk — every USB stick and SD card out of the box — answers 0 for
@@ -59,7 +74,7 @@ final class FreeSpaceUnderOddInputsTests: XCTestCase {
     /// volume rows and the Disk page say "Zero KB free" and draw a full bar over a
     /// disk that is empty; the engine reads the plain key instead.
     func testAnExFATDiskIsNotListedAsFull() throws {
-        let volumes = DiskEngine(capacity: AnyPathCapacity(exFAT)).volumes()
+        let volumes = DiskEngine(capacity: AnyPathCapacity(exFAT), trashing: neverTrashes).volumes()
         let disk = try XCTUnwrap(volumes.first, "precondition: the disk reaches the list")
         XCTAssertEqual(disk.freeBytes, 209_354_752, """
             an empty exFAT disk is listed with \(disk.freeBytes) bytes free and \
@@ -73,7 +88,7 @@ final class FreeSpaceUnderOddInputsTests: XCTestCase {
     func testAScanOfAnExFATDiskDrawsItsFreeSpace() async throws {
         let root = scratchDirectory("disk-exfat-wedge")
         try Data(count: 4096).write(to: root.appendingPathComponent("a.bin"))
-        let engine = DiskEngine(capacity: AnyPathCapacity(exFAT))
+        let engine = DiskEngine(capacity: AnyPathCapacity(exFAT), trashing: neverTrashes)
         let scan = await engine.scan(path: root.path)
         let result = try XCTUnwrap(scan)
         XCTAssertEqual(result.freeBytes, 209_354_752,
@@ -87,7 +102,7 @@ final class FreeSpaceUnderOddInputsTests: XCTestCase {
     func testTheLargestFiguresNeitherTrapNorGoNegative() throws {
         let huge = VolumeReadout(name: "Huge", path: "/", isBrowsable: true, total: Int.max,
                                  importantFree: Int.max, plainFree: Int.max)
-        let disk = try XCTUnwrap(DiskEngine(capacity: AnyPathCapacity(huge)).volumes().first)
+        let disk = try XCTUnwrap(DiskEngine(capacity: AnyPathCapacity(huge), trashing: neverTrashes).volumes().first)
         XCTAssertEqual(disk.freeBytes, Int.max)
         XCTAssertEqual(disk.usedBytes, 0)
     }
@@ -97,12 +112,12 @@ final class FreeSpaceUnderOddInputsTests: XCTestCase {
     func testFreePastTheCapacityIsTheCapacityWhicheverReadingItCameFrom() throws {
         var readout = boot
         readout.importantFree = 600 * gb
-        XCTAssertEqual(DiskEngine(capacity: AnyPathCapacity(readout)).volumes().first?.freeBytes,
+        XCTAssertEqual(DiskEngine(capacity: AnyPathCapacity(readout), trashing: neverTrashes).volumes().first?.freeBytes,
                        494 * gb)
         readout.importantFree = nil
         readout.plainFree = 600 * gb
         XCTAssertEqual(readout.freeSpace, .fallback(494 * gb))
-        XCTAssertEqual(DiskEngine(capacity: AnyPathCapacity(readout)).volumes().first?.freeBytes,
+        XCTAssertEqual(DiskEngine(capacity: AnyPathCapacity(readout), trashing: neverTrashes).volumes().first?.freeBytes,
                        494 * gb)
     }
 
@@ -111,7 +126,7 @@ final class FreeSpaceUnderOddInputsTests: XCTestCase {
     func testANegativeFigureIsNoFreeSpaceAndNoMore() throws {
         var readout = boot
         readout.importantFree = Int.min
-        let disk = try XCTUnwrap(DiskEngine(capacity: AnyPathCapacity(readout)).volumes().first)
+        let disk = try XCTUnwrap(DiskEngine(capacity: AnyPathCapacity(readout), trashing: neverTrashes).volumes().first)
         XCTAssertEqual(disk.freeBytes, 0)
         XCTAssertEqual(disk.usedBytes, 494 * gb)
 
@@ -126,7 +141,7 @@ final class FreeSpaceUnderOddInputsTests: XCTestCase {
         for total in [0, -1, Int.min] {
             var readout = boot
             readout.total = total
-            let disk = DiskEngine(capacity: AnyPathCapacity(readout)).volumes().first
+            let disk = DiskEngine(capacity: AnyPathCapacity(readout), trashing: neverTrashes).volumes().first
             XCTAssertEqual(disk?.freeBytes, 0, "total \(total)")
             XCTAssertEqual(disk?.usedBytes, 0, "total \(total)")
         }
@@ -137,10 +152,26 @@ final class FreeSpaceUnderOddInputsTests: XCTestCase {
     func testNoCapacityOrNotBrowsableIsNotListed() {
         var noTotal = boot
         noTotal.total = nil
-        XCTAssertTrue(DiskEngine(capacity: AnyPathCapacity(noTotal)).volumes().isEmpty)
+        XCTAssertTrue(DiskEngine(capacity: AnyPathCapacity(noTotal), trashing: neverTrashes).volumes().isEmpty)
         var hidden = boot
         hidden.isBrowsable = false
-        XCTAssertTrue(DiskEngine(capacity: AnyPathCapacity(hidden)).volumes().isEmpty)
+        XCTAssertTrue(DiskEngine(capacity: AnyPathCapacity(hidden), trashing: neverTrashes).volumes().isEmpty)
+    }
+
+    /// A figure no disk reports (negative, or past every bound) is bounded by
+    /// the initialiser, so `usedBytes` — a subtraction — cannot trap. Each
+    /// stored field is read before `usedBytes`: without the bound the
+    /// subtraction takes the whole test process with it, which nobody can read.
+    func testTheInitialiserBoundsFiguresNoDiskReports() {
+        for (total, free) in [(0, Int.min), (Int.min, 1), (-5, -5), (Int.max, Int.min)] {
+            let volume = VolumeInfo(name: "Odd", path: "/Volumes/Odd",
+                                    totalBytes: total, freeBytes: free)
+            guard volume.totalBytes >= 0, volume.freeBytes >= 0 else {
+                XCTFail("total \(total) free \(free) kept a negative field")
+                continue
+            }
+            XCTAssertGreaterThanOrEqual(volume.usedBytes, 0)
+        }
     }
 
     /// The scan's door when the port does not answer at all: no wedge rather
@@ -148,7 +179,7 @@ final class FreeSpaceUnderOddInputsTests: XCTestCase {
     func testAScanWhoseVolumeDoesNotAnswerDrawsNoWedge() async throws {
         let root = scratchDirectory("disk-silent-wedge")
         try Data(count: 4096).write(to: root.appendingPathComponent("a.bin"))
-        let engine = DiskEngine(capacity: SilentCapacity())
+        let engine = DiskEngine(capacity: SilentCapacity(), trashing: neverTrashes)
         let scan = await engine.scan(path: root.path)
         let result = try XCTUnwrap(scan)
         XCTAssertEqual(result.freeBytes, 0)
@@ -174,7 +205,7 @@ final class FreeSpaceUnderOddInputsTests: XCTestCase {
         guard important - plain > 1_000_000_000 else {
             throw XCTSkip("this Mac holds under 1 GB of purgeable space; the readings coincide")
         }
-        let listed = try XCTUnwrap(DiskEngine().volumes().first { $0.path == "/" },
+        let listed = try XCTUnwrap(DiskEngine(trashing: neverTrashes).volumes().first { $0.path == "/" },
                                    "the boot volume is not in the engine's list")
         XCTAssertLessThan(abs(listed.freeBytes - important), abs(listed.freeBytes - plain), """
             the engine lists \(listed.freeBytes) bytes free on /, where Finder's reading is \
@@ -220,6 +251,9 @@ final class FreeSpaceUnderOddInputsTests: XCTestCase {
     }
 }
 
+/// The move of a volume-only test: it must never be reached.
+let neverTrashes: @Sendable (URL) throws -> Void = { _ in XCTFail("a volume test reached the move") }
+
 /// One volume, answering for any path on it — which is what the real port does
 /// for a folder: the volume keys of `/Users/x/Downloads` are the boot volume's.
 private struct AnyPathCapacity: VolumeCapacityPort {
@@ -231,6 +265,7 @@ private struct AnyPathCapacity: VolumeCapacityPort {
         readout.path = path
         return readout
     }
+
 }
 
 /// A port with nothing mounted and no answer for any path.

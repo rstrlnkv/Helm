@@ -1,4 +1,3 @@
-import HelmContract
 import HelmRuntime
 import HelmUI
 import XCTest
@@ -30,15 +29,15 @@ final class ThePageNamesEveryCopyItKeepsTests: XCTestCase {
     }
 
     func testTheRemovalNamesTheCopiesTheListIsKeeping() async throws {
-        let wire = DuplicatesWire(groups: [family])
-        let dvm = await searchedModel(over: wire)
+        let work = AnsweringWork(groups: [family])
+        let dvm = await searchedModel(over: work)
         dvm.toggleBasket(marked)
 
         await dvm.emptyBasket()
 
-        XCTAssertEqual(wire.removals.last?.map(\.remove), [marked],
+        XCTAssertEqual(work.removals.last?.map(\.remove), [marked],
                        "precondition: one copy was asked for")
-        let said = try XCTUnwrap(wire.staying.last, "no removal reached the wire at all")
+        let said = try XCTUnwrap(work.staying.last, "no removal reached the work at all")
         XCTAssertEqual(Set(said ?? []), [survivor, unticked], """
             the removal named its survivor and nothing else, so the extra left unticked — which \
             is holding its family's blocks exactly as the survivor is — was invisible to the \
@@ -51,16 +50,16 @@ final class ThePageNamesEveryCopyItKeepsTests: XCTestCase {
     /// them rather than one per group.
     func testItNamesTheCopiesInEveryGroupOnTheScreen() async throws {
         let elsewhere = "\(home)/Documents/note.txt"
-        let wire = DuplicatesWire(groups: [family,
+        let work = AnsweringWork(groups: [family,
                                            DuplicateGroup(bytes: 1_000,
                                                           paths: [elsewhere,
                                                                   "\(home)/Documents/note 2.txt"])])
-        let dvm = await searchedModel(over: wire)
+        let dvm = await searchedModel(over: work)
         dvm.toggleBasket(marked)
 
         await dvm.emptyBasket()
 
-        let said = try XCTUnwrap(wire.staying.last, "no removal reached the wire at all")
+        let said = try XCTUnwrap(work.staying.last, "no removal reached the work at all")
         XCTAssertEqual(Set(said ?? []), [survivor, unticked, elsewhere,
                                          "\(home)/Documents/note 2.txt"],
                        "a group nothing was ticked in still holds whatever its copies hold")

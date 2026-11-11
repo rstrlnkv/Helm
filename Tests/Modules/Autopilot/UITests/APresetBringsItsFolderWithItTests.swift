@@ -21,8 +21,8 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
 
     private let home = "/Users/x"
 
-    private func model(on wire: AutopilotWire) -> AutopilotViewModel {
-        AutopilotViewModel(vm: ModuleViewModel(transport: wire),
+    private func model(on work: FakeAutopilotWork) -> AutopilotViewModel {
+        AutopilotViewModel(work: work, historyChanges: AsyncStream { _ in },
                            presetFolders: FakePresetFolders(home: home), home: home)
     }
 
@@ -39,14 +39,14 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
     // MARK: - Saving one
 
     func testTheFolderIsSavedWithTheRuleAlreadyInIt() async throws {
-        let wire = AutopilotWire()
-        let model = model(on: wire)
+        let work = FakeAutopilotWork()
+        let model = model(on: work)
         await model.load()
         let offer = try offer(model, .screenshots)
 
         await model.save(draft(offer), in: offer.folder)
 
-        let saved = try XCTUnwrap(wire.saved.last)
+        let saved = try XCTUnwrap(work.saved.last)
         XCTAssertEqual(saved.map(\.path), [home + "/Desktop"])
         XCTAssertEqual(saved.first?.rules.map(\.id), ["preset.screenshots"])
         XCTAssertEqual(saved.first?.rules.first?.enabled, true)
@@ -57,8 +57,8 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
     /// save that stored the draft as it stood would store rules nobody agreed
     /// to.
     func testOnlyTheRuleThatWasShownIsSaved() async throws {
-        let wire = AutopilotWire()
-        let model = model(on: wire)
+        let work = FakeAutopilotWork()
+        let model = model(on: work)
         await model.load()
         let offer = try offer(model, .screenshots)
         var draft = offer.folder
@@ -67,15 +67,15 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
 
         await model.save(self.draft(offer), in: draft)
 
-        XCTAssertEqual(wire.saved.last?.first?.rules.map(\.id), ["preset.screenshots"])
+        XCTAssertEqual(work.saved.last?.first?.rules.map(\.id), ["preset.screenshots"])
     }
 
     /// A second preset over the same folder goes into the folder the first one
     /// added, rather than storing the path twice — a second `WatchedFolder` for
     /// one path would never be reached, since the first answers for it.
     func testASecondPresetOverTheSameFolderJoinsTheFirst() async throws {
-        let wire = AutopilotWire()
-        let model = model(on: wire)
+        let work = FakeAutopilotWork()
+        let model = model(on: work)
         await model.load()
         // Both taken before the first save: the block is gone from the page the
         // moment a rule exists, so the second is no longer on offer afterwards —
@@ -86,7 +86,7 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
 
         await model.save(draft(second), in: second.folder)
 
-        let saved = try XCTUnwrap(wire.saved.last)
+        let saved = try XCTUnwrap(work.saved.last)
         XCTAssertEqual(saved.count, 1, "one folder was stored twice")
         XCTAssertEqual(saved.first?.rules.map(\.id),
                        ["preset.downloads-by-kind", "preset.old-installers"])
@@ -96,17 +96,17 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
 
     /// The walk the design is built around: press Done, and the folder is swept
     /// once, straight away, with the report and its return beside it. Waited for
-    /// rather than raced, so this asserts the command was sent.
+    /// rather than raced, so this asserts the sweep was asked for.
     func testAFolderThePresetAddedIsSweptOnce() async throws {
-        let wire = AutopilotWire(report: SweepReport(folderID: "f", examined: 3, acted: 1,
+        let work = FakeAutopilotWork(report: SweepReport(folderID: "f", examined: 3, acted: 1,
                                                      refused: 0, failed: 0))
-        let model = model(on: wire)
+        let model = model(on: work)
         await model.load()
         let offer = try offer(model, .screenshots)
 
         await model.save(draft(offer), in: offer.folder)
 
-        XCTAssertEqual(wire.commands.filter { $0 == .runNow }.count, 1)
+        XCTAssertEqual(work.count("sweepNow"), 1)
         XCTAssertNotNil(model.banner, "the sweep said nothing about what it did")
     }
 
@@ -117,8 +117,8 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
         let watched = WatchedFolder(id: "desktop", path: home + "/Desktop",
                                     rules: [Rule(id: "mine", name: "m", enabled: true,
                                                  conditions: [.kind(.image)], action: .trash)])
-        let wire = AutopilotWire(folders: [watched])
-        let model = model(on: wire)
+        let work = FakeAutopilotWork(folders: [watched])
+        let model = model(on: work)
         await model.load()
         // Asked of the engine's own gate: the page offers nothing once a rule
         // exists, but a draft over a watched folder is still what `save` may be
@@ -131,9 +131,9 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
 
         await model.save(draft(offer), in: offer.folder)
 
-        XCTAssertFalse(wire.commands.contains(.runNow),
+        XCTAssertFalse(work.calls.contains("sweepNow"),
                        "somebody else's rules were run over their folder")
-        XCTAssertEqual(wire.saved.last?.first?.rules.map(\.id), ["mine", "preset.screenshots"])
+        XCTAssertEqual(work.saved.last?.first?.rules.map(\.id), ["mine", "preset.screenshots"])
     }
 
     // MARK: - Cancel
@@ -143,17 +143,17 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
     /// the wrong reason — and then the window went away, and there is no folder
     /// and no rule.
     func testCancellingLeavesNeitherAFolderNorARule() async throws {
-        let wire = AutopilotWire()
-        let model = model(on: wire)
+        let work = FakeAutopilotWork()
+        let model = model(on: work)
         await model.load()
         let offer = try offer(model, .screenshots)
 
         await model.runPreview(for: offer.folder, rule: draft(offer))
         model.clearPreview()
 
-        XCTAssertTrue(wire.commands.contains(.previewDraft),
+        XCTAssertTrue(work.calls.contains("dryRun"),
                       "precondition: the dry run this is the cancellation of")
-        XCTAssertEqual(wire.saved, [], "a cancelled preset wrote a folder list")
+        XCTAssertEqual(work.saved, [], "a cancelled preset wrote a folder list")
         XCTAssertEqual(model.folders, [], "a cancelled preset left a folder on the page")
     }
 
@@ -161,17 +161,17 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
     /// in it — which is the whole reason the editor can be opened on a preset
     /// before anything is saved.
     func testTheDryRunIsOfTheUnsavedFolder() async throws {
-        let wire = AutopilotWire()
-        let model = model(on: wire)
+        let work = FakeAutopilotWork()
+        let model = model(on: work)
         await model.load()
         let offer = try offer(model, .screenshots)
 
         await model.runPreview(for: offer.folder, rule: draft(offer))
 
-        let previewed = try XCTUnwrap(wire.previewed)
+        let previewed = try XCTUnwrap(work.previewed)
         XCTAssertEqual(previewed.path, home + "/Desktop")
         XCTAssertEqual(previewed.rules.map(\.id), ["preset.screenshots"])
-        XCTAssertEqual(wire.saved, [], "a dry run saved something")
+        XCTAssertEqual(work.saved, [], "a dry run saved something")
     }
 
     // MARK: - Rules that are not Helm's
@@ -179,8 +179,8 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
     /// And if one were pressed anyway, nothing goes out. The offer being empty
     /// is a fact about the screen; this is a fact about the gesture.
     func testARefusedRuleSetDoesNotTakeAPreset() async {
-        let wire = AutopilotWire(status: AutopilotStatus(refusal: .tampered))
-        let model = model(on: wire)
+        let work = FakeAutopilotWork(status: AutopilotStatus(refusal: .tampered))
+        let model = model(on: work)
         await model.load()
         let offer = OfferedPreset(preset: RulePreset(kind: .screenshots),
                                   folder: WatchedFolder(path: home + "/Desktop"),
@@ -188,7 +188,7 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
 
         await model.save(draft(offer), in: offer.folder)
 
-        XCTAssertEqual(wire.saved, [], "a preset was written over a refused rule set")
+        XCTAssertEqual(work.saved, [], "a preset was written over a refused rule set")
         XCTAssertEqual(model.folders, [], "a refused page put the folder on screen anyway")
     }
 }
@@ -201,8 +201,8 @@ final class APresetOnOfferTests: XCTestCase {
 
     private let home = "/Users/x"
 
-    private func model(on wire: AutopilotWire) -> AutopilotViewModel {
-        AutopilotViewModel(vm: ModuleViewModel(transport: wire),
+    private func model(on work: FakeAutopilotWork) -> AutopilotViewModel {
+        AutopilotViewModel(work: work, historyChanges: AsyncStream { _ in },
                            presetFolders: FakePresetFolders(home: home), home: home)
     }
 
@@ -219,7 +219,7 @@ final class APresetOnOfferTests: XCTestCase {
     // MARK: - The control
 
     func testAMacWithNoRulesIsOfferedThePresets() async {
-        let model = model(on: AutopilotWire())
+        let model = model(on: FakeAutopilotWork())
         await model.load()
         XCTAssertEqual(model.presets.map(\.preset.kind), PresetKind.allCases)
     }
@@ -228,21 +228,21 @@ final class APresetOnOfferTests: XCTestCase {
     /// anything the preset chose: a preset does not decide how deep somebody
     /// watches a folder.
     func testTheFolderArrivesAtTheFoldersOwnDepth() async throws {
-        let wire = AutopilotWire()
-        let model = model(on: wire)
+        let work = FakeAutopilotWork()
+        let model = model(on: work)
         await model.load()
         let offer = try offer(model, .screenshots)
 
         await model.save(draft(offer), in: offer.folder)
 
-        XCTAssertEqual(wire.saved.last?.first?.depth, 1)
+        XCTAssertEqual(work.saved.last?.first?.depth, 1)
     }
 
     /// Added, and the block is gone with it: the first rule on the page ends the
     /// offer.
     func testAPresetThatWasAddedIsNoLongerOffered() async throws {
-        let wire = AutopilotWire()
-        let model = model(on: wire)
+        let work = FakeAutopilotWork()
+        let model = model(on: work)
         await model.load()
         let offer = try offer(model, .screenshots)
 
@@ -255,8 +255,8 @@ final class APresetOnOfferTests: XCTestCase {
     /// the write too; this is the half that stops the page offering a button
     /// whose only outcome is a line in the log.
     func testARefusedRuleSetIsOfferedNoPresets() async {
-        let wire = AutopilotWire(status: AutopilotStatus(refusal: .tampered))
-        let model = model(on: wire)
+        let work = FakeAutopilotWork(status: AutopilotStatus(refusal: .tampered))
+        let model = model(on: work)
 
         await model.load()
 

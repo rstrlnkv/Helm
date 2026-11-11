@@ -3,38 +3,41 @@
 `Sources/Modules/Screenshots/` freezes each display, lets a person pick an area, a
 window or the whole screen out of the frozen frame, and saves or copies the picture.
 It needs a grant no other module does — Screen & System Audio Recording, the third
-`PermissionNeed` — and it is the one module whose work does **not** go through the
-transport. A 5K display's frozen frame is some sixty megabytes and the wire is `Data` in both
-directions, so a capture that crossed it would be copied at least twice for nothing:
-the host's shortcut action calls `ScreenshotsCapture.begin`
-(`Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`) directly, and that
-builds a `CaptureSession` (`Sources/Modules/Screenshots/Engine/CaptureSession.swift`)
-out of the engine's own ports. The engine's wire carries what the settings page
-cannot read for itself — the validated save folder and which of the system's own
-screenshot shortcuts are still ticked — as `ScreenshotsState`.
+`PermissionNeed` — and it is the one module whose capture does **not** go through the
+engine. A 5K display's frozen frame is some sixty megabytes, so a frame never crosses
+the port between the model and the engine: the module's `hotkeyPressed` calls the
+model's `press`, which builds a `CaptureController` over a `CaptureSession`
+(`Sources/Modules/Screenshots/Engine/CaptureSession.swift`) made of the engine's own
+ports. What the engine tells the model is what the settings page cannot read for itself
+— the validated save folder and which of the system's own screenshot shortcuts are still
+ticked — as `ScreenshotsState` (§ How Screenshots' model reaches its engine).
 
 Everything the session asks of the machine is a port with a fake
 (`Sources/Modules/Screenshots/Engine/Ports.swift`): the capture, the file write, the move of
-an edit's original to the Trash, the clipboard, and three preference reads of what macOS owns. All three are **read and
+an edit's original to the Trash, the clipboard, the shutter, the Dock's bounds, the reading of text, and three preference reads of what macOS owns. All three are **read and
 never written** — com.apple.screencapture for the save folder, com.apple.symbolichotkeys
 for the boxes, and the global domain's user-interface-sound switch for the shutter — and `Sources/Modules/Screenshots/Engine/Logic/SaveLocation.swift` and
-`Sources/Modules/Screenshots/Engine/Logic/SystemShortcuts.swift` are what judge them:
+`Sources/Modules/Screenshots/Engine/Logic/SystemShortcuts.swift` judge the first two:
 an absent box is one macOS still holds, and an unreadable reading is unknown rather
-than free. Changing a system shortcut is the person's act in System Settings; Helm
+than free. `ShutterRule` (`Sources/Modules/Screenshots/Engine/Logic/ScreenshotsSettings.swift`)
+judges the third, and reads an absent or unreadable switch as on. Changing a system shortcut is the person's act in System Settings; Helm
 opens the pane and says which boxes to untick.
+
+Words: `Sources/Modules/Screenshots/UI/Localizable.xcstrings`, `%@` keys (`timerOn`, `nameTemplate`) included; shared words through `HelmWord` from the kit.
+
+## The overlay
 
 The overlay (`Sources/Modules/Screenshots/UI/CaptureOverlay.swift`) is one
 non-activating key panel per display, so it reads the keyboard and the pointer itself
 and needs no Accessibility. Its rules are functions of the pointer and the modifiers
-in `Sources/Modules/Screenshots/Engine/Logic/Selection.swift`, and the three
+in `Sources/Modules/Screenshots/Engine/Logic/Selection.swift`. Of the three
 coordinate spaces a capture passes through — AppKit's, CoreGraphics' and a display's
-own — are converted in `Sources/Modules/Screenshots/Engine/Logic/ScreenSpace.swift`
-and nowhere else. The window list in a freeze is a reading: a click asks the system
+own — global, display-local and pixel conversions are in `Sources/Modules/Screenshots/Engine/Logic/ScreenSpace.swift`; a flip out of AppKit's space is spelled where it is needed: `DockStrip`, `SCKCapture`'s Dock placement and the overlay's own views (`OverlayView.local`, `CaptureOverlay.local(_:in:frame:)`) flip a point or a rectangle for themselves. Its translucent and accent inks are `Sources/Modules/Screenshots/UI/OverlayInk.swift`: ink on a picture and not the kit's tokens, with a stronger set under Increase Contrast; `pill` and `plate` go solid under Reduce Transparency. The window list in a freeze is a reading: a click asks the system
 for the window again, and a window that has gone, or that could not be captured, is cut from the frozen frame.
 
 Selecting is drawn as macOS draws it. Nothing is dimmed until there is a selection — from the first point a drag
 has moved over, through the edit — and a window pick is never dimmed: the window, the menu bar or the Dock under the
-pointer is filled with the accent at 28 %, in the outline `WindowShape` gives it. That outline is the window's
+pointer is filled with the accent at 28 % (under Increase Contrast 40 %, with a white edge over a dark one), in the outline `WindowShape` gives it. That outline is the window's
 rectangle, because the system gives no radius for a window's corners; a rounded one would change that function
 and nothing else. The lines across the screen are drawn only while ⌥ is held, read from `flagsChanged`. A window is
 taken with its shadow, and an option-click takes it without: the flag goes through `OverlayResult.window` and
@@ -44,6 +47,8 @@ pixels under the pointer that `PixelLoupe` reads from the frozen frame, in sRGB.
 ends in a flash (`FlashLayer`) over the selection's or the window's shape, and the overlay closes after it, on a timer
 of the flash's length; the picture was cut from the freeze (a window's own comes from the system, of that window
 alone), so the flash is in neither. Under Reduce Motion there is no flash and the overlay closes at once.
+
+## The capture panel
 
 The panel (`Sources/Modules/Screenshots/UI/CapturePanel.swift`, its content in `CapturePanelView.swift`) is the bar the
 third shortcut opens, drawn as macOS's own: a close control, Whole screen, Window and Area, the timer, a gear and
@@ -60,8 +65,9 @@ per display; «Put the Panel Back» forgets the stored move and the one made sin
 `busy` flag for the bar, its countdown and the overlay, so a second press at any stage is dropped.
 
 **Window and Area are picked on the frozen screen with the panel still up.** Pressing either mode freezes the screen at
-once and opens the overlay with `selectionOnly` set: the person only picks (a window under the pointer, or an area that
-stays drawn until a new drag replaces it, which a click that never moved does not), the palette never appears and
+once and opens the overlay with `selectionOnly` set: the person picks an area, which stays drawn until a new drag replaces it
+(a click that never moved does not) and waits for Capture or Return, or a window under the pointer, which a click takes
+at once, with ⌥ without its shadow, while Capture and Return take it with its shadow. The palette never appears and
 `startEditing` is never called. Capture is drawn only when `CaptureOverlay.hasTarget` says there is something to take;
 Return on the panel does not ask, and takes the target there is, or with no overlay open yet opens one. The shot goes
 through the ordinary `handOff`, with no editor. With no timer the panel closes at the pick: an area is cut from that
@@ -78,13 +84,17 @@ module being switched off end it with nothing taken. The last confirmed area is 
 display's points, read back through the same ceiling (`StoredNumber`), where a value that is not finite makes the whole
 record no record, and only the panel's Area mode opens the overlay on it.
 
+## Writing a shot and replacing it
+
 A picture is written to a temporary name and moved into place with RENAME_EXCL
 (`FileShotWriter` in `Sources/Modules/Screenshots/Engine/SystemPorts.swift`), so a
 name taken is one more number to try and nothing is ever overwritten. The capture is
 deliberately not a phase in the activity registry and logs nothing when it works: the
 log holds refusals — no grant, a refused write, a refused folder, an original that was not
-replaced — with paths through `Redact`. The one phase the module has is the removal's,
-which `HelmTrash.remove` opens for every module that hands it a path.
+replaced — with paths through `Redact`, and the warnings of a picture that is delivered all the same (a frame without the pointer, a Dock that did not
+answer, a window cut from the frozen frame). The module has two phases: the removal's, `screenshots.trash`, which
+`HelmTrash.remove` opens for every module that hands it a path, and `screenshots.recognize` of the text reading
+(§ Reading the text of the area), which also writes a memory line.
 
 **«Edit» replaces the file a shot wrote, and writes over nothing to do it.** The writer
 answers with a `WrittenShot`: the file's URL and a `ShotReading` — device and inode, size,
@@ -119,6 +129,8 @@ one sentence («moved or changed … saved as a separate file»); the gate's oth
 and the Trash's have their own. A shot that had no file replaces nothing: it is saved as a new
 shot, or only copied under the clipboard target, as any shot is.
 
+## The editor and its layers
+
 After a drag is released the overlay does not finish: it becomes the inline editor of
 that area, a second phase of the same panel, and the picture under the layers is never
 touched. The layers are values in `Sources/Modules/Screenshots/Engine/Logic/Annotation.swift`
@@ -140,14 +152,15 @@ point lands on, with no chance and no clock, so the export clips the stroke to i
 overlay lays it on the shape layer as `layer.mask` at the display's scale, and the two show one grain wherever the cut begins. The overlay's view keeps one layer per annotation (a shape layer, and for the blur, the text, an emoji, a lens and a step a layer with a picture as its contents; a spotlight has none, see below), built again only when its
 annotation is no longer equal to the one it was built from, and for a step only while its number is the one it was built with. ⇧ is read from the flags of each event and never kept from the press.
 
+## Marks that are no stroke
+
 The blur (`AnnotationTool.blur`) is the one tool with no ink: a box held like a rectangle (four corners, ⇧ a square) and taken by its
 area (`AnnotationHit.takesByArea`), whose step is the size of its block in points and whose colour is not one of its edits.
 It is drawn by `Pixelate` (`Sources/Modules/Screenshots/Engine/Logic/Pixelate.swift`), a mosaic whose every pixel is replaced by the mean of
 its block's bytes, and no block is drawn from fewer than two pixels; the grid starts at the display's own pixel (0, 0), so the cut of the
 file and the display on the screen share their blocks, a block the box's edge cuts takes the mean of its pixels inside the box, an end strip
 narrower than half a block joins the block beside it (`Pixelate.edges`), and the box is rounded outward to whole pixels and drawn opaque.
-A box of a single pixel has no mean to be drawn: `Pixelate.tile` is nil, and `CaptureSession.draw` then returns nil and the
-delivery is refused, while a box with no pixel on the display is skipped, as it hides nothing. `CaptureSession.draw` takes the display's image beside the cut, and the overlay lays
+A box that clips to a single pixel grows by one neighbouring pixel inside the display (`Pixelate.grown`, called by `Pixelate.tile`, so the screen and the file grow it alike, a hand-drawn box as much as a find), and its block is the mean of two, not that pixel verbatim; on a display of one pixel there is no neighbour, `tile` is nil and the export refuses as for any bitmap that cannot be made (a box larger than one pixel is never changed). A bitmap that cannot be made makes `CaptureSession.draw` return nil, and `annotated` with it; `CaptureController.overlayFinished` then logs a warning and shows the `captureFailed` refusal. A box with no pixel on the display is skipped, as it hides nothing. `CaptureSession.draw` takes the display's image beside the cut, and the overlay lays
 the same `Pixelate.tile` as the `contents` of a layer of its own, masked by the selection: a layer of the view that is not a shape layer.
 
 The text (`AnnotationTool.text`) is one line of the system font in semibold, its size by the step (`AnnotationThickness.points(for:)`), in the colour and the opacity
@@ -201,6 +214,8 @@ is the editor's own, as for the text tool), and with none picked it only lets go
 Both tools are items of the ⋯ menu after Select and before Thickness and Opacity…, with a check mark when chosen and their symbol as ⋯'s badge, from `EditorPalette.afterSelect`, a list of their own: they have no
 cell on the palette, no place in `EditorPalette.objects` and no key.
 
+## The palette
+
 The editor has one palette, a capsule below the selection, a view of the overlay's own panel
 (`Sources/Modules/Screenshots/UI/EditorPalette.swift`) and not a window of its own. Where it stands is a pure
 function of the selection, the display's size and the palette's measured size (`EditorChrome` in
@@ -222,24 +237,20 @@ before: `editorInk`, three numbers, or, while `editorInk` is absent, the swatch 
 on one tool never reaches the tools that have no entry yet; an `editorInk` that is there and is not three numbers is no colour, without the old key being asked.
 A pick with an object selected is the object's tool's, and with none selected the tool last in hand's.
 
-The settings page (`Sources/Modules/Screenshots/UI/ScreenshotsSettingsPage.swift`) hands the window's toolbar three tabs
-through `HelmPageToolbarContent`: Capturing (the shortcuts, what a capture makes, the folder), Editor and System shortcuts.
-The third carries a dot, `HelmToolbarTab.needsAttention`, while a capture box is read as still ticked in macOS
-(`ScreenshotsSettingsPage.holdsSystemKeys`, the other side of `offersToUseSystemKeys`, which offers «Use ⇧⌘3 and ⇧⌘4» once
-both are read as off). The Editor tab holds the default colour, which is `editorColor`, the start of a tool with no colour of its own (a pick on it also removes `editorInk`, which would be read first), and
-«Tools in the palette»: a list of the row's objects, `EditorPalette.rowKinds` (the pens, the eraser, the ruler and the spotlight), each a checkbox. What it writes is
-`paletteChoices`, a table from `PaletteItem`'s raw value to shown or hidden, only the person's own picks
-(`PaletteItems`, read per case, so an entry that is no Bool costs the others nothing): an item with no pick takes its default, so an object added later is shown for a person who had already
-chosen. Colours, Undo, Redo, ⋯, Done and ✕ are no `PaletteItem`, so no list can take them away. The overlay reads the
-hidden ones when the first area is released (`EditorBarModel.hide`), so the palette is measured with the row it has and
-`EditorChrome` places it by that width; a hidden object stands as an item of the ⋯ menu above the glyph tools with a symbol,
-its own check mark and, for a tool, its key shown (`EditorPalette.menuSymbol(of:)`, a fallback symbol for a tool with none), and sends what its object sends: `EditorAction.tool` as the key does, `.erase` for the eraser, `.toggleRuler` for the ruler. With the eraser hidden and raised, ⋯'s badge is the eraser's symbol; the ruler raised changes no badge, hidden or not. `EditorKeys` never reads the list.
-
 The palette carries the pen, the marker, the pencil, the eraser, the ruler and the spotlight as objects, in that order, each drawn by `PaletteObject`
 (`Sources/Modules/Screenshots/UI/PaletteObject.swift`) from vector layers of `PaletteObjects.xcassets`: a body, a tip
 that is a template layer filled with its own tool's colour, and the tip's highlight (the eraser, the ruler and the spotlight have a body only), with two native shadows; the picked
 object is raised 10 pt, its bottom cut by the palette, and under Reduce Motion it moves at once. The artwork carries no SVG
 filter and no text, because macOS drops a filter without a word; the attribution of the pen, the marker, the pencil, the eraser and the ruler is in `NOTICE.md`; the spotlight's shape was drawn for Helm and its body and band fills are the pen's from the same file.
+
+The other tools, Select, Filled, Save, Share… and, while
+`PinEntry.isOffered`, Pin are items of the ⋯ menu (`EditorMenu` in `Sources/Modules/Screenshots/UI/EditorMenu.swift`):
+a pure list of values read from the same `EditorBarModel` and the same tool list as the row, and an `NSMenu` filled from
+it at every opening, so a check mark cannot differ from the chosen tool. ⋯ is drawn pressed while the menu is open and
+carries the symbol of a chosen menu tool as a badge, a hidden object in use included. The tool items, the `.menu` and `.shapes` places of `EditorPalette.objects` and `EditorPalette.afterSelect`, show their letter at the right (`EditorMenu.keyEquivalent(of:)`, read from `EditorKeys.toolKeys`; Select, Steps, Crop, Magnifier and Emoji show none, none of the five having a key). `Filler.choose` drops an action sent by a key event whose letter is one of `EditorKeys.toolKeys` (the predicate is `EditorMenu.isSentByAKey`; Return and space pass): the keys act only with the menu closed, by `EditorKeys`.
+
+## The eraser and the ruler
+
 The eraser is a mode of the editor and no `AnnotationTool` (`EditorAction.erase`, key E, `EditorKeys.eraserKeyCode`): the chosen tool stays chosen
 under it, `EditorMemory` is never asked to keep it, so the next capture opens with the last drawing tool, and choosing a tool or Select puts it down. A drag takes away whole layers:
 `AnnotationEditing.beginErase(at:radius:)` and the drags after it collect the layers the circle of `CaptureOverlay.eraserRadius` meets, by `AnnotationHit.touched(by:radius:in:within:)`,
@@ -257,15 +268,12 @@ nothing, with any tool or none; with the eraser on, the press is the eraser's an
 non-activating panel is sent that gesture was not tried, which is why the ⌥-drag is there. The angle sticks to 0°, 45° (and −45°) and 90° within 2°. A stroke of the pen, the pencil or the marker
 that **begins** within 12 pt of one of the two long edges (`Ruler.edge(near:)`, read once, at the press) is the straight run along that edge, cut at the strip's ends, and an ordinary layer of its
 pen once it is released (`AnnotationEditing.begin(_:at:style:ruler:)`); one that begins farther is free from start to end, and the arrow and the shapes never read the ruler.
-Every other tool, Select, Filled, Save, Share… and, while
-`PinEntry.isOffered`, Pin are items of the ⋯ menu (`EditorMenu` in `Sources/Modules/Screenshots/UI/EditorMenu.swift`):
-a pure list of values read from the same `EditorBarModel` and the same tool list as the row, and an `NSMenu` filled from
-it at every opening, so a check mark cannot differ from the chosen tool. ⋯ is drawn pressed while the menu is open and
-carries the symbol of a chosen menu tool as a badge, a hidden object in use included. The tool items, the `.menu` and `.shapes` places of `EditorPalette.objects` and `EditorPalette.afterSelect`, show their letter at the right (`EditorMenu.keyEquivalent(of:)`, read from `EditorKeys.toolKeys`; Select, Steps, Crop, Magnifier and Emoji show none, none of the five having a key). `Filler.choose` drops an action sent by a key event whose letter is one of `EditorKeys.toolKeys` (the predicate is `EditorMenu.isSentByAKey`; Return and space pass): the keys act only with the menu closed, by `EditorKeys`.
+
+## The pop-overs
 
 A second click on the chosen pen, marker or pencil opens the thickness and opacity pop-over
 (`Sources/Modules/Screenshots/UI/EditorPopover.swift`), and so does the ⋯ menu's Thickness and Opacity…, which stands
-right after Select, Magnifier and Emoji and is enabled while a tool is chosen, the spotlight excepted, so it reaches a tool with no cell on the row
+right after Select, Magnifier and Emoji and is enabled while a tool is chosen, the spotlight excepted and with the eraser off, so it reaches a tool with no cell on the row
 (`EditorPalette.action(forClickOn:chosen:anchorX:)`, `EditorAction.thicknessAndOpacity`). It is another view of the
 overlay's panel, placed by `EditorChrome` with the palette: centred on the cell that opened it, `EditorChrome.popoverGap` under the palette
 or above it when under is short, held on the display, and part of `EditorChrome.covers` so that a press on it is never
@@ -274,12 +282,12 @@ for the chosen tool (`EditorBarModel.picked`), the thickness on the tool's three
 through `EditorAction.thickness` and `EditorAction.opacity` and so through `EditorMemory`. Esc and a right click close it (not one beside the picture of an Edit, which does nothing)
 and do nothing else, as does a click outside it, which draws and moves nothing; putting the tool down closes it. It
 appears by a clipped, measured height under `HelmMotion.disclosure`. With an object selected a thickness pick also
-re-weights it, as before; whether it should is an open question of the owner's (the one line is in `CaptureOverlay.perform`).
+re-weights it; the opacity does not (the line is in `CaptureOverlay.perform`).
 
 The palette's colour grid holds five inks (red, yellow, blue, green, black); the sixth cell is the colour wheel, named
 `ScStr.allColours`, and its press (`EditorAction.colours`, at `EditorBarModel.wheelFrame`'s centre) opens the colours
 pop-over (`Sources/Modules/Screenshots/UI/EditorColoursPopover.swift`): all eight inks, `EditorColoursPopover.inks`, in
-the order `AnnotationColor` lists them, which no mockup draws and the owner may change in that one line. It is placed,
+the order `AnnotationColor` lists them, and that one line says so. It is placed,
 closed and revealed as the thickness one is, through the one `popoverCard` card and `CaptureOverlay`'s one `popover`, so
 only one is open at a time; unlike it, it opens with no tool chosen, where a pick is the tool last in hand's or the selected object's. A swatch sends
 `EditorAction.color` and the pick closes it. While the colour is any the grid has no swatch
@@ -290,6 +298,8 @@ The pop-over has a third row of two cells with no text: the wheel (`EditorAction
 `NSColorPanel.shared` raised above the overlay, and its reasons are in `EditorColourPanel`'s doc comment. The eyedropper is a mode of the overlay like the eraser and Crop (`CaptureOverlay.sampling`):
 while it is on, the cursor is the eyedropper's symbol on every display (`OverlayView.eyedropperCursor`, before the eraser's circle), so the mode shows before the pointer reaches the area, the loupe (`PixelLoupe`, drawn by `LoupeLayer`) follows the pointer over the area, and the next click on the area sends `EditorAction.color` with the middle pixel of the
 frozen frame, read in sRGB from `FrozenDisplay.image`; Esc, a right click on the picture (not beside it in an Edit, where it does nothing), another action or a click off the area puts it down without a pick. A press on the palette is the palette's: its actions end the mode, its bare background does not; any other press ends it. Nothing asks for the mode but the cell, so it is only ever turned on.
+
+## The area and Crop
 
 The finished area is held by eight handles, the corners and the middle of each edge — four, the corners, when its shorter side is under three dot diameters (`AreaFrame.offered`) — and moved by the
 arrows; the geometry is `AreaFrame` in `Sources/Modules/Screenshots/Engine/Logic/AreaFrame.swift`. A press is
@@ -314,7 +324,9 @@ kept inside the new area. **Esc gives it back** (and so do choosing a tool, the 
 rule, so the next one is its first; Esc while a handle is held still only puts that drag back. The other exits deliver the area as the screen shows it. The layers keep their coordinates, an object left outside
 is let go of at the release (`AnnotationEditing.releaseIfOutside`), and the blur and the spotlights' dim follow the area as they do for any reshape.
 
-Two items of the ⋯ menu read the text of the area, after a separator behind Save (and Pin): **Copy Text** and **Blur Emails and Phone Numbers**
+## Reading the text of the area
+
+Two items of the ⋯ menu read the text of the area, after a separator behind Share…: **Copy Text** and **Blur Emails and Phone Numbers**
 (`EditorAction.copyText` and `EditorAction.blurPersonalText`, no keys; `EditorMenuItem.reading` carries their symbols and, for the second, the hint, which is the item's tool tip).
 The reader is a port, `ScreenTextReading` in `Sources/Modules/Screenshots/Engine/Ports.swift`, answering `.read(lines)` or `.failed`, and `VisionTextReader` is its system
 side: Vision's text request for the lines and `NSDataDetector` over each line for what is in it. The registry's phase `screenshots.recognize` wraps the request's `perform`; the parsing of its answer
@@ -329,7 +341,7 @@ is not on it: the measure found them on smaller pictures in English and Russian 
 `CardNumbers`: thirteen to nineteen digits in whole groups divided by one or two spaces (the no-break, narrow, thin, figure and ideographic ones too) or a single hyphen, non-breaking hyphen or en dash, that pass the Luhn check, one line at a time, so a number wrapped over two lines is not found and a number glued
 to other digits is not taken for one. **A find that wraps is blurred only on its first line,** a link, an e-mail address or a phone number as much as a card: the detector runs on one line at a time, and a rule that
 carried a match on to the next line by where that line starts would blur the first word after every link that ends a line, so it was not built. A find is a box padded and rounded outward to the mosaic's grid (`RecognizedBoxes`), made to hide a string and not to outline it, with the step its text's height calls for
-(the smallest whose block is at least that high; text taller than 24 points gets the thickest, which is lower than the text, and no fourth step exists; a box the mosaic cannot make, one pixel, grows inward to two or the find is dropped);
+(the smallest whose block is at least that high; text taller than 24 points gets the thickest, which is lower than the text, and no fourth step exists; a box of one pixel is grown by `Pixelate.tile`, not here);
 a find lying wholly under a blur already placed whose block is at least the step it would get, or inside another find, is not made again, so a blur of the person's own with lower blocks than the text is no cover. One reading makes at most 500 boxes
 (`PersonalFinds.limit`), and the plate says `Blurred: 500` at the cap as it does for exactly 500 finds: at that number the rest may not have been blurred. **Nothing runs by itself:** the finds go in as ordinary blur layers (`AnnotationEditing.insert(blurs:)`), all of
 them one undo step, which the person sees before Done and can delete or add to, and no setting and no save does it for them.
@@ -349,26 +361,49 @@ runs both items are disabled (`EditorBarModel.reading`) and a second choice star
 dropped, with no layer, no copy and no plate, when the editor was closed (`close` cancels the task), when the area has changed under it (any change of the area ends the reading in `render`, since its boxes were for
 the old one) or when another reading has begun since (`serial`). A reading that fails, or a clipboard that refuses the text, says `The text could not be read`.
 
+## Leaving the editor
+
 The seam is split by what was picked. An area arrives as `OverlayResult.edited`, and
 `CaptureController.overlayFinished` in `Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`
 composes it and calls `CaptureController.handOff` with what the exit asked for: Return
-copies and saves by the save target as it always did, the copy key only copies, the
+always copies and writes a file by the save target (an edit of a shot that had a file writes one whatever the target says), the copy key only copies, the
 save key only saves — to the macOS folder when the target is the clipboard — and Share…, from the ⋯ menu, does what
 Return does and then opens the system's sheet at the thumbnail (`thenShare`). A window or a
-whole display still arrives at `handOff` directly and does both, and the full-screen
+whole display still arrives at `handOff` directly and asks for both (a picture that cannot be made, for an area, a pin or a whole display, is a log warning and the `captureFailed` refusal on the toast, never silence), and the full-screen
 shortcut never comes through it. Esc and a right click are one door, except that in an Edit a right click beside the picture or on another display does nothing (the ways out of an Edit are Done, ✕ and Esc): with no layers they
 close at once, with layers the first press shows a plate and a second closes however
 late, and any other input withdraws the question; no clock is read.
 
-The after-shot window (`ShotToast` in `Sources/Modules/Screenshots/UI/ShotToast.swift`) holds a list of shots, oldest
+## The settings page
+
+The settings page (`Sources/Modules/Screenshots/UI/ScreenshotsSettingsPage.swift`) hands the window's header row three tabs
+through `HelmPageToolbarContent`: Capturing (the shortcuts, what a capture makes, the folder), Editor and System shortcuts.
+The third carries a dot, `HelmToolbarTab.needsAttention`, while a capture box is read as still ticked in macOS
+(`ScreenshotsSettingsPage.holdsSystemKeys`, the other side of `offersToUseSystemKeys`, which offers «Use ⇧⌘3 and ⇧⌘4» once
+both are read as off). The Editor tab holds the default colour, which is `editorColor`, the start of a tool with no colour of its own (a pick on it also removes `editorInk`, which would be read first), and
+«Tools in the palette»: a list of the row's objects, `EditorPalette.rowKinds` (the pens, the eraser, the ruler and the spotlight), each a checkbox. What it writes is
+`paletteChoices`, a table from `PaletteItem`'s raw value to shown or hidden, only the person's own picks
+(`PaletteItems`, read per case, so an entry that is no Bool costs the others nothing): an item with no pick takes its default, so an object added later is shown for a person who had already
+chosen. Colours, Undo, Redo, ⋯, Done and ✕ are no `PaletteItem`, so no list can take them away. The overlay reads the
+hidden ones when the first area is released (`EditorBarModel.hide`), so the palette is measured with the row it has and
+`EditorChrome` places it by that width; a hidden object stands as an item of the ⋯ menu above the glyph tools with a symbol,
+its own check mark and, for a tool, its key shown (`EditorPalette.menuSymbol(of:)`, a fallback symbol for a tool with none), and sends what its object sends: `EditorAction.tool` as the key does, `.erase` for the eraser, `.toggleRuler` for the ruler. With the eraser hidden and raised, ⋯'s badge is the eraser's symbol; the ruler raised changes no badge, hidden or not. `EditorKeys` never reads the list.
+
+The shortcuts carry a default (`HotkeyFallback`, `Sources/HelmRuntime/HotkeyFallback.swift`)
+that applies only while the store holds no key at all, so a cleared shortcut stays
+cleared; a switched-off module holds no combination (ARCHITECTURE.md § The stream and the store).
+
+## The after-shot window
+
+The after-shot window's root carries `helmRoot()`, so the refusal's Open Settings button is `HelmButtonStyle`'s; the capsule's cells and «N more» set their own style. The after-shot window (`ShotToast` in `Sources/Modules/Screenshots/UI/ShotToast.swift`) holds, in its `ShotToastModel`, a list of shots, oldest
 first and never more than `ShotShelf.limit`: the shot past the limit pushes the oldest out, with the full picture it held if it was
 only copied. One shot is the bare picture; a shot taken while another is still up joins it, and the group is a pile in the corner
 with a counter, which a click unfolds into a row reaching leftward, `ShotShelf.visible` shots wide, scrolled past that and resting
 on whole shots, with «N more» on the farthest shot seen whole. Where each sheet of the pile and each slot of the row stands, what
 the label counts and where a scroll rests are `ShotShelf`'s (`Sources/Modules/Screenshots/Engine/Logic/ShotShelf.swift`), pure
 functions the view and the clock both ask. Over the pile the capsule acts on the group: Copy All puts every finished shot on the
-clipboard in one write (`CaptureSession.copyAll`, `ShotPasteboard.copy(pngs:)`), all of them or none, one pass at a time (a press while one reads, or the module going off, stops it at its next picture), Show in Finder selects every
-file, ✕ closes the group, and a drag carries every finished shot of it: a file by its URL, a copied picture as a PNG encoded when a drop asks for it, so a drag begins as cheaply for twenty shots as for one, and a pressed sheet still being written does not keep the others from leaving. In the row each shot is a single shot again, with its own capsule, click and
+clipboard in one write (`CaptureSession.copyAll`, `ShotPasteboard.copy(pngs:)`), one pass at a time (a press while one reads, or the module going off, stops it at its next picture), Show in Finder selects every
+file, ✕ closes the group, and a drag carries every finished shot of it: a file by its URL, a copied picture as a PNG encoded when a drop asks for it, so a drag begins as cheaply for twenty shots as for one, and a pressed sheet still being written does not keep the others from leaving. A written shot keeps its path and its thumbnail only, so a file that is not found (moved or deleted) cannot be copied or pinned, and is said: Copy All writes the shots that are found, in the list's order, and names the missing ones by their number in the pile (`CaptureRefusal.filesGone`, a place in the list `ShotToast.sources()` hands the session; with every file gone nothing is written), while Pin and the single Copy say `CaptureRefusal.fileGone` and draw no picture (`AShotWhoseFileIsGoneIsNamedAndTheRestIsCopiedTests`, `APinOfAShotWhoseFileIsGoneIsToldNotDrawnBlankTests`); a file that is there and cannot be read is still `encoding`, and the drag and Share skip a gone file without a word. In the row each shot is a single shot again, with its own capsule, click and
 drag, and ✕ closes that shot alone. The row folds back on Esc and once the pointer has been away from it for
 `ShotShelf.foldDelay`, asked of the pointer's place at every step of the clock and not of an exit; Esc reaches it because the
 click that unfolds the pile makes the panel key (`ShotPanel.takesKey`: only a click on the panel itself, only while the row is
@@ -383,7 +418,7 @@ Edit (only where there is a file with its reading, or a held picture, to open on
 while it is up, the view that reports the hover is the picture and the capsule together, and on a picture narrower than the capsule both stand against the picture's trailing edge.
 A click on the picture is Edit (on a folded pile it unfolds the row): `CaptureSession.openEdit` lays the shot over a fresh freeze of the display under the pointer (`PictureOnScreen` in
 `Sources/Modules/Screenshots/Engine/Freeze.swift`), reduced on the screen when it is larger than the display less `PictureOnScreen.margin` (24 pt at the sides; above and below the palette, its gap and `EditorChrome`'s margin, each side capped at a quarter of the display's side, so that the palette is placed outside the picture and never stands on it) and centred on the whole display, and the overlay opens in the editor on the picture's own
-rectangle, which is also the bounds of its area; the shot stands like a window on the dimmed screen, with a shadow round it (black at 0.5, radius 24, drop 8, masked outside the picture; no rounding, which would cut pixels or the handles, and no border; the design system has no shadow token, so the numbers are the overlay's own, `CaptureOverlay`'s `cardShadowOpacity`, `cardShadowRadius` and `cardShadowDrop`), and a press on the screen beside it closes nothing and draws nothing; the export draws over the picture at its own size (`CaptureSession.annotated(_:local:layers:)`). A drag
+rectangle, which is also the bounds of its area; the shot stands like a window on the dimmed screen, with a shadow round it (black at 0.5, radius 24, drop 8, masked outside the picture; no rounding, which would cut pixels or the handles, and no border; the design system has no shadow token, so the numbers are the overlay's own, `OverlayView`'s `cardShadowOpacity`, `cardShadowRadius` and `cardShadowDrop`), and a press on the screen beside it closes nothing and draws nothing; the export draws over the picture at its own size (`CaptureSession.annotated(_:local:layers:)`). A drag
 carries the file when one was written and else the full picture as a PNG, never the reduced copy, and nothing while the
 write is not done (`ShotToastModel.drag(of:)`). The window's life is a clock that three holds stop, the pointer over the
 picture or the pile, the Share sheet, and the editor open on a shot taken from a group; it starts over with every new shot and is
@@ -395,7 +430,9 @@ group everything a real panel would show: the keys taken at the unfolding click 
 row, a drag of several shots, the glass of the counter and of «N more», and whether a press in the empty room of the row's panel
 falls through to what lies under it.
 
-A third exit, Pin, which v1 does not offer (`PinEntry.isOffered` is false: built and tested, no control reaches it), keeps the picture as a window (`Sources/Modules/Screenshots/UI/ScreenPin.swift`). It is the
+## Pin
+
+A third exit, Pin, which no control offers (`PinEntry.isOffered` is false: built and tested, no control reaches it), keeps the picture as a window (`Sources/Modules/Screenshots/UI/ScreenPin.swift`). It is the
 same picture `CaptureSession.annotated` makes for a file, shown by `PinPanel` at the selection's own place and
 size, which `PinGeometry` (`Sources/Modules/Screenshots/Engine/Logic/PinGeometry.swift`) works from the same
 pixel cut; nothing is written, copied, played or toasted, and `CaptureController` is free again as after any
@@ -410,10 +447,77 @@ window's; it is moved by dragging, scaled about the pointer by the scroll and ma
 ⌥ and the scroll, both bounded. `PinBoard` holds them with one observer of the displays, installed
 with the first pin and removed with the last, which brings a pin wholly onto one screen when a display
 goes (`PinGeometry.rehome`). `CaptureController.cancel` — Esc or the close control on the capture bar —
-closes no pin; only `CaptureController.teardown`, called when the module is switched off or its view model is
-replaced, does. Nothing about a pin is stored.
+closes no pin; only `CaptureController.teardown`, called by `ScreenshotsViewModel.stop` when the module is switched off and at quit, does. Nothing about a pin is stored.
 
-The shortcuts carry a default (`HotkeyFallback`, `Sources/HelmRuntime/HotkeyFallback.swift`)
-that applies only while the store holds no key at all, so a cleared shortcut stays
-cleared, and `HotkeyManager` asks whether the module is live at every reload: a
-switched-off module holds no combination.
+## How Screenshots' model reaches its engine
+
+`ScreenshotsViewModel` is built with the engine by the descriptor's `makeModule` and held
+by the host. It calls the engine through `ScreenshotsWork` (`ScreenshotsViewModel.swift`),
+an internal port of three members: `stream()`, `refresh()` (the answer comes on the
+stream) and `session(store:naming:)`, a factory the model calls once, at the first press.
+After the descriptor's `stop(_:)` the model reaches
+none of the three (`AStoppedScreenshotsModelReachesNoWorkTests`).
+
+The one thing the engine says is `ScreenshotsState`, level-triggered, through
+`ScreenshotsEngine.stream()` in the shape of Keep Awake's (Architecture/KeepAwake.md § How
+the model reaches the engine): the latest state first, the subscriber registered before it
+returns, one task in the model that `stop(_:)` cancels before the engine's `deactivate()`
+(`TheScreenshotsStreamCarriesTheStateTests`, `ASwitchedOffModuleLetsItsSubscriberGoTests`).
+
+The session and the controller are built at the first press and not in the model's init: the one
+makes the capture ports, the other a panel and a toast, and a press may never come. `stop()` ends the controller
+with `CaptureController.teardown`, so a switch-off in the middle of a capture, or after
+one, closes the press, the countdown, the overlay (open or flashing), the bar, the toast
+and the pins (`ASwitchedOffCaptureClosesEveryWindowTests`), and a press that comes after it builds nothing
+(`AStoppedScreenshotsModelReachesNoWorkTests`, `TheStoppedModelMeetsTheOrdersNobodyPlannedTests`). The host's order is the model's `stop()`
+and then the engine's `deactivate()`; the engine's `deactivate()` touches no session, so a
+capture in flight is not left holding a closed engine.
+
+## The states of the Screenshots page and its windows
+
+Every state here is shot on the crew's bench, over a fake port and a synthetic frozen picture, so no state is reached by a capture and nothing of a person's screen is shot; `Scripts/shoot.sh` reaches only what a press reaches on the page. The column says what brings the state on in use. Not reached on the bench, and so unseen by any shot: the ⋯ menu open, tooltips, a real pointer, marked text and a live input method, the system's colour panel, cursors, Reduce Motion, a real Increase Contrast, Helm inactive under a key overlay, more than one display, and the full-screen `show()`.
+
+| state | shows | reached by |
+|---|---|---|
+| `capturing` | Capturing tab: shortcuts, what a capture makes, the folder | the page |
+| `capturing-no-permission` | the permission note over the tab | no Screen Recording grant |
+| `capturing-clipboard`, `capturing-other` | save target Clipboard, a folder of the person's | the target's control |
+| `capturing-other-refused`, `capturing-macos-refused` | the refusal of the folder | a folder gone, or refused by macOS's reading |
+| `capturing-conflict`, `capturing-taken`, `capturing-cleared` | a shortcut macOS holds, one taken in Helm, one cleared | the recorder |
+| `editor`, `editor-picked` | Editor tab: default colour, tools shown; a colour picked, two tools off | the tab |
+| `editor-tools-popover` | the tools list, a pop-over over the page | Choose |
+| `system-on`, `system-off`, `system-all-off` | System shortcuts: boxes read on, capture boxes off, all off; the dot while on | macOS's boxes |
+| `system-unknown`, `system-twins` | boxes unreadable; a combination twinned with a box | an unreadable store; the recorder |
+| `toast-working` | the picture while the file is written | a shot |
+| `toast-single`, `toast-narrow`, `toast-tiny` | bare picture, by its aspect | a shot done |
+| `toast-capsule`, `toast-capsule-copied` | capsule up; with no file | pointer over it |
+| `toast-pile-2`, `toast-pile-5`, `toast-pile-capsule` | pile, counter, capsule on the group | a shot while one is up |
+| `toast-row-3`, `toast-row-capsule`, `toast-row-more`, `toast-row-scrolled` | row unfolded, «N more», scrolled | a click on the pile |
+| `toast-refusal-permission`, `toast-refusal-failed`, `toast-refusal-edit`, `toast-refusal-over-pile` | the refusal in the shots' place | a refused capture, write or edit |
+| `panel-single`, `panel-row`, `panel-refusal` | the same in the real panel | as above |
+| `pin`, `pin-scaled`, `pin-faded` | a pin, scaled, faded | Pin, not offered now |
+| `cells` | every `GlassCell` look | none, the bench's sheet of them |
+| `bar-screen`, `bar-window`, `bar-area` | the bar by mode | the third shortcut, a mode |
+| `bar-target` | Capture shown, wider | a target picked |
+| `bar-timer-on`, `bar-countdown` | timer's digits; ring, cells dimmed | the timer cell; Capture with a timer |
+| `bar-real-area`, `bar-real-target`, `bar-real-countdown` | the same three in the real `CapturePanel` | as above |
+| `bar-over-overlay` | the bar's glass on the frozen picture | Window or Area |
+| `ov-pointer`, `ov-lines` | coordinate plate; lines | area shortcut; ⌥ held |
+| `ov-drag`, `ov-handle-held` | dim, size plate; loupe | a drag; a handle held |
+| `ov-window` | accent wash on a window | window shortcut |
+| `ov-selection-only` | area and no palette | Area on the bar |
+| `ov-edit` | handles, corner plate, palette | release of a drag |
+| `ov-object` | object's accent frame and handles | Select, a click on it |
+| `ov-card` | the picture as a card | Edit from the toast |
+| `ov-ruler`, `ov-sampling`, `ov-spotlight` | strip; loupe and hex plate; dim with a hole | U; the eyedropper; the spotlight |
+| `ov-plate-esc`, `ov-plate-pin`, `ov-plate-text`, `ov-plate-blur` | the plate by its reason | Esc with layers; Pin refused, not offered now; a failed reading; nothing blurred |
+| `ov-flash` | white at its peak | a shot taken |
+| `ed-marks` | the rectangle, arrow, marker, blur, step, magnifier, text and spotlight marks on the picture; the spotlight's hole is almost the area, so the marks stay lit | drawing |
+| `ed-pen`, `ed-eraser` | the object raised | a press on it |
+| `ed-badge`, `ed-more-pressed` | ⋯ with a badge; pressed | a menu tool; ⋯ |
+| `ed-hidden` | a shorter row | «Tools in the palette» |
+| `ed-popover`, `ed-popover-above` | two sliders under the palette; above it | a second click on the raised object |
+| `ed-colours`, `ed-colour-apart` | eight inks, wheel, eyedropper; a colour the grid lacks in the wheel's centre | the wheel; a pick |
+| `ed-text`, `ed-text-clipped` | the field, outlined; cut by the area | the text tool, a press |
+| `ed-emoji` | the grid above the palette | Emoji in ⋯ |
+| `worst` | de: two refused shortcuts, each sentence on one line; the three tabs on one row with the dot; the permission refusal, title on two lines, body on three, in its card; three shots and "2 mehr". A long folder path, fr, the narrowest pane: not rendered, the bench's folder is `/bench/shots` and its window is 892 pt | a shortcut macOS holds, a refused capture, a click on a pile of five, in the longest language |

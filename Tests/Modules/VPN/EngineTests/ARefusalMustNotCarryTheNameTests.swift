@@ -19,7 +19,7 @@ import HelmRuntime
 /// printed: `VPNCommandReply.of(_:name:)` sanitises the text, so `.refused` can
 /// only ever hold something already redacted. A rule enforced by the type is a
 /// rule the next call site cannot forget — and there is a second one waiting, the
-/// wire, since the reply's text is what any future «what did the tool say» screen
+/// published state, since the reply's text is what any future «what did the tool say» screen
 /// would read.
 ///
 /// What is *not* redacted, deliberately: `_lastFailure.name`. The screen is
@@ -108,7 +108,7 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                work: .inline)
 
-        engine.connect(service)
+        engine.connect(service, auto: false)
 
         let lines = HelmLog.shared.recentEntries().filter { $0.category == "vpn" }
         // The subject first: an absence proves nothing when nothing was written.
@@ -132,7 +132,7 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                work: .inline)
 
-        engine.connect(service)
+        engine.connect(service, auto: false)
 
         XCTAssertEqual(engine.lastFailure,
                        VPNFailure(name: service, reason: .refused, verb: .connect),

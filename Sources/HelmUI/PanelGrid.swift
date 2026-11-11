@@ -42,8 +42,8 @@ public enum PanelGrid {
     /// the figure it sits under, which is the whole content of a compact
     /// widget.
     public static let minimumTile: CGFloat = 144
-    public static let padding: CGFloat = 12
-    public static let gap: CGFloat = 8
+    public static let padding: CGFloat = HelmSpace.s5
+    public static let gap: CGFloat = HelmSpace.s4
 
     /// The height the panel draws at before its strip has been measured: an
     /// 800 pt display, less the menu bar and a margin.

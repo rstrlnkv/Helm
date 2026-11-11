@@ -25,8 +25,8 @@ final class LogLineTests: XCTestCase {
     private let stamp = Date(timeIntervalSince1970: 1_700_000_000)
 
     func testLineCarriesTimeLevelCategoryAndMessage() {
-        let line = LogLine.format(date: stamp, level: .error, category: "vpn",
-                                  message: "connect failed", timeZone: TimeZone(identifier: "UTC")!)
+        let line = LogLine.line(LogEntry(date: stamp, level: .error, category: "vpn", message: "connect failed"),
+                            timeZone: TimeZone(identifier: "UTC")!)
         XCTAssertTrue(line.hasSuffix("[error] [vpn] connect failed"), line)
         XCTAssertTrue(line.hasPrefix("2023-11-14 22:13:20"), line)
         XCTAssertFalse(line.contains("\n"))
@@ -34,8 +34,8 @@ final class LogLineTests: XCTestCase {
 
     /// Newlines would break one-line-per-event parsing when reading the file.
     func testMultilineMessagesAreFlattened() {
-        let line = LogLine.format(date: stamp, level: .info, category: "brew",
-                                  message: "line one\nline two", timeZone: TimeZone(identifier: "UTC")!)
+        let line = LogLine.line(LogEntry(date: stamp, level: .info, category: "brew", message: "line one\nline two"),
+                            timeZone: TimeZone(identifier: "UTC")!)
         XCTAssertTrue(line.hasSuffix("line one ⏎ line two"), line)
     }
 }

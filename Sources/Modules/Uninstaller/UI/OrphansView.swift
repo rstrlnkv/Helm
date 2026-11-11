@@ -18,10 +18,6 @@ struct OrphansView: View {
     @State private var busy = false
     @State private var confirming = false
     @State private var banner: String?
-    /// Nobody answered the removal. Its own flag rather than a banner string:
-    /// there is no sentence to build, because nothing is known to have moved and
-    /// nothing is known to have stayed.
-    @State private var replyLost = false
 
     private var selectedBytes: Int {
         groups.flatMap(\.leftovers).filter { selected.contains($0.path) }.reduce(0) { $0 + $1.sizeBytes }
@@ -31,9 +27,7 @@ struct OrphansView: View {
         VStack(spacing: 0) {
             if let report = removalReport {
                 report
-                    // 20/12 like every other bar in Helm. At 12/10 this one sat
-                    // narrower than the toolbar above it and the footer below.
-                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
+                    .helmPageStrip()
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             content
@@ -50,9 +44,9 @@ struct OrphansView: View {
 
     /// What the last removal had to say, or nil while this page has said
     /// nothing — built where the Trash window builds its own, because the two
-    /// report the same four states.
+    /// report the same three states.
     private var removalReport: HelmRemovalOutcome? {
-        .uninstaller(banner, removed: removedCount, failures: failures, replyLost: replyLost)
+        .uninstaller(banner, removed: removedCount, failures: failures)
     }
 
     @ViewBuilder private var content: some View {
@@ -61,9 +55,8 @@ struct OrphansView: View {
         } else if !scanned {
             // The module's own tint, not a colour chosen per state: orange and
             // green here read as a warning and a success on a screen that is
-            // only waiting to be asked. It said `category` until 2026-08-20,
-            // which is a colour four modules share — so this plate was cyan
-            // while the page header 300 pt above it was red.
+            // only waiting to be asked. A colour shared by several modules
+            // would not say which page this is (`ModuleTint.swift`).
             HelmEmptyState(symbol: "clock.arrow.circlepath", tint: UninstallerDescriptor.tint.colour,
                            message: UnStr.orphansIntro) {
                 Button(UnStr.scanOrphans) { Task { await scan() } }
@@ -85,11 +78,11 @@ struct OrphansView: View {
                                 VStack(alignment: .leading, spacing: HelmSpace.s1) {
                                     Text(item.path).font(HelmText.rowDetail).lineLimit(1).truncationMode(.middle)
                                     Text(UnStr.kindAndSize(item.kind, Bytes(item.sizeBytes)))
-                                        .font(.caption2).foregroundStyle(HelmText.quiet)
+                                        .font(HelmText.smallPrint).foregroundStyle(HelmText.quiet)
                                 }
                             }
                             .toggleStyle(.checkbox)
-                            .padding(.vertical, 2)
+                            .padding(.vertical, HelmSpace.s1)
                             .listRowSeparator(.hidden)
                         }
                     } header: {
@@ -107,7 +100,7 @@ struct OrphansView: View {
                 }
             }
             .helmStripedList(rowPitch: HelmSpace.s8)
-            }
+        }
     }
 
     /// The switch that decides whether Helm speaks up on its own.
@@ -126,7 +119,7 @@ struct OrphansView: View {
             // as one HStack rather than a Toggle with a label because a label
             // that wraps to two lines pushed the switch into the middle of the
             // row, between the sentence and its own footnote.
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 Text(UnStr.watchTrash).font(HelmText.rowTitle)
                 Text(UnStr.watchTrashNote)
                     .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
@@ -143,7 +136,7 @@ struct OrphansView: View {
                 .labelsHidden()
                 .accessibilityLabel(UnStr.watchTrash)
         }
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+        .helmPageStrip()
         .task { await uvm.refreshTrashWatch() }
     }
 
@@ -159,7 +152,7 @@ struct OrphansView: View {
         HStack {
             Button(UnStr.rescan) { Task { await scan() } }.disabled(busy)
             // One toggle covers both: "select all" flips to "deselect all" when
-            // everything is already checked (default after a scan).
+            // everything is already checked.
             Button(allSelected ? UnStr.selectNone : UnStr.selectAll) {
                 selected = allSelected ? [] : Set(allPaths)
             }
@@ -171,7 +164,7 @@ struct OrphansView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(selected.isEmpty || busy)
         }
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
+        .helmPageStrip()
         .confirmationDialog(UnStr.confirmTrash(selected.count, Bytes(selectedBytes)),
                             isPresented: $confirming, titleVisibility: .visible) {
             Button(UnStr.moveToTrash, role: .destructive) { Task { await trashSelected() } }
@@ -182,8 +175,9 @@ struct OrphansView: View {
     // MARK: - Actions
 
     private func scan() async {
-        scanning = true; banner = nil; replyLost = false
-        groups = await uvm.scanOrphans()
+        scanning = true; banner = nil
+        // Nil only when the module has been stopped: nothing to show then.
+        groups = await uvm.scanOrphans() ?? []
         // Nothing is pre-selected. A ticked list of 251 items is a button that
         // deletes whatever the scan got wrong, and this scan was wrong: apps
         // one folder down in /Applications read as uninstalled.
@@ -213,17 +207,8 @@ struct OrphansView: View {
         // frame in between. This screen has been reporting nothing at all,
         // including refusals somebody could have acted on.
         await scan()
-        // **A reply that never came is not a batch that moved nothing**, and
-        // this said nothing at all about it: no banner, no rescan, no line in
-        // the log. Somebody pressed a destructive button and the page had no
-        // comment. It claims neither way — the engine may have moved everything
-        // — and points at the list, which the rescan above has just refreshed.
-        guard let result else {
-            replyLost = true
-            HelmLog.shared.info(UninstallerEngine.moduleID, "orphans: trash reply lost")
-            return
-        }
-        // `scan()` above has already put `replyLost` down.
+        // Nil only when the module was stopped under the page: nothing moved.
+        guard let result else { return }
         failures = result.failures
         removedCount = result.trashed.count
         banner = UnStr.movedToTrash(Bytes(result.freedBytes))

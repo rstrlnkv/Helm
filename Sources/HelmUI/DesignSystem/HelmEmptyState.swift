@@ -60,7 +60,7 @@ public struct HelmEmptyState<Actions: View>: View {
                 // one; the scale steps 13 · 16 · 22, and an empty state's
                 // heading is the step above a section heading and well below a
                 // hero figure.
-                Text(title).font(.system(size: 16, weight: .semibold))
+                Text(title).font(HelmText.plateTitle)
             }
             if let message {
                 Text(message)
@@ -161,5 +161,27 @@ public extension HelmBusyState where Actions == EmptyView {
     /// line saying what is being waited for.
     init(_ message: String? = nil) {
         self.init(message) { EmptyView() }
+    }
+}
+
+/// A button's label while the button's own work runs: a small spinner before the words.
+public struct HelmBusyLabel: View {
+    private let title: String
+    private let busy: Bool
+
+    public init(_ title: String, busy: Bool) {
+        self.title = title
+        self.busy = busy
+    }
+
+    public var body: some View {
+        if busy {
+            HStack(spacing: HelmSpace.s3) {
+                ProgressView().controlSize(.small)
+                Text(title)
+            }
+        } else {
+            Text(title)
+        }
     }
 }

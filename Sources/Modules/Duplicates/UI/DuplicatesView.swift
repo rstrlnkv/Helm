@@ -71,7 +71,8 @@ struct DuplicatesView: View {
             if let path = previewPath {
                 VStack(spacing: 0) {
                     QuickLookSheet(url: URL(fileURLWithPath: path))
-                        .frame(minWidth: 640, minHeight: 420)
+                        .frame(minWidth: QuickLookSheet.minimumSize.width,
+                               minHeight: QuickLookSheet.minimumSize.height)
                     Divider()
                     HStack {
                         Text((path as NSString).lastPathComponent)
@@ -82,7 +83,7 @@ struct DuplicatesView: View {
                         Button(DupStr.close) { previewPath = nil }
                             .keyboardShortcut(.cancelAction)
                     }
-                    .padding(12)
+                    .padding(HelmSpace.s5)
                 }
             }
         }
@@ -118,9 +119,7 @@ struct DuplicatesView: View {
                 .foregroundStyle(HelmText.faint)
                 .lineLimit(1)
             // Why, in the header rather than in a tooltip on the badge: a
-            // tooltip needs a pointer to rest on a pill, and the one that was
-            // there said «the copy that was there first» about every group in
-            // every language, which the policy made plainly untrue.
+            // tooltip needs a pointer to rest on a pill.
             if let grounds {
                 Text(DupStr.keptBecause(grounds))
                     .font(HelmText.rowDetail)
@@ -131,14 +130,13 @@ struct DuplicatesView: View {
             // Only where there is something to put back. A control that undoes
             // a choice nobody made is a control that has to explain itself.
             //
-            // Both buttons pinned: unpinned, the first thing a narrow pane
-            // compressed was «Restore the recommendation»'s own words, while
-            // the reason above sat whole — the reason is the part with
+            // Both buttons pinned: the reason above is the part with
             // `lineLimit(1)`, so the reason is the part that yields.
             if grounds == .byHand {
                 Button(DupStr.restoreRecommendation) { dvm.restoreRecommendation(for: group) }
                     .controlSize(.small)
                     .fixedSize()
+                    .disabled(dvm.busy)
             }
             Button(DupStr.markGroupExtras) { dvm.basketExtras(of: group) }
                 .controlSize(.small)
@@ -149,7 +147,7 @@ struct DuplicatesView: View {
     private func row(in group: DuplicateGroup, path: String, stays: Bool,
                      chosen: Bool) -> some View {
         let keep = { dvm.keep(path, in: group) }
-        return HStack(spacing: 8) {
+        return HStack(spacing: HelmSpace.s4) {
             // The way into choosing this copy, and on the row it is about. The
             // checkmark is not a control: that copy already stays, and a button
             // that does nothing when pressed is a control that lies. On the
@@ -163,12 +161,13 @@ struct DuplicatesView: View {
                     .accessibilityHidden(true)
             } else {
                 KeepThisCopyButton(keep: keep)
+                    .disabled(dvm.busy)
             }
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 Text((path as NSString).lastPathComponent)
                     .lineLimit(1).truncationMode(.middle)
                 Text(Redact.path((path as NSString).deletingLastPathComponent))
-                    .font(.caption2).foregroundStyle(HelmText.faint)
+                    .font(HelmText.smallPrint).foregroundStyle(HelmText.faint)
                     .lineLimit(1).truncationMode(.middle)
             }
             .accessibilityElement(children: .combine)
@@ -188,26 +187,29 @@ struct DuplicatesView: View {
                 // the pixels. A checkbox that silently refuses to check is a
                 // control that lies, so out-of-scope paths are disabled and say
                 // why instead.
-                Toggle("\(DupStr.markRow): \((path as NSString).lastPathComponent)",
+                Toggle(HelmBasket.mark(name: (path as NSString).lastPathComponent),
                        isOn: basketBinding(path))
                     .toggleStyle(.checkbox)
                     .labelsHidden()
-                    .disabled(!UserFileScope.isRemovable(path))
+                    .disabled(dvm.busy || !UserFileScope.isRemovable(path))
                     .help(UserFileScope.isRemovable(path) ? DupStr.markRow
-                                                           : DupStr.systemItem)
+                                                           : DupStr.systemFile)
             }
         }
         .contextMenu {
             if !stays {
                 Button(DupStr.keepThisCopy) { keep() }
+                    .disabled(dvm.busy)
             }
             Button(DupStr.quickLook) { preview(path) }
             Button(DupStr.reveal) { reveal(path) }
         }
         // The same actions where VoiceOver can reach them, since the menu
         // above needs a right-click.
+        // Left out while a removal runs, since an accessibility action cannot
+        // be dimmed and one that cannot be taken would be a control that lies.
         .accessibilityActions {
-            if !stays {
+            if !stays && !dvm.busy {
                 Button(DupStr.keepThisCopy) { keep() }
             }
             Button(DupStr.quickLook) { preview(path) }
@@ -232,14 +234,20 @@ struct DuplicatesView: View {
 private struct KeepThisCopyButton: View {
     let keep: () -> Void
     @State private var hovering = false
+    // `.plain` has no disabled look of its own; the kit's is `HelmButtonStyle`'s,
+    // so this reads the flag and does the same: faint ink, no hover preview
+    // (`.onHover` still fires on a disabled control).
+    @Environment(\.isEnabled) private var enabled
 
-    private var symbol: String { hovering ? "circle.fill" : "circle" }
+    private var lit: Bool { hovering && enabled }
+    private var symbol: String { lit ? "circle.fill" : "circle" }
 
     var body: some View {
         Button(action: keep) {
             Image(systemName: symbol)
                 .helmSymbolSwap(symbol)
-                .foregroundStyle(hovering ? HelmSignal.success : HelmText.quiet)
+                .foregroundStyle(!enabled ? HelmText.faint
+                                          : lit ? HelmSignal.success : HelmText.quiet)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)

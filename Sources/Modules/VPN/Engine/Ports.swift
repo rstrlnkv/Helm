@@ -1,8 +1,9 @@
 import Foundation
 import HelmRuntime
 
-/// Credentials some VPNs (L2TP/IPSec) need at connect time; nil for VPNs that
-/// connect on their own (IKEv2). Secrets never logged.
+/// Credentials some VPNs (L2TP/IPSec) need at connect time; a VPN that connects
+/// on its own (IKEv2) is answered `VPNCredentialRead.notNeeded`. Secrets never
+/// logged.
 public struct VPNCredentials: Equatable, Sendable {
     public var user: String?
     public var password: String?
@@ -12,8 +13,8 @@ public struct VPNCredentials: Equatable, Sendable {
     }
 }
 
-/// What a credential read found — **three answers, because the nil it replaced
-/// was two of them.**
+/// What a credential read found — **four answers, because the nil it replaced
+/// was two of them and a failed read was a third.**
 ///
 /// `credentials(for:promptingAllowed:)` used to answer `VPNCredentials?`, and nil
 /// meant either «this configuration keeps no secret Helm has to supply» (IKEv2,
@@ -23,6 +24,12 @@ public struct VPNCredentials: Equatable, Sendable {
 /// nobody is told). Folded together, the engine could report neither: saying
 /// something about every nil would put a warning under every automatic connect on
 /// the machine, and saying nothing is what shipped.
+///
+/// **`.unreadable` is its own case because it is neither of those.** A read that
+/// timed out or failed says nothing about whether a secret is kept, so folding it
+/// into `.notNeeded` started a connect that may need one and announced it, and
+/// folding it into `.behindAPrompt` told the person to press Connect for a prompt
+/// that is not the problem. The engine neither starts nor announces on it.
 ///
 /// This is the repair ARCHITECTURE.md § Module pattern records for
 /// `PowerSource.supply()`, in the same shape:
@@ -34,7 +41,22 @@ public enum VPNCredentialRead: Equatable, Sendable {
     case ready(VPNCredentials)
     /// This configuration keeps no secret Helm supplies. `scutil --nc start`
     /// connects it on its own, and there is nothing to say to anybody.
+    ///
+    /// **Two reasons give this answer:** `scutil --nc show` ran to the end and
+    /// printed no `AuthPassword` field — the configuration keeps no secret (the
+    /// ordinary case) — or printed nothing at all. A show that exited non-zero or
+    /// timed out is not either: that is `.unreadable`.
     case notNeeded
+    /// The configuration could not be read, so nobody knows whether a secret is
+    /// kept: `scutil --nc show` timed out or exited non-zero (whatever it
+    /// printed before — a half-printed `AuthPassword` field is not trusted).
+    /// Owner decision 2026-11-11: **a connect on this answer neither starts nor
+    /// announces.** A start without a secret the configuration may need reports
+    /// success whether it worked or not, so a rule connect recorded and announced
+    /// "connected" with no tunnel. The person's press says so
+    /// (`VPNFailure.Reason.secretUnreadable`); a rule's connect logs it. Not
+    /// `.behindAPrompt`: no prompt is the problem, and the next connect asks again.
+    case unreadable
     /// There is a secret and this read did not get it: it lives in the System
     /// keychain, which macOS gates behind an authorization dialog. For an
     /// automatic connect that is Helm declining to ask — not the tool refusing —
@@ -45,22 +67,66 @@ public enum VPNCredentialRead: Equatable, Sendable {
 
 /// Runs `scutil` with the given args and hands back everything it answered.
 ///
-/// **The status is half the answer, and this port used to drop it.** It returned
-/// a bare `String`, so `scutil` succeeding silently — which is how it reports a
-/// connect it performed — and `scutil` never running at all were one value: the
-/// same empty string, indistinguishable to every caller, though `HelmProcess`
-/// had read the status and thrown it away one line earlier. A tool that did not
-/// run was therefore announced as a tunnel that came up, and no fake could have
-/// caught it, because no fake can separate what the port has already folded
-/// together (ARCHITECTURE.md § Module pattern).
+/// **The status is half the answer.** A bare `String` would make `scutil`
+/// succeeding silently — which is how it reports a connect it performed — and
+/// `scutil` never running at all one value: the same empty string,
+/// indistinguishable to every caller. A tool that did not run would be announced
+/// as a tunnel that came up, and no fake could catch it, because no fake can
+/// separate what the port has already folded together
+/// (ARCHITECTURE.md § Module pattern).
 ///
 /// `HelmProcess.Result` rather than a type of this module's own: it is already
 /// the shape of "what a command-line tool answered", and there is one of those.
+///
+/// **A start that carries a secret is a second entry point, not a longer
+/// argument list.** `scutil --nc start` takes `--user`, `--password` and
+/// `--secret` only as arguments, which stand in `ps auxww` for every process of
+/// this user while the child lives, and it has no terminal form. The secret goes
+/// to the system in process instead (`SCNetworkConnectionStart`), so the answer
+/// is its own enum: the tool's printed sentence does not exist on this path.
+///
+/// **Two entry points, because a read and a command are not bounded alike.**
+/// `read(_:timeout:)` is for the queries (`--nc list`, `status`, `show`): a
+/// `scutil` that does not answer is ended at the deadline and the answer is
+/// `HelmProcess.timedOutStatus` with no output, so the module's one serial queue
+/// is never parked behind it. `run(_:)` is for `--nc start` and `stop`, which
+/// change state and keep the timing they always had.
 public protocol VPNRunnerPort: AnyObject {
+    /// A command, unbounded.
     func run(_ args: [String]) -> HelmProcess.Result
+    /// A read-only query, ended at `timeout` seconds with `timedOutStatus`.
+    func read(_ args: [String], timeout: TimeInterval) -> HelmProcess.Result
+    /// Starts the configuration called `name`, handing the system `credentials`
+    /// without any process seeing them. The answer names three reasons and no
+    /// text: no configuration by that name in the list the system gave, the
+    /// system's configuration unreadable (so nothing is known about the name),
+    /// the system refusing the start with its `SCError`, or the start taken.
+    func start(_ name: String, supplying credentials: VPNCredentials) -> VPNStartAnswer
 }
 
-/// Supplies --user/--password/--secret for a keychain-backed VPN.
+/// How long a read-only `scutil` query may take: it is local IPC to the network
+/// configuration daemon and answers in milliseconds, so five seconds clears a
+/// loaded Mac many times over and still frees the queue inside one sitting
+/// (Homebrew's ninety seconds is for queries that reach the network).
+public let vpnReadDeadline: TimeInterval = 5
+
+/// What `VPNRunnerPort.start(_:supplying:)` found. **No text, so no name in
+/// it** — the system's error is a number, and a number names nobody's VPN.
+public enum VPNStartAnswer: Equatable, Sendable {
+    /// The system took the start. Like `scutil` saying nothing, this is not yet a
+    /// tunnel that is up; the poll that follows reads that.
+    case started
+    /// The current network set was read and holds no configuration of that name.
+    case noSuchService
+    /// The set, the service or its connection could not be read, so the name is
+    /// neither found nor missing.
+    case unreadable
+    /// The system refused it, with the `SCError` it gave.
+    case refused(code: Int32)
+}
+
+/// Supplies the user, password and secret for a keychain-backed VPN: a `.ready`
+/// goes to `VPNRunnerPort.start(_:supplying:)` in process, as no argument.
 ///
 /// - Parameter promptingAllowed: whether this read may reach somewhere macOS
 ///   guards with a dialog. **False for anything a rule started.** The secret

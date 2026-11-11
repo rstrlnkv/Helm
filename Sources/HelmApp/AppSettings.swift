@@ -10,11 +10,6 @@ extension Notification.Name {
     /// every read, so what needs telling is not the values but the views: a
     /// window already drawn keeps whatever it built.
     static let helmLanguageChanged = Notification.Name("helmLanguageChanged")
-    /// Posted when `AppSettings.alwaysCollapseSearch` changes, so
-    /// `SettingsToolbar` rests every bar's search field again. Declared here
-    /// rather than beside `helmPageBarStyleChanged` in `HelmUI`: nothing
-    /// outside the host listens for it.
-    static let helmAlwaysCollapseSearchChanged = Notification.Name("helmAlwaysCollapseSearchChanged")
 }
 
 /// App-level (not per-module) settings, e.g. the menu-bar icon shape.
@@ -36,50 +31,7 @@ extension Notification.Name {
         }
     }
 
-    /// Whether the sidebar draws each module on its own colour or as a plain
-    /// glyph. Defaulted through `SidebarStyle(stored:)` rather than a literal
-    /// here, so the fallback for an unknown value is written once.
-    static var sidebarStyle: SidebarStyle {
-        get { SidebarStyle(stored: store.string(SidebarStyle.storageKey, default: "")) }
-        set {
-            store.set(newValue.rawValue, for: SidebarStyle.storageKey)
-            NotificationCenter.default.post(name: .helmSidebarStyleChanged, object: nil)
-        }
-    }
-
-    /// How the switchers in the settings window's toolbar label their segments
-    /// (`ToolbarSwitcherStyle`), chosen from the toolbar's own right-click
-    /// menu (`ShellBarMenu.items`). One answer for every page: a
-    /// switcher that read as words on one page and as glyphs on the next
-    /// would be two controls.
-    static var toolbarSwitcherStyle: ToolbarSwitcherStyle {
-        get { ToolbarSwitcherStyle(stored: store.string(ToolbarSwitcherStyle.storageKey, default: "")) }
-        set {
-            store.set(newValue.rawValue, for: ToolbarSwitcherStyle.storageKey)
-            NotificationCenter.default.post(name: .helmToolbarSwitcherStyleChanged, object: nil)
-        }
-    }
-
-    /// Which of the two shapes the page header takes in the window's toolbar
-    /// (`PageBarStyle`) — a real setting now, and no longer gated to dev
-    /// builds: the owner has chosen `moduleName`'s shape (the plate and name
-    /// at the toolbar's leading edge) for the shipping layout, and
-    /// `PageBarStyle.init(stored:)` defaults an empty store to it, so this
-    /// answers `moduleName` on every Mac that has never touched the row. The
-    /// other shape stays reachable — a Mac that already has `windowTitle`
-    /// written keeps reading it, and the two drafts are still what
-    /// `GeneralSettingsPage`'s picker offers, in Appearance rather than in the
-    /// developer section it used to sit in.
-    static var pageBarStyle: PageBarStyle {
-        get { PageBarStyle(stored: store.string(PageBarStyle.storageKey, default: "")) }
-        set {
-            store.set(newValue.rawValue, for: PageBarStyle.storageKey)
-            NotificationCenter.default.post(name: .helmPageBarStyleChanged, object: nil)
-        }
-    }
-
-    /// The stored look of the window's bar (`HelmBarAppearance`): flat unless Liquid Glass is stored. The
-    /// toolbar reads it (`SettingsToolbar`'s `ShapeSignature`).
+    /// The stored look of the window's bar (`HelmBarAppearance`): flat unless Liquid Glass is stored. 
     /// Nothing unattended reads it, so it is not sealed; the two functions
     /// take the store the property hands them.
     static var barAppearance: HelmBarAppearance {
@@ -117,26 +69,10 @@ extension Notification.Name {
         ShellGeometry.sidebarWidth(stored: CGFloat(store.double("sidebarWidth", default: .nan)))
     }
 
-    /// **Whether the settings window's search rests as AppKit's magnifier at
-    /// every width**, rather than as a field wherever the bar has room for
-    /// one — chosen from the toolbar's own right-click menu
-    /// (`ShellBarMenu.items`). Off unless somebody turns it on, so
-    /// a Mac that never opens that menu keeps today's bar. A `Bool` is bounded
-    /// by its type, and nothing unattended reads it, so it is not sealed.
-    /// "Always" means "whenever the field is empty and nobody is editing it":
-    /// a query left in the field keeps it open (`SettingsToolbar.restSearch`).
-    static var alwaysCollapseSearch: Bool {
-        get { store.bool("alwaysCollapseSearch", default: false) }
-        set {
-            store.set(newValue, for: "alwaysCollapseSearch")
-            NotificationCenter.default.post(name: .helmAlwaysCollapseSearchChanged, object: nil)
-        }
-    }
-
     /// The language the interface is drawn in, or nil for the Mac's own.
     ///
     /// **Dev builds only** — `AppBuild.isDev` gates the row that writes it, and
-    /// `apply()` below refuses to read a stored value on any other build, so a
+    /// `applyStoredLanguage()` below refuses to read a stored value on any other build, so a
     /// beta that once ran a dev build cannot come up in Japanese.
     ///
     /// It exists because checking a translation against the running app
@@ -167,7 +103,7 @@ extension Notification.Name {
     }
 
     /// nil = follow the build type (dev builds log, stable builds don't);
-    /// true/false = the user overrode it in Diagnostics.
+    /// true/false = the user overrode it in the Log page's toolbar menu.
     static var loggingOverride: Bool? {
         get {
             // -1 = follow the build type, 0/1 = explicit user choice.
@@ -209,9 +145,10 @@ extension Notification.Name {
                 // stand open: `.adopt` is granted while the keychain item does
                 // not exist, and returning here never created it. So no
                 // installation ever spent its own first use, and the first value
-                // the app saw — `defaults write com.helm.app disabledScans
-                // -array`, a full-volume walk switched on unattended — was
-                // adopted and sealed as Helm's own. Day one is Helm's.
+                // the app saw — `defaults write com.helm.app
+                // module.app.disabledScans -array`, a full-volume walk switched
+                // on unattended — was adopted and sealed as Helm's own. Day one
+                // is Helm's.
                 scanGuard.establishKey()
                 return defaultDisabledScans
             }
@@ -354,18 +291,6 @@ extension Notification.Name {
         NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
     }
 
-    /// How the panel's tabs are labelled. App-wide rather than per tab: it is a
-    /// question about the strip, and a strip where one tab shows a word and the
-    /// next shows a symbol is not a strip. `TabStripFit` turns the answer into
-    /// what a tab actually wears, which is not always the same thing.
-    static var tabLabelStyle: TabLabelStyle {
-        get { TabLabelStyle(stored: store.string("tabLabelStyle", default: "")) }
-        set {
-            store.set(newValue.rawValue, for: "tabLabelStyle")
-            NotificationCenter.default.post(name: .helmMenuBarStyleChanged, object: nil)
-        }
-    }
-
     /// Reads what the retired keys still have to say, then lets them go.
     ///
     /// **One function because the order is the whole of it.** The unfold reads
@@ -396,9 +321,8 @@ extension Notification.Name {
     /// `default: "small"` here while `MenuBarIconSize(stored:)` fell back to
     /// `.extraSmall`: 15 pt and «L» against 13 pt and «M», two defaults for one
     /// setting. Nobody saw it, because the only reader always passed a non-empty
-    /// string — and the next person to follow `sidebarStyle`'s pattern, which is
-    /// written one property above, would have moved everybody from L to M
-    /// without touching a number. The answer is `MenuBarIconSize`'s, once.
+    /// string — and the next person to drop that literal for the type's own fallback would have
+    /// moved everybody from L to M without touching a number. The answer is `MenuBarIconSize`'s, once.
     static var menuBarIconSize: MenuBarIconSize {
         get { MenuBarIconSize(stored: store.string("menuBarIconSize", default: "")) }
         set {

@@ -27,7 +27,7 @@ final class DuplicateScannerTests: XCTestCase {
         _ = try write("c.bin", 9)                // same size, different content
         let groups = DuplicateScanner().find(under: root.path, by: KeepRule(.standard))
         XCTAssertEqual(groups?.count, 1)
-        // The enumerator resolves /var to /private/var; compare by tail.
+        // Compare by tail: the spelling of the root is not what is under test.
         let tails = Set((groups?.first?.paths ?? []).map { ($0 as NSString).lastPathComponent })
         XCTAssertEqual(tails, ["a.bin", "b.bin"])
         _ = (a, b)
@@ -37,6 +37,17 @@ final class DuplicateScannerTests: XCTestCase {
         var seen: Set<UInt64> = []
         XCTAssertEqual(groups?.first?.wasted,
                        FileWeight.allocated(of: URL(fileURLWithPath: b), countingOnce: &seen))
+    }
+
+    func testGroupsComeLargestWasteFirst() throws {
+        _ = try write("big1.bin", 1, count: 3_000_000)
+        _ = try write("big2.bin", 1, count: 3_000_000)
+        _ = try write("sm1.bin", 2)
+        _ = try write("sm2.bin", 2)
+        _ = try write("sm3.bin", 2)
+        let groups = try XCTUnwrap(DuplicateScanner().find(under: root.path, by: KeepRule(.standard)))
+        XCTAssertEqual(groups.count, 2)
+        XCTAssertGreaterThan(groups[0].wasted, groups[1].wasted)
     }
 
     func testAHardLinkIsNotADuplicate() throws {
@@ -93,8 +104,8 @@ extension DuplicateScannerTests {
 /// Which copy the module offers to keep, through the scanner the engine
 /// actually calls.
 ///
-/// There are two assembly lines: `Duplicates.groups`, which the unit tests
-/// drive, and `DuplicateScanner.find`, which the engine drives. `SurvivingCopy`
+/// There were two assembly lines: a pipeline the unit tests drove, and
+/// `DuplicateScanner.find`, which the engine drives. `SurvivingCopy`
 /// was wired into the first and not the second, so the page explained the
 /// date-added rule in its tooltip while the app went on keeping whichever path
 /// sorted first. The suite stayed green because the only test through the real
@@ -155,5 +166,33 @@ final class SurvivorThroughTheScannerTests: XCTestCase {
         let group = try XCTUnwrap(DuplicateScanner().find(under: root.path, by: KeepRule(.standard))?.first)
         XCTAssertEqual((group.paths.first! as NSString).lastPathComponent, "photo.bin",
                        "the copy on top won because its path sorts first")
+    }
+}
+
+/// A file the cheap prefix hash already told apart is never read in full.
+///
+/// `Duplicates.refine` drops a sub-group of one, so the full pass in
+/// `DuplicateScanner.find` only reaches files whose prefix agreed. A test on
+/// `refine` alone cannot see that wiring; the scanner's cache can: it records a
+/// full digest for every file the full pass hashed, and none for the others.
+final class TheFullHashSkipsWhatThePrefixSeparatedTests: XCTestCase {
+    func testFilesSplitByThePrefixAreNeverHashedInFull() throws {
+        let root = scratchDirectory("dup-prefix")
+        // Same size. Two identical, two that differ from the first byte on.
+        for (name, byte) in [("a1.bin", UInt8(1)), ("a2.bin", 1), ("b.bin", 2), ("c.bin", 3)] {
+            _ = try write(name, in: root, bytes: 1_200_000, filler: byte)
+        }
+        let cache = HashCache()
+        let groups = try XCTUnwrap(DuplicateScanner().find(under: root.path, by: KeepRule(.standard),
+                                                           cache: cache))
+        XCTAssertEqual(groups.count, 1)
+        XCTAssertEqual(groups.first?.paths.count, 2)
+
+        let json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(cache)) as? [String: Any]
+        let fresh = try XCTUnwrap(json?["fresh"] as? [String: [String: Any]])
+        XCTAssertEqual(fresh.values.filter { $0["prefix"] != nil }.count, 4,
+                       "every candidate is read by prefix, or the fixture proves nothing")
+        XCTAssertEqual(fresh.values.filter { $0["full"] != nil }.count, 2,
+                       "only the two files whose prefix agreed may be read in full")
     }
 }

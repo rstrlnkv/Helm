@@ -19,6 +19,8 @@ import SwiftUI
 /// not against the card — the same tone gives 6–7 on a card and 4.8–5.1 here,
 /// so the card's number is the one that would ship unreadable.
 public struct HelmBanner<Action: View>: View {
+    @Environment(\.helmTraits) private var traits
+
     /// Which signal, and therefore which fill and which ink.
     ///
     /// One case. A `success` sat beside it with no caller anywhere — a banner
@@ -63,7 +65,7 @@ public struct HelmBanner<Action: View>: View {
 
     private var ink: Color {
         switch tone {
-        case .warning: return HelmSignal.warning
+        case .warning: return HelmSignal.warning(increased: traits.increasedContrast)
         }
     }
 

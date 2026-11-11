@@ -2,7 +2,7 @@ import Foundation
 
 /// Whether what a background scan found is worth interrupting somebody for.
 ///
-/// Three modules walk the volume twice a day and the whole product of it was a
+/// Three modules walk the volume once a day and the whole product of it was a
 /// relative date on a settings page: `ScanJournal.change(module:)` computed the
 /// delta and nothing in `Sources/` called it. This is the half that was missing,
 /// and it is pure for the usual reason — every refusal below is a banner
@@ -46,8 +46,8 @@ public enum ScanNews {
     ///
     /// **Space that *went* is silent too.** The floor is asked of what appeared
     /// alone, so somebody who emptied their Downloads folder is not congratulated
-    /// for it by an app that had nothing to do with it — a rule written against
-    /// `ScanChange.isSomething` gets that case wrong.
+    /// for it by an app that had nothing to do with it — a rule that asked
+    /// only whether anything changed gets that case wrong.
     ///
     /// There is deliberately no `startedByHand` parameter. The journal has one
     /// writer, `ScanCoordinator`, and it is the unattended path — so anything

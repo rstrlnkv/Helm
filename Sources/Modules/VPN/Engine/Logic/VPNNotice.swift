@@ -6,9 +6,11 @@ import HelmRuntime
 
 /// How loudly the module says that a rule fired.
 ///
-/// The ring spins in all three: that is feedback that the app did something,
-/// not a notification, and switching it off would leave the quietest mode with
-/// no way to tell an automation from a tunnel that simply changed.
+/// Whether the ring turns is a separate switch on each card, off by default
+/// (`VPNSettings.automationSpin`): that is feedback that the app did something,
+/// not a notification, and with it off the quietest mode leaves no way to tell
+/// an automation from a tunnel that simply changed, which the card says
+/// (`spinSilentWarning`).
 public enum VPNNotice: String, CaseIterable, Codable, Sendable {
     case silent, menuBar, system
 

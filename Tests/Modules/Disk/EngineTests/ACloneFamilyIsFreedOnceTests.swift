@@ -71,7 +71,7 @@ final class ACloneFamilyIsFreedOnceTests: XCTestCase {
         XCTAssertGreaterThan(one, 0, "precondition: the file has blocks to give back")
 
         let result = HelmTrash.remove(allowed: [first.path, second.path],
-                                      module: "disk", trashing: { _ in })
+                                      module: "disk", trashing: { try FileManager.default.removeItem(at: $0) })
 
         XCTAssertEqual(result.removed.count, 2, "precondition: both were taken")
         XCTAssertEqual(result.freedBytes, one, """
@@ -92,7 +92,7 @@ final class ACloneFamilyIsFreedOnceTests: XCTestCase {
         }
         let one = allocated(first)
 
-        let result = HelmTrash.remove(allowed: [folder.path], module: "disk", trashing: { _ in })
+        let result = HelmTrash.remove(allowed: [folder.path], module: "disk", trashing: { try FileManager.default.removeItem(at: $0) })
 
         XCTAssertEqual(result.removed, [folder.path], "precondition: the folder was taken")
         XCTAssertEqual(result.freedBytes, one,
@@ -110,10 +110,13 @@ final class ACloneFamilyIsFreedOnceTests: XCTestCase {
                           CloneShare.familyID(ofFileAt: second.path),
                           "precondition: these two share nothing")
 
-        let result = HelmTrash.remove(allowed: [first.path, second.path],
-                                      module: "disk", trashing: { _ in })
+        // Read before the removal: a removed file allocates nothing.
+        let expected = allocated(first) + allocated(second)
 
-        XCTAssertEqual(result.freedBytes, allocated(first) + allocated(second),
+        let result = HelmTrash.remove(allowed: [first.path, second.path],
+                                      module: "disk", trashing: { try FileManager.default.removeItem(at: $0) })
+
+        XCTAssertEqual(result.freedBytes, expected,
                        "two separate allocations were reported as one")
     }
 
@@ -124,11 +127,12 @@ final class ACloneFamilyIsFreedOnceTests: XCTestCase {
         let first = try original("a.bin")
         let link = root.appendingPathComponent("same.bin")
         try FileManager.default.linkItem(at: first, to: link)
+        let expected = allocated(first)
 
         let result = HelmTrash.remove(allowed: [first.path, link.path],
-                                      module: "disk", trashing: { _ in })
+                                      module: "disk", trashing: { try FileManager.default.removeItem(at: $0) })
 
-        XCTAssertEqual(result.freedBytes, allocated(first),
+        XCTAssertEqual(result.freedBytes, expected,
                        "a hard link's second name freed a second allocation")
     }
 
@@ -148,6 +152,7 @@ final class ACloneFamilyIsFreedOnceTests: XCTestCase {
                 if url.lastPathComponent == "a.bin" {
                     throw NSError(domain: NSCocoaErrorDomain, code: 513)
                 }
+                try FileManager.default.removeItem(at: url)
             })
 
         XCTAssertEqual(result.removed, [second.path], "precondition: one refused, one taken")

@@ -4,8 +4,9 @@ import Foundation
 /// Trash.
 ///
 /// The watcher fires for everything a person throws away, and looking again is
-/// not free: a directory read, then a walk of `~/Library` for every app found.
-/// This is the cheap question asked first.
+/// not free: a directory read, then the candidate paths under `~/Library` looked
+/// up for each app the offer has not already ruled out. This is the cheap
+/// question asked first.
 ///
 /// It judges the path and never the disk. A file somebody named `x.app` passes
 /// here and is refused one step later, when its `Info.plist` turns out not to
@@ -25,8 +26,8 @@ enum TrashArrival {
             // see — `trashedApps()` reads the top level and no deeper — so a
             // bundle inside a folder in the Trash is a scan that finds nothing.
             guard let top = rest.split(separator: "/").first else { return false }
-            // Case-insensitive because the volume is: `.App` names the same
-            // bundle the sweep would list as `.app`.
+            // Case-insensitive because the volume is. `trashedApps()` filters on
+            // `app` as spelled, so a `.App` passes here and the sweep lists none.
             return top.lowercased().hasSuffix(".app")
         }
     }

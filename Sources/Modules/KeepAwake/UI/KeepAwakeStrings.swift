@@ -4,16 +4,18 @@ import HelmRuntime
 import Module_KeepAwake_Engine
 
 /// Localized strings for the Keep Awake module UI. English is the base; the
-/// tables carry zh/es/fr/de/ja/ru/pt.
+/// module's `Localizable.xcstrings` carries all eight languages, and the
+/// few words other modules share are `HelmWord`'s, because a catalog's symbols
+/// are internal to its target.
 enum KAStr {
     static var moduleName: String {
-        L("Keep Awake")
+        L(.keepAwake)
     }
     static var summary: String {
-        L("Keep the Mac from falling asleep")
+        L(.summary)
     }
     /// Window title: no ellipsis — that belongs to the menu entry that opens it.
-    static var customTimeTitle: String { L("Custom duration") }
+    static var customTimeTitle: String { L(.customDuration) }
     /// The button that opens the free-form duration field.
     ///
     /// **Not «Timer».** That word is already this module's name for the running
@@ -28,39 +30,39 @@ enum KAStr {
     /// «Otro…», «その他…», «其他…» — read out of those bundles rather than
     /// translated again, including the German non-breaking space before the
     /// ellipsis, which is Apple's spelling in all three apps that carry it.
-    static var customTime: String { L("Other…") }
-    static var done: String { L("OK") }
+    static var customTime: String { L(.other) }
+    static var done: String { L(.done) }
     /// Short forms used under the "Automatically" heading, where the context is
     /// already given by the group title.
-    static var onExternalDisplay: String { L("With an external display") }
-    static var onPower: String { L("On power") }
+    static var onExternalDisplay: String { L(.withAnExternalDisplay) }
+    static var onPower: String { L(.onPower) }
     /// Spanish says `Temporizador`, which is what macOS's own Clock says
     /// (Clock.app `Localizable.loctable`, key `TIMER`) and what this file
     /// already said two labels down — so one page carried both words. German
     /// and Brazilian Portuguese genuinely say `Timer` in the same table.
-    static var timer: String { L("Timer") }
+    static var timer: String { HelmWord.timer }
     static var start: String {
-        L("Start")
+        L(.start)
     }
     static var stop: String {
-        L("Stop")
+        HelmWord.stop
     }
     /// Single-letter units for the narrow preset pills ("15 м", "1 ч").
     static var minutesUnitShort: String {
-        L("m")
+        L(.minutesShort)
     }
     /// German abbreviates with a period — `2 Std.` — in CLDR and in ordinary
     /// orthography, and `hoursUnit` two lines down already had one, so the same
     /// duration was spelled two ways. Distinct from `minutesUnitShort` above,
     /// which is deliberately the full `Min.` because the pill was measured.
     static var hoursUnitShort: String {
-        L("h")
+        L(.hoursShort)
     }
     static var hoursUnit: String {
-        L("h")
+        L(.hoursShort)
     }
     static var minutesUnit: String {
-        L("min")
+        L(.minutesAbbreviated)
     }
 
     /// "45 min" / "1 h" / "1 h 30 min" — minutes below an hour, hours above.
@@ -87,24 +89,24 @@ enum KAStr {
     /// build error.
     static func condition(_ condition: ActiveCondition) -> String {
         switch condition {
-        case .manual: return L("Manual")
-        case .timer: return L("Timer")
-        case .externalDisplay: return L("External display")
-        case .power: return L("On power")
-        case .app: return L("App")
+        case .manual: return L(.manual)
+        case .timer: return HelmWord.timer
+        case .externalDisplay: return L(.externalDisplay)
+        case .power: return L(.onPower)
+        case .app: return L(.app)
         }
     }
 
     // MARK: - Settings
 
-    static var automation: String { L("Automation") }
+    static var automation: String { L(.automation) }
     /// The note under a rule that is doing its job, and under one that is not.
     ///
     /// The second is the state v3 exists to draw: switched on, and nothing
     /// happening. Without it a rule that never fires and a rule nobody switched
     /// on are the same row with the same silence under it.
-    static var ruleApplies: String { L("Applies right now") }
-    static var ruleWaiting: String { L("Not applying right now") }
+    static var ruleApplies: String { L(.appliesRightNow) }
+    static var ruleWaiting: String { L(.notApplyingRightNow) }
     /// What a rule would do, said while it is still switched off.
     ///
     /// The row was a bare label until you turned it on — the notes only
@@ -112,8 +114,8 @@ enum KAStr {
     /// rule means is the one moment the row said nothing.
     static func ruleMeaning(_ condition: ActiveCondition) -> String {
         switch condition {
-        case .externalDisplay: return L("While an external display is connected")
-        case .power: return L("While the Mac is on power")
+        case .externalDisplay: return L(.whileExternalDisplay)
+        case .power: return L(.whilePower)
         // Neither is a rule anybody switches on, so neither has a row here.
         case .manual, .timer, .app: return ""
         }
@@ -167,8 +169,8 @@ enum KAStr {
             return nil
         case .whatItCosts:
             return HelmExplainer.Content(title: keepAwakeLidClosed, blocks: [
-                .text(L("The rule allows its own removal, so quitting Helm takes it out as well — and sleep comes back on. After a crash or a force quit, sleep comes back at the next launch.")),
-                .text(L("Delete Helm while it is still running and the rule stays behind. To remove it by hand:")),
+                .text(L(.ruleRemovesItself)),
+                .text(L(.deleteHelmLeavesRule)),
                 // The path from the engine that writes it, never typed again
                 // here: a command naming a file Helm stopped writing is worse
                 // than no command at all.
@@ -196,16 +198,16 @@ enum KAStr {
         .sorted()
         .joined(separator: " · ")
     }
-    static var appsSection: String { L("Apps") }
+    static var appsSection: String { HelmWord.apps }
     static func triggerCondition(_ condition: AppTrigger.Condition) -> String {
         switch condition {
-        case .always: return L("Always")
-        case .externalDisplay: return L("With an external display")
-        case .power: return L("On power")
-        case .displayAndPower: return L("Display and power")
+        case .always: return L(.always)
+        case .externalDisplay: return L(.withAnExternalDisplay)
+        case .power: return L(.onPower)
+        case .displayAndPower: return L(.displayAndPower)
         }
     }
-    static var noAppsYet: String { L("No apps chosen") }
+    static var noAppsYet: String { L(.noAppsChosen) }
     /// A rules string in the file that nothing can read.
     ///
     /// The reader answers «no rules» for it, which fails in the safe direction —
@@ -219,41 +221,38 @@ enum KAStr {
     /// state, and the state is not recoverable by waiting: the string in the file
     /// is not going to become readable, and the only way back is to pick the apps
     /// again — which rewrites the key and takes the banner away with it. The
-    /// English is the key and the meaning gained a verb, so this is a new key
-    /// rather than eight corrections.
+    /// English was the key then and the meaning gained a verb, so it became a new
+    /// key rather than eight corrections.
     static var appRulesUnreadable: String {
-        L("Helm cannot read the saved app rules, so no app is keeping the Mac awake. Add the apps again")
+        L(.appRulesUnreadable)
     }
     /// What an app rule *is*, said where somebody would otherwise find out by
     /// trying. The section heading used to carry this job in its own tail —
     /// «Apps that keep the Mac awake» — which explained it again on every visit
     /// for ever, including to the people who already had a list.
     static var noAppsYetNote: String {
-        L("Add an app and the Mac stays awake while it is running. You can limit a rule to power, to an external display, or to both.")
+        L(.appRulesEmptyHint)
     }
-    static var keepDisplayOn: String { L("Keep the display on") }
-    static var movePointer: String { L("Move the pointer") }
-    /// "Каждые 1 мин" is wrong, and the stepper starts at 1: the Russian
+    static var keepDisplayOn: String { L(.keepTheDisplayOn) }
+    static var movePointer: String { L(.moveThePointer) }
+    /// "Каждые 1 мин" is wrong, and the menu starts at 1: the Russian
     /// quantifier agrees with the last digit, with the 11–14 exception
     /// `Plural.russian` already knows.
     static func everyMinutes(_ n: Int) -> String {
         // Every other language says "Every minute" rather than "Every 1 min",
-        // and the stepper starts at one, so Russian was reading «Каждую 1 мин»
+        // and the menu starts at one, so Russian was reading «Каждую 1 мин»
         // in the state the setting opens in.
-        let ru = n == 1 ? "Каждую минуту"
-                        : "Кажд" + Plural.russian(n, "ую", "ые", "ые") + " \(n) мин"
-        return L(n == 1 ? "Every minute" : "Every \(n) min",
-                 [.ru: ru,
-                  .es: n == 1 ? "Cada minuto" : "Cada \(n) min",
-                  .fr: n == 1 ? "Chaque minute" : "Toutes les \(n) min",
-                  .de: n == 1 ? "Jede Minute" : "Alle \(n) Min.",
-                  .ja: "\(n)分ごと", .zh: n == 1 ? "每分钟" : "每 \(n) 分钟",
-                  .pt: n == 1 ? "A cada minuto" : "A cada \(n) min"])
+        if n == 1 { return L(.everyMinute) }
+        // Russian alone has a word that changes with the figure (21, 31 … take
+        // the singular's «Каждую»); the other seven carry the same text under
+        // both keys.
+        return Plural.form(n, language: AppLanguage.current.rawValue) == .one
+            ? L(.everyMinutesOne(String(n))) : L(.everyMinutes(String(n)))
     }
-    static var defaultDuration: String { L("Default duration") }
-    static var oneHour: String { L("1 hour") }
-    static var twoHours: String { L("2 hours") }
-    static var indefinite: String { L("Indefinite") }
+    static var defaultDuration: String { L(.defaultDuration) }
+    static var oneHour: String { L(.oneHour) }
+    static var twoHours: String { L(.twoHours) }
+    static var indefinite: String { L(.indefinite) }
 
     // MARK: - The hero
     //
@@ -262,12 +261,12 @@ enum KAStr {
     // figures the unreadable kind this house does not draw at all — above
     // twenty controls and no way to begin or end a session at all.
 
-    static var heroIdle: String { L("The Mac sleeps as usual") }
+    static var heroIdle: String { L(.macSleepsAsUsual) }
     /// Two different silences, and they want different sentences: nothing is
     /// switched on, and something is switched on but does not apply. The first
     /// is an invitation, the second is an explanation.
-    static var heroNoRules: String { L("No rule is switched on") }
-    static var heroIdleReason: String { L("No rule applies right now") }
+    static var heroNoRules: String { L(.noRuleOn) }
+    static var heroIdleReason: String { L(.noRuleApplies) }
     /// One figure for «awake», whatever is holding it, and the reason on the
     /// line below — which is what the countdown state already does.
     ///
@@ -277,14 +276,14 @@ enum KAStr {
     /// each state of one screen. The figure answers one question — is this Mac
     /// going to sleep — and everything about *why* moved to where the timer
     /// already keeps it.
-    static var heroAwake: String { L("The Mac is staying awake") }
+    static var heroAwake: String { L(.macStaysAwake) }
     /// The reason line for a session with no deadline. «Until you stop it» is
     /// the whole answer, and it is the same shape as the conditions listed for
     /// a session a rule is holding.
-    static var heroUntilYouStop: String { L("Until you stop it") }
+    static var heroUntilYouStop: String { L(.untilStopped) }
     /// Said beside the button that does it, rather than left for the log.
     static var heroStopSuppresses: String {
-        L("Stop pauses the rule until it applies again")
+        L(.stopPausesRule)
     }
 
     /// What VoiceOver says for the countdown, once, when asked.
@@ -294,18 +293,13 @@ enum KAStr {
     /// is `1:23:45` and is announced as it reads; the word in front is what
     /// makes it a duration rather than a time of day.
     static func a11yRemaining(_ label: String) -> String {
-        "\(L("Time remaining")): \(label)"
+        "\(L(.timeRemaining)): \(label)"
     }
     /// «Таймер до 15:42» — the deadline as a clock, which is what a person
     /// checks against. `HelmDates.timeOfDay` writes it in the app's language,
     /// not the system's.
     static func timerUntil(_ end: Date) -> String {
-        let time = HelmDates.timeOfDay(end)
-        return L("Timer until \(time)",
-                 [.ru: "Таймер до \(time)", .es: "Temporizador hasta las \(time)",
-                  .fr: "Minuteur jusqu’à \(time)", .de: "Timer bis \(time)",
-                  .ja: "\(time) までのタイマー", .zh: "计时至 \(time)",
-                  .pt: "Temporizador até \(time)"])
+        L(.timerUntil(HelmDates.timeOfDay(end)))
     }
     /// The second half of that line: what is still holding the Mac when the
     /// countdown reaches zero.
@@ -316,14 +310,14 @@ enum KAStr {
     /// power keeps it awake», German a capitalised noun with no article,
     /// French «ensuite c\u{2019}est écran externe qui le maintient». The
     /// interpolation is what made it ungrammatical in five languages at once —
-    /// and interpolation is also what forced the inline tables. Written whole,
-    /// each of the three lives in the `.strings` files with the rest.
+    /// and interpolation is what made it ungrammatical. Written whole, each of
+    /// the three is a symbol in the module's catalog.
     static func thenHeldBy(_ condition: ActiveCondition) -> String {
         switch condition {
-        case .externalDisplay: return L("then the external display keeps the Mac awake")
-        case .power: return L("then being on power keeps the Mac awake")
-        case .app: return L("then the app keeps the Mac awake")
-        // `SessionHero.holderAfterTimer` only ever answers one of the three
+        case .externalDisplay: return L(.thenDisplayKeeps)
+        case .power: return L(.thenPowerKeeps)
+        case .app: return L(.thenAppKeeps)
+        // `SessionHero.afterTimer` only ever answers `.heldBy` with one of the three
         // above; the switch is exhaustive so a fourth automatic condition is a
         // build error here rather than a sentence nobody wrote.
         case .manual, .timer: return ""
@@ -334,18 +328,18 @@ enum KAStr {
     /// 16:03» — the one state where that setting decides anything was the one
     /// state nothing on the page mentioned it.
     static var thenRulePaused: String {
-        L("then the rule is paused until it applies again")
+        L(.thenRulePaused)
     }
-    static var pointerNeedsAccessibility: String { L("Needs Accessibility, or the pointer will not move") }
+    static var pointerNeedsAccessibility: String { L(.pointerNeedsAccessibility) }
     /// Russian was the odd one out: «хоткей» is slang, and Helm's own Layout
     /// page already says «сочетание клавиш». macOS calls it «Сочетание клавиш»
     /// (KeyboardSettings.appex, key "Keyboard shortcut"), so that is the word.
     /// The other seven already carry their own system's root — de Kurzbefehl,
     /// es Atajo, fr Raccourci, zh 快捷键, ja ショートカット, pt Atalho — checked
     /// against the same table rather than assumed.
-    static var globalShortcut: String { L("Global shortcut") }
-    static var toggleAction: String { L("Toggle Keep Awake") }
-    static var keepAwakeLidClosed: String { L("Stay awake with the lid closed") }
+    static var globalShortcut: String { L(.globalShortcut) }
+    static var toggleAction: String { L(.toggleKeepAwake) }
+    static var keepAwakeLidClosed: String { L(.stayAwakeWithTheLid) }
     /// Sleep is off, and **for the whole Mac** — the scope is the point.
     ///
     /// What the setting does is turn system sleep off machine-wide, through a
@@ -366,7 +360,7 @@ enum KAStr {
     /// lid in a list of what was holding the Mac. The lid is not what is holding
     /// it; the lid is the thing that is safe to close *because* sleep is off, and
     /// saying so was the half the panel never had.
-    static var sleepIsOffNow: String { L("Sleep is off for the whole Mac right now") }
+    static var sleepIsOffNow: String { L(.sleepOffNow) }
     /// The same fact where there is room for the way back out of it.
     ///
     /// A row that reports a system-wide setting has to say what un-does it, and
@@ -382,7 +376,7 @@ enum KAStr {
     /// English says which noun comes back, and `adminNote` two states over
     /// already had the verb for it.
     static var sleepIsOffNote: String {
-        L("Sleep is off for the whole Mac right now. Switching this off turns sleep back on")
+        L(.sleepOffNowSwitchingBack)
     }
     /// macOS said no.
     ///
@@ -404,10 +398,7 @@ enum KAStr {
     /// closed lid that is the consequence, and it belongs in the first clause
     /// rather than behind the file name.
     static var lidRefused: String {
-        // One literal, however long: `NoOrphanTranslationsTests` looks for
-        // `"<the whole key>"` in the concatenated source, and a key split over a
-        // `+` is a key nothing in the tree asks for.
-        L("macOS refused to turn sleep off, so closing the lid will let the Mac sleep. The rule in /etc/sudoers.d may have been changed")
+        L(.lidGrantRefused)
     }
     /// The option went off and the rule did not go with it.
     ///
@@ -418,7 +409,7 @@ enum KAStr {
     /// `pmset disablesleep` for this account is not something to leave behind
     /// silently.
     static var lidGrantRemains: String {
-        L("The rule in /etc/sudoers.d is still there. Switch this on and off again to remove it")
+        L(.lidRuleStillThere)
     }
     /// What the person is about to face and what they get for it. `pmset` was
     /// the tool's name, which answers a question nobody asked: the two things
@@ -475,7 +466,7 @@ enum KAStr {
     /// same claim as the «once» this comment already records as wrong. Saying
     /// nothing about how often is the only version that is true at every press.
     static var adminNote: String {
-        L("macOS asks for an administrator password and keeps a rule in /etc/sudoers.d. Switching this off removes the rule without a second password.")
+        L(.lidGrantExplained)
     }
     /// A timer started while a rule is already holding the Mac ends the rule as
     /// well.
@@ -488,7 +479,7 @@ enum KAStr {
     /// happens at zero. All three are in the name now, and the row's note keeps
     /// what follows from it.
     static var timerEndsAutomation: String {
-        L("The timer pauses the automation rules when it finishes")
+        L(.timerPausesRules)
     }
     /// The Stop button's word for the press it is about to be.
     ///
@@ -504,18 +495,17 @@ enum KAStr {
         case .turnAutomationOff: return switchOff
         }
     }
-    /// **Not `L("Turn off")`.** That key is Leftovers', for switching off a
-    /// login item, and it reads «Выключить» — one English key means one thing,
-    /// and a second meaning hung on it would drag that module's seven
-    /// translations here with it.
-    static var switchOff: String { L("Switch off") }
+    /// **Not Leftovers' «Turn off».** That word is the switch on a login item, in
+    /// Leftovers' own catalog, and it reads «Выключить»: one word means one thing,
+    /// and a catalog's symbols are internal to its target in any case.
+    static var switchOff: String { L(.switchOff) }
     /// The same words as the state it produces. It used to say «until the app
     /// is launched again», which is the way back for one of the three rules
     /// and false for the other two — a display rule comes back when the display
     /// does. That defect was found once in `automationPaused` and fixed there;
     /// this line was the second copy of it, translated faithfully eight times.
     static var timerEndsAutomationNote: String {
-        L("When the timer runs out, the rule is paused until it applies again")
+        L(.timerEndPausesRule)
     }
     /// Shown wherever the state is shown. A Mac that slept with the rule's app
     /// still on screen is the one thing this module must not leave unexplained.
@@ -528,13 +518,13 @@ enum KAStr {
     /// the wrong half. It is also the shortest of the three sentences, which is
     /// what lets the panel draw it beside a button in a 320 pt strip instead of
     /// hyphenating across three lines.
-    static var automationPaused: String { L("Paused until the rule applies again") }
+    static var automationPaused: String { L(.pausedUntilRuleApplies) }
     /// The same fact for the panel, which is 320 pt with a button beside it.
     /// The long form wrapped to four lines there — a paragraph in a card that
     /// is otherwise a row and a switch. «Until it applies again» is what the
     /// settings page has room to add; here the word «paused» is the whole of
     /// what has to arrive, and the button beside it says what to do about it.
-    static var automationPausedShort: String { L("Rule paused") }
+    static var automationPausedShort: String { L(.rulePaused) }
     /// The boundary itself, mid-sentence: «при 20 % и ниже», «bei 20 % oder
     /// weniger», «20% 以下».
     ///
@@ -553,10 +543,7 @@ enum KAStr {
     /// ru, de, fr and es put a no-break space there, while pt-BR joins (143
     /// joined, 0 spaced) and ja and zh join as a matter of course. English joins.
     static func atPercentOrLess(_ n: Int) -> String {
-        L("at \(n)% or less",
-          [.ru: "при \(n)\u{00A0}% и ниже", .es: "al \(n)\u{00A0}% o menos",
-           .fr: "à \(n)\u{00A0}% ou moins", .de: "bei \(n)\u{00A0}% oder weniger",
-           .ja: "\(n)% 以下", .zh: "\(n)% 及以下", .pt: "em \(n)% ou menos"])
+        L(.atPercentOrLess(String(n)))
     }
 
     /// The battery guard has everything stopped, said where there is room to say
@@ -564,7 +551,7 @@ enum KAStr {
     /// width under it.
     ///
     /// **The short form was the whole notice, and it named no way out.** «Stopped
-    /// at 20 % or less» is a fact; the person reading it has pressed a button and
+    /// at 20% or less» is a fact; the person reading it has pressed a button and
     /// watched nothing happen, and what they need next is *plug in* — the veto
     /// lifts by itself the moment the charger goes in, which is the one thing
     /// none of the three surfaces said. The panel keeps the short form, because
@@ -573,7 +560,7 @@ enum KAStr {
     ///
     /// **And it then said what the 40 pt headline above it already said.** Under
     /// the veto the page draws `heroIdle` — «The Mac sleeps as usual» — and hides
-    /// the reason line beneath it, so «Nothing keeps the Mac awake at 20 % or
+    /// the reason line beneath it, so «Nothing keeps the Mac awake at 20% or
     /// less» was one fact stated twice on one screen with the weaker,
     /// smaller copy underneath: exactly the duplication `heroIdle`'s own comment
     /// records being removed once already. What the headline cannot say is
@@ -582,15 +569,7 @@ enum KAStr {
     /// the sentence the system notification carries when nobody is at the
     /// screen (`batteryVetoNotice`).
     static func stoppedByBattery(_ percent: Int) -> String {
-        let at = atPercentOrLess(percent)
-        return L("The battery guard stops sessions \(at) — plug in",
-                 [.ru: "Защита батареи не даёт начать сеанс \(at) — подключите адаптер питания",
-                  .es: "La protección de batería detiene las sesiones \(at) — conecta el Mac a la corriente",
-                  .fr: "La protection de batterie arrête les sessions \(at) — branchez le Mac sur secteur",
-                  .de: "Der Batterieschutz stoppt Sitzungen \(at) — schließe das Netzteil an",
-                  .ja: "バッテリー保護により\(at)ではセッションを開始できません。電源に接続してください",
-                  .zh: "电量保护会在\(at)时停止会话，请接入电源",
-                  .pt: "A proteção de bateria interrompe as sessões \(at) — conecte o Mac a uma fonte de alimentação"])
+        L(.stoppedByBattery(atPercentOrLess(percent)))
     }
 
     /// The same sentence again, for the one surface the person is not looking at.
@@ -617,35 +596,31 @@ enum KAStr {
     /// row's note is 11 pt secondary copy under a title, and the way out belongs
     /// in the banner above it rather than repeated on three rows.
     static func stoppedByBatteryShort(_ percent: Int) -> String {
-        let at = atPercentOrLess(percent)
-        return L("Stopped \(at)",
-                 [.ru: "Остановлено \(at)", .es: "Detenido \(at)", .fr: "Arrêté \(at)",
-                  .de: "\(belowPercent(percent)) gestoppt",
-                  .ja: "\(at)で停止", .zh: "\(at)时停止",
-                  .pt: "Parado \(at)"])
+        // German alone puts the phrase first, so it takes the one with its first letter raised.
+        L(.stoppedByBatteryShort(AppLanguage.current == .de ? belowPercent(percent) : atPercentOrLess(percent)))
     }
-    static var resume: String { L("Resume") }
-    static var turnOffLowBattery: String { L("Stop on low battery") }
+    static var resume: String { L(.resume) }
+    static var turnOffLowBattery: String { L(.stopOnLowBattery) }
     /// The boundary as a line of its own — the note under the slider — which is
     /// the same phrase with its first letter raised.
     ///
     /// Raised rather than written out again: the five cased languages of the
     /// eight all differ from `atPercentOrLess` in exactly that character, and ja
-    /// and zh open on the figure, where the operation is a no-op. A second table
-    /// here is how the two came to disagree about the operator once already.
+    /// and zh open on the figure, where the operation is a no-op. A second
+    /// catalog entry is how the two came to disagree about the operator once already.
     static func belowPercent(_ n: Int) -> String {
         let at = atPercentOrLess(n)
         return at.prefix(1).uppercased() + at.dropFirst()
     }
-    static var activeIconColor: String { L("Active icon colour") }
-    static var ringColorNote: String { L("Only while the Mac is kept awake. At other times Helm shows its shared icon") }
-    static var addApp: String { L("Add app…") }
-    static var ringTimer: String { L("Countdown ring in the menu bar") }
-    static var ringTimerNote: String { L("While a timer runs, the ring empties clockwise") }
-    static var showTimerText: String { L("Show remaining time in the menu bar") }
-    static var timerColor: String { L("Timer colour") }
-    static var timerColorNote: String { L("Until you pick one, the same as the active colour") }
-    static var movePointerNote: String { L("So apps do not decide nobody is at the Mac") }
+    static var activeIconColor: String { L(.activeIconColour) }
+    static var ringColorNote: String { L(.activeIconColourHint) }
+    static var addApp: String { HelmWord.addApp }
+    static var ringTimer: String { L(.countdownRing) }
+    static var ringTimerNote: String { L(.countdownRingHint) }
+    static var showTimerText: String { L(.showRemainingTime) }
+    static var timerColor: String { L(.timerColour) }
+    static var timerColorNote: String { L(.timerColourHint) }
+    static var movePointerNote: String { L(.movePointerHint) }
     /// **Names the two controls that actually use it.** It used to say «the
     /// menu-bar switch», and there is no switch in the menu bar: the status
     /// item opens the panel on a left click and a menu on a right click. The
@@ -654,8 +629,8 @@ enum KAStr {
     /// control that starts a session without any window on screen went
     /// unexplained.
     static var defaultDurationNote: String {
-        L("How long the panel's switch and the keyboard shortcut keep the Mac awake")
+        L(.defaultDurationHint)
     }
-    static var menuBarIcon: String { L("Menu-bar icon") }
-    static var customActiveIcon: String { L("Custom icon when active") }
+    static var menuBarIcon: String { L(.menuBarIcon) }
+    static var customActiveIcon: String { L(.customIconWhenActive) }
 }

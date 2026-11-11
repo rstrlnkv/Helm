@@ -60,7 +60,7 @@ final class TheLogDoesNotNameTheConnectionTests: XCTestCase {
         Available network connection services:
         (Disconnected) 11111111-1111-1111-1111-111111111111 PPP (L2TP) --> "\(secretName)"
         """
-        engine(runner).connect(secretName)
+        engine(runner).connect(secretName, auto: false)
 
         XCTAssertTrue(vpnLines.contains { $0.hasPrefix("connect ") },
                       "no connect line was written at all, so this proves nothing: \(vpnLines)")
@@ -74,7 +74,7 @@ final class TheLogDoesNotNameTheConnectionTests: XCTestCase {
         Available network connection services:
         (Connected) 11111111-1111-1111-1111-111111111111 PPP (L2TP) --> "\(secretName)"
         """
-        engine(runner).disconnect(secretName)
+        engine(runner).disconnect(secretName, auto: false)
 
         XCTAssertTrue(vpnLines.contains { $0.hasPrefix("disconnect ") },
                       "no disconnect line was written at all: \(vpnLines)")
@@ -92,7 +92,7 @@ final class TheLogDoesNotNameTheConnectionTests: XCTestCase {
         (Connected) 11111111-1111-1111-1111-111111111111 PPP (L2TP) --> "\(secretName)"
         """
         let engine = engine(runner)
-        engine.connect(secretName)
+        engine.connect(secretName, auto: false)
         engine.refresh()
 
         XCTAssertFalse(vpnLines.isEmpty, "nothing was logged, so this proves nothing")

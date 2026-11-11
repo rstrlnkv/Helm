@@ -50,7 +50,7 @@ final class ASupplyNobodyNamedDoesNotHoldTheMacTests: XCTestCase {
                                  assertions: FakeAssertions(), displayInfo: displayInfo,
                                  displayObserver: FakeDisplayObserver(),
                                  power: power, apps: apps, pointer: FakePointer(),
-                                 clamshell: FakeClamshell(), clock: FakeClock())
+                                 clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
     /// IOKit answered, and what it said was not a supply this app knows: a UPS,

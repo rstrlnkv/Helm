@@ -51,8 +51,9 @@ public final class ScanJournal: @unchecked Sendable {
         case current, previous
     }
 
-    /// Thirty scans. A module scanning twice a day keeps a fortnight, which is
-    /// long enough to see a pattern and short enough that the file stays small.
+    /// Thirty scans. A completed scan holds its module for a day, so entries
+    /// stand a day or more apart and thirty keep a month or more, which is long
+    /// enough to see a pattern and short enough that the file stays small.
     public static let limit = 30
 
     private let root: URL
@@ -76,7 +77,7 @@ public final class ScanJournal: @unchecked Sendable {
     }()
 
     /// The journal's own name for `TestScratch`'s judgement, narrowed to the
-    /// journal's prefix. `AbandonedJournalsTests` asks it here, which is where
+    /// journal's prefix. `TestScratchTests` asks it here, which is where
     /// the 452 directories were counted, and ARCHITECTURE.md § Background scans
     /// names it too.
     static func abandonedTestJournals(_ names: [String],

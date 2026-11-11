@@ -36,7 +36,7 @@ struct VPNSecretBook: Sendable {
     /// one step — the read and the decision are the same fact, and separating
     /// them left the caller holding «was this news» to combine by hand.
     enum Step: Equatable {
-        /// Read: these go on the command line.
+        /// Read: these go to the system in process, never on a command line.
         case supply(VPNCredentials)
         /// Nothing to supply and nothing to say: this configuration keeps no
         /// secret Helm has to hand over.
@@ -49,6 +49,10 @@ struct VPNSecretBook: Sendable {
         /// person pressing Connect is the gesture the prompt exists for, and their
         /// press must reach the tool whatever this book remembers.
         case refuse
+        /// The configuration could not be read, so nobody knows whether a secret is
+        /// kept. Neither started nor announced, and the book is not touched: not
+        /// «behind a prompt», and asked again at the next connect.
+        case unreadable
     }
 
     mutating func step(for read: VPNCredentialRead, name: String, automatic: Bool) -> Step {
@@ -61,6 +65,8 @@ struct VPNSecretBook: Sendable {
         case .notNeeded:
             locked.remove(name)
             return .nothingToSupply
+        case .unreadable:
+            return .unreadable
         case .behindAPrompt:
             let news = locked.insert(name).inserted
             return news || !automatic ? .tryWithoutIt : .refuse

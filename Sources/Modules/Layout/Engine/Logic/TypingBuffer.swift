@@ -34,7 +34,6 @@ public struct TypingBuffer {
         /// bound and forgive that one alone.
         case chord(UInt16)
         case click
-        case focusChange
 
         /// Whether this event is proof the caret went somewhere else.
         ///
@@ -50,7 +49,7 @@ public struct TypingBuffer {
         /// its own input.
         public var movedTheCaret: Bool {
             switch self {
-            case .navigation, .click, .focusChange: return true
+            case .navigation, .click: return true
             // `.chord` answers false here because this property cannot know
             // which chord: the shortcut's own keys look like everybody else's
             // until somebody compares them against the binding, and the binding
@@ -119,7 +118,7 @@ public struct TypingBuffer {
         case .backspace:
             if !characters.isEmpty { characters.removeLast() }
             return nil
-        case .space, .newline, .punctuation, .navigation, .chord, .click, .focusChange:
+        case .space, .newline, .punctuation, .navigation, .chord, .click:
             defer { characters.removeAll(); overflowed = false }
             guard !characters.isEmpty, !overflowed else { return nil }
             return Completion(word: String(characters), ending: Self.ending(of: event))
@@ -132,7 +131,7 @@ public struct TypingBuffer {
         case .space: return " "
         case .newline: return "\n"
         case .punctuation(let character): return character
-        case .navigation, .chord, .click, .focusChange, .character, .backspace: return nil
+        case .navigation, .chord, .click, .character, .backspace: return nil
         }
     }
 

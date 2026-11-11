@@ -14,8 +14,8 @@ enum PopularityRefresh {
     /// the only thing it buys is a search result in a different order.
     static let interval: TimeInterval = 24 * 60 * 60
 
-    /// Measured 2026-09-13: the two documents are 453,903 and 399,502 bytes. Ten
-    /// times the larger leaves room for the catalogue to grow for years and
+    /// Measured 2026-09-13: the two documents are 453,903 and 399,502 bytes. 5 MiB,
+    /// about eleven times the larger, leaves room for the catalogue to grow for years and
     /// still refuses whatever a moved endpoint might be serving instead.
     ///
     /// **What this bounds is what came back over the wire, and only that.**

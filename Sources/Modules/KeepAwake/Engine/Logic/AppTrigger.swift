@@ -46,12 +46,6 @@ public struct AppTrigger: Codable, Equatable, Sendable, Identifiable {
 }
 
 enum AppTriggerRules {
-    static func isHolding(_ rules: [AppTrigger], running: Set<String>,
-                          externalDisplay: Bool, onPower: Bool) -> Bool {
-        !holding(rules, running: running, externalDisplay: externalDisplay,
-                 onPower: onPower).isEmpty
-    }
-
     /// **Which** rules are satisfied, not merely whether any is.
     ///
     /// The screen said «App» — the only rule type anybody actually uses, and
@@ -61,7 +55,7 @@ enum AppTriggerRules {
     ///
     /// Bundle ids, not names: the ids are what the module stores and what it
     /// matched on, and turning one into a name is a Launch Services lookup that
-    /// belongs on the screen doing the drawing. It keeps names off the wire and
+    /// belongs on the screen doing the drawing. It keeps names out of the published state and
     /// out of the log, which is the standing rule.
     static func holding(_ rules: [AppTrigger], running: Set<String>,
                         externalDisplay: Bool, onPower: Bool) -> [String] {
@@ -74,8 +68,6 @@ enum AppTriggerRules {
         guard let data = try? JSONEncoder().encode(rules) else { return "[]" }
         return String(decoding: data, as: UTF8.self)
     }
-
-    static func decode(_ raw: String) -> [AppTrigger] { readable(raw) ?? [] }
 
     /// The most rules this module will read, and the longest a bundle id may be.
     ///

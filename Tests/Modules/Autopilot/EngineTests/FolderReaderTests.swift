@@ -21,7 +21,7 @@ final class FolderReaderTests: XCTestCase {
     }
 
     private func names(depth: Int) -> [String] {
-        reader.facts(in: root.path, depth: depth).map(\.name).sorted()
+        reader.reading(in: root.path, depth: depth).files.map(\.name).sorted()
     }
 
     // MARK: - Packages
@@ -47,7 +47,7 @@ final class FolderReaderTests: XCTestCase {
                            "at depth \(depth) a package was taken apart")
         }
 
-        let facts = reader.facts(in: root.path, depth: 9)
+        let facts = reader.reading(in: root.path, depth: 9).files
         for package in facts.filter({ $0.name.contains(".") && $0.name != "plain.txt" }) {
             XCTAssertFalse(package.isDirectory,
                            "\(package.name) is offered as a folder, so a folder rule will act on it")
@@ -102,7 +102,7 @@ final class FolderReaderTests: XCTestCase {
 
         let scale = Scale()
         let reader = FolderReader(weigh: { url in scale.weigh(url.lastPathComponent) })
-        let facts = reader.facts(in: root.path, depth: 2)
+        let facts = reader.reading(in: root.path, depth: 2).files
 
         // First that the read happened at all, so an empty answer cannot buy
         // the absence asserted below.
@@ -156,7 +156,7 @@ final class FolderReaderDepthTests: XCTestCase {
     }
 
     private func names(depth: Int) -> [String] {
-        reader.facts(in: root.path, depth: depth).map(\.name).sorted()
+        reader.reading(in: root.path, depth: depth).files.map(\.name).sorted()
     }
 
     // MARK: - Depth
@@ -201,8 +201,8 @@ final class FolderReaderDepthTests: XCTestCase {
     /// hanging — the folder a rule watches can be on a volume that went away
     /// between the sweep timer firing and the enumerator starting.
     func testAFolderThatIsGoneReadsAsEmpty() {
-        XCTAssertTrue(reader.facts(in: root.appendingPathComponent("gone").path,
-                                   depth: 1).isEmpty)
+        XCTAssertTrue(reader.reading(in: root.appendingPathComponent("gone").path,
+                                       depth: 1).files.isEmpty)
     }
 
     // MARK: - Where the walk may descend

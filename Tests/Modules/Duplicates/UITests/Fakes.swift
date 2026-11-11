@@ -1,106 +1,52 @@
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmUI
 import Module_Duplicates_Engine
 @testable import Module_Duplicates_UI
 
-// The transports this module's page tests are written against, and the store
-// and waits that go with them.
+// The engine's place in this module's page tests, and the store and waits that
+// go with it.
 //
-// **There are two kinds on purpose.** `OneAnswerTransport` answers on the
-// spot; `HeldTransport` parks every "find" until a test releases it. A fake
-// that answers synchronously is over before the code under test is reached, so
-// nothing about a search *in flight* — a cancellation, an older answer landing
-// after a newer one, a page that goes away mid-search — can be written down
-// against it. Merging the two would make `DuplicateSearchRaceTests`
-// vacuous rather than shorter.
-//
-// Each was spelled twice before it moved here. The one difference between the
-// two `HeldTransport`s was a list of the command names it had been sent, which
-// no test in this target ever read — a recorder nobody reads is not richer
-// behaviour, so it did not survive the merge.
+// **There are two kinds on purpose.** `AnsweringWork` answers on the spot, or
+// parks a `find` or a `trash` until a test releases it; `HeldWork` parks every
+// `find` and lets the test pick which one to release. A fake that answers
+// synchronously is over before the code under test is reached, so nothing about
+// a search *in flight* — a cancellation, an older answer landing after a newer
+// one, a page that goes away mid-search — can be written down against it.
+// Merging the two would make `DuplicateSearchRaceTests` vacuous rather than
+// shorter.
 
-// MARK: - Answers on the spot
-
-/// Returns the same groups to every "find" and nothing to anything else.
-final class OneAnswerTransport: EngineTransport, @unchecked Sendable {
-    private let groups: [DuplicateGroup]
-    var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
-
-    init(groups: [DuplicateGroup]) { self.groups = groups }
-
-    func send(_ command: EngineCommand) async throws -> Data {
-        guard command.name == "find" else { return Data() }
-        return searchReply(groups)
+extension DuplicateGroup {
+    /// A group where every copy occupies the same amount.
+    init(bytes: Int, paths: [String]) {
+        self.init(copies: paths.map { Copy(path: $0, bytes: bytes) })
     }
 }
 
-/// A search reply, spelled once for every fake in this file.
+// MARK: - Answers, or parks
+
+/// A search or a removal as the work saw it.
+struct SearchAsked: Equatable {
+    let path: String
+    let keepPolicy: KeepPolicy
+}
+
+/// What reached the work, in order — so a test can assert that the act it is
+/// about really was attempted before asserting what was said about it. An
+/// assertion about an absence passes when the subject never happened.
+enum Call: Equatable { case find, cancel, trash, stopRemoval, backgroundScan }
+
+/// The engine's place: the same groups to every `find`, the same removal to
+/// every `trash`, and either can be held until the test lets it go.
 ///
-/// **The type, not a shape retyped here.** A fake that encodes the reply itself
-/// is a second spelling of a wire the engine also spells, and the two parted
-/// company once already: `find` began answering `DuplicateFindings` where the
-/// page still asked for `[DuplicateGroup]`, every search decoded as nothing, and
-/// nothing in this target could tell — because every fake here was still
-/// speaking the old shape and agreeing with the page about it.
-/// This keeps the fakes from being wrong about it.
-func searchReply(_ groups: [DuplicateGroup], librariesSkipped: Int = 0) -> Data {
-    (try? JSONEncoder().encode(DuplicateFindings(groups: groups, unreadable: 0,
-                                                 librariesSkipped: librariesSkipped))) ?? Data()
-}
+/// It can **park**: a removal that answers on the spot is over before any
+/// control the page leaves live during it can be pressed, so every question about
+/// what happens *while* a removal is in flight would pass with the guard deleted.
+final class AnsweringWork: DuplicatesWork, @unchecked Sendable {
 
-// MARK: - Parks until released
-
-/// Parks every "find" until the test releases it, so the interleaving is chosen
-/// rather than raced. An assertion that holds only for a lucky delay is not a
-/// test.
-final class HeldTransport: EngineTransport, @unchecked Sendable {
-    private let lock = NSLock()
-    private var parked: [CheckedContinuation<Data, Never>] = []
-
-    var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
-
-    func send(_ command: EngineCommand) async throws -> Data {
-        guard command.name == "find" else { return Data() }
-        return await withCheckedContinuation { park($0) }
-    }
-
-    // Locking lives in a non-async helper: taking an NSLock across a suspension
-    // point is what the compiler is objecting to, and it is right to.
-    private func park(_ continuation: CheckedContinuation<Data, Never>) {
-        lock.lock(); parked.append(continuation); lock.unlock()
-    }
-
-    var parkedCount: Int { lock.lock(); defer { lock.unlock() }; return parked.count }
-
-    /// Releases the request parked at `index` with a group named after `folder`,
-    /// so a test can tell whose answer landed.
-    func release(_ index: Int, folder: String) {
-        lock.lock()
-        guard parked.indices.contains(index) else { lock.unlock(); return }
-        let continuation = parked.remove(at: index)
-        lock.unlock()
-        let group = DuplicateGroup(bytes: 1_000_000,
-                                   paths: ["/\(folder)/a", "/\(folder)/b"])
-        continuation.resume(returning: searchReply([group]))
-    }
-}
-
-// MARK: - The removal side of the wire
-
-/// The wire the removal tests are drawn against: a search reply, a removal
-/// reply, and a request it can hold.
-///
-/// It can **park**, for the same reason `HeldTransport` exists one section
-/// up: a removal that answers on the spot is over before any control the page
-/// leaves live during it can be pressed, so every question about what happens
-/// *while* a removal is in flight would pass with the guard deleted.
-final class DuplicatesWire: EngineTransport, @unchecked Sendable {
-
-    /// What the engine behind this wire does with a request.
+    /// What the work does with a call.
     enum Answer: Equatable {
-        /// The reply the fixture holds: an engine that is there and answers.
+        /// An engine that is there and answers.
         case reply
         /// Held until the test releases it, so the interleaving is chosen rather
         /// than raced.
@@ -108,159 +54,154 @@ final class DuplicatesWire: EngineTransport, @unchecked Sendable {
     }
 
     private let lock = NSLock()
-    private var groups: [DuplicateGroup]
+    private let groups: [DuplicateGroup]
     private let librariesSkipped: Int
-    private var removal: DuplicateRemoval
+    private let removal: DuplicateRemoval
+    private let ticks: [DuplicateProgress]
+    private let removalTicks: [DuplicateProgress]
     private var answer: Answer
-    /// What one command gets, where that differs from what the wire is doing —
-    /// the removal that is parked while the search answers.
-    private var overrides: [DuplicatesCommand: Answer] = [:]
-    private var seen: [DuplicatesCommand] = []
-    /// The searches that reached the wire, as the engine would decode them.
+    /// What one call gets, where that differs from what the work is doing — the
+    /// removal that is parked while the search answers.
+    private var overrides: [Call: Answer] = [:]
+    private var seen: [Call] = []
+    private var searched: [SearchAsked] = []
+    /// The removals that reached the work: a plan names the copy that goes and
+    /// the copy it duplicates, and «the survivor was never sent» is a claim about
+    /// the payload rather than about the call.
     ///
-    /// The policy the page is showing travels in the request, and a request is
-    /// the one place a test can see it before the engine has it — a fake that
-    /// only counted its commands could not tell a search that carries the popup's
-    /// answer from one that carries nothing and leaves the engine on what it had
-    /// stored.
-    private var searched: [DuplicateSearchRequest] = []
-    /// The removals that reached the wire, likewise: a plan names the copy that
-    /// goes and the copy it duplicates, and «the survivor was never sent» is a
-    /// claim about the payload rather than about the command.
-    ///
-    /// The whole request, not only its plans: what a removal frees is arithmetic
-    /// over the copies that *stay*, and a fake that dropped that list on the way
-    /// in could not tell a page that names them from one that leaves the engine
-    /// to guess — which is the same shape as a search that carries no policy.
-    private var planned: [DuplicateRemovalRequest] = []
-    private var held: [(command: DuplicatesCommand, continuation: CheckedContinuation<Data, Never>)] = []
+    /// With the list of what stays: what a removal frees is arithmetic over the
+    /// copies that *stay*, and a fake that dropped that list could not tell a page
+    /// that names them from one that leaves the engine to guess.
+    private var planned: [(plans: [DuplicatePlan], staying: [String])] = []
+    private var held: [(call: Call, continuation: CheckedContinuation<Void, Never>)] = []
 
-    var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
-
+    /// - Parameters:
+    ///   - ticks: the progress a search reports before it answers.
+    ///   - removalTicks: the progress a removal reports before it answers. Its own
+    ///     list, so a test can tell whose tick is on the bar.
     init(groups: [DuplicateGroup],
          librariesSkipped: Int = 0,
          removal: DuplicateRemoval = DuplicateRemoval(removed: [], refused: [], freedBytes: 0),
+         ticks: [DuplicateProgress] = [],
+         removalTicks: [DuplicateProgress] = [],
          answering answer: Answer = .reply) {
         self.groups = groups
         self.librariesSkipped = librariesSkipped
         self.removal = removal
+        self.ticks = ticks
+        self.removalTicks = removalTicks
         self.answer = answer
     }
 
-    /// The engine answering again, or holding what it is asked. A port that can change
-    /// while the app runs hands that state back rather than being fixed at init
-    /// (CLAUDE.md § What not to do, and what breaks if you do).
+    /// The engine answering again, or holding what it is asked. A port that can
+    /// change while the app runs hands that state back rather than being fixed at
+    /// init (CLAUDE.md § What not to do, and what breaks if you do).
     func answers(_ next: Answer) { lock.withLock { answer = next } }
 
-    /// The same, for one command only.
-    func answers(_ next: Answer, to command: DuplicatesCommand) {
-        lock.withLock { overrides[command] = next }
-    }
+    /// The same, for one call only.
+    func answers(_ next: Answer, to call: Call) { lock.withLock { overrides[call] = next } }
 
-    /// Which commands reached the wire, in order — so a test can assert that the
-    /// act it is about really was attempted before asserting what was said about
-    /// it. An assertion about an absence passes when the subject never happened.
-    var commands: [DuplicatesCommand] { lock.withLock { seen } }
+    var calls: [Call] { lock.withLock { seen } }
 
     /// What each search asked for, in order.
-    var searches: [DuplicateSearchRequest] { lock.withLock { searched } }
+    var searches: [SearchAsked] { lock.withLock { searched } }
 
     /// What each removal asked for, in order.
     var removals: [[DuplicatePlan]] { lock.withLock { planned.map(\.plans) } }
 
-    /// What each removal said would stay, in order — nil where it said nothing.
-    var staying: [[String]?] { lock.withLock { planned.map(\.staying) } }
+    /// What each removal said would stay, in order.
+    var staying: [[String]] { lock.withLock { planned.map(\.staying) } }
 
     var parkedCount: Int { lock.withLock { held.count } }
 
-    /// The whole answer a search gets, counts and all. Taken under the lock the
-    /// two callers already hold, so what is parked and what is answered on the
-    /// spot cannot be two different replies.
-    private var findReply: Data {
-        searchReply(groups, librariesSkipped: librariesSkipped)
-    }
-
-    /// Lets every parked request through, each with the reply its own command
-    /// would have had.
+    /// Lets every parked call through, each with the reply its own call would
+    /// have had.
     func releaseParked() {
-        let waiting: [(command: DuplicatesCommand, continuation: CheckedContinuation<Data, Never>)]
-        let answers: (find: Data, removal: DuplicateRemoval)
-        (waiting, answers) = lock.withLock {
+        let waiting = lock.withLock { () -> [(call: Call, continuation: CheckedContinuation<Void, Never>)] in
             let taken = held
             held = []
-            return (taken, (findReply, removal))
+            return taken
         }
-        for one in waiting {
-            switch one.command {
-            case .find:
-                one.continuation.resume(returning: answers.find)
-            case .trash:
-                one.continuation.resume(returning: (try? JSONEncoder().encode(answers.removal)) ?? Data())
-            case .cancel, .stopRemoval, .backgroundScan:
-                one.continuation.resume(returning: Data())
-            }
+        for one in waiting { one.continuation.resume() }
+    }
+
+    func find(under path: String, keeping policy: KeepPolicy,
+              progress: (@Sendable (DuplicateProgress) -> Void)?) async -> DuplicateFindings? {
+        lock.withLock {
+            seen.append(.find)
+            searched.append(SearchAsked(path: path, keepPolicy: policy))
+        }
+        for tick in ticks { progress?(tick) }
+        await parkIfAsked(.find)
+        return DuplicateFindings(groups: groups, unreadable: 0, librariesSkipped: librariesSkipped)
+    }
+
+    func cancel() { lock.withLock { seen.append(.cancel) } }
+
+    func trash(_ plans: [DuplicatePlan], staying: [String],
+               progress: (@Sendable (DuplicateProgress) -> Void)?) async -> DuplicateRemoval {
+        lock.withLock {
+            seen.append(.trash)
+            planned.append((plans, staying))
+        }
+        for tick in removalTicks { progress?(tick) }
+        await parkIfAsked(.trash)
+        return removal
+    }
+
+    func stopRemoval() { lock.withLock { seen.append(.stopRemoval) } }
+
+    func backgroundScan() async -> ScanReport? {
+        lock.withLock { seen.append(.backgroundScan) }
+        return ScanReport(bytes: 0, count: 0, items: [])
+    }
+
+    /// Decided under the lock and waited outside it: a continuation must not be
+    /// awaited while the lock is held.
+    private func parkIfAsked(_ call: Call) async {
+        let parks = lock.withLock { (overrides[call] ?? answer) == .park }
+        guard parks else { return }
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            lock.withLock { held.append((call, continuation)) }
+        }
+    }
+}
+
+// MARK: - Parks every search until released
+
+/// Parks every `find` until the test releases it, so the interleaving is chosen
+/// rather than raced. An assertion that holds only for a lucky delay is not a
+/// test.
+final class HeldWork: DuplicatesWork, @unchecked Sendable {
+    private let lock = NSLock()
+    private var parked: [CheckedContinuation<DuplicateFindings?, Never>] = []
+
+    var parkedCount: Int { lock.withLock { parked.count } }
+
+    func find(under path: String, keeping policy: KeepPolicy,
+              progress: (@Sendable (DuplicateProgress) -> Void)?) async -> DuplicateFindings? {
+        await withCheckedContinuation { continuation in
+            lock.withLock { parked.append(continuation) }
         }
     }
 
-    /// The enum, not a literal: a fake answering names of its own goes on
-    /// answering after the module renames one, and what it answers then is
-    /// `Data()` — which this codebase spells «the module could not answer».
-    func send(_ command: EngineCommand) async throws -> Data {
-        let name = DuplicatesCommand(rawValue: command.name)
-        let reply: Reply = lock.withLock {
-            record(name, command.payload)
-            let answer = name.flatMap { overrides[$0] } ?? answer
-            switch (answer, name) {
-            case (_, .none), (_, .cancel), (_, .stopRemoval),
-                 (_, .backgroundScan): return .empty
-            case (.park, .find), (.park, .trash): return .park(name!)
-            case (.reply, .find): return .data(self.findReply)
-            case (.reply, .trash): return .data((try? JSONEncoder().encode(removal)) ?? Data())
-            }
+    /// Releases the search parked at `index` with a group named after `folder`,
+    /// so a test can tell whose answer landed.
+    func release(_ index: Int, folder: String) {
+        let continuation: CheckedContinuation<DuplicateFindings?, Never>? = lock.withLock {
+            parked.indices.contains(index) ? parked.remove(at: index) : nil
         }
-        switch reply {
-        case .empty: return Data()
-        case .data(let data): return data
-        case .park(let command): return await withCheckedContinuation { park(command, $0) }
-        }
+        let group = DuplicateGroup(bytes: 1_000_000, paths: ["/\(folder)/a", "/\(folder)/b"])
+        continuation?.resume(returning: DuplicateFindings(groups: [group]))
     }
 
-    /// What reached the wire, decoded the way the engine would decode it: a test
-    /// asks whether the *policy* travelled with the search and whether the
-    /// survivor stayed out of the plans, and both are facts about the payload.
-    ///
-    /// Called with the lock already held, from `send`.
-    private func record(_ name: DuplicatesCommand?, _ payload: Data) {
-        guard let name else { return }
-        seen.append(name)
-        switch name {
-        case .find:
-            if let request = try? JSONDecoder().decode(DuplicateSearchRequest.self,
-                                                       from: payload) {
-                searched.append(request)
-            }
-        case .trash:
-            if let request = try? JSONDecoder().decode(DuplicateRemovalRequest.self,
-                                                       from: payload) {
-                planned.append(request)
-            }
-        case .cancel, .stopRemoval, .backgroundScan:
-            break
-        }
+    func cancel() {}
+    func trash(_ plans: [DuplicatePlan], staying: [String],
+               progress: (@Sendable (DuplicateProgress) -> Void)?) async -> DuplicateRemoval {
+        DuplicateRemoval(removed: [], refused: [], freedBytes: 0)
     }
-
-    private func park(_ command: DuplicatesCommand,
-                      _ continuation: CheckedContinuation<Data, Never>) {
-        lock.withLock { held.append((command, continuation)) }
-    }
-
-    /// Decided under the lock and delivered outside it: a continuation must not
-    /// be awaited while the lock is held.
-    private enum Reply {
-        case empty
-        case data(Data)
-        case park(DuplicatesCommand)
-    }
+    func stopRemoval() {}
+    func backgroundScan() async -> ScanReport? { nil }
 }
 
 // MARK: - The key a setting is sealed with
@@ -315,15 +256,15 @@ func duplicatesStore(folder: String = "/some/folder") -> NamespacedStore {
     return store
 }
 
-/// A view model over `transport`, with a folder remembered.
+/// A view model over `work`, with a folder remembered, that has appeared as the
+/// page does.
 ///
 /// **The one place the seal key is injected, and it is not the person's.** The
 /// view model reads the keep policy through the same guard the engine reads it
 /// with, so a fixture left on the default would have every test in this target
 /// reach into the login keychain for `com.helm.app / settings-seal` and create
 /// it where it is absent. The machine is a boundary of its own, and a test does
-/// not write to it. (It read the policy inside `init` until `23dae882`; it warms
-/// the key on a task of its own now, which is what the cache below is for.)
+/// not write to it.
 ///
 /// **Behind `SealKeyCache`, because the page reads through `keyIfWarm()`.** A
 /// bare `PlantedSealKey` takes `SealKeyPort`'s default `keyIfWarm() -> nil`, so
@@ -337,25 +278,27 @@ func duplicatesStore(folder: String = "/some/folder") -> NamespacedStore {
 ///   sealed keep policy is written before the page exists, the way an earlier
 ///   run of the app would have left it. Left out, the fixture builds its own.
 @MainActor
-func duplicatesModel(over transport: EngineTransport,
+func duplicatesModel(over work: any DuplicatesWork,
                      folder: String = "\(home)/Downloads",
                      store: NamespacedStore? = nil) -> DuplicatesViewModel {
-    DuplicatesViewModel(vm: ModuleViewModel(transport: transport),
-                        store: store ?? duplicatesStore(folder: folder),
-                        settings: SettingGuard(keys: SealKeyCache(PlantedSealKey())))
+    let dvm = DuplicatesViewModel(work: work,
+                                  store: store ?? duplicatesStore(folder: folder),
+                                  settings: SettingGuard(keys: SealKeyCache(PlantedSealKey())))
+    dvm.appear()
+    return dvm
 }
 
 /// A view model that has already searched, with `groups` as the answer.
 @MainActor
 func searchedModel(_ groups: [DuplicateGroup]) async -> DuplicatesViewModel {
-    await searchedModel(over: OneAnswerTransport(groups: groups))
+    await searchedModel(over: AnsweringWork(groups: groups))
 }
 
-/// A view model that has already searched over a wire the test goes on
+/// A view model that has already searched over a work the test goes on
 /// steering — the removal answers, or does not.
 @MainActor
-func searchedModel(over transport: EngineTransport) async -> DuplicatesViewModel {
-    let dvm = duplicatesModel(over: transport)
+func searchedModel(over work: any DuplicatesWork) async -> DuplicatesViewModel {
+    let dvm = duplicatesModel(over: work)
     dvm.search()
     for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
     return dvm
@@ -364,9 +307,9 @@ func searchedModel(over transport: EngineTransport) async -> DuplicatesViewModel
 /// A view model whose searches will park, for the tests about a search in
 /// flight.
 @MainActor
-func heldModel(_ transport: HeldTransport) -> DuplicatesViewModel {
+func heldModel(_ work: HeldWork) -> DuplicatesViewModel {
     // The folder nothing walks: a search that parks never reaches it.
-    duplicatesModel(over: transport, folder: "/some/folder")
+    duplicatesModel(over: work, folder: "/some/folder")
 }
 
 /// Room for the tasks already scheduled to land. Spelled three times in
@@ -378,10 +321,10 @@ func settle() async {
     for _ in 0..<50 { await Task.yield() }
 }
 
-/// Waits for the request tasks to actually reach the transport. Yielding a
-/// fixed number of times is a guess about scheduling; this is the condition the
-/// test depends on.
+/// Waits for the search tasks to actually reach the work. Yielding a fixed
+/// number of times is a guess about scheduling; this is the condition the test
+/// depends on.
 @MainActor
-func untilParked(_ transport: HeldTransport, count: Int) async {
-    for _ in 0..<1000 where transport.parkedCount < count { await Task.yield() }
+func untilParked(_ work: HeldWork, count: Int) async {
+    for _ in 0..<1000 where work.parkedCount < count { await Task.yield() }
 }

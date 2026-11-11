@@ -15,7 +15,7 @@ final class TheNeverListOutranksTheGestureTests: XCTestCase {
             tap: tap, typing: typing, sources: FakeSources(current: "en"),
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
             spell: FakeSpell(valid: ["привет"]),
-            secure: FakeSecure(),
+            secure: FakeSecure(), activation: FakeActivation(),
             exceptions: exceptions,
             automatic: false)
         engine.activate()

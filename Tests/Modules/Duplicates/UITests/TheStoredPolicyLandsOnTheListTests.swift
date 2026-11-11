@@ -1,4 +1,3 @@
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
 import HelmUI
@@ -41,7 +40,7 @@ final class TheStoredPolicyLandsOnTheListTests: XCTestCase {
     ///
     /// **Ordered by the policy the request will carry, through `SurvivingCopy`
     /// itself.** A search reply is ordered by the engine, and the engine orders
-    /// it by the policy it was sent — `DuplicatesWire` answers one fixed
+    /// it by the policy it was sent — `AnsweringWork` answers one fixed
     /// arrangement whatever the request says, so a fixture that hands over some
     /// other order is answering for an engine that does not exist, and every
     /// assertion about the list being in step would then be about the fixture.
@@ -71,15 +70,17 @@ final class TheStoredPolicyLandsOnTheListTests: XCTestCase {
     /// Two `SealKeyCache`s over one probe, the arrangement
     /// `ThePageNeverWaitsForTheKeychainTests` uses: the seal is written through a
     /// cache of its own, so the page's cache is genuinely cold when it is built.
-    private func pageWaitingForItsPolicy(_ wire: DuplicatesWire, gate: DispatchSemaphore)
+    private func pageWaitingForItsPolicy(_ work: AnsweringWork, gate: DispatchSemaphore)
     -> DuplicatesViewModel {
         let probe = SealKeyProbe(gate: gate)
         let store = duplicatesStore(folder: "\(home)/Downloads")
         // One signal spent here, sealing what the person chose on an earlier run.
         gate.signal()
         DuplicatesSettings.setKeepPolicy(.byDate, in: store, guardedBy: SettingGuard(keys: probe))
-        return DuplicatesViewModel(vm: ModuleViewModel(transport: wire), store: store,
-                                   settings: SettingGuard(keys: SealKeyCache(probe)))
+        let dvm = DuplicatesViewModel(work: work, store: store,
+                                      settings: SettingGuard(keys: SealKeyCache(probe)))
+        dvm.appear()
+        return dvm
     }
 
     /// The control, and it has to pass: with the keychain answering before the
@@ -88,8 +89,8 @@ final class TheStoredPolicyLandsOnTheListTests: XCTestCase {
     /// about the fixture.
     func testAPolicyInHandBeforeTheSearchIsInStepWithTheList() async {
         let gate = DispatchSemaphore(value: 0)
-        let wire = DuplicatesWire(groups: [group(orderedBy: .byDate)])
-        let dvm = pageWaitingForItsPolicy(wire, gate: gate)
+        let work = AnsweringWork(groups: [group(orderedBy: .byDate)])
+        let dvm = pageWaitingForItsPolicy(work, gate: gate)
         gate.signal()
         await dvm.firstLoad?.value
         XCTAssertEqual(dvm.policy, .byDate, "precondition: the stored belief arrived first")
@@ -97,7 +98,7 @@ final class TheStoredPolicyLandsOnTheListTests: XCTestCase {
         dvm.search()
         for _ in 0..<1000 where dvm.phase != .result { await Task.yield() }
 
-        XCTAssertEqual(wire.searches.map(\.keepPolicy), [.byDate],
+        XCTAssertEqual(work.searches.map(\.keepPolicy), [.byDate],
                        "precondition: the request carried what the page was showing")
         XCTAssertTrue(firstRowIsWhatThePolicyKeeps(dvm))
     }
@@ -107,14 +108,14 @@ final class TheStoredPolicyLandsOnTheListTests: XCTestCase {
     /// and nothing re-decides.
     func testAPolicyThatArrivesAfterTheSearchIsAppliedToTheList() async {
         let gate = DispatchSemaphore(value: 0)
-        let wire = DuplicatesWire(groups: [group(orderedBy: .byPlace)])
-        let dvm = pageWaitingForItsPolicy(wire, gate: gate)
+        let work = AnsweringWork(groups: [group(orderedBy: .byPlace)])
+        let dvm = pageWaitingForItsPolicy(work, gate: gate)
         XCTAssertEqual(dvm.policy, .standard,
                        "precondition: the keychain has not answered, so the page holds the default")
 
         dvm.search()
         for _ in 0..<1000 where dvm.phase != .result { await Task.yield() }
-        XCTAssertEqual(wire.searches.map(\.keepPolicy), [.byPlace],
+        XCTAssertEqual(work.searches.map(\.keepPolicy), [.byPlace],
                        "precondition: the search ran on the default, which is what the page had")
         XCTAssertEqual(dvm.groups.first?.paths.first, filed,
                        "precondition: the list is in the order `by place` asked for")
@@ -139,7 +140,7 @@ final class TheStoredPolicyLandsOnTheListTests: XCTestCase {
     /// whichever copy is on the first row.
     func testTheHeaderExplainsTheCopyThatIsActuallyOnTheFirstRow() async throws {
         let gate = DispatchSemaphore(value: 0)
-        let dvm = pageWaitingForItsPolicy(DuplicatesWire(groups: [group(orderedBy: .byPlace)]),
+        let dvm = pageWaitingForItsPolicy(AnsweringWork(groups: [group(orderedBy: .byPlace)]),
                                           gate: gate)
         dvm.search()
         for _ in 0..<1000 where dvm.phase != .result { await Task.yield() }

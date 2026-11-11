@@ -3,7 +3,6 @@
 
 import XCTest
 import HelmContract
-import HelmRuntime
 import HelmTestSupport
 @testable import HelmApp
 
@@ -76,7 +75,6 @@ final class AResetGoesThroughTheEnginesTests: XCTestCase {
     /// them without knowing which is which.
     func testAnEngineThatHoldsNothingOutsideHelmAnswersAnyway() {
         final class Bare: ModuleEngine {
-            let transport: EngineTransport = LocalTransport()
             func activate() {}
             func deactivate() {}
         }

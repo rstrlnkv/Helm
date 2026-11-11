@@ -2,34 +2,25 @@ import Foundation
 import HelmRuntime
 
 /// A volume offered on the start screen.
-public struct VolumeInfo: Codable, Equatable, Sendable, Identifiable {
+public struct VolumeInfo: Equatable, Sendable, Identifiable {
     public var id: String { path }
     public let name: String
     public let path: String
     public let totalBytes: Int
     public let freeBytes: Int
     /// Cannot trap: both fields are bounded to `0...Int.max` on the way in
-    /// (`init` and decoding), so the subtraction has no overflowing operands.
+    /// (`init`), so the subtraction has no overflowing operands.
     public var usedBytes: Int { max(totalBytes - freeBytes, 0) }
 
     public init(name: String, path: String, totalBytes: Int, freeBytes: Int) {
         self.name = name; self.path = path
         self.totalBytes = max(totalBytes, 0); self.freeBytes = max(freeBytes, 0)
     }
-
-    /// A payload decoded off the wire reaches `usedBytes` without passing the
-    /// engine's clamp, so it goes through the same bound here.
-    public init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.init(name: try c.decode(String.self, forKey: .name),
-                  path: try c.decode(String.self, forKey: .path),
-                  totalBytes: try c.decode(Int.self, forKey: .totalBytes),
-                  freeBytes: try c.decode(Int.self, forKey: .freeBytes))
-    }
 }
 
-/// A tree flattened for transport — DiskNode is a reference type built during
-/// the scan; the UI receives this immutable snapshot instead.
+/// A tree flattened into values — DiskNode is a reference type built during the
+/// scan; the model receives this immutable snapshot by return from `scan`, and
+/// `ScanStore` saves it.
 public struct DiskEntry: Codable, Equatable, Sendable, Identifiable {
     /// The path, and whether this is the bucket. They share one: the bucket's
     /// path is the path a real file called `…` would have, so `ForEach` drew
@@ -59,10 +50,9 @@ public struct DiskEntry: Codable, Equatable, Sendable, Identifiable {
     /// integer add traps in release too. A bound here makes a single figure
     /// harmless; it does not make a sum of thousands of them so, which is why
     /// every sum a saved file can reach saturates (`Sequence.saturatingSum()`, and
-    /// `RingLayout` for its own), and why `DiskAdvice.Target` is held to the same
-    /// ceiling where the advice is decoded in its current form (`targets`). An advice
-    /// row in the older form, with no `targets` key, is not clamped: a known defect,
-    /// `Q-legacy-advice` in the defect log.
+    /// `RingLayout` for its own). `DiskAdvice.Target` is held to `0...byteCeiling` in
+    /// its initialiser, so every advice figure is, in the current form (`targets`)
+    /// and in the older one with only `bytes`, which decodes as one target.
     public static let byteCeiling = 1 << 50
 
     public init(name: String, path: String, bytes: Int, isDirectory: Bool,

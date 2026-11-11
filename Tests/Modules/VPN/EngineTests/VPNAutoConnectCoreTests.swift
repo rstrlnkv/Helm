@@ -35,11 +35,4 @@ final class VPNAutoConnectCoreTests: XCTestCase {
         core.appLaunched("x", connect: { _ in n += 1 })
         XCTAssertEqual(n, 0)
     }
-    func test_activeVPNs() {
-        var core = VPNAutoConnectCore(rules: ["a": VPNAppRule(vpnName: "V")])
-        core.appLaunched("a", connect: { _ in })
-        XCTAssertEqual(core.activeVPNs, ["V"])
-        core.appTerminated("a", disconnect: { _ in })
-        XCTAssertTrue(core.activeVPNs.isEmpty)
-    }
 }

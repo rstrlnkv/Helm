@@ -10,14 +10,13 @@ import Module_Screenshots_Engine
 ///
 /// **σ to radius.** The source blur is an SVG `stdDeviation`; a SwiftUI `.shadow` takes the blur *radius*, which this
 /// takes to be twice σ, as a CSS `blur()` is — 4 and 8 pt. What was measured: the designer confirmed radius = 2σ in the
-/// light appearance by photograph against `palette-light@3x.png`; the dark one was compared only by the peak darkness
+/// light appearance by photograph; the dark one was compared only by the peak darkness
 /// of the shadow. The opacity is 6 % in light, as the source says; in dark it is 8 %, where the dark source files say
-/// 16 %: the 8 % was set from the designer's photograph against `palette-dark@3x.png`.
+/// 16 %: the 8 % was set from the designer's photograph.
 ///
 /// The chosen object stands `lift` higher; the palette cuts what hangs below it. The lift is
 /// `HelmMotion.interface` unless `HelmMotion.travels` says the person asked for stillness, and then it is a cut. The
-/// cell is the palette's height and the object hangs from it by the offset its artwork needs, read off the mockup
-/// (`palette-frames/ctx-light.png`) by eye, a pt or two either way.
+/// cell is the palette's height and the object hangs from it by the offset its artwork needs, set by eye, a pt or two either way.
 struct PaletteObject: View {
     /// What the object is: a drawing tool's, or the eraser's or the ruler's, which are no `AnnotationTool`: the first is a mode of the
     /// editor and the second a switch.
@@ -33,7 +32,7 @@ struct PaletteObject: View {
     @Environment(\.colorScheme) private var scheme
 
     static let lift: CGFloat = 10
-    /// The cell's width, the one table: 38 is the mockup's `.obj` width — the body's 22 pt and 8 pt of shadow field either side — and
+    /// The cell's width, the one table: 38 is the body's 22 pt and 8 pt of shadow field either side (22 + 8 + 8), and
     /// 51 is the ruler's, whose body is 35 pt across with the same 8 pt of field either side (35 + 8 + 8). No step of the ladder has either.
     static func width(for kind: Kind) -> CGFloat { kind == .ruler ? 51 : 38 }
 
@@ -53,7 +52,7 @@ struct PaletteObject: View {
         }
     }
 
-    /// How far the artwork's canvas hangs below the top of the cell, so that the tips stand at the heights the mockup has.
+    /// How far the artwork's canvas hangs below the top of the cell, which sets each tip's height in the row.
     private var hang: CGFloat {
         switch kind {
         case .eraser, .ruler: 22

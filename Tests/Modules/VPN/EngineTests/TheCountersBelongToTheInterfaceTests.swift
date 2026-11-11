@@ -6,8 +6,8 @@ import HelmTestSupport
 import XCTest
 @testable import Module_VPN_Engine
 
-/// What the kernel says an interface has carried, and what of it goes on the
-/// wire.
+/// What the kernel says an interface has carried, and what of it goes into the
+/// published state.
 ///
 /// Both halves are facts of any Mac rather than of this one: `lo0` exists and
 /// has carried something on every machine that has ever opened a socket, and an
@@ -128,7 +128,7 @@ final class TheCountersBelongToTheInterfaceTests: XCTestCase {
         return totals
     }
 
-    // MARK: - What the wire carries
+    // MARK: - What the state carries
 
     /// The counters are the one field of the payload that moves on their own,
     /// and the engine withholds only a payload equal to the last one it sent —

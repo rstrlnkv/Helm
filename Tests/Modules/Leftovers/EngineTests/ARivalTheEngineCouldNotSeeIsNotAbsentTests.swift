@@ -1,25 +1,20 @@
 import Foundation
-import HelmContract
-import HelmRuntime
 import XCTest
 @testable import Module_Leftovers_Engine
 
-/// **The engine's last word on a shared switch is read through the one call that
-/// folds «refused» back into «empty».**
+/// **The engine's last word on a shared switch is read through the entries alone,
+/// which fold «refused» back into «empty».**
 ///
 /// `TheEngineRefusesASharedSwitchTests` holds the rule: `launchctl disable
 /// gui/<uid>/<label>` is aimed at a label, two files can register one label, Helm
 /// cannot read which of the two launchd kept, so neither may be switched. The
 /// engine asks it of the disk at the moment of the press, through
 /// `LaunchClaims.onDisk`, and `onDisk` opened the two agent folders with
-/// `files.children(of:)` until 2026-09-08.
+/// `files.contents(of:).entries` until 2026-09-08.
 ///
-/// `children(of:)` is `contents(of:).entries`, and the port's own documentation
-/// says what that costs:
-///
-/// > What is in the directory, for a caller that walks what it finds and **draws
-/// > no conclusion from an empty answer** — every reader of a *source* draws one,
-/// > so every reader of a source asks `contents(of:)`.
+/// `contents(of:).entries` is the list with the reason for an empty one thrown
+/// away, which is fine for a caller that walks what it finds and draws no
+/// conclusion from an empty answer, and wrong for every reader of a *source*.
 ///
 /// `onDisk` draws the strongest conclusion in the module from an empty answer: no
 /// second file registers this label, therefore the press may go through. A folder
@@ -72,11 +67,8 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
                         loaded: LeftoversFakeLoaded(), switcher: recorder)
     }
 
-    private func press(_ path: String, on engine: LeftoversEngine) async throws {
-        _ = try await engine.transport.send(
-            EngineCommand(name: LeftoversCommand.setDisabled.rawValue,
-                          payload: try JSONEncoder().encode(
-                            LeftoversToggle(label: label, path: path, disabled: true))))
+    private func press(_ path: String, on engine: LeftoversEngine) async {
+        await engine.setDisabled(LeftoversToggle(label: label, path: path, disabled: true))
     }
 
     /// What `LaunchClaims` reports to the engine, for the failure message: the count
@@ -92,7 +84,7 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
         let files = files(refusing: ["/Library/LaunchAgents"])
         let recorder = LeftoversFakeSwitcher()
 
-        try await press(mine, on: engine(files, recorder))
+        await press(mine, on: engine(files, recorder))
 
         XCTAssertEqual(recorder.labels, [], """
             `/Library/LaunchAgents` answered `.refused` — a folder that would not open \
@@ -122,7 +114,7 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
         let files = files(refusing: ["/Users/x/Library/LaunchAgents"])
         let recorder = LeftoversFakeSwitcher()
 
-        try await press(roots, on: engine(files, recorder))
+        await press(roots, on: engine(files, recorder))
 
         XCTAssertEqual(recorder.labels, [], """
             `~/Library/LaunchAgents` answered `.refused` and the engine switched \
@@ -141,7 +133,7 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
         files.plists[roots] = nil
         let recorder = LeftoversFakeSwitcher()
 
-        try await press(mine, on: engine(files, recorder))
+        await press(mine, on: engine(files, recorder))
 
         XCTAssertEqual(recorder.labels, [], """
             the fixture's `/Library/LaunchAgents` is empty and refused, and the engine \
@@ -164,7 +156,7 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
         files.plists[roots] = nil
         let recorder = LeftoversFakeSwitcher()
 
-        try await press(mine, on: engine(files, recorder))
+        await press(mine, on: engine(files, recorder))
 
         XCTAssertEqual(recorder.labels, [label],
                        "both agent folders opened and only one file registers the label, "
@@ -188,7 +180,7 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
         files.unopenable = ["/Library/LaunchDaemons"]
         let recorder = LeftoversFakeSwitcher()
 
-        try await press(mine, on: engine(files, recorder))
+        await press(mine, on: engine(files, recorder))
 
         XCTAssertEqual(recorder.labels, [label],
                        "a daemon is a different job in a different domain, so "
@@ -202,13 +194,13 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
     ///
     /// Green today and green after the repair. It is here because every assertion
     /// above is an *absence* — `recorder.labels == []` — and an absence passes just
-    /// as well when the press never reached the engine, the command name was wrong,
-    /// or the transport dropped the payload. This is the same press arriving.
+    /// as well when the press never reached the engine, the request was built wrong,
+    /// or the label was dropped on the way. This is the same press arriving.
     func testTheSwitchIsRefusedWhenBothFoldersOpenedAndBothHoldTheLabel() async throws {
         let files = files()
         let recorder = LeftoversFakeSwitcher()
 
-        try await press(mine, on: engine(files, recorder))
+        await press(mine, on: engine(files, recorder))
 
         XCTAssertEqual(recorder.labels, [])
         XCTAssertEqual(claimsSeen(files).count, 2,

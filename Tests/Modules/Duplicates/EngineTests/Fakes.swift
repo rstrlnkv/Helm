@@ -1,8 +1,9 @@
 import Foundation
+import XCTest
 @testable import Module_Duplicates_Engine
 
 // The engine-side doubles this target shares, the way the UI target's
-// `Fakes.swift` shares its transports.
+// `Fakes.swift` shares its fakes.
 
 /// A verification mid-read: each call announces itself and then waits for the
 /// test, so the interleaving is chosen rather than raced. A check that answers
@@ -33,3 +34,20 @@ final class ParkedVerify: @unchecked Sendable {
         return verdict
     }
 }
+
+/// What the engine was told to trash. Every construction in this target passes a
+/// fake to `trashing:` — this recorder, `neverTrashes` or a closure — so no test
+/// here can reach the person's Trash.
+final class TrashRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var urls: [URL] = []
+    var count: Int { lock.lock(); defer { lock.unlock() }; return urls.count }
+    var paths: [String] { lock.lock(); defer { lock.unlock() }; return urls.map(\.path) }
+    func add(_ url: URL) { lock.lock(); urls.append(url); lock.unlock() }
+    /// The `trashing:` argument that records, then removes the file as a real move leaves it.
+    var trashing: @Sendable (URL) throws -> Void { { self.add($0); try FileManager.default.removeItem(at: $0) } }
+}
+
+/// For a construction whose test reaches no removal: a move through it is a
+/// failure, not a file in the Trash.
+let neverTrashes: @Sendable (URL) throws -> Void = { _ in XCTFail("a test that removes nothing moved a file") }

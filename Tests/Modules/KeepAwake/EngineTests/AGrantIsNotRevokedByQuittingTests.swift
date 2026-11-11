@@ -49,7 +49,7 @@ final class AGrantIsNotRevokedByQuittingTests: XCTestCase {
                                  assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(), power: FakePower(),
                                  apps: FakeApps(), pointer: FakePointer(),
-                                 clamshell: clamshell, clock: FakeClock())
+                                 clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
     private var guardFlag: Bool {
@@ -132,7 +132,7 @@ final class AGrantIsNotRevokedByQuittingTests: XCTestCase {
     func testTheLidOptionGoingOffStillTakesTheGrantOut() async {
         settings.setClamshellEnabled(false)
 
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
 
         // Counted on the withdrawal, not on the dialog: the rule permits its own
         // removal, so the ordinary route asks nobody for anything.
@@ -150,6 +150,6 @@ final class AGrantIsNotRevokedByQuittingTests: XCTestCase {
                         assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                         displayObserver: FakeDisplayObserver(), power: FakePower(),
                         apps: FakeApps(), pointer: FakePointer(),
-                        clamshell: clamshell, clock: FakeClock())
+                        clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 }

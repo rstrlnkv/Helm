@@ -11,13 +11,9 @@ import XCTest
 /// that matters more here than anywhere: this window is the only place some of
 /// these files are ever offered.
 ///
-/// The rule was right about the refusal macOS reports and had no way to hear the
-/// third case. It took a `Set` of failed paths, so the caller wrote
-/// `Set(result?.failed ?? [])` — and a reply that never came arrived as "no path
-/// failed", which is "every group was answered for", which is a permanent "no"
-/// recorded for a removal nobody watched. It takes the answer itself now, and
-/// the missing answer is `nil` rather than an empty count: the fold cannot be
-/// written at the call site because there is nothing there to fold.
+/// The rule takes the answer itself, not a count of failed paths taken out of
+/// it: a batch the engine held, or one macOS refused, answers for nobody it
+/// touched, and neither can be folded into "no path failed" at the call site.
 final class ASilenceIsNotTheAnswerNoTests: XCTestCase {
 
     private static func group(_ id: String, _ paths: [String]) -> TrashedAppLeftovers {
@@ -28,15 +24,6 @@ final class ASilenceIsNotTheAnswerNoTests: XCTestCase {
     }
 
     private let groups = [group("com.a", ["/a1"]), group("com.b", ["/b1"])]
-
-    /// The finding itself: nothing came back, so nobody has been answered for.
-    func testAReplyThatNeverCameAnswersForNobody() {
-        XCTAssertEqual(TrashOfferPlan.answered(groups, to: nil).map(\.bundleID), [], """
-            a removal whose reply was lost was filed as the person's "no" for every app in \
-            the window — a record that outlives the window and takes those files off every \
-            screen Helm has
-            """)
-    }
 
     /// The half that keeps the rule from being "answer for nobody, ever": a
     /// removal that came back still answers for the apps whose paths moved.

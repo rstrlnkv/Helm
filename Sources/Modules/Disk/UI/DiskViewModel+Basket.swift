@@ -67,7 +67,7 @@ extension DiskViewModel {
         // The gate is unchanged — the engine partitions whatever comes out of
         // here and `HelmTrash` still has the last word.
         let paths = removalQuestion.paths
-        guard !paths.isEmpty else { return }
+        guard !paths.isEmpty, !closed else { return }
         // **One removal at a time**, the rule `UninstallerViewModel` already
         // follows. The basket is not emptied until the answer comes back, so
         // between the press and that moment the button is live and the same
@@ -77,32 +77,7 @@ extension DiskViewModel {
         guard !busy else { return }
         busy = true
         defer { busy = false }
-        let removal: DiskRemoval? = await client.request(DiskCommand.trash, encoding: paths)
-        // **A batch nobody answered is not a batch that moved nothing.** Folded
-        // with `??`, this stood «Moved to the Trash — 0 bytes» over folders that
-        // are exactly where they were — and never even drew it, because
-        // `HelmRemovalOutcome.verdict(removed: 0, failed: 0)` is `.silent`. Nor
-        // is it a batch that failed: the engine may have moved everything and
-        // the reply been lost.
-        //
-        // **So the basket stays.** It is the one piece of state in this module
-        // that nothing can reconstruct — folders picked across several drills
-        // into a tree that took a minute to walk — and emptying it on the
-        // strength of an answer nobody received left the person with no sentence,
-        // no list, and nothing to press again.
-        guard let removal else {
-            clearRemovalReport()
-            replyLost = true
-            // Counts and outcomes are free; nothing here names a path. It was the
-            // one branch in this module that reached the screen without reaching
-            // the file a person attaches to a bug report.
-            HelmLog.shared.info(DiskEngine.moduleID, "trash reply lost")
-            return
-        }
-        // The four fields are one report, so a round that *was* answered puts the
-        // previous round's «no answer» down as well — otherwise the sentence
-        // outlives the press it was about.
-        replyLost = false
+        let removal = await work.trash(paths)
         failures = removal.refused
         removedCount = removal.removed.count
         banner = DkStr.movedToTrash(Bytes(removal.freedBytes))

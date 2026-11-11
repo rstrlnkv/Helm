@@ -4,8 +4,10 @@ import XCTest
 /// Every view model that can put files in the Trash refuses to do it twice at
 /// once.
 ///
-/// Four modules send a `trash` command: Disk, Duplicates, Leftovers and the
-/// Uninstaller. In three of them the destructive button was live for the whole
+/// Four models remove a batch the person ticked — the Uninstaller over
+/// `trashPaths`, Duplicates, Disk and Leftovers by calling their engine's
+/// `trash` — and in
+/// three of them the destructive button was live for the whole
 /// length of the request, because what dims it — an empty basket, an empty
 /// selection — is not emptied until the answer comes back. A second press is
 /// not a second deletion; the files are already in the Trash. It is a
@@ -23,12 +25,15 @@ import XCTest
 /// is a redraw away and does not cover the row menu. **The model refuses; the
 /// page dims. Both, or neither is reliable.**
 ///
-/// `OneRemovalAtATimeTests` in Leftovers proves the behaviour against a
-/// transport that does not answer until it is told to — a fake that answers
+/// `OneRemovalAtATimeTests` in Leftovers proves the behaviour against a fake
+/// `LeftoversWork` that does not answer until it is told to — a fake that answers
 /// synchronously releases the gate before the call it is gating returns, and a
 /// test built on one passes whether or not the gate exists. This test is the
-/// other half: that nobody drops the guard, in a module that has one today or
-/// in the next module to grow a basket.
+/// other half, and a coarser one: that in a file which sends a removal, every
+/// method that sets `busy = true` holds a `guard` on `!busy` before that line. It
+/// keys on the method that takes the flag, not on the call that removes: the
+/// Uninstaller's `trashPaths` is a pass-through whose callers are the ones that
+/// take it.
 final class OneRemovalAtATimeEverywhereTests: XCTestCase {
 
     func testEveryFileThatSendsARemovalRefusesASecondPress() throws {
@@ -50,8 +55,12 @@ final class OneRemovalAtATimeEverywhereTests: XCTestCase {
                   Self.sendsARemoval(source)
             else { continue }
             checked.append(url.lastPathComponent)
-            if !source.contains("guard !busy") {
-                offenders.append(url.lastPathComponent)
+            let methods = Self.methodsTakingTheFlag(in: source)
+            if methods.isEmpty {
+                offenders.append("\(url.lastPathComponent) (no method sets busy = true)")
+            }
+            for method in methods where !method.guarded {
+                offenders.append("\(url.lastPathComponent) \(method.name)")
             }
         }
 
@@ -63,6 +72,59 @@ final class OneRemovalAtATimeEverywhereTests: XCTestCase {
                       "these can start a second removal while the first is still running, "
                       + "which reports the first as having failed: "
                       + offenders.sorted().joined(separator: ", "))
+    }
+
+    /// The guard is read per method, so each of these is a method that takes the
+    /// flag and the answer says whether a `guard` holding `!busy` comes before it.
+    func testTheReadingTellsAGuardedMethodFromAnUnguardedOne() {
+        func verdicts(_ body: String) -> [Bool] {
+            Self.methodsTakingTheFlag(in: "final class M {\n\(body)\n}").map(\.guarded)
+        }
+        XCTAssertEqual(verdicts("func a() { guard !busy else { return }; busy = true }"), [true])
+        XCTAssertEqual(verdicts("func a() {\n guard !busy, !stopped else { return }\n busy = true }"), [true])
+        XCTAssertEqual(verdicts("func a() {\n guard let x = y,\n !self.busy else { return }\n self.busy = true }"), [true])
+        XCTAssertEqual(verdicts("func a() { guard !stopped else { return }; busy = true }"), [false],
+                       "a guard that does not hold !busy is not the guard")
+        XCTAssertEqual(verdicts("func a() { busy = true }"), [false])
+        XCTAssertEqual(verdicts("func a() { busy = true; guard !busy else { return } }"), [false],
+                       "a guard after the flag is taken guards nothing")
+        XCTAssertEqual(verdicts("func a() { // guard !busy\n busy = true }"), [false],
+                       "a comment is not a guard")
+        XCTAssertEqual(verdicts("func a() { guard !busy else { return }; busy = true }\nfunc b() { busy = true }"),
+                       [true, false], "one method's guard is not another's")
+        XCTAssertEqual(verdicts("func a() { guard !stopped, !busy else { return }; Task { busy = true } }"), [true])
+        XCTAssertEqual(verdicts("func a() { phase = .busy; isBusy = true }"), [],
+                       "another name is not the flag")
+    }
+
+    /// Every method of `source` that sets `busy = true`, by name, and whether a
+    /// `guard` holding `!busy` stands before the first such line in it. The
+    /// innermost method around the line owns it, so a closure inside a method
+    /// belongs to that method.
+    private static func methodsTakingTheFlag(in source: String) -> [(name: String, guarded: Bool)] {
+        let code = SwiftSource.code(source)
+        let characters = Array(code)
+        let needle = Array("busy = true")
+        let bodies = SwiftSource.functionBodies(in: code)
+        var first: [Int: Int] = [:]
+        var index = 0
+        while index + needle.count <= characters.count {
+            defer { index += 1 }
+            guard Array(characters[index..<(index + needle.count)]) == needle else { continue }
+            if index > 0 {
+                let before = characters[index - 1]
+                guard !(before.isLetter || before.isNumber || before == "_") else { continue }
+            }
+            guard let owner = SwiftSource.innermost(bodies, around: index),
+                  let at = bodies.firstIndex(of: owner) else { continue }
+            first[at] = min(first[at] ?? index, index)
+        }
+        return first.keys.sorted().map { at in
+            let body = bodies[at]
+            let before = String(characters[(body.open + 1)..<first[at]!])
+            return (body.name,
+                    before.range(of: #"guard\b[^{}]*!(self\.)?busy\b"#, options: .regularExpression) != nil)
+        }
     }
 
     /// **The subject is a file that sends a removal, not a file called a view
@@ -77,10 +139,12 @@ final class OneRemovalAtATimeEverywhereTests: XCTestCase {
     /// naming the place a removal is usually written rather than the thing that
     /// makes it dangerous.
     ///
-    /// Two spellings, because there are two doors on the wire and the module's
-    /// own `UninstallerCommand` says so at the `trashPaths` case: «`uninstall`
-    /// was `trashPaths` with the app bundle appended — a second door».
+    /// Three spellings: the Uninstaller's model calls its engine's `trashPaths`
+    /// through `work`, its Leftovers tab and Trash offer call the model's
+    /// `uvm.trashPaths`, and Disk, Duplicates and Leftovers call their engine's
+    /// `trash` through `work`.
     private static func sendsARemoval(_ source: String) -> Bool {
-        source.contains("Command.trash") || source.contains("uvm.trashPaths(")
+        source.contains("work.trash(") || source.contains("work.trashPaths(")
+            || source.contains("uvm.trashPaths(")
     }
 }

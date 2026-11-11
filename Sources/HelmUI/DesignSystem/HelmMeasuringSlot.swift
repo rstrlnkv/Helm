@@ -70,6 +70,8 @@ public extension View {
 }
 
 struct HelmMeasuringSlot: ViewModifier {
+    @Environment(\.helmTraits) private var traits
+
 
     /// How long the segment takes to get round, in seconds.
     ///
@@ -168,9 +170,9 @@ struct HelmMeasuringSlot: ViewModifier {
             let sweep = Sweep.at(context.date, lap: lap)
             ZStack {
                 // Reduce Motion takes the whole border at once and stands
-                // still. Read fresh inside the body, so turning the setting on
-                // stops this without a relaunch.
-                if HelmMotion.reduceMotion {
+                // still. Read from the environment (`helmTraits`); that a change
+                // reaches this view without a relaunch is intended and untried.
+                if traits.reducedMotion {
                     edge.trim(from: 0, to: 1).stroke(Self.lit, lineWidth: Self.weight)
                 } else {
                     edge.trim(from: sweep.first.lowerBound, to: sweep.first.upperBound)

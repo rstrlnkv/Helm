@@ -186,7 +186,7 @@ final class WorkspaceAppLister: AppLister {
     /// `/System/Volumes/Preboot/Cryptexes/App/…`. Its row carries no checkbox and
     /// `setChecked` refuses the id (`SystemApp`), so it is not an offer to remove
     /// anything and there is nothing to withdraw — dropping it would only take the
-    /// row that says «System» away from a person who can see the app in Finder.
+    /// row that says «System app» away from a person who can see the app in Finder.
     private static func leadsElsewhere(_ app: URL, inside folder: URL) -> Bool {
         app.resolvingSymlinksInPath().standardizedFileURL.path
             != folder.appendingPathComponent(app.lastPathComponent).path
@@ -259,7 +259,7 @@ public struct WorkspaceRunningApps: RunningAppsPort {
     /// list of running applications, and reading it off the main thread is what
     /// killed the VPN engine over four releases (ARCHITECTURE.md § Running
     /// applications). Both callers here are off it: the scan runs inside
-    /// `offTheCooperativePool`, and `quit` arrives on the transport's pool —
+    /// `offTheCooperativePool`, and `quit` arrives from the batch on the cooperative pool —
     /// while this very type is terminating applications, which is to say while
     /// that list is being mutated.
     ///

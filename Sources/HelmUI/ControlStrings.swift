@@ -16,5 +16,5 @@ public enum HelmControlName {
     /// Opens System Settings → General → Login Items & Extensions. Named for the
     /// act, and perfective in the languages that mark it — a button that does one
     /// thing when pressed.
-    public static var openExtensions: String { L("Open Extensions…") }
+    public static var openExtensions: String { L(.openExtensions) }
 }

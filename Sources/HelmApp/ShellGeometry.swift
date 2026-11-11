@@ -15,8 +15,8 @@ import HelmRuntime
 /// it open.
 ///
 /// **The window's corner radius is not held here.** `cardRadius(windowRadius:)`
-/// takes it as a parameter, so the card stays concentric with whatever corner
-/// the window really has instead of with a number written down once.
+/// takes it as a parameter, so the card stays concentric with the corner it is
+/// handed: on macOS 27 the token `HelmRadius.window`, on 26 what `WindowCorner` read.
 ///
 /// `inset` is the owner's fixed gap. `railWidth`, `defaultSidebarWidth`,
 /// `sidebarRange`, `capsuleSize`, `capsuleShift`, `capsulePad` and `hoverMargin`
@@ -54,10 +54,6 @@ enum ShellGeometry {
 
     /// How far right of where AppKit puts them the window's three buttons stand when the sidebar is expanded.
     nonisolated static let buttonShift: CGFloat = 6
-
-    /// How far right and down AppKit puts the window's three buttons when the window wears a toolbar, against
-    /// where it puts them with none (19 against 9 on both axes). One reading in a window never shown, held by no row.
-    nonisolated static let toolbarLift = CGSize(width: 10, height: 10)
 
     /// Whether a sidebar of `sidebarWidth` is the rail. Not-a-number is not the
     /// rail, so a bad number never folds the buttons away.
@@ -113,24 +109,16 @@ enum ShellGeometry {
     /// the buttons' left edge is the closed capsule's plus `capsulePad.width`,
     /// the edge the open capsule draws them from, so they open out of the
     /// capsule on the same row.
-    ///
-    /// **`lift`** is how far AppKit's home is further right and down in a window
-    /// that wears a toolbar than in one that does not (`toolbarLift`; zero for
-    /// none). It is taken from the expanded offset on both axes and from the
-    /// rail's drop, so the buttons stand where they stand in the window with no
-    /// toolbar. The rail's x needs none: it is the capsule's edge less `home`'s,
-    /// and `home` already carries the lift.
-    nonisolated static func buttonsOffset(home: CGRect, rail: Bool, lift: CGSize) -> CGSize {
-        let drop = buttonDrop - lift.height
-        guard rail else { return CGSize(width: buttonShift - lift.width, height: drop) }
+    nonisolated static func buttonsOffset(home: CGRect, rail: Bool) -> CGSize {
+        guard rail else { return CGSize(width: buttonShift, height: buttonDrop) }
         return CGSize(width: capsuleClosedFrame(buttons: home).minX + capsulePad.width - home.minX,
-                      height: drop)
+                      height: buttonDrop)
     }
 
     // MARK: - the capsule
 
     /// The capsule's frame closed: `capsuleSize`, at the rail's centre moved
-    /// right by `capsuleShift`, centred on the row of `buttons`. `ShellWindowButtons.placed(home:rail:lift:)` hands it the
+    /// right by `capsuleShift`, centred on the row of `buttons`. `ShellWindowButtons.placed(home:rail:)` hands it the
     /// buttons where they stand, the drop already in them; `buttonsOffset` hands it the home and reads only
     /// the x, which does not depend on the row.
     nonisolated static func capsuleClosedFrame(buttons: CGRect) -> CGRect {

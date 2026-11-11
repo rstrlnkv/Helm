@@ -25,9 +25,8 @@ import HelmRuntime
 /// screen, and a tunnel that simply never came up.
 ///
 /// The sibling path had already learned this. `UnreadableListTests` exists
-/// because `--nc list` answering nothing looked exactly like a Mac with no VPN,
-/// and its own comment says the runner «returns only the tool's stdout and
-/// throws the exit status away». The list was fixed; the two commands were not.
+/// because `--nc list` answering nothing looked exactly like a Mac with no VPN.
+/// The list was fixed; the two commands were not.
 final class ARefusedCommandIsNotSilenceTests: XCTestCase {
 
     // MARK: - The reading
@@ -69,7 +68,7 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
         let runner = FakeRunner()
         runner.reply = ""
         let e = engine(runner)
-        e.connect("Office")
+        e.connect("Office", auto: false)
         XCTAssertNil(e.lastFailure)
     }
 
@@ -77,7 +76,7 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
         let runner = FakeRunner()
         runner.reply = "No service"
         let e = engine(runner)
-        e.connect("Old office")
+        e.connect("Old office", auto: false)
 
         XCTAssertEqual(e.lastFailure,
                        VPNFailure(name: "Old office", reason: .noSuchService, verb: .connect),
@@ -88,7 +87,7 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
         let runner = FakeRunner()
         runner.reply = "No service"
         let e = engine(runner)
-        e.disconnect("Old office")
+        e.disconnect("Old office", auto: false)
 
         XCTAssertEqual(e.lastFailure?.reason, .noSuchService)
     }
@@ -99,11 +98,11 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
         let runner = FakeRunner()
         runner.reply = "No service"
         let e = engine(runner)
-        e.connect("Old office")
+        e.connect("Old office", auto: false)
         XCTAssertNotNil(e.lastFailure, "precondition")
 
         runner.reply = ""
-        e.connect("Office")
+        e.connect("Office", auto: false)
 
         XCTAssertNil(e.lastFailure)
     }
@@ -118,7 +117,7 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
 
         let runner = FakeRunner()
         runner.reply = "No service"
-        engine(runner).connect("Secret Office VPN")
+        engine(runner).connect("Secret Office VPN", auto: false)
 
         let lines = HelmLog.shared.recentEntries().filter { $0.category == "vpn" }
         XCTAssertFalse(lines.isEmpty, "precondition: something was logged at all")

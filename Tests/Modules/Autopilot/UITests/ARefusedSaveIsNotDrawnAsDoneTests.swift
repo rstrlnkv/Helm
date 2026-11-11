@@ -17,11 +17,12 @@ import Module_Autopilot_Engine
 /// What the page has instead is `refusal`, read once at load and consulted by
 /// `save()` as `guard refusal == nil`, which is CLAUDE.md's family by name: a
 /// local flag standing in for a live external fact, with no reverse channel from
-/// the port that knows. And there is no channel to have: `AutopilotEvent` has
-/// exactly one case, `history`; `AutopilotCommand.setFolders` is answered with
-/// `Data()` whether the write landed or was refused, so even the two save paths
-/// that *are* `async` and awaited cannot learn from the reply. What is left is
-/// asking again, and before 99a2a306 nothing re-read the status after a write.
+/// the port that knows. And there is no channel to have: the one thing the
+/// engine says unasked is that a pass went into the history, and
+/// `AutopilotWork.save` answers nothing whether the write landed or was
+/// refused, so even the two save paths that *are* `async` and awaited cannot
+/// learn from the answer. What is left is asking again, and before 99a2a306
+/// nothing re-read the status after a write.
 ///
 /// Without that re-read the result is the one thing a settings page must never
 /// do: show somebody their own configuration as saved when the engine dropped
@@ -35,8 +36,8 @@ import Module_Autopilot_Engine
 @MainActor
 final class ARefusedSaveIsNotDrawnAsDoneTests: XCTestCase {
 
-    private func model(on wire: AutopilotWire) -> AutopilotViewModel {
-        AutopilotViewModel(vm: ModuleViewModel(transport: wire),
+    private func model(on work: FakeAutopilotWork) -> AutopilotViewModel {
+        AutopilotViewModel(work: work, historyChanges: AsyncStream { _ in },
                            presetFolders: FakePresetFolders([:]),
                            home: NSHomeDirectory())
     }
@@ -58,18 +59,18 @@ final class ARefusedSaveIsNotDrawnAsDoneTests: XCTestCase {
     ///
     /// Asserted on **what was sent** rather than on what the page lists
     /// afterwards: the page re-reads after a write (`sendFolders` loads), and
-    /// `AutopilotWire` applies a save it was not refused, as `SealedRules.write`
-    /// does, so the list afterwards is the wire's echo of the save rather than
+    /// `FakeAutopilotWork` applies a save it was not refused, as `SealedRules.write`
+    /// does, so the list afterwards is the fake's echo of the save rather than
     /// evidence that the page made it.
     func testARuleSavedOverARuleSetTheEngineAcceptsIsHandedOver() async {
-        let wire = AutopilotWire()
-        let rvm = model(on: wire)
-        await rvm.firstLoad?.value
+        let work = FakeAutopilotWork()
+        let rvm = model(on: work)
+        await rvm.appear()
 
         await rvm.save(rule, in: folder)
 
-        XCTAssertEqual(wire.saved.last?.count, 1, "the premise: the folder was sent")
-        XCTAssertEqual(wire.saved.last?.first?.rules.map(\.id), ["r"],
+        XCTAssertEqual(work.saved.last?.count, 1, "the premise: the folder was sent")
+        XCTAssertEqual(work.saved.last?.first?.rules.map(\.id), ["r"],
                        "the premise: with the rule in it")
         XCTAssertNotEqual(rvm.screen, .rulesRefused(.tampered),
                           "a page whose save was taken must not draw the refusal")
@@ -82,20 +83,20 @@ final class ARefusedSaveIsNotDrawnAsDoneTests: XCTestCase {
     /// — and what they see is the folder they just added, listed, on a page that
     /// still believes the rules are running.
     func testAPageWhoseSaveWasRefusedDoesNotGoOnDrawingItAsSaved() async {
-        let wire = AutopilotWire()
-        let rvm = model(on: wire)
-        await rvm.firstLoad?.value
+        let work = FakeAutopilotWork()
+        let rvm = model(on: work)
+        await rvm.appear()
         XCTAssertNil(rvm.refusal, "the premise: the page opened on a rule set that was running")
 
         // Something rewrites the plist while the page is open. From here the
         // engine refuses every write and hands out `[]` — the same two answers
         // `SealedRules` gives for a rule set it did not write.
-        wire.answers(AutopilotStatus(refusal: .tampered))
-        wire.holds([WatchedFolder]())
+        work.answers(AutopilotStatus(refusal: .tampered))
+        work.holds([WatchedFolder]())
 
         await rvm.save(rule, in: folder)
 
-        XCTAssertTrue(wire.commands.contains(.setFolders),
+        XCTAssertTrue(work.calls.contains("save"),
                       "the premise: the page did send the save that was refused")
         XCTAssertEqual(rvm.screen, .rulesRefused(.tampered), """
             the page is still drawing the folder list after a write the engine refused, so \
@@ -109,21 +110,21 @@ final class ARefusedSaveIsNotDrawnAsDoneTests: XCTestCase {
     /// read as being about one gesture: after a write, the page has to ask.
     ///
     /// A refusal is a fact about the store, and the only thing that ever reports
-    /// it is `AutopilotCommand.status`, which the page sends when it loads — so
+    /// it is `AutopilotWork.readStatus`, which the page asks when it loads — so
     /// `sendFolders` sends and then loads, as `discardRefusedRules()` does in
     /// `AutopilotViewModel.swift`.
     func testAWriteIsNeverFollowedByAskingWhatBecameOfIt() async {
-        let wire = AutopilotWire()
-        let rvm = model(on: wire)
-        await rvm.firstLoad?.value
+        let work = FakeAutopilotWork()
+        let rvm = model(on: work)
+        await rvm.appear()
 
         await rvm.save(rule, in: folder)
-        let afterTheSave = wire.commands.drop { $0 != .setFolders }
+        let afterTheSave = work.calls.drop { $0 != "save" }
 
-        XCTAssertTrue(afterTheSave.contains(.status), """
+        XCTAssertTrue(afterTheSave.contains("readStatus"), """
             nothing after the write asks the engine what it did with it — \(Array(afterTheSave)) \
-            — and the engine answers setFolders with empty Data whether it saved or refused, so \
-            there is nothing in the reply either
+            — and the engine's save answers nothing whether it saved or refused, so \
+            there is nothing in the answer either
             """)
     }
 }

@@ -26,7 +26,7 @@ final class ATimerCanEndTheAutomationItSatOnTests: XCTestCase {
                                  assertions: assertions, displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(), power: FakePower(),
                                  apps: apps, pointer: FakePointer(),
-                                 clamshell: FakeClamshell(), clock: clock)
+                                 clamshell: FakeClamshell(), clock: clock, lidInfo: FakeLidInfo())
     }
 
     /// Today's behaviour, which the setting must not change when it is off:

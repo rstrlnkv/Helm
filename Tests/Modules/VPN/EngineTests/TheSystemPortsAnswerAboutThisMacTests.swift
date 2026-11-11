@@ -82,7 +82,7 @@ final class TheSystemPortsAnswerAboutThisMacTests: XCTestCase {
     /// Measured on this machine, 2026-08-18: `networkQuality -c -I utun6`
     /// against a live tunnel prints this and **exits 0** — an error object, no
     /// throughput keys at all. The guard on the status would have let it
-    /// through; what refuses it is the parser's «every field or nothing», and
+    /// through; what refuses it is the parser's «both throughput figures or nothing», and
     /// that is now a test rather than a thing somebody remembers.
     private static let minusOneThousandAndNine = """
     {"error_code": -1009, "error_domain": "NSURLErrorDomain", \

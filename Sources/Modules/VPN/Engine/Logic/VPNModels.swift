@@ -3,7 +3,7 @@
 
 import Foundation
 
-public enum VPNStatus: String, Equatable, Sendable, Codable {
+public enum VPNStatus: String, Equatable, Sendable {
     case connected, connecting, disconnected, disconnecting, unknown
 
     /// Up, or on its way up. Nine places asked this, six of them by spelling
@@ -16,13 +16,13 @@ public enum VPNStatus: String, Equatable, Sendable, Codable {
     public var isTransitioning: Bool { self == .connecting || self == .disconnecting }
 
     /// Up, and only up. `isUp` answers "is something happening here", which is
-    /// the right question for a tile that lights, and the wrong one for a
-    /// number labelled *active*: it counted a connection whose own row was
-    /// showing a spinner and the word "Connecting", in green.
+    /// the right question for the panel tile's switch, and the wrong one for
+    /// anything that lights or counts: a tunnel whose card says "Connecting…"
+    /// and whose panel row shows a spinner is not connected yet.
     public var isConnected: Bool { self == .connected }
 }
 
-public struct VPNConnection: Identifiable, Equatable, Sendable, Codable {
+public struct VPNConnection: Identifiable, Equatable, Sendable {
     public let id: String       // service identifier (UUID from scutil)
     public let name: String     // user-visible service name
     public var status: VPNStatus
@@ -41,8 +41,8 @@ public struct VPNConnection: Identifiable, Equatable, Sendable, Codable {
 /// The name is here unredacted and in the log it is not: `Redact.vpn` exists
 /// because a diagnostic file leaves the machine, and this value never does —
 /// it goes to the window of the person who configured the thing it names.
-public struct VPNFailure: Codable, Equatable, Sendable {
-    public enum Reason: String, Codable, Sendable {
+public struct VPNFailure: Equatable, Sendable {
+    public enum Reason: String, Sendable {
         /// No configuration by that name — renamed or deleted in System
         /// Settings, or a rule left pointing at one that is gone.
         case noSuchService
@@ -50,6 +50,9 @@ public struct VPNFailure: Codable, Equatable, Sendable {
         /// gets the fact rather than the tool's own words, which are English
         /// and are not written for a person.
         case refused
+        /// The configuration could not be read (`VPNCredentialRead.unreadable`), so
+        /// Helm did not connect: said of a person's press only.
+        case secretUnreadable
     }
     public let name: String
     public let reason: Reason
@@ -66,19 +69,5 @@ public struct VPNFailure: Codable, Equatable, Sendable {
         self.name = name
         self.reason = reason
         self.verb = verb
-    }
-
-    /// Hand-written because a stored default does **not** make an older payload
-    /// decode: Swift's synthesised `Decodable` requires the key regardless, and
-    /// `JSONDecoder` then gives up on the whole document rather than on the one
-    /// field — which here would cost the page every connection it draws for the
-    /// sake of a word (CLAUDE.md § What not to do, and what breaks if you do).
-    /// `.connect` is what a payload from before this field existed meant, because
-    /// that is the only sentence such a build could draw.
-    public init(from decoder: Decoder) throws {
-        let box = try decoder.container(keyedBy: CodingKeys.self)
-        name = try box.decode(String.self, forKey: .name)
-        reason = try box.decode(Reason.self, forKey: .reason)
-        verb = try box.decodeIfPresent(VPNVerb.self, forKey: .verb) ?? .connect
     }
 }

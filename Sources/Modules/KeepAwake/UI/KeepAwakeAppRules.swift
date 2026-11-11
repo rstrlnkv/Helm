@@ -5,32 +5,28 @@ import Module_KeepAwake_Engine
 /// The list of «keep the Mac awake while this app runs» rules, and the three
 /// things that edit it.
 ///
-/// An extension rather than a view of its own, and that is load-bearing: a
-/// grouped `Form` groups by what its **direct children** are, so wrapping these
-/// rows in anything — even a `Group` — changes the card they are drawn in
-/// (ARCHITECTURE.md § The Settings window). The rows have to stay siblings of the
-/// section's other rows, so what moves is the source and not the hierarchy.
+/// An extension rather than a view of its own: `HelmSettingsSection` lays out
+/// its content's subviews as the card's rows. Wrapping these in a stack would
+/// make them one row; `Group`, `ForEach` and a view of its own are flattened by
+/// its `Group(subviews:)`, so the extension is where the source lives, not what
+/// holds the rows apart.
 extension KeepAwakeSettingsPage {
     // MARK: - App picker
 
-    /// Rows handed to the `Section` one by one, not wrapped in a `VStack`.
-    ///
-    /// The wrapper made this the only per-app list in Helm without the system's
-    /// row padding and hairlines: measured against the identical list in VPN it
-    /// came out 13 pt shorter with no separators at all. The form draws both,
-    /// and draws them the way every other section is drawn.
+    /// Rows handed to the section one by one, not wrapped in a `VStack`: the
+    /// section draws the padding and the hairline between rows, and a wrapper
+    /// would be one row with neither.
     /// - Parameter explained: whether the empty state may say what an app rule is.
     ///   Not while the banner is up: unreadable rules read as no rules, so «No apps
-    ///   chosen» and a paragraph about adding one sat under a banner saying the apps
-    ///   could not be read — two sentences contradicting the third about whether
-    ///   anything was chosen. The button stays: the banner tells them to press it.
+    ///   chosen» and a paragraph about adding one under a banner saying the apps
+    ///   could not be read would be two sentences contradicting the third about
+    ///   whether anything was chosen. The button stays: the banner tells them to
+    ///   press it.
     @ViewBuilder
     func appRules(explained: Bool) -> some View {
         if appTriggers.isEmpty {
-            // A sentence, not a shrug. «No apps yet.» said nothing about what
-            // an app rule is or why anybody would want one, and the section
-            // heading used to carry that job in its tail — re-explaining it on
-            // every visit for ever, including to people who already had a list.
+            // A sentence, not a shrug: «No apps yet.» says nothing about what an
+            // app rule is or why anybody would want one.
             HelmEmptyState(symbol: "plus.app",
                            tint: KeepAwakeDescriptor.tint.colour,
                            title: explained ? KAStr.noAppsYet : nil,
@@ -53,6 +49,7 @@ extension KeepAwakeSettingsPage {
                     }
                     .labelsHidden()
                     .fixedSize()
+                    .helmSectionMenu()
                 } remove: {
                     appTriggers.remove(at: index)
                     saveTriggers()
@@ -62,21 +59,20 @@ extension KeepAwakeSettingsPage {
         // button already carries this action, and two «Add app…» in one card is
         // the app asking the same question twice.
         if !appTriggers.isEmpty {
-            // The card's last row, not a button sitting in one: v3 draws it as
-            // a line of the list it adds to, in the accent, which is also how
-            // macOS's own lists offer «add».
+            // The card's last row, not a button sitting in one: a line of the
+            // list it adds to, in the accent, which is also how macOS's own
+            // lists offer «add».
             Button {
                 pickApp()
             } label: {
-                // The app rows above are a 22 pt icon and a 12 pt gap, and a
-                // `Label` uses neither — its own spacing put this title 6.5 pt
-                // to the left of every app name it sits under, which on a card
-                // of otherwise aligned rows reads as the last row being
-                // slightly broken. Spelled out, so the two agree by
-                // construction rather than by coincidence.
-                HStack(spacing: 12) {
+                // The app rows above are an icon and a gap a `Label` does not
+                // use — its own spacing would put this title left of every app
+                // name it sits under. Both numbers are `HelmAppRuleGeometry`'s, so the
+                // two agree by construction.
+                HStack(spacing: HelmAppRuleGeometry.iconGap) {
                     Image(systemName: "plus")
-                        .frame(width: 22, height: 22)
+                        .frame(width: HelmAppRuleGeometry.iconSide,
+                               height: HelmAppRuleGeometry.iconSide)
                     Text(KAStr.addApp)
                 }
                 .foregroundStyle(Color.accentColor)

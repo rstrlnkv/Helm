@@ -4,37 +4,38 @@ import HelmTestSupport
 import XCTest
 @testable import Module_Layout_Engine
 
-/// **The selection path reads from one app and writes into whichever app is in
-/// front when the write happens, and nothing holds those two to being the
+/// **The selection path read from one app and wrote into whichever app was in
+/// front when the write happened, and nothing held those two to being the
 /// same.**
 ///
 /// The word path was taught this lesson twice. `RememberedWord` carries the
 /// bundle id the word was typed in and `UndoRecord` carries the one the
 /// conversion happened in, both for the same stated reason: a blind edit is
 /// only correct in the app it was measured in. The selection is the same kind
-/// of edit against a stranger's text — `SelectionAction`'s own comment calls it
-/// «text Helm never saw, in an app it did not choose» — and it carries no app at
-/// all.
+/// of edit against a stranger's text — `SelectionTransform`'s own comment calls
+/// it «text Helm never saw», `convertSelection`'s «text Helm has never seen, in
+/// an app it did not choose» — and it carried no app at all before `readIn`.
 ///
-/// **The gap is not theoretical, it is what the code spends time in.** Both
-/// doors read the selection and then act on the result:
+/// **The gap was not theoretical.** Both routes read the selection and then act
+/// on the result:
 ///
-/// - `transform` reads `frontmostBundleID()`, runs it past `AppScope`, and
-///   *then* calls `selectedText()` — which falls through to ⌘C and polls the
-///   pasteboard for up to 200 ms in every app whose accessibility tree will not
-///   answer, which is most Electron apps and most web views. The scope verdict
-///   is a fifth of a second old before anything is typed.
-/// - `fix()` reads the selection on `DispatchQueue.global`, precisely because
-///   that read can block, and then hops back to `DispatchQueue.main`. The text
-///   crosses a queue boundary; the app it came from does not cross with it.
+/// - `convertSelection` reads `frontmostBundleID()`, runs it past `AppScope`, and
+///   *then*, when its caller passed no text, calls `selectedText()` — which falls
+///   through to ⌘C and polls the pasteboard for up to 200 ms in every app whose
+///   accessibility tree will not answer, which is most Electron apps and most web
+///   views. `fix()` always passes the text, so only a bare call takes that route.
+///   The scope verdict is a fifth of a second old before anything is typed.
+/// - `fix()` read the selection on `DispatchQueue.global`, precisely because
+///   that read can block, and then hopped back to `DispatchQueue.main`. The text
+///   crossed a queue boundary; the app it came from did not cross with it.
 ///
 /// Between the read and the write the frontmost app can change, and the tap
 /// cannot see it happen: a `.click` or a `.chord` would end a word, and neither
 /// is involved in a Space swipe, an app calling `activate()`, an alert coming
-/// forward, or a call joining. What lands is a paragraph converted out of one
+/// forward, or a call joining. What landed was a paragraph converted out of one
 /// application typed into a different one — and, in the first case below, into
 /// a terminal that `AppScope` blocks by default, because the rule was applied to
-/// an app that is no longer there.
+/// an app that was no longer there.
 ///
 /// The repair is the one the word path already has: pin the app the selection
 /// was read from and refuse to write anywhere else.
@@ -60,7 +61,7 @@ final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
         /// How many times the engine has asked who is in front **from the main
         /// queue**.
         ///
-        /// The thread is the whole point of the marker. `transform` asks this
+        /// The thread is the whole point of the marker. `convertSelection` asks this
         /// question and calls `replaceSelection` inside one main-queue block, and
         /// a `@MainActor` test polling with `Task.yield()` is itself a main-queue
         /// item — so it cannot observe the count move until that block has run to
@@ -151,7 +152,7 @@ final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
         context = DriftContext(); selection = DriftSelection()
         let engine = LayoutEngine(tap: DriftTap(), typing: DriftTyping(),
                                   sources: DriftSources(), translation: DriftTranslation(),
-                                  spell: DriftSpell(), secure: context, selection: selection)
+                                  spell: DriftSpell(), secure: context, activation: FakeActivation(), selection: selection)
         engine.activate()
         return engine
     }
@@ -166,8 +167,8 @@ final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
 
     // MARK: - The scope verdict is older than the write
 
-    /// `transform` asks `AppScope` about Notes, spends up to 200 ms reading the
-    /// selection, and replaces text in a terminal — the app class the module
+    /// `convertSelection` asked `AppScope` about Notes, spent up to 200 ms reading the
+    /// selection, and replaced text in a terminal — the app class the module
     /// blocks by default, on the stated ground that `ghbdtn` there is as likely
     /// to be a filename as a mistake.
     func testAScopeVerdictIsNotSpentOnAnAppThatArrivedAfterIt() async throws {
@@ -206,8 +207,8 @@ final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
 
     /// The gesture's own hop. `fix()` reads the selection off the main queue
     /// because that read blocks, then comes back to main to act — and the text
-    /// it carries across is written into whoever holds the keyboard on arrival.
-    /// Mail is not blocked, so no scope rule saves this one: it is a paragraph
+    /// it carried across was written into whoever held the keyboard on arrival.
+    /// Mail is not blocked, so no scope rule saves this one: it was a paragraph
     /// from Notes typed over whatever was selected in Mail.
     func testTheTextTheGestureReadIsNotWrittenIntoADifferentApp() async {
         let engine = engine()

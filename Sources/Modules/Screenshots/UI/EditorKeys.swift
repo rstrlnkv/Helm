@@ -2,9 +2,17 @@ import AppKit
 import Carbon.HIToolbox
 import Module_Screenshots_Engine
 
+/// The keys the overlay, the bar, the pin and the toast's panel name, by the system's own constants.
+enum ShotKey {
+    static let escape = UInt16(kVK_Escape)
+    static let returnKey = UInt16(kVK_Return)
+    static let enter = UInt16(kVK_ANSI_KeypadEnter)
+    static let space = UInt16(kVK_Space)
+}
+
 /// How the editor leaves, and what each way does with the picture.
 enum EditorExit: Equatable {
-    /// Return: what the settings say — copy and/or save by the save target.
+    /// Return: always copies, and writes a file by the save target (an edit of a shot that had a file writes one whatever the target says).
     case confirm
     /// ⌘C: the clipboard only.
     case copy
@@ -66,8 +74,8 @@ enum EditorAction: Equatable {
     case close
 }
 
-/// **Keys by physical key code, never by character.** The owner types Russian: the
-/// key that says A on an English layout says Ф on theirs and `characters` follows
+/// **Keys by physical key code, never by character.** A Russian layout types other letters: the
+/// key that says A on an English layout says Ф on it and `characters` follows
 /// the layout, so a binding written on it works for one of the two. The code names
 /// the place on the keyboard.
 enum EditorKeys {

@@ -15,7 +15,7 @@ import Foundation
 /// so `UninstallPlan.defaultSelection` arrives with it **already ticked** — the
 /// hazard ARCHITECTURE.md § The gates is about.
 ///
-/// Three rules, because each alone lets a real case through:
+/// Four rules, because each alone lets a real case through:
 ///
 /// - **A dot, or nothing.** A bundle id is a dotted path, so the id inside a
 ///   longer name is the same id only when the name breaks at a `.` on both

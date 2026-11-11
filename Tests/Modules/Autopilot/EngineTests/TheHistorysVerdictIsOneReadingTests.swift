@@ -100,8 +100,8 @@ private final class LateReadStore: KeyValueStore, @unchecked Sendable {
 ///
 /// What that costs is not a wrong number on a screen. `historyRefused` is the
 /// claim «the stored history was not written by Helm» — the module's forgery
-/// signal — and it is answered inside `AutopilotCommand.status`, which the page
-/// sends on every load, on the cooperative pool. The writer it races is the
+/// signal — and it is answered inside `AutopilotEngine.readStatus`, which the
+/// page asks on every load, off the cooperative pool. The writer it races is the
 /// FSEvents leg and the hourly sweep, both on the engine's own queue, both
 /// unattended. What the page then draws is the card that says somebody rewrote
 /// the record, with every return switched off, and it stays until the page is

@@ -1,13 +1,3 @@
-// swiftlint:disable line_length
-//
-// Every line this rule flags in this file is one localized string — the English
-// that is also the key, and that eight `.strings` files answer. Splitting one
-// across source lines buys nothing and risks the key. `.swiftlint.yml` already
-// says these lines "are correct at that length"; the exemption is here so the
-// 320-character warning can go on meaning what that comment claims it means —
-// a notice about runaway *code* — instead of firing 61 times on the one case
-// it excuses.
-
 import Foundation
 import HelmRuntime
 import HelmUI
@@ -16,27 +6,30 @@ import Module_Disk_Engine
 enum DkStr {
     /// The display name only — the module id stays `disk`, or every stored
     /// setting keyed to it would be orphaned.
-    static var moduleName: String { L("Disk") }
-    static var summary: String { L("What is taking up space") }
-    static var scanFolder: String { L("Scan a folder…") }
-    static var scanning: String { L("Scanning") }
-    static var stop: String { L("Stop scan") }
-    static var cancel: String { L("Cancel") }
-    /// Leaves the scan on screen and goes back to the picker — and forgets the
+    static var moduleName: String { L(.disk) }
+    static var summary: String { L(.summary) }
+    static var scanFolder: String { L(.scanAFolder) }
+    static var scanning: String { L(.scanning) }
+    /// The ring's line under the figure while the walk runs: the kit's «Scanning…»,
+    /// which the other scanning pages read.
+    static var scanningNow: String { HelmWord.scanning }
+    static var stop: String { HelmWord.stopScan }
+    static var cancel: String { HelmWord.cancel }
+    /// Drops the scan from the screen and goes back to the picker — and forgets the
     /// saved one, which is the only way out of a scan that should not have been
-    /// there. Without it the app opened on whatever it measured last, for ever.
-    static var chooseAnother: String { L("Choose another…") }
-    static var scanAgain: String { L("Scan again") }
+    /// there: without it the module reopens on its last scan at every launch.
+    static var chooseAnother: String { L(.chooseAnother) }
+    static var scanAgain: String { HelmWord.scanAgain }
     /// The tile's own door into the page. A verb and the module's name, because
     /// VoiceOver reads it out of context: «Open» alone answers nothing in a
     /// panel holding ten tiles.
-    static var openTheModule: String { L("Open Disk") }
+    static var openTheModule: String { L(.openDisk) }
 
-    static var free: String { L("free") }
-    static var moveToTrash: String { L("Move to Trash") }
+    static var free: String { L(.free) }
+    static var moveToTrash: String { HelmWord.moveToTrash }
     /// "Basket" was the only place the English UI used the word: no visible
     /// label says it — the bar itself is headed "To remove".
-    static var basketContents: String { L("Show what is marked for removal") }
+    static var basketContents: String { HelmWord.showWhatIsMarkedForRemoval }
     /// `HelmBasket` in HelmUI — the same bar Duplicates draws, and both had
     /// these two lines built inside the view with a Latin middle dot and an
     /// ASCII colon whatever the language.
@@ -52,42 +45,30 @@ enum DkStr {
     /// of two hundred. The row's own name is the only part of this button that
     /// differs between rows, and it is what the person is listening for.
     ///
-    /// One button, two meanings, one place: the pair had already drifted apart
-    /// once, in the direction where the label described neither state.
-    /// Interpolated, so it keeps an inline table — the lookup would otherwise be
-    /// asked for a key with a folder name already in it — and the name goes
-    /// through `Quoted`, because it is somebody's own file inside a sentence.
+    /// One button, two meanings: the name of the action and its object, from
+    /// the kit's `HelmBasket`, which Duplicates' rows read too.
     static func basketAction(name: String, basketed: Bool,
                              language: AppLanguage = AppLanguage.current) -> String {
-        let it = Quoted(name, language: language)
-        return basketed
-            ? L("Unmark \(it) for removal", [.ru: "Снять отметку удаления с \(it)", .es: "Desmarcar \(it) para eliminar", .fr: "Ne plus marquer \(it) pour suppression", .de: "Markierung zum Entfernen für \(it) aufheben", .ja: "\(it) を削除予定から外す", .zh: "取消\(it)的待删除标记", .pt: "Desmarcar \(it) para remoção"], language: language)
-            : L("Mark \(it) for removal", [.ru: "Отметить \(it) к удалению", .es: "Marcar \(it) para eliminar", .fr: "Marquer \(it) pour suppression", .de: "\(it) zum Entfernen markieren", .ja: "\(it) を削除予定に追加", .zh: "将\(it)标记为待删除", .pt: "Marcar \(it) para remoção"], language: language)
+        basketed ? HelmBasket.unmark(name: name, language: language)
+                 : HelmBasket.mark(name: name, language: language)
     }
-    static var systemItem: String { L("System") }
-    static var emptyFolder: String { L("Nothing in this folder.") }
-    static var noAccess: String { L("No access") }
-    static var scanNeedsAccess: String { L("Without Full Disk Access some folders scan as empty.") }
-    static var startHint: String { L("Pick a volume, or scan any folder.") }
-    /// The start screen's silence. Its opening is Leftovers' `rescanLost` word for
-    /// word, because it is literally the same nil coming back from
-    /// `TransportClient.request` — two phrasings of one machine fact is a defect
-    /// this codebase keeps catching. What follows differs because what is under it
-    /// differs: there, a list from the previous scan; here, a picker that may be
-    /// missing a disk somebody is looking for.
-    static var volumeListLost: String { L("Helm got no answer, so this may not be every volume.") }
+    static var systemItem: String { L(.systemItem) }
+    static var emptyFolder: String { L(.nothingInThisFolder) }
+    static var noAccess: String { L(.noAccess) }
+    static var scanNeedsAccess: String { L(.scanNeedsFullDiskAccess) }
+    static var startHint: String { L(.pickAVolumeOrScanAnyFolder) }
     /// The count goes through `Count`: a scan of `/` reports seven digits, and
     /// seven ungrouped digits are read by counting them. Same in the two
     /// statements below.
     static func scannedIn(_ files: Int, _ seconds: String,
                           language: AppLanguage = AppLanguage.current) -> String {
         let n = Count(files, language: language)
-        return L("\(n) files in \(seconds) s", [.ru: "Файлов: \(n) за \(seconds) с", .es: "\(n) archivos en \(seconds) s", .fr: "\(n) fichiers en \(seconds) s", .de: "\(n) Dateien in \(seconds) s", .ja: "\(n) ファイル / \(seconds) 秒", .zh: "\(n) 个文件，\(seconds) 秒", .pt: "\(n) arquivos em \(seconds) s"], language: language)
+        return L(.scannedIn(n, seconds), language: language)
     }
-    /// Where the files went, not what the disk gained: the Trash is a folder on
-    /// the same volume, so nothing is free until it is emptied. Same wording as
-    /// the button that started it (Finder's `AL13`), in the past tense.
-    static func movedToTrash(_ size: String) -> String { L("Moved to the Trash — \(size)", [.ru: "Перемещено в Корзину — \(size)", .es: "Trasladado a la papelera — \(size)", .fr: "Placé dans la corbeille — \(size)", .de: "In den Papierkorb gelegt — \(size)", .ja: "ゴミ箱に入れました — \(size)", .zh: "已移到废纸篓 — \(size)", .pt: "Movido para o Lixo — \(size)"]) }
+    /// `HelmBasket.movedToTrash`: Disk, Duplicates and the Uninstaller end a removal on one sentence; Leftovers counts the rows as well (`LfStr.movedToTrash`).
+    static func movedToTrash(_ size: String) -> String {
+        HelmBasket.movedToTrash(size)
+    }
     /// Takes the plan, not a count and a size the caller worked out for itself.
     ///
     /// The page had both to hand — `basket.count` and `basketBytes` — and they
@@ -100,7 +81,9 @@ enum DkStr {
         HelmConfirm.trash(Plural.items(question.count, language: AppLanguage.current.rawValue),
                           Bytes(question.bytes))
     }
-    static func measured(_ ago: String) -> String { L("Measured \(ago)", [.ru: "Измерено \(ago)", .es: "Medido \(ago)", .fr: "Mesuré \(ago)", .de: "Gemessen \(ago)", .ja: "計測 \(ago)", .zh: "测量于 \(ago)", .pt: "Medido \(ago)"]) }
+    static func measured(_ ago: String) -> String {
+        L(.measured(ago))
+    }
     /// The third thing the ring can be showing, beside a fresh measurement and a
     /// memory of one: a walk that was stopped.
     ///
@@ -111,21 +94,21 @@ enum DkStr {
     /// windows just above it the line would arrive truncated. A warning with an
     /// ellipsis in it is a poor warning; the count moved to the hint, which has no
     /// width to answer to.
-    static var stopped: String { L("Stopped") }
+    static var stopped: String { HelmWord.stopped }
     /// Why that line matters, and how far the walk got. `TreeBuilder` charges a
     /// directory as its files are found, so every folder in a stopped tree shows a
     /// floor and not a total — which is the number somebody would be deciding to
-    /// delete on. Interpolated, so it keeps an inline table: the lookup would
-    /// otherwise be asked for a key with the count already in it.
+    /// delete on. Interpolated, so it is a catalog key with the count as its argument:
+    /// the lookup would otherwise be asked for a key with the count already in it.
     static func stoppedHint(_ files: Int,
                             language: AppLanguage = AppLanguage.current) -> String {
         let n = Count(files, language: language)
-        return L("The walk was stopped after \(n) files, so a folder may hold more than it shows.", [.ru: "Обход прерван, измерено файлов: \(n). Папка может содержать больше, чем показано.", .es: "El recorrido se detuvo tras \(n) archivos, así que una carpeta puede contener más de lo que muestra.", .fr: "L’analyse a été arrêtée après \(n) fichiers\u{00A0}: un dossier peut contenir plus que ce qu’il affiche.", .de: "Der Durchlauf wurde nach \(n) Dateien gestoppt, daher kann ein Ordner mehr enthalten als angezeigt.", .ja: "\(n) ファイルで走査を停止したため、フォルダの実際の容量は表示より大きい場合があります。", .zh: "扫描在 \(n) 个文件后停止，文件夹的实际大小可能大于显示值。", .pt: "A varredura parou após \(n) arquivos, então uma pasta pode conter mais do que mostra."], language: language)
+        return L(.stoppedHint(n), language: language)
     }
-    static var advice: String { L("Recommendations") }
-    static var adviceHint: String { L("What could be deleted") }
-    static var adviceKindCache: String { L("Cache — apps rebuild it") }
-    static var adviceKindOldDownload: String { L("Old download") }
+    static var advice: String { L(.recommendations) }
+    static var adviceHint: String { L(.whatCouldBeDeleted) }
+    static var adviceKindCache: String { L(.cacheAppsRebuildIt) }
+    static var adviceKindOldDownload: String { L(.oldDownload) }
     /// What the attribute actually says. The scanner reads `ATTR_CMN_MODTIME`,
     /// which is when the file was last *written*; the row used to claim
     /// "Untouched for months", which is a statement about use. A Parallels
@@ -133,10 +116,12 @@ enum DkStr {
     /// to by nobody, and both were listed as untouched. Nothing macOS hands a
     /// bulk directory read reports use, so the row says the date instead —
     /// which is also the reason it was previously missing.
-    static func notModifiedSince(_ date: String) -> String { L("Not modified since \(date)", [.ru: "Не изменялся с \(date)", .es: "Sin modificar desde el \(date)", .fr: "Non modifié depuis le \(date)", .de: "Nicht geändert seit \(date)", .ja: "\(date) 以降変更なし", .zh: "自 \(date) 起未修改", .pt: "Sem modificações desde \(date)"]) }
-    /// The same claim with no date to hang it on: advice restored from a scan
-    /// an earlier build cached, which carried the verdict and not the date.
-    static var notModifiedInMonths: String { L("Not modified in months") }
+    static func notModifiedSince(_ date: String) -> String {
+        L(.notModifiedSince(date))
+    }
+    /// The same claim with no date to hang it on: advice restored from a saved
+    /// scan that holds the verdict and not the date.
+    static var notModifiedInMonths: String { L(.notModifiedInMonths) }
     /// Why a row is in the Advice list — and, for the size-and-age verdict, the
     /// date it was reached from. Here rather than in the view because it is a
     /// decision with three branches and one of them turns on whether there is a
@@ -163,14 +148,16 @@ enum DkStr {
     private static func dated(_ modified: TimeInterval?) -> String? {
         modified.map { notModifiedSince(HelmDates.day(Date(timeIntervalSince1970: $0))) }
     }
-    static var otherItems: String { L("Smaller items") }
-    static var ringMap: String { L("Disk map") }
-    static var openFolder: String { L("Look inside") }
-    static func ringShare(_ name: String, _ size: String, _ percent: Int) -> String { L("\(name), \(size), \(percent)% of this folder", [.ru: "\(name), \(size), \(percent) % этой папки", .es: "\(name), \(size), \(percent) % de esta carpeta", .fr: "\(name), \(size), \(percent) % de ce dossier", .de: "\(name), \(size), \(percent) % dieses Ordners", .ja: "\(name)、\(size)、このフォルダの \(percent)%", .zh: "\(name)，\(size)，占此文件夹 \(percent)%", .pt: "\(name), \(size), \(percent)% desta pasta"]) }
-    static var back: String { L("Back") }
+    static var otherItems: String { L(.smallerItems) }
+    static var ringMap: String { L(.diskMap) }
+    static var openFolder: String { L(.lookInside) }
+    static func ringShare(_ name: String, _ size: String, _ percent: Int) -> String {
+        L(.ringShare(name, size, "\(percent)"))
+    }
+    static var back: String { HelmWord.back }
     static func liveCount(_ files: Int,
                           language: AppLanguage = AppLanguage.current) -> String {
         let n = Count(files, language: language)
-        return L("\(n) files", [.ru: "Файлов: \(n)", .es: "\(n) archivos", .fr: "\(n) fichiers", .de: "\(n) Dateien", .ja: "\(n) ファイル", .zh: "\(n) 个文件", .pt: "\(n) arquivos"], language: language)
+        return L(.liveCount(n), language: language)
     }
 }

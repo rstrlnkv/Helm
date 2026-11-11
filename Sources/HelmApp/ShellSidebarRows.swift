@@ -40,10 +40,9 @@ struct ShellSidebarRows: Equatable, Sendable {
         groups.flatMap { $0.modules.map(Row.module) } + [.foot]
     }
 
-    /// Each section's modules come from `SidebarLayout.live(in:enabled:)`, the
-    /// call `SettingsWindow.swift`'s sidebar list makes too, so both read "on"
-    /// from one function. An id that is enabled but held by no section is not
-    /// listed: there is nowhere to put it.
+    /// Each section's modules come from `SidebarLayout.live(in:enabled:)`. An id
+    /// that is enabled but held by no section is not listed: there is nowhere to
+    /// put it.
     init(layout: SidebarLayout, enabled: Set<String>) {
         var seen = Set<String>()
         groups = layout.sections.compactMap { section in
@@ -72,6 +71,23 @@ struct ShellSidebarRows: Equatable, Sendable {
         guard let index = all.firstIndex(of: row) else { return nil }
         let next = direction == .up ? index - 1 : index + 1
         return all.indices.contains(next) ? all[next] : nil
+    }
+
+    /// Where a row stands, `index` from 1 over every row, the foot row included, for VoiceOver's "n of m".
+    /// Nil for a row that is not in the list.
+    func position(of row: Row) -> (index: Int, count: Int)? {
+        let all = rows
+        return all.firstIndex(of: row).map { (index: $0 + 1, count: all.count) }
+    }
+
+    /// The first row, in the order drawn, whose name begins with what was typed — the match of a system
+    /// list's type-select: anchored at the start, blind to case, accents and width. `title` is the name
+    /// the row draws, passed in so this value stays free of the registry and the language. An empty
+    /// prefix matches nothing.
+    func row(typed prefix: String, title: (Row) -> String) -> Row? {
+        guard !prefix.isEmpty else { return nil }
+        let options: String.CompareOptions = [.anchored, .caseInsensitive, .diacriticInsensitive, .widthInsensitive]
+        return rows.first { title($0).range(of: prefix, options: options) != nil }
     }
 
     /// Whether a module has declared it can do nothing without a permission

@@ -51,9 +51,8 @@ struct ConversionLedger: Codable, Equatable, Sendable {
         /// the whole document rather than filling one field in — so a ledger
         /// written before this change would have thrown, `LedgerStore` would have
         /// read nil, and somebody's whole count would have been replaced by an
-        /// empty file without a word. `PanelLayout.Tab` and
-        /// `KeepAwakeEngine.StatePayload` are the same repair for the same reason
-        /// (CLAUDE.md § What not to do, and what breaks if you do).
+        /// empty file without a word. `PanelLayout.Tab` is the same repair for the same
+        /// reason (CLAUDE.md § What not to do, and what breaks if you do).
         ///
         /// The old instant is converted in the current zone. A row written far
         /// from here may land a day out — once, on the rows that already exist,

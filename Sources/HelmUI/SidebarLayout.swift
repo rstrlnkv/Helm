@@ -15,7 +15,7 @@ import Foundation
 ///
 /// **A default name is not a name.** A seeded section is called «Питание»,
 /// «Power» or «電源» depending on the language, translated from its seed through
-/// eight `Localizable.strings` tables. Storing the displayed string would freeze
+/// eight languages of a string catalog. Storing the displayed string would freeze
 /// whichever language was current the day it was stored — and renaming one
 /// section would quietly stop the others following the app. So a section keeps
 /// its seed *and* an optional hand-set name, and clearing the name translates

@@ -20,7 +20,7 @@ import HelmRuntime
 /// - `sessionIsActive`, so an answer that arrives after the session ended does
 ///   not disable sleep for nothing;
 /// - `stateChanged`, because a refusal discovered in a callback has to reach
-///   the screen, and the engine owns the wire.
+///   the screen, and the engine owns the published state.
 /// `@unchecked Sendable` and **not** `@MainActor`, which is the engine's own
 /// shape and is load-bearing here: `removeSudoers` calls back on a background
 /// queue, and the check it makes there — «did the grant go with the file» —
@@ -65,8 +65,8 @@ final class ClamshellCoordinator: @unchecked Sendable {
     ///
     /// `active` going false already carried this, and carried it as *nothing has
     /// happened* — which is what the row then said, in a paragraph about what an
-    /// administrator password buys. The two states have to be told apart on the
-    /// wire, because only one of them is a switch that says one thing while the
+    /// administrator password buys. The two states have to be told apart in the
+    /// published state, because only one of them is a switch that says one thing while the
     /// machine does another, and this module's whole claim is that a lid is safe
     /// to close.
     ///
@@ -102,7 +102,7 @@ final class ClamshellCoordinator: @unchecked Sendable {
         if Thread.isMainThread { block() } else { DispatchQueue.main.async(execute: block) }
     }
 
-    /// The one writer of `grantRemains`, so a change always reaches the wire.
+    /// The one writer of `grantRemains`, so a change always reaches the published state.
     ///
     /// `releaseIfUnneeded` runs *after* the last `emitState` of a
     /// `settingsChanged`, so a value set there and not announced would sit in
@@ -328,12 +328,12 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// deleting Helm while it is still running leaves the rule.** No code runs,
     /// so nothing withdraws it, and the file then names an application that is
     /// gone. Nothing closes that without a Developer ID and a real privileged
-    /// helper the system removes with the app — the fifth thing that purchase is
-    /// blocking, beside `NEVPNManager`, `SMAppService`, notarization and a
-    /// stable cdhash for TCC and the keychain (ARCHITECTURE.md § Sealed
-    /// settings). Until then the answer is a sentence: `KAStr.adminNote` names
-    /// the path and the `sudo rm` that removes it, before the password is asked
-    /// for rather than after.
+    /// helper the system removes with the app — one more thing that purchase is
+    /// blocking, beside `SMAppService`, notarization, the seal on
+    /// `clamshellEnabled` and a stable cdhash for TCC and the keychain (ARCHITECTURE.md § Sealed
+    /// settings). Until then the answer is a sentence: `KAStr.lidExplainer`
+    /// names the `sudo rm` that removes it, before the password is asked for
+    /// rather than after.
     private func withdrawAtQuit(sessionWillResume: Bool) {
         guard !active,
               !store.bool(KeepAwakeSettings.Key.clamshellGuard, default: false),
@@ -387,13 +387,13 @@ final class ClamshellCoordinator: @unchecked Sendable {
         // perfectly well, and the lid is the only part that needs the rule.
         guard mayPrompt else {
             HelmLog.shared.info(KeepAwakeEngine.moduleID, "closed-lid sleep needs an administrator "
-                                + "rule; not asking for one outside a deliberate start")
+                                + "rule; not asking for one outside the lid switch")
             return
         }
         // While a prompt is up the system still says the rule is missing, so
         // without this the person got one dialog per click for a single
         // decision. A *declined* prompt is a different state: the flag clears
-        // when the prompt is answered, so the next session asks again.
+        // when the prompt is answered, so the next turn of the lid switch asks again.
         guard !installInFlight else { return }
         installInFlight = true
         clamshell.installSudoers { [weak self] granted in
@@ -477,7 +477,9 @@ final class ClamshellCoordinator: @unchecked Sendable {
     ///
     /// Read before the caller's own «is a session running» guard, so an edge
     /// that happens while the module is idle is *consumed* rather than saved up
-    /// for whichever unrelated edit arrives after a rule starts a session.
+    /// for whichever unrelated edit arrives after a rule starts a session. The
+    /// switch's own rising edge is the exception: it is answered at once by asking
+    /// for the grant (`reconcileActiveSettings`), session or not.
     func consumeEdge() -> Edge {
         let now = settings.clamshellEnabled
         defer { lastSetting = now }
@@ -522,7 +524,8 @@ final class ClamshellCoordinator: @unchecked Sendable {
         removeGrant()
     }
 
-    /// The module itself is being switched off, by hand, in Settings.
+    /// The module is being switched off by hand in Settings, or «Reset all
+    /// settings» is handing the system back.
     ///
     /// The same falling edge as the option's own, arrived at from one screen over:
     /// a module that is off will not use the grant either, and this is the last
@@ -531,11 +534,12 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// so removing the rule there put an administrator password dialog on screen
     /// on behalf of an app that was already gone (`tearDown` has the story). What
     /// tells the two apart is `ModuleEngine.willDisable`, which only the person's
-    /// own switch calls.
+    /// own switch and «Reset all settings» call.
     ///
-    /// The setting is left where it is: somebody who switches the module back on
-    /// asked for the lid option once and will be asked for the password again,
-    /// which is the same round trip switching the option off and on already makes.
+    /// On a switch-off the setting is left where it is: somebody who switches the
+    /// module back on asked for the lid option once and will be asked for the
+    /// password again, which is the same round trip switching the option off and
+    /// on already makes.
     func releaseOnModuleDisabled() {
         guard lookForTheRule() else { return }
         removeGrant()

@@ -17,6 +17,19 @@ final class ObsoleteDefaultsTests: XCTestCase {
                         "a live setting must survive the purge")
     }
 
+    /// Two looks left as settings: how the panel's tabs were labelled and how a module's icon was drawn. `AppSettings.store`
+    /// writes under `module.app.`, so this is the spelling the purge has to carry, and a key left behind reads as a live setting.
+    func testTheRetiredLookChoicesArePurged() {
+        let store = InMemoryKeyValueStore()
+        store.set("glyph", forKey: "module.app.tabLabelStyle")
+        store.set("plain", forKey: "module.app.sidebarStyle")
+
+        ObsoleteDefaults.purge(from: store)
+
+        XCTAssertNil(store.object(forKey: "module.app.tabLabelStyle"))
+        XCTAssertNil(store.object(forKey: "module.app.sidebarStyle"))
+    }
+
     /// Every retired key is namespaced, so the purge can never reach into
     /// another app's or another module's settings.
     func testEveryRetiredKeyIsNamespaced() {

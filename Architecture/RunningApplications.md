@@ -9,9 +9,11 @@ it a second time over `frontmostApplication` is on `FrontmostApp`
 (`Sources/HelmRuntime/FrontmostApp.swift`).
 
 There is no safe shape for "a live list, off the main thread", and neither port
-offers one. `RunningApps` and `FrontmostApp` read where AppKit publishes — on the
-main thread, from the notification that arrives there anyway — and hand every other
-thread a snapshot: whoever was running, or in front, a moment ago. Layout's fix
+offers one. `RunningApps` and `FrontmostApp` read AppKit on the main thread and hand
+every other thread a snapshot: whoever was running, or in front, a moment ago.
+`FrontmostApp` refreshes from the notification that arrives on the main thread anyway;
+`RunningApps` has no observer, and the ports that watch (Keep Awake's, VPN's) call
+`refreshOnMain` from theirs. Layout's fix
 gesture calls through the snapshot rather than straight into AppKit, because it runs
 off the main thread by construction. A port that must ask AppKit directly hops to the
 main thread itself, as the Uninstaller's `WorkspaceRunningApps` does for its scan and

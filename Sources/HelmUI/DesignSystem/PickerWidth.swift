@@ -50,9 +50,9 @@ public enum HelmPickerWidth {
     /// minimum is the column they drew, and a column measured before the symbol
     /// went in is a different number than the one they meant.
     public static func fittingSymbolled(_ labels: [String], minimum: CGFloat) -> CGFloat {
-        max(minimum, fitting(labels, minimum: 0) + symbolColumn)
+        max(minimum, fitting(labels, minimum: 0) + symbolCost)
     }
 
     /// What a symbol beside the title costs — see `fittingSymbolled`.
-    static let symbolColumn: CGFloat = 22
+    static let symbolCost: CGFloat = 22
 }

@@ -4,9 +4,9 @@ import XCTest
 /// The duplicate finder does not look inside an application's own database.
 ///
 /// **The fixture uses `.fcpbundle`, and the choice was measured rather than
-/// guessed.** `.skipsPackageDescendants`, which this walk already passes to the
-/// enumerator, asks LaunchServices whether the type is registered on *this*
-/// Mac. Probed 2026-08-03 by creating one directory per extension and reading
+/// guessed.** `isPackage`, which the walk asks of a directory after the rule
+/// by name, asks LaunchServices whether the type is registered on *this* Mac.
+/// Probed 2026-08-03 by creating one directory per extension and reading
 /// `isPackageKey`: `photoslibrary`, `photolibrary`, `migratedphotolibrary`,
 /// `aplibrary`, `musiclibrary`, `tvlibrary`, `imovielibrary` and `theater` all
 /// came back **true** — so a test written with any of them passes whether or

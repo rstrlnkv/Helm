@@ -1,4 +1,3 @@
-import AppKit
 import HelmContract
 import HelmRuntime
 import HelmTestSupport
@@ -29,28 +28,26 @@ import XCTest
 @MainActor
 final class TheTapSaysWhenMacOSTakesItAwayTests: XCTestCase {
 
-    private func engine(_ tap: FakeTap) -> LayoutEngine {
+    private func engine(_ tap: FakeTap, _ activation: FakeActivation) -> LayoutEngine {
         LayoutEngine(tap: tap, typing: FakeTyping(), sources: FakeSources(),
                      translation: FakeTranslation(table: [:]), spell: FakeSpell(valid: []),
-                     secure: FakeSecure(),
+                     secure: FakeSecure(), activation: activation,
                      settings: NamespacedStore(namespace: LayoutEngine.moduleID,
                                                backing: InMemoryKeyValueStore()))
     }
 
     /// The last state the engine published, which is what the settings page
-    /// reads. `LocalTransport` replays it, so a reader arriving after the fact
+    /// reads. `EngineNews<LayoutState>` replays it, so a reader arriving after the fact
     /// is handed it rather than waiting for the next one.
     private func published(by engine: LayoutEngine) async -> LayoutState? {
-        for await event in engine.transport.events
-        where event.name == LayoutEvent.layoutState.rawValue {
-            return try? JSONDecoder().decode(LayoutState.self, from: event.payload)
-        }
+        for await state in engine.stream() { return state }
         return nil
     }
 
     func testTheTapIsBuiltAgainAfterMacOSTookTheLastOneAway() async {
         let tap = FakeTap()
-        let engine = engine(tap)
+        let activation = FakeActivation()
+        let engine = engine(tap, activation)
         engine.activate()
         XCTAssertEqual(tap.starts, 1, "the tap never started, so nothing below is about a rebuild")
         var watching = await published(by: engine)?.enabled
@@ -68,11 +65,7 @@ final class TheTapSaysWhenMacOSTakesItAwayTests: XCTestCase {
 
         // The person grants Accessibility again and switches back to Helm.
         tap.grant = true
-        let restarted = expectation(description: "the tap was built again")
-        tap.onStart = { restarted.fulfill() }
-        NotificationCenter.default.post(name: NSApplication.didBecomeActiveNotification,
-                                        object: nil)
-        await fulfillment(of: [restarted], timeout: 5)
+        activation.helmComesToTheFront()
 
         XCTAssertEqual(tap.starts, 2, """
             coming back to Helm did not rebuild the tap: `tapped` is still true from the tap \
@@ -91,7 +84,8 @@ final class TheTapSaysWhenMacOSTakesItAwayTests: XCTestCase {
     func testWithoutTheGrantThePageSaysNobodyIsWatchingAndOneComesBackWithIt() async {
         let tap = FakeTap()
         tap.grant = false
-        let engine = engine(tap)
+        let activation = FakeActivation()
+        let engine = engine(tap, activation)
         engine.activate()
         XCTAssertEqual(tap.starts, 1, "the engine never asked for a tap")
         var watching = await published(by: engine)?.enabled
@@ -99,11 +93,7 @@ final class TheTapSaysWhenMacOSTakesItAwayTests: XCTestCase {
                        "the tap was refused and the page says the module is watching")
 
         tap.grant = true
-        let started = expectation(description: "the tap started once the grant was given")
-        tap.onStart = { started.fulfill() }
-        NotificationCenter.default.post(name: NSApplication.didBecomeActiveNotification,
-                                        object: nil)
-        await fulfillment(of: [started], timeout: 5)
+        activation.helmComesToTheFront()
         watching = await published(by: engine)?.enabled
         XCTAssertEqual(watching, true,
                        "the grant came back and the module did not")

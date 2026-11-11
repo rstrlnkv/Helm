@@ -1,4 +1,3 @@
-import HelmContract
 import HelmRuntime
 import HelmUI
 import XCTest
@@ -53,13 +52,13 @@ final class AChosenSurvivorOutlivesARemovalTests: XCTestCase {
     /// and every step of getting there asserted, because a test about what
     /// survives a removal proves nothing if the choice was never made or the
     /// removal never happened.
-    private func page() async throws -> (DuplicatesViewModel, DuplicatesWire) {
-        let wire = DuplicatesWire(groups: [trio()],
+    private func page() async throws -> (DuplicatesViewModel, AnsweringWork) {
+        let work = AnsweringWork(groups: [trio()],
                                   removal: DuplicateRemoval(removed: [spare], refused: [],
                                                             freedBytes: 4_000_000))
-        let dvm = await searchedModel(over: wire)
+        let dvm = await searchedModel(over: work)
         // A rule-produced order to start from: the fixture's own order is
-        // whatever this file typed, and the wire hands it back unchanged.
+        // whatever this file typed, and the work hands it back unchanged.
         dvm.choose(.byDate)
         XCTAssertEqual(dvm.groups.first?.paths, [filed, spare, chosen],
                        "the ladder did not produce the order this test starts from")
@@ -70,17 +69,17 @@ final class AChosenSurvivorOutlivesARemovalTests: XCTestCase {
 
         dvm.toggleBasket(spare)
         XCTAssertEqual(dvm.basket, [spare], "the mark this removal acts on was never made")
-        return (dvm, wire)
+        return (dvm, work)
     }
 
     // MARK: - The removal itself
 
     func testTheRemovalTakesTheTickedCopyAndLeavesTheChosenOneFirst() async throws {
-        let (dvm, wire) = try await page()
+        let (dvm, work) = try await page()
 
         await dvm.emptyBasket()
 
-        XCTAssertTrue(wire.commands.contains(.trash), "no removal was attempted")
+        XCTAssertTrue(work.calls.contains(.trash), "no removal was attempted")
         XCTAssertEqual(dvm.groups.first?.paths, [chosen, filed],
                        "the removal did not prune the group this test is about")
     }
@@ -138,11 +137,11 @@ final class AChosenSurvivorOutlivesARemovalTests: XCTestCase {
     /// failure above is about the removal and not about pinning generally. The
     /// same page, the same two `choose` calls, without the press in between.
     func testWithNoRemovalThePinHoldsAcrossThePolicyChange() async throws {
-        let (dvm, wire) = try await page()
+        let (dvm, work) = try await page()
 
         dvm.choose(.byPlace)
 
-        XCTAssertFalse(wire.commands.contains(.trash), "this control removed something")
+        XCTAssertFalse(work.calls.contains(.trash), "this control removed something")
         XCTAssertEqual(dvm.groups.first?.paths.first, chosen)
         XCTAssertEqual(dvm.grounds(of: try XCTUnwrap(dvm.groups.first)), .byHand)
     }

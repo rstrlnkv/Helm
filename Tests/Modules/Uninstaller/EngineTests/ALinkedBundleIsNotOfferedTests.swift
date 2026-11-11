@@ -168,7 +168,7 @@ final class ALinkedBundleIsNotOfferedTests: XCTestCase {
         let listed = listedHere()
 
         XCTAssertEqual(listed.map(\.bundleID), ["com.apple.Safari"], """
-            the row that says «System» over an app macOS ships as a link into a cryptex is \
+            the row that says «System app» over an app macOS ships as a link into a cryptex is \
             gone from the list, and the person can still see the app in Finder
             """)
         XCTAssertTrue(SystemApp.isSystem(bundleID: "com.apple.Safari"),

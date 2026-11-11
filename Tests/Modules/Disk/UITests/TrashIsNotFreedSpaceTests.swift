@@ -31,21 +31,21 @@ final class TrashIsNotFreedSpaceTests: XCTestCase {
     private let big = VolumeInfo(name: "Big", path: "/Volumes/Big",
                                  totalBytes: 1000, freeBytes: 100)
 
-    /// A scanned volume with one 600-byte folder ticked, and a transport that
+    /// A scanned volume with one 600-byte folder ticked, and a work that
     /// says the move succeeded.
     private func scannedWithABasketedFolder() async -> DiskViewModel {
-        let transport = AnsweringTransport(volumes: [big])
-        transport.answer("/Volumes/Big",
+        let work = AnsweringWork(volumes: [big])
+        work.answer("/Volumes/Big",
                          with: ScanResult(root: folder("/Volumes/Big", bytes: 900,
                                                        children: [folder("/Volumes/Big/Sub",
                                                                          bytes: 600)]),
                                           freeBytes: 100, filesScanned: 10, seconds: 1))
-        transport.answerTrash(with: DiskRemoval(removed: ["/Volumes/Big/Sub"],
+        work.answerTrash(with: DiskRemoval(removed: ["/Volumes/Big/Sub"],
                                                 refused: [], freedBytes: 600))
         // A store of its own: the module's real one is the person's last scan,
         // and a harness must leave nothing behind.
         let directory = scratchDirectory("disk-trash")
-        let dvm = DiskViewModel(vm: ModuleViewModel(transport: transport),
+        let dvm = DiskViewModel(work: work,
                                 store: ScanStore(directory: directory))
         await dvm.loadVolumes()
         await dvm.scan(path: "/Volumes/Big")

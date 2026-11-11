@@ -32,13 +32,12 @@ private final class EdgeRuleSequence: RuleSequencePort, @unchecked Sendable {
 /// filesystem treats differently. So everything here stands on a real scratch
 /// home: real folders, a real link into its `Library`, the `/private` spelling
 /// the temporary directory also answers to, and — for the deleting and moving
-/// presets — a real engine behind a real transport, trashing for real.
+/// presets — a real engine behind the model, trashing for real.
 @MainActor
 final class APresetsChosenFolderHoldsAtTheEdgesTests: XCTestCase {
 
     private var home: URL!
     private var messages: URL!
-    private var transport: LocalTransport!
     private var helm: AutopilotEngine!
 
     /// Called first by every test rather than from `setUp`, which XCTest does
@@ -75,19 +74,18 @@ final class APresetsChosenFolderHoldsAtTheEdgesTests: XCTestCase {
             .first { (try? fm.destinationOfSymbolicLink(atPath: $0)) == "/" }
     }
 
-    private func fakeModel(_ wire: AutopilotWire) -> AutopilotViewModel {
-        AutopilotViewModel(vm: ModuleViewModel(transport: wire),
+    private func fakeModel(_ work: FakeAutopilotWork) -> AutopilotViewModel {
+        AutopilotViewModel(work: work, historyChanges: AsyncStream { _ in },
                            presetFolders: FakePresetFolders(home: home.path), home: home.path)
     }
 
     private func engineModel() -> AutopilotViewModel {
-        transport = LocalTransport()
         helm = AutopilotEngine(
             store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
                                    backing: InMemoryKeyValueStore()),
-            transport: transport, home: home.path,
+            home: home.path,
             keys: SealKeyProbe(), sequence: EdgeRuleSequence())
-        return AutopilotViewModel(vm: ModuleViewModel(transport: transport),
+        return AutopilotViewModel(work: helm, historyChanges: AsyncStream { _ in },
                                   presetFolders: FakePresetFolders(home: home.path),
                                   home: home.path)
     }
@@ -111,8 +109,8 @@ final class APresetsChosenFolderHoldsAtTheEdgesTests: XCTestCase {
     /// reason.
     func testEveryRefusedPlaceIsRefusedOnDiskHoweverItIsSpelled() async throws {
         try standTheHome()
-        let wire = AutopilotWire()
-        let model = fakeModel(wire)
+        let work = FakeAutopilotWork()
+        let model = fakeModel(work)
         await model.load()
         let offer = try offer(model, .screenshots)
         let h = home.path
@@ -138,8 +136,8 @@ final class APresetsChosenFolderHoldsAtTheEdgesTests: XCTestCase {
                                              preset: offer.preset, rvm: model),
                          "\(path) was taken as the preset's folder")
         }
-        XCTAssertFalse(wire.commands.contains(.previewDraft), "a refused folder was read by a dry run")
-        XCTAssertEqual(wire.saved, [], "a refused choice wrote a folder list")
+        XCTAssertFalse(work.calls.contains("dryRun"), "a refused folder was read by a dry run")
+        XCTAssertEqual(work.saved, [], "a refused choice wrote a folder list")
     }
 
     // MARK: - One folder, two spellings
@@ -159,10 +157,10 @@ final class APresetsChosenFolderHoldsAtTheEdgesTests: XCTestCase {
             + (bootVolume().map { [$0 + downloads] } ?? [])
         for spelling in spellings {
             let watched = WatchedFolder(id: "dl", path: downloads)
-            let wire = AutopilotWire(folders: [watched],
+            let work = FakeAutopilotWork(folders: [watched],
                                      report: SweepReport(folderID: "x", examined: 0, acted: 0,
                                                          refused: 0, failed: 0))
-            let model = fakeModel(wire)
+            let model = fakeModel(work)
             await model.load()
             let offer = try offer(model, .screenshots)
 
@@ -176,9 +174,9 @@ final class APresetsChosenFolderHoldsAtTheEdgesTests: XCTestCase {
 
             await model.save(next.rule, in: next.folder)
 
-            XCTAssertEqual(wire.saved.last?.count, 1,
-                           "one directory stored as \(wire.saved.last?.count ?? 0) watched folders via \(spelling)")
-            XCTAssertFalse(wire.commands.contains(.runNow),
+            XCTAssertEqual(work.saved.last?.count, 1,
+                           "one directory stored as \(work.saved.last?.count ?? 0) watched folders via \(spelling)")
+            XCTAssertFalse(work.calls.contains("sweepNow"),
                            "a folder already watched was swept on a preset's behalf via \(spelling)")
         }
     }
@@ -193,8 +191,8 @@ final class APresetsChosenFolderHoldsAtTheEdgesTests: XCTestCase {
         let spellings = [try XCTUnwrap(privateSpelling(downloads)), home.path + "/DL", downloads + "/"]
             + (bootVolume().map { [$0 + downloads] } ?? [])
         for spelling in spellings {
-            let wire = AutopilotWire(folders: [WatchedFolder(id: "dl", path: downloads)])
-            let model = fakeModel(wire)
+            let work = FakeAutopilotWork(folders: [WatchedFolder(id: "dl", path: downloads)])
+            let model = fakeModel(work)
             await model.load()
 
             model.addFolder(at: home.path + "/Pictures")
@@ -224,10 +222,10 @@ final class APresetsChosenFolderHoldsAtTheEdgesTests: XCTestCase {
             XCTAssertTrue(WatchScope.allows(spelling, home: home.path),
                           "precondition: the gate lets \(spelling) through")
 
-            let wire = AutopilotWire(folders: [WatchedFolder(id: "dl", path: downloads)],
+            let work = FakeAutopilotWork(folders: [WatchedFolder(id: "dl", path: downloads)],
                                      report: SweepReport(folderID: "x", examined: 0, acted: 0,
                                                          refused: 0, failed: 0))
-            let model = fakeModel(wire)
+            let model = fakeModel(work)
             await model.load()
             let offer = try offer(model, .screenshots)
             let next = try XCTUnwrap(RuleEditor.pointing(offer.draft, at: spelling, from: offer.folder,
@@ -237,12 +235,12 @@ final class APresetsChosenFolderHoldsAtTheEdgesTests: XCTestCase {
             XCTAssertFalse(model.sweepsAfterSaving(next.rule, in: next.folder),
                            "the sheet promises to start watching \(spelling), which is watched already")
             await model.save(next.rule, in: next.folder)
-            XCTAssertEqual(wire.saved.last?.count, 1,
-                           "one directory stored as \(wire.saved.last?.count ?? 0) watched folders via \(spelling)")
-            XCTAssertFalse(wire.commands.contains(.runNow),
+            XCTAssertEqual(work.saved.last?.count, 1,
+                           "one directory stored as \(work.saved.last?.count ?? 0) watched folders via \(spelling)")
+            XCTAssertFalse(work.calls.contains("sweepNow"),
                            "a folder already watched was swept on a preset's behalf via \(spelling)")
 
-            let panelWire = AutopilotWire(folders: [WatchedFolder(id: "dl", path: downloads)])
+            let panelWire = FakeAutopilotWork(folders: [WatchedFolder(id: "dl", path: downloads)])
             let panelModel = fakeModel(panelWire)
             await panelModel.load()
             panelModel.addFolder(at: home.path + "/Pictures")
@@ -263,10 +261,10 @@ final class APresetsChosenFolderHoldsAtTheEdgesTests: XCTestCase {
         let downloads = home.path + "/Downloads"
         let stored = [home.path + "/DL", try XCTUnwrap(privateSpelling(downloads))]
         for storedPath in stored {
-            let wire = AutopilotWire(folders: [WatchedFolder(id: "dl", path: storedPath)],
+            let work = FakeAutopilotWork(folders: [WatchedFolder(id: "dl", path: storedPath)],
                                      report: SweepReport(folderID: "x", examined: 0, acted: 0,
                                                          refused: 0, failed: 0))
-            let model = fakeModel(wire)
+            let model = fakeModel(work)
             await model.load()
             let offer = try offer(model, .screenshots)
             let next = try XCTUnwrap(RuleEditor.pointing(offer.draft, at: downloads, from: offer.folder,
@@ -274,7 +272,7 @@ final class APresetsChosenFolderHoldsAtTheEdgesTests: XCTestCase {
             XCTAssertEqual(next.folder.id, "dl",
                            "stored as \(storedPath), chosen as \(downloads): one directory, two folders")
 
-            let panelModel = fakeModel(AutopilotWire(folders: [WatchedFolder(id: "dl", path: storedPath)]))
+            let panelModel = fakeModel(FakeAutopilotWork(folders: [WatchedFolder(id: "dl", path: storedPath)]))
             await panelModel.load()
             panelModel.addFolder(at: downloads)
             XCTAssertEqual(panelModel.folders.count, 1,

@@ -44,7 +44,8 @@ final class StoredFolderMustBeHelmsOwnTests: XCTestCase {
 
     private func engine(firstUse: Bool = false) -> DuplicatesEngine {
         DuplicatesEngine(store: store,
-                         settings: SettingGuard(keys: TestKey(firstUse: firstUse)))
+                         settings: SettingGuard(keys: TestKey(firstUse: firstUse)),
+                         trashing: neverTrashes)
     }
 
     func testASealedFolderIsScanned() async throws {

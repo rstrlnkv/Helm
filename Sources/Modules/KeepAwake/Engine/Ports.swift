@@ -14,11 +14,12 @@ public protocol SleepAssertions: AnyObject {   // IOKit
     /// for, on the port that could not even say it. A state a port has no word
     /// for is a state no fake can stand in and no test can be written about.
     ///
-    /// Which is why it is not `@discardableResult`. It was, and both callers
-    /// happened to use the answer anyway — so the attribute was a standing
+    /// Which is why the requirement is not `@discardableResult`. It was, and both
+    /// callers happened to use the answer anyway — so the attribute was a standing
     /// permission to commit the defect the paragraph above records, left on a
     /// port whose refusal means a Mac sleeps while the menu bar says it will
-    /// not. `PrivateFile` was the same permission taken up eight times.
+    /// not. `PrivateFile` was the same permission taken up eight times. The
+    /// system implementation, `IOKitSleepAssertions`, still carries it.
     func preventSleep(display: Bool) -> Bool
     func release()
 }
@@ -36,8 +37,9 @@ public protocol PowerInfoPort: AnyObject {
     /// folding «I don't know» into `true`, which is how a power source nothing
     /// could read came to *start* holding a Mac awake; this module folds that
     /// third answer to «not on mains», because letting the Mac sleep is its safe
-    /// failure. The battery guard still reads `snapshot()`, where nil correctly
-    /// means «no reading, do not end the session».
+    /// failure. The battery guard reads `snapshot()`; on nil it asks
+    /// `BatteryGuard.shouldDeactivateWithNoReading`, which ends the session when
+    /// the guard is on and this answer is not `.mains`.
     func supply() -> PowerSource.Supply?
     func startObserving(_ onChange: @escaping @Sendable () -> Void)
     /// Every observer this module starts has to be stoppable, because the
@@ -54,6 +56,12 @@ public protocol PowerInfoPort: AnyObject {
     /// take the observer back out.
     func stopObserving()
 }
+
+/// Whether this Mac has a lid at all — a fact about the hardware, asked at each
+/// use. `MacHardware.hasLid` (a battery is present) in production; a port so a
+/// Mac with no lid can be stood up in a test. Not a reading that can fail: the
+/// system answer is a plain yes or no, so there is no third state to name.
+public protocol LidInfoPort: AnyObject { func hasLid() -> Bool }
 
 public protocol DisplayObserverPort: AnyObject {
     func startObserving(_ onChange: @escaping @Sendable () -> Void)

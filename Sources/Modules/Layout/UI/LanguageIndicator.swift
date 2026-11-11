@@ -7,15 +7,14 @@ import Module_Layout_Engine
 /// Helm's own copy of the system's input-source indicator.
 ///
 /// macOS shows one already, and its abbreviation cannot be changed: no flags,
-/// no letter style, no size. This one is the same idea with those choices given
+/// no letter style. This one is the same idea with those choices given
 /// back — and it is off by default, because two identical indicators in a row
 /// is worse than one.
 @MainActor final class LanguageIndicator: NSObject, NSMenuDelegate {
     private var item: NSStatusItem?
     private let store: NamespacedStore
-    /// Whether this object is registered with the distributed centre — one
-    /// `Bool` where two opaque tokens used to be, because the observer is
-    /// `self` now rather than two blocks. See `build()` for why it had to be.
+    /// Whether this object is registered with the distributed centre. See `build()`
+    /// for why the observer is `self`.
     private var observing = false
     private var frontmostWatch: UUID?
     /// The source id `redraw` last put on the button. Read by
@@ -26,11 +25,9 @@ import Module_Layout_Engine
 
     /// Whether Accessibility is granted, asked rather than assumed.
     ///
-    /// **A port, not a call, because the answer decides how many sections the
-    /// menu has.** `AXIsProcessTrusted()` inline would make the menu's shape a
-    /// fact about the machine the suite runs on — green here, a different menu
-    /// on a build machine, and no test able to see both. Named at every
-    /// construction, the way every other port in this app is.
+    /// A port, not a call, because the answer decides how many sections the menu has:
+    /// `AXIsProcessTrusted()` inline would make the menu's shape a fact about the
+    /// machine the suite runs on.
     private let isTrusted: () -> Bool
 
     init(store: NamespacedStore, isTrusted: @escaping () -> Bool = { AXIsProcessTrusted() }) {
@@ -43,14 +40,9 @@ import Module_Layout_Engine
     /// «Show Input Source Name» used to be a key of its own, flipped from the
     /// status item's menu; it is `BadgeStyle.sourceName` now.
     ///
-    /// **Deleting the key without this would take somebody's choice away in
-    /// silence** — their menu bar goes back to a badge on the next launch with
-    /// nothing said. Written once and erased in the same breath, so it cannot
-    /// fight a style the person picks afterwards: the old key is gone from the
-    /// store the first time this runs, and every later launch sees nothing to
-    /// carry. This is the same failure the trigger switches had, caught before
-    /// it shipped rather than after — a stored value outliving the only control
-    /// that could change it.
+    /// Deleting the key without this would take somebody's choice away in silence.
+    /// Written once and erased in the same breath, so it cannot fight a style the
+    /// person picks afterwards.
     private func carryTheOldNameSettingOver() {
         guard store.bool(LayoutKey.indicatorShowsName, default: false) else { return }
         // `set(nil, for:)` is this store’s delete — there is no `remove`.
@@ -71,37 +63,26 @@ import Module_Layout_Engine
         menu.delegate = self
         item.menu = menu
         self.item = item
-        // **`.deliverImmediately`, and therefore the selector API.** The block
-        // form of `addObserver` takes no suspension behaviour and gets the
-        // default, which coalesces: while a centre is suspended it keeps at
-        // most the last notification and delivers it on resume. Helm is
-        // `LSUIElement` — it is never the active application — so its centre
-        // spends nearly all its life suspended, and a layout switch made with
-        // the person's own shortcut reached macOS and never reached the badge.
-        // The badge then sat on one layout until Helm was restarted, which is
-        // exactly the report this fixes: the reading was never wrong, the
-        // message never came.
+        // `.deliverImmediately`, and therefore the selector API: the block form takes no
+        // suspension behaviour and gets the default, which coalesces. Helm is
+        // `LSUIElement`, never the active application, so its centre spends nearly all
+        // its life suspended and a layout switch would never reach the badge.
         let centre = DistributedNotificationCenter.default()
         // The system posts this on every switch, including ones Helm made.
         centre.addObserver(
             self, selector: #selector(inputSourceChanged),
             name: NSNotification.Name(kTISNotifySelectedKeyboardInputSourceChanged as String),
             object: nil, suspensionBehavior: .deliverImmediately)
-        // The outline is one colour in dark and another in light, and the
-        // image caches its rendering: without this the flag keeps the outline
-        // of the theme it was drawn in until the next layout switch. Suspension
-        // hits this one the same way — a theme changed in the background was a
-        // badge left in the old theme's outline.
+        // The outline is one colour in dark and another in light, and the image caches
+        // its rendering: without this the flag keeps the outline of the theme it was
+        // drawn in. Suspension needs `.deliverImmediately` here too.
         centre.addObserver(
             self, selector: #selector(themeChanged),
             name: NSNotification.Name("AppleInterfaceThemeChangedNotification"),
             object: nil, suspensionBehavior: .deliverImmediately)
         observing = true
-        // A second door to the same fact, through a channel that is not the
-        // distributed centre at all: `FrontmostApp` is the app's own observer
-        // of `NSWorkspace`'s activation notice. If the first door is ever shut
-        // again the badge still comes right the next time the person changes
-        // application, which is oftener than they look at it.
+        // A second door to the same fact, not through the distributed centre:
+        // `FrontmostApp` is the app's own observer of `NSWorkspace`'s activation notice.
         frontmostWatch = FrontmostApp.shared.onChange { [weak self] _ in
             Task { @MainActor in self?.redraw() }
         }
@@ -111,10 +92,8 @@ import Module_Layout_Engine
 
     @objc private func themeChanged() { redraw() }
 
-    /// Off the menu bar, with its two observers. Called by `refresh` when the
-    /// setting goes off and by the descriptor when the module stops running —
-    /// which is one route more than this had: nothing removed the item when
-    /// Keyboard was switched off.
+    /// Off the menu bar, with its two observers. Called by `refresh` when the setting
+    /// goes off and by the descriptor when the module stops running.
     func detach() {
         if observing {
             DistributedNotificationCenter.default().removeObserver(self)
@@ -146,31 +125,26 @@ import Module_Layout_Engine
     private func redraw() {
         guard let button = item?.button else { return }
         let source = InputSourceInfo.current()
-        // The system input menu's «Show Input Source Name»: the layout's name
-        // where the badge would be, which is what the system's own indicator
-        // shows with that switch on.
+        // The layout's name where the badge would be, as the system's own indicator
+        // shows with «Show Input Source Name» on.
         if showsName {
             button.image = nil
             button.title = source.name
         } else {
-            // `.small` outright, which is what the menu rows below have always
-            // drawn and what the removed setting defaulted to. It had a size
-            // key of its own, four points wide end to end, beside the app's own
-            // `menuBarIconSize` in General — two items in one menu bar sized by
-            // two settings, with this one's own menu ignoring both.
+            // `.small` outright, as the menu rows below draw it: a size setting of its
+            // own beside General's `menuBarIconSize` would size two items by two settings.
             button.title = ""
             button.image = badge(for: source, points: MenuBarIconSize.small.points)
         }
         button.toolTip = source.name
-        // The label says what the control is; the value says the one fact it
-        // exists to show. Set here, not in build(), so it tracks every switch.
+        // The label says what the control is, the value the fact it shows; set here so
+        // it tracks every switch.
         button.setAccessibilityValue(source.name)
         drawn = source.id
     }
 
-    /// Once per run: a badge that has fallen behind will keep falling behind,
-    /// and a line every time somebody opens the menu would bury the log this
-    /// belongs in.
+    /// Once per run: a badge that has fallen behind keeps falling behind, and a line
+    /// per menu open would bury the log.
     private func noteBadgeWasBehind() {
         guard !saidBehind else { return }
         saidBehind = true
@@ -182,25 +156,20 @@ import Module_Layout_Engine
     // MARK: - Menu
 
     /// The sections macOS's own input menu draws, in its order: layouts wearing
-    /// their badges, the emoji palette door, the source-name switch, the
-    /// keyboard settings door. No Keyboard Viewer item on purpose — every route
-    /// to opening one was measured dead on macOS 27 (the guard test's doc has
-    /// the three routes), and a door that opens nothing is worse than none.
+    /// their badges, the emoji palette door, the keyboard settings door. No Keyboard Viewer item: macOS 27 ships no such input source or bundle, and a door
+    /// that opens nothing is worse than none.
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         let current = InputSourceInfo.current()
-        // **The evidence, and the reason this menu is where it is taken.** A
-        // person opens this menu; Helm never does. So a badge disagreeing with
-        // the live reading at this moment is the notification above having
-        // failed to arrive and nothing else — no switch Helm made itself can
-        // be mistaken for it. Correct the badge, and say so once.
+        // A person opens this menu, Helm never does, so a badge disagreeing with the
+        // live reading here is the switch notification not arriving and nothing else.
+        // Correct the badge, and say so once.
         if current.id != drawn {
             noteBadgeWasBehind()
             redraw()
         }
-        // The rows wear the badge the person chose for the menu bar, at one
-        // fixed size: the style is the layout's identity, the stored size is a
-        // fact about the menu bar's density, not the menu's.
+        // The rows wear the chosen badge style at one fixed size: the style is the
+        // layout's identity.
         for source in InputSourceInfo.all() {
             let entry = NSMenuItem(title: source.name, action: #selector(pick(_:)), keyEquivalent: "")
             entry.target = self
@@ -209,19 +178,11 @@ import Module_Layout_Engine
             entry.image = badge(for: source, points: MenuBarIconSize.small.points)
             menu.addItem(entry)
         }
-        // **The emoji door, drawn only where it opens.** It is the one item
-        // here that needs Accessibility — an AX press of *another* app's
-        // Edit-menu item, matched by title out of `InputManager.loctable` —
-        // and the settings page draws «the language indicator below works
-        // without this permission» directly above the section that offers it.
-        // That sentence is about the menu a person without the grant sees, so
-        // the item is behind the grant rather than in front of it: without it
-        // this menu is what it was, and nothing beeps in the state the sentence
-        // was written for. Every Mac still opens the same palette with Globe+E.
-        //
-        // No Keyboard Viewer item beside it: macOS 27 ships no such input
-        // source and no such bundle — the system's own menu draws it out of
-        // private frameworks.
+        // The emoji door is drawn only where it opens: it needs Accessibility, an AX
+        // press of another app's Edit-menu item matched by title out of
+        // `InputManager.loctable`, and the settings page says the indicator works
+        // without that permission. Every Mac still opens the palette with Globe+E.
+        // No Keyboard Viewer item: macOS 27 ships no such input source or bundle.
         if isTrusted() {
             menu.addItem(.separator())
             let emoji = actionItem(LyStr.showEmojiPanel(), #selector(openEmojiPalette))
@@ -243,12 +204,9 @@ import Module_Layout_Engine
         TISLayoutSources().select(id)
     }
 
-    /// The palette lands on whichever app holds the keyboard — a status-item
-    /// menu does not take it away, and `EmojiPalette` never activates Helm, so
-    /// the person's focus stays where they were typing. The beep is the refusal
-    /// said out loud, and it is now a narrow one: the item is only drawn with
-    /// the grant in hand, so what is left is an app whose menus carry no such
-    /// item, where a silent press would look like a dead control.
+    /// The palette lands on whichever app holds the keyboard: a status-item menu does
+    /// not take it away and `EmojiPalette` never activates Helm. The beep is the
+    /// refusal said out loud, for an app whose menus carry no such item.
     @objc private func openEmojiPalette() {
         if !EmojiPalette.openInFrontmostApp() { NSSound.beep() }
     }

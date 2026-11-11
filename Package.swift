@@ -1,7 +1,7 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
-/// **A module is four targets, and the manifest says so once.**
+/// **A module is two source targets and the test targets it keeps, and the manifest says so once.**
 ///
 /// Every module had its own nine lines repeated nine times — engine, UI, engine
 /// tests, UI tests, and an entry in `HelmApp`'s dependency list — so adding one
@@ -11,11 +11,11 @@ import PackageDescription
 /// existed only as untracked files in one checkout, and SwiftPM refuses the whole
 /// manifest without it — so the suite ran here and on nobody else's machine.
 ///
-/// The shape is deliberately not optional. All four directories are required of
-/// every module, so a missing one is a build failure on every machine on the day
-/// it is missing, rather than a module quietly having no tests. KeepAwake was
-/// exactly that: engine tests and no UI tests, while its UI target held the menu
-/// bar look, a shared view-model cache and the settings accessors.
+/// **A test target exists only where a kept test lives.** A flag true over a missing
+/// directory is a manifest SwiftPM refuses, on every machine, the day it is missing. A
+/// flag false over a directory that holds tests is the quiet way: SwiftPM says nothing
+/// and the directory is not compiled, so `ListsAgreeWithTheTreeTests` reads the two
+/// against each other.
 ///
 /// **The manifest never reads the filesystem.** It would be easy to walk
 /// `Sources/Modules` and believe what is there — and then a missing directory
@@ -25,6 +25,9 @@ struct Module {
     let name: String
     /// Only the UI half has ever carried resources.
     var uiResources: [Resource] = []
+    /// A test target only where a kept test lives; `Tests/Modules/<Name>/EngineTests` and `.../UITests`.
+    var engineTests = false
+    var uiTests = false
 
     var engine: String { "Module_\(name)_Engine" }
     var ui: String { "Module_\(name)_UI" }
@@ -33,20 +36,20 @@ struct Module {
 /// The order is the order `HelmApp` listed them in, which is roughly the order
 /// they were written.
 let modules: [Module] = [
-    Module(name: "KeepAwake"),
-    Module(name: "VPN"),
-    Module(name: "Uninstaller"),
-    Module(name: "Homebrew"),
-    Module(name: "Leftovers"),
-    Module(name: "Disk"),
-    Module(name: "Duplicates"),
-    Module(name: "Autopilot"),
+    Module(name: "KeepAwake", engineTests: true, uiTests: true),
+    Module(name: "VPN", engineTests: true, uiTests: true),
+    Module(name: "Uninstaller", engineTests: true, uiTests: true),
+    Module(name: "Homebrew", engineTests: true, uiTests: true),
+    Module(name: "Leftovers", engineTests: true, uiTests: true),
+    Module(name: "Disk", engineTests: true, uiTests: true),
+    Module(name: "Duplicates", engineTests: true, uiTests: true),
+    Module(name: "Autopilot", engineTests: true, uiTests: true),
     // flag-icons flag artwork, MIT — see NOTICE.md.
-    Module(name: "Layout", uiResources: [.copy("Flags")]),
-    // The editor palette's Pen, Marker and Pencil artwork, from a community recreation of Apple's PencilKit picker,
-    // modified for Helm — NOTICE.md records the source and the owner's decision; author and licence are placeholders there
-    // for the owner.
-    Module(name: "Screenshots", uiResources: [.process("PaletteObjects.xcassets")]),
+    Module(name: "Layout", uiResources: [.copy("Flags")], engineTests: true, uiTests: true),
+    // The editor palette's Pen, Marker, Pencil, Eraser and Ruler artwork, from a community recreation of Apple's PencilKit
+    // picker, modified for Helm, and the Spotlight, its shape drawn for Helm — NOTICE.md records the source and the owner's decision;
+    // author and licence are placeholders there for the owner.
+    Module(name: "Screenshots", uiResources: [.process("PaletteObjects.xcassets")], engineTests: true, uiTests: true),
 ]
 
 extension Module {
@@ -67,23 +70,15 @@ extension Module {
         ]
     }
 
-    /// A test target reaches one half of its module and no further: a UI test
+    /// A test target declares one half of its module and no more: a UI test
     /// gets the engine through the UI target that already depends on it.
     /// `HelmTestSupport` is the exception every test target gets, because it is
     /// the harness rather than the subject.
     var testTargets: [Target] {
-        [
-            .testTarget(
-                name: "\(engine)Tests",
-                dependencies: [.byName(name: engine), "HelmTestSupport"],
-                path: "Tests/Modules/\(name)/EngineTests"
-            ),
-            .testTarget(
-                name: "\(ui)Tests",
-                dependencies: [.byName(name: ui), "HelmTestSupport"],
-                path: "Tests/Modules/\(name)/UITests"
-            ),
-        ]
+        (engineTests ? [.testTarget(name: "\(engine)Tests", dependencies: [.byName(name: engine), "HelmTestSupport"],
+                                    path: "Tests/Modules/\(name)/EngineTests")] : [])
+            + (uiTests ? [.testTarget(name: "\(ui)Tests", dependencies: [.byName(name: ui), "HelmTestSupport"],
+                                      path: "Tests/Modules/\(name)/UITests")] : [])
     }
 }
 
@@ -102,12 +97,11 @@ extension Module {
 let foundation: [Target] = [
     .target(name: "HelmLaunch"),
     .target(name: "HelmContract"),
-    // One edge, and only this direction: `EngineReply` is engine-side wire
-    // plumbing that logs, and the log lives here. The contract stays free of
+    // One edge, and only this direction: `StatusPlan` chooses among the
+    // contract's `StatusAppearance` values. The contract stays free of
     // everything.
     .target(name: "HelmRuntime", dependencies: ["HelmContract", "HelmLaunch"]),
-    .target(name: "HelmUI", dependencies: ["HelmContract", "HelmRuntime"],
-            resources: [.process("Resources")]),
+    .target(name: "HelmUI", dependencies: ["HelmContract", "HelmRuntime"]),
 ]
 
 /// The harness, which belongs to every test target and to no product.
@@ -137,21 +131,43 @@ let support: [Target] = [
     .target(name: "HelmTestSupport", dependencies: ["HelmRuntime", "HelmUI"], path: "Tests/Support"),
 ]
 
+/// Screen instruments: built by `swift build --target HelmReadout`, listed in no
+/// product (SwiftPM synthesises one for an executable target) and no dependency of
+/// `HelmApp`, so `--product HelmApp` in `Scripts/package-app.sh` never builds them;
+/// no dependencies, so an import of Helm's own target fails its build.
+let instruments: [Target] = [
+    .executableTarget(name: "HelmReadout"),
+]
+
+/// The kit on show: `swift build --product HelmShowcase`. Listed in no product (SwiftPM synthesises one for
+/// an executable target) and no dependency of `HelmApp`, so `--product HelmApp` never builds it. It depends
+/// on `HelmUI` alone, so the build refuses an engine (not reached through `HelmUI`); it cannot refuse
+/// `HelmRuntime`, which is reached through `HelmUI`, and `TheBoundariesTheBuildCannotHoldTests` reads the
+/// import lines for that.
+let showcase: [Target] = [
+    .executableTarget(name: "HelmShowcase", dependencies: ["HelmUI"]),
+]
+
 /// The host and the tests that belong to no module.
 let host: [Target] = [
+    // The host's words sit in a library, not in `HelmApp`: an executable target's testable
+    // variant is compiled without its string catalogs (only the product variant lists them in its
+    // sources phase), so `L(.x)` there builds for the product and fails `swift build --build-tests`.
+    // A library has a static and a `-dynamic` target; tests build on the static one. Read with
+    // `swift package dump-pif --preserve-structure`.
+    .target(name: "HelmAppStrings", dependencies: ["HelmRuntime", "HelmUI"]),
     .executableTarget(
         name: "HelmApp",
-        // The UI targets only: the host talks to a module through its descriptor
-        // and the transport, and each descriptor already depends on its own
-        // engine. A direct edge here is a door past the transport into an
-        // engine's internals.
-        dependencies: ["HelmContract", "HelmRuntime", "HelmUI", "HelmLaunch"]
+        // The UI targets only: the host talks to a module through its descriptor,
+        // and each descriptor already depends on its own engine. A direct edge
+        // here is a door past the descriptor into an engine's internals.
+        dependencies: ["HelmAppStrings", "HelmContract", "HelmRuntime", "HelmUI", "HelmLaunch"]
             + modules.map { .byName(name: $0.ui) }
     ),
     .testTarget(name: "HelmContractTests",
                 dependencies: ["HelmContract", "HelmTestSupport"]),
     .testTarget(name: "HelmAppTests",
-                dependencies: ["HelmApp", "HelmContract", "HelmRuntime", "HelmUI",
+                dependencies: ["HelmApp", "HelmAppStrings", "HelmContract", "HelmRuntime", "HelmUI",
                                "HelmTestSupport"]),
     .testTarget(name: "HelmRuntimeTests",
                 dependencies: ["HelmRuntime", "HelmContract", "HelmTestSupport"]),
@@ -177,6 +193,8 @@ let package = Package(
     targets: foundation
         + modules.flatMap(\.sourceTargets)
         + support
+        + instruments
+        + showcase
         + host
         + modules.flatMap(\.testTargets)
 )

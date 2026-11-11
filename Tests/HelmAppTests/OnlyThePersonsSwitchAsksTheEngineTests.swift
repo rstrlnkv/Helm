@@ -3,7 +3,7 @@ import HelmContract
 import HelmTestSupport
 @testable import HelmApp
 
-/// **`willDisable()` belongs to the person's switch and to nothing else.**
+/// **`willDisable()` is for the person's switch and for a reset, and never for quitting.**
 ///
 /// The two routes out of a live engine look alike and are not: `disable` is
 /// somebody in Settings turning a module off, and `shutdown` is the process
@@ -80,7 +80,6 @@ final class OnlyThePersonsSwitchAsksTheEngineTests: XCTestCase {
     /// methods and the one that matters would be indistinguishable from them.
     func testEveryEngineAnswersItWithoutHavingToImplementIt() {
         final class Bare: ModuleEngine {
-            let transport: EngineTransport = LocalTransport()
             func activate() {}
             func deactivate() {}
         }

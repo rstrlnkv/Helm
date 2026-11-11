@@ -49,12 +49,7 @@ final class TheAssertionNeverOutlivesTheSessionTests: XCTestCase {
         engine = KeepAwakeEngine(settings: settings, store: store, assertions: assertions,
                                  displayInfo: displayInfo, displayObserver: displayObserver,
                                  power: power, apps: apps, pointer: FakePointer(),
-                                 clamshell: FakeClamshell(), clock: clock)
-    }
-
-    private func settingsChanged() async {
-        _ = try? await engine.transport.send(
-            EngineCommand(name: KeepAwakeCommand.settingsChanged.rawValue))
+                                 clamshell: FakeClamshell(), clock: clock, lidInfo: FakeLidInfo())
     }
 
     func testTheAssertionAndTheStateAgreeAfterEveryMove() async {
@@ -69,13 +64,13 @@ final class TheAssertionNeverOutlivesTheSessionTests: XCTestCase {
                                                 self.apps.fire() }),
             ("the timer runs out", { self.clock.fire(after: 30 * 60) }),
             ("stop, which silences the rule", { self.engine.stopSession() }),
-            ("a settings change while it is silenced", { await self.settingsChanged() }),
+            ("a settings change while it is silenced", { self.engine.settingsChanged() }),
             ("keep the display on", { self.store.set(true, for: KeepAwakeSettings.Key.keepDisplayOn)
-                                      await self.settingsChanged() }),
+                                      self.engine.settingsChanged() }),
             ("resume", { self.engine.resumeAutomation() }),
             ("keep the display on, off again",
              { self.store.set(false, for: KeepAwakeSettings.Key.keepDisplayOn)
-               await self.settingsChanged() }),
+               self.engine.settingsChanged() }),
             ("a session with no deadline", { self.engine.startSession(minutes: 0) }),
             ("the module is switched off", { self.engine.deactivate() }),
             ("and on again, on top of the stored session", { self.engine.activate() }),
@@ -144,7 +139,7 @@ final class TheAssertionNeverOutlivesTheSessionTests: XCTestCase {
         engine.startSession(minutes: 0)
         XCTAssertTrue(assertions.held, "precondition")
 
-        for _ in 0..<3 { await settingsChanged() }
+        for _ in 0..<3 { engine.settingsChanged() }
 
         XCTAssertTrue(assertions.held, "a settings change ended the hold on the Mac")
         XCTAssertEqual(assertions.preventCount, assertions.releaseCount + 1,

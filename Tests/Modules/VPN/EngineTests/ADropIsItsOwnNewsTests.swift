@@ -33,8 +33,8 @@ final class ADropIsItsOwnNewsTests: XCTestCase {
 
     /// The whole point: silence for the rules is not silence for a drop.
     func testSilencingTheRulesLeavesTheDropAlone() {
-        settings.setNotice(.silent)
-        settings.setDropNotice(.system)
+        settings.store.set(VPNNotice.silent.rawValue, for: VPNSettings.automationNoticeKey)
+        settings.store.set(VPNNotice.system.rawValue, for: VPNSettings.dropNoticeKey)
 
         XCTAssertEqual(settings.notice(for: .connected), .silent)
         // **This used to read `.silent`, on the argument that a quit rule is a
@@ -53,8 +53,8 @@ final class ADropIsItsOwnNewsTests: XCTestCase {
     /// And the other way, so the guard above is not simply "the drop is always
     /// louder".
     func testSilencingTheDropLeavesTheRulesAlone() {
-        settings.setNotice(.system)
-        settings.setDropNotice(.silent)
+        settings.store.set(VPNNotice.system.rawValue, for: VPNSettings.automationNoticeKey)
+        settings.store.set(VPNNotice.silent.rawValue, for: VPNSettings.dropNoticeKey)
 
         XCTAssertEqual(settings.notice(for: .connected), .system)
         XCTAssertEqual(settings.notice(for: .dropped), .silent)
@@ -63,10 +63,10 @@ final class ADropIsItsOwnNewsTests: XCTestCase {
     /// Two settings, two accounts. Writing one must not write the other — the
     /// failure this catches is a single stored key read through two names.
     func testTheTwoAreStoredApart() {
-        settings.setNotice(.silent)
+        settings.store.set(VPNNotice.silent.rawValue, for: VPNSettings.automationNoticeKey)
         XCTAssertEqual(settings.dropNotice, .menuBar,
                        "setting the rules' mode moved the drop's")
-        settings.setDropNotice(.system)
+        settings.store.set(VPNNotice.system.rawValue, for: VPNSettings.dropNoticeKey)
         XCTAssertEqual(settings.notice, .silent,
                        "setting the drop's mode moved the rules'")
     }
@@ -76,20 +76,12 @@ final class ADropIsItsOwnNewsTests: XCTestCase {
     /// chose for a tunnel going down, not in a default nobody set. Deriving the
     /// key from `rawValue` would have opened a third one silently.
     func testADropTurnsTheRingInTheColourChosenForATunnelGoingDown() {
-        settings.setSpinTint("purple", for: .disconnected)
+        settings.store.set("purple", for: VPNSettings.spinTintKey(.disconnected))
 
         XCTAssertEqual(settings.spinTint(for: .dropped), "purple",
                        "a tunnel that fell over turned the ring in a colour nobody picked")
         XCTAssertEqual(settings.spinTint(for: .connected), "green",
                        "precondition: the connect colour is untouched, so the assertion above "
                        + "is about the drop and not about one shared key")
-    }
-
-    /// Setting it *through* `.dropped` writes the same one, so the settings page
-    /// and a firing cannot disagree about where the colour lives.
-    func testSettingTheColourThroughTheDropKindWritesTheOneRowThePageDraws() {
-        settings.setSpinTint("red", for: .dropped)
-
-        XCTAssertEqual(settings.spinTint(for: .disconnected), "red")
     }
 }

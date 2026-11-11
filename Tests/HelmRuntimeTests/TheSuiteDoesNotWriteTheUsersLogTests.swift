@@ -4,15 +4,15 @@ import XCTest
 /// `~/Library/Logs/Helm/helm.log` is a product surface, and a suite run used to
 /// write into it.
 ///
-/// `EngineReply` logs at `error` when a payload will not decode or a reply will
-/// not encode — and its own tests exercise exactly that, because that is the
-/// behaviour they were written for. The lines landed in the file every dev build
+/// The engine wire, since removed, logged at `error` when a reply would not encode,
+/// and when it still read payloads it logged one that would not decode — and its own tests, since
+/// cut, exercised exactly that, because that was the behaviour they were written
+/// for. The lines landed in the file every dev build
 /// is triaged against before it ships, wearing the same shape as a real fault,
 /// and four of them were investigated as a defect that did not exist.
 ///
-/// The guard belongs here rather than beside those tests: any test that reaches
-/// any logging code writes, so the thing to hold still is where the log resolves
-/// its destination, not which four call sites happen to log today.
+/// The guard stands where the log resolves its destination, not at any call
+/// site: any test that switches the log on and reaches logging code writes.
 final class TheSuiteDoesNotWriteTheUsersLogTests: XCTestCase {
 
     /// Spelled out rather than read off `HelmLog`, which is the thing on trial.

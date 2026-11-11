@@ -128,8 +128,9 @@ final class DeletionSafetyTests: XCTestCase {
         XCTAssertTrue(UninstallPlan.paths([], selectedLeftovers: []).isEmpty)
     }
 
-    /// A running app blocks removal until the user agrees to force-quit it —
-    /// including when several are running.
+    /// A running app is a warning on the review, and the button's help says to
+    /// quit it until the user agrees to force-quit it — including when several
+    /// are running.
     func testRunningAppsBlockUntilForceQuitIsAllowed() {
         let running = UninstallGroup(
             app: InstalledApp(name: "Acme", bundleID: "com.acme",

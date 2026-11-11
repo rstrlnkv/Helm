@@ -9,8 +9,8 @@ import HelmRuntime
 /// panel, and it stays out of the settings type because the engine never reads
 /// it — the same reason `MenuBarLook` keeps the keys the menu bar draws. That
 /// exemption is about *who reads it*, and it was taken as an exemption from the
-/// rest: the number still leaves the tile in a `KeepAwakeStart` payload and
-/// still lands in `startSession`, which does `TimeInterval(minutes * 60)` twice.
+/// rest: the number still leaves the tile through the model's
+/// `start(minutes:)` and still lands in `startSession`, which does `TimeInterval(minutes * 60)` twice.
 ///
 /// `SettingsFromAPlistThatCanSayAnythingTests` states the premise for the two
 /// durations that do live in the settings type. This is the third one, read one
@@ -37,10 +37,11 @@ final class PanelTimerFromAnUntrustedPlistTests: XCTestCase {
 
     private var opening: Int { KeepAwakePanelTile.openingMinutes(store) }
 
-    /// The tile hands this number straight to `startPayload`, so a stored
-    /// `Int.max` is not a very long timer — it is the app terminating the moment
-    /// the panel is opened and Start is pressed. `<integer>9223372036854775807</integer>`
-    /// is a legal plist and `UserDefaults` hands it straight back.
+    /// The tile hands this number straight to `vm.start(minutes:)`. `startSession`
+    /// clamps what it is given, so a stored `Int.max` does not trap there; this
+    /// pins that the tile's own reading is already inside what `minutes * 60` can
+    /// hold. `<integer>9223372036854775807</integer>` is a legal plist and
+    /// `UserDefaults` hands it straight back.
     ///
     /// Asserted as the property the multiply needs rather than as a particular
     /// clamped value, the way its two siblings in the engine are.

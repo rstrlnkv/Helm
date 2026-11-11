@@ -15,7 +15,7 @@ import Foundation
 /// `HelmRemovalOutcome.verdict` gives about its own fourth case: `on: false` with
 /// `watching: true` is a state nothing can produce, and a struct of flags is an
 /// invitation to write it down. Every reading here comes from `state(...)`.
-public enum TrashWatch: String, Codable, Sendable, CaseIterable {
+public enum TrashWatch: String, Sendable, CaseIterable {
     /// Nobody asked for the offer.
     case off
     /// On, and nothing is known against it.

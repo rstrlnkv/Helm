@@ -7,7 +7,7 @@ import XCTest
 
 /// **The seam has two sides, and only one of them is in the module.**
 ///
-/// Keyboard's menu-bar indicator moved out of `makeEngine` — where it decorated
+/// Keyboard's menu-bar indicator moved out of the engine's construction — where it decorated
 /// the Mac of every process that asked a descriptor for an engine, the render
 /// harness included — and into `attachMenuBarPresence()`, which the host calls
 /// when a module starts running. That leaves the familiar hazard: the module now
@@ -33,21 +33,25 @@ final class TheHostPutsAModulesOwnItemInTheMenuBarTests: XCTestCase {
         static let metadata = ModuleMetadata(id: id, name: "Recorder", summary: "",
                                              sfSymbol: "gear", permissions: [])
         static let category: ModuleCategory = .utilities
-        static let tint: ModuleTint = .keyboard
-        static let glyph: ShellGlyph = .disk
+        static let tint = ModuleTint(ordinary: ((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                                     increasedContrast: ((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)))
+        static let glyph = ShellGlyph.settings
 
         var attached = 0
         var detached = 0
 
-        func makeEngine(store: NamespacedStore) -> any ModuleEngine { Stub() }
+        func makeModule(store: NamespacedStore) -> ModuleParts<PageModel> {
+            ModuleParts(engine: Stub(), model: PageModel())
+        }
         func attachMenuBarPresence() { attached += 1 }
         func detachMenuBarPresence() { detached += 1 }
-        func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { nil }
-        func settingsPage(_ vm: ModuleViewModel) -> AnyView { AnyView(EmptyView()) }
+        func menuBar(_ vm: PageModel) -> MenuBarContribution? { nil }
+        func settingsPage(_ vm: PageModel) -> AnyView { AnyView(EmptyView()) }
     }
 
+    private final class PageModel {}
+
     private final class Stub: ModuleEngine {
-        let transport: EngineTransport = LocalTransport()
         func activate() {}
         func deactivate() {}
     }

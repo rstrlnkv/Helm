@@ -114,9 +114,8 @@ enum LaunchClaims {
     /// would not come, whose label is then its own name, which is the convention
     /// launchd itself goes by.
     ///
-    /// `contents(of:)` rather than `children(of:)`, which is the port's own rule:
-    /// every reader of a source draws a conclusion from an empty answer, and this
-    /// one draws the act.
+    /// `contents(of:)` rather than its `.entries`: every reader of a source draws a
+    /// conclusion from an empty answer, and this one draws the act.
     static func onDisk(home: URL, files: LeftoversFilePort) -> Reading {
         let readings = agentFolders(home: home).map { files.contents(of: $0) }
         return Reading(

@@ -150,7 +150,7 @@ final class PileScene {
                                      locations: ScreenshotsLocations(home: home, desktop: desktop))
         toast = ShotToast(tick: { _ in try await Task.sleep(for: .seconds(1_000_000)) }, windowed: false)
         let box = box
-        controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store, session: session,
+        controller = CaptureController(store: store, session: session,
                                        presentOverlay: { overlay in box.count += 1; box.overlay = overlay; return overlay.build() },
                                        pins: PinBoard(present: { _ in }, screens: { [] }), toast: toast)
     }

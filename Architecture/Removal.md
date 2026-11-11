@@ -6,11 +6,16 @@ reading of a path's size before it moves. A module keeps its gate and whatever i
 knows that macOS's error does not say. The phase a removal runs under is composed
 rather than literal — `HelmTrash.remove` builds `"\(module).trash"` from the caller's
 id — so the shared removal path carries the name of whichever module is deleting.
+`HelmTrash.removeOne` is the entry for one file inside a decision the caller has already
+made (Autopilot's trash action): it rechecks where the path leads as the last step before
+the move, classifies a refusal the way the batch does, and returns where the Trash put
+the file. It opens no phase and writes no log line of its own.
 
 Refusals are values rather than silences: `TrashFailure.Reason`
 (`Sources/HelmRuntime/PermissionCheck.swift`) names each reason, and `outOfScope` is
 Helm refusing before anything was attempted. `TrashFailure` classifies from the Cocoa
-error code rather than from the shape of a path.
+error code first; the shape of the path decides only an `.app` with an active system
+extension and a 513 under `/Library/Containers/` or `/Library/Group Containers/`.
 
 A folder's size never comes from `totalFileAllocatedSize`, which is zero for a directory
 on APFS (`FileWeight`); the folder is walked. What a removal returns counts a clone
@@ -24,18 +29,22 @@ itself, so a scope never widens without a test naming the new path
 
 ## One removal at a time
 
-Four modules send a `trash` command — Disk, Duplicates, Leftovers and the
-Uninstaller — and a second press while the first is in flight is not a second
+Disk, Duplicates, the Uninstaller and Leftovers remove a batch the person ticked —
+the Uninstaller's model calls its engine's `trashPaths` through `work`, and its
+Leftovers tab and Trash offer call the model's `uvm.trashPaths`; Duplicates, Disk and
+Leftovers call their engine's `trash` through `work` — and a second press while the first is in flight is not a second
 removal, because the files it would name are already gone: what a repeat can
 only be is a refusal, and the reply that lands second overwrites the model's report
 of the one that landed first. That refusal has to live in the model and not only in a
 dimmed control, because a control's disabled state lags the redraw and never reaches a
 row's own context menu, which draws from the same data. The model refuses; the page
 dims. Both, or neither is reliable. `DiskViewModel.toggleBasket` declining while `busy`
-is the same guard read from the basket's own door.
+is the same guard read from the basket's own door; Duplicates' `toggleBasket`, `keep`, `choose` and
+`restoreRecommendation` decline too, and their controls dim.
 
 `Tests/HelmAppTests/OneRemovalAtATimeEverywhereTests.swift` fails on any file under
-`Sources/Modules/` that sends a removal without the guard; the files it finds are the
-output of `command grep -rln "guard !busy" Sources/Modules/`, since the count itself
-does not belong in this sentence (CLAUDE.md § Where things go). Its doc comments say
+`Sources/Modules/` that sends a removal and has a method setting `busy = true` with no
+`guard` on `!busy` before that line, or no such method at all; the files it finds are the
+output of `command grep -rlE 'work\.trash(Paths)?\(|uvm\.trashPaths\(' Sources/Modules/`, since the count itself
+does not belong in this sentence. Its doc comments say
 why it scans by what a file **sends** rather than by what a type is named.

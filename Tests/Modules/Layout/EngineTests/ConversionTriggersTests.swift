@@ -59,7 +59,7 @@ final class ConversionTriggersTests: XCTestCase {
     /// used to arrive as a plain space and budget a backspace for a character
     /// that never reached the field.
     func testLeavingIsNotConfirming() {
-        for event in [TypingBuffer.Event.navigation, .chord(49), .click, .focusChange,
+        for event in [TypingBuffer.Event.navigation, .chord(49), .click,
                       .backspace, .character("a")] {
             XCTAssertFalse(ConversionTriggers.converts(event), "\(event) confirms nothing")
         }

@@ -1,5 +1,4 @@
 import AppKit
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
 import HelmUI
@@ -43,11 +42,12 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
         })
     }
 
-    private func wire(_ list: [InstalledApp] = TheSortedListUnderOddInputsTests.apps) -> UninstallerWire {
-        let wire = UninstallerWire(apps: list, scans: Self.scans(list),
-                                   removal: UninstallResult(trashed: [], freedBytes: 0))
-        wire.setOpened(Self.opened)
-        return wire
+    private func work(_ list: [InstalledApp] = TheSortedListUnderOddInputsTests.apps,
+                      sizes: [String: Int]? = nil) -> AnsweringWork {
+        let work = AnsweringWork(apps: list, scans: Self.scans(list),
+                                 removal: UninstallResult(trashed: [], freedBytes: 0), sizes: sizes)
+        work.setOpened(Self.opened)
+        return work
     }
 
     // MARK: - The path that deletes
@@ -59,8 +59,8 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
     /// the order the review is built under, so a selection that followed a
     /// position rather than an identity picks different apps.
     func testReSortingKeepsTheTicksAndTheReviewAndTheBatchAreExactlyTheTicked() async throws {
-        let wire = wire()
-        let uvm = UninstallerViewModel(vm: ModuleViewModel(transport: wire))
+        let work = work()
+        let uvm = modelOver(work)
         await uvm.setSortOrder(.size)
         await uvm.loadAppsIfNeeded()
         XCTAssertEqual(uvm.sortedApps.map(\.name), ["Gamma", "Beta", "Delta", "Alpha"],
@@ -81,15 +81,10 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
         XCTAssertEqual(uvm.step, .review, "the review never opened")
         XCTAssertEqual(Set(uvm.groups.map(\.app.bundleID)), ticked)
         XCTAssertEqual(uvm.groups.count, 2)
-        let scanned = try wire.payloads(of: .scan).map {
-            try JSONDecoder().decode(UninstallScanRequest.self, from: $0).bundleID
-        }
-        XCTAssertEqual(Set(scanned), ticked, "the scans asked about other apps than the ticked")
+        XCTAssertEqual(Set(work.scanned), ticked, "the scans asked about other apps than the ticked")
 
         await uvm.removeSelection()
-        let batch = try JSONDecoder().decode(TrashBatchRequest.self,
-                                             from: try XCTUnwrap(wire.payload(of: .trashPaths),
-                                                                 "the removal was never sent"))
+        let batch = try XCTUnwrap(work.batches.last, "the removal was never sent")
         XCTAssertEqual(Set(batch.paths), [Self.gamma.path, Self.beta.path])
     }
 
@@ -105,9 +100,9 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
         }
         let sizes = Dictionary(uniqueKeysWithValues: Self.apps.map { ($0.path, $0.sizeBytes) })
         for order in AppSortOrder.allCases {
-            let inner = wire(listed)
-            let wire = ArrivingWire(inner, sizes: sizes)
-            let uvm = UninstallerViewModel(vm: ModuleViewModel(transport: wire))
+            let work = work(listed, sizes: sizes)
+            work.holdSizes()
+            let uvm = modelOver(work)
             await uvm.setSortOrder(order)
             let load = Task { await uvm.loadAppsIfNeeded() }
             await until("\(order): the list and the dates are in") {
@@ -121,10 +116,10 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
             XCTAssertNotEqual(Set(uvm.apps.prefix(2).map(\.bundleID)), ticked,
                               "\(order): precondition — the ticked are not the first two by name")
 
-            wire.holdScans()
+            work.holdScans()
             let review = Task { await uvm.prepareReview() }
-            await until("\(order): the review asked for both scans") { wire.scansAsked == 2 }
-            wire.land()
+            await until("\(order): the review asked for both scans") { work.scansAsked == 2 }
+            work.land()
             await load.value
             XCTAssertEqual(uvm.measuredSizes.count, Self.apps.count, "\(order): precondition — the sizes landed mid-review")
             if order == .size {
@@ -132,21 +127,16 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
                                   "precondition: under Size the rows changed places between the ticks and the review")
             }
             XCTAssertEqual(uvm.checked, ticked, "\(order): the ticks moved when the sizes landed")
-            wire.releaseScans()
+            work.releaseScans()
             await review.value
 
             XCTAssertEqual(uvm.step, .review, "\(order): the review never opened")
             XCTAssertEqual(uvm.groups.map(\.app.bundleID).sorted(), ticked.sorted(),
                            "\(order): the review lists other apps than the ticked")
-            let scanned = try inner.payloads(of: .scan).map {
-                try JSONDecoder().decode(UninstallScanRequest.self, from: $0).bundleID
-            }
-            XCTAssertEqual(scanned.sorted(), ticked.sorted(), "\(order): the scans asked about other apps than the ticked")
+            XCTAssertEqual(work.scanned.sorted(), ticked.sorted(), "\(order): the scans asked about other apps than the ticked")
 
             await uvm.removeSelection()
-            let batch = try JSONDecoder().decode(TrashBatchRequest.self,
-                                                 from: try XCTUnwrap(inner.payload(of: .trashPaths),
-                                                                     "\(order): the removal was never sent"))
+            let batch = try XCTUnwrap(work.batches.last, "\(order): the removal was never sent")
             XCTAssertEqual(batch.paths.sorted(), picked.map(\.path).sorted(),
                            "\(order): the batch sent to the Trash is not the ticked apps")
         }
@@ -159,38 +149,5 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
         let limit = Date().addingTimeInterval(5)
         while !condition(), Date() < limit { await HelmTestSupport.grace(0.01) }
         XCTAssertTrue(condition(), "never reached: \(what)", file: file, line: line)
-    }
-}
-
-/// The engine as it is while a person is working: `appSizes` is still being
-/// measured and answers only at `land()`, and each `scan` can be held so the
-/// sizes land in the middle of a review. Payloads are recorded by the wire
-/// inside.
-private final class ArrivingWire: EngineTransport, @unchecked Sendable {
-    private let inner: UninstallerWire
-    private let sizes: [String: Int]
-    private let lock = NSLock()
-    private var landed = false
-    private var held = false
-    private var asked = 0
-    init(_ inner: UninstallerWire, sizes: [String: Int]) { self.inner = inner; self.sizes = sizes }
-    var events: AsyncStream<EngineEvent> { inner.events }
-    func land() { lock.withLock { landed = true } }
-    func holdScans() { lock.withLock { held = true } }
-    func releaseScans() { lock.withLock { held = false } }
-    var scansAsked: Int { lock.withLock { asked } }
-    func send(_ command: EngineCommand) async throws -> Data {
-        switch command.name {
-        case UninstallerCommand.appSizes.rawValue:
-            while !lock.withLock({ landed }) { try? await Task.sleep(nanoseconds: 5_000_000) }
-            return try JSONEncoder().encode(sizes)
-        case UninstallerCommand.scan.rawValue:
-            let reply = try await inner.send(command)
-            lock.withLock { asked += 1 }
-            while lock.withLock({ held }) { try? await Task.sleep(nanoseconds: 5_000_000) }
-            return reply
-        default:
-            return try await inner.send(command)
-        }
     }
 }

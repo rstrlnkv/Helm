@@ -11,8 +11,8 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// The module's own name for itself, and the namespace its settings are
     /// stored under.
     ///
-    /// On the engine, with the descriptor forwarding it upward — the same
-    /// direction the command enum travels, and the convention `DiskEngine`,
+    /// On the engine, with the descriptor forwarding it upward — the
+    /// convention `DiskEngine`,
     /// `DuplicatesEngine`, `LeftoversEngine` and `UninstallerEngine` already
     /// follow. It was a literal in the descriptor while the engine side had no
     /// name at all, so nothing in `Engine/` could say which store it was
@@ -25,6 +25,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     private let store: NamespacedStore
     private let assertions: SleepAssertions
     private let displayInfo: DisplayInfoPort
+    private let lidInfo: LidInfoPort
+    /// True only inside `lidSwitchTurned`: the edge it records may prompt.
+    private var switchGesture = false
     private let displayObserver: DisplayObserverPort
     private let power: PowerInfoPort
     private let apps: AppRunningPort
@@ -34,12 +37,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// `ClamshellCoordinator`.
     private let lid: ClamshellCoordinator
     private let clock: Clock
-    private let localTransport: LocalTransport
-    public let transport: EngineTransport
+    private let news: EngineNews<StatePayload>
 
     public private(set) var isActive = false
     public private(set) var activeConditions: Set<ActiveCondition> = []
-    /// Forwarded, because the wire and the panel have always called it this.
+    /// Forwarded, because the state and the panel have always called it this.
     public var clamshellActive: Bool { lid.active }
     /// macOS was asked to turn sleep off and refused, and the lid row says so —
     /// see `ClamshellCoordinator.refused`.
@@ -57,7 +59,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// Read outside this file as well as inside it, and that is the point: the
     /// flag existed from the first version and was published nowhere, so a Mac
     /// that slept with the rule's app still on screen had no account of itself
-    /// anywhere. One name for it, here and on the wire.
+    /// anywhere. One name for it, here and in the state.
     public private(set) var suppressed = false
     /// The rules whose triggers are true right now — **whether or not they are
     /// being obeyed**, which is what makes this different from
@@ -68,14 +70,15 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// the page drew «Not applying right now» under a banner saying the rule
     /// was paused. Two accounts of one rule on one screen.
     ///
-    /// Non-empty is also precisely the condition under which `stopSession()`
-    /// silences a rule as well as ending the session — a fact the hero could
-    /// only state in its `.automatic` branch, because that was the only branch
-    /// that could see any conditions at all.
+    /// Non-empty means the same three expressions `stopSession()` asks afresh as «a rule holds», the input
+    /// `StopPress` weighs when it decides whether Stop silences a rule as well as
+    /// ending the session — a fact the hero could only state in its `.automatic`
+    /// branch, because that was the only branch that could see any conditions at
+    /// all.
     public private(set) var triggeredConditions: Set<ActiveCondition> = []
     /// The bundle ids of the app rules that are satisfied right now — so the
     /// screen can say *which* app, rather than «App». Ids rather than names:
-    /// the lookup belongs to whoever draws, and names stay off the wire.
+    /// the lookup belongs to whoever draws, and names stay out of the state.
     public private(set) var holdingApps: [String] = []
     /// The battery guard is holding everything down, and nothing this module
     /// does will run until the charge comes back or the charger goes in.
@@ -111,20 +114,21 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                 pointer: PointerPort,
                 clamshell: ClamshellPort,
                 clock: Clock,
-                transport: LocalTransport = LocalTransport(),
+                lidInfo: LidInfoPort,
+                news: EngineNews<StatePayload> = EngineNews(),
                 batteryVeto: BatteryVetoChannel? = nil) {
         self.batteryVeto = batteryVeto
         self.settings = settings
         self.store = store
         self.assertions = assertions
         self.displayInfo = displayInfo
+        self.lidInfo = lidInfo
         self.displayObserver = displayObserver
         self.power = power
         self.apps = apps
         self.pointer = pointer
         self.clock = clock
-        self.localTransport = transport
-        self.transport = transport
+        self.news = news
         self.lid = ClamshellCoordinator(clamshell: clamshell, store: store, settings: settings)
         // After every stored property is set, which is the first moment `self`
         // may be captured. Both are asked at the moment of use rather than read
@@ -133,7 +137,6 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // answered.
         self.lid.sessionIsActive = { [weak self] in self?.isActive ?? false }
         self.lid.stateChanged = { [weak self] in self?.emitState() }
-        wireTransport()
     }
 
     // MARK: - ModuleEngine (module enabled/disabled)
@@ -159,7 +162,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         recompute()
     }
 
-    /// The person switched the module off, and is still looking at the screen.
+    /// The module is being switched off by the person's own switch, or «Reset all
+    /// settings» is handing the system back, and the person is still looking at
+    /// the screen.
     ///
     /// The grant's lifetime is the *feature*, not the process, and until now the
     /// only falling edge that took it out was the lid option's own switch — so
@@ -235,14 +240,14 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     /// The one verb the keyboard has, and it has to be able to undo itself.
     ///
-    /// Measured before this branch existed: with a rule holding the Mac, ⌥⌘K
-    /// paused the rule; ⌥⌘K again did **not** put it back — it started a
-    /// session by hand, so the shortcut oscillated between «rule paused» and
+    /// Measured before this branch existed: with a rule holding the Mac, the
+    /// global shortcut paused the rule; pressed again it did **not** put it back —
+    /// it started a session by hand, so the shortcut oscillated between «rule paused» and
     /// «held by hand for ever» and could never reach «just the rule». Off,
     /// then on, has to be where you started.
     ///
-    /// **Which is why this one is not the stepped Stop below.** ⌥⌘K, the panel's
-    /// header switch and the menu-bar item all read as on/off, and a switch that
+    /// **Which is why this one is not the stepped Stop below.** The shortcut, the
+    /// panel's header switch and the menu-bar item all read as on/off, and a switch that
     /// needed two presses to go off would spring back once in front of the person
     /// pressing it. A sequence needs a control that can show which step it is on;
     /// this one has nowhere to show it.
@@ -259,11 +264,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// The engine has the last word on how long a session may be.
     ///
     /// Every number a person can pick is bounded where they pick it — the
-    /// settings stepper, the tile's presets, `TimerPolicy.extendedMinutes` for
-    /// the "+15" — and one caller is not a person: `wireTransport` decodes
-    /// `KeepAwakeStart` from a JSON payload and hands `payload.minutes`
-    /// straight here, where `minutes * 60` **traps** on `Int` overflow. A
-    /// clamp in every view is a clamp in no engine.
+    /// settings menu, the tile's presets, `TimerPolicy.extendedMinutes` for
+    /// the "+15" — and the engine is not only called from those: `minutes * 60`
+    /// **traps** on `Int` overflow. A clamp in every view is a clamp in no
+    /// engine.
     ///
     /// A negative is refused rather than brought up to the floor: zero is this
     /// module's spelling of "until I say stop", so clamping would turn a
@@ -286,9 +290,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             endDate = nil
         }
         rememberSession()
-        // The one path where an administrator dialog is expected: somebody
-        // pressed a button a moment ago and is still looking at the screen.
-        recompute(byGesture: true)
+        // Start never raises the administrator dialog: only the lid switch's
+        // own gesture does (`lidSwitchTurned`). Without a grant the session
+        // holds the Mac without the lid rule.
+        recompute()
     }
 
     /// The Stop button, and the one press of it that is happening now.
@@ -353,20 +358,16 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - Core recompute
 
-    /// - Parameter byGesture: this recompute follows something the person just
-    ///   did. **Only a gesture may raise an administrator password dialog.**
-    ///   Engaging the closed-lid setting installs a NOPASSWD sudoers rule, and
-    ///   that was reached from here on every false→true edge of `isActive` —
-    ///   including the edges a *rule* causes. So a watched app launching put a
-    ///   real system password prompt on screen with nothing on it naming the
-    ///   app, the rule or Helm, at a moment the person had touched nothing; and
-    ///   any process running as this user could choose that moment by launching
-    ///   the app. Automatic paths still engage when the grant already exists —
-    ///   that costs no dialog — and otherwise say so in the log and carry on
-    ///   holding sleep the ordinary way.
-    private func recompute(byGesture: Bool = false) {
+    /// Never raises an administrator password dialog: engaging the closed-lid
+    /// setting installs a NOPASSWD sudoers rule, and only the person's gesture
+    /// on the lid switch may ask for it (`lidSwitchTurned`, through
+    /// `reconcileActiveSettings`). A Start press, a rule starting a session and
+    /// a store value written from outside engage only when the grant already
+    /// exists — that costs no dialog — and otherwise say so in the log and carry
+    /// on holding sleep the ordinary way.
+    private func recompute() {
         // The battery guard is a **veto, not a suppression.** While the charge is
-        // under the floor nothing may hold the Mac — and the moment the charger
+        // at or under the floor nothing may hold the Mac — and the moment the charger
         // goes in the veto lifts by itself, because it is recomputed rather than
         // remembered. Written as `stopSession()` it borrowed the person's verb:
         // `suppressed` means somebody said stop, and suppression only lifts when
@@ -432,8 +433,8 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             HelmLog.shared.info(Self.moduleID, "holding sleep: \(ConditionLabel.of(r.conditions))"
                                 + (settings.keepDisplayOn ? ", display too" : ""))
             noteIfTheAssertionWasRefused(assertions.preventSleep(display: settings.keepDisplayOn))
-            if MacHardware.hasLid, settings.clamshellEnabled {
-                lid.engage(mayPrompt: byGesture)
+            if lidInfo.hasLid(), settings.clamshellEnabled {
+                lid.engage(mayPrompt: false)
             }
             if settings.jiggleEnabled { scheduleJiggle() }
             scheduleBatteryWatch()
@@ -452,18 +453,30 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// active, so toggling keepDisplayOn / clamshell / jiggle takes effect now
     /// (not only on the next session).
     ///
+    /// The lid half asks `lidInfo.hasLid()` like `recompute`: a stored
+    /// `clamshellEnabled` on a Mac with no lid never reaches `lid.engage`.
+    ///
     /// Answers the lid option's edge, because the *release* needs the same
     /// reading and there is only one of it per `settingsChanged` — see
     /// `ClamshellCoordinator.consumeEdge`.
     private func reconcileActiveSettings() -> ClamshellCoordinator.Edge {
         // Consumed before the `isActive` guard — see `consumeEdge`.
         let edge = lid.consumeEdge()
-        guard isActive else { return edge }
+        guard isActive else {
+            // No session: the switch's own gesture still asks for the rule, so
+            // the next Start finds it. `engage` only installs here; it holds
+            // nothing (`reallyEngage` wants a running session).
+            if edge == .rising, switchGesture, lidInfo.hasLid() { lid.engage(mayPrompt: true) }
+            return edge
+        }
         assertions.release()
         noteIfTheAssertionWasRefused(assertions.preventSleep(display: settings.keepDisplayOn))
-        if settings.clamshellEnabled, !lid.active {
-            lid.engage(mayPrompt: edge == .rising)
-        } else if !settings.clamshellEnabled, lid.active {
+        let wantsLid = settings.clamshellEnabled && lidInfo.hasLid()
+        if wantsLid, !lid.active {
+            // The rising edge prompts only when the person's own gesture on the
+            // switch made it, not when a store value changed under us.
+            lid.engage(mayPrompt: edge == .rising && switchGesture)
+        } else if !wantsLid, lid.active {
             lid.disengage()
         }
         if settings.jiggleEnabled, jiggleToken == nil {
@@ -490,11 +503,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     }
 
     private func externalDisplayCondition() -> Bool {
-        // The page hides this rule on a Mac with no display of its own, and the
-        // engine has to agree — a stored `true` from a machine that was a
-        // laptop last week, or from a hand-edited plist, would otherwise hold a
-        // Mac mini awake for ever through a row nobody can see to switch off.
-        guard MacHardware.hasBuiltInDisplay else { return false }
+        // The page hides this rule on a Mac with no lid, and the engine has to
+        // agree — a stored `true` from a machine that was a laptop last week,
+        // or from a hand-edited plist, would otherwise hold a Mac mini awake
+        // for ever through a row nobody can see to switch off.
+        guard lidInfo.hasLid() else { return false }
         return settings.autoExternalDisplay
             && ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags())
     }
@@ -514,11 +527,15 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         let rules = settings.appTriggers
         guard !rules.isEmpty else { return [] }
         // A rule may be narrowed to "only at the desk" or "only plugged in",
-        // so the same inputs the other conditions use are passed in.
+        // so the same inputs the other conditions use are passed in. The display
+        // one asks `lidInfo.hasLid()` the way `externalDisplayCondition` does,
+        // so the two agree. On a Mac with no lid it is false: «external display» means nothing there, and the rule must not
+        // fire from a display attached to a desktop.
         return AppTriggerRules.holding(
             rules,
             running: Set(apps.runningBundleIDs()),
-            externalDisplay: ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags()),
+            externalDisplay: lidInfo.hasLid()
+                && ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags()),
             // The same reading as `powerCondition` above. This site was left on
             // `snapshot()` when that fix landed, so a rule narrowed to «only
             // when plugged in» stayed dead on every Mac without a battery —
@@ -583,7 +600,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         if !holdingApps.isEmpty { triggeredConditions.insert(.app) }
     }
 
-    /// True while the charge is under the floor the person set.
+    /// True while the charge is at or under the floor the person set.
     private func batteryVetoes() -> Bool {
         guard MacHardware.hasBattery else { return false }
         // No reading is two states and `isOnMains` tells them apart, the same
@@ -677,19 +694,29 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         NotificationCenter.default.post(name: .helmPointerNudged, object: nil)
     }
 
+    /// The person's own gesture on the lid switch: the one entry through which
+    /// the switch writes `clamshellEnabled`. Today it is the store write and
+    /// `settingsChanged()` the page used to make itself. The engine learns of the
+    /// gesture two ways: the option's edge (`consumeEdge`) and `switchGesture`,
+    /// set here; `edge == .rising && switchGesture` is what tells the switch
+    /// from an outside write to the same key.
+    public func lidSwitchTurned(_ on: Bool) {
+        settings.setClamshellEnabled(on)
+        switchGesture = true
+        defer { switchGesture = false }
+        settingsChanged()
+    }
+
     /// What a settings edit does, in the order it does it — **the one spelling
-    /// of it**. It was written out twice, here and in the command handler, so
-    /// the lid's edge could reach one of them and not the other.
-    private func settingsChanged() {
+    /// of it**. `KeepAwakeSettings` reads the store at every access, so a write
+    /// nobody announces here is seen by the next `recompute` or read; what only
+    /// this call does is re-apply a running session's assertion, lid and jiggle,
+    /// and hand the option's falling edge to `lid.releaseIfUnneeded`.
+    public func settingsChanged() {
         recompute()
         let edge = reconcileActiveSettings()
         lid.releaseIfUnneeded(switchedOff: edge == .falling)
     }
-
-    /// The `settingsChanged` path, reachable without a transport hop: a test of
-    /// what happens when a setting changes should not have to encode a JSON
-    /// payload to say so.
-    func settingsChangedForTests() { settingsChanged() }
 
     /// Everything the lid coordinator queued has run — the removal prompt is
     /// asked for on its own queue, so a test that counts the asks must wait for
@@ -701,39 +728,21 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         batteryToken = nil
     }
 
-    // MARK: - Transport
+    // MARK: - What the engine says
 
-    private func wireTransport() {
-        localTransport.setHandler { [weak self] cmd in
-            guard let self else { return Data() }
-            // On main, like every other writer here. The display, power and
-            // application observers all deliver on the main thread; commands
-            // arrived on a concurrency pool, so `isActive`, `activeConditions`
-            // and the timer dates were written from two threads with no lock —
-            // and the class carried `@unchecked Sendable` without saying why.
-            await MainActor.run {
-            // Inside `MainActor.run`, which returns nothing: an unknown name
-            // leaves without doing anything, and the empty reply below is the
-            // same answer the caller would have got from a `default`.
-            guard let name = KeepAwakeCommand(rawValue: cmd.name) else { return }
-            switch name {
-            case .toggle:
-                self.toggleSession()
-            case .start:
-                if let payload = EngineReply.decode(KeepAwakeStart.self, from: cmd) {
-                    self.startSession(minutes: payload.minutes)
-                }
-            case .stop:
-                self.stopSession()
-            case .resumeAutomation:
-                self.resumeAutomation()
-            case .settingsChanged:
-                self.settingsChanged()
-            }
-            }
-            return Data()
-        }
-    }
+    /// The state, as a stream: the latest one first, then every later one, in
+    /// order.
+    ///
+    /// **Registered before this returns, in the one hold of the lock that replays
+    /// what was last said** (`EngineNews.stream`): reading the state and then
+    /// subscribing leaves a window an emit falls into, and subscribing before the
+    /// replay hands over an older state after a newer one. Synchronous and not
+    /// actor-isolated, so the model takes it in its own synchronous `init`, before
+    /// its first suspension; the subscriber is counted when this returns. Ending
+    /// the iteration removes the subscriber.
+    public func stream() -> AsyncStream<StatePayload> { news.stream() }
+
+    public var subscriberCount: Int { news.subscriberCount }
 
     private func emitState() {
         let payload = StatePayload(isActive: isActive,
@@ -748,7 +757,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                     batteryStopped: batteryStopped,
                                     lidRefused: lidRefused,
                                     lidGrantRemains: lidGrantRemains)
-        localTransport.emit(KeepAwakeEvent.state, encoding: payload)
+        news.say(payload)
     }
 }
 
@@ -758,7 +767,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 /// finds.
 ///
 /// An extension rather than more of the class above, for the reason the
-/// notification one below gives: this is a concern of its own — three keys, two
+/// notification one below gives: this is a concern of its own — four keys, two
 /// methods, and the only part of this engine addressed to a process five minutes
 /// in the future. Same file, because every field it writes is `private` to it.
 extension KeepAwakeEngine {
@@ -806,16 +815,15 @@ extension KeepAwakeEngine {
         // and lifts on the same event it always lifted on: the trigger dropping
         // and coming back, which the recompute after this decides.
         suppressed = store.bool(SessionKey.suppressed, default: false)
-        let stamp = { (seconds: Double) -> Date? in
-            seconds > 0 ? Date(timeIntervalSinceReferenceDate: seconds) : nil
-        }
-        let storedStart = stamp(store.double(SessionKey.startedAt, default: 0))
-        let storedEnd = stamp(store.double(SessionKey.endsAt, default: 0))
+        // Raw, not `store.double(default: 0)`: a value that is no number reads as
+        // 0 there, and 0 is «no deadline».
+        let storedStart = SessionRestore.Stored(store.object(SessionKey.startedAt))
+        let storedEnd = SessionRestore.Stored(store.object(SessionKey.endsAt))
 
-        switch SessionRestore.decide(manualOn: store.bool(SessionKey.on, default: false),
-                                     startDate: storedStart, endDate: storedEnd,
-                                     now: clock.now()) {
-        case .none:
+        let decision = SessionRestore.decide(manualOn: store.bool(SessionKey.on, default: false),
+                                             start: storedStart, end: storedEnd, now: clock.now())
+        switch decision {
+        case .none, .unreadable:
             let hadOne = store.bool(SessionKey.on, default: false)
             manualOn = false
             startDate = nil
@@ -827,7 +835,9 @@ extension KeepAwakeEngine {
             // answer to "why did my Mac sleep" when the app was gone longer than
             // the session had left.
             if hadOne {
-                HelmLog.shared.info(Self.moduleID, "a stored session had already ended")
+                HelmLog.shared.info(Self.moduleID, decision == .unreadable
+                    ? "refused a stored session: its dates are not ones Helm writes"
+                    : "a stored session had already ended")
             }
         case .indefinite:
             manualOn = true
@@ -836,7 +846,7 @@ extension KeepAwakeEngine {
             HelmLog.shared.info(Self.moduleID, "restored a session with no deadline")
         case .remaining(let left):
             manualOn = true
-            startDate = storedStart
+            startDate = storedStart.date
             // The deadline the module decided on, not the one it read. The two
             // differ wherever the decision bounded the stored pair — a clock
             // that moved, or a pair that is credible as a duration and absurd

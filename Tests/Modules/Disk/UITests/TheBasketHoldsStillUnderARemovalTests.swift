@@ -14,15 +14,15 @@ import Module_Disk_Engine
 /// and exactly the wrong shape in trust, in a flow whose whole subject is
 /// deletion: the app quietly un-picks what somebody picked.
 ///
-/// `OneRemovalAtATimeEverywhereTests` cannot see it. That scan looks for
-/// `guard !busy` in the four trashing view models and finds one — in
-/// `emptyBasket`, which is the other method. ARCHITECTURE.md § One removal at a
+/// `OneRemovalAtATimeEverywhereTests` cannot see it. That scan reads the methods
+/// that set `busy = true`, and `toggleBasket` does not set it: `emptyBasket`,
+/// which does, is the other method. ARCHITECTURE.md § One removal at a
 /// time states the rule this breaks in a sentence about both halves: «The model
 /// refuses; the page dims. Both, or neither is reliable.»
 ///
 /// Every case here needs a removal that is *running*, which is a state
-/// `HeldTransport` could not be in until it was given `holdTrash()`: a fake that
-/// answers on the spot releases the gate before the call it is gating returns,
+/// a fake that answers on the spot cannot be in; `HeldWork.holdTrash()` puts it
+/// there. A fake that answers on the spot releases the gate before the call it is gating returns,
 /// so a test built on one passes whether or not the guard exists.
 @MainActor
 final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
@@ -38,20 +38,20 @@ final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
     }
 
     /// A scanned volume with one folder ticked and a removal parked mid-flight.
-    private func removing(_ transport: HeldTransport) async -> DiskViewModel {
-        transport.holdTrash()
-        transport.answerTrash(with: DiskRemoval(removed: [sub], refused: [], freedBytes: 600))
-        let dvm = DiskViewModel(vm: ModuleViewModel(transport: transport),
+    private func removing(_ work: HeldWork) async -> DiskViewModel {
+        work.holdTrash()
+        work.answerTrash(with: DiskRemoval(removed: [sub], refused: [], freedBytes: 600))
+        let dvm = DiskViewModel(work: work,
                                 store: ScanStore(directory: scratchDirectory("disk-busy")))
         Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(transport, count: 1)
-        transport.release(0, with: tree())
+        await untilParked(work, count: 1)
+        work.release(0, with: tree())
         await settle()
         dvm.toggleBasket(folder(sub, bytes: 600))
         XCTAssertEqual(dvm.basket.map(\.path), [sub], "precondition: one folder is ticked")
 
         Task { await dvm.emptyBasket() }
-        await untilTrashing(transport)
+        await untilTrashing(work)
         XCTAssertTrue(dvm.busy, "precondition: the removal is in flight")
         return dvm
     }
@@ -62,8 +62,8 @@ final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
     /// 2 — and the reply then emptied the basket over it: the folder is still on
     /// the ring and nothing ever asked for it.
     func testARowTickedWhileARemovalRunsIsNotTakenAndThrownAway() async {
-        let transport = HeldTransport()
-        let dvm = await removing(transport)
+        let work = HeldWork()
+        let dvm = await removing(work)
 
         dvm.toggleBasket(folder(other, bytes: 200))
 
@@ -72,7 +72,7 @@ final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
             \(dvm.basket.map(\.path)). It is cleared wholesale when the answer comes back, \
             so this folder is dropped without being sent and without being mentioned.
             """)
-        transport.releaseTrash()
+        work.releaseTrash()
         await settle()
     }
 
@@ -80,14 +80,14 @@ final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
     /// menu unticks by calling the same method, so a row taken *out* mid-flight
     /// leaves the person told that something they had just withdrawn was removed.
     func testARowUntickedWhileARemovalRunsStaysInTheBatchItWasSentIn() async {
-        let transport = HeldTransport()
-        let dvm = await removing(transport)
+        let work = HeldWork()
+        let dvm = await removing(work)
 
         dvm.toggleBasket(folder(sub, bytes: 600))
 
         XCTAssertEqual(dvm.basket.map(\.path), [sub],
                        "the basket lost the row the removal in flight is about")
-        transport.releaseTrash()
+        work.releaseTrash()
         await settle()
     }
 
@@ -95,9 +95,9 @@ final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
     /// about the basket: once the answer is in, the basket is a basket again.
     /// Without this a guard of «never» would pass both of them.
     func testTheBasketTakesRowsAgainOnceTheReplyLands() async {
-        let transport = HeldTransport()
-        let dvm = await removing(transport)
-        transport.releaseTrash()
+        let work = HeldWork()
+        let dvm = await removing(work)
+        work.releaseTrash()
         await settle()
         XCTAssertFalse(dvm.busy, "precondition: the removal is over")
 
@@ -108,16 +108,16 @@ final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
     }
 
     /// And the batch is the one that was sent: nothing added in the meantime got
-    /// in, and nothing removed got out. Read off the wire rather than off the
-    /// basket, because the wire is what the engine acts on.
+    /// in, and nothing removed got out. Read off `HeldWork.trashRequests` rather than
+    /// off the basket, because the batch handed to `trash` is what the engine acts on.
     func testTheEngineIsHandedExactlyWhatWasTickedWhenThePressHappened() async {
-        let transport = HeldTransport()
-        let dvm = await removing(transport)
+        let work = HeldWork()
+        let dvm = await removing(work)
         dvm.toggleBasket(folder(other, bytes: 200))
-        transport.releaseTrash()
+        work.releaseTrash()
         await settle()
 
-        XCTAssertEqual(transport.trashRequests, [[sub]],
+        XCTAssertEqual(work.trashRequests, [[sub]],
                        "the engine was handed a different batch from the one consented to")
     }
 }

@@ -53,7 +53,7 @@ struct LeftoversFakeFiles: LeftoversFilePort {
     /// which is what the real `FileManager` does and what `listing`, keyed by
     /// spelling alone, could not describe. «These children actually live somewhere
     /// else» was therefore a state no test in this target could write down, which
-    /// is why the scan trusted the seven directory names it is compiled with:
+    /// is why the scan trusted the eight directory names it is compiled with:
     /// `ADirectoryThatIsNotTheOneItNamesTests` is the case that had nowhere to go.
     var redirects: [String: String] = [:]
 

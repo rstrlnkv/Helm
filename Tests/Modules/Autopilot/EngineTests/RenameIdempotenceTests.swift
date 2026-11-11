@@ -5,7 +5,7 @@ import HelmTestSupport
 
 /// The third action, on the volume where the stamp does not stick.
 ///
-/// `RuleRunnerIdempotenceTests` covers `move` and `sortIntoSubfolder` under
+/// `RuleRunnerTests` covers `move` and `sortIntoSubfolder` under
 /// exactly these conditions and says why they matter: `RuleRunner.note`
 /// tolerates a stamp that will not stick, and the sentence it leans on is that
 /// the action "re-runs an idempotent action on an unchanged file". The
@@ -113,7 +113,7 @@ final class RenameIdempotenceTests: XCTestCase {
     /// a rule whose stamp never stuck, against a real file in a real folder.
     ///
     /// The rule id differs between the runs for the same reason
-    /// `RuleRunnerIdempotenceTests` uses a fresh one — the stamp is not
+    /// `RuleRunnerTests`' never-stamped cases use a fresh one — the stamp is not
     /// disabled, it is simply not consulted, which is the state an unstampable
     /// volume is in on every sweep. The facts for the second run are read off
     /// the name the first run produced, because that is what `FolderReader`

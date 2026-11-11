@@ -28,40 +28,40 @@ final class CacheAdviceRemovesContentsTests: XCTestCase {
     /// A scanned volume whose Recommendations hold one cache row, already ticked.
     private func scannedWithTheCacheRowTicked(
         answering removal: DiskRemoval
-    ) async -> (DiskViewModel, AnsweringTransport) {
+    ) async -> (DiskViewModel, AnsweringWork) {
         let volume = VolumeInfo(name: "Big", path: "/Volumes/Big",
                                 totalBytes: 1000, freeBytes: 100)
-        let transport = AnsweringTransport(volumes: [volume])
+        let work = AnsweringWork(volumes: [volume])
         let tree = folder("/Volumes/Big", bytes: 600, children: [
             folder("/Volumes/Big/Library", bytes: 600, children: [
                 folder(caches, bytes: 600, children: [folder(firefox, bytes: 400),
                                                       folder(adobe, bytes: 200)]),
             ]),
         ])
-        transport.answer("/Volumes/Big",
+        work.answer("/Volumes/Big",
                          with: ScanResult(root: tree, freeBytes: 100, filesScanned: 10,
                                           seconds: 1, advice: [advice()]))
-        transport.answerTrash(with: removal)
-        let dvm = DiskViewModel(vm: ModuleViewModel(transport: transport),
+        work.answerTrash(with: removal)
+        let dvm = DiskViewModel(work: work,
                                 store: ScanStore(directory: scratchDirectory("disk-cache-advice")))
         await dvm.loadVolumes()
         await dvm.scan(path: "/Volumes/Big")
         dvm.toggleBasket(dvm.entry(for: advice()))
         XCTAssertEqual(dvm.basket.map(\.path), [caches],
                        "precondition: one row, naming the folder")
-        return (dvm, transport)
+        return (dvm, work)
     }
 
     /// The defect itself. The engine must never be handed the folder macOS
     /// protects — and the person must still have pressed one button.
     func testTheEngineIsAskedForTheContentsAndNotTheFolder() async {
-        let (dvm, transport) = await scannedWithTheCacheRowTicked(
+        let (dvm, work) = await scannedWithTheCacheRowTicked(
             answering: DiskRemoval(removed: [firefox, adobe], refused: [], freedBytes: 600))
 
         await dvm.emptyBasket()
 
-        XCTAssertEqual(transport.trashRequests, [[firefox, adobe]])
-        XCTAssertFalse(transport.trashRequests.flatMap { $0 }.contains(caches),
+        XCTAssertEqual(work.trashRequests, [[firefox, adobe]])
+        XCTAssertFalse(work.trashRequests.flatMap { $0 }.contains(caches),
                        "the folder macOS refuses was handed over anyway")
     }
 

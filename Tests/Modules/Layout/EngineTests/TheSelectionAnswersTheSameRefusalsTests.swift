@@ -15,10 +15,10 @@ import XCTest
 /// - a translation that turns a letter into a mark, because somebody typing
 ///   letters meant letters.
 ///
-/// The selection door never reaches `LayoutVerdict` at all. `transform` builds a
-/// `SelectionTransform` straight out of `TranslationPort` and writes whatever
-/// comes back. So the same key press, on the same word, honours the list when
-/// nothing is selected and ignores it when the word is selected — which is the
+/// The selection door never reached `LayoutVerdict` at all. `convertSelection` built a
+/// `SelectionTransform` straight out of `TranslationPort` and wrote whatever
+/// came back. So the same key press, on the same word, honoured the list when
+/// nothing was selected and ignored it when the word was selected — which was the
 /// harder half to notice, because selecting the word first is what somebody
 /// does when the automatic path has *already* refused it.
 ///
@@ -133,7 +133,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
             tap: Tap(), typing: typing, sources: sources,
             translation: Translation(table: table),
             spell: Spell(valid: ["привет", "las["], noDictionary: []),
-            secure: Context(),
+            secure: Context(), activation: FakeActivation(),
             selection: selection,
             ledger: LedgerStore(),
             exceptions: exceptions,

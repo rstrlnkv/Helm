@@ -36,11 +36,11 @@ or one that disagrees, is never installed silently: the release page opens inste
 | **Uninstaller** | Remove apps together with their leftovers (caches, preferences, containers, …) — everything goes to the Trash. A Leftovers tab finds files from apps that are already gone. |
 | **Screenshots** | Freezes the screen, then you pick the whole screen, a window or an area out of the frozen picture, with a timer if you want one. Drag an area and it becomes an editor over the picture — arrows, shapes, pen, highlighter, text, blur, crop — that can also copy the text it shows or blur the emails and phone numbers macOS finds in it. Saved as PNG or JPEG, or copied; Edit on a saved shot replaces its file and the original goes to the Trash. macOS's own screenshot shortcuts are read, never changed. Needs Screen & System Audio Recording. |
 | **Homebrew** | Installed formulae/casks with descriptions, updates (per-package and all), search & install, live console for long operations, in-app Homebrew installer. |
-| **Login Items & Extensions** | Everything that loads with the system — launch agents, settings files, plug-ins — marked In use / System / Leftover; leftovers removable. |
+| **Login Items & Extensions** | Everything that loads with the system — launch agents, settings files, plug-ins — marked In use / System entry / Leftover; leftovers removable. |
 | **Disk** | What is taking up room: a sunburst ring over the volume, firmlink-aware so an APFS volume group is not counted twice; folders open under the names Finder gives them, and anything you want gone collects in one list before it goes to the Trash. |
 | **Duplicates** | Files that exist more than once, from 1 MB up, matched by content rather than by name. The copy that stays is the one that was there first — by the Date Added the Finder shows — not the one an alphabetical sort happened to put on top. Hard links are one file and are never offered. |
 | **Autopilot** | Folders that keep themselves in order. Rules on name, extension, kind, size, dates, Finder tag and where a file was downloaded from; actions to move, sort into subfolders by kind or by month, rename by pattern, tag, or trash. A rule is shown against the folder's real files before it is switched on, nothing is ever overwritten, and no file is acted on twice. No script action, deliberately — the rules live in a plist any process can write. |
-| **Keyboard** | Fixes a word typed in the wrong keyboard layout — `ghbdtn` becomes `привет` — and moves the input source with it. Only when the word is not a word as typed and is one once swapped; terminals and password managers are left alone. Abbreviations expand at the same boundary. Needs Accessibility. |
+| **Keyboard** | Fixes a word typed in the wrong keyboard layout — `ghbdtn` becomes `привет` — and moves the input source with it. Only when the word is not a word as typed and is one once swapped; terminals and password managers are left alone. Needs Accessibility. |
 
 Everything is localized in eight languages: English, 中文, Español, Français,
 Deutsch, 日本語, Русский, Português.
@@ -55,12 +55,15 @@ for Keyboard and for Keep Awake's pointer jiggle, Full Disk Access for the modul
 read protected folders, Screen & System Audio Recording for Screenshots. Because the build is signed ad-hoc, macOS ties a grant to the
 exact binary — every reinstall costs every toggle again.
 
-Three hosts Helm reaches over the network: `api.github.com` for update checks,
-`cloudflare.com/cdn-cgi/trace` when VPN resolves a region, and
-`raw.githubusercontent.com` for the Homebrew installer.
+Hosts Helm itself names: `api.github.com` for update checks, and the
+address it names for the release asset when you install an update;
+`formulae.brew.sh` for Homebrew's install counts; `cloudflare.com/cdn-cgi/trace` when
+VPN resolves a region; `raw.githubusercontent.com` for the Homebrew installer. The tools Helm runs reach
+their own hosts: `brew` for the Homebrew module and macOS's `/usr/bin/networkQuality`
+for VPN's Measure speed.
 
-Three things Helm can change beyond its own folders, each behind an administrator
-password and each only if you turn it on. **Closed-lid mode** installs one
+Four things Helm can change beyond its own folders, each only if you turn it on; the
+first two ask for an administrator password. **Closed-lid mode** installs one
 permanent, passwordless rule in `/etc/sudoers.d` so the lid can stay awake without
 asking again; switching Keep Awake off offers to take it back out, and declining
 leaves it there. Removing Helm itself does not remove that rule: turn Closed-lid
@@ -69,7 +72,8 @@ hand. **Installing Homebrew** from inside Helm makes `/opt/homebrew` yours —
 that is what Homebrew needs and what its own installer does, and it is not
 undone, by Helm or by anything else. **Switching a login item off** under Login
 Items & Extensions is the same switch System Settings offers, so it survives a
-reboot; "Reset all settings" switches back on what Helm switched off. Everything
+reboot; "Reset all settings" switches back on what Helm switched off. **Open Helm at
+login** registers Helm as a login item, and "Reset all settings" unregisters it. Everything
 Helm removes goes to the Trash.
 
 Releases go to the **Dev** channel first and graduate to **Beta** once the count of
@@ -88,7 +92,7 @@ bash Scripts/package-app.sh     # build + sign → $TMPDIR/helm-package/Helm.app
 `bash Scripts/test.sh` runs `swift test` less the classes `Tests/optional-tests.txt` names
 (`HELM_FULL_SUITE=1` runs them all), keeps the whole log and reads it for you — the
 closing lines of a run speak for its last bundle and not for the suite;
-[CLAUDE.md](CLAUDE.md) says everything else.
+[ARCHITECTURE.md](ARCHITECTURE.md) says everything else.
 
 ## Licence
 

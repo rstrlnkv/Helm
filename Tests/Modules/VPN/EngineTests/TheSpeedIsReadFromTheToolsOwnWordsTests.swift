@@ -44,7 +44,7 @@ final class TheSpeedIsReadFromTheToolsOwnWordsTests: XCTestCase {
 
     /// **The tool omits `responsiveness` on a link it could not characterise**,
     /// and this used to read that absence as `0 rpm` — a figure, in the type
-    /// whose own rule is «every field or nothing». Nobody measured a
+    /// whose own rule is «both throughput figures or nothing». Nobody measured a
     /// responsiveness of zero; nobody measured one at all.
     func testALinkWithNoResponsivenessFigureHasNone() {
         let reading = VPNSpeedReading.parse(

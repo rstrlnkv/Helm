@@ -22,16 +22,31 @@ public struct PreviewRow: Codable, Equatable, Identifiable, Sendable {
     /// out which subfolder, which is the only part they could not have known
     /// from the rule they had just written.
     ///
-    /// The folder, not the final filename: a name already taken gets numbered
-    /// at the moment of the move, and touching the disk to find out on every
-    /// keystroke of the editor is not worth knowing it a second early.
+    /// The folder for a move or a sort, not the final filename: a name already
+    /// taken gets numbered at the moment of the move (`FreeName`), and touching
+    /// the disk to find out on every keystroke of the editor is not worth
+    /// knowing it a second early. **A rename is the exception**: its file name
+    /// is the destination, with the `{counter}` number the sweep would give it
+    /// (`CounterBook`), which costs one listing of the folder per dry run.
     public let destination: String?
+    /// Set instead of a destination when the run would refuse this rename — the
+    /// same reason the sweep would log.
+    public let refusal: RuleOutcome.Refusal?
 
     public init(_ plan: RulePlan) {
+        self.init(plan, counters: CounterBook())
+    }
+
+    /// One book for the rows of one dry run, in the order the sweep walks them.
+    init(_ plan: RulePlan, counters: CounterBook) {
         path = plan.facts.path
         ruleID = plan.rule.id
         ruleName = plan.rule.name
         action = plan.action
-        destination = PlannedDestination.describe(plan)
+        switch PlannedDestination.describe(plan, counters: counters) {
+        case .nowhere: (destination, refusal) = (nil, nil)
+        case let .named(name): (destination, refusal) = (name, nil)
+        case let .refused(reason): (destination, refusal) = (nil, reason)
+        }
     }
 }

@@ -13,17 +13,19 @@ import Security
 /// tunnel and a quit took one down — so a bundle nobody signed could switch
 /// somebody's VPN off by starting and stopping.
 ///
-/// Here rather than in the module because two targets read it and neither may own
-/// the other's copy: `AppPicker` records the identity of the bundle a person
-/// chose, and VPN's app observer reads the identity of what is actually running.
+/// Here rather than in the module because `HelmRuntime` reads it too, and cannot
+/// import a module: `VPNAppRules` records the identity of the bundle a person chose
+/// through `AppPicker`, VPN's app observer reads the identity of what is actually
+/// running, and `AppBuild` reads the cdhash of the same struct.
 ///
 /// **What this buys and what it does not.** A team identifier is issued by Apple
 /// and cannot be claimed by somebody else's build, so for any app from the App
-/// Store or a Developer ID vendor this is a real bind. An ad-hoc-signed or
-/// unsigned bundle carries no team identifier and its signing identifier is
-/// usually just its bundle id — which the attacker is already assumed to be able
-/// to spell — so for those the check adds no more than the identifier did. It is
-/// not written down as more than that anywhere; the drive-by case (any bundle at
+/// Store or a Developer ID vendor this is a real bind. An ad-hoc-signed bundle
+/// carries no team identifier and its signing identifier is usually just its
+/// bundle id — which the attacker is already assumed to be able to spell — so
+/// for those the check adds no more than the identifier did. An unsigned bundle
+/// has no signing identifier at all, and `isVerifiable` refuses it. It is not
+/// written down as more than that anywhere; the drive-by case (any bundle at
 /// all, matching only a plist string) is closed either way.
 public struct CodeIdentity: Codable, Equatable, Sendable {
     public let signingID: String?
@@ -40,10 +42,12 @@ public struct CodeIdentity: Codable, Equatable, Sendable {
     public var isVerifiable: Bool { !(signingID ?? "").isEmpty }
 
     /// The identity of the code at a path — a `.app` bundle or a plain
-    /// executable. Nil when there is nothing there, or nothing signed.
+    /// executable. Nil when the Security calls fail — nothing there, or a plain
+    /// directory. A bundle nobody signed is not nil: it reads as an identity with
+    /// no signing identifier, which `isVerifiable` refuses.
     ///
     /// A **static** read of the bundle on disk, on purpose, and the same read is
-    /// used at both ends: the picker reads the bundle a person chose and the
+    /// used at both ends: `VPNAppRules` reads the bundle a person chose and the
     /// observer reads the bundle of the instance that is running. A dynamic read
     /// of a running process (`SecCodeCopyGuestWithAttributes` by pid) answers for
     /// more processes — measured on this Mac, 127 of 128 running applications

@@ -11,7 +11,7 @@ import HelmRuntime
 /// fakes that record what they were handed, which is the machine boundary this
 /// suite must not cross.
 ///
-/// The events are read back through the transport's replay: `LocalTransport`
+/// The events are read back through the news's replay: `EngineNews<HomebrewNews>`
 /// keeps the last event per name and replays it to a new subscriber, so what a
 /// test sees is exactly what a page opened after the fact would see — the
 /// final `opState` and the final console line.
@@ -90,28 +90,28 @@ final class InstallBrewTests: XCTestCase {
 
     private func makeEngine(user: String, privileged: RecordingPrivileged,
                             runner: HangingRunner = HangingRunner(),
-                            transport: LocalTransport = LocalTransport())
-    -> (HomebrewEngine, LocalTransport) {
+                            news: EngineNews<HomebrewNews> = EngineNews())
+    -> (HomebrewEngine, EngineNews<HomebrewNews>) {
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: privileged, user: user,
-                                    transport: transport)
-        return (engine, transport)
+                                    news: news)
+        return (engine, news)
     }
 
-    /// The transport's replay, split by name: the latest `opState` decoded and
-    /// the latest `opLog` as text. A sentinel emitted *before* subscribing marks
+    /// The news's replay, split by case: the latest `.state` and
+    /// the latest `.line`. A sentinel emitted *before* subscribing marks
     /// where the replay ends, so the read is deterministic — everything the
     /// engine emitted happened synchronously before this call.
-    private func replayed(_ transport: LocalTransport) async -> (state: OpState?, log: String?) {
-        transport.emit(EngineEvent(name: "test.sentinel", payload: Data()))
+    private func replayed(_ news: EngineNews<HomebrewNews>) async -> (state: OpState?, log: String?) {
+        news.say(.line("test.sentinel"), slot: "test.sentinel")
         var state: OpState?
         var log: String?
-        for await event in transport.events {
-            if event.name == "test.sentinel" { break }
-            switch HomebrewEvent(rawValue: event.name) {
-            case .opState: state = try? JSONDecoder().decode(OpState.self, from: event.payload)
-            case .opLog: log = String(bytes: event.payload, encoding: .utf8)
-            case .none: break
+        for await item in news.stream() {
+            if case .line("test.sentinel") = item { break }
+            switch item {
+            case .state(let s): state = s
+            case .line(let l): log = l
+            case .brew: break
             }
         }
         return (state, log)
@@ -127,7 +127,7 @@ final class InstallBrewTests: XCTestCase {
     func testAnImplausibleAccountNameNeverReachesTheRootShell() async {
         let privileged = RecordingPrivileged(answer: .done)
         let runner = HangingRunner()
-        let (engine, transport) = makeEngine(user: "$(whoami)", privileged: privileged, runner: runner)
+        let (engine, news) = makeEngine(user: "$(whoami)", privileged: privileged, runner: runner)
 
         engine.installBrew()
 
@@ -136,7 +136,7 @@ final class InstallBrewTests: XCTestCase {
         XCTAssertTrue(runner.streamCalls.isEmpty,
                       "the installer download started for an account the module refused")
 
-        let (state, _) = await replayed(transport)
+        let (state, _) = await replayed(news)
         XCTAssertEqual(state?.phase, .failed,
                        "the refusal is invisible: the page shows a spinner or nothing at all")
 
@@ -170,7 +170,7 @@ final class InstallBrewTests: XCTestCase {
     func testADeclinedDialogDownloadsNothingAndReleasesTheGate() async {
         let privileged = RecordingPrivileged(answer: .declined)
         let runner = HangingRunner()
-        let (engine, transport) = makeEngine(user: "tester", privileged: privileged, runner: runner)
+        let (engine, news) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
         engine.installBrew()
 
@@ -178,7 +178,7 @@ final class InstallBrewTests: XCTestCase {
         XCTAssertTrue(runner.streamCalls.isEmpty,
                       "the installer ran although the person declined the admin dialog")
 
-        let (state, _) = await replayed(transport)
+        let (state, _) = await replayed(news)
         XCTAssertEqual(state?.phase, .failed, "a declined dialog must land as a failed state")
         XCTAssertEqual(state?.reason, .authorizationDeclined,
                        "the page cannot say «cancelled» without the reason — the English console "
@@ -282,7 +282,7 @@ final class InstallBrewTests: XCTestCase {
     func testInstallBrewHoldsTheGateAndIsRefusedBeforeASecondDialog() async {
         let privileged = RecordingPrivileged(answer: .done)
         let runner = HangingRunner()
-        let (engine, transport) = makeEngine(user: "tester", privileged: privileged, runner: runner)
+        let (engine, news) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
         engine.installBrew()
         XCTAssertEqual(runner.streamCalls.count, 1, "precondition: the installer is in flight")
@@ -296,7 +296,7 @@ final class InstallBrewTests: XCTestCase {
                        "a brew operation ran beside the Homebrew installer")
 
         runner.finishAll(code: 0)
-        let (state, _) = await replayed(transport)
+        let (state, _) = await replayed(news)
         XCTAssertEqual(state?.phase, .done)
 
         engine.install(name: "wget", isCask: false)
@@ -327,12 +327,12 @@ final class InstallBrewTests: XCTestCase {
     func testAFailedInstallerReportsItsExitCodeAndReleasesTheGate() async {
         let privileged = RecordingPrivileged(answer: .done)
         let runner = HangingRunner()
-        let (engine, transport) = makeEngine(user: "tester", privileged: privileged, runner: runner)
+        let (engine, news) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
         engine.installBrew()
         runner.finishAll(code: 7)
 
-        let (state, _) = await replayed(transport)
+        let (state, _) = await replayed(news)
         XCTAssertEqual(state?.phase, .failed)
         XCTAssertEqual(state?.exitCode, 7, "the page cannot say what happened without the code")
         XCTAssertEqual(state?.reason, .installerFailed,
@@ -352,12 +352,12 @@ final class InstallBrewTests: XCTestCase {
     func testABusyRefusalSaysSoWithoutForgingAFailedState() async {
         let privileged = RecordingPrivileged(answer: .done)
         let runner = HangingRunner()
-        let (engine, transport) = makeEngine(user: "tester", privileged: privileged, runner: runner)
+        let (engine, news) = makeEngine(user: "tester", privileged: privileged, runner: runner)
 
         engine.install(name: "wget", isCask: false)
         engine.upgradeAll()   // refused: the install is still streaming
 
-        let (state, log) = await replayed(transport)
+        let (state, log) = await replayed(news)
         XCTAssertEqual(state?.phase, .running,
                        "the refusal overwrote the running state — a reopened page shows "
                        + "the live install as over")

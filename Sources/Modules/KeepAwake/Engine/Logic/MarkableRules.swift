@@ -26,12 +26,12 @@ public struct MarkableRules: Equatable, Sendable {
     public let lidHolding: Bool
 
     /// - Parameters:
-    ///   - hasBuiltInDisplay: whether the display rule's row is drawn at all.
-    ///   - hasLid: whether the lid row is.
+    ///   - hasLid: whether the display rule's row and the lid row are drawn at
+    ///     all; both go by the lid, a Mac with none has neither.
     public static func of(autoExternalDisplay: Bool, autoPower: Bool, lidHolding: Bool,
-                          hasBuiltInDisplay: Bool, hasLid: Bool) -> MarkableRules {
+                          hasLid: Bool) -> MarkableRules {
         var rules = Set<ActiveCondition>()
-        if autoExternalDisplay, hasBuiltInDisplay { rules.insert(.externalDisplay) }
+        if autoExternalDisplay, hasLid { rules.insert(.externalDisplay) }
         if autoPower { rules.insert(.power) }
         return MarkableRules(rules: rules, lidHolding: lidHolding && hasLid)
     }
@@ -44,8 +44,7 @@ public struct MarkableRules: Equatable, Sendable {
     public static func onThisMac(autoExternalDisplay: Bool, autoPower: Bool,
                                  lidHolding: Bool) -> MarkableRules {
         of(autoExternalDisplay: autoExternalDisplay, autoPower: autoPower,
-           lidHolding: lidHolding, hasBuiltInDisplay: MacHardware.hasBuiltInDisplay,
-           hasLid: MacHardware.hasLid)
+           lidHolding: lidHolding, hasLid: MacHardware.hasLid)
     }
 
     /// Whether a given rule is drawn as switched on.

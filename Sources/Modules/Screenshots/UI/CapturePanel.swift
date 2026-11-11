@@ -286,9 +286,9 @@ final class BarPanel: NSPanel {
 
     override func keyDown(with event: NSEvent) {
         switch event.keyCode {
-        case 36, 76: onCapture()
+        case ShotKey.returnKey, ShotKey.enter: onCapture()
         // Esc is also `cancelOperation`, but only when the responder chain gets that far.
-        case 53: onCancel()
+        case ShotKey.escape: onCancel()
         default: super.keyDown(with: event)
         }
     }

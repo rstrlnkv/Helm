@@ -25,6 +25,8 @@ final class WatchfulTrash: TrashPort, @unchecked Sendable {
     func trashItem(_ url: URL) -> TrashOutcome {
         let answer = watching()
         lock.lock(); readings.append((url.path, answer)); lock.unlock()
+        // Gone from its place, as a real move leaves it: `HelmTrash.remove` asks.
+        try? FileManager.default.removeItem(at: url)
         return .success
     }
 }

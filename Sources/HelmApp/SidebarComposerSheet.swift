@@ -2,6 +2,7 @@ import SwiftUI
 import AppKit
 import HelmRuntime
 import HelmUI
+import HelmAppStrings
 
 /// Composing the sidebar, in a sheet.
 ///
@@ -141,8 +142,8 @@ struct SidebarComposerSheet: View {
         // measured dead, with `.animation(_, value:)`
         // sitting on the frame and the row heights written raw underneath.
         withAnimation(HelmMotion.interface) { revision &+= 1 }
-        // The sidebar and the icon menu read the same value and cannot observe
-        // UserDefaults; this is the notification both already listen for.
+        // The sidebar cannot observe UserDefaults; this is the notification it
+        // already listens for. The icon menu reads the store at each right click.
         NotificationCenter.default.post(name: .helmModuleOrderChanged, object: nil)
     }
 
@@ -155,10 +156,11 @@ struct SidebarComposerSheet: View {
                     // sheet's title and reads at the same rank. It was 15,
                     // which is on no step and was invisible only because the
                     // ratchet did not read the app shell.
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(HelmText.plateTitle)
                 Spacer()
                 Button(AppStr.done) { dismiss() }
                     .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
             }
             .padding(.horizontal, HelmLayout.formInset)
             .padding(.top, 18)
@@ -248,24 +250,7 @@ struct SidebarComposerRow: View {
     @State private var revision = 0
 
     var body: some View {
-        // Built by hand rather than as a `LabeledContent`. That control aligns
-        // its two halves on the label's *first* baseline, which is right for a
-        // one-line label and a switch; with a summary underneath it parked the
-        // button against the title and left the second line hanging below it.
-        //
-        // A `LabeledContentStyle` cannot fix it either — `configuration.label`
-        // hands the two `Text`s over as one opaque view, and outside the
-        // default style they lay themselves out side by side.
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(AppStr.sidebarSections)
-                Text(summary)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
-            }
-            // A minimum, not a bare `Spacer`: at a narrow width the summary
-            // would otherwise run into the button.
-            Spacer(minLength: 12)
+        HelmSettingRow(AppStr.sidebarSections, note: summary) {
             Button(AppStr.edit) { composing = true }
         }
         .onReceive(NotificationCenter.default.publisher(for: .helmModuleOrderChanged)) { _ in

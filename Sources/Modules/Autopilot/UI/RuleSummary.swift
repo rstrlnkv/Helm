@@ -74,9 +74,9 @@ enum RuleSummary {
     /// Whole numbers stay whole: "30 days", not "30.0 days".
     ///
     /// `Int(value)` traps on ±∞ and on anything past `Int.max`, and this string
-    /// is drawn on the settings page — so a rule planted with `1e30` in a plist
-    /// crashed the app every time the page opened, leaving no way to delete the
-    /// rule that did it. `Int(exactly:)` asks instead of assuming.
+    /// is drawn on the settings page: a rule with `1e30` in a plist would trap on
+    /// every opening and leave no way to delete it. `Int(exactly:)` asks instead
+    /// of assuming.
     static func number(_ value: Double) -> String {
         guard value.isFinite else { return "—" }
         if let whole = Int(exactly: value.rounded()), value == value.rounded() {

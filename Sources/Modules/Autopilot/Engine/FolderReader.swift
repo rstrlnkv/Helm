@@ -33,17 +33,6 @@ struct FolderReader: Sendable {
         isDirectory && level >= depth
     }
 
-    /// The files a folder's rules will be offered, at the folder's depth.
-    ///
-    /// Depth 1 is the folder's own contents. Deeper is the folder's own
-    /// setting, and the walk does not descend into a package at any
-    /// depth: an `.app` or an `.rtfd` is one thing to a person, and descending
-    /// into it would offer a rule several hundred files that are not files as
-    /// far as anybody is concerned.
-    func facts(in folder: String, depth: Int, now: Date = Date()) -> [FileFacts] {
-        reading(in: folder, depth: depth, now: now).files
-    }
-
     /// The deepest a read goes whatever depth a folder asks for. The walk holds
     /// one descriptor per level it is inside, and a depth is an `Int` read out of
     /// a property list — a ceiling here is what keeps `Int.max` from being a
@@ -51,7 +40,15 @@ struct FolderReader: Sendable {
     /// person's Full Disk Access.
     static let deepest = 64
 
-    /// The same read, with the answer to "was there anything to read".
+    /// The files a folder's rules will be offered, at the folder's depth.
+    ///
+    /// Depth 1 is the folder's own contents. Deeper is the folder's own
+    /// setting, and the walk does not descend into a package at any
+    /// depth: an `.app` or an `.rtfd` is one thing to a person, and descending
+    /// into it would offer a rule several hundred files that are not files as
+    /// far as anybody is concerned.
+    ///
+    /// The answer comes with "was there anything to read".
     ///
     /// **Three states, because the caller cannot tell them apart from a count.**
     /// A walk that swallowed its open errors would fold a directory that is not
@@ -191,7 +188,7 @@ struct FolderReader: Sendable {
     /// Whether a rule may be offered this file at all.
     ///
     /// **The sweep and the watcher used to answer this differently, and a rule
-    /// meant two things depending on which one ran.** `facts(in:)` reads through
+    /// meant two things depending on which one ran.** `reading(in:)` reads through
     /// `walk`, which leaves hidden entries out and treats a package as one thing,
     /// so an `.app` is one thing and a dotfile is not there; the FSEvents leg
     /// asked for the facts of whatever path it was handed, and an FSEvents stream

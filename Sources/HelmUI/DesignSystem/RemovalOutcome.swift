@@ -43,17 +43,13 @@ public struct HelmRemovalFailure: Identifiable, Equatable, Sendable {
 }
 
 public struct HelmRemovalOutcome: View {
+    @Environment(\.helmTraits) private var traits
+
     private let succeededText: String
     private let removed: Int
     private let failures: [HelmRemovalFailure]
     private let needsFullDiskAccess: Bool
     /// What this row will say.
-    ///
-    /// **Stored rather than derived, because the fourth verdict is not a reading
-    /// of the numbers — it is the absence of any.** A `Bool` beside `removed`
-    /// and `failures` would have let a caller build "nothing came back, and five
-    /// moved", a state no transport can produce; `unanswered` is its own entry
-    /// point instead, so the combination cannot be written down.
     let verdict: Verdict
 
     /// `removed` is the count, not the sentence, because the sentence cannot be
@@ -71,43 +67,6 @@ public struct HelmRemovalOutcome: View {
         self.verdict = Self.verdict(removed: removed, failed: failures.count)
     }
 
-    /// The removal whose reply never came back.
-    ///
-    /// `TransportClient.request` answers nil for a request that threw and for a
-    /// reply that would not decode, and three modules fold that nil to zeroes —
-    /// which `verdict` then reads as `.silent`. So a person pressed a
-    /// destructive button, waited, and the app had no comment while the rescan
-    /// underneath quietly changed the list.
-    ///
-    /// It is not `.succeeded` and it is not `.failed`: nothing is known to have
-    /// moved, nothing is known to have stayed, and nothing failed. It carries
-    /// no numbers because there are none to carry.
-    public static var unanswered: HelmRemovalOutcome { HelmRemovalOutcome(verdict: .unanswered) }
-
-    /// The removal whose reply was lost **and whose refresh was lost with it**.
-    ///
-    /// `unanswered` ends by pointing at the list — «the list above shows where the
-    /// files are now» — and that is true only because the caller rescans on the
-    /// same path. The rescan is a request like any other and can go unanswered
-    /// too, and there the sentence was guaranteeing exactly what nothing knew.
-    /// So the caller says which round this is, and this one claims nothing about
-    /// the list except that it is old.
-    ///
-    /// Two entry points rather than a parameter beside the counts, for the reason
-    /// `unanswered`'s own comment gives: a lost reply carries no numbers, and the
-    /// combination «nothing came back, and five moved» must not be writable.
-    public static var unansweredWithStaleList: HelmRemovalOutcome {
-        HelmRemovalOutcome(verdict: .unansweredStaleList)
-    }
-
-    private init(verdict: Verdict) {
-        succeededText = ""
-        removed = 0
-        failures = []
-        needsFullDiskAccess = false
-        self.verdict = verdict
-    }
-
     /// What this line has to say, given what actually happened.
     ///
     /// Pulled out because the `failures.isEmpty` branch was not consulting
@@ -123,12 +82,6 @@ public struct HelmRemovalOutcome: View {
         case silent
         case succeeded
         case failed
-        /// The reply was lost, so none of the three above can be told apart.
-        /// Reached only through `unanswered`, never from a count.
-        case unanswered
-        /// The reply was lost and so was the refresh that would have brought the
-        /// list up to date. Reached only through `unansweredWithStaleList`.
-        case unansweredStaleList
     }
 
     static func verdict(removed: Int, failed: Int) -> Verdict {
@@ -142,15 +95,6 @@ public struct HelmRemovalOutcome: View {
             EmptyView()
         case .succeeded:
             quiet(succeededText)
-        // `.succeeded`'s shape exactly: it is a statement of what is known, not
-        // a warning. No triangle, no list of refusals and no Grant button —
-        // nothing was refused, and nothing here is anybody's to fix.
-        case .unanswered:
-            quiet(Self.noAnswer)
-        // The same shape again, and only the words differ: what this round knows
-        // about the list is one fact less.
-        case .unansweredStaleList:
-            quiet(Self.noAnswerStaleList)
         case .failed:
             // **The two levels below were one level.** The heading was
             // `.caption` and the failures under it `.caption2`, which macOS
@@ -161,7 +105,7 @@ public struct HelmRemovalOutcome: View {
             VStack(alignment: .leading, spacing: HelmSpace.s3) {
                 HStack(spacing: HelmSpace.s4) {
                     Image(systemName: "exclamationmark.circle.fill")
-                        .foregroundStyle(HelmSignal.warning)
+                        .foregroundStyle(HelmSignal.warning(increased: traits.increasedContrast))
                     Text(Self.heading(succeeded: removed > 0 ? succeededText : nil,
                                       failed: failures.count))
                         .font(HelmText.rowDetail)
@@ -219,62 +163,26 @@ public struct HelmRemovalOutcome: View {
     /// line used a comma, so the app disagreed with itself about it. CJK takes its
     /// own full stop; French an unbreakable space before the colon.
     ///
-    /// `language` is explicit, defaulting to the app's, because an inline table
-    /// cannot be read back in the other seven otherwise.
+    /// `language` is explicit, defaulting to the app's, because the other seven
+    /// cannot be read back otherwise.
     static func heading(succeeded: String?, failed: Int,
                         language: AppLanguage = AppLanguage.current) -> String {
         let items = Plural.items(failed, language: language.rawValue)
         guard let succeeded else {
-            return L("\(items) could not be moved",
-                     [.ru: "Не удалось переместить: \(items)",
-                      .es: "No se pudieron mover: \(items)",
-                      .fr: "Impossible de déplacer\u{00A0}: \(items)",
-                      .de: "Nicht verschoben: \(items)",
-                      .ja: "移動できませんでした：\(items)",
-                      .zh: "无法移动：\(items)",
-                      .pt: "Não foi possível mover: \(items)"], language: language)
+            return L(.itemsCouldNotBeMoved(items), language: language)
         }
-        return L("\(succeeded). \(items) could not be moved",
-                 [.ru: "\(succeeded). Не удалось переместить: \(items)",
-                  .es: "\(succeeded). No se pudieron mover: \(items)",
-                  .fr: "\(succeeded). Impossible de déplacer\u{00A0}: \(items)",
-                  .de: "\(succeeded). Nicht verschoben: \(items)",
-                  .ja: "\(succeeded)。移動できませんでした：\(items)",
-                  .zh: "\(succeeded)。无法移动：\(items)",
-                  .pt: "\(succeeded). Não foi possível mover: \(items)"], language: language)
+        return L(.succeededItemsCouldNotBeMoved(succeeded, items), language: language)
     }
 
     private static func more(_ n: Int) -> String {
-        L("…and \(n) more", [.ru: "…и ещё \(n)", .es: "…y \(n) más", .fr: "…et \(n) de plus",
-                             .de: "…und \(n) weitere", .ja: "…ほか \(n) 件", .zh: "…还有 \(n) 项",
-                             .pt: "…e mais \(n)"])
+        L(.andMore(String(n)))
     }
 
     private static var grant: String {
-        L("Grant…")
+        L(.grant)
     }
 
-    /// What a lost reply says. It names no count, calls nothing a failure and
-    /// apologises for nothing — it points at the list, which the rescan
-    /// underneath has just brought up to date, as the answer to the only
-    /// question left.
-    private static var noAnswer: String {
-        L("Helm got no answer, so it does not know what moved. The list above shows where the files are now.")
-    }
-
-    /// And what it says when the refresh was lost too. It withdraws the second
-    /// half of the promise: nothing on this page has been read since before the
-    /// press, so the list is where the files *were*.
-    ///
-    /// It names no verb for trying again. Five call sites in four modules draw
-    /// this component and their refresh buttons say three different things, so a
-    /// literal here would be wrong in two of five.
-    private static var noAnswerStaleList: String {
-        L("Helm got no answer, so it does not know what moved. The list above still shows where the files were before.")
-    }
-
-    /// The two sentences this row says quietly, drawn identically because they
-    /// are the same kind of statement: what is known, with nothing to act on.
+    /// The sentence this row says quietly: what is known, with nothing to act on.
     private func quiet(_ text: String) -> some View {
         Text(text)
             .font(HelmText.rowDetail)

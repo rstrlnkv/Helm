@@ -18,13 +18,15 @@ import HelmRuntime
 ///   indivisible act, and so is saving a rule set.
 /// - `keyLock` — held only around the two keychain ports, so the threads that
 ///   read the rule set cannot each raise a prompt of their own.
-/// - `trustLock` — the state a caller may ask about while a keychain prompt is
-///   open, which is why it is never held across a port call.
+/// - `trustLock` — the small state read and written under it: the verdict, the
+///   cached key, the mark and the one adoption. It is only ever held for a field
+///   access, never across a port call: a keychain prompt may be open for as long
+///   as a person ignores it, and nothing else should queue behind that.
 final class SealedRules: @unchecked Sendable {
     private let store: NamespacedStore
     /// The rule set is read from the engine's queue — the sweep timer and the
-    /// FSEvents leg both land there first — and from the transport, which
-    /// answers `folders` and `status` on whatever thread asked. Two threads at
+    /// FSEvents leg both land there first — and from the model's door, which
+    /// reads `folders` and `status` off the cooperative pool. Two threads at
     /// least, so the key and the verdict carry their own lock rather than
     /// borrowing one held elsewhere.
     private let keys: RuleKeyPort
@@ -32,15 +34,17 @@ final class SealedRules: @unchecked Sendable {
     /// plist's author cannot reach.
     private let sequence: RuleSequencePort
     private let trustLock = NSLock()
-    /// Held only around `keys.key()` — see `resolvedKey`. Never held with
-    /// `trustLock`, in either order.
+    /// Held only around the two keychain reads, `keys.key()` and
+    /// `sequence.highWater()` — see `resolvedKey`. `trustLock` is taken
+    /// inside it, briefly and never across the port call; `keyLock` is never
+    /// taken with `trustLock` held.
     private let keyLock = NSLock()
     /// One decision about the stored rules at a time: reading the plist,
     /// judging it against its seal, and recording that judgement are one
     /// indivisible act, and so is saving a rule set.
     ///
     /// The four callers that read the rule set — the sweep timer, FSEvents, the
-    /// transport and the watch refresh — each record what they decided in
+    /// model's door and the watch refresh — each record what they decided in
     /// `refusal`. Unordered, that write says what was true of the file at the
     /// moment *that* read snapshotted it: a read which began before something
     /// edited the plist could finish after the read that saw the edit and put
@@ -49,10 +53,9 @@ final class SealedRules: @unchecked Sendable {
     /// the scheduler ran last, and the verdict is the only signal they get.
     /// `AutopilotSealRaceTests` holds one read open and asserts on the other.
     ///
-    /// Taken before `keyLock`, never after, and never with `trustLock` held —
-    /// `trustLock` answers `rulesRefused`, which must not wait behind a keychain
-    /// prompt. Everything that waits on this lock is already a caller that wants
-    /// the rule set, which is what `keyLock` makes them queue for in any case.
+    /// Taken before `keyLock`, never after, and never with `trustLock` held.
+    /// Everything that waits on this lock is already a caller that wants the rule
+    /// set, which is what `keyLock` makes them queue for in any case.
     private let decisionLock = NSLock()
     private var key: RuleKey?
     /// The mark, resolved once per run like the key and held under the same
@@ -364,9 +367,11 @@ final class SealedRules: @unchecked Sendable {
     /// forward is to throw it away — which is why `discardRefusedRules` takes
     /// only that one.
     ///
-    /// Read by `AutopilotCommand.status`, which is how the page draws a card
-    /// saying the rules could not be read instead of an empty state saying there
-    /// were never any.
+    /// `discardRefused` reads it to decide whether there is anything it may
+    /// discard. The page does not read it: `AutopilotEngine.status` takes the
+    /// verdict from `decision()`, which returns it together with the rules it
+    /// judged, so a card saying the rules could not be read is drawn from the
+    /// same read as the list and not from a second look at this property.
     var refusal: RuleRefusal? { trustLock.withLock { refusalReason } }
 
     /// Logged on the way in, once per transition. The rules are read on every
@@ -407,11 +412,10 @@ final class SealedRules: @unchecked Sendable {
     ///
     /// **`trustLock` is not held across the port call.** The port can sit inside
     /// a modal keychain prompt for as long as a person ignores it, and
-    /// `trustLock` is also what answers `rulesRefused` — so holding it there put
-    /// a dialog between the UI and the engine's own state. `keyLock` is held
-    /// instead: it serialises the port, so the three threads that read the rule
-    /// set cannot each raise a prompt of their own, and it guards nothing any
-    /// other caller wants.
+    /// `trustLock` guards fields that `mark`, `refusing` and `takeTheOneAdoption`
+    /// touch too, so none of them should wait behind a dialog. `keyLock` is held
+    /// instead: it serialises the port, so the threads that read the rule set
+    /// cannot each raise a prompt of their own.
     private func resolvedKey() -> RuleKey? {
         if let held = trustLock.withLock({ key }) { return held }
 

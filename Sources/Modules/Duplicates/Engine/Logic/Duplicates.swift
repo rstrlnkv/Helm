@@ -28,12 +28,12 @@ struct FileFacts: Hashable, Sendable {
     /// as `fileID` above, one level up: a hard link is one file with two names,
     /// a clone is two files with one set of blocks.
     let cloneFamily: UInt64?
-    /// When the contents last changed, to the resolution `lstat` reports.
+    /// When the contents last changed.
     ///
     /// Part of what identifies a file to `HashCache`, together with the inode
     /// and the size: a digest may only be reused while all three still hold.
-    /// Free to collect — the walk already calls `lstat` on every candidate for
-    /// the inode and the device.
+    /// Free to collect — `BulkWalk` hands it over with each entry, as it does
+    /// the inode.
     let modified: TimeInterval?
 
     init(path: String, bytes: Int, fileID: UInt64, added: Date? = nil,
@@ -50,7 +50,7 @@ struct FileFacts: Hashable, Sendable {
 }
 
 /// Files with identical content, and what keeping only one would free.
-public struct DuplicateGroup: Codable, Equatable, Sendable, Identifiable {
+public struct DuplicateGroup: Equatable, Sendable, Identifiable {
 
     /// One copy, with what it occupies.
     ///
@@ -59,7 +59,7 @@ public struct DuplicateGroup: Codable, Equatable, Sendable, Identifiable {
     /// less than its logical length. The group used to hold a single size and
     /// multiply it, which made the answer depend on which copy the walk reached
     /// first.
-    public struct Copy: Codable, Equatable, Sendable {
+    public struct Copy: Equatable, Sendable {
         public let path: String
         public let bytes: Int
         /// The APFS clone family this copy belongs to, when the volume has one.
@@ -75,11 +75,7 @@ public struct DuplicateGroup: Codable, Equatable, Sendable, Identifiable {
         ///
         /// The walk already reads it for that decision; carrying it here is what
         /// lets the copy that stays be re-decided from the group alone, without
-        /// reading the folder again. `nil` on a volume that does not record it, and
-        /// **optional rather than defaulted**: a synthesised `Decodable` demands
-        /// the key for a non-optional property whatever its initial value is, and
-        /// `JSONDecoder` then abandons the whole document rather than the one field
-        /// (CLAUDE.md § What not to do, and what breaks if you do).
+        /// reading the folder again. `nil` on a volume that does not record it.
         public let added: Date?
 
         public init(path: String, bytes: Int, cloneFamily: UInt64? = nil,
@@ -104,7 +100,7 @@ public struct DuplicateGroup: Codable, Equatable, Sendable, Identifiable {
     /// set however it is arranged.
     ///
     /// A digest and not the paths themselves: an identity travels into places a
-    /// path may not go — the log carries no names — and it stays one short
+    /// path may not go, and it stays one short
     /// string for a group of forty copies. Separated by NUL, which is the one
     /// byte a POSIX path cannot hold, so two copies cannot be run together into
     /// the spelling of a third.
@@ -162,12 +158,6 @@ public struct DuplicateGroup: Codable, Equatable, Sendable, Identifiable {
 
     public init(copies: [Copy]) {
         self.copies = copies
-    }
-
-    /// Where every copy is known to occupy the same amount — a fixture, or a
-    /// group being rebuilt from paths alone.
-    public init(bytes: Int, paths: [String]) {
-        self.copies = paths.map { Copy(path: $0, bytes: bytes) }
     }
 }
 
@@ -238,15 +228,12 @@ enum Duplicates {
         }
     }
 
-    /// One group, assembled the one way.
+    /// One group, assembled the one way, by `DuplicateScanner.find` and by the tests that need a group without a disk.
     ///
-    /// There are two pipelines over the same three passes: this file's
-    /// `groups`, which the unit tests drive, and `DuplicateScanner.find`, which
-    /// the engine drives concurrently. When `SurvivingCopy` replaced the
-    /// alphabetical rule it was wired into the first and not the second, so the
+    /// When `SurvivingCopy` replaced the alphabetical rule it was wired into a
+    /// second pipeline the unit tests drove and not into the scanner, so the
     /// page explained one rule in its tooltip while the app followed another.
-    /// Both call this now, and a change to which copy survives cannot land in
-    /// one line and miss the other.
+    /// That pipeline is gone and this is the one place a group is built.
     static func group(_ identical: [FileFacts], by rule: KeepRule) -> DuplicateGroup {
         // Each copy with what it occupies, because `wasted` promises what
         // removing the extras frees and the removal reports the same measure.
@@ -266,22 +253,5 @@ enum Duplicates {
             DuplicateGroup.Copy(path: fact.path, bytes: fact.allocated,
                                 cloneFamily: fact.cloneFamily, added: fact.added)
         })
-    }
-
-    /// The whole pipeline: size → prefix hash → full hash → groups, largest
-    /// waste first. `partial` and `full` are injected so the pipeline can be
-    /// tested without a disk and driven with real hashing in production.
-    static func groups(files: [FileFacts], minBytes: Int, by rule: KeepRule,
-                       partial: (FileFacts) -> String?,
-                       full: (FileFacts) -> String?) -> [DuplicateGroup] {
-        var result: [DuplicateGroup] = []
-        for candidates in sizeGroups(files, minBytes: minBytes, by: rule) {
-            for byPrefix in refine(candidates, by: partial) {
-                for identical in refine(byPrefix, by: full) {
-                    result.append(group(identical, by: rule))
-                }
-            }
-        }
-        return result.sorted { $0.wasted > $1.wasted }
     }
 }

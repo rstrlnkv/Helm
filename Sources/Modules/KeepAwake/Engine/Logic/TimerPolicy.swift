@@ -8,11 +8,10 @@ public enum TimerPolicy {
     /// On timer expiry: if an auto condition still holds and not suppressed, keep going as auto.
     ///
     /// Unless the person asked a timer to be the end of automation as well. Then
-    /// the session stops, and the caller's `stopSession()` suppresses the
-    /// condition that is still true — until it drops and comes back, which is
+    /// the session stops, and the caller's `endSession(pausingRules:)` suppresses
+    /// the condition that is still true — until it drops and comes back, which is
     /// what "until the trigger fires again" means in this module. The
-    /// suppression is not decided here: this answers what the timer does, and
-    /// suppressing is what stopping already does.
+    /// suppression is not decided here: this answers what the timer does.
     public static func onExpiry(hasAutoCondition: Bool,
                                 suppressed: Bool,
                                 timerEndsAutomation: Bool) -> Action {

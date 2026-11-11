@@ -15,22 +15,57 @@ public enum BrewKey {
     }
 }
 
-/// What the UI sends to name one package. It crossed the transport as a struct
-/// declared **twice** — privately in the engine and privately again in the view
-/// model — so the two could drift apart with nothing to catch it: a renamed
-/// field fails the decode, the handler returns `Data()`, and the button does
-/// nothing at all. `LeftoversToggle` is the shape this follows.
-public struct PackageRef: Codable, Sendable {
+/// What the UI hands over to name one package. A formula and a cask can share
+/// a name, so the name alone does not say which one is meant.
+public struct PackageRef: Equatable, Sendable {
     public let name: String
     public let isCask: Bool
     public init(name: String, isCask: Bool) { self.name = name; self.isCask = isCask }
 }
 
-/// One `brew desc` batch: a list of names of one kind.
-public struct DescriptionsRequest: Codable, Sendable {
-    public let names: [String]
-    public let isCask: Bool
-    public init(names: [String], isCask: Bool) { self.names = names; self.isCask = isCask }
+/// A press on the engine: every act that starts a child, or ends one.
+///
+/// Exhaustive at the one `switch` that runs it (`HomebrewEngine.perform`), so
+/// an act added here without an arm is a build error rather than a button that
+/// does nothing.
+public enum HomebrewAct: Equatable, Sendable {
+    case install(PackageRef), uninstall(PackageRef)
+    case upgrade(name: String), upgradeAll
+    /// The argv itself — `["uninstall", "periphery"]` — and the engine **judges
+    /// it again** before running it, against the installed list it reads at that
+    /// moment. The UI's own judgement decides what to draw and nothing else:
+    /// between the draw and the press a terminal can uninstall the very package
+    /// the button names (`HomebrewEngine.runDoctorFix`).
+    case doctorFix(argv: [String])
+    case installBrew
+    /// End the running long operation, if any. The only way out of a brew that
+    /// will not finish — operations have no deadline, because an install may
+    /// honestly take an hour.
+    case stop
+}
+
+/// What the engine says while a long operation runs, in the order it said it.
+public enum HomebrewNews: Equatable, Sendable {
+    /// One line of the tool's output, as it arrives.
+    case line(String)
+    /// Where the operation is now: running, done or failed.
+    case state(OpState)
+    /// Where brew is, said once when the module is switched on: `nil` is no brew.
+    /// A reading of the locator only, so it names nothing about the Cellar and
+    /// takes nothing off the marker (`HomebrewEngine.status`). It exists so the page's
+    /// first frame can be the right page, not the install screen until `readStatus`
+    /// has answered; whether it lands in time in the app is unproved
+    /// (`Architecture/Homebrew.md` § The model).
+    case brew(path: String?)
+}
+
+/// The slots the engine files its three announcements in on `EngineNews`; each
+/// keeps its own last value for a late subscriber. `HomebrewEngine`'s three `say`
+/// calls are the one user.
+enum HomebrewSlot: String, Sendable {
+    case opLog
+    case opState
+    case brewFound
 }
 
 public struct BrewPackage: Codable, Equatable, Sendable, Identifiable {
@@ -73,7 +108,6 @@ public struct BrewStatus: Codable, Equatable, Sendable {
     /// The label of an operation that was still running when Helm last quit —
     /// the child brew survives the app, so the Cellar may have changed with no
     /// observer. Carried once, by the first `status()` of the next launch.
-    /// Optional, so the synthesized decode reads an older payload without it.
     public let interruptedOp: String?
     public init(installed: Bool, brewPath: String?, interruptedOp: String? = nil) {
         self.installed = installed; self.brewPath = brewPath
@@ -131,22 +165,26 @@ public struct PackageInfo: Codable, Equatable, Sendable {
     }
 }
 
-public enum OpPhase: String, Codable, Sendable { case idle, running, done, failed }
+public enum OpPhase: String, Sendable { case idle, running, done, failed }
 
 /// Why a failed operation failed, when the engine knows more than an exit code.
 ///
 /// A named outcome, never silence: each of these used to be a bare `return` (a
 /// press that did nothing, visibly forever) or an exit code indistinguishable
 /// from a build failure. The engine names the reason; the UI owns the words, so
-/// the eight languages live where `L()` can reach them.
-public enum OpFailureReason: String, Codable, Sendable, CaseIterable {
+/// the eight languages live where `L()` can reach them. Two console lines are
+/// the exception, written by the engine in English: `runOp` and `installBrew`
+/// refusing a press while another operation runs, and `installBrew` refusing
+/// an account name, which concludes with no reason.
+public enum OpFailureReason: String, Sendable, CaseIterable {
     /// brew vanished between `status()` and the press — Homebrew's own
     /// uninstaller ran in a terminal while Helm's window sat open.
     case brewMissing
     /// The person pressed Stop; the exit code is the signal, not a defect.
-    /// (A timed-out *query* never comes through here: queries answer nil and
-    /// the log names the outcome — an operation state about no operation
-    /// would loop the view model's refresh-on-failure.)
+    /// (A timed-out *query* never comes through here: queries answer nil, or
+    /// `descriptions` an empty dictionary, and the log names the outcome — an
+    /// operation state about no operation would loop the view model's
+    /// refresh-on-failure.)
     case stopped
     /// A `brew doctor` fix the engine re-judged and would not run.
     ///
@@ -183,18 +221,16 @@ public enum OpFailureReason: String, Codable, Sendable, CaseIterable {
 /// field itself is what draws the wait differently: the pill, Stop's title, and
 /// the console, which says one line as the wait begins and another as it ends
 /// (`HomebrewViewModel.consoleLine`).
-public enum OpWait: String, Codable, Sendable, CaseIterable {
+public enum OpWait: String, Sendable, CaseIterable {
     /// Apple's Command Line Tools are being installed in Apple's own window.
     case commandLineTools
 }
 
-public struct OpState: Codable, Equatable, Sendable {
+public struct OpState: Equatable, Sendable {
     public let phase: OpPhase
     public let label: String
     public let exitCode: Int?
-    /// Optional, so the synthesized decode reads an older payload without it.
     public let reason: OpFailureReason?
-    /// Optional for the same reason: an older payload has no such key.
     public let waiting: OpWait?
     public init(phase: OpPhase, label: String, exitCode: Int? = nil,
                 reason: OpFailureReason? = nil, waiting: OpWait? = nil) {
@@ -285,28 +321,4 @@ public struct BrewConfig: Codable, Equatable, Sendable {
     public let lines: [ConfigLine]
     public let text: String
     public init(lines: [ConfigLine], text: String) { self.lines = lines; self.text = text }
-}
-
-/// What the UI sends to ask how much disk one package occupies.
-///
-/// `PackageRef` and a version, rather than `PackageRef` alone, because **the
-/// answer is remembered against the version it was measured for**. The engine
-/// keeps one figure per `name@version` for its own life; the version is the
-/// half that makes a kept figure honest, since an upgrade replaces the keg the
-/// walk measured. The page already holds it — it is `PackageInfo`'s
-/// `installedVersion`, the very tile this figure is drawn beside — so nothing
-/// has to be read twice to name it.
-///
-/// Declared here for the reason `PackageRef`'s own comment gives: a payload
-/// declared once in the engine and read from the UI is a wire contract with a
-/// compiler between its halves.
-public struct PackageSizeRequest: Codable, Sendable {
-    public let name: String
-    public let isCask: Bool
-    /// The version the figure will be remembered against. Never empty: a
-    /// package with no installed version has no keg to walk.
-    public let version: String
-    public init(name: String, isCask: Bool, version: String) {
-        self.name = name; self.isCask = isCask; self.version = version
-    }
 }

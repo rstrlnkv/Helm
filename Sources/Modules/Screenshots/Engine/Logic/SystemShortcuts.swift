@@ -21,11 +21,11 @@ public enum CarbonModifier {
 
 /// One of the boxes macOS ticks for its own screenshot shortcuts.
 ///
-/// `id` is the symbolic hotkey's number. 28 and 30 are the two Helm replaces —
-/// ⌘⇧3 and ⌘⇧4 — and 29 and 31 are their clipboard twins, which stay with
+/// `id` is the symbolic hotkey's number. 28 and 30 are the two that gate Helm owning
+/// ⌘⇧3 and ⌘⇧4 (`capture`; `replaced` draws 184 as well), and 29 and 31 are their clipboard twins, which stay with
 /// macOS. 184 is ⌘⇧5, "Screenshot and recording options": macOS's own panel,
 /// which is also how a person reaches screen recording from the keyboard.
-public enum SystemBox: Int, CaseIterable, Sendable, Codable {
+public enum SystemBox: Int, CaseIterable, Sendable {
     case saveScreen = 28
     case copyScreen = 29
     case saveArea = 30
@@ -71,12 +71,12 @@ public enum SymbolicHotkeysReading: @unchecked Sendable {
     case unreadable
 }
 
-public enum BoxState: String, Sendable, Codable {
+public enum BoxState: String, Sendable {
     case on, off, unknown
 }
 
 /// One box as it stands: whether macOS holds the combination, and which.
-public struct SystemBoxReading: Sendable, Equatable, Codable {
+public struct SystemBoxReading: Sendable, Equatable {
     public let box: SystemBox
     public let state: BoxState
     /// Carbon's key code and modifier mask — the recorder's spelling — or nil

@@ -49,9 +49,10 @@ public struct HelmChoiceCards<Value: Hashable, Preview: View>: View {
     /// happily under 74 pt, while «Имя в строке меню» folds onto two lines
     /// there and fits on one at 104 — and a row of three cards where one label
     /// is two lines and two are one has three different baselines and no
-    /// alignment at all. A caller passes the size its own longest word in eight
-    /// languages asks for. A preview drawn in fractions of its frame follows it
-    /// either way.
+    /// alignment at all. A caller whose longest word in eight languages needs
+    /// more passes the size it asks for: `AppearancePicker` takes this default,
+    /// and only the showcase passes another. A preview drawn in fractions of
+    /// its frame follows it either way.
     public static var thumbnail: CGSize { CGSize(width: 74, height: 46) }
 
     public init(selection: Binding<Value>, items: [Item],
@@ -83,7 +84,7 @@ public struct HelmChoiceCards<Value: Hashable, Preview: View>: View {
                             // not has three baselines and no alignment at all.
                             // A tick label under a picture is what the scale's
                             // bottom step is for.
-                            .font(.caption)
+                            .font(HelmText.pictureCaption)
                             // Weight, not colour: the ring already says which
                             // one is chosen, and a second colour saying it
                             // again is what makes the two that are not chosen

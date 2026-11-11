@@ -33,7 +33,7 @@ final class KeepAwakeAtRestBenchmark: XCTestCase {
         engine = KeepAwakeEngine(settings: settings, store: store, assertions: assertions,
                                   displayInfo: displayInfo, displayObserver: displayObserver,
                                   power: power, apps: apps, pointer: pointer,
-                                  clamshell: clamshell, clock: clock)
+                                  clamshell: clamshell, clock: clock, lidInfo: FakeLidInfo())
     }
 
     // MARK: - 1. Is anything armed with no session and no rule?
@@ -80,7 +80,7 @@ final class KeepAwakeAtRestBenchmark: XCTestCase {
                              "an indefinite session should arm the battery guard")
     }
 
-    // MARK: - 2. AppTriggerRules.decode: how often
+    // MARK: - 2. AppTriggerRules.readable: how often
 
     /// `KeepAwakeSettings.appTriggers` is a computed property — it decodes the
     /// stored JSON on every read, with nothing cached between calls, and

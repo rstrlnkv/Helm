@@ -42,7 +42,7 @@ final class RecoveryAnchorIsNotAWritableFlagTests: XCTestCase {
                         assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                         displayObserver: FakeDisplayObserver(), power: FakePower(),
                         apps: FakeApps(), pointer: FakePointer(),
-                        clamshell: clamshell, clock: FakeClock()).activate()
+                        clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo()).activate()
     }
 
     /// Sleep is off machine-wide, Helm's own rule is on disk, and the note in the

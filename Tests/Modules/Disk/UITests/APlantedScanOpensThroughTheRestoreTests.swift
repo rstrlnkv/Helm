@@ -61,8 +61,9 @@ final class APlantedScanOpensThroughTheRestoreTests: XCTestCase {
                                                 withIntermediateDirectories: true)
         try Data(json.utf8).write(to: store.fileURL)
 
-        let wire = AnsweringTransport(volumes: [])
-        let dvm = DiskViewModel(vm: ModuleViewModel(transport: wire), store: store)
+        let work = AnsweringWork(volumes: [])
+        let dvm = DiskViewModel(work: work, store: store)
+        await dvm.appear()
         let start = Date()
         while !dvm.restored, Date().timeIntervalSince(start) < 10 {
             try await Task.sleep(nanoseconds: 20_000_000)
@@ -94,9 +95,9 @@ final class APlantedScanOpensThroughTheRestoreTests: XCTestCase {
         XCTAssertEqual(question.bytes, .max, "the question's total")
 
         // A removal answered by the engine: the tree is pruned in hand.
-        wire.answerTrash(with: DiskRemoval(removed: [folder + "/0"], refused: [], freedBytes: 1))
+        work.answerTrash(with: DiskRemoval(removed: [folder + "/0"], refused: [], freedBytes: 1))
         await dvm.emptyBasket()
-        XCTAssertEqual(wire.trashRequests.count, 1, "precondition: the press reached the engine")
+        XCTAssertEqual(work.trashRequests.count, 1, "precondition: the press reached the engine")
         XCTAssertEqual(dvm.result?.root.children.first?.children.count, count - 1,
                        "the removed child is still in the tree, so no prune ran")
     }

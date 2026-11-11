@@ -3,10 +3,11 @@ import HelmTestSupport
 import HelmUI
 import XCTest
 @testable import HelmApp
+import HelmAppStrings
 
 /// The other half of the journal.
 ///
-/// Three modules walk the volume twice a day, `ScanJournal.change(module:)`
+/// Three modules walk the volume once a day, `ScanJournal.change(module:)`
 /// computes what turned up since last time — and nothing in `Sources/` ever
 /// called it. The entire user-visible product of all that reading was a relative
 /// date on a settings page. This is the call that was missing, and the silences

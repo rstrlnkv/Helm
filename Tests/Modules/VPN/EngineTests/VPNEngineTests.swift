@@ -10,30 +10,6 @@ final class VPNEngineTests: XCTestCase {
         VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
     }
 
-    func test_toggle_connects_default_when_disconnected() {
-        let runner = FakeRunner()
-        runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
-        let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
-                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
-                               work: .inline)
-
-        engine.toggleDefault()
-
-        XCTAssertTrue(runner.issued.contains(["--nc", "start", "A"]))
-    }
-
-    func test_toggle_disconnects_when_connected() {
-        let runner = FakeRunner()
-        runner.listOutput = "(Connected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
-        let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
-                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
-                               work: .inline)
-
-        engine.toggleDefault()
-
-        XCTAssertTrue(runner.issued.contains(["--nc", "stop", "A"]))
-    }
-
     func test_auto_connect_on_app_launch() {
         let runner = FakeRunner()
         runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""

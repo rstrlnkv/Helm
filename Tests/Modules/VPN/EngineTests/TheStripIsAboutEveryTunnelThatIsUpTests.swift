@@ -63,32 +63,26 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         return (runner, interfaces)
     }
 
-    private func makeEngine(_ runner: FakeRunner, transport: LocalTransport,
+    private func makeEngine(_ runner: FakeRunner, news: EngineNews<VPNEngine.StatePayload>,
                             interfaces: FakeInterfaces, speed: FakeSpeed = FakeSpeed(),
                             exit: FakeExit = FakeExit()) -> VPNEngine {
         VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
-                  transport: transport, interfaces: interfaces, exit: exit, speed: speed,
+                  news: news, interfaces: interfaces, exit: exit, speed: speed,
                   work: .inline)
-    }
-
-    private func measure(_ engine: VPNEngine, _ name: String) async throws {
-        let payload = try JSONEncoder().encode(VPNConnectionRef(name: name))
-        _ = try await engine.transport.send(EngineCommand(name: VPNCommand.measureSpeed.rawValue,
-                                                          payload: payload))
     }
 
     // MARK: - Both of them reach the page
 
     func test_two_tunnels_up_both_reach_the_page() async {
         let (runner, interfaces) = bothUp(routed: "utun7")
-        let transport = LocalTransport()
-        let engine = makeEngine(runner, transport: transport, interfaces: interfaces)
+        let news = EngineNews<VPNEngine.StatePayload>()
+        let engine = makeEngine(runner, news: news, interfaces: interfaces)
 
         engine.refresh()
 
-        let tunnels = await lastState(on: transport)?.tunnels ?? []
+        let tunnels = await lastState(on: news)?.tunnels ?? []
         XCTAssertEqual(tunnels.count, 2, """
-            \(tunnels.count) tunnel(s) on the wire with two up: the second is \
+            \(tunnels.count) tunnel(s) in the state with two up: the second is \
             drawn nowhere and cannot be reached from the page at all
             """)
         XCTAssertEqual(Set(tunnels.map(\.interface)), ["utun4", "utun7"])
@@ -98,12 +92,12 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
     /// first: the default-route tunnel leads, and the rest keep the tool's order.
     func test_the_tunnel_carrying_the_traffic_is_first_on_the_wire() async {
         let (runner, interfaces) = bothUp(routed: "utun7")   // «home», the tool's second
-        let transport = LocalTransport()
-        let engine = makeEngine(runner, transport: transport, interfaces: interfaces)
+        let news = EngineNews<VPNEngine.StatePayload>()
+        let engine = makeEngine(runner, news: news, interfaces: interfaces)
 
         engine.refresh()
 
-        let tunnels = await lastState(on: transport)?.tunnels ?? []
+        let tunnels = await lastState(on: news)?.tunnels ?? []
         XCTAssertEqual(tunnels.map(\.name), ["home", "work"], """
             the page opens on «\(tunnels.first?.name ?? "nothing")» while the \
             traffic leaves through «home» — and a selection that goes stale falls \
@@ -111,18 +105,18 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
             """)
     }
 
-    /// A tunnel the tool has not named an interface for is not on the wire: the
+    /// A tunnel the tool has not named an interface for is not in the state: the
     /// strip's every reading is about an interface, and a segment for a tunnel
     /// with none is a segment leading to an empty card.
     func test_a_tunnel_with_no_interface_reading_yet_is_not_offered() async {
         let (runner, interfaces) = bothUp(routed: "utun4")
         runner.statusOutput = ["work": statusNaming("utun4")]   // «home» is still coming up
-        let transport = LocalTransport()
-        let engine = makeEngine(runner, transport: transport, interfaces: interfaces)
+        let news = EngineNews<VPNEngine.StatePayload>()
+        let engine = makeEngine(runner, news: news, interfaces: interfaces)
 
         engine.refresh()
 
-        let named = await lastState(on: transport)?.tunnels.map(\.name)
+        let named = await lastState(on: news)?.tunnels.map(\.name)
         XCTAssertEqual(named, ["work"])
     }
 
@@ -133,16 +127,16 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
     /// «work» — so it never starts, and no subprocess is spent finding that out.
     func test_a_measurement_on_a_tunnel_that_is_not_routed_starts_nothing() async throws {
         let (runner, interfaces) = bothUp(routed: "utun7")      // the route is on «home»
-        let transport = LocalTransport()
+        let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
         speed.answer = VPNSpeedReading(down: 240, up: 40, rpm: 300, at: at)
-        let engine = makeEngine(runner, transport: transport, interfaces: interfaces, speed: speed)
+        let engine = makeEngine(runner, news: news, interfaces: interfaces, speed: speed)
         engine.refresh()
-        let count = await lastState(on: transport)?.tunnels.count
+        let count = await lastState(on: news)?.tunnels.count
         XCTAssertEqual(count, 2,
                        "precondition: there is no second tunnel to refuse a measurement for")
 
-        try await measure(engine, "work")
+        engine.measureSpeed("work")
 
         XCTAssertTrue(speed.askedFor.isEmpty, """
             fifteen seconds of somebody's traffic were spent measuring the route \
@@ -154,17 +148,17 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
     /// above is a refusal rather than a measurement that never works.
     func test_the_routed_tunnel_is_measured() async throws {
         let (runner, interfaces) = bothUp(routed: "utun7")
-        let transport = LocalTransport()
+        let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
         speed.answer = VPNSpeedReading(down: 240, up: 40, rpm: 300, at: at)
-        let engine = makeEngine(runner, transport: transport, interfaces: interfaces, speed: speed)
+        let engine = makeEngine(runner, news: news, interfaces: interfaces, speed: speed)
         engine.refresh()
 
         let landed = expectation(description: "the reading reached the page")
-        let watcher = watchState(transport,
+        let watcher = watchState(news,
                                  until: { $0.tunnels.contains { $0.speed != nil } },
                                  then: landed)
-        try await measure(engine, "home")
+        engine.measureSpeed("home")
 
         await fulfillment(of: [landed], timeout: 5)
         watcher.cancel()
@@ -178,23 +172,23 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
     ///
     /// Asserted on the flag rather than on «a payload was emitted»: the refusal
     /// leaves every field of the state as it was, so `emitState` withholds it as
-    /// a duplicate — and the transport replays its last event to every new
+    /// a duplicate — and the news replays its last event to every new
     /// subscriber, so counting arrivals here would pass with the whole refusal
     /// deleted. The page never puts a spinner up for this case in any event: the
     /// button it would come from is not drawn on a tunnel that is not routed.
     func test_a_refused_measurement_leaves_no_run_in_flight() async throws {
         let (runner, interfaces) = bothUp(routed: "utun7")
-        let transport = LocalTransport()
+        let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
         speed.answer = VPNSpeedReading(down: 240, up: 40, rpm: 300, at: at)
         speed.blocksUntilReleased = true       // a run that started would still be going
         defer { speed.release() }
-        let engine = makeEngine(runner, transport: transport, interfaces: interfaces, speed: speed)
+        let engine = makeEngine(runner, news: news, interfaces: interfaces, speed: speed)
         engine.refresh()
 
-        try await measure(engine, "work")
+        engine.measureSpeed("work")
 
-        let tunnels = await lastState(on: transport)?.tunnels ?? []
+        let tunnels = await lastState(on: news)?.tunnels ?? []
         XCTAssertEqual(tunnels.count, 2, "precondition: the state never reached the page")
         XCTAssertTrue(tunnels.allSatisfy { !$0.measuring }, """
             the engine marked a run in flight for a tunnel it then refused to \
@@ -206,48 +200,48 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
     /// name that was renamed in System Settings — is the same refusal.
     func test_a_measurement_for_a_tunnel_nobody_has_is_refused() async throws {
         let (runner, interfaces) = bothUp(routed: "utun7")
-        let transport = LocalTransport()
+        let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
         speed.answer = VPNSpeedReading(down: 1, up: 1, rpm: 1, at: at)
-        let engine = makeEngine(runner, transport: transport, interfaces: interfaces, speed: speed)
+        let engine = makeEngine(runner, news: news, interfaces: interfaces, speed: speed)
         engine.refresh()
 
-        try await measure(engine, "a tunnel nobody has")
+        engine.measureSpeed("a tunnel nobody has")
 
         XCTAssertTrue(speed.askedFor.isEmpty)
     }
 
     // MARK: - Whose run it is
 
-    /// **The flag was already per tunnel on the wire and could not be honest.**
+    /// **The flag was already per tunnel in the state and could not be honest.**
     /// One `Bool` in the engine meant every tunnel in the list would say it was
     /// measuring; the engine holds the *name* now, so exactly one does.
     func test_only_the_measured_tunnels_flag_is_set() async throws {
         let (runner, interfaces) = bothUp(routed: "utun7")
-        let transport = LocalTransport()
+        let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
         speed.answer = VPNSpeedReading(down: 240, up: 40, rpm: 300, at: at)
         speed.blocksUntilReleased = true
         defer { speed.release() }
         let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
-                               transport: transport, interfaces: interfaces,
+                               news: news, interfaces: interfaces,
                                exit: FakeExit(), speed: speed, work: .background)
 
-        let ready = expectation(description: "both tunnels are on the wire")
-        let first = watchState(transport, until: { $0.tunnels.count == 2 }, then: ready)
+        let ready = expectation(description: "both tunnels are in the state")
+        let first = watchState(news, until: { $0.tunnels.count == 2 }, then: ready)
         engine.refresh()
         await fulfillment(of: [ready], timeout: 5)
         first.cancel()
 
         let running = expectation(description: "the page was told a run is in flight")
-        let watcher = watchState(transport,
+        let watcher = watchState(news,
                                  until: { $0.tunnels.contains(where: \.measuring) },
                                  then: running)
-        try await measure(engine, "home")
+        engine.measureSpeed("home")
         await fulfillment(of: [running], timeout: 5)
         watcher.cancel()
 
-        let tunnels = await lastState(on: transport)?.tunnels ?? []
+        let tunnels = await lastState(on: news)?.tunnels ?? []
         XCTAssertEqual(tunnels.filter(\.measuring).map(\.name), ["home"], """
             \(tunnels.filter(\.measuring).count) of \(tunnels.count) tunnels say a \
             measurement is in flight for them, and one run is going: a spinner is \
@@ -265,23 +259,23 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
     /// going, which is where the reading stops being about anything.
     func test_a_figure_stays_with_its_tunnel_when_the_route_moves() async throws {
         let (runner, interfaces) = bothUp(routed: "utun7")      // «home» holds the route
-        let transport = LocalTransport()
+        let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
         speed.answer = VPNSpeedReading(down: 240, up: 40, rpm: 300, at: at)
-        let engine = makeEngine(runner, transport: transport, interfaces: interfaces, speed: speed)
+        let engine = makeEngine(runner, news: news, interfaces: interfaces, speed: speed)
         engine.refresh()
         let landed = expectation(description: "the reading reached the page")
-        let watcher = watchState(transport,
+        let watcher = watchState(news,
                                  until: { $0.tunnels.contains { $0.speed != nil } },
                                  then: landed)
-        try await measure(engine, "home")
+        engine.measureSpeed("home")
         await fulfillment(of: [landed], timeout: 5)
         watcher.cancel()
 
         interfaces.primary = "utun4"                            // the route moves to «work»
         engine.refresh()
 
-        let tunnels = await lastState(on: transport)?.tunnels ?? []
+        let tunnels = await lastState(on: news)?.tunnels ?? []
         XCTAssertEqual(tunnels.first(where: { $0.name == "home" })?.speed?.down, 240, """
             «home»'s own measurement was thrown away because the route moved to \
             another tunnel — it was taken while «home» held the route and is \
@@ -297,16 +291,16 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
     /// raised under the same name never inherits one.
     func test_a_tunnel_that_goes_takes_its_figure_with_it() async throws {
         let (runner, interfaces) = bothUp(routed: "utun7")
-        let transport = LocalTransport()
+        let news = EngineNews<VPNEngine.StatePayload>()
         let speed = FakeSpeed()
         speed.answer = VPNSpeedReading(down: 240, up: 40, rpm: 300, at: at)
-        let engine = makeEngine(runner, transport: transport, interfaces: interfaces, speed: speed)
+        let engine = makeEngine(runner, news: news, interfaces: interfaces, speed: speed)
         engine.refresh()
         let landed = expectation(description: "the reading reached the page")
-        let watcher = watchState(transport,
+        let watcher = watchState(news,
                                  until: { $0.tunnels.contains { $0.speed != nil } },
                                  then: landed)
-        try await measure(engine, "home")
+        engine.measureSpeed("home")
         await fulfillment(of: [landed], timeout: 5)
         watcher.cancel()
 
@@ -316,17 +310,17 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         // away, and the assertion below fell over on its own precondition
         // roughly two runs in three.
         runner.listOutput = list("Connected", "Disconnected")
-        let gone = await refreshed(engine, on: transport) { state in
+        let gone = await refreshed(engine, on: news) { state in
             !state.tunnels.contains { $0.name == "home" }
         }
         XCTAssertTrue(gone, "precondition: «home» never went away, so nothing was forgotten")
 
         runner.listOutput = list("Connected", "Connected")
-        let back = await refreshed(engine, on: transport) { state in
+        let back = await refreshed(engine, on: news) { state in
             state.tunnels.contains { $0.name == "home" }
         }
         XCTAssertTrue(back, "precondition: «home» never came back, so nothing was inherited")
-        let home = await lastState(on: transport)?.tunnels.first { $0.name == "home" }
+        let home = await lastState(on: news)?.tunnels.first { $0.name == "home" }
         XCTAssertNotNil(home, "precondition: «home» never came back, so nothing was inherited")
         XCTAssertNil(home?.speed, """
             the tunnel that came up is drawing the figure of the one that went — \

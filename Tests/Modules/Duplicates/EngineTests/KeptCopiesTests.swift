@@ -8,7 +8,7 @@ import XCTest
 /// `TheCopyThatStaysIsNeverAlsoTakenTests` drives the whole engine over two real
 /// files and asks what the batch allowed. This asks the rule itself the two
 /// questions that test cannot: a plan whose own survivor is the file it removes
-/// — which no pair check can catch, since `DuplicateVerification.verify` finds a
+/// — which no pair check can catch, since `Batch.verify` finds a
 /// file identical to itself — and whether the answer is the same twice, because
 /// which copy of the content survives must not be decided by the order a
 /// dictionary happened to hash its keys in.
@@ -66,7 +66,7 @@ final class KeptCopiesTests: XCTestCase {
     }
 
     /// The plan that keeps the very file it removes. No pair check can refuse
-    /// it — `DuplicateVerification.verify(remove: p, keep: p)` reads one file
+    /// it — `Batch.verify(remove: p, keep: p)` reads one file
     /// twice and calls it identical, which it is — so the only place it can be
     /// stopped is here.
     func testAPlanThatKeepsTheCopyItRemovesIsRefused() {

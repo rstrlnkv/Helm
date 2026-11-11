@@ -50,7 +50,7 @@ final class VPNAutoConnectMemoryTests: XCTestCase {
 
         // The app quits: Helm takes its own connection down.
         runner.listOutput = list("Disconnected")
-        engine.disconnect("A")
+        engine.disconnect("A", auto: false)
         XCTAssertFalse(engine.autoConnected.contains("A"),
                        "a connection Helm dropped is no longer Helm's")
 

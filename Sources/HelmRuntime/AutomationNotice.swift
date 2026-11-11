@@ -115,7 +115,7 @@ public final class SystemAutomationNotice: AutomationNoticePort {
         do {
             try await UNUserNotificationCenter.current().add(request)
         } catch {
-            // Whatever the banner names is in `body`, and the log carries no names.
+            // Whatever the banner names is in `body`, and the log line holds only the failure.
             HelmLog.shared.warn(area, "macOS refused the banner: "
                 + HelmFailure.describe(error))
         }

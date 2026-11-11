@@ -4,7 +4,8 @@ import HelmRuntime
 import HelmUI
 
 /// Borderless, non-activating panel shown below the status item; stacks each
-/// enabled module's panel tile (settings/quit live in the right-click menu).
+/// enabled module's panel tile (settings/quit live in the right-click menu and, when
+/// switched on, the panel's footer).
 /// Borderless panels can't normally become key; this one must, so its SwiftUI
 /// controls (toggles, text fields) accept input.
 private final class KeyablePanel: NSPanel {
@@ -40,7 +41,7 @@ private final class KeyablePanel: NSPanel {
 /// 1×1 in the app was 10 pt under a floor the app itself had written down. 320
 /// is the width the mockups always used, and it makes the rule true: two tiles
 /// of exactly 144.
-let helmPanelWidth: CGFloat = 320
+let helmPanelWidth: CGFloat = PanelGrid.minimumTile * 2 + PanelGrid.gap + PanelGrid.padding * 2
 /// Room on each side of the card for the glass to cast into.
 ///
 /// A window shadow is drawn by the window server *outside* the frame, so the
@@ -137,10 +138,9 @@ private let helmPanelShadowMargin: CGFloat = 28
 
     /// The strip, sized and clamped to the screen the panel was opened on.
     ///
-    /// Pulled out of `toggle` when the width became a setting: changing it
-    /// while the panel is open has to move the window, and re-deriving the
-    /// frame from the anchor is the only way that stays centred on the status
-    /// item rather than growing off one edge.
+    /// Called once per opening, before the panel is ordered front. Derived from
+    /// the anchor, so it stays centred on the status item rather than growing
+    /// off one edge.
     private func reframe() {
         let visible = anchorScreen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
         let margin: CGFloat = 8

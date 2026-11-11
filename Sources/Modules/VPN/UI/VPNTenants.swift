@@ -3,16 +3,15 @@
 
 import Module_VPN_Engine
 
-/// Who raises this tunnel — the card's own answer, capped to what a card can
-/// hold.
+/// Who raises this tunnel — the card's own answer, capped to the four the door
+/// wears.
 ///
-/// The flat list of rules said what each rule was asked to do and never said
-/// this; a strip of application icons on the card says it without being opened,
-/// which is the whole point of putting the rules behind a door.
+/// A strip of application icons on the card says it without being opened, which
+/// is the whole point of putting the rules behind a door.
 enum VPNTenants {
 
     /// **Everything, and the part of it a door can wear.** The strip on the closed
-    /// card is capped by width; the popover behind it has room for the lot, and a
+    /// card is capped; the popover behind it has room for the lot, and a
     /// popover that listed four of eleven rules with «and 7 more» would be a door
     /// that cannot be opened all the way. So the value carries the whole list and
     /// derives the cap, rather than being handed the cap and losing the rest.
@@ -27,13 +26,11 @@ enum VPNTenants {
         var total: Int { all.count }
     }
 
-    /// **Four, and the number is a width rather than a taste.** The settings
-    /// column clamps to the pane, so at the minimum window a card is about
-    /// 297 pt with 273 of content, and there the strip's own chrome — 8 pt of
-    /// padding a side, 6 between icons, 6 before its chevron and 9 for the
-    /// chevron — plus four 22 pt icons, plus the overflow chip, plus the notices
-    /// door beside it, comes to 214. Five icons fit there and not in the 190 pt
-    /// card the grid still declares as its floor.
+    /// **Four is a choice, not a width.** A card is drawn at
+    /// `VPNGridLayout.cardCeiling`, 346 pt with 322 of content, at every window
+    /// Helm allows (`cardMinimum`'s 190 is never reached), and there the door
+    /// row with four icons, the overflow chip and the notices door comes to 256;
+    /// six icons and the chip would fit in 312, a seventh would not.
     static let cap = 4
 
     static func of(_ vpnName: String,

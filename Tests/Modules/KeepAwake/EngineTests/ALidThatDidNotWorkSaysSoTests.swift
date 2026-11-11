@@ -40,7 +40,7 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
                                  assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(), power: FakePower(),
                                  apps: FakeApps(), pointer: FakePointer(),
-                                 clamshell: clamshell, clock: FakeClock())
+                                 clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
     override func tearDown() {
@@ -96,7 +96,7 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
         XCTAssertFalse(engine.lidRefused)
     }
 
-    /// It has to cross the wire, or the fact exists only inside the engine — the
+    /// It has to reach the payload, or the fact exists only inside the engine — the
     /// defect `StatePayload`'s own doc comment records.
     func testTheRefusalReachesThePayload() async throws {
         try XCTSkipUnless(MacHardware.hasLid, "this Mac has no lid, so the lid is never engaged")
@@ -104,21 +104,10 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
         engine.startSession(minutes: 0)
 
         await waitUntil("the lid was refused") { engine.lidRefused }
-        let decoded = try roundTrip()
-        XCTAssertTrue(decoded.lidRefused, "the engine knew and the screen could not")
+        let payload = currentPayload()
+        XCTAssertTrue(payload.lidRefused, "the engine knew and the screen could not")
     }
 
-    /// A payload from a build that never had these fields still decodes, and
-    /// decodes to «nothing is wrong» — which is what such a build meant, since it
-    /// could not ask either.
-    func testAnOlderPayloadWithoutTheFieldsStillDecodes() throws {
-        let older = Data("""
-        {"isActive":true,"conditions":[],"clamshellActive":false,"suppressed":false}
-        """.utf8)
-        let decoded = try JSONDecoder().decode(KeepAwakeEngine.StatePayload.self, from: older)
-        XCTAssertFalse(decoded.lidRefused)
-        XCTAssertFalse(decoded.lidGrantRemains)
-    }
 
     // MARK: - The rule outlived the feature
 
@@ -133,7 +122,7 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
         clamshell.removalSucceeds = false
         settings.setClamshellEnabled(false)
 
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
         await removalRan(on: clamshell)
 
         XCTAssertEqual(clamshell.removeCalls, 1, "precondition: the removal was attempted")
@@ -155,7 +144,7 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
         clamshell.removalSucceeds = false
         settings.setClamshellEnabled(false)
 
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
         await removalRan(on: clamshell)
 
         XCTAssertEqual(lines(containing: "Helm did not write"), 0,
@@ -175,7 +164,7 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
         clamshell.passwordlessGrantExists = true
         settings.setClamshellEnabled(false)
 
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
         await removalRan(on: clamshell)
 
         XCTAssertFalse(clamshell.isSudoersInstalled(), "precondition: our file went")
@@ -191,7 +180,7 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
         clamshell.passwordlessGrantExists = false
         settings.setClamshellEnabled(false)
 
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
         await removalRan(on: clamshell)
 
         XCTAssertFalse(engine.lidGrantRemains)
@@ -199,7 +188,7 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
 
     // MARK: - Who asks for the rule back
 
-    /// **The person's own switch, and only theirs.** The grant's lifetime is the
+    /// **The person's own switch, or «Reset all settings», and nothing else.** The grant's lifetime is the
     /// feature; until now the only falling edge that took it out was the lid
     /// option's, so somebody who switched all of Keep Awake off left the rule
     /// behind for a module they had just turned off.
@@ -248,13 +237,11 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
 
     // MARK: - Plumbing
 
-    private func roundTrip() throws -> KeepAwakeEngine.StatePayload {
-        let payload = KeepAwakeEngine.StatePayload(
+    private func currentPayload() -> KeepAwakeEngine.StatePayload {
+        KeepAwakeEngine.StatePayload(
             isActive: engine.isActive, conditions: [], clamshellActive: engine.clamshellActive,
             endDate: nil, startDate: nil, suppressed: engine.suppressed,
             lidRefused: engine.lidRefused, lidGrantRemains: engine.lidGrantRemains)
-        return try JSONDecoder().decode(KeepAwakeEngine.StatePayload.self,
-                                        from: JSONEncoder().encode(payload))
     }
 
     private func lines(containing text: String) -> Int {

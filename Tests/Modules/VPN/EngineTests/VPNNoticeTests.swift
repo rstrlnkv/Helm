@@ -19,9 +19,9 @@ final class VPNNoticeTests: XCTestCase {
 
     func testTheChoiceRoundTrips() {
         let s = settings()
-        s.setNotice(.system)
+        s.store.set(VPNNotice.system.rawValue, for: VPNSettings.automationNoticeKey)
         XCTAssertEqual(s.notice, .system)
-        s.setNotice(.silent)
+        s.store.set(VPNNotice.silent.rawValue, for: VPNSettings.automationNoticeKey)
         XCTAssertEqual(s.notice, .silent)
     }
 
@@ -97,8 +97,8 @@ final class VPNNoticeTests: XCTestCase {
     /// The store reads the same rule, so nothing decides this twice.
     func testTheSettingsAgreeWithTheRule() {
         let s = settings()
-        s.setNotice(.silent)
-        s.setDropNotice(.system)
+        s.store.set(VPNNotice.silent.rawValue, for: VPNSettings.automationNoticeKey)
+        s.store.set(VPNNotice.system.rawValue, for: VPNSettings.dropNoticeKey)
         XCTAssertEqual(s.notice(for: .disconnected), .system)
         XCTAssertEqual(s.notice(for: .connected), .silent)
         XCTAssertEqual(s.notice(for: .dropped), .system)

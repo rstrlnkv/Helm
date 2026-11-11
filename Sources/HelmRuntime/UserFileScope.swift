@@ -44,8 +44,7 @@ public enum UserFileScope {
         // and Finder accepts. Their own file was then drawn as a system item
         // with no basket button and no sentence saying why, in a gate whose
         // whole question is «does this belong to the user». The bucket is
-        // `DiskNode.isFolded` now, all the way to `DiskEntry.isFolded` on the
-        // wire, and it is told apart by the flag at the row, in the basket and
+        // `DiskNode.isFolded` now, all the way to `DiskEntry.isFolded`, and it is told apart by the flag at the row, in the basket and
         // in `DiskRemovalPlan` — none of which can be typed into a filename.
         // Both spellings. `standardizingPath` does more than drop `.` and `..`:
         // for a path that **exists on disk** it rewrites `/private/var/…` to

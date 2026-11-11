@@ -3,17 +3,17 @@
 ## State that outlives a page and ends with its module
 
 A module's UI state outlives its page and not its module. Settings rebuilds a page on
-every sidebar visit, so the view models are cached; the cache is dropped by module id
-through `ModuleUICache.dropWhenDisabled` (`Sources/HelmUI/DesignSystem/ModuleUICache.swift`),
-driven by `.helmModuleDisabled`, posted from `Sources/HelmApp/ModuleHost.swift`. The
-on-disk scan cache is untouched by this: the copy in memory goes, the answer stays.
+every sidebar visit, so a model is held outside the page, by the host. The on-disk scan cache is untouched when the model goes: the copy in memory goes, the answer stays.
+A module that owns its model ends it in `stop(_:)` (`Sources/HelmUI/ModuleDescriptor.swift`),
+which `Sources/HelmApp/ModuleHost.swift` calls before the engine's `deactivate()`; the model
+then goes with the module's `Live`.
 
-Dropping the cache is only one of two owners. A subscriber task started as
+The host is only one of a model's two owners. A subscriber task started as
 `Task { [weak self] in await self?.observeEvents() }` resolves its weak capture once, and
-the method then holds `self` for as long as it runs — which, over a transport whose
-stream does not finish, is the life of the app. The tasks are therefore held and
+the method then holds `self` for as long as it runs — which, over a stream that does
+not finish, is the life of the app. The tasks are therefore held and
 cancelled from the class's own teardown rather than from `deinit`.
-`LocalTransport.subscriberCount` makes the guard a count that stays put rather than a
+`EngineNews.subscriberCount` makes the guard a count that stays put rather than a
 memory figure: `Tests/HelmContractTests/SubscriberPruningTests.swift` and
 `Tests/HelmAppTests/ASwitchedOffModuleLetsItsSubscriberGoTests.swift`.
 
@@ -28,7 +28,7 @@ hosting `SettingsDetail`, the pane that holds whichever module page is open, so 
 inherits the idling without asking for it. `helmSettingsColumn()` ends on the same
 modifier, so a block that takes the column takes the idling with it; a page whose root
 is a `Form` takes no column and calls `helmIdlesOffScreen()` on its own
-(`Sources/HelmApp/GeneralSettingsPage.swift`). A harness that leaves its window
+(`Sources/Modules/Layout/UI/LayoutSettingsPage.swift`). A harness that leaves its window
 unordered declares itself with `helmMeasuringBench()` — a declaration the app itself
 does not make. The panel window is not gated this way.
 

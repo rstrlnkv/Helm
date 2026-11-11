@@ -92,7 +92,7 @@ enum PanelRig {
         let session = CaptureSession(capture: screen, writer: disk, trash: NoTrash(), pasteboard: Board(), preferences: NoPreferences(),
                                      shutter: NoShutter(), textReader: NoTextReader(), settings: { ScreenshotsSettings.read(store) },
                                      naming: { .english }, locations: ScreenshotsLocations(home: home, desktop: home))
-        let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store, session: session,
+        let controller = CaptureController(store: store, session: session,
                                            presentOverlay: { overlay in held.overlays += 1; held.overlay = overlay; return overlay.build() },
                                            presentBar: { bar in held.bars += 1; presentBar(bar) }, tick: tick)
         return Rig(controller: controller, screen: screen, disk: disk, held: held, display: try XCTUnwrap(base.first?.id))

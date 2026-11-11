@@ -30,9 +30,9 @@ import Module_Disk_Engine
 /// folders from a scan that is gone, above a Trash button — and nothing on that
 /// screen can show what those paths are part of.
 ///
-/// The transport answers immediately: these tests are about what the view model
+/// The work answers immediately: these tests are about what the view model
 /// keeps across a transition, not about interleaving, which
-/// `DiskScanRaceTests` already covers with a parked transport.
+/// `DiskScanRaceTests` already covers with a parked work.
 @MainActor
 final class StopLeavesNothingBehindTests: XCTestCase {
 
@@ -43,26 +43,26 @@ final class StopLeavesNothingBehindTests: XCTestCase {
     private let small = VolumeInfo(name: "Small", path: "/Volumes/Small",
                                    totalBytes: 500, freeBytes: 50)
 
-    private func transport() -> AnsweringTransport {
-        let transport = AnsweringTransport(volumes: [big, small])
+    private func work() -> AnsweringWork {
+        let work = AnsweringWork(volumes: [big, small])
         let onBig = folder("/Volumes/Big", bytes: 900,
                            children: [folder("/Volumes/Big/Sub", bytes: 600)])
         let onSmall = folder("/Volumes/Small", bytes: 400,
                              children: [folder("/Volumes/Small/Other", bytes: 200)])
-        transport.answer("/Volumes/Big",
+        work.answer("/Volumes/Big",
                          with: ScanResult(root: onBig, freeBytes: 100,
                                           filesScanned: 10, seconds: 1))
-        transport.answer("/Volumes/Small",
+        work.answer("/Volumes/Small",
                          with: ScanResult(root: onSmall, freeBytes: 50,
                                           filesScanned: 5, seconds: 1))
-        return transport
+        return work
     }
 
-    private func model(_ transport: AnsweringTransport) -> DiskViewModel {
+    private func model(_ work: AnsweringWork) -> DiskViewModel {
         // A store of its own: the module's real one is the person's last scan,
         // and a harness must leave nothing behind.
         let directory = scratchDirectory("disk-stop")
-        return DiskViewModel(vm: ModuleViewModel(transport: transport),
+        return DiskViewModel(work: work,
                              store: ScanStore(directory: directory))
     }
 
@@ -82,7 +82,7 @@ final class StopLeavesNothingBehindTests: XCTestCase {
     /// The volume picker, with a basket bar under it holding folders from the
     /// scan that was just abandoned.
     func testStopDoesNotLeaveTheAbandonedScansFoldersInTheBasket() async {
-        let dvm = model(transport())
+        let dvm = model(work())
         await scannedWithABasketedFolder(dvm)
 
         dvm.cancel()                    // the Stop button
@@ -102,12 +102,12 @@ final class StopLeavesNothingBehindTests: XCTestCase {
     /// the volume picker: a sentence about a tree that is no longer on screen,
     /// with the failures of a scan nobody can look at any more.
     func testStopDoesNotLeaveTheRemovalReportOverTheVolumePicker() async {
-        let transport = transport()
-        transport.answerTrash(with: DiskRemoval(
+        let work = work()
+        work.answerTrash(with: DiskRemoval(
             removed: ["/Volumes/Big/Sub"],
             refused: [HelmTrash.Refusal(path: "/Volumes/Big/Locked", reason: .noPermission)],
             freedBytes: 600))
-        let dvm = model(transport)
+        let dvm = model(work)
         await scannedWithABasketedFolder(dvm)
         await dvm.emptyBasket()
         XCTAssertNotNil(dvm.banner, "precondition: the bar is showing a removal report")
@@ -125,10 +125,10 @@ final class StopLeavesNothingBehindTests: XCTestCase {
     /// condition lives on the view model precisely so a test cannot pass
     /// against a copy of it that has drifted.
     func testTheBarIsShownForABasketAndForAReport() async {
-        let transport = transport()
-        transport.answerTrash(with: DiskRemoval(removed: ["/Volumes/Big/Sub"],
+        let work = work()
+        work.answerTrash(with: DiskRemoval(removed: ["/Volumes/Big/Sub"],
                                                 refused: [], freedBytes: 600))
-        let dvm = model(transport)
+        let dvm = model(work)
         XCTAssertFalse(dvm.showsRemovalBar, "nothing selected, nothing removed")
         await scannedWithABasketedFolder(dvm)
         XCTAssertTrue(dvm.showsRemovalBar, "something is marked for removal")
@@ -154,10 +154,10 @@ final class StopLeavesNothingBehindTests: XCTestCase {
     /// whatever the arithmetic says. `TrashIsNotFreedSpaceTests` pins the
     /// arithmetic itself, on one volume, where the removal actually runs.
     func testFreeingSpaceOnOneVolumeIsNotCreditedToAnother() async {
-        let transport = transport()
-        transport.answerTrash(with: DiskRemoval(removed: ["/Volumes/Big/Sub"],
+        let work = work()
+        work.answerTrash(with: DiskRemoval(removed: ["/Volumes/Big/Sub"],
                                                 refused: [], freedBytes: 600))
-        let dvm = model(transport)
+        let dvm = model(work)
         await scannedWithABasketedFolder(dvm)
 
         dvm.cancel()
@@ -174,7 +174,7 @@ final class StopLeavesNothingBehindTests: XCTestCase {
     /// `newScan()` clears the basket — after calling `cancel()`, which is where
     /// the missing line above is legible.
     func testStartingOverClearsTheBasket() async {
-        let dvm = model(transport())
+        let dvm = model(work())
         await scannedWithABasketedFolder(dvm)
 
         dvm.newScan()
@@ -185,7 +185,7 @@ final class StopLeavesNothingBehindTests: XCTestCase {
     /// And `rescan()` does too, because the tree it comes back with is a new
     /// measurement of the same place.
     func testScanningAgainClearsTheBasket() async {
-        let dvm = model(transport())
+        let dvm = model(work())
         await scannedWithABasketedFolder(dvm)
 
         await dvm.rescan()
@@ -197,7 +197,7 @@ final class StopLeavesNothingBehindTests: XCTestCase {
     /// The control: nothing above may be satisfied by a basket that never
     /// holds anything.
     func testTheBasketStillHoldsWhatWasTickedOnTheScreenItBelongsTo() async {
-        let dvm = model(transport())
+        let dvm = model(work())
         await scannedWithABasketedFolder(dvm)
 
         XCTAssertEqual(dvm.basket.map(\.path), ["/Volumes/Big/Sub"])

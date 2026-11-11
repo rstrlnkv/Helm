@@ -2,17 +2,26 @@ import SwiftUI
 
 /// The shared "connected / not" indicator dot.
 ///
-/// It lived beside the app picker because the first screen that needed one was
-/// there. It is a design-system mark used by three call sites, and it was
-/// filling `Color.green` — 2.22:1 against the window in light appearance, on a
-/// dot 8 pt across whose colour *is* its entire message.
+/// In `HelmSignal.success` rather than `Color.green` (2.22:1 against the window in light appearance)
+/// because its colour *is* its entire message.
 public struct HelmStatusDot: View {
+    /// `.row` beside a name in a row, `.widget` in a panel tile's header.
+    public enum Size {
+        case row, widget
+        var side: CGFloat { self == .row ? 8 : 6 }
+    }
+
     let active: Bool
-    public init(active: Bool) { self.active = active }
+    let size: Size
+    @Environment(\.helmTraits) private var traits
+    public init(active: Bool, size: Size = .row) {
+        self.active = active
+        self.size = size
+    }
     public var body: some View {
         Circle()
-            .fill(active ? HelmSignal.success : Color.secondary.opacity(0.4))
-            .frame(width: 8, height: 8)
+            .fill(active ? HelmSignal.success(increased: traits.increasedContrast) : Color.secondary.opacity(0.4))
+            .frame(width: size.side, height: size.side)
             .accessibilityHidden(true)
     }
 }

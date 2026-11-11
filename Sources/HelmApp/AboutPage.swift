@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import HelmRuntime
 import HelmUI
+import HelmAppStrings
 
 /// What colour each update channel is, decided once.
 ///
@@ -22,22 +23,9 @@ private enum ChannelInk {
         }
     }
 
-    /// What the chosen pill is filled with, and what its label is set in.
+    /// What the chosen pill is filled with.
     ///
-    /// Not the knocked-out white on a saturated capsule the panel's size chips
-    /// use, because that was measured here and it does not hold up: white on
-    /// the accent is **4.02:1** in both appearances and white on the warning
-    /// orange is **2.23:1** in dark, against the 4.5:1 floor `HelmSignal` was
-    /// solved for. So this follows `HelmBadge`'s rule instead — the tint
-    /// colours the fill and nothing else, and the lettering stays the text
-    /// colour, which cannot be got wrong.
-    ///
-    /// The wash is opaque and blended **inside** the appearance rather than
-    /// drawn as `tint.opacity(0.22)`: `NSColor(Color)` returns a dynamic
-    /// colour, so a blend made one line outside the block resolves against
-    /// whatever appearance happens to be current — the same trap
-    /// `HelmMetricStrip` documents. It also means the fill is a colour that can
-    /// be measured, rather than one that depends on what it lands on.
+    /// The wash is `HelmSurface.chosenWash`: opaque, blended inside the appearance.
     static func chosenFill(_ channel: UpdateCheck.Channel) -> Color {
         switch channel {
         case .beta: return betaWash
@@ -45,35 +33,13 @@ private enum ChannelInk {
         }
     }
 
-    /// The lettering on a chosen pill, which is the text colour whatever the
-    /// channel — the wash is what tells the two apart, and a label that changed
-    /// colour as well would be the pill deciding its own contrast.
-    static let chosenLabel = Color.primary
-
-    /// Stored, not built per call: `chosenFill` is read inside the view body
-    /// for every pill on every redraw, and each call would otherwise allocate a
-    /// colour and a provider closure. AppKit resolves the provider lazily per
-    /// appearance either way.
-    private static let betaWash = wash(fill(.beta))
-    private static let devWash = wash(fill(.dev))
-
-    private static func wash(_ tint: Color) -> Color {
-        Color(nsColor: NSColor(name: nil) { appearance in
-            var out = NSColor.windowBackgroundColor
-            appearance.performAsCurrentDrawingAppearance {
-                guard let ink = NSColor(tint).usingColorSpace(.sRGB),
-                      let base = NSColor.windowBackgroundColor.usingColorSpace(.sRGB),
-                      let blended = base.blended(withFraction: 0.22, of: ink)
-                else { return }
-                out = blended
-            }
-            return out
-        })
-    }
+    /// Stored, not built per call: the reason is on `HelmSurface.chosenWash`.
+    private static let betaWash = HelmSurface.chosenWash(fill(.beta))
+    private static let devWash = HelmSurface.chosenWash(fill(.dev))
 }
 
 /// The About page: what this build is, which channel it follows, and what
-/// changed. `HelmBezel` and `WhatsNewView` below are its own and stay private.
+/// changed. `WhatsNewView` below is its own and stays private.
 ///
 /// Internal rather than `private` because the router that chooses it lives in
 /// `SettingsWindow.swift`, and nothing outside `HelmApp` names it.
@@ -98,9 +64,9 @@ struct AboutHelmView: View {
         // Update button off the bottom.
         ScrollView {
             VStack(spacing: 0) {
-            Spacer(minLength: 12)
+            Spacer(minLength: HelmSpace.s5)
             hero
-            Spacer(minLength: 22).frame(maxHeight: 30)
+            Spacer(minLength: HelmSpace.s6).frame(maxHeight: HelmSpace.s7)
             instrumentRow
                 .padding(.bottom, HelmSpace.s5)
             // 10, the same gap the strip above it takes. Down the page the
@@ -127,8 +93,8 @@ struct AboutHelmView: View {
                 }
             }
             .controlSize(.large)
-            .padding(.top, 14)
-            Spacer(minLength: 18)
+            .padding(.top, HelmSpace.s5)
+            Spacer(minLength: HelmSpace.s6)
             // The flag credit was the second line here, and the comment above
             // it named CC BY 4.0 — the licence of the EmojiOne set that was
             // dropped, not of the flag-icons artwork that replaced it. MIT
@@ -137,20 +103,20 @@ struct AboutHelmView: View {
             // permission text. `NoticeShipsWithTheAppTests` is what keeps it
             // there now that nothing on screen would show its absence.
             Text("© 2026 Helm · GPL-3.0")
-                .padding(.top, 6)
-                .font(.caption2)
+                .padding(.top, HelmSpace.s3)
+                .font(HelmText.smallPrint)
                 .foregroundStyle(HelmText.faint)
         }
             .frame(width: Self.column)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 24)
+            .padding(.vertical, HelmSpace.s7)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // The name of the page this one is a tab of, for the window's title.
         // Without it nothing publishes a title, and
         // `SettingsWindow.applyTitle(_:)` falls back to the window's own name
-        // («Настройки Helm» for the Window menu), the name zone drawing
-        // the pane's name. A no-op where no bar is set.
+        // («Настройки Helm» for the Window menu). A no-op where the card does not
+        // draw the header (`helmHeaderInCard` false).
         .helmPageBar(title: AppStr.settingsPane)
         .sheet(isPresented: $showWhatsNew) {
             WhatsNewView(onClose: { showWhatsNew = false })
@@ -162,54 +128,8 @@ struct AboutHelmView: View {
     // MARK: - Hero
 
     private var hero: some View {
-        VStack(spacing: 12) {
-            ZStack {
-                // No halo behind the mark: `HelmAppMark` casts its own shadow,
-                // and a radial gradient on top of it was a second light source
-                // with a visible rim where its ramp ended.
-                // The bezel turns only while a check is running: motion here
-                // means work, not decoration.
-                HelmBezel(active: updater.checking)
-                    .frame(width: 172, height: 172)
-                HelmAppMark(size: 92)
-            }
-            .frame(height: 186)
-            VStack(spacing: 5) {
-                // The badges hang off the wordmark instead of sharing a row
-                // with it. In an HStack the pair is centred together, so the
-                // name sat left of centre by half the badges' width — under a
-                // mark and above a tagline that are both centred on the column,
-                // which is where the eye reads the axis from. As an overlay
-                // they take no width, so "Helm" is centred on the same line
-                // everything else is.
-                //
-                // Measured on the rendered pixels, not judged
-                // (`Scripts/design/measure-wordmark.swift`): in the 380 pt
-                // column the row put the word 42.2 pt left of the axis; the
-                // overlay puts it at 189.8 against a centre of 190.
-                Text("Helm")
-                    .font(.system(size: 34, weight: .semibold))
-                    .tracking(-0.4)
-                    .overlay(alignment: .topTrailing) {
-                        badge
-                            .fixedSize()
-                            // The overlay's own leading edge, placed 7 pt past
-                            // the end of the word.
-                            .alignmentGuide(.trailing) { $0[.leading] - 7 }
-                            // The top of the capsule on the top of the H. Not a
-                            // guess: at 34 pt semibold the cap starts exactly
-                            // 9.00 pt below the line box's top, measured off
-                            // the rendered pixels
-                            // (Scripts/design/measure-wordmark.swift).
-                            .alignmentGuide(.top) { $0[.top] - 9 }
-                    }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel(badgeAccessibilityLabel)
-                Text(AppStr.tagline)
-                    .font(.subheadline)
-                    .foregroundStyle(HelmText.quiet)
-            }
-        }
+        HelmAppHero(active: updater.checking, tagline: AppStr.tagline,
+                    spoken: badgeAccessibilityLabel) { badge }
     }
 
     /// One badge: what this copy *is*.
@@ -266,13 +186,13 @@ struct AboutHelmView: View {
     /// worth applying only with the glyph change — on its own it grew the card
     /// from 40 to 41.
     private var authorRow: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
+        HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s5) {
             Text(AppStr.author)
                 .foregroundStyle(HelmText.quiet)
-            Spacer(minLength: 8)
+            Spacer(minLength: HelmSpace.s4)
             Text(AppStr.authorName)
             Link(destination: URL(string: "https://t.me/r_strlnkv")!) {
-                HStack(spacing: 3) {
+                HStack(spacing: HelmSpace.s1) {
                     Image(systemName: "paperplane.fill")
                     Text("@r_strlnkv")
                 }
@@ -303,15 +223,15 @@ struct AboutHelmView: View {
     private var updateCard: some View {
         VStack(spacing: 0) {
             updateRow
-                .padding(.horizontal, 12)
-                .padding(.vertical, 12)
+                .padding(.horizontal, HelmSpace.s5)
+                .padding(.vertical, HelmSpace.s5)
             // The token, not a divider dimmed by eye: every other hairline in
             // the app is this colour, and 0.6 of a system divider is not a
             // value anybody can match on the next screen over.
             Rectangle()
                 .fill(HelmSurface.hairline)
                 .frame(height: 1)
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: HelmSpace.s3) {
                 HStack {
                     Text(AppStr.updateChannel)
                         // A row's own name, at the size every other row name on
@@ -327,58 +247,21 @@ struct AboutHelmView: View {
                     .foregroundStyle(HelmText.quiet)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 12)
+            .padding(.horizontal, HelmSpace.s5)
+            .padding(.vertical, HelmSpace.s5)
         }
         .helmCard(padding: 0)
     }
 
-    /// The two channels, as pills — the panel's size chips brought inside the
-    /// settings window: a capsule per choice, a material capsule under the
-    /// group, a hairline rim (`PanelChrome.sizeControl`).
-    ///
-    /// A segmented control could not carry the one thing this row is for. The
-    /// channels differ in kind, not in position, and the system draws both
-    /// segments in the accent whichever is chosen — so the control that asks
-    /// «how rough a build do you want» said it in one colour. Here Dev is the
-    /// warning orange it means and Beta is the accent, from `ChannelInk`, which
-    /// is also what the badge on the wordmark now reads.
-    ///
-    /// Buttons rather than a tap gesture on a shape, so Full Keyboard Access
-    /// reaches them and each carries its own label and selected trait.
+    /// The two channels, as pills (`HelmPillChoice`): Dev is the warning orange it means and Beta is the accent,
+    /// from `ChannelInk`, which is also what the badge on the wordmark reads.
     private var channelPills: some View {
-        HStack(spacing: 2) {
-            ForEach(UpdateCheck.Channel.allCases, id: \.self) { option in
-                let chosen = channel == option
-                Button { channel = option } label: {
-                    Text(AppStr.channelName(option))
-                        // One weight in both states: a semibold chosen label is
-                        // wider than a regular one, so the pill beside it would
-                        // move every time the choice did. The fill carries the
-                        // state instead.
-                        .font(HelmText.rowTitle)
-                        .foregroundStyle(chosen ? ChannelInk.chosenLabel
-                                         : HelmText.quiet)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 3)
-                        // A capsule inside a capsule, concentric at any type
-                        // size — the panel's chips learned this the hard way.
-                        .background(Capsule().fill(chosen ? ChannelInk.chosenFill(option)
-                                                   : Color.clear))
-                        .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .help(AppStr.channelNote(option))
-                .accessibilityLabel(AppStr.channelName(option))
-                .accessibilityAddTraits(chosen ? [.isButton, .isSelected] : .isButton)
-            }
-        }
-        .padding(2)
-        .background(Capsule().fill(.regularMaterial))
-        .overlay(Capsule().strokeBorder(HelmSurface.hairline))
-        .animation(HelmMotion.interface, value: channel)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(AppStr.updateChannel)
+        HelmPillChoice(AppStr.updateChannel, selection: $channel,
+                       items: UpdateCheck.Channel.allCases.map { option in
+            .init(option, label: AppStr.channelName(option),
+                  chosenFill: ChannelInk.chosenFill(option),
+                  help: AppStr.channelNote(option))
+        })
     }
 
     /// What this card is drawing, decided in one place that can be asked.
@@ -511,7 +394,7 @@ struct AboutHelmView: View {
             // Nothing has been decided this session: report when the last
             // check happened rather than claiming to be current.
             HStack(spacing: HelmSpace.s5) {
-                statusIcon("arrow.triangle.2.circlepath", .secondary)
+                statusIcon("arrow.triangle.2.circlepath", HelmText.quiet)
                 // «Проверено 2 часа назад» is longer than the line above it in
                 // every language, so if that one did not fit, this one never did.
                 Text(lastCheckedText)
@@ -554,76 +437,8 @@ struct AboutHelmView: View {
 
     private func statusIcon(_ name: String, _ color: Color) -> some View {
         Image(systemName: name)
-            .font(.system(size: 15))
+            .font(HelmText.statusGlyph)
             .foregroundStyle(color)
-    }
-}
-
-/// A compass/helm bezel: fine tick marks ringing the app icon, every fifth one
-/// longer. It rotates only while an update check is in flight.
-private struct HelmBezel: View {
-    var active: Bool
-    /// Where the dial stands when nothing is driving it.
-    @State private var resting: Double = 0
-    /// When the current turn began — the angle is a **function of time**, not a
-    /// value being animated towards.
-    ///
-    /// It was the latter, and that is why stopping rewound the wheel: with
-    /// `repeatForever` the model sits at 360 while the dial is somewhere inside
-    /// the turn, so retargeting to 0 runs backwards from wherever it happens to
-    /// be. Driven from a clock there is no target to retarget — the stop reads
-    /// the angle actually reached and coasts forward from there.
-    @State private var since: Date?
-
-    private static let secondsPerTurn: Double = 6
-
-    private func angle(_ now: Date) -> Double {
-        guard let since else { return resting }
-        return resting + now.timeIntervalSince(since) / Self.secondsPerTurn * 360
-    }
-
-    var body: some View {
-        // Paused rather than switched away from: an `if` here would swap the
-        // view's identity at the moment of stopping, and a newly inserted view
-        // has no previous angle to interpolate from — the coast would not play.
-        TimelineView(.animation(paused: since == nil)) { timeline in
-            dial.rotationEffect(.degrees(angle(timeline.date)))
-        }
-        .onChange(of: active) { _, running in
-            if running {
-                // Reduce Motion: no spin at all, rather than a fast one.
-                guard !HelmMotion.reduceMotion else { return }
-                since = .now
-            } else if since != nil {
-                let reached = angle(.now)
-                since = nil
-                resting = reached
-                withAnimation(HelmMotion.spinDown) { resting = reached + 24 }
-            }
-        }
-        .accessibilityHidden(true)
-    }
-
-    private var dial: some View {
-        Canvas { context, size in
-            let center = CGPoint(x: size.width / 2, y: size.height / 2)
-            let radius = min(size.width, size.height) / 2
-            for tick in 0..<60 {
-                let long = tick % 5 == 0
-                let length: CGFloat = long ? 7 : 4
-                let a = Double(tick) / 60 * 2 * .pi
-                let outer = CGPoint(x: center.x + cos(a) * radius,
-                                    y: center.y + sin(a) * radius)
-                let inner = CGPoint(x: center.x + cos(a) * (radius - length),
-                                    y: center.y + sin(a) * (radius - length))
-                var path = Path()
-                path.move(to: inner)
-                path.addLine(to: outer)
-                context.stroke(path,
-                               with: .color(.primary.opacity(long ? 0.20 : 0.10)),
-                               lineWidth: long ? 1.4 : 1)
-            }
-        }
     }
 }
 
@@ -631,9 +446,11 @@ private struct HelmBezel: View {
 private struct WhatsNewView: View {
     let onClose: () -> Void
 
+    private static let sheetSize = CGSize(width: 520, height: 460)
+
     var body: some View {
         VStack(spacing: 0) {
-            HelmPageHeader(symbol: "sparkles", tint: .indigo,
+            HelmPageHeader(symbol: "sparkles", tint: ModuleTint.whatsNewColour,
                            title: AppStr.whatsNew) {
                 // Escape closes it, like every sheet on the machine.
                 // `HelmHotkeyRecorder` special-cases Escape during capture and
@@ -643,18 +460,18 @@ private struct WhatsNewView: View {
             }
             Divider()
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: HelmSpace.s6) {
                     ForEach(Changelog.entries) { entry in
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                Text(entry.version).font(.system(size: 16, weight: .bold))
+                        VStack(alignment: .leading, spacing: HelmSpace.s4) {
+                            HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s4) {
+                                Text(entry.version).font(HelmText.entryHeading)
                                 // The entry stores "2026-07-28" because that is
                                 // what sorts; no language writes it that way.
                                 Text(HelmDates.day(entry.date))
                                     .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
                             }
                             ForEach(entry.items) { item in
-                                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s4) {
                                     badge(item.kind)
                                     Text(item.text).font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
                                 }
@@ -664,10 +481,10 @@ private struct WhatsNewView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 // Matches the header plate above it, which sits at 20.
-                .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 16)
+                .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s6)
             }
         }
-        .frame(width: 520, height: 460)
+        .frame(width: Self.sheetSize.width, height: Self.sheetSize.height)
     }
 
     private func badge(_ kind: ChangeKind) -> some View {

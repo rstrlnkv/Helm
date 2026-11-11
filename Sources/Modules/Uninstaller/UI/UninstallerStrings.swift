@@ -1,35 +1,25 @@
-// swiftlint:disable line_length
-//
-// Every line this rule flags in this file is one localized string — the English
-// that is also the key, and that eight `.strings` files answer. Splitting one
-// across source lines buys nothing and risks the key. `.swiftlint.yml` already
-// says these lines "are correct at that length"; the exemption is here so the
-// 320-character warning can go on meaning what that comment claims it means —
-// a notice about runaway *code* — instead of firing 61 times on the one case
-// it excuses.
-
 import HelmRuntime
 import HelmUI
 import Module_Uninstaller_Engine
 
 /// Localized strings for the Uninstaller module.
 enum UnStr {
-    static var moduleName: String { L("Uninstaller") }
-    static var summary: String { L("Remove an app with all of its files") }
-    static var searchApps: String { L("Search apps") }
-    static var scanning: String { L("Scanning…") }
+    static var moduleName: String { L(.uninstaller) }
+    static var summary: String { L(.removeAnAppWithAllOfItsFiles) }
+    static var searchApps: String { L(.searchApps) }
+    static var scanning: String { HelmWord.scanning }
     /// The same note when the Trash switch is on, because then the missing
     /// grant costs two things rather than one — and one grant deserves one
     /// notice, not a second row with its own Grant button saying the same.
     static var accessNeededWithWatch: String {
-        L("Without Full Disk Access an app’s containers stay behind, and Helm cannot see the Trash to look for leftovers.")
+        L(.withoutFullDiskAccessOrTheTrash)
     }
-    static var removalNeedsAccess: String { L("Without Full Disk Access an app’s containers stay behind.") }
-    static var moveToTrash: String { L("Move to Trash") }
+    static var removalNeedsAccess: String { L(.withoutFullDiskAccess) }
+    static var moveToTrash: String { HelmWord.moveToTrash }
     static func confirmTrash(_ count: Int, _ size: String) -> String {
         HelmConfirm.trash(Plural.items(count, language: AppLanguage.current.rawValue), size)
     }
-    static var cancel: String { L("Cancel") }
+    static var cancel: String { HelmWord.cancel }
 
     /// A leftover's kind and its size, as one caption.
     ///
@@ -40,29 +30,29 @@ enum UnStr {
     /// this now does too.
     static func kindAndSize(_ kind: LeftoverKind, _ size: String) -> String {
         let name = self.kind(kind)
-        return L("\(name) · \(size)", [.ru: "\(name) · \(size)", .es: "\(name) · \(size)", .fr: "\(name) · \(size)", .de: "\(name) · \(size)", .ja: "\(name)・\(size)", .zh: "\(name) · \(size)", .pt: "\(name) · \(size)"])
+        return L(.kindAndSize(name, size))
     }
 
     static func kind(_ k: LeftoverKind) -> String {
         switch k {
-        case .appSupport: return L("Application Support")
-        case .caches: return L("Caches")
-        case .preferences: return L("Settings files")
-        case .containers: return L("Containers")
-        case .groupContainers: return L("Group Containers")
-        case .savedState: return L("Saved windows")
-        case .logs: return L("Logs")
-        case .httpStorages: return L("Network cache and cookies")
-        case .webKit: return L("Website data")
-        case .cookies: return L("Cookies")
-        case .appScripts: return L("Application Scripts")
-        case .launchAgent: return L("Launch agents")
+        case .appSupport: return L(.applicationSupport)
+        case .caches: return L(.caches)
+        case .preferences: return HelmWord.settingsFiles
+        case .containers: return L(.containers)
+        case .groupContainers: return L(.groupContainers)
+        case .savedState: return L(.savedWindows)
+        case .logs: return L(.logs)
+        case .httpStorages: return L(.networkCacheAndCookies)
+        case .webKit: return L(.websiteData)
+        case .cookies: return L(.cookies)
+        case .appScripts: return L(.applicationScripts)
+        case .launchAgent: return HelmWord.launchAgents
         }
     }
     /// The Trash offer's window title. Not "Leftovers" — that is the module's
-    /// own tab, for files whose app is already gone, and one English key means
+    /// own tab, for files whose app is already gone, and one English text means
     /// one thing.
-    static var trashOfferTitle: String { L("Files left in your Library") }
+    static var trashOfferTitle: String { L(.filesLeftInYourLibrary) }
     /// The one standing line in that window, and the honest cost of offering
     /// now rather than waiting for the Trash to be emptied: the app is in the
     /// Trash, not gone, and it can come back without these.
@@ -73,13 +63,13 @@ enum UnStr {
     /// the files are moved: they land beside the app, and restoring the app alone
     /// still does not bring them.
     static var trashOfferNote: String {
-        L("Putting the app back from the Trash will not bring these files back.")
+        L(.puttingTheAppBack)
     }
     /// What Cancel really means here, said outright. The record holds for as long
     /// as the app is in the Trash, and once the Trash is emptied there is nothing
     /// left to ask about — so "Later" would be a lie and «Отменить» is the system
     /// word for "make nothing happen", which this does not do.
-    static var trashOfferKeep: String { L("Keep these files") }
+    static var trashOfferKeep: String { L(.keepTheseFiles) }
     /// The switch on the Leftovers tab.
     ///
     /// Impersonal, like every other switch in Helm and — the reason that settles
@@ -90,60 +80,63 @@ enum UnStr {
     /// what they will recognise. The offer still covers apps already sitting
     /// there when the switch goes on — `setWatchingTrash` emits `trashChanged`
     /// for exactly that — but that is the caption's business, not the label's.
-    static var watchTrash: String { L("Look for leftovers automatically when an app goes to the Trash") }
+    static var watchTrash: String { L(.lookForLeftoversAutomatically) }
     /// What the feature does, and the one limit worth knowing before turning it
     /// on: the bundle in the Trash is what says whose files these are, so
     /// emptying the Trash first leaves nothing to identify them by.
     static var watchTrashNote: String {
-        L("Helm shows the settings, caches and support files it left behind, ready to remove. Only while the app is still in the Trash — empty it first and there is nothing left to identify them by.")
+        L(.helmShowsWhatItLeftBehind)
     }
-    static var tabApps: String { L("Apps") }
-    static var tabOrphans: String { L("Leftovers") }
-    static var orphansIntro: String { L("Files left in your Library by apps you no longer have. Only files named after an app’s bundle id are listed, so some leftovers will not appear.") }
-    static var scanOrphans: String { L("Scan for leftovers") }
-    static var scanningOrphans: String { L("Searching…") }
-    static var noOrphans: String { L("No leftovers found.") }
-    static var selectAll: String { L("Select all") }
-    static var rescan: String { L("Scan again") }
+    static var tabApps: String { HelmWord.apps }
+    static var tabOrphans: String { HelmWord.leftovers }
+    static var orphansIntro: String { L(.filesLeftByAppsNoLongerHere) }
+    static var scanOrphans: String { L(.scanForLeftovers) }
+    static var scanningOrphans: String { HelmWord.searching }
+    static var noOrphans: String { HelmWord.noLeftoversFound }
+    static var selectAll: String { HelmWord.selectAll }
+    static var rescan: String { HelmWord.scanAgain }
     static func selectedSummary(_ n: Int, _ size: String,
-                                language: AppLanguage = AppLanguage.current) -> String { L("\(n) selected · \(size)", [.ru: "Выбрано: \(n) · \(size)", .es: "\(n) seleccionados · \(size)", .fr: "\(n) sélectionnés · \(size)", .de: "\(n) ausgewählt · \(size)", .ja: "\(n) 件選択・\(size)", .zh: "已选 \(n) 项 · \(size)", .pt: "\(n) selecionados · \(size)"], language: language) }
-    static var selectNone: String { L("Clear selection") }
+                                language: AppLanguage = AppLanguage.current) -> String {
+        L(.selectedSummary(String(n), size), language: language)
+    }
+    static var selectNone: String { HelmWord.clearSelection }
     /// At zero the button says only its verb: it is disabled with nothing
     /// checked, and a dimmed «Review 0» is a control naming a count of nothing.
     /// The count returns with the first tick.
     static func reviewCount(_ n: Int,
                             language: AppLanguage = AppLanguage.current) -> String {
-        guard n > 0 else { return L("Review", language: language) }
-        return L("Review \(n)", [.ru: "Просмотреть: \(n)", .es: "Revisar \(n)", .fr: "Vérifier \(n)", .de: "\(n) prüfen", .ja: "\(n) 件を確認", .zh: "查看 \(n) 项", .pt: "Revisar \(n)"], language: language)
+        guard n > 0 else { return L(.review, language: language) }
+        return L(.reviewCount(String(n)), language: language)
     }
-    static var back: String { L("Back") }
-    static var removing: String { L("Removing…") }
+    static var back: String { HelmWord.back }
+    static var removing: String { L(.removing) }
     /// The caption under the first row of every review group. The last screen
     /// before deletion has no dialog after it, and it said nothing at all about
     /// the app — only about the files beside it.
-    static var theAppItself: String { L("The app itself — always removed") }
-    /// Word for word what Disk calls a row it may not remove (`DkStr.systemItem`).
-    static var systemApp: String { L("System") }
-    static var noLeftoversForApp: String { L("No extra files found.") }
-    static var runningBadge: String { L("Running") }
-    static func runningWarning(_ names: String) -> String { L("Still running: \(names). Quit to remove.", [.ru: "Ещё запущены: \(names). Для удаления нужно завершить.", .es: "Aún en ejecución: \(names). Hay que cerrarlas para eliminarlas.", .fr: "Encore en cours : \(names). À quitter pour les supprimer.", .de: "Läuft noch: \(names). Zum Entfernen beenden.", .ja: "実行中: \(names)。削除するには終了が必要です。", .zh: "仍在运行：\(names)。需先退出才能删除。", .pt: "Ainda em execução: \(names). É preciso encerrar para remover."]) }
-    static var forceQuitAndRemove: String { L("Force quit and remove anyway") }
+    static var theAppItself: String { L(.theAppItself) }
+    static var systemApp: String { L(.systemApp) }
+    static var noLeftoversForApp: String { L(.noExtraFilesFound) }
+    static var runningBadge: String { L(.running) }
+    static func runningWarning(_ names: String) -> String {
+        L(.runningWarning(names))
+    }
+    static var forceQuitAndRemove: String { L(.forceQuitAndRemoveAnyway) }
     /// Where the files are going, not what the disk will gain. The button one
     /// click later says "Move to Trash", and `~/.Trash` is a folder on the same
     /// volume: nothing is free until somebody empties it.
-    static func toTrash(_ size: String) -> String { L("To the Trash — \(size)", [.ru: "В Корзину — \(size)", .es: "A la papelera — \(size)", .fr: "Vers la corbeille — \(size)", .de: "In den Papierkorb — \(size)", .ja: "ゴミ箱へ — \(size)", .zh: "移到废纸篓 — \(size)", .pt: "Para o Lixo — \(size)"]) }
-    /// Word for word what Disk says (`DkStr.movedToTrash`), whose verb and noun
-    /// per language were read out of Finder's own `AL13` key. Two screens that
-    /// do the same thing must not describe it in two ways.
-    static func movedToTrash(_ size: String) -> String { L("Moved to the Trash — \(size)", [.ru: "Перемещено в Корзину — \(size)", .es: "Trasladado a la papelera — \(size)", .fr: "Placé dans la corbeille — \(size)", .de: "In den Papierkorb gelegt — \(size)", .ja: "ゴミ箱に入れました — \(size)", .zh: "已移到废纸篓 — \(size)", .pt: "Movido para o Lixo — \(size)"]) }
+    static func toTrash(_ size: String) -> String {
+        L(.toTrash(size))
+    }
+    /// `HelmBasket.movedToTrash`: Disk, Duplicates and the Uninstaller end a removal on one sentence.
+    static func movedToTrash(_ size: String) -> String { HelmBasket.movedToTrash(size) }
     static func movedWithFailures(_ size: String, _ n: Int) -> String {
         let items = Plural.items(n, language: AppLanguage.current.rawValue)
-        return L("Moved to the Trash — \(size), \(items) could not be moved", [.ru: "Перемещено в Корзину — \(size), не удалось переместить: \(items)", .es: "Trasladado a la papelera — \(size), \(items) no se pudieron mover", .fr: "Placé dans la corbeille — \(size), \(items) non déplacés", .de: "In den Papierkorb gelegt — \(size), \(items) konnten nicht verschoben werden", .ja: "ゴミ箱に入れました — \(size)、\(items) は移動できませんでした", .zh: "已移到废纸篓 — \(size)，\(items) 无法移动", .pt: "Movido para o Lixo — \(size), \(items) não puderam ser movidos"])
+        return L(.movedWithFailures(size, items))
     }
-    static var blockedByRunning: String { L("Quit the running apps first, or allow a force quit.") }
+    static var blockedByRunning: String { L(.quitTheRunningAppsFirst) }
     static func couldNotRemove(_ n: Int) -> String {
         let items = Plural.items(n, language: AppLanguage.current.rawValue)
-        return L("\(items) could not be removed", [.ru: "Не удалось удалить: \(items)", .es: "No se pudieron eliminar \(items)", .fr: "\(items) n’ont pas pu être supprimés", .de: "\(items) konnten nicht entfernt werden", .ja: "\(items) を削除できませんでした", .zh: "\(items) 无法删除", .pt: "\(items) não puderam ser removidos"])
+        return L(.couldNotRemove(items))
     }
     /// The sentences moved to `TrashReasonText` when Disk and Duplicates
     /// started needing them too. Kept as a name the pages already call.
@@ -157,65 +150,60 @@ enum UnStr {
     /// wrong with it — and two translators drifted to a noun for a category
     /// («по названию», 名前一致), which is what an under-specified fragment does.
     /// The word this app already uses for the thing is a guess.
-    static var matchedByName: String { L("guess") }
+    static var matchedByName: String { L(.guess) }
     /// The message over an empty Apps tab, one per reason there is no list.
     ///
     /// Takes the language rather than reading `AppLanguage.current`: the suite
     /// runs in whatever language this machine is set to, so a sentence checked
     /// against `.current` is checked in one language eight times — and these
-    /// three are compared against each other, which is a check that cannot fail
-    /// when all three sides move together.
+    /// two are compared against each other, which is a check that cannot fail
+    /// when both sides move together.
     ///
-    /// Exhaustive over the enum, with no `default`: a fourth reason would
-    /// otherwise be drawn as one of these three, which is the defect
+    /// Exhaustive over the enum, with no `default`: a third reason would
+    /// otherwise be drawn as one of these two, which is the defect
     /// `AppsEmpty.Reason` exists for.
     static func emptyMessage(_ nothing: AppsEmpty.Reason,
                              language: AppLanguage = AppLanguage.current) -> String {
         switch nothing {
-        // Not «No applications found.» — nothing was found because nothing was
-        // read. This comment used to add that «the footer beside it already
-        // refuses that fold», and the footer did not: it read «Counting apps…»
-        // under this very sentence, a failure and a claim of progress on one
-        // screen. The footer is derived from the same `AppsEmpty.Reason` this
-        // switch is now, and says nothing here.
-        case .neverAnswered: return L("Helm could not read the list of applications.", language: language)
-        case .noApps: return L("No applications found.", language: language)
+        case .noApps: return L(.noApplicationsFound, language: language)
         // A claim about the search field, which is on screen directly above this
         // message — not about the Mac.
-        case .searchHidesAll: return L("No applications match this search.", language: language)
+        case .searchHidesAll: return L(.noApplicationsMatchThisSearch, language: language)
         }
     }
-    static var openDiskAccess: String { L("Open Full Disk Access…") }
+    static var openDiskAccess: String { HelmWord.openFullDiskAccess }
     /// `HelmUI`'s, because Leftovers' extension row draws the same label over the
     /// same call — it said «Manage…» there until the two were made one.
     static var openExtensions: String { HelmControlName.openExtensions }
-    static var done: String { L("Done") }
-    static var refreshList: String { L("Refresh list") }
+    static var done: String { HelmWord.done }
+    static var refreshList: String { HelmWord.refreshList }
     /// The toolbar action's tooltip and VoiceOver name. Finder's own words for
     /// the same menu.
-    static var sortBy: String { L("Sort By") }
+    static var sortBy: String { L(.sortBy) }
     /// Whole phrases and not «Name»: that key already names an Autopilot rule's
     /// field, «Size» its condition — one key, one meaning.
     static func sortName(_ order: AppSortOrder) -> String {
         switch order {
-        case .name: return L("Sort by Name")
-        case .size: return L("Sort by Size")
-        case .dateLastOpened: return L("Sort by Date Last Opened")
+        case .name: return L(.sortByName)
+        case .size: return L(.sortBySize)
+        case .dateLastOpened: return L(.sortByDateLastOpened)
         }
     }
     /// The age is `HelmDates.age(_, style: .full)`.
-    static func opened(_ age: String) -> String { L("Opened \(age)", [.ru: "Открыто \(age)", .es: "Abierta \(age)", .fr: "Ouverte \(age)", .de: "Geöffnet \(age)", .ja: "開いた: \(age)", .zh: "打开于 \(age)", .pt: "Aberto \(age)"]) }
+    static func opened(_ age: String) -> String {
+        L(.opened(age))
+    }
     /// Spotlight has no date. Deliberately not «Never opened»: it is silent for
     /// an unindexed volume and for a fresh reindex as well.
-    static var noRecordOfOpening: String { L("No record of opening") }
+    static var noRecordOfOpening: String { L(.noRecordOfOpening) }
     /// Nil while the first query is still out: the line reads as a count that
     /// has not arrived rather than a count of zero.
     static func appsCount(_ n: Int?) -> String {
-        guard let n else { return L("Counting apps…") }
+        guard let n else { return L(.countingApps) }
         return Plural.apps(n, language: AppLanguage.current.rawValue)
     }
     static func appsCountSelected(_ n: Int?, _ chosen: Int, _ size: String) -> String {
         let apps = appsCount(n)
-        return L("\(apps) · \(chosen) selected · \(size)", [.ru: "\(apps) · выбрано \(chosen) · \(size)", .es: "\(apps) · \(chosen) seleccionadas · \(size)", .fr: "\(apps) · \(chosen) sélectionnées · \(size)", .de: "\(apps) · \(chosen) gewählt · \(size)", .ja: "\(apps)・選択 \(chosen)・\(size)", .zh: "\(apps) · 已选 \(chosen) · \(size)", .pt: "\(apps) · \(chosen) selecionados · \(size)"])
+        return L(.appsCountSelected(apps, String(chosen), size))
     }
 }

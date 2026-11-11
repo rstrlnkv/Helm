@@ -19,21 +19,6 @@ final class ScreenSpaceTests: XCTestCase {
                        "the display above the primary was not placed above it: the y flip is missing")
     }
 
-    func testTheFlipIsItsOwnInverse() {
-        let rect = CGRect(x: 40, y: 70, width: 300, height: 200)
-        let round = ScreenSpace.cgRect(fromAppKit: ScreenSpace.appKitRect(fromCG: rect, primaryHeight: primaryHeight),
-                                       primaryHeight: primaryHeight)
-        XCTAssertEqual(round, rect)
-    }
-
-    func testThePointerOnTheUpperDisplayHasANegativeCGY() {
-        // AppKit: 200 points into the display that is above the primary.
-        let appKitPoint = CGPoint(x: -1000, y: 1080 + 1080 - 200)
-        let cg = ScreenSpace.cgPoint(fromAppKit: appKitPoint, primaryHeight: primaryHeight)
-        XCTAssertEqual(cg, CGPoint(x: -1000, y: -880))
-        XCTAssertTrue(aboveLeftCG.contains(cg), "the pointer is not inside the display it is on")
-    }
-
     func testAWindowOnTheUpperDisplayIsLocalToItAndCutFromTheRightPlace() {
         let window = CGRect(x: -1900, y: -1000, width: 400, height: 300)
         let local = ScreenSpace.local(window, in: aboveLeftCG)

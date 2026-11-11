@@ -3,26 +3,20 @@ import Combine
 import SwiftUI
 import HelmRuntime
 import HelmUI
+import HelmAppStrings
 
-/// The settings window: glass with a column of module rows on it, and an opaque
+/// The settings window: the ground of the stored look (`HelmBarAppearance`) with a column of module rows on it, and an opaque
 /// card holding the page, built by `SettingsShellViewController` from
 /// `ShellContentView`. Each of the two hosts a SwiftUI view; a shared
 /// `SettingsModel` carries the selection between them.
 ///
-/// **The window wears an app-owned `NSToolbar`, built by `SettingsToolbar`**: a cached bar for each page that declares toolbar content and one shared by the pages that
-/// declare none, AppKit's strip over the whole window, and the page's name as the bar's first item, held off the
-/// item's leading edge so that it starts sixteen points past the card and never left of where AppKit starts its items, told where the card is. The shell's pane starts
-/// where AppKit's strip ends and the shell adds nothing to it.
+/// **The window wears no `NSToolbar`.** The header row is the card's own, drawn at the top of the detail pane
+/// by `SettingsDetail` (`helmCardHeader`): the page's name and status on the left, what the page declared
+/// through `helmWindowToolbar` on the right. The title bar is transparent over it and the pane takes no safe
+/// area from it, so the row starts at the card's top edge.
 @MainActor final class SettingsWindow: NSObject, NSWindowDelegate {
     private let window: NSWindow
     private let model: SettingsModel
-    /// What a page's toolbar content crosses into this target by
-    /// (`HelmWindowToolbar.swift` in `HelmUI`) — handed to the detail pane's
-    /// environment so a page never needs to import `HelmApp` to publish into
-    /// it, and read by the bar the window wears on the other side.
-    private let toolbarChannel = HelmWindowToolbarChannel()
-    private let settingsToolbar: SettingsToolbar
-
     /// One size for every page. Switching pages must never resize the window
     /// under the user's cursor; the size they pick is remembered instead.
     ///
@@ -33,7 +27,8 @@ import HelmUI
     /// (`DiskLayout.barWithStatement`), and at 940 the pane, the window less
     /// `ShellGeometry.defaultSidebarWidth` and `ShellGeometry.inset`, is under it, so the
     /// statement never appeared out of the box and nothing suggested widening
-    /// the window would reveal it. 1060 clears it.
+    /// the window would reveal it. 1060 cleared it; the default is now `minSize` and a margin, because the
+    /// Log page's header in German needs more than that (`minSize`).
     ///
     /// Not private: `SidebarComposerSheet` caps itself at this height, because
     /// a sheet is drawn inside this window and the window's own content is the
@@ -44,38 +39,33 @@ import HelmUI
     /// module (Screenshots, in Utilities) made the shipped composer measure 723,
     /// which 700 could not hold. With Hosts archived (the tag `archive/hosts`)
     /// there are ten, one 40 pt row fewer; the height was left at 760.
-    nonisolated static let defaultSize = NSSize(width: 1060, height: 760)
-    /// Below this the list rows start truncating names and paths.
-    private static let minSize = NSSize(width: 860, height: 540)
+    nonisolated static let defaultSize = NSSize(width: 1100, height: 760)
+    /// Below this the Log page's header row, the fullest one, no longer fits the card in German.
+    ///
+    /// **1096 is that row in German at the default sidebar** (`ShellGeometry.defaultSidebarWidth`, 200, which
+    /// nothing in the window changes): «Einstellungen», the tabs «Grundlagen | Protokoll | Über Helm», five
+    /// actions and the search at `HelmHeaderSearch.width`. Read from `HelmReadout ax` frames on Helm Dev at the
+    /// old 1045 minimum, where the row overflowed and was centred, as the row width the frames add up to
+    /// (the plate's left edge, 40 left of the name, to the search's right edge) — German 850, French 838,
+    /// Spanish 810, Russian 805, English, Portuguese, Japanese and Chinese 801 (the room): 850 pt of row,
+    /// 20 pt of gutter each side, 200 of sidebar and 4 of window inset: 1094, and 2 more for a frame rounded
+    /// to whole points. The search could not give way instead: French's «Rechercher dans le journal»
+    /// has about 8 pt to spare in the 200. A sidebar stored wider than the default
+    /// (`ShellGeometry.sidebarRange` goes to 320) is not held by this number.
+    private static let minSize = NSSize(width: 1096, height: 540)
 
-    /// The band under the bar is the running system's decision (`HelmBandChoice.running`); the
-    /// same value sets the title bar below and reaches the pane's `helmToolbarBackdrop`.
+    /// The header row's band is the running system's decision (`HelmBandChoice.running`), handed to the pane.
     init(host: ModuleHost) {
         let band = HelmBandChoice.running
         let model = SettingsModel(host: host)
         self.model = model
-        let transparent = band.titlebarAppearsTransparent
-        let shell = SettingsShellViewController(model: model, toolbarChannel: toolbarChannel, band: band)
-        let toolbar = SettingsToolbar(model: model, channel: toolbarChannel, lead: .spacer,
-                                      barAttached: { [weak shell] in shell?.barWasAttached() })
-        shell.cardMoved = { [weak toolbar, weak shell] frame in
-            toolbar?.paneMoved(leading: frame.minX, width: frame.width, rail: shell?.shell.buttonsStandInRail ?? false)
-        }
-        settingsToolbar = toolbar
+        let shell = SettingsShellViewController(model: model, band: band)
         let window = NSWindow(contentViewController: shell)
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
         window.title = AppStr.settingsWindowTitle
-        // **Load-bearing on the pane, not in the bar.** Transparent, it holds
-        // the detail pane's own scroll-edge pocket at opacity 0 — with the
-        // flag off that layer stands at opacity 1 over the pane's width —
-        // which is the whole reason `helmToolbarBackdrop` exists, and the
-        // bar's own backdrop layer does not move with it.
-        // On macOS 27 a dev toggle once read the system's own scroll edge instead; shown a
-        // screenshot of it, the owner kept Helm's own band there. On macOS 26
-        // the owner asked for the system's back, so the flag is off there and
-        // the pane draws no band of Helm's — that the system's effect then
-        // draws on 26 is inferred from this Mac's 27.2, not measured on 26.
-        window.titlebarAppearsTransparent = transparent
+        // Transparent on every system: the header row is the card's, and no title bar material may sit
+        // over it.
+        window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.setContentSize(Self.defaultSize)
         window.contentMinSize = Self.minSize
@@ -86,47 +76,25 @@ import HelmUI
         self.window = window
         super.init()
         window.delegate = self
-        // The card's place is known to the bar before the bar is put on the
-        // window: one layout, which tells it in its own turn.
-        shell.view.layoutSubtreeIfNeeded()
-        // Assigning this is what puts the first toolbar on the window —
-        // `SettingsToolbar` cannot do it itself at construction, since it is
-        // built before this window exists.
-        settingsToolbar.window = window
-        // Seeds the bar with this window's own, freshly-created state —
-        // neither key nor main yet — before the window is shown, rather than
-        // leaving it at the bar's default until the first notification below
-        // arrives. See the header above this class's four `windowDid…`
-        // methods for the signal and `HelmToolbarActionsModel.appearsActive`'s
-        // for why it is read here and not from SwiftUI content.
-        updateWindowAppearsActive()
         // **The window's title is the page's name**, set here on the
         // `NSWindow` rather than through SwiftUI: the bridge that used to
         // carry a detail pane's toolbar into the window carried its subtitle
         // and dropped its title (measured on macOS 27 — «Untitled» over a
-        // pane that had set one), and that reason survives the bridge's own
-        // removal — the window's title is still this class's to set. The
+        // pane that had set one), and the window's title is still this class's to set. The
         // page says what it is called with `HelmPageTitleKey`; this is the
         // one place that listens.
         titleWatch = model.$pageTitle.sink { [weak self] title in
             self?.applyTitle(title)
         }
-        NotificationCenter.default.addObserver(
-            forName: .helmPageBarStyleChanged, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.applyTitle(self?.model.pageTitle) }
-        }
     }
 
     private var titleWatch: AnyCancellable?
 
-    /// Writes what the page published as the window's title, and under `.windowTitle` its subtitle too (empty
-    /// under `.moduleName`). `titleVisibility` is `.hidden` under both styles, written once by the initialiser: the
-    /// name zone draws the name, with the module's plate under `.moduleName` and without it under
-    /// `.windowTitle`, and the title stays the window's (the Window menu and Mission Control name the window by it).
+    /// Writes what the page published as the window's title. `titleVisibility` is `.hidden`, written once by the
+    /// initialiser: the card's header row draws the name, and the title stays the window's (the Window menu and
+    /// Mission Control name the window by it).
     private func applyTitle(_ title: HelmPageTitle?) {
-        let style = AppSettings.pageBarStyle
         window.title = title?.title ?? AppStr.settingsWindowTitle
-        window.subtitle = style == .windowTitle ? (title?.subtitle ?? "") : ""
     }
 
     /// `selecting` opens the window on that module's page (used by panel utility rows).
@@ -148,13 +116,37 @@ import HelmUI
             model.selection = ShellSidebarRows.settled(.module(moduleID),
                                                        enabled: model.host.enabledModuleIDs)
         }
-        NSApp.setActivationPolicy(.regular)
+        bringForward()
+    }
+
+    /// Opens the window on exactly this page, whatever the page is: Log and About
+    /// too, which `show(selecting:)` cannot name (`LaunchPage`).
+    func show(page: SettingsSelection) {
+        model.selection = page
+        bringForward()
+    }
+
+    /// Whether this window is in `HostWindow`'s count of open windows. A flag, not `isVisible`: `show` is
+    /// called again while the window is open, and a miniaturised window is not visible and still open.
+    private var counted = false
+
+    private func bringForward() {
+        if !counted {
+            counted = true
+            HostWindow.windowOpened()
+        }
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
+        // A window ordered front without the app's activation gets no key or main notification until
+        // one comes, so its chrome would not dim: read it now.
+        updateWindowAppearsActive()
     }
 
     func windowWillClose(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory)
+        if counted {
+            counted = false
+            HostWindow.windowClosed()
+        }
     }
 
     // MARK: - Whether AppKit draws this window's chrome active
@@ -190,8 +182,8 @@ import HelmUI
 
     private func updateWindowAppearsActive() {
         let active = window.isKeyWindow || window.isMainWindow
-        settingsToolbar.setWindowAppearsActive(active)
         (window.contentViewController as? SettingsShellViewController)?.shell.setWindowAppearsActive(active)
+        model.windowAppearsActive = active
     }
 }
 
@@ -211,15 +203,19 @@ enum SettingsSelection: Hashable {
 @MainActor final class SettingsModel: ObservableObject {
     let host: ModuleHost
     /// `didSet` announces the change a second time, after the value is stored. `@Published` announces in
-    /// `willSet`, and the toolbar redraws synchronously inside that announcement (`SettingsToolbar`'s
-    /// `selectionWatch`). Assumed, not measured with the toolbar: that without this `didSet` the pane's update
-    /// runs against the old selection, so a selection that leaves the log for a module page leaves the pane's
-    /// page title the log's.
+    /// `willSet`, and a view that redraws synchronously inside that announcement reads the old selection.
+    /// Assumed, not measured since the window lost its toolbar (the redraw it was written for was the
+    /// toolbar's): that without this `didSet` the pane's update runs against the old selection, so a selection
+    /// that leaves the log for a module page leaves the pane's page title the log's.
     @Published var selection: SettingsSelection? = .general {
         didSet { objectWillChange.send() }
     }
     /// What the page on screen calls itself, for the window's title bar.
     @Published var pageTitle: HelmPageTitle?
+    /// `SettingsWindow.updateWindowAppearsActive()`'s reading, for the header row's and the sidebar rows' dimming
+    /// (`\.helmWindowAppearsActive`). True until the window is first brought forward, which reads it
+    /// (`SettingsWindow.bringForward()`); the window is built to be shown.
+    @Published var windowAppearsActive = true
     /// Bumped when the module order changes, so the sidebar redraws with it —
     /// the order is read from settings, which SwiftUI cannot observe.
     @Published private(set) var orderRevision = 0
@@ -249,8 +245,8 @@ enum SettingsSelection: Hashable {
         // `willSet`, so `live` still holds the old set inside it. It closes
         // the difference between the page and the bar after `live` moves, not
         // after the stored flag is written: between the store write
-        // (`ModuleHost.swift:56`) and `live[key] = nil` (`:133`) the page
-        // already draws General while the bar still reads the raw selection.
+        // (`ModuleHost.setEnabled`) and `live[key] = nil` (`ModuleHost.disable`)
+        // the page already draws General while the bar still reads the raw selection.
         liveWatch = host.$live.sink { [weak self] _ in
             guard let self else { return }
             let settled = ShellSidebarRows.settled(self.selection, enabled: host.enabledModuleIDs)
@@ -281,28 +277,13 @@ enum SettingsSelection: Hashable {
 /// hosted in it. A plain view controller; the window's size is the user's and
 /// the controller asks nothing of it.
 ///
-/// **The card's place and the buttons' placement are reported inside the content's layout pass.** `cardMoved` is called from
-/// `ShellContentView.layout()` in its own turn, after the card is placed and before the window's buttons are, each time the card's
-/// frame or `ShellContentView.buttonsStandInRail` differs from what it was last called for; the window's closure hands the toolbar
-/// both (`SettingsToolbar.paneMoved(leading:width:rail:)`). What it writes (the toolbar's inset for the name and the width of the lead that
-/// stands the tabs on the card's middle) is there when the pass ends, and the lead's width is worked out from where the toolbar starts its
-/// items under the placement it was told, not from the name item's frame. Nothing it does may assign `window.toolbar`.
-///
-/// The controller assigns the window no toolbar: that is `SettingsToolbar`'s,
-/// told where the card is through `cardMoved`.
+/// The controller assigns the window no toolbar: the header row is a view in the page's own hosting view.
 @MainActor final class SettingsShellViewController: NSViewController {
     private let model: SettingsModel
-    /// Handed to the detail pane's environment so a page can publish its
-    /// toolbar content (`helmWindowToolbar`) without importing `HelmApp` —
-    /// `SettingsToolbar`, on the other side of it, is `SettingsWindow`'s.
-    private let toolbarChannel: HelmWindowToolbarChannel
     /// The window's own band decision, handed down rather than read again —
     /// no default, so the pane cannot be built on one system's decision
     /// under a title bar set from another's.
     private let band: HelmBandChoice
-
-    /// Told where the card is; set by the window, which holds the toolbar.
-    var cardMoved: (CGRect) -> Void = { _ in }
 
     private let fold = SidebarFold()
 
@@ -313,9 +294,8 @@ enum SettingsSelection: Hashable {
     /// Nothing in the window changes it, so an unfold always ends here.
     private let expandedWidth: CGFloat
 
-    init(model: SettingsModel, toolbarChannel: HelmWindowToolbarChannel, band: HelmBandChoice) {
+    init(model: SettingsModel, band: HelmBandChoice) {
         self.model = model
-        self.toolbarChannel = toolbarChannel
         self.band = band
         self.expandedWidth = AppSettings.sidebarWidth(in: store)
         super.init(nibName: nil, bundle: nil)
@@ -345,13 +325,6 @@ enum SettingsSelection: Hashable {
         }
     }
 
-    /// The toolbar assigned a bar to the window: ask the shell for a layout.
-    /// Asks only, never forces one.
-    func barWasAttached() {
-        guard isViewLoaded else { return }
-        shell.barWasAttached()
-    }
-
     private func width(collapsed: Bool) -> CGFloat {
         collapsed ? ShellGeometry.railWidth : expandedWidth
     }
@@ -366,6 +339,8 @@ enum SettingsSelection: Hashable {
         let sidebar = NSHostingController(
             rootView: SidebarInTheShell(model: model, fold: fold) { [weak self] in self?.flipSidebar() }
                 .modifier(RebuiltOnLanguageChange(model: model))
+                // Its own hosting controller, its own root: the pane's environment stops at the pane.
+                .helmRoot()
                 // The window survives closing (`isReleasedWhenClosed = false`),
                 // so without this both panes went on re-rendering — and keeping
                 // memory — for every engine event for as long as the app ran.
@@ -375,47 +350,30 @@ enum SettingsSelection: Hashable {
 
         let detail = NSHostingController(
             rootView: SettingsDetail(model: model)
-                // A page publishes its tabs, actions and search through this
-                // channel (`HelmWindowToolbar.swift` in `HelmUI`); a page that
-                // never does leaves the bar showing its name — plus a
-                // status-bearing page's own status under
-                // `PageBarStyle.moduleName` — and nothing else
-                // (`SettingsToolbar`). The bar exists whether or not any
-                // page ever asks it for anything.
-                .environment(\.helmWindowToolbarChannel, toolbarChannel)
-                // The strip under the bar, lit once the page's content
-                // has scrolled beneath it — `helmToolbarBackdrop` says why it
-                // is Helm's and not the system's, and on which system it is
-                // the system's after all.
-                .helmToolbarBackdrop()
-                // Outside the backdrop, so the band it draws — or does not —
-                // is the decision the window's title bar was set from.
+                // The look of the header row's tabs and actions, from the stored choice and live
+                // (`HelmBarAppearance`).
+                .helmTracksBarAppearance { AppSettings.barAppearance }
+                // Whether the row wears Helm's band at all, as the system's decision.
                 .environment(\.helmBandChoice, band)
+                .modifier(TellsWindowActivity(model: model))
                 .onPreferenceChange(HelmPageTitleKey.self) { [model] title in
                     model.pageTitle = title
                 }
-                .helmTracksPageBarStyle { AppSettings.pageBarStyle }
+                .environment(\.helmHeaderInCard, true)
                 .modifier(RebuiltOnLanguageChange(model: model))
-                // The pane as well as the sidebar: a module page's header plate
-                // and its empty state are module icons too, and «Module icons»
-                // is what the switch says.
-                .helmTracksModuleIconStyle { AppSettings.sidebarStyle }
+                .helmRoot()
                 // Same reason as the sidebar's, and this pane is the expensive
                 // one: it holds whichever module page was open, and LogView's
                 // live tail, when the window was closed.
                 .helmIdlesOffScreen())
-        // **The pane keeps AppKit's safe area.** The inset above the
-        // page is AppKit's strip and `ShellContentView` adds nothing to it. No `sceneBridgingOptions` is set
-        // on this controller, on purpose: every page says what it wants in
-        // its bar through `helmWindowToolbar`, which reaches the bar the window wears
-        // (`SettingsToolbar`) through `HelmWindowToolbarChannel` and needs no bridge from this
-        // controller at all.
+        // **The pane takes no safe area from the title bar**: the header row starts at the card's top edge,
+        // and the inset above the page is the row's own (`helmCardHeader`). A page says what it wants in
+        // the row through `helmWindowToolbar`, a preference in this same hosting view.
         detail.sizingOptions = []
+        detail.safeAreaRegions = []
         addChild(sidebar)
         addChild(detail)
-        return ShellContentView(sidebar: sidebar.view, pane: detail.view) { [weak self] frame in
-            self?.cardMoved(frame)
-        }
+        return ShellContentView(sidebar: sidebar.view, pane: detail.view) { AppSettings.barAppearance }
     }
 }
 
@@ -433,6 +391,9 @@ private struct SidebarInTheShell: View {
 
     var body: some View {
         ShellSidebar(model: model, collapsed: fold.collapsed, toggleCollapsed: flip)
+            // The sidebar is a hosting controller of its own: an environment set on the pane's root
+            // does not reach it, so it tells the rows the window's state itself.
+            .modifier(TellsWindowActivity(model: model))
     }
 }
 
@@ -441,26 +402,50 @@ private struct SidebarInTheShell: View {
 private struct SettingsDetail: View {
     @ObservedObject var model: SettingsModel
 
+    /// Bumped when the module on screen says its state moved; the status is read off an object this view does
+    /// not observe, so without this it is right once per visit and stale after.
+    @State private var activityRevision = 0
+    @State private var activityWatch: AnyCancellable?
+
+    private var settled: SettingsSelection? {
+        ShellSidebarRows.settled(model.selection, enabled: model.host.enabledModuleIDs)
+    }
+
     var body: some View {
+        let _ = activityRevision
+        let identity = ShellPageIdentity.of(settled, host: model.host)
         content
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .helmCardHeader(symbol: identity.symbol, tint: identity.tint, title: identity.title,
+                            status: identity.status)
+            .onAppear(perform: watchActivity)
+            .onChange(of: settled) { watchActivity() }
+    }
+
+    /// Follows the selected module's own «my state moved» signal, replacing the one of the page left.
+    /// `body` reads `activityRevision`, so writing it asks for the status again.
+    private func watchActivity() {
+        activityWatch = nil
+        guard case .module(let id) = settled,
+              let live = model.host.liveModule(id), let changes = live.statusChanges() else { return }
+        activityWatch = changes.sink { _ in activityRevision &+= 1 }
     }
 
     @ViewBuilder
     private var content: some View {
         let tabs = HelmPageToolbarContent(tabs: SettingsTabs.all,
-                                          selectedTab: SettingsTabs.binding($model.selection))
+                                          selectedTab: SettingsTabs.binding($model.selection),
+                                          reserves: LogView.trailingRun)
         // A module that is off reads as General, as it does in the sidebar,
         // whatever the selection still says.
         switch ShellSidebarRows.settled(model.selection, enabled: model.host.enabledModuleIDs) {
         case .none, .general:
-            // The keys are the ones `SettingsToolbar`'s `pageKey` answers for the
-            // page; General and About put nothing in their bar but the tabs.
+            // General and About put nothing in the row but the tabs.
             MenuBarSettingsView()
-                .helmWindowToolbar(tabs, token: "general")
+                .helmWindowToolbar(tabs)
         case .about:
             AboutHelmView()
-                .helmWindowToolbar(tabs, token: "about")
+                .helmWindowToolbar(tabs)
         case .log:
             LogView(settingsTabs: tabs)
         case .module(let id):
@@ -475,38 +460,41 @@ private struct SettingsDetail: View {
     }
 }
 
+/// **The symbol, tint, name and status of the page on screen, for the header row**: a module's are its
+/// descriptor's symbol, tint and name (`ModuleDescriptor.moduleMetadata`, `moduleTint`; the sidebar's row draws
+/// the glyph and short name untinted, `ShellSidebar`), and General, Log and About share Settings' — one name
+/// over the three tabs, so the plate stays put under them.
+struct ShellPageIdentity {
+    let symbol: String
+    let tint: Color
+    let title: String
+    let status: HelmHeaderStatus?
+
+    /// `selection` is the settled one (`ShellSidebarRows.settled`).
+    @MainActor static func of(_ selection: SettingsSelection?, host: ModuleHost) -> ShellPageIdentity {
+        let settings = ShellPageIdentity(symbol: "gearshape", tint: ModuleTint.hostColour, title: AppStr.settingsPane, status: nil)
+        guard case .module(let id) = selection, let descriptor = ModuleRegistry.descriptor(id) else {
+            return settings
+        }
+        return ShellPageIdentity(symbol: descriptor.moduleMetadata.sfSymbol, tint: descriptor.moduleTint.colour,
+                                 title: descriptor.moduleMetadata.name,
+                                 status: status(id, host: host))
+    }
+
+    /// nil where the module answers nil, which is most of them.
+    @MainActor static func status(_ id: String, host: ModuleHost) -> HelmHeaderStatus? {
+        guard let live = host.liveModule(id), let activity = live.activity() else { return nil }
+        switch activity {
+        case .active: return HelmHeaderStatus(word: AppStr.moduleActive, active: true)
+        case .idle: return HelmHeaderStatus(word: AppStr.moduleIdle, active: false)
+        }
+    }
+}
+
 private struct ModuleDetailView: View {
     @ObservedObject var host: ModuleHost
     let descriptor: any ModuleDescriptor
     let id: String
-
-    /// `statusWord`'s own reason to redraw — the badge that used to sit
-    /// beside the name here is gone (the owner, 2026-09-28: «Давай вернем
-    /// его в правую часть»; `SettingsToolbar` draws it now, in `StatusZoneView`, at
-    /// the bar's own trailing edge).
-    ///
-    /// `activity` reads a `@Published` on the module's view model — an object
-    /// this view holds and does not observe — so measured, the badge this
-    /// once fed changed exactly once per visit to the page: start a session
-    /// from the hero, and the countdown ran while the badge two inches above
-    /// it still said «Not active», until you left the page and came back.
-    /// `statusWord` inherits the same publisher for the same reason, now
-    /// feeding only the subtitle the window is given under `.windowTitle`, where `titleVisibility` is `.hidden`.
-    ///
-    /// `statusChanges` is the publisher for exactly this and already existed
-    /// before this view subscribed — `command grep -rn 'statusChanges(live.vm)'
-    /// Sources | command grep -v '///'` finds every subscriber.
-    @State private var activityRevision = 0
-
-    /// The module's own «my state moved» signal, or nothing for a module that
-    /// publishes none — in which case `statusWord` stays nil below.
-    private var activityChanges: AnyPublisher<Void, Never> {
-        guard let live = host.liveModule(id),
-              let changes = descriptor.statusChanges(live.vm) else {
-            return Empty().eraseToAnyPublisher()
-        }
-        return changes
-    }
 
     var body: some View {
         // The header lies **over** the page, and the page scrolls under it —
@@ -517,8 +505,10 @@ private struct ModuleDetailView: View {
         page
             // Leading, not centre. This alignment governs only content that
             // does not fill the pane, and everything here fills it — a capped
-            // column and a non-bleeding header each centre themselves,
-            // measured unmoved at 610, 810 and 1400 pt. What it does govern is
+            // column centres itself, and every header here is the card's, which
+            // bleeds. A capped column and a non-bleeding header were measured
+            // unmoved at 610, 810 and 1400 pt, before the header went to the
+            // card. What it does govern is
             // a row that wants *more* than the pane: centred, the overflow was
             // split between the two edges, so a clipped toolbar hid its path
             // under the sidebar and its buttons off the right. Pinned leading,
@@ -527,27 +517,7 @@ private struct ModuleDetailView: View {
             .helmPageHeader(symbol: descriptor.moduleMetadata.sfSymbol,
                             tint: descriptor.moduleTint.colour,
                             title: descriptor.moduleMetadata.name,
-                            subtitle: statusWord,
                             bleeds: descriptor.pageBleeds)
-            // `statusWord` reads a value off an object this view does not
-            // observe, so without this it is right once per visit and stale
-            // after.
-            .onReceive(activityChanges) { _ in activityRevision &+= 1 }
-    }
-
-    /// The module's status said in words: what the page publishes as its
-    /// subtitle, which `SettingsWindow.applyTitle` gives the window under
-    /// `.windowTitle`, where `titleVisibility` is `.hidden`. nil for a module
-    /// with no notion of running.
-    private var statusWord: String? {
-        _ = activityRevision
-        guard let live = host.liveModule(id), let activity = descriptor.activity(live.vm) else {
-            return nil
-        }
-        switch activity {
-        case .active: return AppStr.moduleActive
-        case .idle: return AppStr.moduleIdle
-        }
     }
 
     /// The module's own page. A module that is off never gets here: the detail
@@ -563,10 +533,19 @@ private struct ModuleDetailView: View {
     /// window after it.
     @ViewBuilder private var page: some View {
         if let live = host.liveModule(id) {
-            descriptor.settingsPage(live.vm)
+            live.page()
         } else {
             Color.clear
         }
+    }
+}
+
+/// Hands the window's key or main state to the header row and the sidebar's rows, which dim with it.
+private struct TellsWindowActivity: ViewModifier {
+    @ObservedObject var model: SettingsModel
+
+    func body(content: Content) -> some View {
+        content.environment(\.helmWindowAppearsActive, model.windowAppearsActive)
     }
 }
 

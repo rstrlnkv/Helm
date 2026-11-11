@@ -47,7 +47,7 @@ final class ATunnelThatHangsIsNotPolledForEverTests: XCTestCase {
         runner.listScript = [list("Connecting")]
         let e = engine(runner)
 
-        e.connect("A")
+        e.connect("A", auto: false)
 
         XCTAssertGreaterThan(runner.listReadCount, 2,
                              "a tunnel still coming up was not re-read at all: the card would "
@@ -66,7 +66,7 @@ final class ATunnelThatHangsIsNotPolledForEverTests: XCTestCase {
         runner.listScript = [list("Connecting"), list("Connecting"), list("Connected")]
         let e = engine(runner)
 
-        e.connect("A")
+        e.connect("A", auto: false)
 
         XCTAssertEqual(e.status("A"), .connected, "the poll did not follow the tunnel up")
         XCTAssertLessThan(runner.listReadCount, 8,
@@ -100,7 +100,7 @@ final class ATunnelThatHangsIsNotPolledForEverTests: XCTestCase {
                              list("Connected")]
         let e = engine(runner)
 
-        e.connect("A")
+        e.connect("A", auto: false)
 
         XCTAssertTrue(runner.issued.contains(["--nc", "start", "A"]),
                       "precondition: the connect was issued")
@@ -127,7 +127,7 @@ final class ATunnelThatHangsIsNotPolledForEverTests: XCTestCase {
         runner.replies["Old office"] = "No service"
         let e = engine(runner)
 
-        e.connect("Old office")
+        e.connect("Old office", auto: false)
 
         XCTAssertEqual(e.lastFailure?.reason, .noSuchService, "precondition: it was refused")
         XCTAssertLessThan(runner.listReadCount, 4,

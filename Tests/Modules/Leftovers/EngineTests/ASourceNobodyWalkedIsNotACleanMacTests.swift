@@ -32,7 +32,7 @@ import XCTest
 ///
 /// It needs no attacker. `ADirectoryThatIsNotTheOneItNamesTests` names the
 /// ordinary version itself: «anybody who has ever symlinked a plug-in folder onto
-/// another volume». One of the seven is enough, because it is the *filtered* list
+/// another volume». One of the eight is enough, because it is the *filtered* list
 /// that has to be empty for this message, not the scan.
 final class ASourceNobodyWalkedIsNotACleanMacTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
@@ -177,9 +177,8 @@ final class ASourceNobodyWalkedIsNotACleanMacTests: XCTestCase {
 
         try FileManager.default.setAttributes([.posixPermissions: 0o000],
                                               ofItemAtPath: preferences.path)
-        // `contents(of:)` rather than `children(of:)`, and the difference is this
-        // test's whole subject: `children(of:)` is `contents(of:).entries`, which
-        // folds «refused» back into «empty», so an empty answer here would have
+        // `contents(of:)` rather than its `.entries`, and the difference is this
+        // test's whole subject: the entries alone fold «refused» back into «empty», so an empty answer here would have
         // been the precondition passing on the very fold the assertion below
         // exists to catch. `.refused` says the port really was turned away.
         XCTAssertEqual(files.contents(of: preferences), .refused,

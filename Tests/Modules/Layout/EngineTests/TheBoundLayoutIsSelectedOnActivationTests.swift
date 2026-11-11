@@ -20,7 +20,7 @@ final class TheBoundLayoutIsSelectedOnActivationTests: XCTestCase {
         let engine = LayoutEngine(
             tap: FakeTap(), typing: FakeTyping(), sources: sources,
             translation: FakeTranslation(table: [:]),
-            spell: FakeSpell(valid: []), secure: FakeSecure(),
+            spell: FakeSpell(valid: []), secure: FakeSecure(), activation: AppActivation(),
             settings: store)
         engine.activate()
         return engine
@@ -74,7 +74,7 @@ final class WhichLayoutAnActivationSelectsTests: XCTestCase {
         let engine = LayoutEngine(
             tap: FakeTap(), typing: FakeTyping(), sources: sources,
             translation: FakeTranslation(table: [:]),
-            spell: FakeSpell(valid: []), secure: FakeSecure(),
+            spell: FakeSpell(valid: []), secure: FakeSecure(), activation: AppActivation(),
             settings: store)
         engine.activate()
         return engine
@@ -129,7 +129,7 @@ final class WhichLayoutAnActivationSelectsTests: XCTestCase {
         let engine = LayoutEngine(
             tap: FakeTap(), typing: FakeTyping(), sources: sources,
             translation: FakeTranslation(table: [:]),
-            spell: FakeSpell(valid: []), secure: FakeSecure(),
+            spell: FakeSpell(valid: []), secure: FakeSecure(), activation: AppActivation(),
             settings: store)
         engine.activate()
         FrontmostApp.shared.setForTesting("com.apple.Terminal")

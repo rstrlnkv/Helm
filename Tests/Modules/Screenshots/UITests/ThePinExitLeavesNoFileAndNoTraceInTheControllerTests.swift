@@ -107,7 +107,7 @@ final class ThePinExitLeavesNoFileAndNoTraceInTheControllerTests: XCTestCase {
         })
         let overlays = Count()
         let box = OverlayBox()
-        let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store, session: session,
+        let controller = CaptureController(store: store, session: session,
                                            presentOverlay: { overlay in
                                                overlays.bump()
                                                box.overlay = overlay
@@ -208,15 +208,6 @@ final class ThePinExitLeavesNoFileAndNoTraceInTheControllerTests: XCTestCase {
         await grace(0.5)
         XCTAssertEqual(rig.pins.pins.count, 0, "a pin opened for a module that was switched off")
         XCTAssertEqual(rig.disk.written, 0)
-    }
-
-    /// Both places that drop the controller (a new view model, the module switched off) must close the pins:
-    /// read from the source because the controller they reach is private to `ScreenshotsCapture`.
-    func testBothPlacesThatDropTheControllerCloseThePins() throws {
-        let source = SwiftSource.code(try RepoSource.text(of: "Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift"))
-        XCTAssertFalse(source.isEmpty)
-        XCTAssertEqual(source.components(separatedBy: "teardown()").count - 1, 3, "teardown() should be declared once and called twice")
-        XCTAssertFalse(source.contains("controller?.cancel()"), "a place that drops the controller still only cancels, and leaves the pins")
     }
 
     private func makePicture() throws -> CGImage {

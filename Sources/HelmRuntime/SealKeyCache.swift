@@ -31,9 +31,9 @@ import Foundation
 /// spending first use exactly once and refusing to remember a refusal are the
 /// two things worth a test, and neither could have one if they lived behind the
 /// real login keychain. The cost of that choice is that it has to be *put* in
-/// front of a port: `AppSettings.scanGuard` has it, and the two seal keys that
-/// do not — `RuleKeychain` and the one `DuplicatesSettings` builds — still pay a
-/// round trip per verdict.
+/// front of a port: `SettingsSealKey.overScanSettings` has it, for
+/// `AppSettings.scanGuard` and `DuplicatesSettings.guardOfScanSettings`, and
+/// Autopilot's `SealedRules` resolves its key once per run and holds it.
 ///
 /// ## Two locks, because one lock had two jobs
 ///
@@ -59,7 +59,7 @@ import Foundation
 /// `held`, and nothing calls out of this file while holding `held`.
 ///
 /// `@unchecked` because the one mutable field is behind `held` on both sides —
-/// the rule a `LocalTransport` field once broke by taking the lock on one of
+/// the rule a handler field once broke by taking the lock on one of
 /// them.
 public final class SealKeyCache: SealKeyPort, @unchecked Sendable {
     private let source: SealKeyPort

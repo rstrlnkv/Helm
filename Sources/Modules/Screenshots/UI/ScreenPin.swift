@@ -1,8 +1,8 @@
 import AppKit
 import Module_Screenshots_Engine
 
-/// Whether a person is offered a pin anywhere. The pin is outside v1 (owner's decision, 2026-10-02): every
-/// place that would let someone ask for one builds its entry only when this is true (today the Pin item of the ⋯ menu, `EditorMenu`). To bring it back, set it to `true`
+/// Whether a person is offered a pin anywhere. No control offers the pin: every
+/// place that would let someone ask for one builds its entry only when this is true (the Pin item of the ⋯ menu, `EditorMenu`, and the capsule's Pin cell, `ShotCapsule.cells`). To bring it back, set it to `true`
 /// and delete this paragraph.
 enum PinEntry {
     static let isOffered = false
@@ -64,7 +64,7 @@ final class PinPanel: NSPanel {
 
     override func keyDown(with event: NSEvent) {
         // Esc is also `cancelOperation`, but only when the responder chain gets that far.
-        if event.keyCode == 53 { onClose() } else { super.keyDown(with: event) }
+        if event.keyCode == ShotKey.escape { onClose() } else { super.keyDown(with: event) }
     }
 
     func move(by delta: CGPoint) {

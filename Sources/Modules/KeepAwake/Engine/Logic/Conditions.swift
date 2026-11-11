@@ -1,4 +1,4 @@
-/// **The raw value is the wire name**, so the two sides of the transport name
+/// **The raw value is the name in the published state**, so the engine and its page name
 /// the same thing. It used to have none, and the spelling was written out three
 /// times over: a `wireName` extension in the engine, a `switch` over string
 /// literals in `KAStr` turning it back into a word, and two inline

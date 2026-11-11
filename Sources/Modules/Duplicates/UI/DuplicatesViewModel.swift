@@ -1,9 +1,27 @@
 import AppKit
-import HelmContract
 import HelmRuntime
 import HelmUI
 import Module_Duplicates_Engine
 import SwiftUI
+
+/// What the model asks of the engine. A port, so the model's tests hold the
+/// engine's place without a walk of anybody's folder in reach.
+///
+/// The progress of a search or of a removal travels to the sink the caller hands
+/// over for that one call; the answer is the return value, so there is nothing
+/// to subscribe to and no reply that can be lost. `find` answers nil when the
+/// search was stopped.
+protocol DuplicatesWork: AnyObject, Sendable {
+    func find(under path: String, keeping policy: KeepPolicy,
+              progress: (@Sendable (DuplicateProgress) -> Void)?) async -> DuplicateFindings?
+    func cancel()
+    func trash(_ plans: [DuplicatePlan], staying: [String],
+               progress: (@Sendable (DuplicateProgress) -> Void)?) async -> DuplicateRemoval
+    func stopRemoval()
+    func backgroundScan() async -> ScanReport?
+}
+
+extension DuplicatesEngine: DuplicatesWork {}
 
 /// Why a group's first copy is the one that stays.
 ///
@@ -42,21 +60,6 @@ public enum KeepGrounds: Equatable, Sendable {
     /// How many actually moved. `HelmRemovalOutcome` decides what to say from
     /// this and `failures`: a sentence cannot be asked whether it is true.
     @Published public private(set) var removedCount = 0
-    /// The last removal's reply never came back.
-    ///
-    /// The fourth thing the report is read as, and the fourth module to need it:
-    /// not a claim that anything moved, not a refusal, and not silence.
-    /// `HelmRemovalOutcome.verdict(removed: 0, failed: 0)` is `.silent`, so
-    /// leaving the three fields at zero drew nothing at all — measured, the page
-    /// after the press was pixel-identical to the page before it, and so was the
-    /// page after a *second* press.
-    ///
-    /// The list is stale with it. This module prunes `groups` from
-    /// `removal.removed` and never re-reads, so a lost reply means nothing on
-    /// screen has been read since before the press — which is why the page draws
-    /// `HelmRemovalOutcome.unansweredWithStaleList` and not the plain sentence,
-    /// whose second half points at a list its caller has just refreshed.
-    @Published public private(set) var replyLost = false
     /// The last search did not run to its end — stopped by the person, or
     /// given up by the engine.
     ///
@@ -68,13 +71,15 @@ public enum KeepGrounds: Equatable, Sendable {
     /// and set again where the engine itself answers nothing, which is its own
     /// way of not finishing. The next search withdraws it on the way in.
     @Published public private(set) var searchStopped = false
-    /// The last removal was stopped by the person, between files.
+    /// The last removal was stopped by the person, between files of the
+    /// verification.
     ///
-    /// The fifth thing the report is read as — not a success, not a refusal,
-    /// not silence and not a lost reply. Read off the *reply*, never off the
-    /// press: the stop is a request, and what actually happened before it
-    /// landed is the engine's to say. What did move before the stop is still
-    /// in `removedCount` and the banner, so the two can be true at once.
+    /// Another thing the report is read as — not a success, not a refusal and
+    /// not silence. Read off the *reply*, never off the
+    /// press: the stop is a request, and whether it landed in time is the
+    /// engine's to say. A stopped removal moved nothing, so `removedCount` is 0
+    /// and there is no banner; the refusals found before the stop are in
+    /// `failures`.
     @Published public private(set) var removalStopped = false
 
     /// Which search the groups belong to, so a late answer cannot resurrect
@@ -111,94 +116,83 @@ public enum KeepGrounds: Equatable, Sendable {
     /// change of membership, and a removal is exactly that — `emptyBasket`
     /// rebuilds the group from the copies that are left and the digest moves,
     /// leaving a pin nothing on screen answers to. The survivor's path is the one
-    /// copy a removal may never take (the group is rebuilt from the copies after
-    /// the first), so it is stable across the very removal the id is not — and it
-    /// is the thing the person actually chose. A path is in one group, so it
+    /// copy a removal started after the choice may never take; one already in
+    /// flight can (`Architecture/Duplicates.md`). So it is stable across the very
+    /// removal the id is not — and it is the thing the person actually chose. A path is in one group, so it
     /// names no other.
     private var pinned: Set<String> = []
 
-    let vm: ModuleViewModel
-    private let client: TransportClient
+    let work: any DuplicatesWork
+    /// Set by `stop()`: the module is switched off or Helm is quitting, and a
+    /// press on a page still on screen reaches no work.
+    var closed = false
     private let store: NamespacedStore
     /// How a stored setting is judged to be Helm's own. A port for the reason
     /// every port here is one: the production answer is the login keychain, and
     /// a test must not write to the person's.
     private let settings: SettingGuard
-    private var eventsTask: Task<Void, Never>?
-    /// The keychain round trip the initialiser owes, and the read after it.
-    /// **Held, not fired and forgotten**: a task no caller can reach is one no
-    /// caller can wait out, and a test reading `policy` then races it — 8
-    /// failures in 200 constructions, in Autopilot's model.
+    /// The keychain round trip `appear()` owes, and the read after it; why it is
+    /// held is told there.
     private(set) var firstLoad: Task<Void, Never>?
 
-    /// Search state must outlive the settings page. Settings tears the page down
-    /// on every sidebar visit, and this module has no on-disk cache behind it —
-    /// hashing a folder is minutes of reading, so losing it to a click is
-    /// hostile. One instance per host view model; the page observes it.
-    private static var cached: DuplicatesViewModel?
-
-    /// `settings:` is forwarded rather than left to `init`'s default for the
-    /// reason `ATestNamesTheKeychainPortsItBuildsOverTests` gives: the default
-    /// is the login keychain, so a caller that cannot name a double — a test
-    /// switching the module off to watch the subscriber go — would spend
-    /// `SecItemAdd` on somebody's machine to ask a question about ARC.
-    public static func shared(vm: ModuleViewModel, store: NamespacedStore,
-                              settings: SettingGuard = DuplicatesSettings.guardOfScanSettings)
-    -> DuplicatesViewModel {
-        // Keyed to the view model it was built against, not merely "exists" —
-        // see `DiskViewModel.shared(vm:)`. Turning the module off deallocates
-        // the engine while the `LocalTransport` held here survives, and its
-        // weakly-captured handler answers every request with empty Data from
-        // then on.
-        if let cached, cached.vm === vm { return cached }
-        let created = DuplicatesViewModel(vm: vm, store: store, settings: settings)
-        cached = created
-        ModuleUICache.dropWhenDisabled(DuplicatesDescriptor.id.rawValue) { cached = nil }
-        return created
-    }
-
-    public init(vm: ModuleViewModel, store: NamespacedStore,
-                settings: SettingGuard = DuplicatesSettings.guardOfScanSettings) {
-        self.vm = vm
+    /// `settings:` keeps its default for the reason
+    /// `ATestNamesTheKeychainPortsItBuildsOverTests` gives: the default is the
+    /// login keychain, and a test names a double wherever it can reach a read.
+    init(work: any DuplicatesWork, store: NamespacedStore,
+         settings: SettingGuard = DuplicatesSettings.guardOfScanSettings) {
+        self.work = work
         self.store = store
         self.settings = settings
-        self.client = TransportClient(vm.transport)
         let remembered = store.string("folder", default: "")
         if !remembered.isEmpty { folder = URL(fileURLWithPath: remembered) }
-        // The stream is captured here and `self` re-acquired per event: handing
-        // the loop to an instance method resolves the weak capture once and
-        // then holds `self` for the whole call, which never returns. That kept
-        // the view model alive, which in turn meant the `deinit` below could
-        // never run — a cancel that cancelled nothing.
-        let events = vm.transport.events
-        eventsTask = Task { [weak self] in
-            for await event in events {
-                guard let self else { break }
-                await self.handle(event)
-            }
-        }
-        // The guard and not `self`: a `[weak self]` that calls a method holds
-        // the object for as long as that call runs, and this one waits on the
-        // keychain. The guard is a value, so `self` is re-acquired only for the
-        // assignment after it.
+    }
+
+    deinit { firstLoad?.cancel() }
+
+    /// Closes the model; the host calls it before the engine's `deactivate()`, on
+    /// the person's switch and on quit. After it the search, the removal and the
+    /// background scan reach no work, no search answer still in flight is shown,
+    /// and the keychain is asked nothing more except by saving a chosen folder or
+    /// policy, which `stop` does not refuse; a removal already handed to the
+    /// engine still lands (the host's `deactivate()` stops it, so as cancelled
+    /// if it is still verifying).
+    public func stop() {
+        closed = true
+        _ = searches.take()
+        firstLoad?.cancel()
+    }
+
+    /// What the model does when the page is first drawn: ask the keychain for
+    /// the stored policy, once.
+    ///
+    /// **Not in `init`**, which the host runs when the module starts: the
+    /// round trip may put up the keychain's own authorization dialog, and
+    /// nobody has opened Duplicates yet. Held in `firstLoad`, not fired and
+    /// forgotten: a task no caller can reach is one no caller can wait out, and
+    /// a test reading `policy` then races it — 8 failures in 200 constructions,
+    /// in Autopilot's model. The guard is a value and `self` is re-acquired
+    /// only for the assignment: a `[weak self]` that calls a method holds the
+    /// object for as long as that call runs, and this one waits on the keychain.
+    public func appear() {
+        guard !closed, firstLoad == nil else { return }
+        let settings = self.settings
         firstLoad = Task { [weak self] in
             await settings.warmKey()
             self?.readTheStoredPolicy()
         }
     }
 
-    deinit { eventsTask?.cancel(); firstLoad?.cancel() }
-
     /// Take what is in force, now that asking is free.
     ///
     /// **Through the engine's own reading, seal and all**: a page that parsed the
     /// plist itself would show a forged policy as the one in force, which is the
-    /// single place the forgery must not be believed. It ran in `init` until
-    /// 2026-08-20 — a modal authorization dialog on every ad-hoc build, taken by
-    /// the thread that draws. Nil is «the keychain still cannot say»; the popup
+    /// single place the forgery must not be believed. It does not run in `init`
+    /// (a modal authorization dialog on every ad-hoc build, taken by the thread
+    /// that draws) but in `appear()`. Nil is «the keychain still cannot say»; the popup
     /// then keeps the belief the engine is applying anyway.
     private func readTheStoredPolicy() {
-        guard let inForce = DuplicatesSettings.keepPolicyIfWarm(in: store, guardedBy: settings)
+        guard !closed,
+              let inForce = DuplicatesSettings.keepPolicyIfWarm(in: store, guardedBy: settings)
         else { return }
         apply(inForce)
     }
@@ -208,18 +202,23 @@ public enum KeepGrounds: Equatable, Sendable {
     /// date` while every search ran `by place`» is this module's own named
     /// defect, and until now only the popup's `choose(_:)` re-decided.
     ///
-    /// **The other door opened when the keychain read left `init`.** The page is
+    /// **The other door opened when the keychain read moved from `init` to `appear()`.** The page is
     /// live while `SecurityAgent` holds its dialog (ARCHITECTURE.md § Sealed
     /// settings): the folder is remembered and «Search now» is one
     /// press, so a whole list can exist before the stored belief lands. The
     /// reply's own `if chosen != policy` cannot cover that — at the moment it
     /// runs the two are still the same value.
     ///
+    /// **Not while a removal is running**, whichever door the value came through:
+    /// the re-ordering could promote a copy the running request is about to trash,
+    /// and a late keychain reading would otherwise do it unasked. Nothing moved,
+    /// so a refused `choose` stores nothing either.
+    ///
     /// Answers whether anything moved, so the caller that also *stores* the
     /// choice keeps its early return without spelling the comparison twice.
     @discardableResult
     private func apply(_ chosen: KeepPolicy) -> Bool {
-        guard chosen != policy else { return false }
+        guard !busy, chosen != policy else { return false }
         policy = chosen
         rearrange()
         return true
@@ -286,6 +285,10 @@ public enum KeepGrounds: Equatable, Sendable {
     /// nobody at the desk. The seal is written with the value: the engine refuses
     /// a policy it did not write, so a value saved without its MAC would leave
     /// every unattended scan on the default while this page said otherwise.
+    ///
+    /// Refused while a removal runs (in `apply`, which the stored-policy reading
+    /// shares), like `keep`: the rearrangement could promote a copy the running
+    /// request is about to trash.
     public func choose(_ chosen: KeepPolicy) {
         guard apply(chosen) else { return }
         DuplicatesSettings.setKeepPolicy(chosen, in: store, guardedBy: settings)
@@ -349,9 +352,14 @@ public enum KeepGrounds: Equatable, Sendable {
     /// about it. Moving the copy to the front teaches none of them anything.
     ///
     /// The group is pinned by the same act — by the chosen copy's own path, which
-    /// is the survivor a removal may never take, so the pin outlives the removal
-    /// that re-keys the group (see `pinned`).
+    /// is the survivor a removal started after the choice may never take, so the
+    /// pin outlives the removal that re-keys the group (see `pinned`).
+    ///
+    /// **Not while a removal is running.** `emptyBasket` captured its paths at the
+    /// first line, so a copy moved to the front here would be shown as staying
+    /// while the engine trashes it; the press is refused, as `clearBasket` does.
     public func keep(_ path: String, in group: DuplicateGroup) {
+        guard !busy else { return }
         guard let index = groups.firstIndex(where: { $0.id == group.id }),
               let chosen = groups[index].copies.first(where: { $0.path == path })
         else { return }
@@ -371,7 +379,11 @@ public enum KeepGrounds: Equatable, Sendable {
     /// It releases the pin as well as re-ordering: a group left pinned to an
     /// order the rule happens to agree with would silently step over the next
     /// policy change, and nothing on screen would say why.
+    ///
+    /// Refused while a removal runs, for the reason `keep` is: re-ordering could
+    /// promote a copy the running request is about to trash.
     public func restoreRecommendation(for group: DuplicateGroup) {
+        guard !busy else { return }
         guard let index = groups.firstIndex(where: { $0.id == group.id }) else { return }
         unpin(groups[index])
         groups[index] = ordered(groups[index], by: KeepRule(policy))
@@ -413,11 +425,11 @@ public enum KeepGrounds: Equatable, Sendable {
     /// respect: the removal's tick and its «Stop removal» button are drawn
     /// inside the bar those three bring up, so one press took every control that
     /// reaches a running removal off the screen. The window is minutes, because
-    /// `trash` re-reads both files of every pair before anything moves. The page
+    /// `trash` verifies every pair before anything moves. The page
     /// dims the control too; both, or neither is reliable (ARCHITECTURE.md
     /// § One removal at a time).
     public func search() {
-        guard let folder, phase != .searching, !busy else { return }
+        guard !closed, let folder, phase != .searching, !busy else { return }
         phase = .searching
         progress = nil
         groups = []
@@ -430,11 +442,10 @@ public enum KeepGrounds: Equatable, Sendable {
         // folder nobody is reading any more.
         unreadable = 0
         librariesSkipped = 0
-        // The whole removal report, not two fields of it. Clearing `replyLost`
-        // alone left the banner, the failures and the count standing — a
-        // refusal from the last removal drawn under a different folder's
-        // results, saying «could not be moved» about a file the new search
-        // never returned. The fields are one report and go together.
+        // The whole removal report, not one field of it: a refusal from the last
+        // removal drawn under a different folder's results would say «could not
+        // be moved» about a file the new search never returned. The fields are
+        // one report and go together.
         clearRemovalReport()
         // The previous search's own outcome goes the same way: this press is
         // the answer to it.
@@ -453,20 +464,26 @@ public enum KeepGrounds: Equatable, Sendable {
         // was when the button was pressed rather than as it is whenever the task
         // happens to run.
         let chosen = policy
+        let work = self.work
         Task {
-            // `DuplicateFindings`, the type the engine's `find` answers — the
-            // one place these two targets have to agree, and they had stopped:
-            // asking here for the bare `[DuplicateGroup]` the engine used to
-            // send made every search decode as nothing, which this method reads
-            // as a cancellation. It built clean and no fake could see it,
-            // because every fake in the test target spells the reply itself.
-            // The policy travels with the request. The engine needs it before it
+            // The ticks travel on a stream made for this call and are drained
+            // here while the answer is awaited, so they are applied on the main
+            // actor, newest only, and all of them before the answer is. A tick
+            // of a search that is no longer the latest is dropped.
+            //
+            // The policy goes with the call: the engine needs it before it
             // hashes anything — the name that stands for a hard-linked set is
             // chosen by the same ladder — and the person at an open page may be
             // looking at one they have just changed.
-            let found: DuplicateFindings? = await client.request(
-                DuplicatesCommand.find,
-                encoding: DuplicateSearchRequest(path: path, policy: chosen))
+            let (ticks, sink) = AsyncStream.makeStream(
+                of: DuplicateProgress.self, bufferingPolicy: .bufferingNewest(1))
+            async let answer: DuplicateFindings? = {
+                defer { sink.finish() }
+                return await work.find(under: path, keeping: chosen,
+                                       progress: { sink.yield($0) })
+            }()
+            for await tick in ticks where searches.isLatest(mine) { progress = tick }
+            let found = await answer
             guard searches.isLatest(mine) else { return }
             // Cancelled comes back nil: go back to where we were rather than
             // announce a clean folder nobody finished checking — and say so.
@@ -497,9 +514,7 @@ public enum KeepGrounds: Equatable, Sendable {
     public func cancel() {
         // Taken and dropped: everything in flight is stale from here.
         _ = searches.take()
-        // No payload. It used to encode an empty `[String]` the engine never
-        // decodes — two bytes of JSON standing where «nothing» was meant.
-        Task { await client.send(DuplicatesCommand.cancel) }
+        if !closed { work.cancel() }
         // A named outcome, and only for a search that was actually running: a
         // press is authoritative here because the token above is already
         // dropped, so no answer can land after it (see `searchStopped`).
@@ -516,7 +531,10 @@ public enum KeepGrounds: Equatable, Sendable {
 
     public func isBasketed(_ path: String) -> Bool { basket.contains(path) }
 
+    /// Refused while a removal runs, like `clearBasket`: the batch is already out,
+    /// so a mark changed here would make the page say what the request does not.
     public func toggleBasket(_ path: String) {
+        guard !busy else { return }
         if let index = basket.firstIndex(of: path) {
             basket.remove(at: index)
         } else if UserFileScope.isRemovable(path) {
@@ -596,6 +614,7 @@ public enum KeepGrounds: Equatable, Sendable {
     @Published public private(set) var busy = false
 
     public func emptyBasket() async {
+        guard !closed else { return }
         // What goes and what stays, decided beside the gate the engine reads the
         // batch against (`DuplicateBasket`): the plans pair each marked extra
         // with the copy it duplicates, and the second list is every copy the
@@ -619,35 +638,18 @@ public enum KeepGrounds: Equatable, Sendable {
             busy = false
             progress = nil
         }
-        let removal: DuplicateRemoval? = await client.request(
-            DuplicatesCommand.trash,
-            encoding: DuplicateRemovalRequest(plans: plans, staying: staying))
-        // **An unanswered removal is not a removal that did nothing.**
-        // `TransportClient.request` answers nil for a request that threw and for
-        // a reply that would not decode, and this module reaches the second in
-        // its own tree: `wireTransport` returns empty `Data` for an engine that
-        // has gone under a page still up — which `shared(vm:store:)` says is
-        // every request from then on — for a command name it cannot parse, and
-        // for a payload that will not decode. Returning here left the page
-        // silent about a destructive press, and the reasonable reading of
-        // silence is «press it again».
-        //
-        // Nothing else moves: the engine may well have trashed the files, and
-        // the list on screen is only ever pruned from this reply. So the basket
-        // and the groups stay exactly as they are, and the sentence claims
-        // nothing about either.
-        guard let removal else {
-            clearRemovalReport()
-            replyLost = true
-            // Counts and outcomes are free; nothing here names a file. This was
-            // the one branch that reached the screen without reaching the log,
-            // which is the branch a person would be attaching a log to.
-            HelmLog.shared.info(DuplicatesEngine.moduleID, "trash reply lost")
-            return
-        }
-        // The five fields are one report, so a round that *was* answered puts the
-        // previous round's «no answer» down as well.
-        replyLost = false
+        // Drained as the search's are: newest tick only. The removal has no
+        // token of its own — `busy` is the one-at-a-time gate, and `search()`
+        // refuses while it is set.
+        let (ticks, sink) = AsyncStream.makeStream(
+            of: DuplicateProgress.self, bufferingPolicy: .bufferingNewest(1))
+        let work = self.work
+        async let answer: DuplicateRemoval = {
+            defer { sink.finish() }
+            return await work.trash(plans, staying: staying, progress: { sink.yield($0) })
+        }()
+        for await tick in ticks { progress = tick }
+        let removal = await answer
         // Off the reply, not off the press: the engine says whether the stop
         // landed in time, and a removal that ran to the end never says stopped.
         removalStopped = removal.cancelled
@@ -678,37 +680,33 @@ public enum KeepGrounds: Equatable, Sendable {
         clearRemovalReport()
     }
 
-    /// Nothing on screen about a removal — the shape `DiskViewModel` and
-    /// `LeftoversViewModel` already keep, and the fields are read as one report:
-    /// clearing three of the four is how a «no answer» came to outlive the press
-    /// it was about.
+    /// Nothing on screen about a removal — the shape `DiskViewModel`
+    /// already keeps, and the fields are read as one report.
     private func clearRemovalReport() {
         banner = nil
         failures = []
         removedCount = 0
-        replyLost = false
         removalStopped = false
     }
 
-    /// Asks the engine to stop the removal in flight, between files.
+    /// Asks the engine to stop the removal in flight, between files of the
+    /// verification.
     ///
-    /// Its own command, never `cancel`: that one reaches the search, and a
+    /// Its own entry, never `cancel`: that one reaches the search, and a
     /// person stopping a removal must not silently kill a search they started
     /// after it. The press claims nothing — the basket, the groups and `busy`
     /// all stand until the reply says what actually happened, because a stop
-    /// that lands after the last file is a removal that ran to the end.
+    /// that lands once the Trash has the batch is a removal that ran to the end.
     public func stopRemoval() {
-        guard busy else { return }
-        Task { await client.send(DuplicatesCommand.stopRemoval) }
+        guard busy, !closed else { return }
+        work.stopRemoval()
     }
 
-    // MARK: - Events
-
-    private func handle(_ event: EngineEvent) async {
-        guard DuplicatesEvent(rawValue: event.name) == .progress else { return }
-        if let update = try? JSONDecoder().decode(DuplicateProgress.self,
-                                                  from: event.payload) {
-            progress = update
-        }
+    /// The unattended scan, asked of the model and not of the engine through a
+    /// cast: a model that is stopped answers nil, and a cast that missed would
+    /// too, unseen.
+    func backgroundScan() async -> ScanReport? {
+        guard !closed else { return nil }
+        return await work.backgroundScan()
     }
 }

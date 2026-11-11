@@ -72,7 +72,7 @@ final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
     /// the byte counters move between emissions and every payload differs, so a
     /// figure could survive on screen by luck of some other field having changed.
     private func oneTunnel(_ speed: FakeSpeed)
-        -> (engine: VPNEngine, transport: LocalTransport) {
+        -> (engine: VPNEngine, news: EngineNews<VPNEngine.StatePayload>) {
         let runner = FakeRunner()
         runner.listOutput = list()
         runner.statusOutput["routed"] = status()
@@ -81,30 +81,24 @@ final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
         interfaces.counters = ["utun4": (in: 1_000_000, out: 1_000_000)]
         let exit = FakeExit()
         exit.hangs = true
-        let transport = LocalTransport()
+        let news = EngineNews<VPNEngine.StatePayload>()
         let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
                                     namespace: "vpn", backing: InMemoryKeyValueStore())),
-                               runner: runner, apps: FakeApps(), transport: transport,
+                               runner: runner, apps: FakeApps(), news: news,
                                interfaces: interfaces, exit: exit, speed: speed,
                                work: .inline)
         engine.refresh()
-        return (engine, transport)
-    }
-
-    private func measure(_ transport: LocalTransport) async {
-        let payload = (try? JSONEncoder().encode(VPNConnectionRef(name: "routed"))) ?? Data()
-        _ = try? await transport.send(EngineCommand(name: VPNCommand.measureSpeed.rawValue,
-                                                    payload: payload))
+        return (engine, news)
     }
 
     /// Waits for a state the matcher accepts, subscribing **before** the act so
     /// nothing can go by unseen.
-    private func waitForState(_ transport: LocalTransport, _ what: String,
+    private func waitForState(_ news: EngineNews<VPNEngine.StatePayload>, _ what: String,
                               until matches: @escaping @Sendable (VPNEngine.StatePayload) -> Bool,
                               file: StaticString = #filePath, line: UInt = #line,
                               during act: () async -> Void) async {
         let arrived = XCTestExpectation(description: what)
-        let watcher = watchState(transport, until: matches, then: arrived)
+        let watcher = watchState(news, until: matches, then: arrived)
         await act()
         await fulfillment(of: [arrived], timeout: 10)
         watcher.cancel()
@@ -114,16 +108,16 @@ final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
         let taken = Date(timeIntervalSince1970: 1_700_000_000)
         let speed = FakeSpeed()
         speed.answer = VPNSpeedReading(down: 343, up: 358, rpm: 1200, at: taken, took: 19)
-        let (engine, transport) = oneTunnel(speed)
+        let (engine, news) = oneTunnel(speed)
         defer { speed.release(); engine.deactivate() }
 
         // **The precondition, and it is a real one.** An assertion that a figure
         // survived is green when no figure ever arrived, which is the default in
         // a module whose speed port has never answered.
-        await waitForState(transport, "the first reading reached the page",
+        await waitForState(news, "the first reading reached the page",
                            until: { $0.tunnels.first?.speed != nil },
-                           during: { await measure(transport) })
-        let first = await lastState(on: transport)
+                           during: { engine.measureSpeed("routed") })
+        let first = await lastState(on: news)
         XCTAssertEqual(first?.tunnels.first?.speed?.down, 343,
                        "precondition: no figure ever reached the page, so nothing below "
                        + "is about a figure being kept")
@@ -133,23 +127,23 @@ final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
         // A second run that the tool refuses — a `-1009`, a deadline, half a JSON
         // document. **It holds its thread**, the way the real tool holds one for
         // twenty seconds: a fake that answered instantly would be past the
-        // measuring state before the wire could be read, and the two ends of the
+        // measuring state before the stream could be read, and the two ends of the
         // run would be one event (CLAUDE.md § What not to do, and what breaks if
         // you do).
         speed.answer = nil
         speed.blocksUntilReleased = true
-        await waitForState(transport, "the second run is in flight",
+        await waitForState(news, "the second run is in flight",
                            until: { $0.tunnels.first?.measuring == true },
-                           during: { await measure(transport) })
+                           during: { engine.measureSpeed("routed") })
         XCTAssertEqual(speed.askedFor.count, 2,
                        "precondition: the second run was refused by the engine rather than "
                        + "reaching the port, so this says nothing about a refusal")
 
-        await waitForState(transport, "the second run ended",
+        await waitForState(news, "the second run ended",
                            until: { $0.tunnels.first?.measuring == false },
                            during: { speed.release() })
 
-        let after = await lastState(on: transport)
+        let after = await lastState(on: news)
         XCTAssertEqual(after?.tunnels.first?.speed?.down, 343, """
             a run the tool refused erased the reading the card was already \
             showing: `VPNEngine.lastSpeed` says the only thing that drops a \

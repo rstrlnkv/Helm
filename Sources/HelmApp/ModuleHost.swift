@@ -1,18 +1,34 @@
+import Combine
 import Foundation
 import HelmContract
 import HelmRuntime
 import HelmUI
+import SwiftUI
 
 /// Owns module lifecycle: per-module namespaced store, enabled flag, and
-/// lazily-created engine + view model for every enabled module.
+/// the engine and model built for every enabled module, at launch or when it is
+/// switched on.
 @MainActor final class ModuleHost: ObservableObject {
     static let shared = ModuleHost()
 
     struct Live {
         let descriptor: any ModuleDescriptor
         let engine: any ModuleEngine
-        let vm: ModuleViewModel
+        /// The module's own model, held so it lives and dies with this entry;
+        /// everything that draws from it goes through the closures below, and the
+        /// trash sweep's one `as?` in `AppDelegate`.
+        let model: AnyObject
         let store: NamespacedStore
+        let page: @MainActor () -> AnyView
+        let menuBar: @MainActor () -> MenuBarContribution?
+        let activity: @MainActor () -> ModuleActivity?
+        let statusAppearance: @MainActor () -> StatusAppearance
+        let statusChanges: @MainActor () -> AnyPublisher<Void, Never>?
+        let panelWidget: @MainActor (PanelWidgetSize) -> AnyView?
+        let panelWidgetSizes: @MainActor () -> Set<PanelWidgetSize>
+        let backgroundScan: @MainActor () async -> ScanReport?
+        let stop: @MainActor () -> Void
+        let hotkeyPressed: @MainActor (ModuleHotkey) -> Void
     }
 
     /// Keyed by `ModuleID.rawValue`.
@@ -52,7 +68,16 @@ import HelmUI
         where isEnabled(d) && live[type(of: d).id.rawValue] == nil { enable(d) }
     }
 
+    /// A stand-in engine is live (`ModuleEngine.standsIn`): what is shown is not what
+    /// the Mac is in, and the host's own store is the real one.
+    func standsInLive(_ key: String) -> Bool { live[key]?.engine.standsIn ?? false }
+    var anyStandsIn: Bool { live.values.contains { $0.engine.standsIn } }
+
     func setEnabled(_ d: any ModuleDescriptor, _ on: Bool) {
+        if !on, standsInLive(type(of: d).id.rawValue) {
+            HelmLog.shared.warn("host", "refused: a stand-in engine is live, \(type(of: d).id.rawValue) stays on")
+            return
+        }
         store(for: d).set(on, for: "enabled")
         if on {
             if live[type(of: d).id.rawValue] == nil { enable(d) }
@@ -74,6 +99,7 @@ import HelmUI
     /// the notification that act carries.
     func shutdown() {
         for key in live.keys.sorted() {
+            live[key]?.stop()
             live[key]?.engine.deactivate()
             live[key]?.descriptor.detachMenuBarPresence()
             live[key] = nil
@@ -85,7 +111,7 @@ import HelmUI
 
     /// Measured **around** the construction, which is the whole point.
     ///
-    /// The reading used to be taken on the line before `makeEngine`, so
+    /// The reading used to be taken on the line before the module was built, so
     /// `module.disk.enable: 9 MB` was the process total *before* Disk existed and
     /// said nothing whatever about Disk. Nine such lines at launch read like nine
     /// per-module costs and were nine consecutive totals.
@@ -95,24 +121,64 @@ import HelmUI
     /// It is **not** how much the module holds while it runs — every module lives in
     /// one process and one malloc zone, and there is no per-subsystem accounting to
     /// ask. The pair is still the signal that matters: 3 MB on and nothing back off
-    /// is the leak family `dropWhenDisabled` was written for.
+    /// is the leak family of a model that outlives its module.
     private func enable(_ d: any ModuleDescriptor) {
         let key = type(of: d).id.rawValue
         HelmLog.shared.info("host", "enable \(key)")
         let before = MemoryFootprint.current()
         let s = store(for: d)
-        let engine = d.makeEngine(store: s)
-        engine.activate()
-        // After the engine is running, and from here rather than from
-        // `makeEngine`: a module's own menu-bar item is part of it running, not
-        // part of it being constructed. Keyboard's indicator was built inside
-        // `makeEngine`, so every process that asked a descriptor for an engine —
-        // the offscreen render harness included — got a status item on its Mac.
-        d.attachMenuBarPresence()
-        let vm = ModuleViewModel(transport: engine.transport)
-        live[key] = Live(descriptor: d, engine: engine, vm: vm, store: s)
+        live[key] = makeLive(d, store: s)
         if let before, let after = MemoryFootprint.current() {
             HelmLog.shared.memory("module.\(key).enable", grewBy: after - before)
+        }
+    }
+
+    /// Generic so the descriptor's `Model` is known for the whole of the build:
+    /// everything that takes the model is closed over it here, and nothing
+    /// outside this function has to name its type or cast to it.
+    private func makeLive<D: ModuleDescriptor>(_ d: D, store s: NamespacedStore) -> Live {
+        let parts = d.makeModule(store: s)
+        let model = parts.model
+        parts.engine.activate()
+        // After the engine is running, and from here rather than from
+        // `makeModule`: a module's own menu-bar item is part of it running, not
+        // part of it being constructed. Keyboard's indicator was built inside
+        // the engine's construction, so every process that built a module —
+        // the offscreen render harness included — got a status item on its Mac.
+        d.attachMenuBarPresence()
+        return Live(descriptor: d, engine: parts.engine, model: model, store: s,
+                    page: { d.settingsPage(model) },
+                    menuBar: { d.menuBar(model) },
+                    activity: { d.activity(model) },
+                    statusAppearance: { d.statusAppearance(model) },
+                    statusChanges: { d.statusChanges(model) },
+                    panelWidget: { d.panelWidget($0, model) },
+                    panelWidgetSizes: { d.panelWidgetSizes(model) },
+                    backgroundScan: { await d.backgroundScan(parts) },
+                    stop: { d.stop(model) },
+                    hotkeyPressed: { d.hotkeyPressed($0, model) })
+    }
+
+    /// Every module's declared shortcuts, one loop. A key is held only while its
+    /// module is live: `isLive` reads `live`, and `HotkeyManager` asks again on
+    /// every module switch.
+    func registerHotkeys() {
+        for d in ModuleRegistry.all {
+            let id = type(of: d).id.rawValue
+            for hotkey in type(of: d).hotkeys {
+                HotkeyManager.shared.register(
+                    hotkey.slot, store: store(for: d), prefix: hotkey.prefix,
+                    fallback: hotkey.fallback,
+                    isLive: { [weak self] in self?.live[id] != nil },
+                    action: { [weak self] in
+                        guard let running = self?.live[id] else {
+                            HelmLog.shared.info("hotkey", "pressed \(hotkey.slot): module not running")
+                            return
+                        }
+                        HelmLog.shared.info("hotkey", "pressed \(hotkey.slot)")
+                        running.hotkeyPressed(hotkey)
+                    })
+            }
         }
     }
 
@@ -120,11 +186,13 @@ import HelmUI
         let key = type(of: d).id.rawValue
         HelmLog.shared.info("host", "disable \(key)")
         let before = MemoryFootprint.current()
-        // Before the teardown, and only from here: this is the person's own
-        // switch, so it is the last moment an engine may ask them something.
+        // Before the teardown: this is the person's own switch, so it is the
+        // last moment an engine may ask them something; `handBackSystemState`
+        // is the one other caller.
         // `shutdown()` — quitting — deliberately does not call it
         // (`ModuleEngine.willDisable` has the story).
         live[key]?.engine.willDisable()
+        live[key]?.stop()
         live[key]?.engine.deactivate()
         // The module's own menu-bar item goes with the module. Nothing used to
         // take Keyboard's indicator away here at all: it sat in the menu bar
@@ -134,12 +202,9 @@ import HelmUI
         // A scan task can outlive the engine that started it, and an interval
         // nobody closes would name a module that is no longer there.
         HelmActivity.sweep(module: key)
-        // Whoever cached UI state for this module drops it, and then the pages
-        // go back to the system rather than sitting in an emptied malloc zone.
+        // Whoever listens for the module's end lets go (the hotkeys).
         NotificationCenter.default.post(name: .helmModuleDisabled, object: key)
-        // The reclaim comes first: freeing returns memory to malloc and not to
-        // macOS, so a reading taken before it would report nothing given back
-        // however much the teardown released.
+        // The reading comes last, so it covers the whole teardown.
         if let before, let after = MemoryFootprint.current() {
             HelmLog.shared.memory("module.\(key).disable", grewBy: after - before)
         }
@@ -153,13 +218,14 @@ import HelmUI
     /// as it was just after installing, and one of the things Helm changes
     /// beyond its two directories is the passwordless `pmset` rule Keep Awake's
     /// lid option installs. A reset that reached for `/etc/sudoers.d` itself
-    /// would be the rule in the wrong place — and could not remove it anyway,
-    /// since it is root's and comes out through an administrator dialog. So the
+    /// would be the rule in the wrong place: the file is root's, and what takes
+    /// it out, `sudo -n` or, where the rule cannot withdraw itself, an
+    /// administrator dialog, is Keep Awake's port. So the
     /// module that installed it is asked to give it back, which is exactly what
     /// `willDisable` means (`ModuleEngine.willDisable`).
     ///
-    /// **Asking is not being given.** The dialog can be declined, and what that
-    /// leaves behind is the rule; nothing here can wait for the answer, because
+    /// **Asking is not being given.** The dialog, when it is needed, can be
+    /// declined, and what that leaves behind is the rule; nothing here can wait for the answer, because
     /// `willDisable` returns before the prompt is even on screen. What this
     /// guarantees is that the ask happens, first, and with the person there —
     /// not that the machine is clean afterwards.
@@ -176,8 +242,11 @@ import HelmUI
     /// `live` entries in the arrangement the person composed.
     var enabledModules: [Live] { orderedModuleIDs.compactMap { live[$0] } }
 
-    /// Every module id in the arrangement — one order for the sidebar, the
-    /// panel and the icon menu.
+    /// Every module id in the arrangement, which `enabledModules` reads. The icon
+    /// takes its module from them in this order, and the panel hands them to
+    /// `PanelLayoutStore.read` in it, where they order a first layout and the
+    /// arrivals; stored tiles keep the order of `panelWidgets`. The sidebar and
+    /// the icon menu read `SidebarLayoutStore` themselves.
     ///
     /// It used to be `AppSettings.moduleOrder`, and that key stopped being
     /// written when the «Module order» section was deleted: nothing in the tree

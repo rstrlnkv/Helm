@@ -30,8 +30,8 @@ public enum LogPolicy {
 /// **A test process must not write into the file people triage.** The log is a
 /// product surface: `~/Library/Logs/Helm/helm.log` is what a dev build is judged
 /// by before it ships, so a line in it reads as something the app did. Logging
-/// code under test logs — `EngineReply`'s tests exercise the decode failure it
-/// was written to record — and those lines wore the shape of a real fault well
+/// code under test logs — a test of a failing decode records the failure it provokes —
+/// and those lines wore the shape of a real fault well
 /// enough to be triaged as one.
 ///
 /// The *folder* moves rather than the file, because everything that lives beside
@@ -111,15 +111,6 @@ public enum LogLine {
         formatter.timeZone = timeZone
         formatter.locale = Locale(identifier: "en_US_POSIX")
         return formatter
-    }
-
-    /// The five parts as they were always spelled, for a caller holding parts
-    /// rather than an entry.
-    static func format(date: Date, level: LogLevel, category: String,
-                       message: String, site: LogSite? = nil,
-                       timeZone: TimeZone = .current) -> String {
-        line(LogEntry(date: date, level: level, category: category, message: message, site: site),
-             using: stamper(timeZone))
     }
 
     /// The one place a line is spelled. An entry rather than five parameters,
@@ -286,8 +277,8 @@ public final class HelmLog: @unchecked Sendable {
         }
     }
 
-    /// The last lines, for a dev build that wants to watch them arrive rather
-    /// than open the file afterwards. Guarded by the same queue as the file, so
+    /// The last lines, for the Log page, which shows them arriving rather than
+    /// sending a person to open the file afterwards. Guarded by the same queue as the file, so
     /// a reader never sees a half-written line.
     private var tail = LogTail()
     /// The most lines `recentEntries()` ever answers with.

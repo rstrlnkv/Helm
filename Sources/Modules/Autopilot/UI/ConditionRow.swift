@@ -14,7 +14,7 @@ struct ConditionRow: View {
     let remove: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: HelmSpace.s4) {
             // The label is real and hidden, not absent: `.labelsHidden()`
             // keeps the row reading as a sentence while VoiceOver still has
             // something to announce before the value.
@@ -22,14 +22,13 @@ struct ConditionRow: View {
                 ForEach(Field.allCases, id: \.self) { Text($0.label).tag($0) }
             }
             .labelsHidden()
-            .frame(width: HelmPickerWidth.fitting(Field.allCases.map(\.label), minimum: 150))
+            .frame(width: HelmPickerWidth.fitting(Field.allCases.map(\.label), minimum: AutopilotLayout.fieldPicker),
+                   alignment: .leading)
 
             detail
 
-            Spacer(minLength: 4)
-            Button(action: remove) { Image(systemName: "minus.circle") }
-                .buttonStyle(.borderless)
-                .accessibilityLabel(ApStr.delete)
+            Spacer(minLength: HelmSpace.s2)
+            HelmRemoveButton(label: "\(ApStr.delete), \(field.label)", target: 20, action: remove)
         }
     }
 
@@ -104,7 +103,7 @@ struct ConditionRow: View {
                 .labelsHidden()
                 .frame(width: HelmPickerWidth.fitting(
                     [ApStr.comparisonIs, ApStr.comparisonContains,
-                     ApStr.comparisonBegins, ApStr.comparisonEnds], minimum: 140))
+                     ApStr.comparisonBegins, ApStr.comparisonEnds], minimum: AutopilotLayout.shortPicker))
             TextField("", text: Binding(get: { value },
                                         set: { condition = .name(comparison, $0) }))
                 .accessibilityLabel(ApStr.a11yValue)
@@ -124,7 +123,7 @@ struct ConditionRow: View {
                 .labelsHidden()
                 .frame(width: HelmPickerWidth.fitting(
                     [ApStr.comparisonIs, ApStr.comparisonContains,
-                     ApStr.comparisonBegins, ApStr.comparisonEnds], minimum: 140))
+                     ApStr.comparisonBegins, ApStr.comparisonEnds], minimum: AutopilotLayout.shortPicker))
             TextField("", text: Binding(get: { value },
                                         set: { condition = .baseName(comparison, $0) }))
                 .accessibilityLabel(ApStr.a11yValue)
@@ -137,11 +136,11 @@ struct ConditionRow: View {
                 .accessibilityLabel(ApStr.a11yExtensions)
 
         case let .kind(kind):
-            Picker(ApStr.a11yField, selection: Binding(get: { kind }, set: { condition = .kind($0) })) {
+            Picker(ApStr.a11yValue, selection: Binding(get: { kind }, set: { condition = .kind($0) })) {
                 ForEach(FileKind.allCases, id: \.self) { Text(ApStr.kindName($0)).tag($0) }
             }
             .labelsHidden()
-            .frame(width: HelmPickerWidth.fitting(FileKind.allCases.map(ApStr.kindName), minimum: 160))
+            .frame(width: HelmPickerWidth.fitting(FileKind.allCases.map(ApStr.kindName), minimum: AutopilotLayout.kindPicker))
 
         case let .size(comparison, megabytes):
             Picker(ApStr.a11yComparison, selection: Binding(
@@ -152,7 +151,7 @@ struct ConditionRow: View {
                 }
                 .labelsHidden()
                 .frame(width: HelmPickerWidth.fitting(
-                    [ApStr.comparisonLarger, ApStr.comparisonSmaller], minimum: 140))
+                    [ApStr.comparisonLarger, ApStr.comparisonSmaller], minimum: AutopilotLayout.shortPicker))
             numberField(megabytes, ApStr.a11yMegabytes) { condition = .size(comparison, megabytes: $0) }
             Text(ApStr.unitMegabytes).font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
 
@@ -185,7 +184,7 @@ struct ConditionRow: View {
         }
         .labelsHidden()
         .frame(width: HelmPickerWidth.fitting(
-            [ApStr.comparisonOlder, ApStr.comparisonNewer], minimum: 140))
+            [ApStr.comparisonOlder, ApStr.comparisonNewer], minimum: AutopilotLayout.shortPicker))
         numberField(days, ApStr.a11yDays) { rebuild(comparison, $0) }
         Text(ApStr.unitDays(for: days)).font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
     }
@@ -201,18 +200,17 @@ struct ConditionRow: View {
                 // become a rule that matches every file: an unparseable value
                 // leaves the last good one in place.
                 // Finite and bounded. `Double.init` accepts `1e999`, which is
-                // `+∞`: `JSONEncoder` then refuses the whole rule list and the
-                // engine's setter discarded every folder without a word, while
+                // `+∞`: `JSONEncoder` refuses the whole rule list, and
                 // `Int(∞)` in a formatter is a trap rather than an error.
                 if let parsed = Double(text.replacingOccurrences(of: ",", with: ".")),
                    RuleCondition.accepts(parsed) {
                     set(parsed)
                 }
             }))
-        .frame(width: 70)
+        .frame(width: AutopilotLayout.numberField)
         .multilineTextAlignment(.trailing)
-        // The unit is a separate Text beside the field, so read aloud the
-        // number had no unit at all: "30" for days and "10" for megabytes.
+        // The unit is a separate Text beside the field, so the label carries it:
+        // "30" alone would not say days or megabytes.
         .accessibilityLabel(name)
     }
 }

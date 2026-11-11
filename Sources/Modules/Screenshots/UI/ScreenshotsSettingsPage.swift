@@ -8,7 +8,7 @@ struct ScreenshotsSettingsPage: View {
     /// holds of the same shortcuts.
     enum Tab: String, CaseIterable { case capturing, editor, system }
 
-    @ObservedObject private var model: ScreenshotsPageModel
+    @ObservedObject private var model: ScreenshotsViewModel
     private let store: NamespacedStore
 
     @State private var tab = Tab.capturing
@@ -40,8 +40,9 @@ struct ScreenshotsSettingsPage: View {
     @StateObject private var screenKey: HelmHotkeyRecorder
     @StateObject private var panelKey: HelmHotkeyRecorder
 
-    init(vm: ModuleViewModel, store: NamespacedStore) {
-        model = ScreenshotsPageModel.shared(vm: vm)
+    init(model: ScreenshotsViewModel) {
+        self.model = model
+        let store = model.store
         self.store = store
         let settings = ScreenshotsSettings.read(store)
         _target = State(initialValue: settings.saveTarget)
@@ -78,7 +79,7 @@ struct ScreenshotsSettingsPage: View {
             }
         }
         .formStyle(.grouped)
-        .helmWindowToolbar(toolbarContent, token: ScreenshotsDescriptor.id.rawValue)
+        .helmWindowToolbar(toolbarContent)
         .helmIdlesOffScreen()
         .helmTracksScreenRecording($screenRecording)
         .task { model.refresh() }
@@ -125,9 +126,9 @@ struct ScreenshotsSettingsPage: View {
     private var toolbarContent: HelmPageToolbarContent {
         let holds = Self.holdsSystemKeys(model.state.boxes)
         return HelmPageToolbarContent(
-            tabs: [HelmToolbarTab(id: Tab.capturing.rawValue, title: ScStr.tabCapturing, symbol: "camera.viewfinder"),
-                   HelmToolbarTab(id: Tab.editor.rawValue, title: ScStr.tabEditor, symbol: "pencil.tip.crop.circle"),
-                   HelmToolbarTab(id: Tab.system.rawValue, title: ScStr.systemSection, symbol: "command",
+            tabs: [HelmToolbarTab(id: Tab.capturing.rawValue, title: ScStr.tabCapturing),
+                   HelmToolbarTab(id: Tab.editor.rawValue, title: ScStr.tabEditor),
+                   HelmToolbarTab(id: Tab.system.rawValue, title: ScStr.systemSection,
                                   needsAttention: holds, attentionNote: holds ? ScStr.stillOn : nil)],
             selectedTab: Binding(get: { tab.rawValue }, set: { tab = Tab(rawValue: $0) ?? tab }))
     }
@@ -189,7 +190,7 @@ struct ScreenshotsSettingsPage: View {
 
     // MARK: - The system's own
 
-    /// The boxes the section draws: the two Helm replaces always, and a
+    /// The boxes the section draws: the boxes Helm replaces always (`SystemBox.replaced`), and a
     /// clipboard twin (29, 31) only while it holds a combination Helm holds — recorded here or shipped as the default.
     /// The conflict note says «Untick it below first» for any box macOS holds, so
     /// the box it means has to be below — and a twin that conflicts with nothing
@@ -271,11 +272,12 @@ struct ScreenshotsSettingsPage: View {
     struct BoxStatus: View {
         let state: BoxState
         let warns: Bool
+        @Environment(\.helmTraits) private var traits
 
         var body: some View {
             Text(ScreenshotsSettingsPage.say(state))
                 .font(HelmText.rowDetail)
-                .foregroundStyle(warns ? HelmSignal.warning : HelmText.quiet)
+                .foregroundStyle(warns ? HelmSignal.warning(increased: traits.increasedContrast) : HelmText.quiet)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }

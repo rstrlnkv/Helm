@@ -34,7 +34,7 @@ final class ASlipHasAWordBehindItTests: XCTestCase {
             tap: tap, typing: typing, sources: FakeSources(),
             translation: FakeTranslation(table: [:]),
             spell: FakeSpell(valid: valid),
-            secure: FakeSecure(), automatic: true,
+            secure: FakeSecure(), activation: FakeActivation(), automatic: true,
             settings: Self.boundStore())
         engine.activate()
         return engine

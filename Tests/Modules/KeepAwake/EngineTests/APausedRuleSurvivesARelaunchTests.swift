@@ -64,7 +64,7 @@ final class APausedRuleSurvivesARelaunchTests: XCTestCase {
                         displayObserver: FakeDisplayObserver(),
                         power: FakePower(), apps: apps,
                         pointer: FakePointer(), clamshell: FakeClamshell(),
-                        clock: clock)
+                        clock: clock, lidInfo: FakeLidInfo())
     }
 
     /// The control, first: without the pause the rule really does take the Mac
@@ -123,12 +123,12 @@ final class APausedRuleSurvivesARelaunchTests: XCTestCase {
 
         // The trigger drops…
         apps.ids = []
-        after.settingsChangedForTests()
+        after.settingsChanged()
         XCTAssertFalse(after.isActive, "precondition: nothing holds the Mac with the app gone")
 
         // …and comes back, which is what «until the rule applies again» means.
         apps.ids = ["com.example.render"]
-        after.settingsChangedForTests()
+        after.settingsChanged()
 
         XCTAssertFalse(after.suppressed, "the pause outlived the trigger it was set against")
         XCTAssertTrue(after.isActive, "the rule never held the Mac again")

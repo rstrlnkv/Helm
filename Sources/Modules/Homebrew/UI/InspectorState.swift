@@ -4,15 +4,15 @@ import Module_Homebrew_Engine
 
 /// What the inspector draws, decided without a view.
 ///
-/// **Two of the three tabs have an inspector; Состояние does not.** Its findings
+/// **Two of the three tabs have an inspector; Health does not.** Its findings
 /// open in place in a card of their own and its configuration opens the same
 /// way (`HomebrewHealthPage`), so there is nothing to select there and nothing
 /// for this type to describe: `.health` answers `.nothingToSelect`, which the
 /// page never mounts.
 ///
 /// `AvailableSection.of` is the shape this follows: the page asks a value type
-/// what it is looking at, and the decision is held by a test rather than by a
-/// screenshot. Everything here is a function of what the page already has — no
+/// what it is looking at, and the decision is held by a test
+/// (`InspectorStateDecisionsTests`, optional) rather than by a screenshot. Everything here is a function of what the page already has — no
 /// query of its own, and nothing that can be waited on.
 ///
 /// Internal, not `public` — nothing outside `Module_Homebrew_UI` reads this
@@ -24,11 +24,8 @@ enum InspectorState: Equatable {
     /// **There is nothing to pick.** The list beside this is empty — because
     /// the query is still out, because it answered nothing, or because it could
     /// not be put at all — and «Select a package» over it invites a choice
-    /// nobody can make. Measured 2026-09-16 on a 984 pt pane: the invitation
-    /// occupied 515 of 984 pt, 52 % of the pane, beside a master saying
-    /// Homebrew had not answered; at its worst, on a Состояние whose findings
-    /// *and* configuration both refused, one unselectable sentence on the left
-    /// and an invitation on the right.
+    /// nobody can make: the invitation occupied half the pane, beside a master
+/// saying Homebrew had not answered.
     ///
     /// **One case for all three of waiting, empty and refused, and that is the
     /// point.** The list's own three sentences are `ListScreen`'s job and they
@@ -72,12 +69,12 @@ enum InspectorState: Equatable {
         // of it, so a stale `selected` left over from a list that has since
         // emptied is not a reason to go on offering the invitation either.
         // `hits` counts on the two package tabs, since the section it
-        // describes sits under those and not under Состояние.
+        // describes sits under those and not under Health.
         //
-        // **Состояние first, and whatever it is holding.** It has no inspector
+        // **Health first, and whatever it is holding.** It has no inspector
         // (see the type's own comment), so a selection left on it is not
-        // something this could describe, and a hit the section drew there —
-        // it no longer draws one — is not one to offer an install for.
+        // something this could describe, and the section draws no hit there to
+        // offer an install for.
         if segment == .health { return .nothingToSelect }
         let empty: Bool
         if let shownEmpty {
@@ -248,11 +245,10 @@ enum HealthVerdict: Equatable {
 /// **What the whole health tab puts on screen: a verdict, the findings the
 /// search field leaves, and the configuration the search field leaves.**
 ///
-/// The tab used to be a striped list with an inspector beside it and the
-/// sentence for each reading a row in that list. It is one page now — the
-/// verdict first, then a card of findings that each open in place, then the
-/// configuration in a card of its own (`HomebrewHealthPage`) — so what the
-/// three parts hold is decided here, once, and not in a `body`.
+/// The tab is one page: the verdict first, then a card of findings that each
+/// open in place, then the configuration in a card of its own
+/// (`HomebrewHealthPage`), so what the three parts hold is decided here, once,
+/// and not in a `body`.
 ///
 /// **The fourth reading, `noMatches`, is about the findings and not about the
 /// Mac.** `brew doctor` really finding nothing and a query hiding what it did
@@ -349,8 +345,8 @@ struct InspectorSubject: Equatable {
     let id: String
     let name: String
     let isCask: Bool
-    /// One version installed, "a → b" outdated, the installed version for a
-    /// hit already on this Mac, "" for a hit that is not.
+    /// One version installed, "a → b" outdated, "" for a hit (the hits are
+    /// already filtered to what is not on this Mac).
     let version: String
     /// nil until the `brew desc` batch answers — never an empty string, which
     /// the view would draw as a blank line that later fills and re-flows.
@@ -359,11 +355,11 @@ struct InspectorSubject: Equatable {
     let action: Action
 }
 
-/// One tile of the package view's second tier: a label, and a value that was
+/// One row of the package view's second tier: a label, and a value that was
 /// actually read.
 ///
 /// A value type rather than a view, for the reason `InspectorState` above gives:
-/// which tiles an answer earns is the whole of the decision.
+/// which rows an answer earns is the whole of the decision.
 struct PackageFact: Equatable {
     let label: String
     let value: String
@@ -383,34 +379,34 @@ struct PackageFact: Equatable {
 /// `PackageFacts` refuses.
 ///
 /// A fourth state for «the walk was refused» would be a distinction with nothing
-/// to say: the tile is absent either way, and a person who never saw one cannot
+/// to say: the row is absent either way, and a person who never saw one cannot
 /// tell «no walk» from «a walk that failed» because neither is a fact about the
 /// package. So a refusal lands back on `.notMeasured`, deliberately.
 ///
 /// Never `.measured(0)` from the engine: a missing keg, a directory that would
 /// not open and a cask are all nil there (`HomebrewEngine.size`), because a zero
-/// in a tile is not a gap on the page — it is a measurement, and it says the
+/// in a row is not a gap on the page — it is a measurement, and it says the
 /// package occupies nothing.
 enum SizeReading: Equatable, Sendable {
-    /// Nothing has been walked and nothing is being walked: no tile.
+    /// Nothing has been walked and nothing is being walked: no row.
     case notMeasured
-    /// A walk is in flight **for the package on screen now**: the tile is there
+    /// A walk is in flight **for the package on screen now**: the row is there
     /// and says so.
     case measuring
     /// The walk answered, in bytes.
     case measured(Int)
 }
 
-/// Which tiles `brew info`'s answer earns — and no others.
+/// Which rows `brew info`'s answer earns — and no others.
 ///
-/// **An absent fact is an absent tile.** Installed and not installed are two
+/// **An absent fact is an absent row.** Installed and not installed are two
 /// different sets rather than one set with holes in it: "Version" over the
 /// catalogue's number is a different sentence from "Installed version" over what
 /// is on disk, and a package that is not installed has no install date and
-/// nobody asked for it. Inside each set every tile is still dropped when its own
+/// nobody asked for it. Inside each set every row is still dropped when its own
 /// fact is nil, because the fields are optional for reasons that happen
 /// constantly rather than rarely — a cask's document records neither a licence
-/// nor who asked for it, so a cask simply has fewer tiles than a formula.
+/// nor who asked for it, so a cask simply has fewer rows than a formula.
 ///
 /// A placeholder would be worse than the gap in both directions: a dash reads as
 /// "Homebrew answered and had nothing", and a zero reads as a measurement.
@@ -420,11 +416,11 @@ enum SizeReading: Equatable, Sendable {
 /// own Cellar directory that lands later than everything else — a separate
 /// parameter rather than a field of `PackageInfo`.
 ///
-/// **It is also the one tile that may stand for a state rather than a figure,
+/// **It is also the one row that may stand for a state rather than a figure,
 /// and only for the one state that is really happening.** `.measuring` means a
-/// walk is out *now, for this package*, so the tile says the figure is being
+/// walk is out *now, for this package*, so the row says the figure is being
 /// counted and then swaps it in place; `.notMeasured` covers everything else —
-/// nothing selected, not installed, the walk refused — and earns no tile at all,
+/// nothing selected, not installed, the walk refused — and earns no row at all,
 /// by exactly the rule the four above obey. There is deliberately still no «you
 /// will know once it is installed» for a package that is not here: nothing is
 /// walking, nothing ever will, and that sentence promises a number that never
@@ -457,10 +453,10 @@ enum PackageFacts {
                 facts.append(PackageFact(label: HbStr.tileLicence, value: licence))
             }
         }
-        // Last, and in both sets: it is the tile that arrives last, and a grid
-        // whose earlier tiles moved when it landed would re-flow the page under
+        // Last, and in both sets: it is the row that arrives last, and a list
+        // whose earlier rows moved when it landed would re-flow the page under
         // somebody's eyes. Holding the place while the walk is out is the other
-        // half of that — the figure then swaps into a tile that is already
+        // half of that — the figure then swaps into a row that is already
         // there rather than pushing one in beside the others.
         //
         // `Bytes` and not a formatter of its own — a Foundation one built with
@@ -482,7 +478,7 @@ enum PackageFacts {
 ///
 /// **A stack that resolves to zero height is not the same as no stack.** A
 /// `VStack`'s spacing is not paid around an absent child, which is why
-/// `factTiles` collapses to nothing when it earns no tile — but `origin` and
+/// `facts` collapses to nothing when it has nothing to say — but `origin` and
 /// `notes` were unconditional stacks, so for the commonest package of all (an
 /// installed formula somebody asked for, no other version lines, not deprecated)
 /// the tier paid its 24 pt step around each of two empty blocks where the

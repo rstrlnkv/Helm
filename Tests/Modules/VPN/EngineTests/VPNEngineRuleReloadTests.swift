@@ -99,8 +99,8 @@ final class VPNEngineRuleReloadTests: XCTestCase {
 
     /// The same shape with nobody touching the rules: the connection is
     /// renamed in System Settings, so `VPNRules.valid` drops the rule at the
-    /// next reload, and renamed back afterwards. `orphaned` exists precisely
-    /// because this happens.
+    /// next reload, and renamed back afterwards. `VPNTenants.orphaned` exists
+    /// precisely because this happens.
     func test_vpn_renamed_away_and_back_still_connects_on_the_next_launch() {
         let runner = FakeRunner()
         runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""

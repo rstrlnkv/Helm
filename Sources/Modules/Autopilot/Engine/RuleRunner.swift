@@ -30,13 +30,19 @@ public enum RuleOutcome: Equatable, Sendable {
     case targetOutOfScope
     case failed(String)
 
-    public enum Refusal: String, CaseIterable, Equatable, Sendable {
+    public enum Refusal: String, CaseIterable, Codable, Equatable, Sendable {
         /// The file is not somewhere a rule may reach — the one thing a refusal for
         /// scope can mean *here*. Its record carries no name and no path
         /// (`RuleOutcome.targetOutOfScope` is the other half).
         case outOfScope
         /// A rename pattern the filesystem should not be asked to take.
         case badPattern
+        /// Every `{counter}` number from 001 to 999 is already used in the
+        /// folder; the search stops there rather than walk on.
+        case counterNumbersUsedUp
+        /// The folder the file is in could not be listed, so which numbers are
+        /// used is unknown: no guess, no rename.
+        case folderUnreadable
         case missing
         /// Where the path leads changed between the gate and the act — a
         /// symlinked ancestor was swapped in the window, so the gate approved
@@ -58,13 +64,18 @@ struct RuleRunner: Sendable {
     /// the first reading from the real filesystem and swaps the disk underneath
     /// the second.
     private let ancestry: @Sendable (String) -> PathCanonical.AncestryIdentity?
+    /// The move to the Trash, answering where the file landed. A seam so a test
+    /// moves into a scratch folder and the person's own Trash is never touched.
+    private let trashing: @Sendable (URL) throws -> URL?
 
     init(home: String = NSHomeDirectory(),
          ancestry: @escaping @Sendable (String) -> PathCanonical.AncestryIdentity? = {
              PathCanonical.ancestryIdentity(of: $0)
-         }) {
+         },
+         trashing: @escaping @Sendable (URL) throws -> URL? = HelmTrash.moveToTrashSayingWhere) {
         self.home = home
         self.ancestry = ancestry
+        self.trashing = trashing
     }
 
     /// `key` is the seal key, which is what makes a stamp Helm's own rather than
@@ -73,7 +84,11 @@ struct RuleRunner: Sendable {
     /// carried out and the rule gets another turn at the same file next sweep,
     /// which is what an unstampable volume already looks like. Unreachable from
     /// the module's own triggers, which have no rules to run without a key.
-    func run(_ plan: RulePlan, at path: String, key: Data?) -> RuleOutcome {
+    ///
+    /// `counters` is the pass's `{counter}` numbering, shared by every file of
+    /// one sweep; alone, a call is a pass of one.
+    func run(_ plan: RulePlan, at path: String, key: Data?,
+             counters: CounterBook = CounterBook()) -> RuleOutcome {
         // The file itself has to be somewhere a rule may reach, whatever the
         // rule says — the rules are JSON in a plist any process can write, so
         // this is the only place the question is settled. `WatchScope` rather
@@ -94,7 +109,7 @@ struct RuleRunner: Sendable {
         guard stamp?.isStamped(path, by: plan.rule.id) != true else { return .alreadyDone }
         let approved = ancestry(path)
 
-        let outcome = perform(plan, at: path, approved: approved)
+        let outcome = perform(plan, at: path, approved: approved, counters: counters)
         switch outcome {
         case .refused, .targetOutOfScope, .failed, .alreadyDone:
             break
@@ -126,7 +141,8 @@ struct RuleRunner: Sendable {
     }
 
     private func perform(_ plan: RulePlan, at path: String,
-                         approved: PathCanonical.AncestryIdentity?) -> RuleOutcome {
+                         approved: PathCanonical.AncestryIdentity?,
+                         counters: CounterBook) -> RuleOutcome {
         let url = URL(fileURLWithPath: path)
         switch plan.action {
         case let .move(to: destination):
@@ -154,22 +170,28 @@ struct RuleRunner: Sendable {
                         approved: approved)
 
         case let .rename(pattern):
-            return rename(url, pattern: pattern, plan.facts, approved: approved)
+            return rename(url, pattern: pattern, plan.facts, approved: approved, counters: counters)
 
         case let .addTag(name):
             return tag(name, on: url)
 
         case .trash:
-            return trash(url, at: path, approved: approved)
+            return trash(at: path, approved: approved)
         }
     }
 
     private func rename(_ url: URL, pattern: String, _ facts: FileFacts,
-                        approved: PathCanonical.AncestryIdentity?) -> RuleOutcome {
-        guard let name = RenamePattern.apply(pattern, to: facts) else {
-            return .refused(.badPattern)
+                        approved: PathCanonical.AncestryIdentity?,
+                        counters: CounterBook) -> RuleOutcome {
+        let folder = url.deletingLastPathComponent()
+        let name: String
+        switch counters.name(for: pattern, facts: facts, in: folder.path) {
+        case let .name(chosen): name = chosen
+        case .unusable: return .refused(.badPattern)
+        case .exhausted: return .refused(.counterNumbersUsedUp)
+        case .unreadable: return .refused(.folderUnreadable)
         }
-        let target = url.deletingLastPathComponent().appendingPathComponent(name)
+        let target = folder.appendingPathComponent(name)
         // A pattern can name the file it is renaming — `{name}` does, and so
         // does any pattern mid-edit. Numbering it would make `a.pdf` into
         // `a 2.pdf`, then `a 2 2.pdf`, one file per sweep forever.
@@ -222,7 +244,7 @@ struct RuleRunner: Sendable {
         }
     }
 
-    private func trash(_ url: URL, at path: String,
+    private func trash(at path: String,
                        approved: PathCanonical.AncestryIdentity?) -> RuleOutcome {
         // The engine has the last word on deletion, as everywhere else —
         // and both gates have to say yes: `WatchScope` that a rule may
@@ -230,17 +252,20 @@ struct RuleRunner: Sendable {
         // break the machine.
         let (allowed, _) = UserFileScope.partition([path])
         guard !allowed.isEmpty else { return .targetOutOfScope }
-        guard leadsWhereItLed(path, approved) else { return .refused(.changedSinceCheck) }
-        do {
-            // **The resulting URL, at last.** Passing `nil` here was what made
-            // trashing the one action with nowhere to put the file back to —
-            // the Trash renames what it takes, so the path the file had is not
-            // a path anything is at.
-            var landed: NSURL?
-            try FileManager.default.trashItem(at: url, resultingItemURL: &landed)
-            return .trashed(to: (landed as URL?)?.path ?? "")
-        } catch {
-            return .failed(HelmFailure.describe(error))
+        // The recheck of where the path leads is the entry's own, the last thing
+        // before the move.
+        switch HelmTrash.removeOne(path, approved: approved, ancestry: ancestry, trashing: trashing) {
+        case let .trashed(at):
+            return .trashed(to: at?.path ?? "")
+        case let .refused(refusal, said):
+            switch refusal.reason {
+            case .changedSinceScan: return .refused(.changedSinceCheck)
+            case .missing: return .refused(.missing)
+            case .needsFullDiskAccess, .activeSystemExtension, .noPermission, .systemRefused,
+                 .readOnlyVolume, .diskFull, .outOfScope, .unreadable:
+                // `said` is nil only for `changedSinceScan`, the arm above.
+                return .failed(said ?? refusal.reason.rawValue)
+            }
         }
     }
 
@@ -256,9 +281,9 @@ struct RuleRunner: Sendable {
     /// matters, because Helm holds Full Disk Access and the swapper need not.
     ///
     /// Device and inode of the resolved parent, which is the same recheck
-    /// `HelmTrash.remove` carries for the batch removals. **It narrows and does
-    /// not close**, for the reason stated there: one stat chain still separates
-    /// this from the syscall's own resolve. What it takes away is every wide
+    /// `HelmTrash.removeOne` makes before it moves. **It narrows and does
+    /// not close**, for the reason `HelmTrash.remove` states: one stat chain
+    /// still separates this from the syscall's own resolve. What it takes away is every wide
     /// part — everything this runner does between the gate and the act is now
     /// behind it.
     ///

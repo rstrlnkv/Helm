@@ -7,9 +7,9 @@ import HelmRuntime
 /// back to a parser, so a timeout — empty stdout — became an empty list, and
 /// the page said "No packages installed." about a machine with 54 of them.
 ///
-/// A query that timed out answers *nothing*, which this codebase distinguishes
-/// from an empty answer: `nil` here, zero bytes on the wire, and the view model
-/// keeps the last answer it had.
+/// A list query that timed out answers *nothing*, which this codebase
+/// distinguishes from an empty answer: `nil` here, and the view model keeps the
+/// list it had.
 final class ATimedOutQueryIsANamedRefusalTests: XCTestCase {
 
     private struct FixedLocator: BrewLocator {

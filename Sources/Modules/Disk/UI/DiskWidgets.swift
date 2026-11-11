@@ -14,8 +14,8 @@ struct DiskWidget: View {
     @ObservedObject private var vm: DiskViewModel
     private let size: PanelWidgetSize
 
-    init(vm: ModuleViewModel, size: PanelWidgetSize) {
-        self.vm = DiskViewModel.shared(vm: vm)
+    init(model: DiskViewModel, size: PanelWidgetSize) {
+        self.vm = model
         self.size = size
     }
 
@@ -35,7 +35,7 @@ struct DiskWidget: View {
             if let main {
                 HelmWidgetFigure(Bytes(main.freeBytes), DkStr.free, size)
                 if size != .compact {
-                    CapacityBar(volume: main)
+                    CapacityBar(volume: main, height: 5, warnsWhenFull: true)
                     HelmWidgetRow(main.name, Bytes(main.usedBytes) + " / " + Bytes(main.totalBytes))
                 }
                 if size == .tall {
@@ -53,38 +53,38 @@ struct DiskWidget: View {
             }
         }
         .task {
-            // **Every time it is shown**, not once per launch. `shared(vm:)`
-            // lives as long as the app does, so `if vm.volumes.isEmpty` meant
-            // the free space on this tile was the figure from the first opening
-            // of the panel — for weeks, on a menu-bar app — and `CapacityBar`'s
-            // red-over-90 % could never fire on a disk filling up while Helm
-            // ran, which is the only way disks fill up. The panel rebuilds its
-            // widgets on every opening, and this read is a volume-attributes read.
-            await vm.loadVolumes()
+            // **Every time it is shown**, not once per launch. The model lives as
+            // long as the module does, so a read gated on an empty list would show
+            // the figure from the first opening of the panel, and the bar's red
+            // could never fire on a disk filling up while Helm runs. The panel
+            // rebuilds its widgets on every opening, and this read is a
+            // volume-attributes read.
+            await vm.appear()
         }
     }
 }
 
-/// Used against total. The same drawing the module's own page uses, at the
-/// height a widget can spare.
-private struct CapacityBar: View {
+/// Used against total, on the module's page and on its tile.
+///
+/// `warnsWhenFull` turns the used part red past 90 %: 10 % free is where macOS
+/// itself starts warning. The tile asks for it; the page's volume cards do not.
+struct CapacityBar: View {
     let volume: VolumeInfo
+    let height: CGFloat
+    var warnsWhenFull = false
 
     var body: some View {
         GeometryReader { proxy in
             let ratio = volume.totalBytes > 0
                 ? Double(volume.usedBytes) / Double(volume.totalBytes) : 0
             ZStack(alignment: .leading) {
-                Capsule().fill(Color.primary.opacity(0.10))
-                // Red when what is left stops being a comfort. 10% is where
-                // macOS itself starts warning, and a bar that stays calm to
-                // the last byte is a bar nobody reads.
+                Capsule().fill(DiskPalette.capacityTrack)
                 Capsule()
-                    .fill(ratio > 0.9 ? HelmSignal.danger : Color.accentColor.opacity(0.75))
+                    .fill(warnsWhenFull && ratio > 0.9 ? HelmSignal.danger : DiskPalette.capacityUsed)
                     .frame(width: proxy.size.width * ratio)
             }
         }
-        .frame(height: 5)
+        .frame(height: height)
         .accessibilityHidden(true)
     }
 }

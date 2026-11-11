@@ -76,7 +76,7 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
                                      preferences: NoPreferences(), shutter: shutter, textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))
-        let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store,
+        let controller = CaptureController(store: store,
                                            session: session,
                                            presentOverlay: { overlay in
                                                let built = overlay.build()
@@ -115,7 +115,7 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
 
         let (controller, board, disk, overlay) = try await editedThroughTheController(.desktop)
         overlay.keyDown(key(kReturn, "\r"))
-        // What `ModuleUICache.dropWhenDisabled` does when the switch is turned.
+        // What `teardown` does first; the model's `stop()` calls it when the switch is turned.
         controller.cancel()
         await grace(0.5)
         XCTAssertEqual(disk.written, 0, "a module switched off right after Return still wrote the file")

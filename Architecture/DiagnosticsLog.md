@@ -4,7 +4,7 @@
 in a folder created 0700 (`PrivateFile.directory(at:)`). `LogPolicy.isEnabled` answers
 whether it logs at all and `LogDestination` where it lives: every `-dev` build logs
 whatever was saved, and a beta build stays silent until its owner turns on the «Write a
-log file» item of the «More actions» menu on the Log page's window toolbar.
+log file» item of the «More actions» menu in the Log page's header row.
 
 What the installed build says about itself is read from that file rather than assumed: the
 lines tagged "permissions" (`Sources/HelmApp/PermissionAudit.swift`) state which grants it
@@ -21,6 +21,12 @@ names a person's habits, so the app-cleanup modules write `Redact.app` and not t
 alone. The tag is a salted FNV-1a rather than a hash of the bare name, because a keyless
 hash of a name drawn from a small public list is an index into that list; the salt is per
 install, in a `0600` file beside the log.
+
+`Redact.path` is not a tag: it writes only the home folder as `~`, and the folders and file
+names of a person's own documents (Autopilot, Disk, Duplicates) stay in the line. Two
+exceptions are tagged: a scan root outside home (`LogRoot.label`) and a software leaf
+(`Redact.path(_:leaf:)`, Uninstaller and Leftovers). That is the owner's decision of
+11.11.2026, and the Log page's note says it (`logRedactionNote`).
 
 Two things follow the file rather than the process. The one-time purge records that it
 has run in a file beside the log rather than in `UserDefaults`, which is namespaced per
@@ -73,9 +79,10 @@ the allocator's own books — `malloc_zone_statistics`' `size_in_use`. Every wal
 budget carries its ceiling as a file rather than as a paragraph, per entry or per item:
 `Tests/Modules/Disk/EngineTests/ScanFootprintTests.swift`,
 `Tests/Modules/Leftovers/EngineTests/AScanKeepsWhatItFoundTests.swift`,
-`Tests/Modules/Duplicates/EngineTests/WalkFootprintTests.swift` and
-`Tests/HelmRuntimeTests/ReleaseDigestFootprintTests.swift`, with
-`Tests/HelmRuntimeTests/MemoryTrailCoverageTests.swift` holding the list of phases
+`Tests/Modules/Duplicates/EngineTests/WalkFootprintTests.swift`; the streamed digest of
+an update carries a process ceiling over one large file instead, run only with
+`HELM_BENCH=1` (`Tests/HelmRuntimeTests/ReleaseDigestFootprintTests.swift`).
+`Tests/HelmRuntimeTests/MemoryTrailCoverageTests.swift` holds the list of phases
 obliged to carry a reading at all.
 
 `Tests/Support/ThreadAllocations.swift` judges one call by the requests it made and never
@@ -90,7 +97,7 @@ is idle (ARCHITECTURE.md § The activity registry).
 
 `Sources/HelmApp/LogView.swift` is the same lines readable while they are being written,
 on every build. It computes nothing about the file: one `write`, one format, and the pane
-is a window onto it. Its controls live in the settings window's own toolbar rather than
+is a window onto it. Its controls live in the header row of the settings window's card rather than
 in a band of the page (`LogView.toolbarContent`), so the place a person is sent to when
 they report a problem is the one named after it.
 

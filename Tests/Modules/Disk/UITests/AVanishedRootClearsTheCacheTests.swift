@@ -13,9 +13,9 @@ import Module_Disk_Engine
 /// again" button and an empty screen, with no way out that looks like one. It is
 /// recorded here for the other reason: it is the branch that makes
 /// `TheSuiteDoesNotReadTheUsersLastScanTests` a hazard rather than a turn of
-/// phrase. While `DiskViewModel.shared(vm:)` builds its store as `ScanStore()`,
-/// every test that renders Disk's settings page runs this branch against the
-/// person's real 8 MB cache, and one deleted folder is all it takes.
+/// phrase. While `DiskDescriptor.makeModule` builds the model with the default
+/// `ScanStore()`, every test that renders Disk's settings page would run this
+/// branch against wherever that store resolves, and one deleted folder is all it takes.
 ///
 /// A claim that a suite "could delete a file" is worth nothing until the delete
 /// is watched happening, so this watches it — and asserts the fixture was
@@ -33,7 +33,8 @@ final class AVanishedRootClearsTheCacheTests: XCTestCase {
         XCTAssertNotNil(store.load(), "the fixture is not on disk, so nothing below is a test")
         try FileManager.default.removeItem(at: root)
 
-        let model = DiskViewModel(vm: ModuleViewModel(transport: LocalTransport()), store: store)
+        let model = DiskViewModel(work: AnsweringWork(volumes: []), store: store)
+        await model.appear()
         for _ in 0..<200 where store.load() != nil { await Task.yield() }
 
         XCTAssertNil(store.load(),

@@ -17,13 +17,9 @@ import CryptoKit
 /// is not installed silently at all: the release page opens instead, and the
 /// user decides.
 public enum ReleaseDigest {
-    /// The line the release notes carry, e.g.
-    /// `sha256 Helm-0.7.1-dev.10.zip 3f9a…`
-    public static func line(asset: String, sha256: String) -> String {
-        "sha256 \(asset) \(sha256)"
-    }
-
-    /// Finds the digest published for `asset`. Case-insensitive on the hex,
+    /// Finds the digest published for `asset`, in the line the release notes
+    /// carry — `sha256 Helm-0.7.1-dev.10.zip 3f9a…`, which `Scripts/make-zip.sh`
+    /// and `Scripts/make-dmg.sh` print. Case-insensitive on the hex,
     /// exact on the file name — a digest for a different asset is not a digest
     /// for this one.
     public static func parse(notes: String, asset: String) -> String? {

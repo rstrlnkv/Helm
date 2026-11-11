@@ -45,24 +45,4 @@ final class RefusedPathsAreOneListTests: XCTestCase {
 
         XCTAssertEqual(result.failed, paths)
     }
-
-    /// The reason on the wire is the word, whether the field holds a string or
-    /// the enum it was always the raw value of. This is the check that let that
-    /// field become the enum: JSON written before it must still decode, and what
-    /// goes out must still be the same three keys with the same word in them.
-    func testTheReasonTravelsAsItsOwnWordEitherWay() throws {
-        let json = Data("""
-        {"trashed":["/moved"],"freedBytes":12,\
-        "failures":[{"path":"/locked","reason":"needsFullDiskAccess","message":"macOS said no"}]}
-        """.utf8)
-
-        let decoded = try JSONDecoder().decode(UninstallResult.self, from: json)
-
-        XCTAssertEqual(decoded.failures.map(\.reason), [.needsFullDiskAccess])
-        let object = try XCTUnwrap(JSONSerialization.jsonObject(
-            with: try JSONEncoder().encode(decoded)) as? [String: Any])
-        let failures = try XCTUnwrap(object["failures"] as? [[String: Any]])
-        XCTAssertEqual(Set(try XCTUnwrap(failures.first).keys), ["path", "reason", "message"])
-        XCTAssertEqual(failures.first?["reason"] as? String, "needsFullDiskAccess")
-    }
 }

@@ -35,7 +35,7 @@ final class MenuBarIconChoicesTests: XCTestCase {
     /// passes `""` for «never chosen», so this fallback is what a fresh install
     /// wears. It answered `.extraSmall` while `AppSettings` supplied `"small"`
     /// separately — 13 pt and «M» against 15 pt and «L» — and the disagreement
-    /// was reachable the moment anybody followed `sidebarStyle`'s pattern here.
+    /// was reachable the moment anybody dropped the literal for this fallback.
     func testSomethingUnrecognisedFallsBackToTheShippedDefault() {
         XCTAssertEqual(MenuBarIconSize(stored: "enormous"), .small)
         XCTAssertEqual(MenuBarIconSize(stored: ""), .small)

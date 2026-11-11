@@ -4,7 +4,7 @@ public protocol AppLister: Sendable {
     /// Apps from /Applications, ~/Applications, and any Setapp folder, with
     /// `sizeBytes` left at zero — see `appSizes`.
     func installedApps() -> [InstalledApp]
-    /// Bundle id → size on disk. Separate because measuring a bundle walks
+    /// Bundle path → size on disk. Separate because measuring a bundle walks
     /// every file in it: the list is worth showing before the numbers arrive.
     func appSizes(_ apps: [InstalledApp]) -> [String: Int]
     /// Just the ids. Sizing a bundle means walking every file inside it, and
@@ -77,7 +77,8 @@ public extension AppLister {
 
 public protocol FileSystemPort: Sendable {
     func exists(_ url: URL) -> Bool
-    /// Recursive byte size; 0 if missing.
+    /// Allocated bytes, the contents of a directory or package included and a hard
+    /// link counted once. 0 for a path that cannot be read, a missing one among them.
     func size(_ url: URL) -> Int
     /// Resolve a `*`-in-last-component pattern against its parent dir.
     func glob(_ pattern: URL) -> [URL]

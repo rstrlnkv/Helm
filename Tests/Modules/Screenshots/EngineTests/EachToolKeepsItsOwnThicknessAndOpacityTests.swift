@@ -70,7 +70,7 @@ final class EachToolKeepsItsOwnThicknessAndOpacityTests: XCTestCase {
             for step in AnnotationThickness.allCases {
                 for opacity in [0.1, 0.35, 1.0] {
                     let disk = backing()
-                    let style = AnnotationStyle(color: .blue, thickness: step, filled: true, opacity: opacity)
+                    let style = AnnotationStyle(color: AnnotationInk(AnnotationColor.blue), thickness: step, filled: true, opacity: opacity)
                     EditorMemory.remember(style: style, for: tool, in: store(disk))
                     XCTAssertEqual(EditorMemory.read(store(disk)).style(for: tool), style, "\(tool) \(step) \(opacity)")
                 }
@@ -80,18 +80,18 @@ final class EachToolKeepsItsOwnThicknessAndOpacityTests: XCTestCase {
 
     func testTheFillIsEveryToolsAndTheTablesAreWhatIsStored() {
         let disk = backing()
-        EditorMemory.remember(style: AnnotationStyle(color: .purple, thickness: .thick, filled: true, opacity: 0.5), for: .pen, in: store(disk))
-        EditorMemory.remember(style: AnnotationStyle(color: .purple, thickness: .thin, filled: true, opacity: 0.3), for: .highlighter, in: store(disk))
+        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.purple), thickness: .thick, filled: true, opacity: 0.5), for: .pen, in: store(disk))
+        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.purple), thickness: .thin, filled: true, opacity: 0.3), for: .highlighter, in: store(disk))
         let fresh = EditorMemory.read(store(disk))
         for tool in AnnotationTool.allCases {
-            XCTAssertEqual(fresh.style(for: tool).color, tool == .pen || tool == .highlighter ? .purple : nil, "\(tool): the colour is its own")
+            XCTAssertEqual(fresh.style(for: tool).color, tool == .pen || tool == .highlighter ? AnnotationInk(AnnotationColor.purple) : nil, "\(tool): the colour is its own")
             XCTAssertTrue(fresh.style(for: tool).filled, "\(tool): the fill is not shared")
         }
         // A pick on one tool moves that tool's colour only (`EachToolKeepsItsOwnColourTests`), and the other tools' steps stay.
-        EditorMemory.remember(style: AnnotationStyle(color: .green, thickness: .medium, filled: false, opacity: 1), for: .arrow, in: store(disk))
+        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.green), thickness: .medium, filled: false, opacity: 1), for: .arrow, in: store(disk))
         let after = EditorMemory.read(store(disk))
-        XCTAssertEqual(after.style(for: .pen).color, .purple)
-        XCTAssertEqual(after.style(for: .arrow).color, .green)
+        XCTAssertEqual(after.style(for: .pen).color, AnnotationInk(AnnotationColor.purple))
+        XCTAssertEqual(after.style(for: .arrow).color, AnnotationInk(AnnotationColor.green))
         XCTAssertEqual(after.style(for: .pen).thickness, .thick)
         XCTAssertEqual(after.style(for: .highlighter).opacity, 0.3)
         XCTAssertEqual(store(disk).intTable("editorThicknessByTool"), ["pen": 2, "highlighter": 0, "arrow": 1])

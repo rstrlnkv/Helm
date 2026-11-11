@@ -70,7 +70,8 @@ final class TrashArrivalTests: XCTestCase {
     }
 
     /// The volume is case-insensitive by default, so `.App` names the same
-    /// bundle `.app` does and the sweep would find it.
+    /// bundle `.app` does and the arrival wakes the sweep, which filters on
+    /// `app` as spelled and lists none.
     func testExtensionCaseDoesNotDecide() {
         XCTAssertTrue(TrashArrival.namesAnApp(["/Users/ann/.Trash/Notes Pro.App"], trash: trash))
     }

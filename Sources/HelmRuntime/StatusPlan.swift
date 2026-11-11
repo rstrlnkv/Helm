@@ -8,10 +8,10 @@ import HelmContract
 ///
 /// It lived in `HelmContract` under a note saying `HelmRuntime` does not depend
 /// on `HelmContract`, which is the edge the other way round: `HelmRuntime` has
-/// depended on the contract since `EngineReply` needed to log, and
+/// depended on the contract since an engine helper needed to log, and
 /// ARCHITECTURE.md § Targets records as one edge from `HelmRuntime` to `HelmContract`
 /// and none the other way.
-/// Nothing here is a wire type. It is four decisions the *host* makes about the
+/// It is four decisions the *host* makes about the
 /// menu bar out of what modules reported, which is the plumbing `HelmRuntime`
 /// is for — and every consumer already imports it. What it cost while it sat on
 /// the wrong side of that edge is two clamps spelled out by hand under
@@ -85,8 +85,8 @@ public enum StatusPlan {
     /// used to be applied after — `min(max(Int(phase * Double(frameCount)), 0),
     /// frameCount - 1)` — where they protected nothing, because `Int(_:)` traps
     /// on a value outside `Int`'s range and on one that is not a number, and it
-    /// ran first. `spinUntil` arrives from a module over JSON as a `Date`, which
-    /// is a `Double` of seconds; nothing between that payload and this line
+    /// ran first. `spinUntil` arrives from a module as a `Date`, which
+    /// is a `Double` of seconds; nothing between that value and this line
     /// bounds it, so the same family of crashes that `Clamped` was written for
     /// reached the menu bar. That is `clamped(to:)`, and it is called rather
     /// than spelled out now that this file is on the same side of the edge.

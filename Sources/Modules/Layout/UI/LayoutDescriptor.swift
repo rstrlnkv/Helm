@@ -14,8 +14,13 @@ import Module_Layout_Engine
         // `no accessibility grant — not watching` and no other way to work.
         inertWithout: [.accessibility]) }
     public static let category: ModuleCategory = .utilities
-    public static let tint: ModuleTint = .keyboard
-    public static let glyph: ShellGlyph = .layout
+    public static let tint = ModuleTint(
+        ordinary: (light: (0.850, 0.150, 0.650), dark: (0.850, 0.150, 0.650)),
+        increasedContrast: (light: (0.838, 0.148, 0.641), dark: (0.838, 0.148, 0.641)))
+    public static let glyph = ShellGlyph(
+        body: ShellGlyph.box(2.5, 6, 19, 12, 3.5),
+        detail: ShellGlyph.lines([ShellGlyph.dot(7.5, 10.3), ShellGlyph.dot(12, 10.3), ShellGlyph.dot(16.5, 10.3),
+                                  [ShellGlyph.pt(9, 13.9), ShellGlyph.pt(15, 13.9)]]))
 
     private var store: NamespacedStore?
     /// Readable so a test can tell «attached» from «not attached» without the
@@ -23,7 +28,7 @@ import Module_Layout_Engine
     private(set) var indicator: LanguageIndicator?
     /// Kept so it can be dropped. A block observer does not remove itself, and
     /// this descriptor is one long-lived instance in `ModuleRegistry.all` whose
-    /// `makeEngine` runs again on every enable — so turning Keyboard off and on
+    /// `makeModule` runs again on every enable — so turning Keyboard off and on
     /// left the previous indicator alive, retained by its own orphan observer
     /// and still owning a status item, while a second one was built. One more
     /// flag in the menu bar per toggle. `LayoutEngine.activate()` learned this
@@ -32,7 +37,18 @@ import Module_Layout_Engine
 
     public init() {}
 
-    public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
+    public typealias Model = LayoutViewModel
+
+    public func makeModule(store: NamespacedStore) -> ModuleParts<LayoutViewModel> {
+        let engine = productionEngine(store: store)
+        return ModuleParts(engine: engine, model: LayoutViewModel(work: engine))
+    }
+
+    /// The host closes the model before the engine goes: its stream task ends
+    /// and a late press reaches nothing.
+    public func stop(_ model: LayoutViewModel) { model.stop() }
+
+    private func productionEngine(store: NamespacedStore) -> LayoutEngine {
         self.store = store
         return LayoutEngine(tap: CGKeyTap(),
                             typing: SynthesisTyping(),
@@ -40,6 +56,7 @@ import Module_Layout_Engine
                             translation: UCTranslation(),
                             spell: SystemSpell(),
                             secure: AXSecureContext(),
+                            activation: AppActivation(),
                             sound: SystemSound(),
                             announcer: LayoutAnnouncer(store: store),
                             selection: AXSelection(),
@@ -55,21 +72,21 @@ import Module_Layout_Engine
     /// The module's own flag in the menu bar, built when the module starts
     /// running and taken away when it stops.
     ///
-    /// **Not in `makeEngine`, which is where it used to be.** `refresh()` builds
-    /// a real `NSStatusItem` the moment it reads the setting as on, so anybody
+    /// **Not in `makeModule`.** `refresh()` builds
+    /// a real `NSStatusItem` the moment it reads the setting as on, so there anybody
     /// who built an engine against a store with the indicator switched on
-    /// decorated the Mac they were running on — including the offscreen render
+    /// would decorate the Mac they are running on — including the offscreen render
     /// harness, whose whole discipline is that a measurement may read this Mac
     /// and may not change it. Writing the key straight into the backing store
     /// dodges `.helmStoreChanged` and does not dodge this: no notification is
     /// involved. Building an engine and appearing in the menu bar are two acts,
     /// and the host is what performs the second one.
     ///
-    /// It also gave the module no way *off* the menu bar. `makeEngine` dropped
-    /// the previous indicator and built another, so switching Keyboard off left
-    /// the flag where it was — retained by its own observers, for the life of
-    /// the process — and only switching it on again cleaned up. `detach` is the
-    /// other half the old shape could not have.
+    /// There it would also give the module no way *off* the menu bar: building the module
+    /// drops the previous indicator and builds another, so switching Keyboard off leaves
+    /// the flag where it is — retained by its own observers, for the life of
+    /// the process — and only switching it on again cleans up. `detach` is the
+    /// other half.
     public func attachMenuBarPresence() {
         guard let store else { return }
         detachMenuBarPresence()
@@ -96,31 +113,30 @@ import Module_Layout_Engine
     /// launch, it answers for a period rather than for one day, and the module
     /// has verbs that work from a panel.
     ///
-    /// Still `.utility` as well: the row in the utilities list is what a person
-    /// who has not added the tile sees, and it is where the module's switch
-    /// lives.
-    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
+    /// With a store the contribution is the tile and not `.utility`; `.utility`,
+    /// the compact row behind the panel's disclosure, is what comes back only
+    /// while there is no store.
+    public func menuBar(_ model: LayoutViewModel) -> MenuBarContribution? {
         guard let store else { return .utility }
         return MenuBarContribution(panelTile: AnyView(
-            LayoutWidgets.Wide(lvm: LayoutViewModel.shared(vm: vm),
-                               period: Self.storedPeriod(store), onNever: { Self.never($0, store, vm) })))
+            LayoutWidgets.Wide(lvm: model,
+                               period: Self.storedPeriod(store), onNever: { Self.never($0, store, model) })))
     }
 
     /// Three sizes, three questions: how many · how many and what to do · why
     /// that many and whether it goes on happening.
-    public func panelWidget(_ size: PanelWidgetSize, _ vm: ModuleViewModel) -> AnyView? {
+    public func panelWidget(_ size: PanelWidgetSize, _ model: LayoutViewModel) -> AnyView? {
         guard let store else { return nil }
-        let lvm = LayoutViewModel.shared(vm: vm)
         switch size {
         case .compact:
-            return AnyView(LayoutWidgets.Compact(lvm: lvm, period: Self.storedPeriod(store)))
+            return AnyView(LayoutWidgets.Compact(lvm: model, period: Self.storedPeriod(store)))
         case .wide:
-            return AnyView(LayoutWidgets.Wide(lvm: lvm, period: Self.storedPeriod(store),
-                                              onNever: { Self.never($0, store, vm) }))
+            return AnyView(LayoutWidgets.Wide(lvm: model, period: Self.storedPeriod(store),
+                                              onNever: { Self.never($0, store, model) }))
         case .tall:
-            return AnyView(LayoutWidgets.Tall(lvm: lvm, store: store,
-                                              onNever: { Self.never($0, store, vm) },
-                                              onAutomatic: { Self.automatic($0, store, vm) }))
+            return AnyView(LayoutWidgets.Tall(lvm: model, store: store,
+                                              onNever: { Self.never($0, store, model) },
+                                              onAutomatic: { Self.automatic($0, store, model) }))
         }
     }
 
@@ -136,20 +152,20 @@ import Module_Layout_Engine
     /// **That sentence stood over a verb that did only the first half.** The
     /// engine holds `exceptions` in a field and refills it in `reloadSettings`,
     /// which runs on `activate()` and on `settingsChanged` and nowhere else —
-    /// there is no bridge turning a store write into that command. So this
+    /// there is no bridge turning a store write into that call. So this
     /// button wrote the list and the engine went on converting the word until
     /// some *other* setting was saved or the app was relaunched, which is the
     /// panel widget's own headline verb doing nothing.
-    private static func never(_ word: String, _ store: NamespacedStore, _ vm: ModuleViewModel) {
+    private static func never(_ word: String, _ store: NamespacedStore, _ model: LayoutViewModel) {
         guard let words = Exceptions.adding(word, to: store.stringArray(LayoutKey.exceptions))
         else { return }
         store.set(words, for: LayoutKey.exceptions)
-        vm.send(LayoutCommand.settingsChanged)
+        model.settingsChanged()
     }
 
-    private static func automatic(_ on: Bool, _ store: NamespacedStore, _ vm: ModuleViewModel) {
+    private static func automatic(_ on: Bool, _ store: NamespacedStore, _ model: LayoutViewModel) {
         store.set(on, for: LayoutKey.automatic)
-        vm.send(LayoutCommand.settingsChanged)
+        model.settingsChanged()
     }
 
     /// The badge beside the module's name in the page header.
@@ -163,8 +179,8 @@ import Module_Layout_Engine
     /// in words where it can be acted on: an empty state for a missing grant, a
     /// note for the pause secure input causes. What that means for the badge is
     /// below — coarser than the page, never against it.
-    public func activity(_ vm: ModuleViewModel) -> ModuleActivity? {
-        let state = LayoutViewModel.shared(vm: vm).state
+    public func activity(_ model: LayoutViewModel) -> ModuleActivity? {
+        let state = model.state
         return Self.activity(enabled: state.enabled, suspended: state.suspended)
     }
 
@@ -183,28 +199,23 @@ import Module_Layout_Engine
     /// Without this the header reads the badge once and never again: the tap
     /// going live, or macOS taking it away, is exactly the case where nothing
     /// else on screen redraws.
-    public func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>? {
-        LayoutViewModel.shared(vm: vm).objectWillChange
+    public func statusChanges(_ model: LayoutViewModel) -> AnyPublisher<Void, Never>? {
+        model.objectWillChange
             .map { _ in () }
             .eraseToAnyPublisher()
     }
 
-    public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
+    public static var hotkeys: [ModuleHotkey] {
+        [ModuleHotkey(slot: LayoutHotkey.fix, prefix: LayoutHotkey.storePrefix)]
+    }
+
+    public func hotkeyPressed(_ hotkey: ModuleHotkey, _ model: LayoutViewModel) {
+        model.fix()
+    }
+
+    public func settingsPage(_ model: LayoutViewModel) -> AnyView {
         AnyView(LayoutSettingsPage(
-            vm: vm,
+            lvm: model,
             store: store ?? NamespacedStore(namespace: LayoutDescriptor.id.rawValue, backing: UserDefaults.standard)))
     }
 }
-
-/// LayoutCommand, where the host can see it.
-///
-/// The host talks to a module through its descriptor and the transport, and
-/// never links its engine — a direct edge there is a door past the transport.
-/// But the two global shortcuts it registers send the keyboard module's commands, and a
-/// hotkey wired to a misspelt name is silence with no symptom at all. The name
-/// is re-exported here rather than retyped there.
-public typealias LayoutCommand = Module_Layout_Engine.LayoutCommand
-
-/// The chord's two names, where the host can see them — the same reason and the
-/// same direction as `LayoutCommand` above.
-public typealias LayoutHotkey = Module_Layout_Engine.LayoutHotkey

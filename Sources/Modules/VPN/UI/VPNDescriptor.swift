@@ -11,14 +11,46 @@ import Module_VPN_Engine
         id: id, name: "VPN", summary: VPNStr.summary,
         sfSymbol: "lock.shield", permissions: []) }
     public static let category: ModuleCategory = .network
-    public static let tint: ModuleTint = .vpn
-    public static let glyph: ShellGlyph = .vpn
+    public static let tint = ModuleTint(
+        ordinary: (light: (0.380, 0.333, 0.961), dark: (0.427, 0.486, 1.000)),
+        increasedContrast: (light: (0.380, 0.333, 0.961), dark: (0.371, 0.422, 0.869)))
+    public static let glyph = ShellGlyph(
+        body: {
+            var shield = Path()
+            shield.move(to: ShellGlyph.pt(12, 3.5))
+            shield.addLine(to: ShellGlyph.pt(18.5, 6))
+            shield.addQuadCurve(to: ShellGlyph.pt(19.5, 7.5), control: ShellGlyph.pt(19.5, 6.4))
+            shield.addLine(to: ShellGlyph.pt(19.5, 11.5))
+            shield.addCurve(to: ShellGlyph.pt(12, 20.8), control1: ShellGlyph.pt(19.5, 16), control2: ShellGlyph.pt(16.5, 19))
+            shield.addCurve(to: ShellGlyph.pt(4.5, 11.5), control1: ShellGlyph.pt(7.5, 19), control2: ShellGlyph.pt(4.5, 16))
+            shield.addLine(to: ShellGlyph.pt(4.5, 7.5))
+            shield.addQuadCurve(to: ShellGlyph.pt(5.5, 6), control: ShellGlyph.pt(4.5, 6.4))
+            shield.closeSubpath()
+            return shield
+        }())
 
     private var store: NamespacedStore?
-    private var cached: (vm: ModuleViewModel, model: VPNViewModel)?
     public init() {}
 
-    public func makeEngine(store: NamespacedStore) -> any ModuleEngine {
+    public typealias Model = VPNViewModel
+
+    public func makeModule(store: NamespacedStore) -> ModuleParts<VPNViewModel> {
+        let engine = productionEngine(store: store)
+        // The model's `SystemAutomationNotice` is its own; its init touches
+        // nothing. The engine beside it is built here and never activated:
+        // `VPNSystemPorts` builds `KeychainCredentials`, whose init purges the
+        // old credential cache only when `AppBuild.isBundledApp`, so a test that
+        // builds the module reaches neither the keychain nor a tunnel.
+        let model = VPNViewModel(work: engine, settings: VPNSettings(store: store),
+                                 notices: SystemAutomationNotice(area: VPNEngine.moduleID))
+        return ModuleParts(engine: engine, model: model)
+    }
+
+    /// The host closes the model before the engine goes: its stream task ends
+    /// and nothing it was asked after that reaches the engine.
+    public func stop(_ model: VPNViewModel) { model.stop() }
+
+    private func productionEngine(store: NamespacedStore) -> VPNEngine {
         self.store = store
         let ports = VPNSystemPorts()
         // Every port named, none taken from a default: the app's own wiring is
@@ -32,71 +64,38 @@ import Module_VPN_Engine
                          speed: ports.speed)
     }
 
-    /// One VPNViewModel per module: building a fresh one each call would leak a
-    /// permanent transport-events subscriber every time the panel/settings open.
-    ///
-    /// Keyed to the host view model, the way `KeepAwakeViewModel.shared(vm:)`
-    /// is. Without the identity check the cache survived a module restart —
-    /// `ModuleHost.enable` builds a new engine and a new `ModuleViewModel`, and
-    /// the old model went on talking to the dead engine's transport, whose
-    /// handler is `[weak self]` and answers every command with empty `Data`.
-    /// Switching VPN off and on left the tile and the page frozen until relaunch.
-    func viewModel(_ hostVM: ModuleViewModel) -> VPNViewModel {
-        if let cached, cached.vm === hostVM { return cached.model }
-        // `SystemAutomationNotice` on its own rather than through
-        // `VPNSystemPorts`: building the whole bundle here would also build
-        // `KeychainCredentials`, whose init purges the old credential cache.
-        // Its own init touches nothing, so this stays free in a test.
-        let m = VPNViewModel(transport: hostVM.transport,
-                             settings: VPNSettings(store: settingsStore),
-                             notices: SystemAutomationNotice(area: VPNEngine.moduleID))
-        cached = (hostVM, m)
-        ModuleUICache.dropWhenDisabled(Self.id.rawValue) { [weak self] in self?.cached = nil }
-        return m
+    public func menuBar(_ model: VPNViewModel) -> MenuBarContribution? {
+        MenuBarContribution(panelTile: AnyView(VPNPanelTile(vm: model)))
     }
-
-    public func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? {
-        MenuBarContribution(panelTile: AnyView(VPNPanelTile(vm: viewModel(vm))))
-    }
-    /// Three sizes. The middle one is the tile this module has always drawn;
-    /// 1×1 is how many are up out of how many exist, and 2×N is the tile with
-    /// every connection listed under it — which is the case that makes somebody
-    /// open the panel at all: one of them is connected and it is not the one
-    /// they expected.
-    public func panelWidget(_ size: PanelWidgetSize, _ vm: ModuleViewModel) -> AnyView? {
+    /// Two sizes: 1×1 is how many are up out of how many exist, 2×1 is every
+    /// connection with its switch. There is no 2×N (the reason is at `case .tall`).
+    public func panelWidget(_ size: PanelWidgetSize, _ model: VPNViewModel) -> AnyView? {
         switch size {
-        case .compact: return AnyView(VPNCompactWidget(vm: viewModel(vm)))
-        case .wide: return AnyView(VPNPanelTile(vm: viewModel(vm)))
-        // No 2×N. The 2×1 tile already lists every connection with a switch,
-        // so the tall one printed the same list a second time underneath —
-        // four VPNs came out as eight rows, four of them dead. The doc comment
-        // that justified it described a tile this repo does not have.
+        case .compact: return AnyView(VPNCompactWidget(vm: model))
+        case .wide: return AnyView(VPNPanelTile(vm: model))
+        // No 2×N: the 2×1 tile already lists every connection with a switch,
+        // so a tall one would print the same list a second time underneath.
         case .tall: return nil
         }
     }
 
-    /// The badge in the page header, which is where the count used to be.
-    ///
-    /// A `HelmMetricStrip` sat above this page reading «2 connections · 1
-    /// active · 3 automatic». Two of those three are facts the list underneath
-    /// spells out a row at a time, and the third is a number nobody acts on;
-    /// what a person wants from the top of this page is whether anything is up
-    /// at all. That is one word, and the window already has a place for it.
-    public func activity(_ vm: ModuleViewModel) -> ModuleActivity? {
+    /// The badge in the page header: what a person wants from the top of this
+    /// page is whether anything is up at all. That is one word, and the window
+    /// has a place for it; the list underneath spells out the rest a row at a
+    /// time.
+    public func activity(_ model: VPNViewModel) -> ModuleActivity? {
         // `isConnected`, not `isUp`. `isUp` is «something is happening here»
         // and includes `.connecting`, so a tunnel three seconds into coming up
-        // put a green «Active» in the header beside a card that said
-        // «Connecting…». That exact defect was found and fixed once in the
-        // metric strip this badge replaced — and came back with the badge,
-        // because the question was copied and the answer was not.
-        viewModel(vm).connections.contains { $0.status.isConnected } ? .active : .idle
+        // would put a green «Active» in the header beside a card that said
+        // «Connecting…».
+        model.connections.contains { $0.status.isConnected } ? .active : .idle
     }
 
     /// Without this the host reads `statusAppearance` only when something else
     /// redraws the icon, and a rule firing by itself is precisely the case
     /// where nothing else does.
-    public func statusChanges(_ vm: ModuleViewModel) -> AnyPublisher<Void, Never>? {
-        viewModel(vm).objectWillChange
+    public func statusChanges(_ model: VPNViewModel) -> AnyPublisher<Void, Never>? {
+        model.objectWillChange
             .map { _ in () }
             .eraseToAnyPublisher()
     }
@@ -112,8 +111,7 @@ import Module_VPN_Engine
     ///
     /// The spin's colour is `spinTintToken`, which `StatusPlan.choose` does not
     /// read — so colouring the animation does not make this a tinting module.
-    public func statusAppearance(_ vm: ModuleViewModel) -> StatusAppearance {
-        let model = viewModel(vm)
+    public func statusAppearance(_ model: VPNViewModel) -> StatusAppearance {
         guard let firing = model.lastAutomation else { return .inactive }
         // One reading of the clock, so the two windows cannot disagree about
         // which moment they are answering for.
@@ -122,7 +120,7 @@ import Module_VPN_Engine
         // is a separate question, answered a level up in `StatusPlan.spins`:
         // this is a preference, that is an instruction from the system.
         // Every one of these three is asked *on the configuration that fired*,
-        // never module-wide: the settings live on the card now.
+        // never module-wide: the settings live on the card.
         let spinning = model.automationSpin(on: firing.name)
             && VPNAutomation.spinPhase(firing, now: now) != nil
         let names = model.effectiveNotice(for: firing.kind, on: firing.name).showsMenuBarName
@@ -137,8 +135,8 @@ import Module_VPN_Engine
                                     ? model.spinTint(for: firing.kind, on: firing.name) : nil)
     }
 
-    public func settingsPage(_ vm: ModuleViewModel) -> AnyView {
-        AnyView(VPNSettingsPage(vm: viewModel(vm), store: settingsStore))
+    public func settingsPage(_ model: VPNViewModel) -> AnyView {
+        AnyView(VPNSettingsPage(vm: model, store: settingsStore))
     }
 
     /// The module's own defaults, whether or not the engine has been built yet.

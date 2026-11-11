@@ -29,7 +29,7 @@ public struct PanelLayout: Equatable, Codable, Sendable {
         public var name: String?
         public var widgets: [Slot]
         /// An SF Symbol name. Optional because a tab made before glyphs existed
-        /// has none, and because «no glyph» is a state the strip can draw.
+        /// has none.
         public var glyph: String?
 
         public init(id: String, seed: String? = nil, name: String? = nil,
@@ -275,9 +275,8 @@ public struct PanelLayout: Equatable, Codable, Sendable {
     public func addingTab(id: String) -> PanelLayout {
         guard !tabs.contains(where: { $0.id == id }) else { return self }
         var copy = self
-        // A different glyph from the ones already used, so a strip showing only
-        // glyphs is a strip you can tell apart. It runs out at eight, and then
-        // repeats rather than refusing to make a tab.
+        // A different glyph from the ones already used. It runs out at eight, and
+        // then repeats rather than refusing to make a tab.
         let taken = Set(copy.tabs.compactMap(\.glyph))
         let glyph = Tab.glyphs.first { !taken.contains($0) } ?? Tab.glyphs[copy.tabs.count % Tab.glyphs.count]
         copy.tabs.append(Tab(id: id, seed: nil, name: nil, widgets: [], glyph: glyph))

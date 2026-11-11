@@ -51,6 +51,8 @@ final class FakeTrash: TrashPort, @unchecked Sendable {
             return TrashOutcome(succeeded: false, errorCode: 513, message: "denied")
         }
         trashed.append(url.path)
+        // Gone from its place, as a real move leaves it: `HelmTrash.remove` asks.
+        try? FileManager.default.removeItem(at: url)
         return .success
     }
 }

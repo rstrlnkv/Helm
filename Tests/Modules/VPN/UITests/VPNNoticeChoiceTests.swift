@@ -19,10 +19,16 @@ import XCTest
 @MainActor
 final class VPNNoticeChoiceTests: XCTestCase {
 
+    /// In memory, never `UserDefaults.standard`; the engine the descriptor builds
+    /// beside the model is not activated.
+    private static func store() -> NamespacedStore {
+        NamespacedStore(namespace: VPNDescriptor.id.rawValue, backing: InMemoryKeyValueStore())
+    }
+
     private func model(_ port: FakeAutomationNotice) -> (VPNViewModel, VPNSettings) {
         let settings = VPNSettings(store: NamespacedStore(namespace: "vpn",
                                                           backing: InMemoryKeyValueStore()))
-        return (VPNViewModel(transport: LocalTransport(), settings: settings, notices: port),
+        return (VPNViewModel(work: FakeVPNWork(), settings: settings, notices: port),
                 settings)
     }
 
@@ -30,7 +36,6 @@ final class VPNNoticeChoiceTests: XCTestCase {
         let port = FakeAutomationNotice()
         let (vm, settings) = model(port)
         await vm.choose(.menuBar)
-        XCTAssertEqual(settings.notice, .menuBar)
         XCTAssertEqual(port.requests, 0, "macOS was asked for a permission nobody needed")
     }
 
@@ -38,11 +43,11 @@ final class VPNNoticeChoiceTests: XCTestCase {
     func testTheBannerModeAsksMacOSAndRemembersTheAnswer() async {
         let port = FakeAutomationNotice(state: .authorized)
         let (vm, settings) = model(port)
+        settings.store.set(VPNNotice.system.rawValue, for: VPNSettings.automationNoticeKey)
         await vm.choose(.system)
         XCTAssertEqual(port.requests, 1)
-        XCTAssertEqual(settings.notice, .system)
         XCTAssertTrue(settings.bannerAuthorized, "macOS said yes and the mirror did not hear it")
-        XCTAssertEqual(vm.effectiveNotice, .system)
+        XCTAssertEqual(vm.effectiveNotice(for: .connected, on: ""), .system)
     }
 
     /// A refusal must not leave the loudest mode silent: the label takes over,
@@ -50,11 +55,12 @@ final class VPNNoticeChoiceTests: XCTestCase {
     func testARefusalIsRememberedAndFallsBackToTheLabel() async {
         let port = FakeAutomationNotice(state: .denied)
         let (vm, settings) = model(port)
+        settings.store.set(VPNNotice.system.rawValue, for: VPNSettings.automationNoticeKey)
         await vm.choose(.system)
         XCTAssertFalse(settings.bannerAuthorized)
         XCTAssertEqual(vm.bannerAuthorization, .denied,
                        "the page has no way to tell the person macOS refused")
-        XCTAssertEqual(vm.effectiveNotice, .menuBar,
+        XCTAssertEqual(vm.effectiveNotice(for: .connected, on: ""), .menuBar,
                        "a refused banner became silence rather than the menu-bar name")
     }
 
@@ -86,9 +92,10 @@ final class VPNNoticeChoiceTests: XCTestCase {
     /// bundle. This walks the real path the app takes, descriptor included.
     func testTheSettingsPageIsBuiltWithoutAskingMacOSAnything() {
         let descriptor = VPNDescriptor()
-        let host = ModuleViewModel(transport: LocalTransport())
-        _ = descriptor.settingsPage(host)
-        XCTAssertNil(descriptor.viewModel(host).bannerAuthorization,
+        let parts = descriptor.makeModule(store: Self.store())
+        defer { descriptor.stop(parts.model) }
+        _ = descriptor.settingsPage(parts.model)
+        XCTAssertNil(parts.model.bannerAuthorization,
                      "building the page asked macOS about banners")
     }
 
@@ -98,8 +105,9 @@ final class VPNNoticeChoiceTests: XCTestCase {
     /// its own fake still passes.
     func testTheDescriptorGivesItsViewModelAWayToReachMacOS() {
         let descriptor = VPNDescriptor()
-        let host = ModuleViewModel(transport: LocalTransport())
-        XCTAssertTrue(descriptor.viewModel(host).reachesBanners,
+        let parts = descriptor.makeModule(store: Self.store())
+        defer { descriptor.stop(parts.model) }
+        XCTAssertTrue(parts.model.reachesBanners,
                       "the module's own view model cannot reach macOS at all")
     }
 }

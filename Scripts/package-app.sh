@@ -12,7 +12,7 @@ BUILD_DIR="$REPO_ROOT/build"
 # Build number = the number of commits in the history. It rises along one
 # branch and says nothing about which commit: two branches whose histories
 # hold the same count print it for different commits. The About page's
-# "build N" (its only reader: Sources/HelmApp/AboutPage.swift) is a counter,
+# "build N" (AppBuild.buildNumber reads it, AboutPage shows it) is a counter,
 # not a commit id, and a number that silently goes DOWN is worse than a
 # build that refuses to run: it reads as an older build to anyone comparing
 # one copy's About page against another's.
@@ -234,8 +234,8 @@ fi
 echo "==> Build number: $BUILD_NO"
 # The bundle is assembled and signed OUTSIDE the repo.
 #
-# This checkout lives under ~/Documents, which a file provider syncs, and the
-# provider stamps com.apple.FinderInfo onto directories it manages faster than
+# This checkout is meant to stay out from under a file provider (CLAUDE.md); one that
+# syncs it stamps com.apple.FinderInfo onto directories it manages faster than
 # `xattr -c` removes it. codesign refuses a bundle carrying it ("resource fork,
 # Finder information, or similar detritus not allowed"), so signing in place
 # here succeeds or fails by luck — and an unsigned bundle has no cdhash for TCC
@@ -267,11 +267,10 @@ cp "$REPO_ROOT/Resources/HelmApp/Info.plist" "$CONTENTS_DIR/Info.plist"
 # The ring artwork the icon is built from; only the SVG is copied, the scale,
 # colours and slab in HelmAppMark.swift are copied from the icon by hand.
 cp "$REPO_ROOT/Resources/Icon/Helm.icon/Assets/helm-ring.svg" "$RESOURCES_DIR/helm-ring.svg"
-# SwiftPM resource bundles. A target that declares `resources:` gets its own
-# .bundle beside the binary, and `Bundle.module` looks for it next to the
-# executable — miss this copy and the flag artwork is simply absent at
-# runtime, with every layout quietly falling back to letters and nothing in
-# the build saying so.
+# SwiftPM resource bundles. A target with `resources:` or a `Localizable.xcstrings`
+# gets its own .bundle, and `Bundle.module` looks for it in `Contents/Resources`
+# first — miss this copy and the first lookup traps (`fatalError` in SwiftPM's
+# generated accessor).
 BUNDLE_COUNT=0
 for bundle in "$REPO_ROOT"/.build/release/*.bundle; do
   [ -e "$bundle" ] || continue
@@ -331,7 +330,7 @@ codesign --verify --deep --strict "$APP_DIR"
 echo "==> Signature verified"
 
 # A copy in the repo for convenience only. It cannot be verified or installed
-# from — the file provider re-stamps its root the moment it lands.
+# from — a file provider, if one syncs the checkout, re-stamps its root as it lands.
 ditto "$APP_DIR" "$BUILD_DIR/$APP_NAME"
 
 echo "==> Done"

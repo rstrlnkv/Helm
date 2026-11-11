@@ -87,7 +87,7 @@ final class TheRealPortOnEveryFileSystemTests: XCTestCase {
             let mount = try mounted(fs, browsable: true)
             defer { detach(mount) }
             let resolved = URL(fileURLWithPath: mount).resolvingSymlinksInPath().path
-            let listed = DiskEngine(capacity: SystemVolumeCapacity()).volumes().first {
+            let listed = DiskEngine(capacity: SystemVolumeCapacity(), trashing: neverTrashes).volumes().first {
                 URL(fileURLWithPath: $0.path).resolvingSymlinksInPath().path == resolved
             }
             let volume = try XCTUnwrap(listed, "precondition: the \(fs) disk is in the engine's list")

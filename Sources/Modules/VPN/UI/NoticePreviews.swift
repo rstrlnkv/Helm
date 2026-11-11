@@ -13,20 +13,16 @@ import Module_VPN_Engine
 /// it, or a banner below it.
 ///
 /// **Every size is a fraction of the frame**, which is the same rule
-/// `AppearanceThumbnail` follows and is what let these move from a 104×66 card
-/// to the 74×46 one and back without a redraw. Written in points, they did not
-/// move: the banner was 52 pt wide inside a 74 pt card, and the menu bar was a
-/// third of its height.
+/// `AppearanceThumbnail` follows and is what lets these draw at any card size
+/// without a redraw: written in points, they would not move with it.
 ///
-/// **Redrawn 2026-08-12 from the Figma mockups**, which changed three things
-/// and left the fourth alone:
+/// **Drawn after the Figma mockups**, in four points:
 ///
 /// - The desktop is `HelmWallpaper`, shared with the appearance thumbnail,
 ///   rather than a flat `Color.primary.opacity(0.06)`. The mockups draw one
-///   desktop for both controls, measured to the pixel.
+///   desktop for both controls.
 /// - **The menu bar has no strip behind it.** macOS 26 draws the bar as glass
-///   over the wallpaper, so a grey band was the older system's shape; the
-///   glyphs sit on the desktop now.
+///   over the wallpaper, so the glyphs sit on the desktop.
 /// - There are the neighbours a real menu bar has — a signal-ish pair and the
 ///   clock — because a corner holding one glyph does not read as a menu bar at
 ///   all, which is the whole subject of this picture.
@@ -37,10 +33,8 @@ import Module_VPN_Engine
 /// The clock is a shape, not digits. The mockups carry Apple's "9:41", and at
 /// 104 pt real digits are three grey smudges — this stands for a clock the way
 /// the two lines in the banner stand for a sentence.
-/// `@MainActor` because every one of these builds a view: both call sites —
-/// `VPNConnectionCard`'s body and an already-`@MainActor` test class — are on
-/// the main actor already, so this states what was true rather than moving
-/// anything.
+/// `@MainActor` because every one of these builds a view, and its one caller,
+/// `VPNConnectionCard`'s body, is on the main actor already.
 @MainActor
 enum NoticePreview {
     /// The picture for a mode, **derived from the mode** rather than described
@@ -51,9 +45,7 @@ enum NoticePreview {
     /// `VPNNotice.showsMenuBarName` is `self == .menuBar`, so the card for the
     /// loudest mode promised something the setting does not do. Nothing could have
     /// caught it — the enum and the picture agreed about nothing, because nothing
-    /// connected them. They are one expression now, which is the same reason a
-    /// command name is a constant both sides read rather than a literal typed twice
-    /// (CLAUDE.md § Where things go).
+    /// connected them. They are one expression now.
     static func of(_ mode: VPNNotice) -> some View {
         strip(name: mode.showsMenuBarName, banner: mode.postsBanner)
     }

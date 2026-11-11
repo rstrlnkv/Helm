@@ -7,13 +7,13 @@ import XCTest
 /// «The model refuses; the page dims. Both, or neither is reliable» —
 /// ARCHITECTURE.md § One removal at a time. `OneRemovalAtATimeEverywhereTests`
 /// (HelmAppTests) enforces it for every module by walking `Sources/Modules` for
-/// files that **send a removal** (`Command.trash` or `uvm.trashPaths(`), and
+/// files that **send a removal** (`work.trash(`, `work.trashPaths(` or `uvm.trashPaths(`), and
 /// this module has three doors to the Trash, all of which that finds:
 ///
 /// - `UninstallerViewModel.removeSelection` — it has the guard;
 /// - `TrashedLeftoversModel.removeSelection` — the unprompted window's own
-///   model, which sends the command itself and is not called a view model;
-///   `TheTrashOfferSendsOneBatchTests` drives that one against a transport that
+///   model, which calls `uvm.trashPaths` itself and is not called a view model;
+///   `TheTrashOfferSendsOneBatchTests` drives that one against a work that
 ///   does not answer until it is told to, which is the better proof and is
 ///   available because the model is reachable;
 /// - `OrphansView.trashSelected` — this one, whose `busy` is a `@State` on the

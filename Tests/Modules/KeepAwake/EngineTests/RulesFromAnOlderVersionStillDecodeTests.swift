@@ -5,11 +5,9 @@ import HelmRuntime
 /// The app rules are the one document this module keeps that really does cross
 /// builds, and `AppTrigger` decodes it with a synthesised `Decodable`.
 ///
-/// The wire payload next door has a hand-written `init(from:)` because a
-/// synthesised one requires every key whatever a property's initial value is.
-/// This type has the same exposure and none of the repair, and the difference
-/// matters more here: the payload is re-sent by the engine a moment later, while
-/// this string sits in `~/Library/Preferences` and is read by whatever build is
+/// A synthesised `Decodable` requires every key whatever a property's initial
+/// value is, and this type has no repair for that. It matters here because the
+/// state is rebuilt by the engine a moment later, while this string sits in `~/Library/Preferences` and is read by whatever build is
 /// installed next. A field added without `decodeIfPresent` does not lose one
 /// rule — `JSONDecoder` refuses the whole array, `readable` answers nil, and
 /// `KeepAwakeSettings.AppRulesReading.unreadable` drops **every** rule the
@@ -64,7 +62,7 @@ final class RulesFromAnOlderVersionStillDecodeTests: XCTestCase {
 
         XCTAssertNil(AppTriggerRules.readable(oneFieldShort),
                      "precondition: a rule missing a required key is refused")
-        XCTAssertEqual(AppTriggerRules.decode(oneFieldShort), [],
+        XCTAssertEqual((AppTriggerRules.readable(oneFieldShort) ?? []), [],
                        "and the rule beside it, which is perfectly readable, goes with it")
     }
 }

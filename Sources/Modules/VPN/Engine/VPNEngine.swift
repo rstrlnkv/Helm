@@ -5,11 +5,15 @@ import Foundation
 import HelmContract
 import HelmRuntime
 
-/// Orchestrates VPN connect/disconnect/toggle (via `scutil --nc`) and per-app
+/// Orchestrates VPN connect/disconnect (via `scutil --nc`, and
+/// `SCNetworkConnectionStart` for a start that carries a secret) and per-app
 /// auto-connect (VPNAutoConnectCore) against the injected ports. `activate()`/
 /// `deactivate()` are the MODULE lifecycle (host enables/disables the module);
-/// they also start/stop the auto-connect app observation. Blocking work runs
-/// on `VPNWorkQueue`, which says why it exists.
+/// `activate()` also starts the auto-connect app observation, and `deactivate()`
+/// stops, of the two observers, only the network watch: `AppObserverPort` has no stop, so the app
+/// observation lasts until the port is released and `appsChangedNow` answers
+/// nothing while the engine is not running. Blocking work runs on
+/// `VPNWorkQueue`, which says why it exists.
 ///
 /// **This file is over `file_length` and `type_body_length`, and stays over,
 /// deliberately** — a warning nobody has explained is a warning the next person
@@ -32,8 +36,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// It is the `module.vpn.*` prefix of every setting this module has ever
     /// saved and the category its log lines file under. `VPNDescriptor.id` is
-    /// built from this rather than repeating it, the direction the descriptors
-    /// already carry their command enums, so the two spellings are one. **The
+    /// built from this rather than repeating it, so the two spellings are one. **The
     /// string itself never changes** — it names stored settings already on
     /// people's machines. The keychain service stays its `com.helm.vpn`
     /// literal on purpose: it is deployed under its own name
@@ -48,8 +51,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private let interfaces: VPNInterfacePort
     private let exit: VPNExitPort
     private let speed: VPNSpeedPort
-    private let localTransport: LocalTransport
-    public let transport: EngineTransport
+    private let news: EngineNews<StatePayload>
 
     /// Written from the work queue and read from the UI, hence the lock — the
     /// class was `@unchecked Sendable` with no synchronisation at all, and an
@@ -83,6 +85,9 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// the same lock as the two books above it, and for the same reason: written
     /// from the work queue, read by the page.
     private var _secrets = VPNSecretBook()
+    /// Which rule cannot fire however its app launches, and why — written with
+    /// `core.rules` by `reloadRulesNow`, under the lock, published by `emitState`.
+    private var _ruleRefusals: [String: VPNRuleTrust.Verdict] = [:]
     private var _lastAutomation: VPNAutomation?
     /// The two pieces of work that leave the module's own queue — under the lock
     /// because they are started on the work queue and cancelled from the host's
@@ -113,13 +118,20 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// The configurations a rule cannot raise, because their secret is in the
     /// System keychain and only a person's own gesture may open it.
     ///
-    /// On the wire and drawn, not merely logged: the two changes that produced
+    /// Published and drawn, not merely logged: the two changes that produced
     /// this state — the one-time purge of the old credential cache and the refusal
     /// to prompt for an automatic connect — are both correct, and together they
     /// left a rule reaching the same dead end at every launch of its app with
     /// nothing but `~/Library/Logs/Helm/helm.log` to say so.
     public var secretsBehindAPrompt: [String] {
         lock.lock(); defer { lock.unlock() }; return _secrets.names
+    }
+
+    /// The rules that will not fire however their app launches, by bundle identifier
+    /// (`VPNRuleTrust.refusal(of:)`): drawn as a note in the rules popover, where
+    /// until now only the log said so.
+    public var ruleRefusals: [String: VPNRuleTrust.Verdict] {
+        lock.lock(); defer { lock.unlock() }; return _ruleRefusals
     }
 
     public var connections: [VPNConnection] {
@@ -147,8 +159,10 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private var hasReadTheList = false
     /// Where this Mac appears to be, from outside. **A fact about the machine's
     /// exit, not about a tunnel**, so it stays one value however many are up: it
-    /// decorates whichever holds the route, and is dropped when one falls,
-    /// because the route may have moved with it.
+    /// decorates whichever holds the route, and is dropped when a tunnel Helm
+    /// stamped falls (`stampWhatCameUp`) or when the route moves
+    /// (`noticeTheRouteAndAskWhereWeAre`), because the route may have moved with
+    /// it.
     private var lastRegion: String?
     /// When the last exit request that **came back empty** was started, and
     /// whether one is still out.
@@ -167,8 +181,8 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// is news and the request in flight was asked about the exit before it —
     /// and `Task.cancel()` does not make the cancelled one silent: the URL load
     /// throws, `regionCode()` answers nil, and the completion still runs. Two
-    /// things went wrong through that seam, and both are the family CLAUDE.md
-    /// calls «the last writer wins by scheduling»: the old run cleared
+    /// things went wrong through that seam, and in both the last writer
+    /// wins by scheduling: the old run cleared
     /// `askingExit` while the new one was out, so the next refresh started a
     /// third request; and a late answer overwrote `lastRegion` with a reading
     /// taken for a route the Mac had left. The counter is what tells the two
@@ -211,7 +225,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// the entry is dropped the moment the tunnel is not connected.
     private var interfaceOf: [String: VPNStatusParser.Reading] = [:]
     /// **Which tunnel** a measurement is in flight for, by name, or nil — the
-    /// engine's own fact, on the wire in every payload, because
+    /// engine's own fact, in every published state, because
     /// `VPNTunnelState.measuring` says what a page inferring it from a press
     /// gets wrong. Written on the work queue at both ends of a run. A name and
     /// not a `Bool`: the flag is per tunnel, and one boolean set every entry of
@@ -248,7 +262,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
                 credentials: VPNCredentialsPort? = nil,
                 apps: AppObserverPort,
                 network: NetworkWatchPort? = nil,
-                transport: LocalTransport = LocalTransport(),
+                news: EngineNews<StatePayload> = EngineNews(),
                 interfaces: VPNInterfacePort = DynamicStoreInterfaces(),
                 exit: VPNExitPort = TraceExit(),
                 speed: VPNSpeedPort = NetworkQualitySpeed(),
@@ -264,9 +278,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         self.interfaces = interfaces
         self.exit = exit
         self.speed = speed
-        self.localTransport = transport
-        self.transport = transport
-        wireTransport()
+        self.news = news
     }
 
     // MARK: - ModuleEngine (module enabled/disabled)
@@ -297,17 +309,19 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         network?.startObserving { [weak self] in self?.networkChanged() }
     }
 
-    /// How long the store has to go quiet before the list is re-read.
+    /// How long after a burst's first notification the list is re-read. Later
+    /// notifications do not move it, so a burst that outlasts it gets a second
+    /// re-read.
     ///
     /// A quarter of a second, chosen against what the store actually delivers
     /// rather than picked: the bursts in the owner's log arrive inside a single
     /// second — seven, seven, seven, six — and one connect is followed by five
-    /// to eleven notifications in under half a second. Long enough to swallow a
+    /// to eleven notifications in under half a second. Meant to swallow a
     /// burst, short enough to be invisible beside the 0.7 s the poll already
     /// waits between its own re-reads.
     private static let networkSettle: TimeInterval = 0.25
 
-    /// **One re-read per burst, not one per notification.**
+    /// **One re-read per settle, not one per notification.**
     ///
     /// `SCDynamicStore` does not deliver one event for one thing happening: a
     /// tunnel coming up moves the global IPv4 entity, each service's IPv4
@@ -320,8 +334,9 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// The port carries no detail about what changed, so deciding how often to
     /// re-read is the engine's job and nobody else's. The flag is the whole
     /// coalescer: the first notification of a burst arms the re-read and says
-    /// so once in the log, the rest of the burst are free, and the re-read
-    /// clears the flag before it runs so a later change re-arms it.
+    /// so once in the log, the notifications that arrive before that re-read
+    /// runs are free, and the re-read clears the flag before it runs so a later
+    /// change re-arms it.
     private func networkChanged() {
         lock.lock()
         let alreadyArmed = _networkChangePending
@@ -330,7 +345,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // An observer that never fires and an observer that fires and finds
         // nothing changed look identical from outside the process, and the
         // release process triages dev builds against the log. One line per
-        // burst, no names in it.
+        // arming, no names in it.
         guard !alreadyArmed else { return }
         HelmLog.shared.info(Self.moduleID, "network state changed; re-reading")
         work.run(after: Self.networkSettle) { [weak self] in
@@ -376,11 +391,26 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         work.run { [weak self] in self?.refreshNow() }
     }
 
+    /// One line for a read that did not answer, naming why; the caller keeps
+    /// its last answer.
+    private func logFailedRead(_ what: String, _ status: Int32) {
+        let why = status == HelmProcess.timedOutStatus
+            ? "timed out after \(Int(vpnReadDeadline)) s" : "exit status \(status)"
+        HelmLog.shared.warn(Self.moduleID, "\(what) read failed (\(why)); keeping the last answer")
+    }
+
     /// The blocking half, always on the work queue.
     private func refreshNow() {
-        let output = runner.run(["--nc", "list"]).output
-        // Silence is not an answer. `scutil`'s exit status never reaches us, so
-        // a read that failed looks exactly like a Mac with no VPNs — and acting
+        let read = runner.read(["--nc", "list"], timeout: vpnReadDeadline)
+        // A read that ran out of time or exited non-zero is not an answer even
+        // if it printed a list: the exit status is read with the output.
+        guard read.status == 0 else {
+            logFailedRead("connection list", read.status)
+            return
+        }
+        let output = read.output
+        // Silence is not an answer: an empty list from a tool that exited 0
+        // looks exactly like a Mac with no VPNs — and acting
         // on it does two kinds of damage: the page announces that the user's
         // connections are gone while they are up, and the drop detection below,
         // which asks what is missing from this list, decides that everything
@@ -487,29 +517,17 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         emitState()
     }
 
-    public var defaultConnection: VPNConnection? {
-        if let live = connections.first(where: \.status.isUp) {
-            return live
-        }
-        return VPNListParser.defaultConnection(from: connections, lastUsedName: settings.lastUsedName)
-    }
-
-    public func toggleDefault() {
-        work.run { [weak self] in self?.toggleDefaultNow() }
-    }
-
-    private func toggleDefaultNow() {
-        refreshNow()
-        guard let target = defaultConnection else { return }
-        settings.setLastUsed(target.name)
-        if target.status.isUp {
-            disconnect(target.name)
-        } else {
-            connect(target.name)
+    /// The person's door: a press on a card is never an automatic act, so the
+    /// flag the rules pass is not a thing a caller of this can set. Exhaustive,
+    /// so a verb added to `VPNVerb` without an arm is a build error.
+    public func press(_ verb: VPNVerb, on name: String) {
+        switch verb {
+        case .connect: connect(name, auto: false)
+        case .disconnect: disconnect(name, auto: false)
         }
     }
 
-    public func connect(_ name: String, auto: Bool = false) {
+    func connect(_ name: String, auto: Bool) {
         work.run { [weak self] in self?.connectNow(name, auto: auto) }
     }
 
@@ -519,8 +537,8 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // replays every running app, so a rule fires at launch — and nothing
         // refreshes first. `status` then answers off an empty cache, which is
         // `.unknown` for a tunnel that is up, and two separate things ride on
-        // that answer being wrong. The secret goes on a command line for a
-        // `--nc start` that changes nothing, which is the exposure `!alreadyUp`
+        // that answer being wrong. The secret is read and handed over for a
+        // start that changes nothing, which is the exposure `!alreadyUp`
         // below exists to avoid and does not; and the payload emitted at the end
         // of this method names no connections at all, so `wasDown` finds no
         // previous reading of the service and the tunnel Helm has just raised is
@@ -536,32 +554,19 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // Read before anything is asked of the tool, so this is what was true
         // when the rule asked rather than what Helm has since written down.
         let alreadyUp = auto ? status(name).isUp : false
-        var args = ["--nc", "start", name]
-        // **Known limitation, and the window is not small.** `scutil` takes the
-        // shared secret, the password and the user name only as arguments, and
-        // an argument list is readable by every process running as this user for
-        // as long as the process lives. That used to be written down here as "a
-        // fraction of a second, but not zero", which understates it by an order
-        // of magnitude. Measured with an unprivileged same-user sweeper against
-        // a child of a known lifetime:
+        // **The secret never rides in an argument list.** `scutil --nc start`
+        // takes `--user`, `--password` and `--secret` only as arguments, readable
+        // by every process of this user for as long as the child lives, and a
+        // `scutil --nc` child lives long enough to be read, and has no terminal form. So the start
+        // that carries a secret goes to the system in process
+        // (`VPNRunnerPort.start(_:supplying:)`), and every other start is the
+        // bare `scutil --nc start <name>`.
         //
-        // | child lifetime | caught out of 25 |
-        // |---|---|
-        // | 16 ms | 24 |
-        //
-        // and 16 ms is this repository's own measured figure for one
-        // `scutil --nc` call. So the honest sentence is: any process running as
-        // this user that is looking will get the shared secret, the password and
-        // the user name. There is no stdin form — `nc` is not a command
-        // `scutil`'s interactive mode accepts — so closing this means driving
-        // `NEVPNManager`/`NEConfiguration` instead of the tool, which needs a
-        // Developer ID and is a rewrite of this path rather than a patch.
-        //
-        // What is cheap is not opening the window when nothing needs doing, which
-        // is the `!alreadyUp` below: `--nc start` on a tunnel that is up is a
-        // no-op, and `activate()` replays `appLaunched` for every app already
-        // running, so a rule whose app runs all day published the secret at every
-        // launch of Helm for a command that changed nothing.
+        // What is still cheap is not asking at all when nothing needs doing, which
+        // is the `!alreadyUp` below: a start on a tunnel that is up changes
+        // nothing, and `activate()` replays `appLaunched` for every app already
+        // running, so a rule whose app runs all day would read the secret at
+        // every launch of Helm for it.
         //
         // `promptingAllowed: !auto` is the other half, and it is about a
         // different exposure — see `VPNCredentialsPort`.
@@ -570,14 +575,15 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // credential read is not performed at all.
         let step = alreadyUp ? VPNSecretBook.Step.nothingToSupply
                              : secretStep(for: name, auto: auto)
+        let reply: VPNCommandReply
         switch step {
         case .supply(let creds):
-            args += Self.arguments(for: creds)
-        // Nothing goes on the command line either way. What separates the two is
-        // whether a connection may be *announced* afterwards — read off `step`
-        // below, where the announcement is.
+            reply = .of(runner.start(name, supplying: creds))
+        // Nothing is supplied either way. What separates the two is whether a
+        // connection may be *announced* afterwards — read off `step` below,
+        // where the announcement is.
         case .nothingToSupply, .tryWithoutIt:
-            break
+            reply = .of(runner.run(["--nc", "start", name]), name: name, knownNames: knownNames)
         case .refuse:
             HelmLog.shared.info(Self.moduleID, "no usable secret for \(Redact.vpn(name)) and a "
                 + "rule may not ask for one; not attempted")
@@ -585,8 +591,19 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             // skips it leaves the screen holding whatever it had.
             emitState()
             return
+        case .unreadable:
+            HelmLog.shared.warn(Self.moduleID, "the secret of \(Redact.vpn(name)) could not be read; "
+                + "not attempted")
+            // Only the person's press is answered on screen; a rule has no one
+            // pressing, and the log line is its record.
+            if !auto {
+                lock.lock()
+                _lastFailure = VPNFailure(name: name, reason: .secretUnreadable, verb: .connect)
+                lock.unlock()
+            }
+            emitState()
+            return
         }
-        let reply = VPNCommandReply.of(runner.run(args), name: name, knownNames: knownNames)
         report(reply, verb: .connect, name: name)
         // **Announced after the tool answered, and only what it did.** This
         // block used to run *before* `scutil`, so a rule pointing at a
@@ -625,7 +642,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         if reply == .accepted { poll(name, following: .connect) }
     }
 
-    public func disconnect(_ name: String, auto: Bool = false) {
+    func disconnect(_ name: String, auto: Bool) {
         work.run { [weak self] in self?.disconnectNow(name, auto: auto) }
     }
 
@@ -665,20 +682,6 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         }
         emitState()
         if reply == .accepted { poll(name, following: .disconnect) }
-    }
-
-    /// The tool's own spelling of a credential. Empty fields are left off rather
-    /// than passed empty: `scutil` takes each of these as an argument, and an
-    /// argument list is readable by every process running as this user (see the
-    /// note in `connectNow`), so nothing goes on it that does not have to.
-    private static func arguments(for creds: VPNCredentials) -> [String] {
-        var arguments: [String] = []
-        if let user = creds.user, !user.isEmpty { arguments += ["--user", user] }
-        if let password = creds.password, !password.isEmpty {
-            arguments += ["--password", password]
-        }
-        if let secret = creds.secret, !secret.isEmpty { arguments += ["--secret", secret] }
-        return arguments
     }
 
     /// What a connect does about the secret this configuration needs, and the
@@ -777,7 +780,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
-    /// What the tool said, in the trail and on the wire.
+    /// What the tool said, in the trail and in the state.
     ///
     /// Both call sites discarded it. `scutil` exits 0 whatever happens and puts
     /// its complaint on stdout, so a rule pointing at a configuration that was
@@ -787,11 +790,11 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// The name is redacted in the log, like every other line this module
     /// writes; `_lastFailure` carries it unredacted because the screen is
     /// allowed to name what the person configured, and the log is not.
-    /// The verb is the module's own enum rather than the word each call site
-    /// used to hand this: `VPNFailure` carries it to the screen now, and a
-    /// sentence naming the wrong verb is what this repair was about — a refused
-    /// *stop* told the person the tunnel was down while it was up. One
-    /// declaration, so the log word and the sentence cannot drift apart.
+    /// The verb is the module's own enum rather than a word each call site
+    /// hands in: `VPNFailure` carries it to the screen, and a sentence naming the
+    /// wrong verb tells the person, on a refused *stop*, that the tunnel is down
+    /// while it is up. One declaration, so the log word and the sentence
+    /// cannot drift apart.
     private func report(_ reply: VPNCommandReply, verb: VPNVerb, name: String) {
         switch reply {
         case .accepted:
@@ -819,6 +822,10 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private func reloadRulesNow() {
         refreshNow()
         core.rules = VPNRules.valid(VPNRules.decode(settings.rulesJSON), against: connections)
+        lock.lock()
+        _ruleRefusals = core.rules.compactMapValues(VPNRuleTrust.refusal(of:))
+        lock.unlock()
+        emitState()
     }
 
     private func appsChanged() {
@@ -882,10 +889,12 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// Notes the moment a tunnel came up, and forgets what belonged to one that
     /// has gone.
     ///
-    /// **`scutil` cannot answer «since when».** The list says `Connected` and
-    /// nothing more, so the only honest stamp is Helm's own observation: a
-    /// service down at the last reading and up at this one. Which also means one
-    /// already up when the process started carries no stamp — see `wasDown`.
+    /// **`--nc list` cannot answer «since when».** The list says `Connected` and
+    /// nothing more; `--nc status` does (`VPNStatusParser.Reading.since`, which
+    /// `VPNTunnelState.init` prefers), so this stamp is the fallback for a tool
+    /// that does not answer: Helm's own observation of a service down at the last
+    /// reading and up at this one. One already up when the process started
+    /// carries no such stamp — see `wasDown`.
     private func stampWhatCameUp(_ parsed: [VPNConnection]) {
         for connection in parsed where connection.status.isConnected {
             guard raisedAt[connection.id] == nil, wasDown(connection.id) else { continue }
@@ -953,7 +962,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// network arriving. Cached for the life of the tunnel it was a local
     /// memory of a live external fact with no channel to say it had changed
     /// (CLAUDE.md), and the dangerous direction is the route leaving while the
-    /// green tick stays.
+    /// green dot stays.
     ///
     /// So the cache is kept exactly where the flag is dead weight. The
     /// parameter is the routing table's own answer, which is what
@@ -968,7 +977,12 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         for connection in parsed
         where connection.status.isConnected
             && (interfaceOf[connection.id] == nil || primary == nil) {
-            let output = runner.run(["--nc", "status", connection.name]).output
+            let read = runner.read(["--nc", "status", connection.name], timeout: vpnReadDeadline)
+            guard read.status == 0 else {
+                logFailedRead("status of \(Redact.vpn(connection.name))", read.status)
+                continue
+            }
+            let output = read.output
             // Nil stays nil: a tunnel that is still coming up names no interface
             // yet, and the next refresh — there is always one, the poll sees to
             // that — asks again. A *re-read* that answers nothing keeps what was
@@ -1155,7 +1169,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// in the view, a refusal living in a `body` being one a command goes round.
     ///
     /// The phase is the port's to name (`vpn.speed`), not this caller's.
-    private func measureSpeed(_ name: String) {
+    public func measureSpeed(_ name: String) {
         work.run { [weak self] in
             guard let self else { return }
             // **The refusal, and it is published.** Two things answer here: a
@@ -1182,7 +1196,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             guard self.measuringSpeed == nil else { return }
             self.measuringSpeed = name
             // Before the waiting starts, so the page draws «measuring» whether
-            // or not it asked — and the run has two ends on the wire, not one.
+            // or not it asked — and the run has two ends in the state, not one.
             self.emitState()
             self.startMeasuring(for: name)
         }
@@ -1227,38 +1241,24 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         previous?.cancel()
     }
 
-    // MARK: - Transport
+    // MARK: - What the engine says
 
-    private func wireTransport() {
-        localTransport.setHandler { [weak self] cmd in
-            guard let self else { return Data() }
-            guard let name = VPNCommand(rawValue: cmd.name) else { return Data() }
-            switch name {
-            case .toggle:
-                self.toggleDefault()
-            case .connect:
-                self.named(cmd) { self.connect($0) }
-            case .disconnect:
-                self.named(cmd) { self.disconnect($0) }
-            case .refresh:
-                self.refresh()
-            case .reloadRules:
-                self.reloadRules()
-            case .measureSpeed:
-                self.named(cmd, self.measureSpeed)
-            }
-            return Data()
-        }
-    }
+    /// The state, as a stream: the latest one first, then every later one, in
+    /// order — a forced re-emission (`emitState(force:)`) included, which is
+    /// the only answer a refused measurement gives.
+    ///
+    /// **Registered before this returns, in the one hold of the lock that replays
+    /// what was last said** (`EngineNews.stream`): reading the state and then
+    /// subscribing leaves a window an emit falls into, and subscribing before the
+    /// replay hands over an older state after a newer one. Synchronous and not
+    /// actor-isolated, so the model takes it in its own synchronous `init`, before
+    /// its first suspension; the subscriber is counted when this returns. Ending
+    /// the iteration removes the subscriber.
+    public func stream() -> AsyncStream<StatePayload> { news.stream() }
 
-    /// The three commands that are **about a connection**, decoded one way —
-    /// each did it at its own case until the third arrived.
-    private func named(_ cmd: EngineCommand, _ act: (String) -> Void) {
-        guard let ref = EngineReply.decode(VPNConnectionRef.self, from: cmd) else { return }
-        act(ref.name)
-    }
+    public var subscriberCount: Int { news.subscriberCount }
 
-    /// What `emitState` last put on the wire — under the class's one lock.
+    /// What `emitState` last said — under the class's one lock.
     private var _lastEmitted: StatePayload?
 
     /// Emits the state — unless it is **equal in every field** to the last one
@@ -1280,14 +1280,14 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private func emitState(force: Bool = false) {
         let payload = StatePayload(connections: connections,
                                     autoConnected: autoConnected.sorted(),
-                                    defaultName: defaultConnection?.name,
                                     lastAutomation: lastAutomation,
                                     lastFailure: lastFailure,
                                     secretsBehindAPrompt: secretsBehindAPrompt,
+                                    ruleRefusals: ruleRefusals,
                                     tunnels: tunnelStates())
         lock.lock(); let isDuplicate = payload == _lastEmitted
         _lastEmitted = payload; lock.unlock()
         guard force || !isDuplicate else { return }
-        localTransport.emit(VPNEvent.state, encoding: payload)
+        news.say(payload)
     }
 }

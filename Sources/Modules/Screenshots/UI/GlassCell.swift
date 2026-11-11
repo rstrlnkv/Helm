@@ -2,12 +2,12 @@ import AppKit
 import SwiftUI
 import HelmUI
 
-/// One round-edged control on a glass bar: an icon, lit with 14 % of the primary colour while it is
+/// One round-edged control on a glass bar: an icon, lit with the panel's selection fill (`HelmSurface.panelSelection`) while it is
 /// selected, and a name that is both its tooltip and its VoiceOver label. The capture panel's mode
 /// controls and the editor's palette are drawn by it, so a cell is one look on both.
 struct GlassCell<Icon: View>: View {
     enum Look {
-        /// The selected cell is a rounded square of 14 % primary.
+        /// The selected cell is a rounded square of `HelmSurface.panelSelection`.
         case plain
         /// A grey circle, always: Undo, Redo and ⋯.
         case greyCircle
@@ -69,23 +69,27 @@ struct GlassCell<Icon: View>: View {
         }
     }
 
+    /// How far a press dims a cell's label: a press, not `HelmText.inactiveOpacity`, which means an inactive window.
+    private static var pressedOpacity: Double { 0.6 }
+
     private struct Unfaded: ButtonStyle {
         func makeBody(configuration: Configuration) -> some View {
-            configuration.label.opacity(configuration.isPressed ? 0.6 : 1)
+            configuration.label.opacity(configuration.isPressed ? GlassCell.pressedOpacity : 1)
         }
     }
 
-    /// The editor palette's glyph ink, from its mockup (`#3A3A3C` light, `#E5E5EA` dark): no token of the
+    /// The editor palette's glyph ink (`#3A3A3C` light, `#E5E5EA` dark): no token of the
     /// design system is that grey, so the two values live here and nowhere else.
     static var paletteInk: Color { adaptive(light: (0x3A, 0x3A, 0x3C), dark: (0xE5, 0xE5, 0xEA)) }
-    /// A disabled glyph, from the same mockup: `#B8B8BD` light, `#6C6C70` dark. Opaque, so nothing dims it twice.
+    /// A disabled glyph: `#B8B8BD` light, `#6C6C70` dark. Opaque, so nothing dims it twice.
     private static var disabledInk: Color { adaptive(light: (0xB8, 0xB8, 0xBD), dark: (0x6C, 0x6C, 0x70)) }
 
-    /// The glyph on a pressed circle and in the badge, and the ring round the badge, from the mockup: `#F7F7F7` on
+    /// The glyph on a pressed circle and in the badge, and the ring round the badge: `#F7F7F7` on
     /// light and `#1F1F21` on dark. The pressed circle itself is `paletteInk`.
     static var pressedInk: Color { adaptive(light: (0xF7, 0xF7, 0xF7), dark: (0x1F, 0x1F, 0x21)) }
     private static var badgeSize: CGFloat { 14 }
     private static var badgeRing: CGFloat { 1.5 }
+    private static var badgeGlyph: CGFloat { 8.5 }
     private static var badgeOffset: CGFloat { 3 }
     /// How far the badge and its ring reach below the circle: the offset and the ring's width.
     static var badgeReach: CGFloat { badgeOffset + badgeRing }
@@ -93,11 +97,11 @@ struct GlassCell<Icon: View>: View {
     @ViewBuilder private var badgeView: some View {
         if let badge {
             Image(systemName: badge)
-                .font(.system(size: 8.5, weight: .semibold))
+                .font(.system(size: Self.badgeGlyph, weight: .semibold))
                 .foregroundStyle(Self.pressedInk)
                 .frame(width: Self.badgeSize, height: Self.badgeSize)
                 .background(Circle().fill(Self.paletteInk))
-                // The mockup's 1.5 pt ring, so the badge does not merge with a pressed circle of its own colour.
+                // A 1.5 pt ring, so the badge does not merge with a pressed circle of its own colour.
                 .overlay(Circle().strokeBorder(Self.pressedInk, lineWidth: Self.badgeRing).padding(-Self.badgeRing))
                 .offset(x: Self.badgeOffset, y: Self.badgeOffset)
         }
@@ -107,14 +111,12 @@ struct GlassCell<Icon: View>: View {
         func ns(_ c: (Int, Int, Int)) -> NSColor {
             NSColor(srgbRed: CGFloat(c.0) / 255, green: CGFloat(c.1) / 255, blue: CGFloat(c.2) / 255, alpha: 1)
         }
-        return Color(nsColor: NSColor(name: nil) { appearance in
-            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? ns(dark) : ns(light)
-        })
+        return HelmSurface.pair(light: ns(light), dark: ns(dark))
     }
 
     @ViewBuilder private var fill: some View {
         switch look {
-        case .plain: RoundedRectangle(cornerRadius: HelmRadius.ctl).fill(Color.primary.opacity(selected || pressed ? 0.14 : 0))
+        case .plain: RoundedRectangle(cornerRadius: HelmRadius.ctl).fill(selected || pressed ? HelmSurface.panelSelection : Color.clear)
         case .greyCircle: Circle().fill(pressed ? AnyShapeStyle(Self.paletteInk) : AnyShapeStyle(HelmSurface.onPanelFill))
         case .accent: Circle().fill(Color.accentColor)
         case .bare: Color.clear

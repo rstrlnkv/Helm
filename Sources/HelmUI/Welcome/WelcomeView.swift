@@ -80,6 +80,7 @@ public struct WelcomeView: View {
                     if flow.isLastStep { onClose() } else { flow.next() }
                 }
                 .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
             }
             .padding(HelmSpace.s6)
         }
@@ -131,7 +132,7 @@ public struct WelcomeView: View {
                 .onAppear { revealed = true }
             }
             Text(step.title)
-                .font(.system(size: 16, weight: .semibold))
+                .font(HelmText.plateTitle)
                 .multilineTextAlignment(.center)
             Text(step.body)
                 .font(HelmText.rowTitle)

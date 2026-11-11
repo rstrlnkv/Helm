@@ -14,10 +14,10 @@ struct VPNAutoConnectCore {
     private var running: [String: Set<String>] = [:]
     /// bundleID → the rule that was in force when it was counted as running.
     ///
-    /// `rules` is overwritten whenever the settings page saves or a refresh
-    /// renames a connection, so it cannot be trusted to say what a quit should
-    /// undo: the app may have been launched against a different VPN, or against
-    /// no rule at all. Only what is recorded here was actually raised by Helm.
+    /// `rules` is overwritten by the engine's `reloadRulesNow`, when the module
+    /// activates and when the settings page saves, and `VPNRules.valid` can drop
+    /// a rule there, so it cannot be trusted to say what a quit should undo: the app may have been launched against a different VPN, or against
+    /// no rule at all. Only what is recorded here was counted as running; a quit undoes that and nothing else.
     private var launched: [String: VPNAppRule] = [:]
 
     init(rules: [String: VPNAppRule]) { self.rules = rules }
@@ -40,10 +40,5 @@ struct VPNAutoConnectCore {
         set.remove(bundleID)
         running[rule.vpnName] = set
         if set.isEmpty && rule.disconnectOnQuit { disconnect(rule.vpnName) }
-    }
-
-    /// The VPNs with ≥1 mapped app currently running.
-    var activeVPNs: Set<String> {
-        Set(running.filter { !$0.value.isEmpty }.keys)
     }
 }

@@ -74,21 +74,4 @@ final class TheVerdictNeverGuessesTests: XCTestCase {
         XCTAssertEqual(VPNExitVerdict.of(tunnelInterface: "utun8", primaryInterface: nil,
                                          tunnelIsPrimary: nil, countryCode: "NL"), .unknown)
     }
-
-    /// A synthesised enum codec can decode a case and silently drop its
-    /// payload — which here would put «через туннель — nowhere» on screen.
-    /// Round-trip every case, the country included.
-    func testEncodingAndDecodingPreservesEveryCaseAndItsCountry() throws {
-        let cases: [VPNExitVerdict] = [
-            .throughTunnel(countryCode: "NL"),
-            .throughTunnel(countryCode: nil),
-            .besideTunnel,
-            .unknown,
-        ]
-        for verdict in cases {
-            let data = try JSONEncoder().encode(verdict)
-            let decoded = try JSONDecoder().decode(VPNExitVerdict.self, from: data)
-            XCTAssertEqual(decoded, verdict)
-        }
-    }
 }

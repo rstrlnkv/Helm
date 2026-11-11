@@ -11,7 +11,8 @@ are on the doc comments of `HelmLaunchTask`, `HelmLaunchExceptionNameKey` and `H
 `Sources/HelmRuntime/HelmProcess.swift` is the one way to run a tool, and its doc
 comments hold the rules: output is read to the end before the wait; stderr is the null
 device where nobody parses it, never an undrained `Pipe`; `launchCeiling` bounds how many
-tools are out at once, and a caller that asks for more gets a queue. The ceiling
+tools `run` and `runData` have out at once, and a caller that asks for more gets a queue;
+a launch through `start` takes no slot. The ceiling
 exists because Homebrew's search once put every press of Return on its own
 unbounded `Task`; the doc comment of `launchCeiling` tells it.
 
@@ -28,12 +29,15 @@ stands in `ps auxww` while the prompt is up. The escaping is `AppleScript.litera
 the one place that composes the privileged line. A secret is the same: an argument stands
 in `ps auxww` for every process on the Mac, so a secret a tool reads goes to its terminal,
 never to its arguments, its environment, a file or the log. Hosts, which gave a tool its
-passphrase that way, is archived, and its code is
+passphrase through its terminal, is archived, and its code is
 
 ```bash
 git show archive/hosts:Sources/Modules/Hosts/Engine/PTYProcess.swift
 ```
 
+VPN's secret has no terminal form to go to, so it goes to the system in process
+(Architecture/VPN.md).
+
 A blocking call is hopped through `Sources/HelmRuntime/OffTheCooperativePool.swift`,
-since a transport handler runs on the Swift-concurrency pool and a process waited on or a
+since an `async` engine method a model awaits runs on the Swift-concurrency pool and a process waited on or a
 recursive scan parks a pool thread for seconds.

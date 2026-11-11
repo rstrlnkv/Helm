@@ -24,11 +24,11 @@ public enum TrashReasonText {
     public static func sentence(_ raw: String, refresh: Refresh = .scan) -> String {
         switch raw {
         case "needsFullDiskAccess":
-            return L("Helm needs Full Disk Access to move this.")
+            return L(.needsFullDiskAccess)
         case "activeSystemExtension":
-            return L("Its system extension is still active — turn it off in Login Items & Extensions.")
+            return L(.activeSystemExtension)
         case TrashFailure.Reason.outOfScope.rawValue:
-            return L("Outside the folders Helm may clean — Helm did not touch it.")
+            return L(.outOfScope)
         case TrashFailure.Reason.changedSinceScan.rawValue:
             return changed(refresh)
         case TrashFailure.Reason.missing.rawValue:
@@ -40,17 +40,17 @@ public enum TrashReasonText {
             // pair, and one failure on either lands here — so the sentence may
             // name the copy that stays. No refresh verb: the step is the
             // access, not the list.
-            return L("Helm could not read it, or the copy that stays, so nothing was moved. Check that both can be opened and try again.")
+            return L(.unreadable)
         case TrashFailure.Reason.readOnlyVolume.rawValue:
-            return L("The disk this is on is read-only. Eject it and unlock it, or copy what you need elsewhere.")
+            return L(.readOnlyVolume)
         case TrashFailure.Reason.diskFull.rawValue:
-            return L("The disk is full. Moving to the Trash needs room, because the Trash is a folder on the same disk — empty it and try again.")
+            return L(.diskFull)
         case "noPermission":
-            return L("The file is locked, or you are not its owner. Open Get Info in the Finder to unlock it or change its permissions.")
+            return L(.noPermission)
         default:
             // The one case that cannot name a cause, because `TrashFailure`
             // only classifies the codes it has seen. It can still name a step.
-            return L("macOS would not move this. Show it in the Finder and try from there — the Finder says more about why.")
+            return L(.unknownReason)
         }
     }
 
@@ -70,9 +70,9 @@ public enum TrashReasonText {
     private static func changed(_ refresh: Refresh) -> String {
         switch refresh {
         case .scan:
-            return L("This is not where Helm found it, so nothing was moved. Scan again to see where it is now.")
+            return L(.changedSinceScan)
         case .search:
-            return L("This is not where Helm found it, so nothing was moved. Search again to see where it is now.")
+            return L(.changedSinceSearch)
         }
     }
 
@@ -84,9 +84,9 @@ public enum TrashReasonText {
     private static func gone(_ refresh: Refresh) -> String {
         switch refresh {
         case .scan:
-            return L("This is not there any more, so nothing was moved. Scan again to see what is left.")
+            return L(.missingAfterScan)
         case .search:
-            return L("This is not there any more, so nothing was moved. Search again to see what is left.")
+            return L(.missingAfterSearch)
         }
     }
 }

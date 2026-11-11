@@ -5,17 +5,17 @@ import HelmRuntime
 /// How long a session may be is the engine's question, not the picker's.
 ///
 /// Every number a person can choose is already bounded where they choose it —
-/// the settings stepper, the panel tile's presets, `TimerPolicy.extendedMinutes`
+/// the settings menu, the panel tile's presets, `TimerPolicy.extendedMinutes`
 /// for the "+15" button. `startSession` itself took the number on trust and
 /// multiplied it:
 ///
 ///     endDate = clock.now().addingTimeInterval(TimeInterval(minutes * 60))
 ///
 /// `Int` multiplication traps on overflow in Swift, in release as well as
-/// debug. And one caller is not a picker at all: `wireTransport` decodes
-/// `KeepAwakeStart` from a JSON payload and passes `payload.minutes` straight
-/// in, with nothing between the wire and the multiply that says how large a
-/// number may be. A clamp in every view is a clamp in no engine.
+/// debug. And nothing makes a caller bound it: `startSession` is public, and each
+/// bound a caller applies today is that caller's own —
+/// `command grep -rn 'start(minutes:\|startSession(' Sources/Modules/KeepAwake`
+/// lists them. A clamp in every view is a clamp in no engine.
 final class TheEngineHasTheLastWordOnASessionsLengthTests: XCTestCase {
 
     private var store: NamespacedStore!
@@ -36,7 +36,7 @@ final class TheEngineHasTheLastWordOnASessionsLengthTests: XCTestCase {
                         displayObserver: FakeDisplayObserver(),
                         power: FakePower(), apps: FakeApps(),
                         pointer: FakePointer(), clamshell: FakeClamshell(),
-                        clock: clock)
+                        clock: clock, lidInfo: FakeLidInfo())
     }
 
     /// Asserted as the property the arithmetic needs rather than as a

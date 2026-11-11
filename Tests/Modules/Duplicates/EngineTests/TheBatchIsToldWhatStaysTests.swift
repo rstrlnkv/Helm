@@ -13,7 +13,7 @@ import XCTest
 /// asks of the engine is the one thing no engine can answer — `staying.bin` is
 /// named in no plan, and `HelmTrash`'s own doc says why it cannot be worked out
 /// from the disk: "there is no reverse lookup from a family to its members". So
-/// the fact travels: `DuplicateRemovalRequest` carries the copies that stay, and
+/// the fact travels: the caller's `staying:` carries the copies that stay, and
 /// what is tested here is that the engine seeds the ledger with them and with
 /// everything else in the batch that is not going.
 ///
@@ -40,7 +40,7 @@ final class TheBatchIsToldWhatStaysTests: XCTestCase {
     }
 
     private func engine() -> DuplicatesEngine {
-        DuplicatesEngine(settings: suiteSealGuard(), trashing: { _ in })
+        DuplicatesEngine(settings: suiteSealGuard(), trashing: { try FileManager.default.removeItem(at: $0) })
     }
 
     /// The fixture is what it claims to be — without this every assertion below

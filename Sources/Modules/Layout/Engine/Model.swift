@@ -2,11 +2,12 @@ import Foundation
 
 /// One conversion, as it happened.
 ///
-/// The words live here and in memory and nowhere else: they are never logged
-/// and never written to disk. A key tap sees passwords typed into fields an app
-/// forgot to mark secure, and the only safe place for that is somewhere already
-/// gone.
-public struct ConversionEvent: Codable, Equatable, Sendable {
+/// The words live here and in memory: they are never logged, and the one way
+/// one reaches disk is «Never this word», which writes `before` into the
+/// exceptions list in cleartext (not for a `forced` conversion, below). A key
+/// tap sees passwords typed into fields an app forgot to mark secure, and the
+/// only safe place for that is somewhere already gone.
+public struct ConversionEvent: Equatable, Sendable {
     public let before: String
     public let after: String
     /// Bundle id of the app it happened in, so an undo cannot land elsewhere.
@@ -18,7 +19,8 @@ public struct ConversionEvent: Codable, Equatable, Sendable {
     /// True when the gesture asked for this word by name, past the dictionary.
     /// The words in an automatic conversion were vouched for; a forced one is
     /// arbitrary typed text — possibly a field nothing recognised as secure —
-    /// and the page must not offer to write it to disk («Never this word»).
+    /// and neither the page nor the tile may offer to write it to disk
+    /// («Never this word»).
     public let forced: Bool
 
     public init(before: String, after: String, app: String, trailing: String = "",
@@ -58,7 +60,7 @@ public enum ConversionPeriod: String, CaseIterable, Codable, Sendable {
 
 /// One period's two figures. Characters travel beside words because the time
 /// estimate is taken from the length of what was actually fixed.
-public struct LedgerFigures: Codable, Equatable, Sendable {
+public struct LedgerFigures: Equatable, Sendable {
     public let words: Int
     public let characters: Int
     public init(words: Int, characters: Int) {
@@ -73,7 +75,7 @@ public struct LedgerFigures: Codable, Equatable, Sendable {
 /// reading it — nil until the first word is put right. A figure with no scale
 /// is worse than no figure: forty words is a lot in a week and nothing in three
 /// years.
-public struct ConversionTotals: Codable, Equatable, Sendable {
+public struct ConversionTotals: Equatable, Sendable {
     public let today: LedgerFigures
     public let week: LedgerFigures
     public let month: LedgerFigures
@@ -123,7 +125,7 @@ public struct ConversionTotals: Codable, Equatable, Sendable {
 }
 
 /// What the settings page shows.
-public struct LayoutState: Codable, Equatable, Sendable {
+public struct LayoutState: Equatable, Sendable {
     public let enabled: Bool
     public let automatic: Bool
     /// True while secure input is on: the module is deliberately silent, and

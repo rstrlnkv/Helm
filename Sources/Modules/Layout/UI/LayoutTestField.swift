@@ -15,10 +15,8 @@ struct LayoutTestField: View {
                 .accessibilityLabel(LyStr.tryItPlaceholder)
                 .labelsHidden()
                 .textFieldStyle(.roundedBorder)
-                .font(.system(.body, design: .monospaced))
-            Text(LyStr.tryItHint)
-                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
+                .font(LayoutLook.typed)
+            HelmSettingsNote(LyStr.tryItHint)
         }
     }
 }

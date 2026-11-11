@@ -11,23 +11,34 @@ import SwiftUI
 /// path means nothing to a rename and a pattern means nothing to a move.
 struct ActionRow: View {
     @Binding var action: RuleAction
+    /// The hint is always mounted and measured, so it grows and shrinks instead of popping.
+    @State private var hintHeight: CGFloat?
+
+    private var isRename: Bool {
+        if case .rename = action { return true }
+        return false
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: HelmSpace.s4) {
                 Picker(ApStr.a11yAction, selection: kindBinding) {
                     ForEach(Kind.allCases, id: \.self) { Text($0.label).tag($0) }
                 }
                 .labelsHidden()
-                .frame(width: HelmPickerWidth.fitting(Kind.allCases.map(\.label), minimum: 200))
+                .frame(width: HelmPickerWidth.fitting(Kind.allCases.map(\.label), minimum: AutopilotLayout.actionPicker),
+                       alignment: .leading)
                 detail
-                Spacer(minLength: 4)
+                Spacer(minLength: HelmSpace.s2)
             }
-            if case .rename = action {
-                Text(ApStr.patternHint)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            // A cut: the swap of the details is not what moves; only the hint
+            // below grows, on its own accordion.
+            .transaction { $0.animation = nil }
+            Text(ApStr.patternHint)
+                .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, HelmSpace.s4)
+                .helmAccordion(open: isRename, height: $hintHeight)
         }
     }
 
@@ -48,11 +59,10 @@ struct ActionRow: View {
         ///
         /// A move starts with nowhere to go because the destination only ever
         /// arrives through the panel — guessing one would be the module
-        /// choosing where somebody's files go. What made that safe was said to
-        /// be the runner's refusal, and a refusal repeated hourly is not safety:
-        /// it is a log line and a history row per matching file, forever, for a
-        /// rule that looks switched on. `Rule.canBeEnabled` is what makes it
-        /// safe — the switch is unreachable until the panel has been used.
+        /// choosing where somebody's files go. The runner's refusal is not what
+        /// makes that safe: repeated hourly it is a log line and a history row
+        /// per matching file for a rule that looks switched on. `Rule.canBeEnabled`
+        /// is — the switch is unreachable until the panel has been used.
         var blank: RuleAction {
             switch self {
             case .move: .move(to: "")
@@ -75,7 +85,7 @@ struct ActionRow: View {
     }
 
     private var kindBinding: Binding<Kind> {
-        Binding(get: { kind }, set: { action = $0.blank })
+        Binding(get: { kind }, set: { kind in withAnimation(HelmMotion.disclosure) { action = kind.blank } })
     }
 
     @ViewBuilder private var detail: some View {
@@ -104,7 +114,8 @@ struct ActionRow: View {
                 Text(ApStr.schemeMonth).tag(SortScheme.month)
             }
             .labelsHidden()
-            .frame(width: HelmPickerWidth.fitting([ApStr.schemeKind, ApStr.schemeMonth], minimum: 140))
+            .frame(width: HelmPickerWidth.fitting([ApStr.schemeKind, ApStr.schemeMonth],
+                                                  minimum: AutopilotLayout.shortPicker))
 
         case let .rename(pattern):
             TextField("{name}", text: Binding(get: { pattern },

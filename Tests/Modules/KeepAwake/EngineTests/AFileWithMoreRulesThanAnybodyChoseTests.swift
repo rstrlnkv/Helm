@@ -66,9 +66,9 @@ final class AFileWithMoreRulesThanAnybodyChoseTests: XCTestCase {
 
         XCTAssertEqual(settings.appTriggers.count, 200)
         XCTAssertFalse(settings.appRulesUnreadable)
-        XCTAssertTrue(AppTriggerRules.isHolding(settings.appTriggers,
+        XCTAssertFalse(AppTriggerRules.holding(settings.appTriggers,
                                                 running: ["com.example.render"],
-                                                externalDisplay: false, onPower: false))
+                                                externalDisplay: false, onPower: false).isEmpty)
     }
 
     // MARK: - How long an id
@@ -163,7 +163,7 @@ final class AFileWithMoreRulesThanAnybodyChoseTests: XCTestCase {
                                      displayInfo: FakeDisplayInfo(),
                                      displayObserver: FakeDisplayObserver(),
                                      power: FakePower(), apps: apps, pointer: FakePointer(),
-                                     clamshell: FakeClamshell(), clock: FakeClock())
+                                     clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
 
         engine.activate()
 

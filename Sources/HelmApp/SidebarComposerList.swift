@@ -1,5 +1,6 @@
 import SwiftUI
 import HelmUI
+import HelmAppStrings
 
 /// The sidebar's arrangement as a SwiftUI `List` — the prototype that asks
 /// whether the `NSTableView` was necessary.

@@ -19,16 +19,13 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// It is the `module.autopilot.*` prefix of every setting this module has
     /// ever saved and the category its log lines file under.
     /// `AutopilotDescriptor.id` is built from this rather than repeating it,
-    /// the direction the descriptors already carry their command enums, so the
-    /// two spellings are one. **The string itself never changes** — it names
+    /// so the two spellings are one. **The string itself never changes** — it names
     /// stored settings already on people's machines. The keychain service and
     /// the stamp attribute stay `com.helm.autopilot*` literals on purpose:
     /// each is deployed under its own name and documents why it must not
     /// follow a rename (`RuleKeychain`, `RuleStamp`).
     public static let moduleID = "autopilot"
 
-    private let localTransport: LocalTransport
-    public let transport: EngineTransport
     private let store: NamespacedStore
     /// Whose rules these are, which one of the person's rule sets they are, and
     /// the only thing here that touches the keychain — `SealedRules`.
@@ -47,8 +44,8 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     private let queue = DispatchQueue(label: "helm.rules", qos: .utility)
     /// Behind `queue`, like everything else here. It is written on the main
     /// actor (`activate`/`deactivate` — `ModuleHost` is `@MainActor`) and read
-    /// from `refreshWatch`, which the `folders` setter reaches from the
-    /// transport handler on whatever thread called it. This class is
+    /// from `refreshWatch`, which the `folders` setter reaches from the model's
+    /// `save` on a thread off the cooperative pool. This class is
     /// `@unchecked Sendable`; that has to mean something.
     private var watcher: FolderWatcher?
     private var sweepTimer: DispatchSourceTimer?
@@ -57,6 +54,11 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// not about it. It owns the task that waits on macOS as well as the port,
     /// so `deactivate` has one thing to cancel and not a second field to forget.
     private let sweepNotice: SweepNotifier?
+
+    /// "A pass went into the history": said after the write landed, never with
+    /// it. Carries nothing — the model re-asks, so the read that fills the page
+    /// stays the one that judges the seal and the window.
+    private let historyChanged: @Sendable () -> Void
 
     /// Hourly. The events cover anything that happens; this only exists for
     /// conditions that come true by themselves, which is a scale of hours.
@@ -67,21 +69,20 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// gate the module's safety rests on. `keys` and `sequence` are injected for
     /// the same reason and one more: the production items live in the user's
     /// login keychain, and a test suite must leave nothing there.
-    public init(store: NamespacedStore, transport: LocalTransport = LocalTransport(),
+    public init(store: NamespacedStore,
                 home: String = NSHomeDirectory(),
                 keys: RuleKeyPort = KeychainRuleKey(),
                 sequence: RuleSequencePort = KeychainRuleSequence(),
-                sweepNotice: SweepNotifier? = nil) {
+                sweepNotice: SweepNotifier? = nil,
+                historyChanged: @escaping @Sendable () -> Void = {}) {
         self.sweepNotice = sweepNotice
+        self.historyChanged = historyChanged
         self.home = home
         self.reader = FolderReader(home: home)
         self.runner = RuleRunner(home: home)
         self.undoer = UndoRunner(home: home)
         self.store = store
         self.rules = SealedRules(store: store, keys: keys, sequence: sequence)
-        self.localTransport = transport
-        self.transport = transport
-        wireTransport()
         // **Nothing here reads the keychain**, and `SealedRules.init` says what
         // that costs when it is got wrong. `activate` is what makes the key
         // start existing at the first launch of a build.
@@ -98,17 +99,6 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
-    /// Why the stored rule set is not being run, or `nil` when it is. Read by
-    /// `AutopilotCommand.status`, which is how the page draws a card saying the
-    /// rules could not be read instead of an empty state saying there were never
-    /// any.
-    public var refusal: RuleRefusal? { rules.refusal }
-
-    /// The same fact as a flag, which is how ARCHITECTURE.md § Autopilot names
-    /// it. Derived, never stored beside `refusal`: two spellings of one verdict
-    /// is how the two would come to disagree.
-    public var rulesRefused: Bool { refusal != nil }
-
     /// Throw away a rule set that was not written by Helm, so the page can be
     /// used again. The one thing the card above the folder list may send.
     public func discardRefusedRules() { rules.discardRefused() }
@@ -116,8 +106,8 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// What the page asks for beside the folder list.
     ///
     /// The rules and the reason are asked for together, because the reason is a
-    /// side effect of judging the rules — the page sends this and `folders` in
-    /// the same breath, and which arrives first is the transport's business.
+    /// side effect of judging the rules — the model asks this and `folders` in
+    /// the same breath.
     public var status: AutopilotStatus {
         let (watched, reason) = rules.decision()
         // One question per folder, asked outside that decision: a page opening
@@ -157,9 +147,8 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// Reading `folders` resolves the key, and both callers arrive on a thread
     /// that must not wait for a keychain prompt: `activate` on the main thread
-    /// during launch, the setter on whatever thread the transport handed it.
-    /// Only the `watcher?.watch` used to be dispatched here, which left the
-    /// blocking half on the caller.
+    /// during launch, the setter on whatever thread the model's `save` ran on.
+    /// Dispatching only the `watcher?.watch` would leave the blocking half on the caller.
     private func refreshWatch() {
         queue.async { [self] in
             let paths = folders.filter(\.enabled).map(\.path)
@@ -233,8 +222,8 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// the same reason; this one was the odd one out
     /// (`TheHistorysVerdictIsOneReadingTests`).
     ///
-    /// Safe to take synchronously here: `status` is answered by `answerAtOnce`
-    /// on the thread that asked, never from inside a block `offQueue` put on
+    /// Safe to take synchronously here: `status` is answered by `readStatus`
+    /// off the cooperative pool, never from inside a block `offQueue` put on
     /// this queue.
     public var historyRefused: Bool {
         !queue.sync { rules.historyIsHelms(store.data(ActionHistory.storeKey)) }
@@ -244,14 +233,14 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// `remember` is a read-modify-write and reaches the store from the timer,
     /// from `offQueue` and from the FSEvents path — all on `queue`. This
-    /// arrived on whatever thread the transport handed it, so a clear landing
+    /// arrives on whatever thread the model's `dropHistory` ran on, so a clear landing
     /// between a `remember`'s read and its write was simply undone, and a row
     /// survived "Clear".
     public func clearHistory() {
         // `sync`, not `async`: the caller's next line reads the history back,
         // and a clear that has not landed yet reads as a clear that did not
-        // happen. Safe from the transport, which arrives on the concurrency
-        // pool and never on this queue.
+        // happen. Safe from `dropHistory`, which runs off the cooperative pool
+        // and never on this queue.
         queue.sync { rules.clearHistory() }
     }
 
@@ -282,11 +271,11 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         guard write(kept) else { return }
         // Said only when the write landed: the engine acts on a timer and on
         // files arriving, and an open page that reads the history once would
-        // draw an hour of this as nothing. The event carries no data — the
-        // page re-asks, so the read that fills the screen stays the one that
+        // draw an hour of this as nothing. The signal carries no data — the
+        // model re-asks, so the read that fills the screen stays the one that
         // judges the seal and the window. A return's write is not announced
         // here: its only writer is the page's own gesture, which reloads.
-        localTransport.emit(EngineEvent(name: AutopilotEvent.history.rawValue, payload: Data()))
+        historyChanged()
     }
 
     /// The seal first, then the history it signs.
@@ -423,7 +412,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// The sweep, with the records it wrote — the banner is decided from those
     /// while the log line is decided from the report, and a sweep of three
     /// folders is one banner rather than three. `SweepReport` could not carry
-    /// the tally without a field the wire has no use for, and the FSEvents leg
+    /// the tally without a field the page has no use for, and the FSEvents leg
     /// builds no report at all.
     private func swept(_ folder: WatchedFolder,
                        manual: Bool) -> (report: SweepReport, records: [ActionRecord]) {
@@ -442,9 +431,10 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         let pass = UUID().uuidString
         var acted = 0, refused = 0, failed = 0
         var records: [ActionRecord] = []
+        let counters = CounterBook()
         for plan in plans {
             let path = plan.facts.path
-            let outcome = runner.run(plan, at: path, key: key)
+            let outcome = runner.run(plan, at: path, key: key, counters: counters)
             if let record = ActionRecord.of(plan, outcome, run: pass) { records.append(record) }
             switch outcome {
             case .moved, .renamed, .tagged, .trashed:
@@ -504,10 +494,8 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// costs nothing says nothing — but the app's memory trail had a hole exactly
     /// the shape of this method: growth appearing between two `idle` readings with
     /// no command in between, because a timer is not a command. A reading here
-    /// turns "something happened" into "the sweep happened", and the reclaim hands
-    /// the emptied regions back to macOS at the moment the work ends rather than
-    /// leaving them resident until the next labelled operation
-    /// (docs/superpowers/plans/2026-07-29-third-pass.md has the trail).
+    /// turns "something happened" into "the sweep happened"
+    /// (ARCHITECTURE.md § The memory trail).
     @discardableResult
     public func sweepAll() -> [SweepReport] {
         let passes = HelmActivity.phase("autopilot.sweep") {
@@ -555,9 +543,10 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
                 let key = rules.keyMaterial
                 // One batch of events is one pass, the way one sweep is.
                 let pass = UUID().uuidString
+                let counters = CounterBook()
                 for path in Set(changed) {
                     guard let plan = self.plan(for: path, among: watched) else { continue }
-                    let outcome = runner.run(plan, at: path, key: key)
+                    let outcome = runner.run(plan, at: path, key: key, counters: counters)
                     if let record = ActionRecord.of(plan, outcome, run: pass) {
                         records.append(record)
                     }
@@ -686,97 +675,45 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         return inside.max(by: { $0.path.count < $1.path.count })
     }
 
-    // MARK: - Transport
+    // MARK: - The model's door
 
-    private func wireTransport() {
-        localTransport.setHandler { [weak self] command in
-            guard let self else { return Data() }
-            guard let name = AutopilotCommand(rawValue: command.name) else { return Data() }
-            return await self.answer(name, command)
-        }
+    // Every answer is the return value; `AutopilotViewModel`'s `AutopilotWork`
+    // names these and nothing else. The cheap reads and writes go off the
+    // cooperative pool, because the rule set can sit behind a keychain prompt
+    // (`SealedRules`), and **never onto `queue`**: `status` reads
+    // `historyRefused` and `dropHistory` is `clearHistory`, and both take
+    // `queue.sync` — put on `queue` they would sync onto the queue they are
+    // running on, which libdispatch answers by killing the process
+    // (`TheModelsDoorNeverWaitsOnTheEnginesQueueTests`). The four that walk a
+    // folder or move files go onto `queue`, serialised with the hourly sweep
+    // and the FSEvents leg.
+
+    public func readFolders() async -> [WatchedFolder] { await offTheCooperativePool { self.folders } }
+    public func readStatus() async -> AutopilotStatus { await offTheCooperativePool { self.status } }
+    public func readHistory() async -> [ActionRecord] { await offTheCooperativePool { self.history } }
+
+    /// Answers nothing, whether it saved or refused: the setter is what turns
+    /// down a rule set it may not overwrite, and the model re-reads.
+    public func save(_ list: [WatchedFolder]) async {
+        await offTheCooperativePool { self.folders = list }
     }
 
-    /// The four commands that do real work, and everything else.
-    ///
-    /// Split in two because these are the ones that walk a folder or move
-    /// files: each goes off the cooperative pool and onto the engine's own
-    /// queue, and that is what serialises them against the hourly sweep. Both
-    /// switches are exhaustive with no `default`, so a command added to the
-    /// enum is a build error in whichever half it belongs to.
-    private func answer(_ name: AutopilotCommand, _ command: EngineCommand) async -> Data {
-        switch name {
-        case .previewDraft:
-            return await previewed(command)
-        case .runNow:
-            return await swept(command)
-        case .undo:
-            return await putBack(command) { self.undo($0) }
-        case .undoRun:
-            return await putBack(command) { self.undoRun($0) }
-        case .folders, .status, .discardRefusedRules, .history, .clearHistory, .setFolders:
-            return answerAtOnce(name, command)
-        }
-    }
-
-    /// The commands that read state or hand a value on, which are cheap enough
-    /// to answer on the thread that asked.
-    private func answerAtOnce(_ name: AutopilotCommand, _ command: EngineCommand) -> Data {
-        switch name {
-        case .folders:
-            return EngineReply.encode(folders, for: command)
-        case .status:
-            return EngineReply.encode(status, for: command)
-        case .discardRefusedRules:
-            discardRefusedRules()
-        case .history:
-            return EngineReply.encode(history, for: command)
-        case .clearHistory:
-            clearHistory()
-        case .setFolders:
-            setFolders(command)
-        case .previewDraft, .runNow, .undo, .undoRun:
-            // Answered by the half above. Named rather than defaulted, so a
-            // command that moves to the other half is a build error here.
-            break
-        }
-        return Data()
-    }
-
-    /// A list that will not decode changes nothing: the setter is what refuses a
-    /// rule set it may not overwrite, and it must not be handed an empty one
-    /// because a payload was truncated.
-    private func setFolders(_ command: EngineCommand) {
-        guard let list = EngineReply.decode([WatchedFolder].self, from: command) else { return }
-        folders = list
-    }
+    public func dropRefusedRules() async { await offTheCooperativePool { self.discardRefusedRules() } }
+    public func dropHistory() async { await offTheCooperativePool { self.clearHistory() } }
 
     /// The folder arrives as a draft rather than by id: a rule being written has
     /// not been saved, and a preview of the saved version would answer a question
-    /// nobody asked.
-    private func previewed(_ command: EngineCommand) async -> Data {
-        guard let draft = EngineReply.decode(WatchedFolder.self, from: command)
-        else { return Data() }
-        // Runs on every keystroke in the rule editor.
-        let rows = await offQueue { self.preview(draft).map(PreviewRow.init) }
-        return EngineReply.encode(rows, for: command)
+    /// nobody asked. Runs on every keystroke in the rule editor.
+    public func dryRun(_ draft: WatchedFolder) async -> [PreviewRow] {
+        await offQueue {
+            let counters = CounterBook()
+            return self.preview(draft).map { PreviewRow($0, counters: counters) }
+        }
     }
 
-    /// Both returns, which differ only in what the id names.
-    ///
-    /// Off the cooperative pool and onto the engine's queue like every other
-    /// piece of blocking work here — a whole pass is N moves, and it must not
-    /// run while the hourly sweep is walking the same folder.
-    private func putBack(_ command: EngineCommand,
-                         _ work: @escaping @Sendable (String) -> UndoReport) async -> Data {
-        guard let payload = EngineReply.decode(UndoRequest.self, from: command) else { return Data() }
-        let report = await offQueue { work(payload.id) }
-        return EngineReply.encode(report, for: command)
-    }
-
-    private func swept(_ command: EngineCommand) async -> Data {
-        guard let payload = EngineReply.decode(WatchedFolderRef.self, from: command),
-              let folder = folders.first(where: { $0.id == payload.id })
-        else { return Data() }
+    /// Nil for a folder the engine does not hold, or one that is switched off.
+    public func sweepNow(folderID: String) async -> SweepReport? {
+        guard let folder = await readFolders().first(where: { $0.id == folderID }) else { return nil }
         // **A folder that is switched off is not swept, by hand either.**
         //
         // «Run now» asked only whether any *rule* was enabled, so the button was
@@ -789,20 +726,24 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         // below — with `ASwitchedOffFolderIsNotSweptByHandTests` still passing —
         // is what corrected it.
         //
-        // Here rather than only at the button, because this command is a second
-        // door and a check living in a view does not stand in it.
+        // Here rather than only at the button, because this is a second door
+        // and a check living in a view does not stand in it.
         //
         // No `SweepReport` at all rather than an empty one: `FolderState` says
         // read, missing or refused, and «examined 0» is exactly the sentence
-        // that enum was written to stop being three different facts. The view
-        // model already reads «no reply» as «nothing happened».
+        // that enum was written to stop being three different facts.
         guard folder.enabled else {
             HelmLog.shared.info(Self.moduleID, "run now refused: the folder is switched off")
-            return Data()
+            return nil
         }
-        // A walk plus N moves, off the cooperative pool — and serialised with the
-        // hourly sweep, which is reachable at the same moment.
-        let report = await offQueue { self.runNow(folder) }
-        return EngineReply.encode(report, for: command)
+        // A walk plus N moves, serialised with the hourly sweep, which is
+        // reachable at the same moment.
+        return await offQueue { self.runNow(folder) }
     }
+
+    /// Both returns, on `queue` like every other piece of blocking work here —
+    /// a whole pass is N moves, and it must not run while the hourly sweep is
+    /// walking the same folder.
+    public func putBack(record id: String) async -> UndoReport { await offQueue { self.undo(id) } }
+    public func putBack(run id: String) async -> UndoReport { await offQueue { self.undoRun(id) } }
 }

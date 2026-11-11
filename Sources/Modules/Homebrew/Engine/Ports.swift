@@ -44,7 +44,7 @@ struct NoProcess: RunningProcess {
 }
 
 public protocol ProcessRunner: Sendable {
-    /// Run to completion, capturing stdout (stderr merged). Blocking, and
+    /// Run to completion, capturing stdout (stderr goes to the null device). Blocking, and
     /// bounded: past the runner's deadline the answer is
     /// `HelmProcess.timedOutStatus`, never a wait without end.
     func run(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, stdout: String)
@@ -268,12 +268,12 @@ public final class InMemoryOpMarker: OpMarker, @unchecked Sendable {
 /// of a package that is here carries no size field at all. So a figure is a
 /// directory walk or it is nothing — which is why it is not another optional on
 /// `PackageInfo`, arriving with the rest of a `brew info` answer, and why the
-/// tile it draws is the one that lands late.
+/// row it draws is the one that lands late.
 ///
 /// **nil is the careful half of the contract, and it means «nothing was
 /// measured».** No Cellar directory, a directory that would not open, a name
 /// that could not be one — and a cask, which has no Cellar at all. None of
-/// those may be folded to 0 anywhere downstream: a zero in a tile is not a gap,
+/// those may be folded to 0 anywhere downstream: a zero in a row is not a gap,
 /// it is a measurement, and it says a package occupies nothing.
 public protocol PackageWeight: Sendable {
     /// Bytes allocated to the package's own directory, or nil when there is
@@ -294,4 +294,52 @@ public protocol PackageWeight: Sendable {
 public struct NoPackageWeight: PackageWeight {
     public init() {}
     public func bytes(ofPackage name: String, isCask: Bool) -> Int? { nil }
+}
+
+/// **One brew operation at a time for the whole process**, not per engine.
+///
+/// The host builds a new `HomebrewEngine` on every enable, and a package
+/// operation is not terminated by a switch-off — it runs to its end. So an
+/// engine switched off and a fresh one switched on can exist together, each with
+/// its own idea of "idle", while the first one's `brew` still changes the
+/// Cellar, which has no lock of its own. The engines share one gate: an
+/// operation takes it at the start (`beginBusy`) and gives it back at the end
+/// (`endBusy`, after the marker is cleared, so a late clear can never delete the
+/// next operation's marker), and `status()` takes no marker while anyone holds it.
+///
+/// The app passes `.process`; every other construction gets a gate of its own,
+/// so tests share no state (`HomebrewEngine.init`).
+public final class OperationGate: @unchecked Sendable {
+    public static let process = OperationGate()
+
+    private let lock = NSLock()
+    private var holder: ObjectIdentifier?
+
+    public init() {}
+
+    /// Whether `owner` now holds the gate: false when another one does.
+    func take(_ owner: AnyObject) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        if holder != nil { return false }
+        holder = ObjectIdentifier(owner)
+        return true
+    }
+
+    /// Gives the gate back — only if `owner` is the one holding it.
+    func release(_ owner: AnyObject) {
+        lock.lock(); defer { lock.unlock() }
+        if holder == ObjectIdentifier(owner) { holder = nil }
+    }
+
+    /// Takes the marker only while nobody holds the gate, in one step: an
+    /// operation that starts after the check cannot lose its marker to it.
+    func takeMarkerIfFree(_ marker: OpMarker) -> String? {
+        lock.lock(); defer { lock.unlock() }
+        return holder == nil ? marker.take() : nil
+    }
+
+    var isHeld: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return holder != nil
+    }
 }

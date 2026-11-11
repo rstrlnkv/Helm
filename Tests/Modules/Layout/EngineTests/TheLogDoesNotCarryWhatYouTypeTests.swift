@@ -93,7 +93,7 @@ final class TheLogDoesNotCarryWhatYouTypeTests: XCTestCase {
             tap: tap, typing: typing, sources: FakeSources(),
             translation: FakeTranslation(table: [typed: replacement]),
             spell: FakeSpell(valid: [replacement]),
-            secure: FakeSecure(), automatic: true)
+            secure: FakeSecure(), activation: FakeActivation(), automatic: true)
         engine.activate()
         return engine
     }

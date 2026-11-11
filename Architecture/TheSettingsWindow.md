@@ -2,9 +2,13 @@
 
 `Sources/HelmApp/SettingsWindow.swift` builds a window whose content is
 `SettingsShellViewController`, a plain view controller that shows a
-`ShellContentView` (`Sources/HelmApp/ShellContentView.swift`): glass at the bottom, the
-sidebar on it, and an opaque card inset from the window's edge that holds the page. Every
-frame comes from `ShellGeometry`. The sidebar and the page are each an `NSHostingController` with
+`ShellContentView` (`Sources/HelmApp/ShellContentView.swift`): the ground of the stored look
+at the bottom, the sidebar on it, and an opaque card inset from the window's edge that holds
+the page. Every frame comes from `ShellGeometry`. The ground is the look's: Flat is an
+`NSVisualEffectView` with `.sidebar`, `.behindWindow` and `.followsWindowActiveState`, Glass is
+`NSGlassEffectView`; one is visible, and a live change of the look swaps them at once
+(`.helmBarAppearanceChanged`). The window's corner is the token `HelmRadius.window` on macOS 27
+and the card is cut from it; on macOS 26 `WindowCorner` reads it (and nobody has run that here). The sidebar and the page are each an `NSHostingController` with
 `sizingOptions = []`, so a pane fills what the window gives it and never sizes the
 window; the comment above `sidebar.sizingOptions` says why.
 
@@ -12,19 +16,22 @@ The sidebar is `ShellSidebar`: a column of rows for the modules that are on, and
 at the foot for General, the Log and About. A module that is switched off has no row, and
 a selection that names one reads as General (`ShellSidebarRows.settled`, applied in
 `SettingsModel` when the live modules move and in `show(selecting:)`, and again where the
-page is chosen). The page's name is in the window's toolbar, not over the sidebar:
-the window wears an app-owned `NSToolbar` built by `SettingsToolbar`, a cached bar for each page that declares toolbar content and one shared by the pages that declare none, whose
-first item is the name, held off the item's edge so that it starts sixteen points past the card and never left of where AppKit starts its items (`ShellContentView` tells the toolbar where the card is and whether the window's buttons stand in the rail's placement, `cardMoved`, inside its own `layout()` and before it places the buttons; a fold of the sidebar assigns the window no toolbar). Where a bar has tabs, the next item is `helm.tabsLead`, which stands them on the card's middle and not the window's; its width is written in the same turn, by the same call, from where the toolbar starts its items under the placement told (Architecture/ThePageHeader.md § The tabs and the search field).
-The pane's safe area is AppKit's strip and the shell adds nothing to it, so a page starts where the strip ends.
+page is chosen).
+A row is the kit's `HelmSidebarRow`; it dims in a window that is not the active one (`\.helmWindowAppearsActive`, set on the sidebar's own hosting root too, since an environment on the pane's root does not reach it) and says "n of m" to VoiceOver. Typing the first letters of a name selects its row (`ShellSidebar`'s doc comment holds how the buffer clears). The page's name is in the header row at the top of the card, not over the sidebar, and the window wears no `NSToolbar`:
+`SettingsDetail` draws one row at the root of the detail pane (`helmCardHeader`), so it keeps its identity across a page switch — the name and status on the left (`ShellPageIdentity`), on the right what the page declared through `.helmWindowToolbar`, which travels up as a preference (`HelmPageToolbarKey`) in the same hosting view and is read with `overlayPreferenceValue`. The title bar is transparent and the detail pane takes no safe area (`safeAreaRegions = []`), so the row starts at the card's top edge and the page's inset is the row's own height. The empty part of the row drags the window (`WindowDragGesture`). The tabs, actions and search are `HelmHeaderTabs`, `HelmHeaderActions` and `HelmHeaderSearch`, always whole; the look, Flat or Glass, is `\.helmBarAppearance`, set from the stored choice and live at the pane's root (`helmTracksBarAppearance`).
+
+The window is one of the host's open windows: it joins `HostWindow`'s count when it is brought forward and leaves it when it closes (`SettingsWindow.counted`), so the activation policy is `.regular` while Settings or any other host-owned window is open and `.accessory` only when the last one closes. Bringing it forward reads whether it is key or main at once (`updateWindowAppearsActive()`), so a window shown while another app is in front dims without waiting for a notification. Opening Helm a second time reaches the running copy as the reopen event, and `AppDelegate.applicationShouldHandleReopen` posts `.helmOpenSettings` when no window is visible (a minimised Settings counts as not visible), and `bringForward()` activates and orders Settings front; whether a minimised Settings is restored is unverified (to check in Helm Dev).
 
 One size serves every page: the reasons are the doc comments of `defaultSize` and
-`minSize`, and the narrowest pane a page is drawn in is `minSize` less the widest sidebar and the card's inset (the upper bound of `ShellGeometry.sidebarRange`, `ShellGeometry.inset`), reached only with a stored width, which nothing in the window writes; with no stored width the sidebar is `ShellGeometry.defaultSidebarWidth`. The window sets the sidebar to the stored width brought into the range (`AppSettings.sidebarWidth(in:)`), to that default or to `ShellGeometry.railWidth`, and nothing drags it. A person's flip of the sidebar is remembered (`AppSettings.sidebarCollapsed(in:)`) and `ShellContentView` drives the width from one to the other for `HelmMotion.sidebarFoldDuration`, writing it by the timestamps of a display link it owns (`DisplayFoldLink`, `ShellContentView.fold(to:animated:)`); a fold set from code, a flip back to the width already standing and any fold under Reduce Motion are cuts.
+`minSize`, which holds the Log page's header row, the fullest, in German, the widest of the eight languages, at the default sidebar (`ShellGeometry.defaultSidebarWidth`); a sidebar stored wider (the upper bound of `ShellGeometry.sidebarRange`) is reached only with a stored width, which nothing in the window writes, and `minSize` does not hold the header at it. The window sets the sidebar to the stored width brought into the range (`AppSettings.sidebarWidth(in:)`), to that default or to `ShellGeometry.railWidth`, and nothing drags it. A person's flip of the sidebar is remembered (`AppSettings.sidebarCollapsed(in:)`) and `ShellContentView` drives the width from one to the other for `HelmMotion.sidebarFoldDuration`, writing it by the timestamps of a display link it owns (`DisplayFoldLink`, `ShellContentView.fold(to:animated:)`); a fold set from code, a flip back to the width already standing and any fold under Reduce Motion are cuts.
 Both detail frames, `SettingsDetail`'s and `ModuleDetailView`'s, are pinned
 `.topLeading`; the comment on `ModuleDetailView`'s says why.
 
-A grouped `Form` groups by what its direct children are, so rows wrapped in a view
-change the card they are drawn in (`Sources/Modules/KeepAwake/UI/KeepAwakeAppRules.swift`,
-file doc comment).
+`HelmSettingsSection` lays out its content's subviews as the card's rows: a stack
+wrapped round rows makes them one row, while `Group`, `ForEach` and a view of its
+own are flattened (`Sources/Modules/KeepAwake/UI/KeepAwakeAppRules.swift`, file doc
+comment). A grouped `Form` groups by what its direct children are, so rows wrapped
+in a view change the card they are drawn in.
 
 `SettingsSelection` has one case that is a module, `.module(String)`; `.general`,
 `.about` and `.log` are not, which keeps their pages out of `ModuleRegistry.all`.

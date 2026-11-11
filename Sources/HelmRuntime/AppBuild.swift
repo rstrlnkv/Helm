@@ -83,14 +83,24 @@ public enum AppBuild {
     /// says so.
     public static let releaseIdentifier = "com.helm.app"
 
+    /// What `Scripts/package-dev.sh` rewrites the bundle to: Helm Dev and nothing else.
+    /// **Not `isDev`**, which is the version string and true of every published
+    /// dev-channel build, the person's own installed Helm among them.
+    public static let devIdentifier = "com.helm.app.dev"
+
+    /// Whether `identifier` is Helm Dev's. Nil is not: a bundle that will not say
+    /// what it is stays on what is deployed.
+    public static func isDevIdentifier(_ identifier: String?) -> Bool { identifier == devIdentifier }
+
     /// Whether a published bundle can stand where this one stands.
     ///
     /// The updater swaps a downloaded bundle in at `Bundle.main.bundlePath`, so
     /// the answer is false for `Helm Dev.app` and for anything else running
     /// under a rewritten identifier: the swap would put one program at another's
-    /// address. `Installer.installZip` refuses the same swap at the last moment,
-    /// which is the guard that must stay; this is the same fact asked early
-    /// enough to spend nothing and to have somebody to tell.
+    /// address. `Installer.installZip` refuses a swap at the last moment, by
+    /// comparing the downloaded bundle's identifier with the installed one, which
+    /// is the guard that must stay; this asks whether the running bundle is the
+    /// release's, early enough to spend nothing and to have somebody to tell.
     ///
     /// **False under a test runner too**, where the identifier is
     /// `com.apple.dt.xctest.tool` — a process that has no bundle to replace.

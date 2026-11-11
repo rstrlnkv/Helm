@@ -1,10 +1,6 @@
 import AppKit
-import HelmContract
 import HelmRuntime
 import HelmUI
-import Module_KeepAwake_UI
-import Module_Layout_UI
-import Module_Screenshots_UI
 import Module_Uninstaller_UI
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -21,14 +17,6 @@ import Module_Uninstaller_UI
     /// dragged to the Trash.
     private var trashWindow: TrashedLeftoversWindow?
     private var moduleEnabledObserver: NSObjectProtocol?
-    private var moduleDisabledObserver: NSObjectProtocol?
-    /// The subscription to the Uninstaller's "look again". Held so it can be
-    /// cancelled: a `for await` over an event stream that never finishes runs for
-    /// the life of the app, and cancelling it from outside is the only way it
-    /// ever ends — `deinit` cannot, because the task is what keeps the object
-    /// alive (ARCHITECTURE.md § State that outlives a page and ends with its
-    /// module).
-    private var trashEventsTask: Task<Void, Never>?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -61,57 +49,16 @@ import Module_Uninstaller_UI
         // status item until first activation; kick it once (accessory = no Dock icon).
         NSApp.activate()
 
-        // Global shortcuts. Each one sends a command to a module's engine, so
-        // the host never reaches past the transport into a module.
-        func send(_ command: String, to module: String) -> () -> Void {
-            { [weak host] in
-                guard let engine = host?.liveModule(module)?.engine else { return }
-                let transport = engine.transport
-                Task { _ = try? await transport.send(EngineCommand(name: command)) }
-            }
-        }
-        HotkeyManager.shared.register(
-            "keep-awake.toggle",
-            store: NamespacedStore(namespace: KeepAwakeDescriptor.id.rawValue, backing: UserDefaults.standard),
-            action: send(KeepAwakeCommand.toggle.rawValue, to: KeepAwakeDescriptor.id.rawValue))
-        // One chord for the whole module, doing whatever the tap key does — for
-        // keyboards with no right-hand modifier to tap. There were five: convert
-        // the last word, undo, and one for each of three selection actions. The
-        // engine already decided between converting and undoing on its own, and
-        // now it decides between the selection and the last word too, so the
-        // other four were rows asking the user to assemble a gesture the app
-        // could assemble itself.
-        HotkeyManager.shared.register(
-            LayoutHotkey.fix,
-            store: NamespacedStore(namespace: LayoutDescriptor.id.rawValue, backing: UserDefaults.standard),
-            prefix: LayoutHotkey.storePrefix,
-            action: send(LayoutCommand.fix.rawValue, to: LayoutDescriptor.id.rawValue))
-        // The screenshot shortcuts. Not through the transport: a capture is tens
-        // of megabytes of frame, and the action lands in the module's own UI
-        // target, which holds the overlay. `isLive` is what makes a switched-off
-        // module hold no key at all, and `fallback` is what makes a switched-on
-        // one work before anybody has recorded anything.
-        let screenshotsID = ScreenshotsDescriptor.id.rawValue
-        for hotkey in ScreenshotsHotkey.allCases {
-            HotkeyManager.shared.register(
-                hotkey.slot,
-                store: NamespacedStore(namespace: screenshotsID, backing: UserDefaults.standard),
-                prefix: hotkey.storePrefix,
-                fallback: hotkey.fallback,
-                isLive: { [weak host] in host?.liveModule(screenshotsID) != nil },
-                action: { [weak host] in
-                    guard let live = host?.liveModule(screenshotsID) else { return }
-                    ScreenshotsCapture.begin(hotkey, vm: live.vm, store: live.store)
-                })
-        }
         // Keeps the frontmost-app snapshot current, so every thread that asks
         // reads a value rather than reaching into AppKit for it.
         FrontmostApp.shared.startObserving()
+        // Every module's declared shortcuts, held while it is live.
+        host.registerHotkeys()
         HotkeyManager.shared.start()
 
         HelmLog.shared.info("app", "modules: \(ModuleRegistry.all.map(\.idRaw).joined(separator: ", "))")
 
-        // First launch: find out what macOS is withholding before a removal
+        // Every launch: find out what macOS is withholding before a removal
         // silently leaves files behind.
         PermissionAudit.host = host
         introduceOrAudit()
@@ -128,17 +75,9 @@ import Module_Uninstaller_UI
                 guard note.object as? String == uninstallerId else { return }
                 MainActor.assumeIsolated {
                     self?.offerTrashLeftovers()
-                    // A new engine means a new transport: the old subscription
-                    // points at a stream nothing will ever emit into again.
+                    // A new module means a new model: the old one, stopped with
+                    // its module, listens to nobody.
                     self?.watchTrashArrivals()
-                }
-            }
-        moduleDisabledObserver = NotificationCenter.default.addObserver(
-            forName: .helmModuleDisabled, object: nil, queue: .main) { [weak self] note in
-                guard note.object as? String == uninstallerId else { return }
-                MainActor.assumeIsolated {
-                    self?.trashEventsTask?.cancel()
-                    self?.trashEventsTask = nil
                 }
             }
         HelmLog.shared.info("permissions", "full disk access probe: \(PermissionCheck.currentFullDiskAccess().rawValue)")
@@ -148,15 +87,16 @@ import Module_Uninstaller_UI
         HelmLog.shared.memory("launch")
         startFootprintWatch()
 
+        LaunchPage.openRequested(by: statusController, enabled: host.enabledModuleIDs)
     }
 
-    /// The tour on a first launch, and the permission audit whenever the tour is
-    /// not shown.
+    /// The tour on a launch that has not seen it, then the permission audit;
+    /// without the tour, the audit at once.
     ///
-    /// The audit puts up an alert when macOS is withholding something, and on a
-    /// first launch that is the same moment the welcome window wants. Two of
-    /// them arriving together is not an introduction, it is a pile-up — so the
-    /// audit waits for the window to go away, by Done, by Skip or by the close
+    /// The audit can put up an alert, and on a launch that shows the tour that
+    /// is the same moment the welcome window
+    /// wants. Two of them arriving together is not an introduction, it is a
+    /// pile-up — so the audit waits for the window to go away, by Done, by Skip or by the close
     /// button.
     private func introduceOrAudit() {
         guard WelcomeWindow.shouldShow(store: AppSettings.store) else {
@@ -207,14 +147,14 @@ import Module_Uninstaller_UI
     /// why is the module's own page, which already carries the notice.
     private func offerTrashLeftovers() {
         // A window already up is not a reason to do nothing — it is the reason
-        // the host does nothing *here*: the window is listening to the same
-        // event and takes the new app into the list it is already showing,
+        // the host does nothing *here*: the model hands an arrival to the open
+        // window, which takes the new app into the list it is already showing,
         // which is what a second app dropped a moment after the first deserves.
         guard trashWindow == nil else {
             HelmLog.shared.info("app", "trash arrival goes to the open window")
             return
         }
-        guard let live = host.liveModule(UninstallerDescriptor.id.rawValue) else {
+        guard let model = uninstaller else {
             HelmLog.shared.info("app", "trash sweep skipped: the uninstaller is off")
             return
         }
@@ -224,31 +164,27 @@ import Module_Uninstaller_UI
         Task { [weak self] in
             // Nothing to offer: drop the holder, or the next sweep finds it
             // occupied and stays quiet for the rest of the run.
-            if await window.showIfAnything(vm: live.vm) == false { self?.trashWindow = nil }
+            if await window.showIfAnything(uvm: model) == false { self?.trashWindow = nil }
         }
+    }
+
+    /// The Uninstaller's model, or nil while the module is off.
+    private var uninstaller: UninstallerViewModel? {
+        guard let live = host.liveModule(UninstallerDescriptor.id.rawValue) else { return nil }
+        guard let model = live.model as? UninstallerViewModel else {
+            HelmLog.shared.warn("app", "the uninstaller's model is not UninstallerViewModel, so there is no trash offer"); return nil }
+        return model
     }
 
     /// Subscribes to the Uninstaller's "look again".
     ///
-    /// The event carries nothing and is not meant to: the module watches
+    /// The signal carries nothing and is not meant to: the module watches
     /// `~/.Trash`, decides whether the change could have been an app arriving,
     /// and says only that the question is worth asking again. The host answers it
-    /// the one way it can — the same sweep it runs at launch.
+    /// the one way it can — the same sweep it runs at launch. The model ends the
+    /// subscription with the module (`UninstallerViewModel.stop()`).
     private func watchTrashArrivals() {
-        trashEventsTask?.cancel()
-        guard let live = host.liveModule(UninstallerDescriptor.id.rawValue) else { return }
-        let events = live.engine.transport.events
-        // A string is what crosses the transport; it is not what the host has
-        // to type. `UninstallerDescriptor` re-exports `UninstallerEvent` the
-        // way the descriptors already re-export their command enums for the
-        // hotkeys two screens up, so this name is one declaration rather than a
-        // literal on each side. Spelled by hand, a rename in the engine would
-        // be an error nowhere and the offer would simply stop appearing.
-        trashEventsTask = Task { [weak self] in
-            for await event in events where event.name == UninstallerEvent.trashChanged.rawValue {
-                self?.offerTrashLeftovers()
-            }
-        }
+        uninstaller?.listenForTrash { [weak self] in self?.offerTrashLeftovers() }
     }
 
     /// The reading nothing else takes.
@@ -272,6 +208,23 @@ import Module_Uninstaller_UI
             HelmLog.shared.memory("sample")
         }
     }
+
+    /// Opening Helm again (Finder, Spotlight, Launchpad, `open -a`) does not start a
+    /// second copy of a running app: the running one is sent this reopen event.
+    /// Helm is an accessory app with no window of its own until Settings is
+    /// opened, so without this handler the open did nothing and Helm looked dead.
+    ///
+    /// With nothing on screen it asks for Settings through the notification every
+    /// other caller uses (`StatusItemController` listens). With a window up there
+    /// is nothing to ask for. `false` either way: the default reopen has nothing
+    /// to add. A miniaturised window is not visible, so it takes the asking path:
+    /// `bringForward()` activates and orders Settings front; whether that also
+    /// restores a minimised window is not verified (to check in Helm Dev).
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { NotificationCenter.default.post(name: .helmOpenSettings, object: nil) }
+        return false
+    }
+
     /// Quitting must not leave the machine changed.
     ///
     /// Keep Awake's lid option runs `sudo pmset disablesleep 1`, which is
@@ -285,9 +238,9 @@ import Module_Uninstaller_UI
     /// instance — the IOKit assertions, the event tap, the folder watchers and
     /// the power observers are all released the same way, by the code that
     /// already knows how.
+
     func applicationWillTerminate(_ notification: Notification) {
         HelmLog.shared.info("app", "terminating")
-        trashEventsTask?.cancel()
         // The coordinator owns a repeating tick and a notification observer, and
         // neither goes through an engine's `deactivate()`. Stopped from outside,
         // like every other observer the app starts itself.

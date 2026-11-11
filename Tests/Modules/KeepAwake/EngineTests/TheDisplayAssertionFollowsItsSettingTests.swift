@@ -43,7 +43,7 @@ final class TheDisplayAssertionFollowsItsSettingTests: XCTestCase {
                                  displayObserver: FakeDisplayObserver(),
                                  power: FakePower(), apps: FakeApps(),
                                  pointer: FakePointer(), clamshell: FakeClamshell(),
-                                 clock: FakeClock())
+                                 clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
     /// What the settings page does: write the store, then send the command.
@@ -51,8 +51,7 @@ final class TheDisplayAssertionFollowsItsSettingTests: XCTestCase {
 
     /// The command the settings page sends when anything on it moves.
     private func settingsChanged() async {
-        _ = try? await engine.transport.send(
-            EngineCommand(name: KeepAwakeCommand.settingsChanged.rawValue))
+        engine.settingsChanged()
     }
 
     func testSwitchingItOffDuringASessionPutsTheDisplayAssertionDown() async {

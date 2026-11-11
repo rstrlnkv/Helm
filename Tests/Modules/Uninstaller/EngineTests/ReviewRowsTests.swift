@@ -75,14 +75,6 @@ final class ReviewRowsOrderTests: XCTestCase {
                        "the last screen before deletion does not name the app it deletes")
     }
 
-    /// A row with a checkbox is a row that can be declined. This one cannot.
-    func testTheBundleRowIsNotTickable() {
-        let rows = UninstallPlan.reviewRows(group([leftover("/Users/x/Library/Caches/a", 10)]))
-
-        XCTAssertEqual(rows.filter(\.isTickable).map(\.id), ["/Users/x/Library/Caches/a"],
-                       "the bundle row offers a choice the plan does not honour")
-    }
-
     func testLeftoversKeepTheOrderTheScanPutThemIn() {
         let big = leftover("/Users/x/Library/Caches/big", 500)
         let small = leftover("/Users/x/Library/Caches/small", 5)

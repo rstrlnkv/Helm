@@ -92,7 +92,7 @@ final class ARefusalNamesNoConfigurationTests: XCTestCase {
                                work: .inline)
         engine.refresh()
 
-        engine.connect(asked)
+        engine.connect(asked, auto: false)
 
         let lines = HelmLog.shared.recentEntries().filter { $0.category == "vpn" }
         XCTAssertTrue(lines.contains { $0.message.contains("refused") },

@@ -76,7 +76,7 @@ final class TheEditorRemembersItsLastPicksTests: XCTestCase {
     func testTheSettingsReaderIsNotMovedByTheEditorsKeys() {
         let kept = store()
         EditorMemory.remember(tool: .line, in: kept)
-        EditorMemory.remember(style: AnnotationStyle(color: .blue, thickness: .thick, filled: true), for: .line, in: kept)
+        EditorMemory.remember(style: AnnotationStyle(color: AnnotationInk(AnnotationColor.blue), thickness: .thick, filled: true), for: .line, in: kept)
         XCTAssertEqual(ScreenshotsSettings.read(kept), ScreenshotsSettings.defaults,
                        "the editor's memory changed what a capture does")
     }

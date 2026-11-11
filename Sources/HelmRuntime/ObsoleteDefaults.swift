@@ -41,6 +41,16 @@ public enum ObsoleteDefaults {
         // settings, over a four-point range, with the indicator's own menu rows
         // ignoring both and drawing at `.small`.
         "module.layout.badgeSize",
+        // The window's toolbar is gone, and with it the three choices about it: how the tabs were labelled
+        // there, which shape its page header took, and whether its search rested as a magnifier. The header
+        // row in the card has one shape.
+        "module.app.toolbarSwitcherStyle",
+        "module.app.pageBarStyle",
+        "module.app.alwaysCollapseSearch",
+        // The panel's tabs wear their names: the strip has one face, the one it shipped with.
+        "module.app.tabLabelStyle",
+        // `HelmIconPlate` has one look; the plain look was a second axis of the look.
+        "module.app.sidebarStyle",
     ]
 
     public static func purge(from store: KeyValueStore) {

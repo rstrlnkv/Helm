@@ -61,29 +61,6 @@ public enum Redact {
             .appendingPathComponent(app(stem) + (ext.isEmpty ? "" : "." + ext))
     }
 
-    /// Any text that may quote the software a path names, with that name tagged.
-    ///
-    /// Replaces every occurrence of the software's name in `text` with its tag,
-    /// for a line that quotes the name outside the path Helm wrote.
-    ///
-    /// **Known defect Redact-F1:** its one call site, in `HelmTrash`, hands it not the
-    /// system's sentence for a software leaf but Helm's own verdict
-    /// («<domain> <code>, <reason>»), and this replaces every occurrence, so an app
-    /// named like a word of that verdict («Cocoa», «Permission», «missing») garbles
-    /// the line and can be read back from the tag.
-    ///
-    /// Four characters at least, because this replaces every occurrence rather than
-    /// a delimited one: swapping a two-letter name out of a sentence rewrites the
-    /// sentence instead of redacting it. Such a name is left as it is in `text` —
-    /// never in the path, where the leaf is delimited and `path(_:leaf:)`
-    /// replaces it whatever its length.
-    public static func naming(_ text: String, software path: String, leaf: Leaf) -> String {
-        guard leaf == .softwareName else { return text }
-        let stem = softwareStem(path)
-        guard stem.count >= 4 else { return text }
-        return text.replacingOccurrences(of: stem, with: app(stem))
-    }
-
     /// The part of a leaf that names software: everything but a *known* extension.
     ///
     /// **Not `deletingPathExtension`**, which takes the last dot of anything for an
@@ -114,10 +91,6 @@ public enum Redact {
         "plugin", "component", "bundle", "appex", "xpc", "kext", "saver",
         "framework", "systemextension", "pkg", "bom", "log", "db", "lockfile"
     ]
-
-    public static func paths(_ paths: [String], home: String = NSHomeDirectory()) -> String {
-        paths.map { self.path($0, home: home) }.joined(separator: ", ")
-    }
 
     /// A short stable tag for a name that should not be written down.
     ///

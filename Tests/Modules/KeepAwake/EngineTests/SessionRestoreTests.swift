@@ -189,4 +189,48 @@ final class SessionRestoreTests: XCTestCase {
                                              endDate: now.addingTimeInterval(aDay), now: now),
                        .remaining(aDay))
     }
+
+    // MARK: - A stored record that cannot be meant
+
+    private func stored(_ raw: Any?) -> SessionRestore.Stored { SessionRestore.Stored(raw) }
+
+    func testStoredReadsEachRawValueOnce() {
+        XCTAssertEqual(stored(nil), .absent)
+        XCTAssertEqual(stored(0.0), .absent)
+        XCTAssertEqual(stored(-0.0), .absent)
+        XCTAssertEqual(stored(5.0), .at(Date(timeIntervalSinceReferenceDate: 5)))
+        for junk in [Double.nan, -1.0, -Double.infinity, Double.infinity, "soon", ["a"]] as [Any] {
+            XCTAssertEqual(stored(junk), .unreadable, "\(junk) was read as a date or as nothing")
+        }
+    }
+
+    func testARecordWithAnUnreadableDateIsRefusedWhicheverFieldHoldsIt() {
+        let good = stored(now.timeIntervalSinceReferenceDate + 60)
+        let startGood = stored(now.timeIntervalSinceReferenceDate - 60)
+        XCTAssertEqual(SessionRestore.decide(manualOn: true, start: startGood, end: .unreadable, now: now),
+                       .unreadable)
+        XCTAssertEqual(SessionRestore.decide(manualOn: true, start: .unreadable, end: good, now: now),
+                       .unreadable)
+        XCTAssertEqual(SessionRestore.decide(manualOn: true, start: .unreadable, end: .absent, now: now),
+                       .unreadable)
+    }
+
+    func testAStartWithNoEndIsRefused() {
+        XCTAssertEqual(SessionRestore.decide(manualOn: true, start: stored(5.0), end: .absent, now: now),
+                       .unreadable)
+    }
+
+    /// The controls: what Helm writes still decides as it did.
+    func testWhatHelmWritesDecidesAsBefore() {
+        XCTAssertEqual(SessionRestore.decide(manualOn: true, start: .absent, end: .absent, now: now),
+                       .indefinite)
+        XCTAssertEqual(SessionRestore.decide(manualOn: false, start: .unreadable, end: .unreadable, now: now),
+                       .none)
+        let end = stored(now.timeIntervalSinceReferenceDate + 60)
+        XCTAssertEqual(SessionRestore.decide(manualOn: true, start: .absent, end: end, now: now),
+                       .remaining(60))
+        XCTAssertEqual(SessionRestore.decide(manualOn: true, start: .absent,
+                                             end: stored(now.timeIntervalSinceReferenceDate - 60), now: now),
+                       .none)
+    }
 }

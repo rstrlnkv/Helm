@@ -93,16 +93,4 @@ public enum SessionHero: Equatable, Sendable {
         guard let holder else { return .nothing }
         return timerEndsAutomation ? .rulePaused : .heldBy(holder)
     }
-
-    /// The older shape, kept for the callers that only ask «and then what holds
-    /// it» — `nil` covers both «nothing» and «the rule is being paused», which
-    /// is why anything drawing a sentence uses `afterTimer` instead.
-    public static func holderAfterTimer(conditions: Set<ActiveCondition>,
-                                        timerEndsAutomation: Bool) -> ActiveCondition? {
-        if case .heldBy(let condition) = afterTimer(conditions: conditions,
-                                                    timerEndsAutomation: timerEndsAutomation) {
-            return condition
-        }
-        return nil
-    }
 }

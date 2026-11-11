@@ -19,9 +19,8 @@ import HelmTestSupport
 /// tile is simply left in the air.
 ///
 /// The proof of the split was `grep` in a review — one hit, inside a comment.
-/// This is that grep with a runner, the way `EventNamesAreNotLiteralsTests` and
-/// `ListsAgreeWithTheTreeTests` already read source for a claim no type system
-/// makes.
+/// This is that grep with a runner, the way `ListsAgreeWithTheTreeTests`
+/// already reads source for a claim no type system makes.
 final class PanelBarsCarryNoLifetimeTests: XCTestCase {
 
     /// The wrappers that make a view own something across a rebuild. Not

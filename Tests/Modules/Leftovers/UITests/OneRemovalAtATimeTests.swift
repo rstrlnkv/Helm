@@ -1,9 +1,3 @@
-import AppKit
-import HelmContract
-import HelmRuntime
-import HelmTestSupport
-import HelmUI
-import SwiftUI
 import XCTest
 import Module_Leftovers_Engine
 @testable import Module_Leftovers_UI
@@ -28,15 +22,14 @@ import Module_Leftovers_Engine
 /// Homebrew has had a gate for exactly this since its own pass, and the note on
 /// that test applies here word for word: **a fake that answers synchronously
 /// releases the gate before the call it is gating returns**, so a test built on
-/// one passes whether or not the gate exists. The transport below does not
+/// one passes whether or not the gate exists. The fake below does not
 /// answer until it is told to.
 @MainActor
 final class OneRemovalAtATimeTests: XCTestCase {
 
     /// Answers `scan` at once and holds `trash` open until released, so a
     /// second press really does arrive while the first is still in flight.
-    private final class HeldTransport: EngineTransport, @unchecked Sendable {
-        var events: AsyncStream<EngineEvent> { AsyncStream { _ in } }
+    private final class HeldWork: LeftoversWork, @unchecked Sendable {
         private(set) var trashRequests = 0
         /// Counted for the same reason as the two below, and one more: the rescan
         /// `trash` makes *itself* is a scan too, so a guard that refused every scan
@@ -44,7 +37,7 @@ final class OneRemovalAtATimeTests: XCTestCase {
         /// just taken away. A fake that cannot count these cannot tell the guard
         /// from the breakage.
         private(set) var scanRequests = 0
-        /// The other command a control on this page sends, counted for the same
+        /// The other request a control on this page makes, counted for the same
         /// reason: «Turn off» stayed live through the whole removal.
         private(set) var setDisabledRequests = 0
         private let released = AsyncStream<Void>.makeStream()
@@ -54,28 +47,21 @@ final class OneRemovalAtATimeTests: XCTestCase {
 
         func release() { released.continuation.finish() }
 
-        /// The enum rather than the raw names this switched on before: a fake
-        /// answering strings of its own goes on answering after the module renames
-        /// a command, and what it answers then is `Data()` — which this codebase
-        /// spells «the module could not answer».
-        func send(_ command: EngineCommand) async throws -> Data {
-            switch LeftoversCommand(rawValue: command.name) {
-            case .scan:
-                scanRequests += 1
-                return (try? JSONEncoder().encode(items)) ?? Data()
-            case .trash:
-                trashRequests += 1
-                // Hangs until `release()`. A `return` here would clear the flag
-                // before the caller resumed, and the gate would be untested.
-                for await _ in released.stream {}
-                return (try? JSONEncoder().encode(
-                    LeftoversRemoval(removed: [], refused: [], freedBytes: 0))) ?? Data()
-            case .setDisabled:
-                setDisabledRequests += 1
-                return Data()
-            case .none:
-                return Data()
-            }
+        func scan() async -> [StaleItem] {
+            scanRequests += 1
+            return items
+        }
+
+        func trash(_ paths: [String]) async -> LeftoversRemoval {
+            trashRequests += 1
+            // Hangs until `release()`. A `return` here would clear the flag
+            // before the caller resumed, and the gate would be untested.
+            for await _ in released.stream {}
+            return LeftoversRemoval(removed: [], refused: [], freedBytes: 0)
+        }
+
+        func setDisabled(_ request: LeftoversToggle) async {
+            setDisabledRequests += 1
         }
     }
 
@@ -85,45 +71,45 @@ final class OneRemovalAtATimeTests: XCTestCase {
     }
 
     func testASecondPressWhileTheFirstIsStillRunningIsRefused() async throws {
-        let transport = HeldTransport(items: [item("/tmp/one.plist"), item("/tmp/two.plist")])
-        let model = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
+        let work = HeldWork(items: [item("/tmp/one.plist"), item("/tmp/two.plist")])
+        let model = LeftoversViewModel(work: work)
         await model.scan()
         model.selected = Set(model.selectablePaths)
         XCTAssertFalse(model.selected.isEmpty, "precondition: something is ticked")
 
         let first = Task { await model.removeSelected() }
-        // Let the first reach the transport and suspend inside it.
-        for _ in 0..<50 where transport.trashRequests == 0 { await Task.yield() }
-        XCTAssertEqual(transport.trashRequests, 1, "precondition: the first removal is in flight")
+        // Let the first reach the fake and suspend inside it.
+        for _ in 0..<50 where work.trashRequests == 0 { await Task.yield() }
+        XCTAssertEqual(work.trashRequests, 1, "precondition: the first removal is in flight")
 
         // The second press is a task as well: without the gate it reaches the
-        // held transport and stays there, so awaiting it here would hang the
+        // held fake and stays there, so awaiting it here would hang the
         // test rather than fail it.
         let second = Task { await model.removeSelected() }
         for _ in 0..<50 { await Task.yield() }
 
-        XCTAssertEqual(transport.trashRequests, 1,
+        XCTAssertEqual(work.trashRequests, 1,
                        "the batch was sent twice. The second round finds every path already "
                        + "in the Trash, so it comes back with a refusal for each one and "
                        + "overwrites the report of the removal that worked")
 
-        transport.release()
+        work.release()
         _ = await (first.value, second.value)
     }
 
         /// And the flag has to say so, or the page cannot dim the button.
     func testTheModelSaysItIsBusyWhileARemovalRuns() async throws {
-        let transport = HeldTransport(items: [item("/tmp/one.plist")])
-        let model = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
+        let work = HeldWork(items: [item("/tmp/one.plist")])
+        let model = LeftoversViewModel(work: work)
         await model.scan()
         model.selected = Set(model.selectablePaths)
 
         let running = Task { await model.removeSelected() }
-        for _ in 0..<50 where transport.trashRequests == 0 { await Task.yield() }
+        for _ in 0..<50 where work.trashRequests == 0 { await Task.yield() }
 
         XCTAssertTrue(model.busy, "nothing on the page can tell that a removal is running")
 
-        transport.release()
+        work.release()
         await running.value
         XCTAssertFalse(model.busy, "the flag outlived the work it describes")
     }
@@ -137,23 +123,23 @@ final class OneRemovalAtATimeTests: XCTestCase {
     /// about to report on.
     func testTurningARowOffWhileARemovalRunsIsRefused() async throws {
         let one = item("/tmp/one.plist")
-        let transport = HeldTransport(items: [one])
-        let model = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
+        let work = HeldWork(items: [one])
+        let model = LeftoversViewModel(work: work)
         await model.scan()
         model.selected = Set(model.selectablePaths)
 
         let removal = Task { await model.removeSelected() }
-        for _ in 0..<50 where transport.trashRequests == 0 { await Task.yield() }
-        XCTAssertEqual(transport.trashRequests, 1, "precondition: the removal is in flight")
+        for _ in 0..<50 where work.trashRequests == 0 { await Task.yield() }
+        XCTAssertEqual(work.trashRequests, 1, "precondition: the removal is in flight")
 
         let press = Task { await model.setDisabled(true, item: one) }
         for _ in 0..<50 { await Task.yield() }
 
-        XCTAssertEqual(transport.setDisabledRequests, 0,
+        XCTAssertEqual(work.setDisabledRequests, 0,
                        "launchd was asked to switch a job off in the middle of a removal, and "
                        + "the rescan that follows lands on top of the removal's own report")
 
-        transport.release()
+        work.release()
         _ = await (removal.value, press.value)
     }
 
@@ -170,28 +156,28 @@ final class OneRemovalAtATimeTests: XCTestCase {
     /// second half of this test is a control: the rescan still arrives.
     func testAScanStartedByHandWhileARemovalRunsIsRefused() async throws {
         let one = item("/tmp/one.plist")
-        let transport = HeldTransport(items: [one])
-        let model = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
+        let work = HeldWork(items: [one])
+        let model = LeftoversViewModel(work: work)
         await model.scan()
         model.selected = Set(model.selectablePaths)
-        let before = transport.scanRequests
-        XCTAssertEqual(before, 1, "precondition: the first scan reached the transport")
+        let before = work.scanRequests
+        XCTAssertEqual(before, 1, "precondition: the first scan reached the engine's place")
 
         let removal = Task { await model.removeSelected() }
-        for _ in 0..<50 where transport.trashRequests == 0 { await Task.yield() }
-        XCTAssertEqual(transport.trashRequests, 1, "precondition: the removal is in flight")
+        for _ in 0..<50 where work.trashRequests == 0 { await Task.yield() }
+        XCTAssertEqual(work.trashRequests, 1, "precondition: the removal is in flight")
 
         let press = Task { await model.scan() }
         for _ in 0..<50 { await Task.yield() }
 
-        XCTAssertEqual(transport.scanRequests, before,
+        XCTAssertEqual(work.scanRequests, before,
                        "the toolbar's Scan started a scan in the middle of a removal, and its "
                        + "fresh list lands on top of the one the removal is about to report on")
 
-        transport.release()
+        work.release()
         _ = await (removal.value, press.value)
 
-        XCTAssertEqual(transport.scanRequests, before + 1,
+        XCTAssertEqual(work.scanRequests, before + 1,
                        "the rescan a removal makes for itself was refused with the rest — the "
                        + "list still shows the rows that have just gone to the Trash")
     }
@@ -201,23 +187,23 @@ final class OneRemovalAtATimeTests: XCTestCase {
     func testTheRowsOwnDeleteWhileARemovalRunsIsRefused() async throws {
         let one = item("/tmp/one.plist")
         let two = item("/tmp/two.plist")
-        let transport = HeldTransport(items: [one, two])
-        let model = LeftoversViewModel(vm: ModuleViewModel(transport: transport))
+        let work = HeldWork(items: [one, two])
+        let model = LeftoversViewModel(work: work)
         await model.scan()
         model.selected = [one.path]
 
         let removal = Task { await model.removeSelected() }
-        for _ in 0..<50 where transport.trashRequests == 0 { await Task.yield() }
-        XCTAssertEqual(transport.trashRequests, 1, "precondition: the removal is in flight")
+        for _ in 0..<50 where work.trashRequests == 0 { await Task.yield() }
+        XCTAssertEqual(work.trashRequests, 1, "precondition: the removal is in flight")
 
         let fromTheMenu = Task { await model.remove(two) }
         for _ in 0..<50 { await Task.yield() }
 
-        XCTAssertEqual(transport.trashRequests, 1,
+        XCTAssertEqual(work.trashRequests, 1,
                        "a second batch went out from the row's menu while the first was still "
                        + "running, and its answer overwrites the report of the first")
 
-        transport.release()
+        work.release()
         _ = await (removal.value, fromTheMenu.value)
     }
 }

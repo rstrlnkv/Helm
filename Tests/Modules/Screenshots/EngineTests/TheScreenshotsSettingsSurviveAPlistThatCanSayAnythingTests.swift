@@ -258,7 +258,7 @@ final class TheScreenshotsSettingsSurviveAPlistThatCanSayAnythingTests: XCTestCa
         for stranger in strangers {
             for item in PaletteItem.allCases {
                 let read = store([Key.paletteChoices: [item.rawValue: stranger]])
-                XCTAssertTrue(PaletteItems.isShown(item, in: read), "\(item) = \(stranger) hid the item")
+                XCTAssertTrue(PaletteItems.visible(read).contains(item), "\(item) = \(stranger) hid the item")
             }
         }
     }
@@ -269,7 +269,6 @@ final class TheScreenshotsSettingsSurviveAPlistThatCanSayAnythingTests: XCTestCa
         let read = store(values)
         _ = PaletteItems.visible(read)
         _ = PaletteItems.picks(read)
-        _ = PaletteItems.isShown(.pen, in: read)
         XCTAssertEqual(read.object(Key.paletteChoices) as? [String: Bool], ["pen": false, "colours": false, "laser": true],
                        "a read rewrote the table")
         XCTAssertEqual(PaletteItems.visible(read), PaletteItem.allCases.filter { $0 != .pen })
@@ -281,9 +280,9 @@ final class TheScreenshotsSettingsSurviveAPlistThatCanSayAnythingTests: XCTestCa
         let strangers: [Any] = [5, "laser", "false", 2.5, Data([0]), [true], ["x": false], NSNull(), 1e300]
         for stranger in strangers {
             let read = store([Key.paletteChoices: ["pen": false, "laser": stranger, "pencil": stranger, "highlighter": true] as [String: Any]])
-            XCTAssertFalse(PaletteItems.isShown(.pen, in: read), "the pen was picked hidden and \(stranger) beside it undid the pick")
+            XCTAssertFalse(PaletteItems.visible(read).contains(.pen), "the pen was picked hidden and \(stranger) beside it undid the pick")
             XCTAssertEqual(PaletteItems.picks(read), [.pen: false, .highlighter: true], "\(stranger): the picks beside it are not as written")
-            XCTAssertTrue(PaletteItems.isShown(.pencil, in: read), "\(stranger) under pencil is no pick: the default decides")
+            XCTAssertTrue(PaletteItems.visible(read).contains(.pencil), "\(stranger) under pencil is no pick: the default decides")
         }
     }
 
@@ -300,7 +299,7 @@ final class TheScreenshotsSettingsSurviveAPlistThatCanSayAnythingTests: XCTestCa
             let read = store([Key.paletteChoices: ["pen": number, "pencil": false] as [String: Any]])
             XCTAssertEqual(PaletteItems.picks(read)[.pen], pick, "\(number) as a pick")
             XCTAssertEqual(PaletteItems.picks(read)[.pencil], false, "\(number) beside it cost the pencil's pick")
-            XCTAssertEqual(PaletteItems.isShown(.pen, in: read), pick ?? PaletteItem.pen.shownByDefault)
+            XCTAssertEqual(PaletteItems.visible(read).contains(.pen), pick ?? PaletteItem.pen.shownByDefault)
             PaletteItems.set(.highlighter, shown: false, in: read)
             let after = read.boolTable(Key.paletteChoices)
             XCTAssertEqual(after["highlighter"], false, "\(number): the write did not take")

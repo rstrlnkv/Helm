@@ -1,22 +1,19 @@
 import XCTest
-import HelmContract
-import HelmUI
 import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
 
 /// The console keeps the last of what `brew` said, not all of it.
 ///
 /// Every `opLog` event appends a line and nothing ever trimmed the array. It is
-/// cleared in two places — pressing Clear, and starting an install — so on the
+/// cleared in two places — pressing Clear, and starting the install of Homebrew — so on the
 /// ordinary path (upgrade, then upgrade again, then search) it only grew, for
-/// the life of the app: this view model is cached per host view model and the
-/// cache is dropped only when the module is switched off.
+/// as long as the module is on.
 ///
 /// The engine keeps stderr on purpose, because a console should show what the
 /// tool says, and a `brew` command can pass 64 KB of
 /// deprecation warnings without trying. Each line also becomes a view — the
-/// page renders `ForEach` over the whole array and scrolls on every count
-/// change — so the cost is paid twice.
+/// page renders `ForEach` over the whole array and follows every new line — so
+/// the cost is paid twice.
 ///
 /// 1000 is `LogTail`'s bound, and this is the same problem: a running record
 /// somebody reads the end of. Taking it from the front is what a terminal's
@@ -24,15 +21,9 @@ import Module_Homebrew_Engine
 @MainActor
 final class TheConsoleIsBoundedTests: XCTestCase {
 
-    private final class SilentTransport: EngineTransport, @unchecked Sendable {
-        let stream = AsyncStream<EngineEvent>.makeStream()
-        var events: AsyncStream<EngineEvent> { stream.stream }
-        func send(_ command: EngineCommand) async throws -> Data { Data() }
-    }
-
-    private func model() -> (HomebrewViewModel, SilentTransport) {
-        let transport = SilentTransport()
-        return (HomebrewViewModel(vm: ModuleViewModel(transport: transport)), transport)
+    private func model() -> (HomebrewViewModel, FakeHomebrewWork) {
+        let work = FakeHomebrewWork()
+        return (HomebrewViewModel(work: work), work)
     }
 
     /// Sends `count` lines and returns once the model has stopped taking them.
@@ -44,12 +35,10 @@ final class TheConsoleIsBoundedTests: XCTestCase {
     /// — the model consumes on a task of its own, and that lost 30 lines of
     /// 1500 and one of 20, which reads as a bound nearly right rather than as a
     /// harness dropping events.
-    private func log(_ count: Int, into transport: SilentTransport,
+    private func log(_ count: Int, into work: FakeHomebrewWork,
                      model: HomebrewViewModel) async {
         for index in 0..<count {
-            transport.stream.continuation.yield(
-                EngineEvent(name: HomebrewEvent.opLog.rawValue,
-                            payload: Data("line \(index)".utf8)))
+            work.say(.line("line \(index)"))
         }
         var settled = 0
         var last = -1
@@ -61,9 +50,9 @@ final class TheConsoleIsBoundedTests: XCTestCase {
     }
 
     func testTheConsoleStopsGrowingAtItsBound() async {
-        let (model, transport) = model()
+        let (model, work) = model()
 
-        await log(HomebrewViewModel.consoleLimit + 500, into: transport, model: model)
+        await log(HomebrewViewModel.consoleLimit + 500, into: work, model: model)
 
         XCTAssertEqual(model.consoleLines.count, HomebrewViewModel.consoleLimit,
                        "the console grew without a bound: a long `brew upgrade` keeps every "
@@ -74,9 +63,9 @@ final class TheConsoleIsBoundedTests: XCTestCase {
     /// And it keeps the **end**, which is the half a person is reading: the
     /// result of the operation, not its opening banner.
     func testItKeepsTheNewestLines() async {
-        let (model, transport) = model()
+        let (model, work) = model()
 
-        await log(HomebrewViewModel.consoleLimit + 3, into: transport, model: model)
+        await log(HomebrewViewModel.consoleLimit + 3, into: work, model: model)
 
         XCTAssertEqual(model.consoleLines.last, "line \(HomebrewViewModel.consoleLimit + 2)",
                        "the newest line is not the last one shown")
@@ -87,9 +76,9 @@ final class TheConsoleIsBoundedTests: XCTestCase {
     /// Below the bound nothing is dropped, or a short operation would come back
     /// missing its first lines for no reason.
     func testAShortOperationKeepsEveryLine() async {
-        let (model, transport) = model()
+        let (model, work) = model()
 
-        await log(20, into: transport, model: model)
+        await log(20, into: work, model: model)
 
         XCTAssertEqual(model.consoleLines.count, 20)
         XCTAssertEqual(model.consoleLines.first, "line 0")
@@ -99,9 +88,9 @@ final class TheConsoleIsBoundedTests: XCTestCase {
     /// console is, and a row keeps its number while the trim moves it up the
     /// array — the count cannot be followed once it has stopped changing.
     func testTheNewestLineHasAnIdentityThatKeepsMovingAtTheBound() async {
-        let (model, transport) = model()
+        let (model, work) = model()
 
-        await log(HomebrewViewModel.consoleLimit + 3, into: transport, model: model)
+        await log(HomebrewViewModel.consoleLimit + 3, into: work, model: model)
         let sequence = model.consoleSequence
         let rows = model.consoleRows
 
@@ -112,7 +101,7 @@ final class TheConsoleIsBoundedTests: XCTestCase {
         XCTAssertEqual(rows.first?.id, 3, "the oldest kept row lost its number to the trim")
         XCTAssertEqual(Set(rows.map(\.id)).count, rows.count, "two rows share an identity")
 
-        await log(1, into: transport, model: model)
+        await log(1, into: work, model: model)
 
         XCTAssertEqual(model.consoleLines.count, HomebrewViewModel.consoleLimit,
                        "precondition: the count did not change, which is the point")
@@ -124,11 +113,11 @@ final class TheConsoleIsBoundedTests: XCTestCase {
     /// Clearing empties the lines and does not take numbers back: a row from
     /// before the clear and a row after it must never share one.
     func testClearingDoesNotTakeNumbersBack() async {
-        let (model, transport) = model()
-        await log(5, into: transport, model: model)
+        let (model, work) = model()
+        await log(5, into: work, model: model)
 
         model.clearConsole()
-        await log(2, into: transport, model: model)
+        await log(2, into: work, model: model)
 
         XCTAssertEqual(model.consoleRows.map(\.id), [5, 6],
                        "five lines, a clear and two more: the two are numbers 5 and 6, not 0 and 1")

@@ -126,9 +126,8 @@ final class ARuleMayNotSummonAKeychainDialogTests: XCTestCase {
 
         XCTAssertEqual(creds.asks.map(\.promptingAllowed), [false],
                        "a rule was allowed to reach the System keychain, which is a dialog")
-        let start = runner.issued.first { $0.count > 1 && $0[1] == "start" } ?? []
-        XCTAssertFalse(start.contains("--secret"),
-                       "the secret it could not read honestly still reached the argument list")
+        XCTAssertTrue(runner.supplied.isEmpty,
+                      "the secret it could not read honestly still reached the system")
     }
 
     /// The control: somebody pressing Connect is exactly the gesture the prompt
@@ -138,11 +137,12 @@ final class ARuleMayNotSummonAKeychainDialogTests: XCTestCase {
         creds.behindAPrompt["Office"] = VPNCredentials(user: "u", password: "p", secret: "s")
         let runner = FakeRunner()
 
-        engine(runner, creds).connect("Office")
+        engine(runner, creds).connect("Office", auto: false)
 
         XCTAssertEqual(creds.asks.map(\.promptingAllowed), [true])
-        let start = runner.issued.first { $0.count > 1 && $0[1] == "start" } ?? []
-        XCTAssertTrue(start.contains("--secret"), "the connect a person asked for lost its secret")
+        XCTAssertEqual(runner.supplied.map(\.name), ["Office"],
+                       "the connect a person asked for lost its secret")
+        XCTAssertEqual(runner.supplied.first?.credentials.secret, "s")
     }
 
     /// And a rule whose secret Helm has already cached works as it always did:
@@ -154,8 +154,8 @@ final class ARuleMayNotSummonAKeychainDialogTests: XCTestCase {
 
         engine(runner, creds).connect("Office", auto: true)
 
-        let start = runner.issued.first { $0.count > 1 && $0[1] == "start" } ?? []
-        XCTAssertTrue(start.contains("--secret"), "an automatic connect stopped working")
+        XCTAssertEqual(runner.supplied.map(\.name), ["Office"], "an automatic connect stopped working")
+        XCTAssertEqual(runner.supplied.first?.credentials.secret, "s")
     }
 
     /// **Nothing needs doing, so nothing is read.** `--nc start` on a tunnel that
@@ -172,8 +172,7 @@ final class ARuleMayNotSummonAKeychainDialogTests: XCTestCase {
 
         XCTAssertTrue(creds.asks.isEmpty,
                       "the secret was read for a start that changes nothing: \(creds.asks)")
-        let start = runner.issued.first { $0.count > 1 && $0[1] == "start" } ?? []
-        XCTAssertFalse(start.contains("--secret"),
-                       "and it was written into an argument list every other process can read")
+        XCTAssertTrue(runner.supplied.isEmpty,
+                      "and it was handed to the system for a start that changes nothing")
     }
 }

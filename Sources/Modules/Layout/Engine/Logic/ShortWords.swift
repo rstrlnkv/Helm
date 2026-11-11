@@ -76,11 +76,6 @@ enum ShortWords {
         "big", "bad", "job", "key", "law", "lot", "map", "net", "war", "win",
     ]
 
-    /// Every word in the list, both languages and both lengths.
-    static var all: Set<String> {
-        russian.union(english).union(russianSingles).union(englishSingles)
-    }
-
     /// Whether this is a short word common enough to convert towards.
     ///
     /// One character is answered from `russianSingles`/`englishSingles` and

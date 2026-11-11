@@ -12,7 +12,7 @@ import HelmRuntime
 /// The exception is anything whose height is measured and clipped. A bouncy
 /// spring overshoots its target, and an overshooting height clips its own
 /// content for a frame or two — exactly the class of panel glitch
-/// ARCHITECTURE.md § Motion warns about. Those use `disclosure`, which is a spring with
+/// Architecture/DesignSystem.md § Motion warns about. Those use `disclosure`, which is a spring with
 /// the bounce set to zero: physical timing, no overshoot.
 public enum HelmMotion {
     /// "Reduce motion" is a medical setting, not a preference: springs that
@@ -23,10 +23,12 @@ public enum HelmMotion {
     /// change itself.
     private static var reduced: Bool { reduceMotion }
 
-    /// The system setting, read fresh. Public only so the view modifier below
-    /// can hand it to `spins` as a value.
+    /// The system setting, read fresh through `HelmAccessibility.system`: for AppKit code, for pages
+    /// that are not yet on `\.helmTraits`, and for every `Animation` token below, which reads it through
+    /// `reduced`: a view that animates by a token (`HelmButtonStyle` and `HelmPageHeader` by `hover(entering:)`)
+    /// takes Reduce Motion from here and not from `\.helmTraits`.
     public static var reduceMotion: Bool {
-        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        HelmAccessibility.system.reducedMotion
     }
     private static let instant = Animation.linear(duration: 0.01)
 
@@ -43,12 +45,12 @@ public enum HelmMotion {
 
     /// `interface`'s duration alone, in seconds, for a caller that animates
     /// through AppKit — `NSAnimationContext` takes a number and has nowhere to
-    /// put an `Animation`, so `HelmToolbarSwitcher`'s fill group would
+    /// put an `Animation`, so such a caller would
     /// otherwise carry the number as a literal of its own, which is the
     /// duplicate-constant shape nothing goes red on.
     ///
-    /// **Not the same curve.** `interface` is a spring and the switcher's fill group
-    /// runs AppKit's own timing function; what is shared here is the length, so
+    /// **Not the same curve.** `interface` is a spring and an AppKit caller
+    /// runs a timing function; what is shared here is the length, so
     /// the two move for the same time and not along the same path. A caller
     /// using this is responsible for its own `reduceMotion` branch, because a
     /// bare number cannot collapse the way a token does.
@@ -243,9 +245,9 @@ public enum HelmMotion {
         !reduceMotion
     }
 
-    /// Whether a Liquid Glass capsule may morph — an item's glass sliding and
-    /// resizing into or out of a neighbour's, rather than the two simply
-    /// appearing and disappearing in place.
+    /// Whether the window buttons' plate may morph between its closed shape (the
+    /// dots) and its open one (the buttons) (`ShellWindowButtons.show(animated:)`,
+    /// its one caller), rather than the two simply swapping in place.
     ///
     /// The same shape as `spins` and `swaps`, and for the same reason: a
     /// decision made of an argument can be asserted, a decision that reads
@@ -256,8 +258,8 @@ public enum HelmMotion {
 
     /// Whether a chosen object may travel up to its raised place, rather than
     /// standing there at once — the screenshot editor's palette lifts the picked
-    /// pen, marker, pencil, eraser or ruler by `PaletteObject.lift`, the bar's
-    /// switcher slides its pick to a pressed segment (`HelmFlatSegmentedCell.slide`), and the
+    /// pen, marker, pencil, eraser or ruler by `PaletteObject.lift`, the header row's
+    /// tabs slide their pick to a pressed tab (`HelmHeaderTabs`), and the
     /// settings window's sidebar travels to the rail or back (`ShellContentView.fold(to:animated:)`).
     ///
     /// The same shape as `spins`, `swaps` and `morphs`, and for the same reason:
@@ -283,9 +285,7 @@ public extension View {
     /// `.symbolEffect(.rotate, options: .repeating)` on its own does not honour
     /// Reduce Motion; SwiftUI leaves that to us, and these two spun regardless.
     func helmSteadySpin(_ active: Bool) -> some View {
-        symbolEffect(.rotate, options: .repeating,
-                     isActive: HelmMotion.spins(requested: active,
-                                                reduceMotion: HelmMotion.reduceMotion))
+        modifier(SteadySpin(active: active))
     }
 
     /// The one way a glyph becomes a different glyph.
@@ -309,9 +309,30 @@ public extension View {
     /// 0.01 s cut on its own, and the transition goes to `.identity` as well,
     /// so the glyph changes without the layers being taken apart first.
     func helmSymbolSwap(_ symbol: String) -> some View {
-        contentTransition(HelmMotion.swaps(reduceMotion: HelmMotion.reduceMotion)
-                          ? .symbolEffect(.replace.magic(fallback: .downUp))
-                          : .identity)
+        modifier(SymbolSwap(symbol: symbol))
+    }
+}
+
+private struct SteadySpin: ViewModifier {
+    let active: Bool
+    @Environment(\.helmTraits) private var traits
+
+    func body(content: Content) -> some View {
+        content.symbolEffect(.rotate, options: .repeating,
+                             isActive: HelmMotion.spins(requested: active,
+                                                        reduceMotion: traits.reducedMotion))
+    }
+}
+
+private struct SymbolSwap: ViewModifier {
+    let symbol: String
+    @Environment(\.helmTraits) private var traits
+
+    func body(content: Content) -> some View {
+        content
+            .contentTransition(HelmMotion.swaps(reduceMotion: traits.reducedMotion)
+                               ? .symbolEffect(.replace.magic(fallback: .downUp))
+                               : .identity)
             .animation(HelmMotion.interface, value: symbol)
     }
 }

@@ -8,7 +8,7 @@ import XCTest
 /// **A keychain call at launch is a hang, and on this bundle it is a dialog.**
 ///
 /// `KeychainCredentials.init` ran `SecItemDelete` on the thread that built it,
-/// and the thread that builds it is the main one: `VPNDescriptor.makeEngine` is
+/// and the thread that builds it is the main one: `VPNDescriptor.makeModule` is
 /// `@MainActor` and constructs `VPNSystemPorts()` while the module list is being
 /// assembled, before anything is on screen. That is the family of the hang
 /// repaired in 4dcc5fb6 — 19,09 s in `HelmApp_2026-08-19-235500_MacBook.hang` —
@@ -67,7 +67,7 @@ final class AKeychainCallIsNotOnTheLaunchPathTests: XCTestCase {
         XCTAssertFalse(purge.finished, """
             `KeychainCredentials.init` ran the credential-cache purge to \
             completion before it returned, on the thread that built it — which \
-            is the main one, `VPNDescriptor.makeEngine` being `@MainActor`. On \
+            is the main one, `VPNDescriptor.makeModule` being `@MainActor`. On \
             an ad-hoc-signed bundle that `SecItemDelete` is a system dialog in \
             front of a window that has drawn nothing, at every install
             """)

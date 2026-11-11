@@ -22,17 +22,17 @@ import SwiftUI
 /// cannot reach (`sudo rm` on a rule left behind by a deleted Helm), it belongs
 /// in the explanation, in full, and it may not be the thing that got cut.
 ///
-/// **A popover, not an inline reveal and not a sheet**, and the Form is the
-/// reason. These rows live inside a scrolling grouped `Form` whose label column
-/// is *narrower* than the row: an inline block grows the column it is already
-/// constrained by, pushes every row below it down, and would be the same wall of
-/// text with a press in front of it. A sheet is the other error — «leave the
+/// **A popover, not an inline reveal and not a sheet**, and the column is the
+/// reason. These rows live in a column of rows — a grouped `Form` (Layout) or a
+/// `HelmSettingsSection` card (Keep Awake) — where an inline block pushes every
+/// row below it down and would be the same wall of text with a press in front
+/// of it. A sheet is the other error — «leave the
 /// page» for a question about one line of it. A popover is anchored to the row
 /// it explains, sized on its own terms rather than the column's, dismissed by
 /// Escape or by clicking away, and it is what macOS itself puts behind the ⓘ in
 /// System Settings. Two of this app's own settings pages already open one from a
-/// control inside the form (`VPNConnectionCard`, Keep Awake's own duration
-/// editor), so this is a shape the window is known to draw rather than an
+/// control on the page (`VPNConnectionCard`, the «Other…» button in Keep
+/// Awake's hero), so this is a shape the window is known to draw rather than an
 /// assumption about it.
 ///
 /// **The app's reveal rules do not reach inside a popover** — the block that
@@ -159,11 +159,7 @@ struct HelmExplainerPage: View {
                 .fixedSize(horizontal: false, vertical: true)
         case .command(let command):
             Text(command)
-                // The one place this app sets a monospaced face on purpose:
-                // what is inside is not language, it is something to be typed
-                // exactly. A style rather than a size, so it scales with the
-                // system's setting like the rest of the page.
-                .font(.system(.subheadline, design: .monospaced))
+                .font(HelmText.code)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.vertical, HelmSpace.s3)

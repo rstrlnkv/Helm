@@ -19,59 +19,59 @@ final class AppTriggerTests: XCTestCase {
     // MARK: - Holding
 
     func testNoRulesNeverHold() {
-        XCTAssertFalse(AppTriggerRules.isHolding([], running: ["com.apple.FinalCut"],
-                                                 externalDisplay: true, onPower: true))
+        XCTAssertTrue(AppTriggerRules.holding([], running: ["com.apple.FinalCut"],
+                                                 externalDisplay: true, onPower: true).isEmpty)
     }
 
     func testAppMustBeRunning() {
-        XCTAssertFalse(AppTriggerRules.isHolding([plain], running: [],
-                                                 externalDisplay: true, onPower: true))
+        XCTAssertTrue(AppTriggerRules.holding([plain], running: [],
+                                                 externalDisplay: true, onPower: true).isEmpty)
     }
 
     func testUnqualifiedRuleHoldsWheneverTheAppRuns() {
-        XCTAssertTrue(AppTriggerRules.isHolding([plain], running: ["com.apple.FinalCut"],
-                                                externalDisplay: false, onPower: false))
+        XCTAssertFalse(AppTriggerRules.holding([plain], running: ["com.apple.FinalCut"],
+                                                externalDisplay: false, onPower: false).isEmpty)
     }
 
     func testDisplayQualifierIsRequired() {
-        XCTAssertFalse(AppTriggerRules.isHolding([needsDisplay], running: ["com.apple.FinalCut"],
-                                                 externalDisplay: false, onPower: true))
-        XCTAssertTrue(AppTriggerRules.isHolding([needsDisplay], running: ["com.apple.FinalCut"],
-                                               externalDisplay: true, onPower: false))
+        XCTAssertTrue(AppTriggerRules.holding([needsDisplay], running: ["com.apple.FinalCut"],
+                                                 externalDisplay: false, onPower: true).isEmpty)
+        XCTAssertFalse(AppTriggerRules.holding([needsDisplay], running: ["com.apple.FinalCut"],
+                                               externalDisplay: true, onPower: false).isEmpty)
     }
 
     func testPowerQualifierIsRequired() {
-        XCTAssertFalse(AppTriggerRules.isHolding([needsPower], running: ["com.apple.FinalCut"],
-                                                 externalDisplay: true, onPower: false))
-        XCTAssertTrue(AppTriggerRules.isHolding([needsPower], running: ["com.apple.FinalCut"],
-                                               externalDisplay: false, onPower: true))
+        XCTAssertTrue(AppTriggerRules.holding([needsPower], running: ["com.apple.FinalCut"],
+                                                 externalDisplay: true, onPower: false).isEmpty)
+        XCTAssertFalse(AppTriggerRules.holding([needsPower], running: ["com.apple.FinalCut"],
+                                               externalDisplay: false, onPower: true).isEmpty)
     }
 
     /// Both qualifiers on one rule mean both must hold, not either.
     func testBothQualifiersMustHold() {
-        XCTAssertFalse(AppTriggerRules.isHolding([needsBoth], running: ["com.apple.FinalCut"],
-                                                 externalDisplay: true, onPower: false))
-        XCTAssertTrue(AppTriggerRules.isHolding([needsBoth], running: ["com.apple.FinalCut"],
-                                               externalDisplay: true, onPower: true))
+        XCTAssertTrue(AppTriggerRules.holding([needsBoth], running: ["com.apple.FinalCut"],
+                                                 externalDisplay: true, onPower: false).isEmpty)
+        XCTAssertFalse(AppTriggerRules.holding([needsBoth], running: ["com.apple.FinalCut"],
+                                               externalDisplay: true, onPower: true).isEmpty)
     }
 
     /// Rules are independent: one satisfied rule is enough.
     func testAnySatisfiedRuleHolds() {
         let rules = [needsDisplay, AppTrigger(bundleID: "com.apple.Xcode")]
-        XCTAssertTrue(AppTriggerRules.isHolding(rules, running: ["com.apple.Xcode"],
-                                               externalDisplay: false, onPower: false))
+        XCTAssertFalse(AppTriggerRules.holding(rules, running: ["com.apple.Xcode"],
+                                               externalDisplay: false, onPower: false).isEmpty)
     }
 
     // MARK: - Storage
 
     func testRoundTrip() {
         let rules = [needsBoth, AppTrigger(bundleID: "com.apple.Xcode")]
-        XCTAssertEqual(AppTriggerRules.decode(AppTriggerRules.encode(rules)), rules)
+        XCTAssertEqual((AppTriggerRules.readable(AppTriggerRules.encode(rules)) ?? []), rules)
     }
 
     func testGarbageDecodesToNothing() {
-        XCTAssertEqual(AppTriggerRules.decode("not json"), [])
-        XCTAssertEqual(AppTriggerRules.decode(""), [])
+        XCTAssertEqual((AppTriggerRules.readable("not json") ?? []), [])
+        XCTAssertEqual((AppTriggerRules.readable("") ?? []), [])
     }
 
     /// Upgrading from the plain bundle-id list must not lose anyone's apps.

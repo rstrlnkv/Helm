@@ -25,9 +25,8 @@ public extension View {
     /// tracking of its own. What they share is how a line behaves when it wraps,
     /// and that is all this carries.
     ///
-    /// A file of its own rather than a member of `HelmSurfaces`, which is
-    /// already past this repository's own length rule and is where the page
-    /// header and its hover light live.
+    /// A file of its own rather than a member of `HelmSurfaces`, which
+    /// holds components and not text treatments.
     func helmHeroSentence() -> some View {
         multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)

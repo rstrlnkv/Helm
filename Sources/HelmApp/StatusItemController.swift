@@ -3,10 +3,12 @@ import Combine
 import HelmContract
 import HelmRuntime
 import HelmUI
+import HelmAppStrings
 
 /// Owns the single `NSStatusItem`. `StatusPlan` decides which enabled module it
 /// reflects and whether the ring moves; left click toggles the shared panel,
-/// right click shows Settings/Quit.
+/// right click shows the menu `StatusMenuBuilder` builds: Settings, edit panel,
+/// the live modules by sidebar section, Quit.
 @MainActor final class StatusItemController: NSObject {
     private let host: ModuleHost
     private let statusItem: NSStatusItem
@@ -35,7 +37,11 @@ import HelmUI
             button.toolTip = "Helm"
         }
 
+        // `@Published` publishes in `willSet`: `enabledModules` and the icon
+        // read `host.live`, which still holds the old set inside the sink. One
+        // main-queue hop lets the write land first, so both read the new set.
         hostCancellable = host.$live
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.resubscribeToModules() }
         styleObserver = NotificationCenter.default.addObserver(
             forName: .helmMenuBarStyleChanged, object: nil, queue: .main
@@ -46,7 +52,7 @@ import HelmUI
         // `refreshIcon` hands `StatusPlan.choose` the modules in the user's
         // order, read at call time — so a reorder changes the answer while
         // nothing asks for it again. Latent today: `KeepAwakeDescriptor` is the
-        // only descriptor that overrides `statusAppearance`, so the fallback to
+        // only descriptor whose `statusAppearance` sets `tintToken`, so the fallback to
         // the first tinted module finds it whatever the order. It stops being
         // latent the day a second module tints the icon, and that is not the
         // day to remember this.
@@ -69,8 +75,8 @@ import HelmUI
     private func resubscribeToModules() {
         moduleCancellables.removeAll()
         for live in host.enabledModules {
-            // Only a module that tints the icon has anything to say here.
-            guard let changes = live.descriptor.statusChanges(live.vm) else { continue }
+            // A module with no `statusChanges` has nothing to say here.
+            guard let changes = live.statusChanges() else { continue }
             changes
                 // objectWillChange fires BEFORE the property is written, so
                 // refreshing inline read the previous state — the countdown tick
@@ -101,7 +107,7 @@ import HelmUI
         // with a countdown, else the newest running spin, else the first tint,
         // else the first title.
         let appearance = StatusPlan.choose(
-            host.enabledModules.map { $0.descriptor.statusAppearance($0.vm) }, now: now)
+            host.enabledModules.map { $0.statusAppearance() }, now: now)
         let token = appearance.tintToken
         let globalStyle = AppSettings.menuBarIconStyle
         let style = appearance.iconStyle.flatMap(MenuBarIconStyle.init(rawValue:)) ?? globalStyle
@@ -216,6 +222,11 @@ import HelmUI
     /// Open Settings focused on a module (panel utility rows pass an id).
     func showSettings(module moduleID: String?) {
         settingsWindow.show(selecting: moduleID)
+    }
+
+    /// Open Settings on exactly this page (`LaunchPage`).
+    func showSettings(page: SettingsSelection) {
+        settingsWindow.show(page: page)
     }
 
     @objc private func quit() {

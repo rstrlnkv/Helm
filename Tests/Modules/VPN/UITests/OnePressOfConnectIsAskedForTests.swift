@@ -36,18 +36,17 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
         super.tearDown()
     }
 
-    // MARK: - The wire reaches the model
+    // MARK: - The stream reaches the model
 
     func testTheModelPublishesWhatTheEngineCouldNotRead() {
-        let transport = LocalTransport()
-        let vm = VPNViewModel(transport: transport)
+        let work = FakeVPNWork()
+        let vm = VPNViewModel(work: work)
         var payload = VPNEngine.StatePayload(
             connections: [VPNConnection(id: "1", name: "Office", status: .disconnected,
                                         kind: "IPSec")],
-            autoConnected: [], defaultName: "Office", lastAutomation: nil)
+            autoConnected: [], lastAutomation: nil)
         payload.secretsBehindAPrompt = ["Office"]
-        transport.emit(EngineEvent(name: VPNEvent.state.rawValue,
-                                   payload: try! JSONEncoder().encode(payload)))
+        work.say(payload)
         pump { !vm.connections.isEmpty }
 
         XCTAssertEqual(vm.secretsBehindAPrompt, ["Office"],
@@ -107,7 +106,7 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
     // MARK: - The page, and its instrument
 
     private func page(_ locked: [String], ruleFor vpn: String = "One") -> VPNSettingsPage {
-        let transport = LocalTransport()
+        let work = FakeVPNWork()
         // In memory, never `UserDefaults.standard`: this page writes its settings
         // through on every change.
         let store = NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore())
@@ -118,17 +117,16 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
             "com.apple.Safari": VPNAppRule(vpnName: vpn,
                                            identity: CodeIdentity(signingID: "com.apple.Safari",
                                                                   teamID: "APPLE"))]))
-        let vm = VPNViewModel(transport: transport, settings: settings)
+        let vm = VPNViewModel(work: work, settings: settings)
         var payload = VPNEngine.StatePayload(
             connections: [VPNConnection(id: "id-One", name: "One", status: .disconnected,
                                         kind: "IPSec")],
-            autoConnected: [], defaultName: nil, lastAutomation: nil)
+            autoConnected: [], lastAutomation: nil)
         payload.secretsBehindAPrompt = locked
-        transport.emit(EngineEvent(name: VPNEvent.state.rawValue,
-                                   payload: try! JSONEncoder().encode(payload)))
+        work.say(payload)
         pump { !vm.connections.isEmpty }
         XCTAssertEqual(vm.connections.count, 1,
-                       "the wire did not deliver: nothing below measures anything")
+                       "the stream did not deliver: nothing below measures anything")
         XCTAssertEqual(vm.secretsBehindAPrompt, locked, "…nor the state under test")
         return VPNSettingsPage(vm: vm, store: store)
     }

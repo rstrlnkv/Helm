@@ -29,7 +29,7 @@ public protocol LeftoversFilePort: Sendable {
     func isWritableDirectory(_ url: URL) -> Bool
     /// Where this path actually leads, with **every** symbolic link in it followed.
     ///
-    /// Asked of each of the seven directories the scan is compiled with, because a
+    /// Asked of each of the eight directories the scan is compiled with, because a
     /// name is not a place: four of them do not exist on a stock install, so any
     /// process running as the user can create one as a link to somewhere else and
     /// have the whole enumeration happen there — under Helm's Full Disk Access,
@@ -74,17 +74,6 @@ public protocol LeftoversFilePort: Sendable {
     func readPlist(_ url: URL) -> PlistData?
 }
 
-public extension LeftoversFilePort {
-    /// What is in the directory, for a caller that walks what it finds and draws
-    /// no conclusion from an empty answer — every reader of a *source* draws one,
-    /// so every reader of a source asks `contents(of:)`.
-    ///
-    /// Written once here rather than in each conformance, so «the entries» and
-    /// «did it open» cannot come apart in a fake the way they came apart in the
-    /// port.
-    func children(of url: URL) -> [URL] { contents(of: url).entries }
-}
-
 /// Installed apps and their bundle ids — the yardstick for "is anyone still
 /// using this".
 public protocol InstalledAppsPort: Sendable {
@@ -104,8 +93,8 @@ public protocol InstalledAppsPort: Sendable {
 /// being in use and becomes a leftover with a tick beside it, and no disabled label
 /// means a login item somebody switched off loses the badge that says so. Two
 /// facts — «nothing is loaded» and «nobody asked» — and a dropped exit status made
-/// them one (§ Anything that can stop being true on its own owns a channel to say
-/// so). Nothing is promoted to `.orphaned` on a reading that did not happen.
+/// them one (ARCHITECTURE.md § Module pattern: an unreadable system answer is not
+/// folded toward the permissive side). Nothing is promoted to `.orphaned` on a reading that did not happen.
 public protocol LoadedItemsPort: Sendable {
     /// The full list, so the module can name them instead of counting them.
     func installedExtensions() -> [SystemExtensionInfo]?

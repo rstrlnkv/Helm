@@ -8,7 +8,9 @@ import Foundation
 ///
 /// **Absence means inherit.** The three settings this sits over — the rules'
 /// notice, a drop's notice, the ring — are single values an installed build
-/// already holds, and every card reads them until somebody changes that card.
+/// already holds, and every card reads them until somebody changes that card
+/// (a card's choice writes only its own book entry, see
+/// `VPNSettings.noticeBook`).
 /// Moving them into per-connection records would take a one-time migration
 /// keyed to whichever configuration happened to be first, and this repository
 /// has paid for one-time writes before: they run twice, or never, and the
@@ -17,7 +19,7 @@ import Foundation
 ///
 /// **Keyed by the configuration's id, never its name.** The module learned this
 /// the expensive way on the rules: a name is what somebody types in System
-/// Settings and can retype, and `VPNRules.orphaned` exists because of it.
+/// Settings and can retype, and `VPNTenants.orphaned` exists because of it.
 /// `scutil --nc list` gives each service a UUID, `VPNConnection.id` carries it,
 /// and a rename costs nothing here.
 ///
@@ -56,10 +58,6 @@ public struct VPNNoticeBook: Equatable, Codable {
     private var entries: [String: Entry]
 
     public init(entries: [String: Entry] = [:]) { self.entries = entries }
-
-    /// For the tests, and for a screen that wants to say «3 of your
-    /// configurations speak differently».
-    public var entryCount: Int { entries.count }
 
     // MARK: - Reading
 
@@ -123,15 +121,6 @@ public struct VPNNoticeBook: Equatable, Codable {
     public func setting(_ id: String, tint token: String,
                         for kind: VPNAutomation.Kind) -> VPNNoticeBook {
         kind.goingUp ? setting(id, tintUp: token) : setting(id, tintDown: token)
-    }
-
-    /// Back to inheriting. Removes the record rather than storing agreement with
-    /// today's default — a book that grows an entry per glance pins that default
-    /// for ever.
-    public func clearing(_ id: String) -> VPNNoticeBook {
-        var copy = self
-        copy.entries[id] = nil
-        return copy
     }
 
     // MARK: - The store

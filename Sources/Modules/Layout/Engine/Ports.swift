@@ -97,26 +97,66 @@ public protocol SecureContextPort: Sendable {
 ///
 /// Separate from `TypingPort` because it is a different question asked of a
 /// different subsystem: typing is synthesised key events, this is the
-/// accessibility tree — and where the tree will not answer, the clipboard.
+/// accessibility tree — and where the tree will refuse a write, the clipboard.
 public protocol SelectionPort: Sendable {
     /// The selected text, or nil when nothing is selected or the app will not
     /// say. Nil is not "empty selection": one means do nothing, the other would
     /// mean replacing the caret's surroundings with something.
+    ///
+    /// Falls back to ⌘C when the tree says nothing; `fix()` does not ask this
+    /// one, it asks `selectedTextWithoutClipboard()`.
     func selectedText() -> String?
 
     /// The selection as the accessibility tree reports it, and nothing else.
     ///
     /// `selectedText()` falls back to ⌘C when the tree says nothing, which costs
     /// up to 200 ms of polling and clobbers the clipboard on the way. That is
-    /// affordable once, when somebody presses a shortcut meaning "do it". It is
     /// not affordable on the modifier tap, which fires whenever the key is
     /// tapped and has to decide in that moment whether there is a selection at
-    /// all. An app whose tree says nothing is simply treated as having no
-    /// selection, and the tap does what it always did to the last word.
+    /// all, and `fix()` serves the tap and the hotkey alike. An app whose tree
+    /// says nothing is simply treated as having no selection, and the tap does
+    /// what it always did to the last word.
     func selectedTextWithoutClipboard() -> String?
 
     /// Replaces the selection. False when the app refused, so the caller can
     /// report rather than assume — a failed replace with a reported success is
     /// text somebody thinks they changed.
     func replaceSelection(with text: String) -> Bool
+}
+
+/// The general pasteboard, as `AXSelection`'s clipboard route uses it.
+/// Internal: only `AXSelection` and its test use it.
+protocol PasteboardPort: Sendable {
+    var types: [String] { get }
+    var changeCount: Int { get }
+    func string() -> String?
+    func clear()
+    func setString(_ text: String)
+}
+
+/// The focused element's selected text, through the accessibility tree.
+protocol FocusedTextPort: Sendable {
+    func selectedText() -> String?
+    func setSelectedText(_ text: String) -> Bool
+}
+
+/// ⌘ plus one key, posted with Helm's marker.
+protocol CommandKeyPort: Sendable { func press(_ key: UInt16) }
+
+/// Two moments the engine asks the system again: Helm itself coming to the
+/// front (the person may have just granted Accessibility, or edited their
+/// layouts, in System Settings) and another application coming to the front
+/// (the layout bound to it).
+///
+/// One port for both, so the engine registers nothing process-wide itself and
+/// deactivation is one call.
+public protocol AppActivationPort: AnyObject, Sendable {
+    /// Starts both observations and replaces any earlier ones: called twice, one
+    /// registration of each is left. Both handlers run on the main thread;
+    /// `frontmostChanged` gets the new bundle id, and only when it differs from
+    /// the last one.
+    func startObserving(helmBecameActive: @escaping @Sendable () -> Void,
+                        frontmostChanged: @escaping @Sendable (String) -> Void)
+    /// Removes both. Idempotent.
+    func stopObserving()
 }

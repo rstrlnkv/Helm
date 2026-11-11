@@ -90,7 +90,7 @@ final class LayoutEngineEdgeTests: XCTestCase {
         typing = EdgeTyping(); context = EdgeContext(); tap = EdgeTap(); sources = EdgeSources()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
                                   translation: EdgeTranslation(table: table),
-                                  spell: EdgeSpell(), secure: context,
+                                  spell: EdgeSpell(), secure: context, activation: FakeActivation(),
                                   settings: settings ?? Self.boundStore())
         engine.activate()
         return engine
@@ -199,16 +199,11 @@ final class LayoutEngineEdgeTests: XCTestCase {
 
 /// The engine has to read its own settings when it starts.
 ///
-/// It did not. `reloadSettings()` ran only when the transport announced a
-/// change, so on every launch the engine kept the values its initialiser
-/// happened to hold — and the tap key has no initialiser parameter at all, so
-/// it stayed `.off`. The gesture therefore worked only in a session where
-/// somebody had opened the Keyboard page and changed something, and was gone
-/// again after the next restart. Nothing was written to the log, because `.off`
-/// refuses before there is anything to refuse.
-///
-/// The test that was supposed to cover this sent `settingsChanged` itself
-/// first, which is the one thing a fresh launch does not do.
+/// `reloadSettings()` runs in `activate()`, not only when a change is announced:
+/// otherwise a launch keeps the values the initialiser holds, and the tap key,
+/// which has no initialiser parameter, stays `.off`; the gesture then refuses
+/// silently, before there is anything to log. A test that sends `settingsChanged`
+/// itself first does the one thing a fresh launch does not.
 final class SettingsAtStartTests: XCTestCase {
 
     private final class CountingTap: KeyTapPort, @unchecked Sendable {
@@ -231,7 +226,7 @@ final class SettingsAtStartTests: XCTestCase {
         let sources = EdgeSources()
         let engine = LayoutEngine(tap: tap, typing: EdgeTyping(), sources: sources,
                                   translation: EdgeTranslation(table: ["ghbdtn": "привет"]),
-                                  spell: EdgeSpell(), secure: EdgeContext(),
+                                  spell: EdgeSpell(), secure: EdgeContext(), activation: FakeActivation(),
                                   settings: NamespacedStore(namespace: "layout",
                                                             backing: InMemoryKeyValueStore()))
         engine.activate()
@@ -256,7 +251,7 @@ final class LayoutEngineStoredSettingsTests: XCTestCase {
         typing = EdgeTyping(); tap = EdgeTap()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: EdgeSources(),
                                   translation: EdgeTranslation(table: table),
-                                  spell: EdgeSpell(), secure: EdgeContext(),
+                                  spell: EdgeSpell(), secure: EdgeContext(), activation: FakeActivation(),
                                   settings: settings)
         engine.activate()
         return engine
@@ -276,7 +271,7 @@ final class LayoutEngineStoredSettingsTests: XCTestCase {
         let engine = engine(settings: store, table: ["ghbdtn": "привет"])
         // Nothing has been written to the store: this is a fresh install
         // reading its own defaults.
-        _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
+        await rereadSettings(engine)
 
         tap.type("ghbdtn")
         tap.send(.newline)
@@ -309,7 +304,7 @@ final class LayoutEngineStoredSettingsTests: XCTestCase {
         let store = NamespacedStore(namespace: "layout", backing: backing)
         store.set(false, for: LayoutKey.automatic)
         let engine = engine(settings: store, table: ["ghbdtn": "привет"])
-        _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
+        await rereadSettings(engine)
         tap.type("ghbdtn")
         tap.send(.space)
         XCTAssertTrue(typing.performed.isEmpty, "the user switched fixing as you type off")

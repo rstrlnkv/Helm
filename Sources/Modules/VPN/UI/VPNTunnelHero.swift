@@ -14,8 +14,8 @@ import Module_VPN_Engine
 /// SwiftUI draws its own type rather than through `NSTextField`.
 struct VPNTunnelStrip {
 
-    /// What stands under the readings — the offer, the run that is already
-    /// going, or the sentence that stands where neither belongs.
+    /// What stands in the row above the readings — the offer, the run that is
+    /// already going, or the sentence that stands where neither belongs.
     ///
     /// One value, because the three are exclusive and a set of optionals can be
     /// several at once or none: a button drawn beside its own spinner is a
@@ -40,11 +40,8 @@ struct VPNTunnelStrip {
         let label: String
         let value: String
         /// The line under the figure. **Not optional, and that is the row's
-        /// shape.** Three of the four columns had none, so the figures sat over
-        /// nothing while the fourth carried a line — which was invisible while
-        /// each column had a well behind it and is the whole structure now that
-        /// they do not. A column with nothing to say under its figure is a
-        /// column that has not been designed.
+        /// shape**: a column with nothing under its figure leaves the figures
+        /// of the others over a gap.
         let note: String
     }
 
@@ -74,34 +71,24 @@ struct VPNTunnelStrip {
     }
 
     let tiles: [Tile]
-    /// **What the tunnel carries around itself, or nil when it carries
-    /// nothing.**
+    /// **What the tunnel carries around itself, or nil when it carries nothing.**
     ///
-    /// The verdict says the traffic goes through the tunnel and the page's own
-    /// footer says «all of this Mac's traffic», and on the machine this was
-    /// written against both are false: `17.0.0.0/8` — Apple's whole network — is
-    /// declared outside the tunnel, so iCloud, the App Store and iMessage leave
-    /// with the real address under a green tick. Helm had been reading those
-    /// lines and discarding them (`VPNExcludedRoutes`).
+    /// The verdict says the traffic goes through the tunnel, and a tunnel can
+    /// still declare ranges outside itself: with `17.0.0.0/8`, Apple's whole
+    /// network, iCloud, the App Store and iMessage leave with the real address
+    /// (`VPNExcludedRoutes`).
     let exclusions: String?
-    /// **The verdict alone, with no place in it.** It carried the country as
-    /// its own tail until the strip became the page's hero; `place` is that
-    /// half now, on a line of its own, and the switcher's accessibility value
-    /// reads this one — which is why it has to stay a sentence that is true
-    /// without the country rather than one with a dangling dash.
+    /// **The verdict alone, with no place in it.** `place` is the other half, on
+    /// a line of its own, so this has to stay a sentence that is true without
+    /// the country rather than one with a dangling dash.
     let verdict: String
     let place: Place
     let action: Action
     /// **How long the arc under a running measurement is drawn against.**
     ///
-    /// This link's own last run, and a measured fallback before there is one. It
-    /// was a constant in the view — 22 s, taken on one Mac on one link on one
-    /// afternoon, under a comment saying it should not be a constant at all. The
-    /// port times its own run now and the reading carries the length
-    /// (`VPNSpeedReading.took`), so from the second measurement onwards the arc
-    /// is a fact about the link in front of the reader;
-    /// `NetworkQualitySpeed.typicalRun` is what stands before that, and it is
-    /// the same figure with its measurement written at it.
+    /// This link's own last run (`VPNSpeedReading.took`), so from the second
+    /// measurement onwards the arc is a fact about the link in front of the
+    /// reader; `NetworkQualitySpeed.typicalRun` stands before that.
     ///
     /// Here rather than in the view for the reason this whole type exists: a
     /// number the page draws is content.
@@ -126,12 +113,9 @@ struct VPNTunnelStrip {
     /// **`measuring` defaults to the state's own answer, not to false.**
     ///
     /// The state already carries whether a run is in flight — it is the engine's
-    /// fact, on the wire for exactly that reason — and the parameter is the page
-    /// putting the press in front of it during the moment the command is
-    /// crossing the queue (`VPNViewModel.measuring`). Defaulted to `false` the
-    /// two disagreed by construction: `VPNTunnelStrip(state)` drew the button
-    /// over a running measurement, which is why every test here had to pass
-    /// `measuring:` by hand to see the state the state was already in.
+    /// fact — and the parameter is the page putting the press in front of it
+    /// until the engine's work queue answers (`VPNViewModel.measuring`). Defaulted to `false` the two would disagree
+    /// by construction.
     init(_ state: VPNTunnelState, now: Date = Date(), measuring: Bool? = nil) {
         let measuring = measuring ?? state.measuring
         let facts = VPNTunnelFacts(since: state.since, bytesIn: state.bytesIn,
@@ -176,9 +160,8 @@ struct VPNTunnelStrip {
 
         // **The offer belongs to the tunnel holding the default route, and to
         // no other.** One predicate, read here and by the engine that refuses
-        // the same command (`VPNExitVerdict.carriesTheDefaultRoute`) — the view
-        // is not the only thing that can send one, and a rule spelled twice is
-        // a rule two targets can disagree about.
+        // the same call (`VPNExitVerdict.carriesTheDefaultRoute`), and a rule
+        // spelled twice is a rule two targets can disagree about.
         if measuring {
             action = .running(VPNStr.measuring)
         } else if state.exit.carriesTheDefaultRoute {
@@ -192,7 +175,7 @@ struct VPNTunnelStrip {
     }
 
     /// The fourth column: a figure once one has been asked for, and before that
-    /// the offer with its price on it.
+    /// a dash over the unit alone.
     ///
     /// The note always opens with the unit, because this column's value is two
     /// numbers and cannot carry one the way a byte figure does — and what
@@ -209,33 +192,23 @@ struct VPNTunnelStrip {
     /// to come under a figure taken in the past.
     private static func speedTile(_ facts: VPNTunnelFacts, now: Date) -> Tile {
         guard let speed = facts.speed else {
-            // **The unit alone.** A price tag — «about 15 s, spends traffic» —
-            // used to be quoted here, on the reasoning that the column should
-            // say what the button under it costs, and it wrapped this column to
-            // two lines while its three neighbours took one. It moved beside the
-            // button, then off the screen entirely when the button stopped
-            // quoting it, and `VPNStr.speedNotYet` went with it: the figure in
-            // it had never been measured and was five seconds short of the
-            // truth (`NetworkQualitySpeed.typicalRun`), in eight languages.
+            // **The unit alone.** A price tag under the figure would wrap this
+            // column to two lines while its three neighbours take one, and the
+            // duration it quoted was never measured.
             return Tile(kind: .speed, label: VPNStr.tileSpeed, value: noReading,
                         note: VPNStr.speedNote(nil))
         }
         return Tile(kind: .speed, label: VPNStr.tileSpeed,
                     // `Count`, not `Decimal`: the figure is a whole number of
-                    // megabits and wants the language's digit grouping. Written
-                    // `Decimal(speed.down)` it did not even reach `HelmUI` —
-                    // that member takes a `Double` and `down` is an `Int`, so the
-                    // call bound to `Foundation.Decimal.init(_: Int)` and drew its
-                    // locale-independent description: «10000» for a 10 Gbit link.
+                    // megabits and wants the language's digit grouping;
+                    // `Decimal(speed.down)` binds to `Foundation.Decimal.init(_: Int)`
+                    // and draws «10000» for a 10 Gbit link.
                     //
                     // **Each arrow sits against its own digits, and there is one
-                    // space between the pair.** It was `1176 ↓  298 ↑` — a space
-                    // before each arrow and two between the readings — which
-                    // measured 101.0 pt for a four-digit reading against the
-                    // 88.9 this draws. That is the whole difference between the
-                    // figure standing at 16 pt and `helmMetricFigure` shrinking
-                    // it at the narrowest pane the window allows. An arrow is
-                    // the unit of the number beside it, not a word of its own.
+                    // space between the pair**: the narrower string is what keeps
+                    // `helmMetricFigure` from shrinking the figure at the
+                    // narrowest pane. An arrow is the unit of the number beside
+                    // it, not a word of its own.
                     value: "\(Count(speed.down))↓ \(Count(speed.up))↑",
                     // `.short`, and **never `.abbreviated`** however well its
                     // name suits a 116 pt column: that style prints «-1 мин» in
@@ -255,25 +228,16 @@ struct VPNTunnelStrip {
 /// actually leaving through, how long it has been that way, and what it has
 /// carried — so this reads one tunnel rather than being drawn four times over.
 ///
-/// **It was the last block on the page and is the first.** As a `Form` section
-/// under the grid of connections it sat below the fold on any Mac with more
-/// than a few configurations, and the two things a person opens this page to
-/// find out — is my traffic really in the tunnel, and where does it come out —
-/// were a 13 pt line at the bottom of it. The shape is `KeepAwakeHero`'s, which
-/// solved the same problem one module over: what is happening, in the type size
-/// of a headline, above the settings rather than after them.
+/// **First on the page.** The two things a person opens it to find out — is my
+/// traffic really in the tunnel, and where does it come out — belong above the
+/// settings, in the type size of a headline. The shape is `KeepAwakeHero`'s.
 ///
-/// **No card of its own.** It rides on the first section's header with
-/// `.helmSettingsColumn()`, the way `KeepAwakeSettingsPage.sessionHero` does —
-/// a hero inside a card would be a card above the cards.
+/// **No card of its own.** It rides on the first section's header
+/// (`VPNSettingsPage.heroAndTitle`), drawn out to the cards' column by
+/// `-groupedHeaderOutset` — a hero inside a card would be a card above the
+/// cards.
 ///
-/// **And no wells.** The four columns were recessed fills
-/// (`HelmSurface.wellFill`), which drew four boxes where the page wanted one
-/// row of four readings — a card of cards. They are separated by whitespace
-/// now, and what makes them read as one row is that every column has the same
-/// three lines. Hairline rules between them were drawn and rejected by
-/// looking: at 40 pt they begin at the label and end inside the note, so they
-/// read as fragments rather than as structure.
+/// The four readings are cards of the kit (`readings`), side by side.
 struct VPNTunnelHero: View {
     private let tunnels: [VPNTunnelState]
     @Binding private var selected: String?
@@ -287,15 +251,10 @@ struct VPNTunnelHero: View {
     /// Natural height of whatever the block is showing, so it can ramp between
     /// two of them instead of snapping.
     ///
-    /// **This block copied `KeepAwakeHero`'s placement and none of its motion**,
-    /// and the whole page paid for it: measured off the render, the section
-    /// title under the hero sat at five different heights across five ordinary
-    /// states of one Mac, and two of those transitions happen with nobody
-    /// touching anything. The exit country arriving moved the page 16 pt; Helm
-    /// first learning the tunnel's uptime moved it 8; pressing a segment moved
-    /// it 46 in one frame. `KeepAwakeHero`'s own comment is about exactly this —
-    /// «a fade that snaps the page by 20 pt underneath somebody's eyes is the
-    /// fade being blamed for a jump it did not cause».
+    /// **Without it the section title under the hero jumps** whenever the
+    /// content changes height — the exit country arriving, the uptime becoming
+    /// known, a segment pressed — and two of those happen with nobody touching
+    /// anything. `KeepAwakeHero` ramps the same way.
     @State private var bodyHeight: CGFloat?
     /// What is **drawn**, as against what has arrived. Seeded from the incoming
     /// value rather than from a constant: a page opened on a live tunnel must
@@ -360,7 +319,7 @@ struct VPNTunnelHero: View {
         // running. Not inside `measure`'s closure either: a press is not a
         // start, the engine refuses a tunnel that is not carrying the default
         // route, and `VPNViewModel.measuring` puts the press in front of the
-        // engine's answer for as long as the command is crossing the queue.
+        // engine's answer until the engine's work queue answers.
         // Nil → a name is the one transition that is a run beginning; a name →
         // nil is it ending, and the stamp goes with it so the next page opened
         // into a run inherits nothing.
@@ -376,34 +335,22 @@ struct VPNTunnelHero: View {
 
     // MARK: - With a tunnel up
 
-    /// **The shape `KeepAwakeHero` draws, measured off it rather than
-    /// remembered.**
-    ///
-    /// Rendered and looked at before this was written, because the shape is not
-    /// what its name suggests: the figure there is a *sentence* at 40 pt light,
-    /// centred, in `HelmText.quiet` — «Mac засыпает как обычно» — with a 13 pt
-    /// caption under it and a centred row of capsule verbs under that. No
-    /// glyph: the state is carried by words.
+    /// **The shape `KeepAwakeHero` draws**: the figure there is a *sentence* at
+    /// 40 pt light, centred, in `HelmText.quiet`, with a caption under it and a
+    /// centred row of capsule verbs under that. No glyph: the state is carried
+    /// by words.
     ///
     /// So the verdict takes the 40 pt slot, the country and the exclusions
     /// become the caption, and the segments and the measure button become the
-    /// capsule row. **And there is no departure left**: this block kept a mark
-    /// beside its sentence on the reasoning that Keep Awake can do without one
-    /// because none of its states is alarming. The reasoning survives the
-    /// glyph's removal — the alarming state is still the reason this block
-    /// exists — but the glyph was carrying colour and nothing else, and the
-    /// note on `headline` has what it cost to draw it.
+    /// capsule row.
     private func live(_ switcher: VPNTunnelSwitcher,
                       _ chosen: VPNTunnelState) -> some View {
         let strip = VPNTunnelStrip(chosen, now: now, measuring: measuring == chosen.name)
         return VStack(spacing: HelmSpace.s6) {
-            // **The figure block is `KeepAwakeHero`'s, spacing and all.** That
-            // page draws its verdict, its caption and its row of verbs in one
-            // `VStack(spacing: s4)` with `s6` on top of the row, and this one
-            // drew the three as siblings at `s6` — 18 pt from caption to verbs
-            // against Keep Awake's 26, photographed at 29.5 and 39.0 from the
-            // caption's cap. Two heroes that are the same shape on purpose must
-            // not be two rhythms.
+            // **The figure block is `KeepAwakeHero`'s, spacing and all**: its
+            // verdict, caption and row of verbs in one `VStack(spacing: s4)`
+            // with `s6` on top of the row. Two heroes of one shape must not be
+            // two rhythms.
             VStack(spacing: HelmSpace.s4) {
                 headline(strip)
                 verbs(switcher, strip, chosen)
@@ -416,10 +363,9 @@ struct VPNTunnelHero: View {
             // and the words go back in by the same amount, because a heading
             // belongs level with what the rows below *say* —
             // `HelmLayout.groupedHeaderOutset` carries both halves of that
-            // ruling. Written the other way round, as a negative padding on the
-            // readings alone, it drew nothing at all: `.clipped()` sits at this
-            // view's root for the cross-fade, and a clip takes back whatever a
-            // negative padding inside it gives.
+            // ruling. As a negative padding on the readings alone it would draw
+            // nothing: `.clipped()` sits at this view's root for the cross-fade,
+            // and a clip takes back whatever a negative padding inside it gives.
             .padding(.horizontal, HelmLayout.groupedHeaderOutset)
             readings(strip)
         }
@@ -429,21 +375,14 @@ struct VPNTunnelHero: View {
     /// The verdict at the size a page's own state is set in, and one caption
     /// under it.
     ///
-    /// **The country and the exclusions are one line, not two.** They were a
-    /// 16 pt line and an 11 pt line under a 22 pt heading — three type sizes for
-    /// one thought, and two of the page's five measured heights. Joined by the
-    /// dot this module already punctuates with (`VPNStr.note`), they are one
-    /// caption in the slot `KeepAwakeHero` puts «Ни одно правило не включено» in.
+    /// **The country and the exclusions are one line, not two**, joined by the
+    /// dot this module already punctuates with (`VPNStr.note`): one caption in
+    /// the slot `KeepAwakeHero` puts «Ни одно правило не включено» in.
     ///
-    /// **And the verdict wore a glyph, which it no longer does.** A tick or a
-    /// warning triangle beside the sentence, `accessibilityHidden` because the
-    /// sentence already said it — so it was carrying colour and nothing else,
-    /// and it was carrying it badly: photographed, the mark's own ink sat
-    /// 5.75 pt above the cap band it claimed to be optically centred on, and
-    /// standing inside the centred row it pushed the sentence 16.25 pt to the
-    /// right of the caption underneath it. Both were arithmetic against a line
-    /// box rather than against the drawing. `KeepAwakeHero` carries its verdict
-    /// in words alone at the same rank, and now so does this.
+    /// **No glyph beside the verdict.** A tick or a warning triangle would carry
+    /// colour and nothing else, and standing inside the centred row it would push
+    /// the sentence off the caption's axis. `KeepAwakeHero` carries its verdict
+    /// in words alone at the same rank.
     @ViewBuilder
     private func headline(_ strip: VPNTunnelStrip) -> some View {
         Text(strip.verdict)
@@ -470,6 +409,11 @@ struct VPNTunnelHero: View {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
+    /// The height of the kit's large capsule (`helmCapsuleButtons`,
+    /// `.controlSize(.large)`), so the running slot keeps the row's height across
+    /// offer → measuring → done.
+    static let verbHeight: CGFloat = 32
+
     /// **The verbs, as capsules in a centred row** — the shape
     /// `KeepAwakeHero` gives its presets.
     ///
@@ -489,25 +433,18 @@ struct VPNTunnelHero: View {
                 switch strip.action {
                 case .offer(let word):
                     Button(word) { measure(chosen.name) }
+                        // The hero is a `Form` section header, whose bold font a
+                        // button would inherit.
+                        .font(HelmText.rowTitle)
                         .controlSize(.large)
-                        .buttonStyle(.bordered)
-                        // **30, which is what the segments and the spinner
-                        // beside it are.** A `.large` bordered button measures
-                        // 28, and on a Mac with one tunnel it is now the only
-                        // thing on the row — so the block stood 2 pt shorter
-                        // there and dropped back the moment a second tunnel came
-                        // up. `helmMeasuredHeight` would ramp that rather than
-                        // snap it, which is a 0.30 s move of the whole page for
-                        // a difference nobody asked for.
-                        .frame(height: 30)
                 case .running(let word):
                     HStack(spacing: HelmSpace.s3) {
                         // **The one thing on this page that says how far in the
                         // wait is** — and it says it about the wait, not about
                         // the measurement, because the measurement reports
-                        // nothing until it is over. Same slot and same 16 pt as
-                        // the spinner it replaces, so the row it stands in does
-                        // not move; when the clock runs out it *becomes* that
+                        // nothing until it is over. Same slot as the spinner
+                        // it replaces, so the row it stands in does not move;
+                        // when the clock runs out it *becomes* that
                         // spinner again rather than filling up and sitting
                         // there. `HelmExpectedWait` carries the argument.
                         HelmExpectedWait(started: measureStarted,
@@ -516,35 +453,24 @@ struct VPNTunnelHero: View {
                             .font(HelmText.rowDetail)
                             .foregroundStyle(HelmText.quiet)
                     }
-                    .frame(height: 30)
+                    .frame(height: Self.verbHeight)
                 case .notOffered:
                     EmptyView()
                 }
             }
+            .helmCapsuleButtons()
             if case .notOffered(let sentence) = strip.action {
                 Text(sentence)
                     .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.quiet)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .helmHeroSentence()
             }
         }
     }
 
-    /// **The readings as four cards**, on the surface the connection cards use.
-    ///
-    /// They were one well with full-height hairlines between them, which said
-    /// «four readings of one tunnel» — and that is the truer sentence, since it
-    /// is one `utunN`, one moment it came up, and one `ifdata` read. Four cards
-    /// say «four independent things». The owner chose the cards after seeing
-    /// both drawn, so what this comment records is the trade rather than an
-    /// argument: the page gains one card system from top to bottom, and loses
-    /// the mark that told its hero from its list.
-    ///
-    /// `HelmSurface.wellFill` and `HelmRadius.card` because those are what a
-    /// connection card is made of — two card systems on one page is the defect
-    /// this house has already paid for twice, and a *third* fill here would be
-    /// exactly that.
+    /// **The readings as four cards**, on the kit's card surface. Two card
+    /// systems on one page is a defect this house has already paid for twice, so
+    /// the fill is the kit's (`helmCard`) and not one of the hero's own.
     private func readings(_ strip: VPNTunnelStrip) -> some View {
         // The gap the connections grid uses between its own cards, so the two
         // rows are one rhythm rather than two.
@@ -559,9 +485,8 @@ struct VPNTunnelHero: View {
             }
         }
         // The row takes the height of its tallest card and no more. Without it a
-        // container taller than the row stretches it: the wells an earlier
-        // edition drew were photographed at 190 pt with 100 pt of empty fill
-        // under the figures.
+        // container taller than the row stretches it, with empty fill under the
+        // figures.
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity)
     }
@@ -569,29 +494,24 @@ struct VPNTunnelHero: View {
     /// One reading, as its own card.
     ///
     /// `maxWidth: .infinity` on each is what makes the four equal in width, and
-    /// `HelmSpace.s5` is a card's own inner padding — the same number a
-    /// connection card pays, because this is the same surface.
+    /// `HelmSpace.s5` is a connection card's own inner padding.
     ///
-    /// **`maxHeight: .infinity` is what makes them equal in height, and the row
-    /// went without it.** The row's own comment claimed «every column has the
-    /// same three lines», which was true while every note was one line and is
-    /// not a rule anything held: measured on the page at the narrowest pane it
-    /// allows, the four stood at 76 / 94 / 94 / 81, and a configuration named at
-    /// length in System Settings breaks the family at every pane. Under the
-    /// row's `.fixedSize(vertical:)` the `HStack` still takes the height of its
-    /// tallest card and no more — this only spends that height on the other
-    /// three — and `alignment: .top` on the row keeps every word where it was.
+    /// **`maxHeight: .infinity` is what makes them equal in height.** Notes are
+    /// not all one line — a configuration named at length in System Settings
+    /// wraps one at any pane. Under the row's `.fixedSize(vertical:)` the
+    /// `HStack` still takes the height of its tallest card and no more; this
+    /// spends that height on the other three, and `alignment: .top` on the row
+    /// keeps every word where it was.
     private func column(_ tile: VPNTunnelStrip.Tile) -> some View {
         VStack(alignment: .leading, spacing: HelmSpace.s3) {
             Text(tile.label)
-                // 10, the scale's bottom step: a caption over a figure.
-                .font(.system(size: 10))
+                .font(HelmText.smallPrint)
                 .foregroundStyle(HelmText.quiet)
                 .lineLimit(1)
             Text(tile.value)
                 .helmMetricFigure()
             Text(tile.note)
-                .font(.system(size: 10))
+                .font(HelmText.smallPrint)
                 .foregroundStyle(HelmText.faint)
                 // Wrapping rather than truncating: a note that loses its tail
                 // loses the interface out of «incy · utun8», and a tunnel named
@@ -603,9 +523,7 @@ struct VPNTunnelHero: View {
         // stops and three of them say the figure before the word naming it.
         .accessibilityElement(children: .combine)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(HelmSpace.s5)
-        .background(RoundedRectangle(cornerRadius: HelmRadius.card, style: .continuous)
-            .fill(HelmSurface.wellFill))
+        .helmCard(padding: HelmSpace.s5)
     }
 
     // MARK: - With nothing up
@@ -613,12 +531,10 @@ struct VPNTunnelHero: View {
     /// **The state `KeepAwakeHero` is drawn around**, and the best argument for
     /// taking its shape whole: «Mac засыпает как обычно» is that page's idle,
     /// set in the same 40 pt as its countdown. «Ни один туннель не поднят» is
-    /// this one's, and it now sits in the same slot at the same size.
+    /// this one's, and it sits in the same slot at the same size.
     ///
-    /// No mark, which used to be the one place this block followed the model
-    /// and is now both of them: nothing is wrong with a Mac that has no tunnel
-    /// up, and a glyph beside that sentence would be answering a question
-    /// nobody asked.
+    /// No mark: nothing is wrong with a Mac that has no tunnel up, and a glyph
+    /// beside that sentence would be answering a question nobody asked.
     private var empty: some View {
         VStack(spacing: HelmSpace.s4) {
             Text(VPNStr.noTunnelUp)

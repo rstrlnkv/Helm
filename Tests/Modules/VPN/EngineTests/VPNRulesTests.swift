@@ -46,53 +46,19 @@ final class VPNRulesTests: XCTestCase {
         XCTAssertFalse(rule.disconnectOnQuit)
     }
 
-    // MARK: - What the AUTOMATIC dial counts
-
-    /// The dial sat above the rules list and disagreed with it: it counted
-    /// `autoConnected` — connections a rule has raised *right now* — under a
-    /// label the list beneath reads as "the rules I wrote". With nothing
-    /// running it said 0 over one visible rule. Whether a rule is firing this
-    /// second is the green dot's job.
-    func testTheDialCountsRulesRatherThanLiveConnections() {
-        let rules = ["com.a": VPNAppRule(vpnName: "Work"),
-                     "com.b": VPNAppRule(vpnName: "Work")]
-        XCTAssertEqual(VPNRules.automationCount(rules), 2)
-    }
-
-    /// A rule set to "Off" is written down and does nothing. Counting it would
-    /// be the same lie in the other direction.
-    func testARuleTurnedOffIsNotAutomation() {
-        var off = VPNAppRule(vpnName: "Work")
-        off.set(.off)
-        XCTAssertEqual(VPNRules.automationCount(["com.a": VPNAppRule(vpnName: "Work"),
-                                                 "com.b": off]), 1)
-    }
-
-    func testNoRulesCountAsNone() {
-        XCTAssertEqual(VPNRules.automationCount([:]), 0)
-    }
-
     // MARK: - Rules whose VPN is gone
 
-    func testARuleNamingAMissingVPNIsReportedNotJustDropped() {
+    func testARuleNamingAMissingVPNIsDropped() {
         let rules = ["com.acme": VPNAppRule(vpnName: "Old VPN")]
         let connections = [VPNConnection(id: "1", name: "New VPN", status: .disconnected, kind: "L2TP")]
         XCTAssertTrue(VPNRules.valid(rules, against: connections).isEmpty)
-        XCTAssertEqual(Array(VPNRules.orphaned(rules, against: connections).keys), ["com.acme"])
-    }
-
-    func testNothingIsOrphanedWhileTheVPNExists() {
-        let rules = ["com.acme": VPNAppRule(vpnName: "NBCom VPN")]
-        let connections = [VPNConnection(id: "1", name: "NBCom VPN", status: .connected, kind: "L2TP")]
-        XCTAssertTrue(VPNRules.orphaned(rules, against: connections).isEmpty)
     }
 }
 
 /// The three questions a status can be asked, and which is which.
 ///
-/// `isUp` means "something is happening here" — right for a tile that lights,
-/// wrong for a number labelled *active*, which counted a connection whose own
-/// row was spinning and saying "Connecting", in green.
+/// `isUp` means "something is happening here" — right for the panel tile's
+/// switch; the tile lights on `isConnected`.
 final class VPNStatusVocabularyTests: XCTestCase {
 
     func testConnectedIsNarrowerThanUp() {

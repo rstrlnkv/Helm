@@ -1,15 +1,32 @@
 import SwiftUI
-import HelmContract
 import HelmRuntime
 import HelmUI
 import Module_VPN_Engine
 
-@MainActor final class VPNViewModel: ObservableObject {
+/// What the model asks of the engine: the person's door and nothing the rules
+/// use. A fake stands for the engine in `AStoppedVPNModelReachesNoWorkTests`.
+protocol VPNWork: AnyObject, Sendable {
+    /// The latest state, then every later one, in order; registered before it returns.
+    func stream() -> AsyncStream<VPNEngine.StatePayload>
+    /// Re-read the system's answer; returns at once.
+    func refresh()
+    /// A press on a card. Never an automatic act: the engine's own `auto` flag
+    /// is not reachable through this.
+    func press(_ verb: VPNVerb, on name: String)
+    /// One speed run on the named tunnel; the engine refuses any but the one
+    /// carrying the default route, and says so in its next state.
+    func measureSpeed(_ name: String)
+    /// Re-read the saved rules, on the engine's own queue; returns at once.
+    func reloadRules()
+}
+
+extension VPNEngine: VPNWork {}
+
+@MainActor public final class VPNViewModel: ObservableObject {
     @Published private(set) var connections: [VPNConnection] = []
     @Published private(set) var autoConnected: Set<String> = []
-    @Published private(set) var defaultName: String?
     /// The last rule firing worth reacting to, or nil. Stale firings never get
-    /// here — see `handle`.
+    /// here — see `apply`.
     @Published private(set) var lastAutomation: VPNAutomation?
     /// The last command `scutil` did not accept, cleared by the next one it
     /// did. The engine has published this since it learned to read the tool's
@@ -24,6 +41,7 @@ import Module_VPN_Engine
     /// somebody presses Connect once, and the engine stops attempting a
     /// `--nc start` it knows cannot work (`VPNSecretBook`).
     @Published private(set) var secretsBehindAPrompt: [String] = []
+    @Published private(set) var ruleRefusals: [String: VPNRuleTrust.Verdict] = [:]
     /// Every connected tunnel that has an interface reading, the one carrying
     /// the default route first. Empty when nothing is up — the strip is absent
     /// then, rather than empty.
@@ -31,9 +49,9 @@ import Module_VPN_Engine
     /// **Which tunnel** a measurement is in flight for, or nil — the engine's
     /// answer, not this object's memory of a press.
     ///
-    /// The press still sets it, because the command has a queue to cross and a
-    /// button that does nothing for a moment reads as a button that did not
-    /// work; but every state that arrives overwrites it with what the engine
+    /// The press still sets it, because the engine answers on its own work
+    /// queue, after the press has returned, and a button that does nothing for a
+    /// moment reads as a button that did not work; but every state that arrives overwrites it with what the engine
     /// says (`VPNTunnelState.measuring`). A flag that only a press could set was
     /// wrong in three ways: a page opened while a run was going knew nothing
     /// about it, a run outliving the page that started it left the next one
@@ -41,12 +59,12 @@ import Module_VPN_Engine
     /// field — so the engine withheld the payload as a duplicate and the arrival
     /// that was meant to clear the spinner never came.
     ///
-    /// A name rather than a `Bool` because the flag is per tunnel on the wire:
-    /// one boolean turned a spinner over every tunnel in the list while a single
+    /// A name rather than a `Bool` because a run belongs to one tunnel: one
+    /// boolean would turn a spinner over every tunnel in the list while a single
     /// run was going.
     @Published private(set) var measuring: String?
 
-    private let transport: EngineTransport
+    private let work: any VPNWork
     private let settings: VPNSettings?
     /// What macOS is asked to post a banner through. Optional because nothing
     /// in a test may reach the real one — `UNUserNotificationCenter.current()`
@@ -59,6 +77,7 @@ import Module_VPN_Engine
     private var bannerAuthorizedForTesting: Bool?
     private var spinForTesting: Bool?
     private var eventsTask: Task<Void, Never>?
+    private(set) var closed = false
     private var expiryTask: Task<Void, Never>?
     /// The announcement of the last firing, while it is still in flight.
     ///
@@ -70,15 +89,14 @@ import Module_VPN_Engine
     /// than a way to call a banner back.
     private(set) var announcement: Task<Void, Never>?
 
-    /// How loudly a firing is announced. Read from the store at every ask
-    /// rather than cached, so a change in Settings applies to the next firing
-    /// instead of to the next launch.
-    var notice: VPNNotice { noticeForTesting ?? settings?.notice ?? .menuBar }
-
-    /// …and the one for a tunnel that fell over by itself, which is a separate
-    /// setting because it is separate news. `noticeForTesting` covers both: a
-    /// test that sets a mode is setting the module's voice, and one that wants
-    /// them to differ passes `dropNotice`.
+    /// How loudly a firing is announced, for a tunnel that fell over by itself
+    /// or any other. Read from the store at every ask rather than cached, so a
+    /// change in Settings applies to the next firing instead of to the next
+    /// launch. The drop is a separate setting because it is separate news.
+    /// `noticeForTesting` covers the rules' mode and the drop's alike: a test
+    /// that sets a mode is setting the module's voice, and one that wants the
+    /// two to differ passes `dropNotice`.
+    ///
     /// Through `VPNNotice.mode`, which is the same rule the store reads: this end
     /// used to answer «the drop setting for a drop, the rules' setting for
     /// everything else» in its own words, and a teardown Helm performed then took
@@ -129,9 +147,9 @@ import Module_VPN_Engine
         return settings.spinTint(for: kind, connectionID: id)
     }
 
-    /// Whether the menu-bar ring turns when a rule fires. Read at every ask
-    /// rather than cached, like `notice`, so a change in Settings applies to
-    /// the next firing instead of to the next launch.
+    /// Whether the menu-bar ring turns when a rule fires, module-wide: what a
+    /// configuration without a book entry inherits, and nothing in the app writes
+    /// it. Read at every ask rather than cached, like `notice(for:)`.
     var automationSpin: Bool {
         spinForTesting ?? settings?.automationSpin ?? false
     }
@@ -157,18 +175,10 @@ import Module_VPN_Engine
     /// The mode as it will actually behave, which is not always the mode that
     /// was chosen: `.system` without the permission is the menu-bar label, and
     /// anything that acts on the choice has to ask this rather than the raw one.
-    var effectiveNotice: VPNNotice {
-        notice.effective(bannerAuthorized: bannerAuthorized)
-    }
-
-    /// The same, for the firing in hand. A tunnel that fell over answers to its
-    /// own setting, and the menu-bar name is decided from the firing's kind
-    /// rather than from the rules' mode.
-    func effectiveNotice(for kind: VPNAutomation.Kind) -> VPNNotice {
-        notice(for: kind).effective(bannerAuthorized: bannerAuthorized)
-    }
-
-    /// The same for a firing, on the configuration it happened on.
+    ///
+    /// For the firing in hand, on the configuration it happened on: a tunnel that
+    /// fell over answers to its own setting, and the menu-bar name is decided from
+    /// the firing's kind rather than from the rules' mode.
     func effectiveNotice(for kind: VPNAutomation.Kind, on name: String) -> VPNNotice {
         notice(for: kind, on: name).effective(bannerAuthorized: bannerAuthorized)
     }
@@ -187,21 +197,38 @@ import Module_VPN_Engine
     /// asks this so that cannot happen quietly.
     var reachesBanners: Bool { notices != nil }
 
-    /// The person picked a mode.
+    /// The person picked a mode on a card.
     ///
-    /// The only place in Helm that asks macOS for the notification permission,
-    /// and it asks only for the mode that needs one — `AutomationNotice.prepare`
-    /// reads the state for the other two. macOS grants that prompt once ever, so
+    /// Writes nothing: the card's choice is its book entry (`VPNSettingsPage`),
+    /// and the module-wide `automationNotice` / `dropNotice` every configuration
+    /// without an entry inherits is not this choice's to change — it silenced
+    /// the other tunnels under a control that says «this connection only».
+    ///
+    /// The only place in this module that asks macOS for the notification
+    /// permission (`NoticeChannel.tell` asks for other news), and it asks only for
+    /// the mode that needs one — `AutomationNotice.prepare` reads the state for
+    /// the other two. macOS grants that prompt once ever, so
     /// asking at launch, or on every visit to this page, spends it on somebody
     /// who was not asking for notifications.
     @discardableResult
-    func choose(_ notice: VPNNotice, for kind: VPNAutomation.Kind = .connected) async
-        -> NoticeAuthorization? {
-        // The kind names the *setting*, not one event: `.dropped` is the tunnel
-        // that fell over, anything else is the rules.
-        if kind == .dropped { settings?.setDropNotice(notice) } else { settings?.setNotice(notice) }
+    func choose(_ notice: VPNNotice) async -> NoticeAuthorization? {
         guard let port = notices else { return nil }
         return record(await AutomationNotice.prepare(for: notice, port: port))
+    }
+
+    /// A card's choice, for the configuration `id` alone: its book entry is
+    /// written, then macOS is asked (`choose`) for the mode's permission. The
+    /// kind names the setting: `.dropped` is the tunnel that fell over, anything
+    /// else is the rules. Returns the book as stored, for the page to draw.
+    @discardableResult
+    func chooseNotice(_ notice: VPNNotice, for kind: VPNAutomation.Kind,
+                      on id: String) -> VPNNoticeBook {
+        let book = settings?.noticeBook ?? VPNNoticeBook()
+        let written = kind == .dropped ? book.setting(id, drop: notice)
+                                       : book.setting(id, notice: notice)
+        settings?.setNoticeBook(written)
+        Task { await choose(notice) }
+        return written
     }
 
     /// Re-reads what macOS says now, prompting nobody.
@@ -257,42 +284,57 @@ import Module_VPN_Engine
         }
     }
 
-    init(transport: EngineTransport, settings: VPNSettings? = nil,
+    /// The stream is taken here, synchronously, before the first suspension:
+    /// `stream()` registers the subscriber and replays the latest state in one
+    /// step, so no state emitted from this line on is missed. Nothing is asked
+    /// of the engine; what the engine says from now on arrives on the stream.
+    init(work: any VPNWork, settings: VPNSettings? = nil,
          notices: AutomationNoticePort? = nil) {
-        self.transport = transport
+        self.work = work
         self.settings = settings
         self.notices = notices
-        let events = transport.events
+        let states = work.stream()
         eventsTask = Task { [weak self] in
-            for await e in events {
-                guard let self else { break }
-                self.handle(e)
+            for await state in states {
+                guard let self, !self.closed else { break }
+                self.apply(state)
             }
         }
-        // Ask the engine to publish current state.
-        send(VPNCommand.refresh)
     }
 
-    /// Ends the event loop, which unregisters the transport subscriber.
+    /// Ends the event loop, which unregisters the engine's subscriber, ends the
+    /// firing's expiry and announcement, and closes the doors to the engine. The
+    /// host calls it through the descriptor's `stop(_:)` before the engine's
+    /// `deactivate()`.
+    func stop() {
+        closed = true
+        eventsTask?.cancel()
+        eventsTask = nil
+        expiryTask?.cancel()
+        expiryTask = nil
+        announcement?.cancel()
+        announcement = nil
+    }
+
+    /// The backstop for a model dropped without `stop()`: the loop re-acquires
+    /// `self` per state, so it does not keep the model alive.
     deinit { eventsTask?.cancel(); expiryTask?.cancel(); announcement?.cancel() }
 
-    /// Re-reads the system's answer.
-    ///
-    /// The engine is asked once in `init` and then only after Helm itself
-    /// connects or disconnects, so a tunnel raised from the macOS menu bar,
-    /// from System Settings, or one that simply dropped, left this showing
-    /// yesterday's state for as long as the app ran.
-    func refresh() { send(VPNCommand.refresh) }
-    /// The engine's own declaration — see the note on KeepAwake's.
-    private typealias StatePayload = VPNEngine.StatePayload
-    private func handle(_ e: EngineEvent) {
-        guard VPNEvent(rawValue: e.name) == .state,
-              let p = try? JSONDecoder().decode(StatePayload.self, from: e.payload) else { return }
+    /// Re-reads the system's answer when the page or the panel tile appears. The
+    /// engine also re-reads on its own after every network change
+    /// (`VPNEngine.networkChanged`); this is the ask for a surface that has just
+    /// come on screen.
+    func refresh() {
+        guard !closed else { return }
+        work.refresh()
+    }
+
+    private func apply(_ p: VPNEngine.StatePayload) {
         connections = p.connections
         autoConnected = Set(p.autoConnected)
-        defaultName = p.defaultName
         lastFailure = p.lastFailure
         secretsBehindAPrompt = p.secretsBehindAPrompt
+        ruleRefusals = p.ruleRefusals
         tunnels = p.tunnels
         // **The engine says whether a run is going; this only repeats it.**
         // Comparing the reading against the last one is true of neither awkward
@@ -322,8 +364,8 @@ import Module_VPN_Engine
 
     /// The banner, in the mode that posts one.
     ///
-    /// It rides the same arrival as the ring and the label, so a firing reaches
-    /// all three channels or none — `.system` hides the menu-bar name because
+    /// It rides the same arrival as the ring and the label, so what a
+    /// firing says on any channel comes from that one arrival — `.system` hides the menu-bar name because
     /// the banner is meant to carry it, and a banner wired anywhere else would
     /// leave that mode saying nothing at all.
     ///
@@ -351,33 +393,31 @@ import Module_VPN_Engine
             self?.bannerAuthorization = heard
         }
     }
-    /// Named by the engine's own enum, which is what every call site uses.
-    ///
-    /// The `send(_ name: String, …)` this forwarded to was public, and nothing
-    /// outside called it — a door back to the string spelling the enum exists
-    /// to close, held open for a caller that never arrived.
-    func send(_ command: VPNCommand, payload: Data = Data()) {
-        Task { [transport] in
-            _ = try? await transport.send(EngineCommand(name: command.rawValue,
-                                                        payload: payload))
-        }
-    }
+
     /// Asks for one measurement, **on a named tunnel**. It spends real traffic
     /// and takes `NetworkQualitySpeed.typicalRun`, which is why nothing calls this
     /// but a press.
     ///
     /// The engine refuses a name that is not the tunnel carrying the default
     /// route and publishes when it does, so the optimistic flag below is cleared
-    /// by that refusal exactly the way it is cleared by a run that finished.
+    /// by that refusal exactly the way it is cleared by a run that finished
+    /// (`measuring` says why the press sets it).
     func measureSpeed(_ name: String) {
+        guard !closed else { return }
         measuring = name
-        send(VPNCommand.measureSpeed, payload: nameData(name))
+        work.measureSpeed(name)
     }
-    func connect(_ name: String) { send(VPNCommand.connect, payload: nameData(name)) }
-    func disconnect(_ name: String) { send(VPNCommand.disconnect, payload: nameData(name)) }
-    /// The engine's own type — it was declared again here, inside this
-    /// function, matched to the other by field name across a JSON hop.
-    private func nameData(_ name: String) -> Data {
-        (try? JSONEncoder().encode(VPNConnectionRef(name: name))) ?? Data()
+    func connect(_ name: String) {
+        guard !closed else { return }
+        work.press(.connect, on: name)
+    }
+    func disconnect(_ name: String) {
+        guard !closed else { return }
+        work.press(.disconnect, on: name)
+    }
+    /// The saved rules changed: the engine re-reads them.
+    func rulesChanged() {
+        guard !closed else { return }
+        work.reloadRules()
     }
 }

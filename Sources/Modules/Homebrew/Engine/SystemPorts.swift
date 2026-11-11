@@ -81,8 +81,9 @@ private final class DiagnosticsBox: @unchecked Sendable {
 public struct ShellProcessRunner: ProcessRunner {
     /// How long a *query* may go unanswered before it is a hang, not a wait.
     ///
-    /// `run` serves only the read-only queries (list, outdated, desc, search);
-    /// the long operations stream and are stopped by hand, never by a clock.
+    /// `run`, `runData` and `runCapturingDiagnostics` serve the read-only queries
+    /// (list, outdated, desc, search, uses, info, config, doctor); the long
+    /// operations stream and are stopped by hand, never by a clock.
     /// Measured on the owner's log before choosing: warm queries answer in
     /// 0.3–0.6 s, and a cold `brew outdated` — which goes to the network —
     /// took 7.4 s (helm.log, 2026-08-15 16:09:35→42). Ninety seconds clears the
@@ -614,7 +615,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// **Not in `init`, and that is a measurement rather than a taste.** The two
     /// documents are 850 KB of JSON and 15,270 packages; parsing both takes
     /// 30 ms on this Mac, optimised, three readings out of three — and `init`
-    /// runs inside `makeEngine`, which `ModuleHost.enable` calls on the main
+    /// runs inside `makeModule`, which `ModuleHost.enable` calls on the main
     /// thread at launch for every module that is switched on.
     ///
     /// **Nor from the refresh unless the refresh needs it.** The only thing in
@@ -908,7 +909,7 @@ public struct CellarWeight: PackageWeight {
         // `chmod` in somebody's terminal, or any TCC refusal, arrives that way.
         // A keg that really is installed occupies blocks; nothing that
         // occupies none is a package worth drawing a figure for, so both
-        // readings fold into the one nil the tile is absent for.
+        // readings fold into the one nil the row is absent for.
         let measured = FileWeight.allocated(of: keg)
         guard measured > 0 else {
             // Said once, and only about a directory that is *there*: an absent

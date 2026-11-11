@@ -94,4 +94,45 @@ final class PermissionCheckTests: XCTestCase {
                                 errorCode: 642, hasSystemExtension: true),
             .activeSystemExtension)
     }
+
+    // MARK: - A file that is gone (`AFileThatIsGoneIsNotARefusalTests` holds the batch half)
+
+    func testTheCodeForAFileThatIsNotThereIsNamed() {
+        XCTAssertEqual(
+            TrashFailure.reason(path: "/Users/x/Downloads/installer.dmg",
+                                errorCode: 4, hasSystemExtension: false),
+            .missing,
+            "`NSFileNoSuchFileError` reads as a refusal by macOS, so the screen sends somebody "
+            + "to the Finder to look at a file that has gone")
+    }
+
+    /// The general refusal is still there for the codes nobody has classified —
+    /// a reason invented for an unknown error sends somebody to fix the wrong
+    /// thing.
+    func testAnUnknownCodeIsStillTheGeneralRefusalBesideTheGoneCode() {
+        XCTAssertEqual(
+            TrashFailure.reason(path: "/Users/x/thing", errorCode: 99_999,
+                                hasSystemExtension: false),
+            .systemRefused)
+    }
+
+    /// **And it outranks the extension.** «Its system extension is still active —
+    /// turn it off» is an instruction about a bundle, and this bundle is not on
+    /// the disk: the extension check is a test of the path's *shape*, while this
+    /// is what macOS answered.
+    func testAMissingBundleIsGoneRatherThanBlamedOnItsExtension() {
+        XCTAssertEqual(
+            TrashFailure.reason(path: "/Applications/Thing.app",
+                                errorCode: 4, hasSystemExtension: true),
+            .missing)
+    }
+
+    /// The refusal that really is about an active extension keeps its own
+    /// reason — this is the half that stops the case above from swallowing it.
+    func testAnActiveExtensionStillOwnsItsOwnRefusal() {
+        XCTAssertEqual(
+            TrashFailure.reason(path: "/Applications/Thing.app",
+                                errorCode: 513, hasSystemExtension: true),
+            .activeSystemExtension)
+    }
 }

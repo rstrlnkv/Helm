@@ -35,9 +35,6 @@ struct VPNSettingsPage: View {
     /// The per-connection overrides, seeded from the store and written through
     /// on every change — the same shape the rules have, for the same reason.
     @State private var noticeBook: VPNNoticeBook
-    // Natural height of the two swatch rows, measured so the disclosure
-    // animates between 0 and a concrete value — the same pattern
-    // `UtilitiesSection` in `HelmPanel.swift` uses for its rows.
 
     init(vm: VPNViewModel, store: NamespacedStore) {
         self.vm = vm
@@ -60,19 +57,14 @@ struct VPNSettingsPage: View {
         vpnForm
     }
 
-    /// **Is there anything on this Mac for the rest of the page to be about.**
-    ///
-    /// Asked in four places — the heading over the rules, the rules themselves,
-    /// their footer and the two cards below — because a `Form` builds a header,
-    /// a body and a footer in three separate closures. One name, so those four
-    /// cannot come to mean four slightly different things.
+    /// Whether there is anything for the closing notes to qualify.
     private var hasConnections: Bool { !vm.connections.isEmpty }
 
     /// **The hero, then the heading, then the connections.**
     ///
     /// All three ride on one section's header, which is what puts the hero
     /// above the page's first card rather than inside it — the same
-    /// construction `KeepAwakeSettingsPage.heroAndTitle` uses, and for the same
+    /// construction `LayoutSettingsPage.heroAndTitle` uses, and for the same
     /// reason: a grouped `Form` draws a section's header outside its card, and
     /// a hero is not a row.
     private var heroAndTitle: some View {
@@ -80,16 +72,14 @@ struct VPNSettingsPage: View {
             VPNTunnelHero(vm.tunnels, selected: $selectedTunnel,
                           measuring: vm.measuring) { vm.measureSpeed($0) }
                 // **Out to the cards' own column.** A grouped `Form` insets a
-                // section header ten points further than the section's card, and
-                // the hero draws a surface — its readings ran 80…764 against the
-                // connection cards' 70…774, which is two card systems on one page.
-                // The same line `connectionsList` carries below, for the same
+                // section header further than the section's card, and the hero
+                // draws a surface: left in, it and the connection cards would be
+                // two card systems on one page. The same line `connectionsList` carries below, for the same
                 // reason; the hero puts its *words* back in by the same amount.
                 .padding(.horizontal, -HelmLayout.groupedHeaderOutset)
-                // The gap under the hero, paid here for the reason the old
-                // «This tunnel» heading paid its own: a grouped `Form` spaces
-                // its sections by their footers, and a block riding on a header
-                // has no footer of its own to be spaced by.
+                // The gap under the hero, paid here because a grouped `Form`
+                // spaces its sections by their footers, and a block riding on a
+                // header has no footer of its own to be spaced by.
                 .padding(.bottom, HelmSpace.s7)
             HelmSectionTitle(VPNStr.connections())
             connectionsList
@@ -102,15 +92,9 @@ struct VPNSettingsPage: View {
 
     /// **The two sentences that close the page, and they close it.**
     ///
-    /// They used to sit between the connections grid and the tunnel strip —
-    /// 80 pt of grey text cutting apart the two things on this page that belong
-    /// together, one of them as a header's tail and the other as that section's
-    /// footer. macOS puts a sentence of this kind *under* the group it
-    /// qualifies, so both go under the last group there is.
-    ///
-    /// Which group that is used to be a question — the strip had a section of
-    /// its own and it was absent with nothing to be about. There is one section
-    /// now, so the answer is unconditional.
+    /// Between the connections grid and the tunnel strip they would cut apart
+    /// the two things on this page that belong together. macOS puts a sentence
+    /// of this kind *under* the group it qualifies, and there is one group.
     private var closingNotes: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s4) {
             Text(VPNStr.connectionsHint)
@@ -132,12 +116,10 @@ struct VPNSettingsPage: View {
             HelmBanner(VPNStr.failure(failure), symbol: "exclamationmark.triangle.fill")
         }
         // **Every locked configuration, not only the ones no rule speaks for.**
-        // `VPNRules.unspokenFor` used to remove the ones a rule covered, because
-        // that rule's own row said the same sentence 230 pt lower and named the
-        // application whose automation was dead. The rules are behind a door on
-        // their card now: that row is invisible until somebody opens the popover,
-        // so removing the banner left a configuration that cannot connect saying
-        // so nowhere. One sentence per configuration, on the page.
+        // The rules are behind a door on their card: a rule's own row is invisible
+        // until somebody opens the popover, so a banner removed for the ones a
+        // rule covers would leave a configuration that cannot connect saying so
+        // nowhere. One sentence per configuration, on the page.
         ForEach(vm.secretsBehindAPrompt, id: \.self) { name in
             HelmBanner(VPNStr.secretNeedsAPress(name), symbol: "key.slash.fill")
         }
@@ -152,32 +134,29 @@ struct VPNSettingsPage: View {
 
     private var vpnForm: some View {
         Form {
-            // **One section now.** The rules and the notices used to be two more
-            // sections and 800 pt of page; they are two popovers on the card
-            // that owns them, so what is left is the configurations, the one
+            // **One section.** The rules and the notices are two popovers on the
+            // card that owns them, so what is left is the configurations, the one
             // thing that cannot be said anywhere else, and the two sentences
             // that qualify them.
             // **The news is rows.** A refusal, a configuration whose secret
             // nobody has pressed for, a rule pointing at a tunnel that is gone —
             // each is a filled field, and a row is where a grouped `Form` gives
-            // it the same geometry as everything else on the page. They used to
-            // ride the header with `-groupedHeaderOutset` backing the inset out
-            // by hand; that hack is what a row is for.
+            // it the same geometry as everything else on the page.
             Section {
                 news
             } header: {
                 heroAndTitle
             } footer: {
                 // The two sentences that qualify the connections, under the
-                // group they qualify — which is now the only group there is.
+                // group they qualify.
                 if hasConnections { closingNotes }
             }
         }
         .formStyle(.grouped)
         .helmIdlesOffScreen()
-        // The engine is asked once in `init` and the view model is cached for
-        // the app's lifetime, so without these the page showed whatever the
-        // system said at launch.
+        // The model asks the engine nothing in `init`; the host keeps it while
+        // the module is on, and `stop(_:)` closes it — so without these the page
+        // would show whatever the system said when the module came on.
         .task {
             vm.refresh()
             await vm.refreshBannerAuthorization()
@@ -207,20 +186,13 @@ struct VPNSettingsPage: View {
                                                         expanded: showAllConnections)))
     }
 
-    /// The widest a connection card may grow: **half the row**, less the gap
-    /// beside it. Derived rather than typed, so it stays true if the settings
-    /// column moves — and it is a rule rather than a number. One connection
-    /// gets a half-row card instead of a 704 pt banner; two fill the row
-    /// exactly and finish level with the card below.
-    private static var cardCeiling: CGFloat { (HelmLayout.cardWidth - 12) / 2 }
-
     @ViewBuilder
     private var connectionsList: some View {
         if vm.connections.isEmpty {
             // A destination, not a shrug. The module cannot create a
             // configuration — `scutil --nc` has no `create` — so the one thing
             // this screen can do for somebody with no VPN is take them where
-            // they are made. It was a single quiet line with nothing to press.
+            // they are made.
             HelmEmptyState(symbol: "lock.shield",
                            tint: VPNDescriptor.tint.colour,
                            title: VPNStr.noVPNsSystem,
@@ -234,34 +206,20 @@ struct VPNSettingsPage: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .controlSize(.large)
             }
         } else {
-            // **The columns are `VPNGridLayout`'s, and the ceiling is ours.**
-            //
-            // `.adaptive(minimum: 190, maximum: 280)` fixes the column count
-            // from the *width*, so a Mac with two VPNs got three columns and
-            // used two: photographed at the settings column, two 221 pt cards
-            // ending at x=532 with 233 pt of nothing to their right and a
-            // full-width line of explanation underneath drawing a line right
-            // across it. Columns from the count alone was the opposite fault —
-            // one connection became a 704 pt card with a 680 pt button across
-            // it, which is a card the size of a paragraph.
-            //
-            // `min(count, 3)` was the answer to both, and it was right for one
-            // and two and wrong from four: photographed, four connections drew
-            // 3+1 with 477 pt of empty row beside the last card. The rule and
-            // the reason it has a threshold now live in `VPNGridLayout`; the
-            // ceiling stays here,
-            // because it is what keeps a card card-shaped.
+            // **The columns, their least and their ceiling are `VPNGridLayout`'s.**
+            // A column count taken from the width leaves columns empty on a
+            // Mac with two VPNs; one taken from the count alone makes a card the
+            // size of a paragraph of one connection.
             let total = vm.connections.count
             let columns = VPNGridLayout.columns(for: total)
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 190,
-                                                                   maximum: Self.cardCeiling),
-                                                         spacing: 12),
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: VPNGridLayout.cardMinimum,
+                                                                   maximum: VPNGridLayout.cardCeiling),
+                                                         spacing: HelmSpace.s5),
                                      count: columns),
                       alignment: .leading,
-                      spacing: 12) {
+                      spacing: HelmSpace.s5) {
                 // What is up first (`VPNConnectionOrder`), because from here on
                 // the page hides the tail: in `scutil`'s own order the connected
                 // tunnel can be the ninth, and a cap without an order would put
@@ -276,10 +234,9 @@ struct VPNSettingsPage: View {
             // cards belong level with the cards below.
             .padding(.horizontal, -HelmLayout.groupedHeaderOutset)
             if total > VPNGridLayout.collapsedLimit {
-                // A row of the list it lengthens, in the accent — the same
-                // shape «Add app…» draws one card below, for the same reason:
-                // a bordered chip in a column of cards reads as a control that
-                // belongs to something else.
+                // A row of the list it lengthens, in the accent: a bordered
+                // chip in a column of cards reads as a control that belongs to
+                // something else.
                 // `interface`, not `disclosure`. The disclosure token belongs to
                 // a height that is measured and clipped — the panel's accordion,
                 // Keep Awake's ⋯ block — and nothing here is measured: the cards
@@ -311,6 +268,7 @@ struct VPNSettingsPage: View {
             connection: c,
             strip: mine,
             timings: rules.mapValues(\.timing),
+            refusals: vm.ruleRefusals,
             heldByHelm: c.status.isConnected && vm.autoConnected.contains(c.name),
             notice: shown.rules,
             dropNotice: shown.drop,
@@ -339,12 +297,10 @@ struct VPNSettingsPage: View {
                 persist()
             },
             setNotice: { chosen in
-                write(book.setting(c.id, notice: chosen))
-                Task { await vm.choose(chosen) }
+                noticeBook = vm.chooseNotice(chosen, for: .connected, on: c.id)
             },
             setDropNotice: { chosen in
-                write(book.setting(c.id, drop: chosen))
-                Task { await vm.choose(chosen, for: .dropped) }
+                noticeBook = vm.chooseNotice(chosen, for: .dropped, on: c.id)
             },
             setSpin: { on in write(book.setting(c.id, spin: on)) },
             setTint: { kind, token in write(book.setting(c.id, tint: token, for: kind)) })

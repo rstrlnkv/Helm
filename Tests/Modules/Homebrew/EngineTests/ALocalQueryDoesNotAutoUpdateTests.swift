@@ -4,8 +4,9 @@ import HelmRuntime
 
 /// A query that reads the disk must not be allowed to change the machine.
 ///
-/// `brew list --versions` and `brew desc` answer about what is already
-/// installed: nothing they report depends on the catalogue being fresh. Left to
+/// `brew list --versions` answers about what is already installed and `brew
+/// desc` describes the names it is given: nothing they report depends on the
+/// catalogue being fresh. Left to
 /// itself brew may refresh that catalogue first, so a person pressing Refresh on
 /// a list of installed packages can be made to wait on a download nobody asked
 /// for — and on a Mac with no network, be refused an answer brew already had.

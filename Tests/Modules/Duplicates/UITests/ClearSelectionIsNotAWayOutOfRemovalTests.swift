@@ -1,4 +1,3 @@
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
 import HelmUI
@@ -16,8 +15,8 @@ import Module_Duplicates_Engine
 /// had no guard, so the only control on the screen that looks like a way out of
 /// a destructive act was not one.
 ///
-/// **Not academic in this module.** `DuplicatesEngine.trash` re-reads both files
-/// of every pair in full before anything moves, serially, so the window between
+/// **Not academic in this module.** `DuplicatesEngine.trash` verifies every pair
+/// before anything moves, serially, so the window between
 /// the press and the reply is proportional to the volume marked: minutes on an
 /// external drive.
 ///
@@ -39,24 +38,24 @@ final class ClearSelectionIsNotAWayOutOfRemovalTests: XCTestCase {
     }
 
     /// A removal held open by a parked reply, which is the only way to be inside
-    /// the window at all: a transport that answers on the spot is over before
+    /// the window at all: a work that answers on the spot is over before
     /// anything can be pressed, and a test written against one would pass with the
     /// guard deleted.
-    private func removalInFlight() async -> (DuplicatesViewModel, DuplicatesWire) {
-        let wire = DuplicatesWire(groups: [group],
+    private func removalInFlight() async -> (DuplicatesViewModel, AnsweringWork) {
+        let work = AnsweringWork(groups: [group],
                                   removal: DuplicateRemoval(removed: [extra], refused: [],
                                                             freedBytes: 9_000_000))
-        let dvm = await searchedModel(over: wire)
+        let dvm = await searchedModel(over: work)
         dvm.toggleBasket(extra)
-        wire.answers(.park, to: .trash)
+        work.answers(.park, to: .trash)
         Task { await dvm.emptyBasket() }
-        for _ in 0..<1000 where wire.parkedCount < 1 { await Task.yield() }
-        return (dvm, wire)
+        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
+        return (dvm, work)
     }
 
     func testClearingTheSelectionIsRefusedWhileTheFilesAreGoing() async {
-        let (dvm, wire) = await removalInFlight()
-        XCTAssertEqual(wire.parkedCount, 1, "precondition: the removal is really in flight")
+        let (dvm, work) = await removalInFlight()
+        XCTAssertEqual(work.parkedCount, 1, "precondition: the removal is really in flight")
         XCTAssertTrue(dvm.busy, "precondition: the model knows a removal is running")
         XCTAssertEqual(dvm.basket, [extra], "precondition: the selection is what was sent")
 
@@ -66,20 +65,20 @@ final class ClearSelectionIsNotAWayOutOfRemovalTests: XCTestCase {
             the basket emptied on screen while the request was still out with those paths in it, \
             so the app reported success about a selection the person had just cleared
             """)
-        wire.releaseParked()
+        work.releaseParked()
         for _ in 0..<200 where dvm.busy { await Task.yield() }
     }
 
     /// And it works again the moment the removal is over, or the guard has taken
     /// the control away rather than deferred it.
     func testClearingTheSelectionWorksOnceTheRemovalIsAnswered() async {
-        let (dvm, wire) = await removalInFlight()
-        dvm.toggleBasket(second)
-        XCTAssertEqual(dvm.basket, [extra, second], "precondition: two are marked")
-
-        wire.releaseParked()
+        let (dvm, work) = await removalInFlight()
+        work.releaseParked()
         for _ in 0..<200 where dvm.busy { await Task.yield() }
         XCTAssertFalse(dvm.busy, "precondition: the removal came back")
+        // Marking is refused while the removal runs, so it is done after.
+        dvm.toggleBasket(second)
+        XCTAssertFalse(dvm.basket.isEmpty, "precondition: something is marked")
 
         dvm.clearBasket()
 

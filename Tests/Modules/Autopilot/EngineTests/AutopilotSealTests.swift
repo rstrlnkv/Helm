@@ -104,7 +104,7 @@ final class AutopilotSealTests: XCTestCase {
 
         XCTAssertEqual(tree(), ["statement.pdf"], "a planted rule ran")
         XCTAssertTrue(helm.folders.isEmpty, "the engine handed the planted rules out")
-        XCTAssertTrue(helm.rulesRefused)
+        XCTAssertNotNil(helm.status.refusal)
     }
 
     /// The subtler edit: Helm's own rule set, with one rule's action changed in
@@ -120,7 +120,7 @@ final class AutopilotSealTests: XCTestCase {
         helm.sweepAll()
 
         XCTAssertEqual(tree(), ["statement.pdf"], "the edited rule ran")
-        XCTAssertTrue(helm.rulesRefused)
+        XCTAssertNotNil(helm.status.refusal)
     }
 
     /// And a seal cannot be moved onto a different rule set either: the MAC
@@ -151,7 +151,7 @@ final class AutopilotSealTests: XCTestCase {
 
         let helm = engine()
         XCTAssertEqual(helm.folders.map(\.id), ["planted"], "an existing rule set was destroyed")
-        XCTAssertFalse(helm.rulesRefused)
+        XCTAssertNil(helm.status.refusal)
         helm.sweepAll()
 
         XCTAssertEqual(tree(), [], "the person's own rules stopped working after the upgrade")
@@ -175,7 +175,7 @@ final class AutopilotSealTests: XCTestCase {
         helm.sweepAll()
 
         XCTAssertEqual(tree(), ["statement.pdf"], "deleting the seal re-armed the migration")
-        XCTAssertTrue(helm.rulesRefused)
+        XCTAssertNotNil(helm.status.refusal)
     }
 
     // MARK: - No key at all

@@ -96,8 +96,8 @@ enum UpdateSwap {
 /// disk cannot record that the disk was full.
 ///
 /// It holds the version the update was reaching for and nothing else. A path
-/// would name where somebody keeps their applications, and the log carries no
-/// names.
+/// would name where somebody keeps their applications, which a file that
+/// only resumes an update has no use for.
 enum UpdateHandoff {
 
     /// Beside the rest of Helm's durable state, so «Reset all settings» takes it

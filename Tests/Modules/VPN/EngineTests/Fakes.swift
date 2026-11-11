@@ -81,6 +81,23 @@ final class FakeRunner: VPNRunnerPort {
     private let hook = NSLock()
     private var _onRun: (@Sendable ([String]) -> Void)?
 
+    /// Every `start(_:supplying:)` the engine made, in order: the credentials
+    /// travel here and never through `issued`, which is the point.
+    var supplied: [(name: String, credentials: VPNCredentials)] = []
+    /// What the in-process start answers; the port's four states and no more.
+    var startAnswer: VPNStartAnswer = .started
+
+    func start(_ name: String, supplying credentials: VPNCredentials) -> VPNStartAnswer {
+        supplied.append((name, credentials))
+        return startAnswer
+    }
+
+    /// A query answers as a command does: this fake never runs out of time.
+    /// A read that does is scripted in `AHungScutilDoesNotParkTheModuleTests`.
+    func read(_ args: [String], timeout: TimeInterval) -> HelmProcess.Result {
+        run(args)
+    }
+
     func run(_ args: [String]) -> HelmProcess.Result {
         onRun?(args)
         issued.append(args)
@@ -117,12 +134,16 @@ final class FakeCreds: VPNCredentialsPort {
     var map: [String: VPNCredentials] = [:]
     /// Readable only where a prompt is allowed: the System keychain.
     var behindAPrompt: [String: VPNCredentials] = [:]
+    /// Names whose credential read failed: the tool answered nothing usable, so
+    /// nobody knows whether a secret is kept (`VPNCredentialRead.unreadable`).
+    var unreadable: Set<String> = []
     /// Every ask, so a test can see that nothing was asked at all — which is a
     /// different fact from any of the three answers.
     private(set) var asks: [(name: String, promptingAllowed: Bool)] = []
 
     func credentials(for name: String, promptingAllowed: Bool) -> VPNCredentialRead {
         asks.append((name, promptingAllowed))
+        if unreadable.contains(name) { return .unreadable }
         if let cached = map[name] { return answer(cached) }
         guard let stored = behindAPrompt[name] else {
             // Neither tier has anything: the configuration keeps no secret Helm

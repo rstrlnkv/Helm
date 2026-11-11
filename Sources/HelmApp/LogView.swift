@@ -4,6 +4,7 @@
 import SwiftUI
 import HelmRuntime
 import HelmUI
+import HelmAppStrings
 
 /// The log, while it is being written — a card for each launch of the app.
 ///
@@ -31,14 +32,14 @@ import HelmUI
 /// report a problem was not the one named after it.
 ///
 /// **The controls are the window's, not the page's.** Level, module, search,
-/// Follow, Copy and the rest live in the window's toolbar like every other
-/// page's (`toolbarContent`); the page is the cards and a footer. The permanent
+/// Follow, Copy and the rest live in the header row of the card like every other
+/// page's (`toolbarContent`, drawn by `helmCardHeader`); the page is the cards and a footer. The permanent
 /// band that held the writing switch is gone — the switch is one line in the
 /// «More actions» menu, which is as often as anyone needs it.
 struct LogView: View {
-    /// Set by the settings window, where the page's header lives in the
-    /// window's toolbar instead of in this stack.
-    @Environment(\.helmPageBar) private var pageBar
+    /// Set by the settings window, where the page's header is the card's row
+    /// (`helmCardHeader`) instead of one in this stack.
+    @Environment(\.helmHeaderInCard) private var inCard
 
     /// The Settings page's tabs, when the page is shown as one of them. They
     /// take the bar's one switcher slot, and the level filter that stands there
@@ -76,7 +77,7 @@ struct LogView: View {
 
     /// Read once per body: the split, the filters and the folds are one pass
     /// over at most a thousand lines, and every part of the page below — the
-    /// cards, the toolbar's Copy, the footer, the Follow key — must see the
+    /// cards, the header row's Copy, the footer, the Follow key — must see the
     /// same one.
     private var presented: LogPresentation {
         LogPresentation.build(entries, minimumLevel: minimumLevel, categories: chosen, query: query)
@@ -101,10 +102,10 @@ struct LogView: View {
             // header caps at `HelmLayout.settingsColumn` and centres, which put
             // its icon at x = 53 against the rows' x = 21 on this pane.
             //
-            // In the settings window the header is in the window's toolbar
-            // (`PageBarStyle`), and this row is not drawn at all.
-            if pageBar == nil {
-                HelmPageHeader(symbol: "text.alignleft", tint: .gray,
+            // In the settings window the header is the card's row
+            // (`helmCardHeader`), and this row is not drawn at all.
+            if !inCard {
+                HelmPageHeader(symbol: "text.alignleft", tint: ModuleTint.hostColour,
                                title: AppStr.logPane,
                                bleeds: true, standsOnStillContent: true)
             }
@@ -117,18 +118,16 @@ struct LogView: View {
         // scroll and always will — not because it has no scroll view, which it
         // does, in `lines`, but because `helmPageBar` is applied here, to the
         // outer `VStack(spacing: 0)`, with that scroll view several levels
-        // inside it. The five pages that rely on the scroll trigger hand their
-        // own `Form` straight to `helmPageHeader` instead, where the closure
+        // inside it. The pages that rely on the scroll trigger hand their own
+        // scrolling content straight to `helmPageHeader` instead, where the closure
         // fires. So before this the band was structurally incapable of
         // lighting: nothing above it against the `Divider()`s below. The header
         // in the row takes the fact as an argument because it is right here;
-        // the header in the window's toolbar is drawn by `helmToolbarBackdrop`
-        // a window away, and a preference is how it hears.
+        // the card's row is drawn at the pane's root, a view away, and a preference is how it hears.
         .helmPageStandsOnStillContent()
         .helmPageBar(title: AppStr.settingsPane)
-        // The token is the page's own key, the one `SettingsToolbar`'s `pageKey`
-        // answers for `.log`. Declared unconditionally: this page's shape never changes.
-        .helmWindowToolbar(toolbarContent(page), token: "log")
+        // Declared unconditionally: this page's shape never changes.
+        .helmWindowToolbar(toolbarContent(page))
         .onAppear {
             refresh()
             // One second: the log is read, not animated, and a person watching
@@ -144,31 +143,37 @@ struct LogView: View {
         }
     }
 
-    // MARK: - The window's toolbar
+    // MARK: - The header row's controls
 
-    /// The three levels by id. One declaration, so the toolbar's segments, the
+    /// The three levels by id. One declaration, so the header row's segments, the
     /// level menu's items and the filter they set cannot disagree.
-    private static var levelTabs: [(id: String, level: LogLevel, title: String, symbol: String)] {
-        [("all", .info, AppStr.logLevelAll, "list.bullet"),
-         ("warn", .warn, AppStr.logLevelWarnings, "exclamationmark.triangle"),
-         ("error", .error, AppStr.logLevelErrors, "xmark.octagon")]
+    private static var levelTabs: [(id: String, level: LogLevel, title: String)] {
+        [("all", .info, AppStr.logLevelAll),
+         ("warn", .warn, AppStr.logLevelWarnings),
+         ("error", .error, AppStr.logLevelErrors)]
     }
 
     /// The level in force, as one of the three.
-    private var levelInForce: (id: String, level: LogLevel, title: String, symbol: String) {
+    private var levelInForce: (id: String, level: LogLevel, title: String) {
         Self.levelTabs.first { $0.level == minimumLevel } ?? Self.levelTabs[0]
     }
 
-    /// **What the page asks of the window's toolbar**, in one place:
+    /// **The widest run of the three settings pages: Log's** — the level, the module filter, Follow, Copy, «More
+    /// actions», and the search. The window hands it to General, About and Log as `reserves` (Log carries the
+    /// window's value on, below), so the tab strip stands in one place on all three. A sixth action here widens Log's run alone and
+    /// shows at once as the strip moving, until this count says it.
+    static let trailingRun = HelmTrailingRun(actions: 5, search: true)
+
+    /// **What the page asks of the header row**, in one place:
     /// `levelToolbarContent` as it stands when no tabs were handed; with
-    /// `settingsTabs`, those tabs centred and the level as the first action of
-    /// the capsule.
+    /// `settingsTabs`, those tabs and the level as the first action.
     private func toolbarContent(_ page: LogPresentation) -> HelmPageToolbarContent {
         var content = levelToolbarContent(page)
         guard let settingsTabs else { return content }
         content.tabs = settingsTabs.tabs
         content.selectedTab = settingsTabs.selectedTab
         content.actions.insert(levelAction, at: 0)
+        content.reserves = settingsTabs.reserves
         return content
     }
 
@@ -185,7 +190,7 @@ struct LogView: View {
             })
     }
 
-    /// The level as the centred tabs, then the capsule — module filter, Follow,
+    /// The level as the tabs, then the actions — module filter, Follow,
     /// Copy and the «More actions» menu — and the search.
     ///
     /// Follow is a toggle with a face: its state is its glyph (an open eye when
@@ -196,7 +201,7 @@ struct LogView: View {
     /// doing is the accessibility value.
     private func levelToolbarContent(_ page: LogPresentation) -> HelmPageToolbarContent {
         HelmPageToolbarContent(
-            tabs: Self.levelTabs.map { HelmToolbarTab(id: $0.id, title: $0.title, symbol: $0.symbol) },
+            tabs: Self.levelTabs.map { HelmToolbarTab(id: $0.id, title: $0.title) },
             selectedTab: Binding(
                 get: { levelInForce.id },
                 set: { id in minimumLevel = Self.levelTabs.first { $0.id == id }?.level ?? .info }),
@@ -536,7 +541,7 @@ struct LogView: View {
     }
 
     /// The launch's time and version, and its errors and warnings as badges.
-    /// Two arrangements, the way the toolbar's own rows fold: on one line where
+    /// Two arrangements: on one line where
     /// the pane has the room, and the badges on a line of their own where a
     /// longer language does not.
     private func cardHeader(_ card: LogPresentation.Card) -> some View {
@@ -593,7 +598,7 @@ struct LogView: View {
             HStack(spacing: HelmSpace.s4) {
                 Image(systemName: open ? "chevron.down" : "chevron.right")
                     .font(HelmText.rowDetail.weight(.semibold))
-                    .frame(width: 14)
+                    .frame(width: HelmLayout.markColumn)
                     .accessibilityHidden(true)
                 Text(AppStr.logStartup(lines))
                     .font(HelmText.rowDetail)
@@ -751,7 +756,7 @@ struct LogRowView: View, Equatable {
             Image(systemName: glyph(for: entry.level) ?? "circle")
                 .foregroundStyle(signal ?? .clear)
                 .font(HelmText.rowDetail)
-                .frame(width: 14)
+                .frame(width: HelmLayout.markColumn)
                 .opacity(signal == nil ? 0 : 1)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
@@ -776,18 +781,18 @@ struct LogRowView: View, Equatable {
             }
             Spacer(minLength: 0)
             if row.repeats > 1 {
-                HelmBadge("×\(Count(row.repeats))", tint: signal ?? .secondary)
+                HelmBadge("×\(Count(row.repeats))", tint: signal ?? HelmBadge.neutralTint)
                     .help(Self.repeatedUntilNote(row))
             }
         }
-        .padding(.vertical, 3)
+        .padding(.vertical, HelmSpace.s1)
         .padding(.horizontal, HelmSpace.s5)
         // The wash fills the row and reaches its edges; nothing stands at the
         // left edge in a colour of its own (the owner took the direction without
         // the bar: the fill says it, the glyph says it, and the bar was a third,
         // louder voice down every warning card).
         .background {
-            if let signal { signal.opacity(0.06) }
+            if let signal { signal.opacity(HelmSurface.rowWashOpacity) }
         }
         .accessibilityElement(children: .combine)
         // The row's marks of severity are a wash and a glyph, and a combined

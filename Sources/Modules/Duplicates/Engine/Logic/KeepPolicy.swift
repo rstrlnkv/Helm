@@ -3,22 +3,20 @@ import HelmRuntime
 
 /// What the person believes an extra copy *is*.
 ///
-/// The module used to hold one belief and never say so: the oldest copy is the
-/// original. Measured on a live engine — a file downloaded into `~/Downloads`
-/// and then filed into `~/Pictures` came back with the download as the copy
-/// that stays, so Helm offered to delete the one somebody had deliberately put
-/// away. The rule was not the tiebreak's fault: on APFS two copies never share
+/// «The oldest copy is the original» is a belief, and it is said here. Held in
+/// silence it is wrong: measured on a live engine, a file downloaded into
+/// `~/Downloads` and then filed into `~/Pictures` comes back with the download
+/// as the copy that stays, so Helm offers to delete the one somebody has
+/// deliberately put away. No tiebreak mends it: on APFS two copies never share
 /// a date added (0,29 ms apart on parallel `cp`), so the rungs below the date
-/// were never reached and «the original» meant «whoever got to a folder first».
+/// are never reached and «the original» means «whoever got to a folder first».
 ///
 /// Two beliefs, and no third «as it was»: an order nobody chose is not a policy,
-/// it is the state this repair exists to end.
+/// it is the state this type exists to end.
 ///
 /// **The raw values are stored data.** They reach `com.helm.app.plist` and are
 /// sealed there, so renaming one silently reverts somebody's setting to the
-/// default — `KeepPolicyTests` records the two that shipped. Public because the
-/// spelling crosses the transport in `DuplicateSearchRequest`, and a wire value
-/// spelled a second time in the UI is a name only one side can change.
+/// default — `KeepPolicyTests` records the two that shipped.
 public enum KeepPolicy: String, CaseIterable, Sendable {
 
     /// Where the copy sits decides. Downloads, the Desktop and the drop box are
@@ -82,7 +80,7 @@ public enum KeepReason: String, Sendable {
     /// act is deletion: the copy it cannot date is the copy it must not offer for
     /// the Trash. Read the other way round — a blank date as a loss — one such
     /// copy on an external volume was ticked in every group it appeared in, which
-    /// is the defect `SurvivingCopyTests` records.
+    /// is the defect `KeepPolicyTests` records.
     ///
     /// A rung of its own rather than a `nil` folded into `.date`, for two reasons
     /// that are one: a rung that is silent about some pairs and not others is not
@@ -194,7 +192,7 @@ public struct KeepRule: Sendable {
     }
 }
 
-/// What the ordering needs of a copy, whichever side of the transport it is on.
+/// What the ordering needs of a copy, whichever side of the target boundary it is on.
 ///
 /// `FileFacts` is what the walk collects and `DuplicateGroup.Copy` is what the
 /// screen holds — and the screen re-decides which copy stays whenever the policy

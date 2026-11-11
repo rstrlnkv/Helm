@@ -6,10 +6,10 @@ import HelmRuntime
 ///
 /// `SettingsKeysAreSpelledOnceTests` proves each key is written and read under
 /// its own name, and that a jiggle interval below a minute is clamped. The
-/// reason that clamp exists is stated in the source — "the stepper cannot offer
+/// reason that clamp exists is stated in the source — "the menu cannot offer
 /// less than a minute, and a plist can say anything" — and it is the whole of
 /// this file's premise: `~/Library/Preferences` is not a trusted input, a
-/// stepper's range is not a guarantee about what is on disk, and a value that
+/// menu's range is not a guarantee about what is on disk, and a value that
 /// arrives from there is arithmetic the module is about to do.
 ///
 /// The module whose worst failure is a Mac that will not sleep is where that
@@ -73,7 +73,7 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
     }
 
     /// The weakest of the three: the battery floor was unclamped in both
-    /// directions. The stepper offers 5…50; a stored 0 or
+    /// directions. The slider offers 5…50; a stored 0 or
     /// a negative leaves `percent <= threshold` unable to fire, which switches
     /// off the only thing that ever ends an unattended session — while the
     /// screen still draws the guard as on. A stored 101 ends every session on
@@ -89,8 +89,8 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
         }
     }
 
-    /// What must keep working once the ceilings go in: the ordinary values the
-    /// two steppers can actually produce come back untouched. A clamp that ate
+    /// What must keep working once the ceilings go in: the ordinary values
+    /// come back untouched. A clamp that ate
     /// a real answer would be the same defect wearing the other sign.
     func testTheValuesTheStepperCanProduceComeBackUnchanged() {
         for minutes in [1, 5, 30, 60] {
@@ -243,7 +243,7 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
                         displayInfo: FakeDisplayInfo(),
                         displayObserver: FakeDisplayObserver(),
                         power: FakePower(), apps: FakeApps(),
-                        pointer: FakePointer(), clamshell: FakeClamshell(), clock: FakeClock())
+                        pointer: FakePointer(), clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
     // MARK: - Reading never writes

@@ -60,7 +60,7 @@ final class TheRoutingFlagIsNotFrozenTests: XCTestCase {
     /// **The store answers nil**, which is the state the connection's own flag
     /// is consulted for. Every port named.
     private func engine(_ runner: FakeRunner)
-        -> (engine: VPNEngine, transport: LocalTransport) {
+        -> (engine: VPNEngine, news: EngineNews<VPNEngine.StatePayload>) {
         let interfaces = FakeInterfaces()
         interfaces.primary = nil
         interfaces.counters = ["utun4": (in: 1_000, out: 2_000)]
@@ -69,17 +69,17 @@ final class TheRoutingFlagIsNotFrozenTests: XCTestCase {
         // (`TheTestQueueIsAsSerialAsTheRealOneTests`).
         let exit = FakeExit()
         exit.hangs = true
-        let transport = LocalTransport()
+        let news = EngineNews<VPNEngine.StatePayload>()
         let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
                                     namespace: "vpn", backing: InMemoryKeyValueStore())),
-                               runner: runner, apps: FakeApps(), transport: transport,
+                               runner: runner, apps: FakeApps(), news: news,
                                interfaces: interfaces, exit: exit, speed: FakeSpeed(),
                                work: .inline)
-        return (engine, transport)
+        return (engine, news)
     }
 
-    private func verdict(on transport: LocalTransport) async -> VPNExitVerdict? {
-        await lastState(on: transport)?.tunnels.first?.exit
+    private func verdict(on news: EngineNews<VPNEngine.StatePayload>) async -> VPNExitVerdict? {
+        await lastState(on: news)?.tunnels.first?.exit
     }
 
     /// The control. A tunnel whose first reading says it holds the route is read
@@ -89,11 +89,11 @@ final class TheRoutingFlagIsNotFrozenTests: XCTestCase {
         let runner = FakeRunner()
         runner.listOutput = list
         runner.statusOutput["work"] = status(primary: true)
-        let (engine, transport) = self.engine(runner)
+        let (engine, news) = self.engine(runner)
         defer { engine.deactivate() }
 
         engine.refresh()
-        let seen = await verdict(on: transport)
+        let seen = await verdict(on: news)
         XCTAssertEqual(seen, .throughTunnel(countryCode: nil),
                        "precondition: the tool's own routing flag is not read at all")
     }
@@ -107,11 +107,11 @@ final class TheRoutingFlagIsNotFrozenTests: XCTestCase {
         let runner = FakeRunner()
         runner.listOutput = list
         runner.statusOutput["work"] = status(primary: false)
-        let (engine, transport) = self.engine(runner)
+        let (engine, news) = self.engine(runner)
         defer { engine.deactivate() }
 
         engine.refresh()
-        let seen = await verdict(on: transport)
+        let seen = await verdict(on: news)
         XCTAssertEqual(seen, .besideTunnel,
                        "precondition: the first reading was not the one this test starts from")
 
@@ -120,7 +120,7 @@ final class TheRoutingFlagIsNotFrozenTests: XCTestCase {
         engine.refresh()
         engine.refresh()
 
-        let seenAgain = await verdict(on: transport)
+        let seenAgain = await verdict(on: news)
         XCTAssertEqual(seenAgain, .throughTunnel(countryCode: nil), """
             the tunnel took the default route and the page went on saying the \
             traffic goes around it, because the reading was cached at the one \
@@ -139,11 +139,11 @@ final class TheRoutingFlagIsNotFrozenTests: XCTestCase {
         let runner = FakeRunner()
         runner.listOutput = list
         runner.statusOutput["work"] = status(primary: true)
-        let (engine, transport) = self.engine(runner)
+        let (engine, news) = self.engine(runner)
         defer { engine.deactivate() }
 
         engine.refresh()
-        let seen = await verdict(on: transport)
+        let seen = await verdict(on: news)
         XCTAssertEqual(seen, .throughTunnel(countryCode: nil),
                        "precondition: the first reading was not the one this test starts from")
 
@@ -151,9 +151,9 @@ final class TheRoutingFlagIsNotFrozenTests: XCTestCase {
         engine.refresh()
         engine.refresh()
 
-        let seenAgain = await verdict(on: transport)
+        let seenAgain = await verdict(on: news)
         XCTAssertEqual(seenAgain, .besideTunnel, """
-            the default route left the tunnel and the page kept the green tick: \
+            the default route left the tunnel and the page kept the green dot: \
             the routing flag was cached with the interface at the first status \
             read and the tool is never asked again while the tunnel is up, so \
             the one sentence this feature exists to get right is a reassurance \

@@ -4,11 +4,8 @@ import HelmRuntime
 
 /// The sweep that turns "an app is in the Trash" into "here is what it left".
 ///
-/// One engine command rather than several, because `HelmApp` cannot import this
-/// target — it depends on the UI targets only, so that a direct edge is not a door
-/// past the transport into an engine's internals (Package.swift says so where
-/// HelmApp's dependencies are declared). The host triggers and draws; everything
-/// judged happens here.
+/// One engine call rather than several: the host reaches it only through the
+/// module's model (`UninstallerViewModel`), since `HelmApp` depends on no module's engine target (`Package.swift`, target `HelmApp`). The host triggers and draws; everything judged happens here.
 final class TrashSweepTests: XCTestCase {
 
     /// A lister that reports what is installed and what is in the Trash

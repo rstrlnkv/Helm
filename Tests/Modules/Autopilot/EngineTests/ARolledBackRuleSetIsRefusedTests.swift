@@ -120,7 +120,7 @@ final class ARolledBackRuleSetIsRefusedTests: XCTestCase {
 
         XCTAssertEqual(tree(), [leaf], "the rule the person deleted ran")
         XCTAssertTrue(helm.folders.isEmpty, "the engine handed the old rules out")
-        XCTAssertTrue(helm.rulesRefused, "nothing said the rules on disk are not the person's")
+        XCTAssertNotNil(helm.status.refusal, "nothing said the rules on disk are not the person's")
     }
 
     /// And the number beside the payload cannot be raised to clear the mark: it
@@ -137,7 +137,7 @@ final class ARolledBackRuleSetIsRefusedTests: XCTestCase {
         helm.sweepAll()
 
         XCTAssertEqual(tree(), [leaf])
-        XCTAssertTrue(helm.rulesRefused)
+        XCTAssertNotNil(helm.status.refusal)
     }
 
     /// A refused rule set is not overwritten, whichever refusal it is — the
@@ -173,7 +173,7 @@ final class ARolledBackRuleSetIsRefusedTests: XCTestCase {
         keys = TestRuleKey(established: true)
 
         let helm = engine()
-        XCTAssertFalse(helm.rulesRefused, "the rules of everyone upgrading were refused")
+        XCTAssertNil(helm.status.refusal, "the rules of everyone upgrading were refused")
         helm.sweepAll()
 
         XCTAssertEqual(tree(), [], "the person's own rules stopped working after the upgrade")
@@ -195,7 +195,7 @@ final class ARolledBackRuleSetIsRefusedTests: XCTestCase {
 
         XCTAssertEqual(tree(), [leaf])
         XCTAssertTrue(deaf.folders.isEmpty)
-        XCTAssertEqual(deaf.refusal, .noKey)
+        XCTAssertEqual(deaf.status.refusal, .noKey)
     }
 
     /// Every save moves the mark, which is what makes the number a count of
@@ -225,7 +225,7 @@ final class ARolledBackRuleSetIsRefusedTests: XCTestCase {
         helm.folders = emptyingRules()
 
         XCTAssertEqual(helm.folders.first?.rules.count, 1, "the save was refused")
-        XCTAssertFalse(helm.rulesRefused)
+        XCTAssertNil(helm.status.refusal)
         helm.sweepAll()
         XCTAssertEqual(tree(), [], "the rules the person just saved did not run")
     }

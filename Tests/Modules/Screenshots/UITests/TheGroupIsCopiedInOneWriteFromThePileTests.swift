@@ -52,7 +52,7 @@ final class TheGroupIsCopiedInOneWriteFromThePileTests: XCTestCase {
 }
 
 /// **The pile's Copy All, pressed as the capsule presses it, puts every finished shot of the window on the clipboard in
-/// one write, in the list's order, or tells why it did not and puts none.** The controller, the toast and the session
+/// one write, in the list's order; a board that refuses is told and gets none, a file that is gone is left out and named.** The controller, the toast and the session
 /// are the app's own, over real files; the board counts a write a call. What the engine does with a list is
 /// `TheGroupIsCopiedInOneWriteTests`; read here are the shots the toast hands it (the finished ones, the held and the
 /// written, oldest first, at most twenty), what the person is told, and what the window is after.
@@ -138,23 +138,9 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(s.board.lists.first).count, 1)
     }
 
-    // MARK: Told, and nothing on the board
+    // MARK: The board refuses
 
-    func testAFileThatIsGoneIsToldAndTheBoardGetsNoneOfTheGroupAndTheShotsAreBackAfterThePlaque() async throws {
-        let s = try scene()
-        let shots = [try await s.take(width: 400), try await s.take(width: 420), try await s.take(width: 440)]
-        try FileManager.default.removeItem(at: try XCTUnwrap(shots[1].file))
-        s.toast.model.copyAll()
-        await waitUntil("the person was told") { s.toast.model.refusal != nil }
-        XCTAssertEqual(refusalBody(s), ScStr.refusal(.encoding))
-        XCTAssertEqual(s.board.lists.count, 0, "a group of two of the three was written")
-        XCTAssertEqual(s.toast.model.shots.count, 3, "the plaque took the group with it")
-        XCTAssertFalse(s.toast.advance(by: 8.5))
-        XCTAssertFalse(s.toast.advance(by: 0.5))
-        XCTAssertNil(s.toast.model.refusal)
-        XCTAssertTrue(s.toast.model.isPile)
-        XCTAssertEqual(s.toast.sources().count, 3)
-    }
+    // A file that is gone is left out and named, and the rest is on the board in one write, not refused: `AShotWhoseFileIsGoneIsNamedAndTheRestIsCopiedTests`.
 
     func testABoardThatRefusesIsToldAndANewTryAfterItWritesTheWholeGroup() async throws {
         let s = try scene()
@@ -209,13 +195,13 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
         XCTAssertFalse(model.othersDragged(with: third.id).isEmpty)
         s.toast.showRefusal(.pasteboard)
         XCTAssertTrue(model.othersDragged(with: third.id).isEmpty, "a drag from under a plaque carried the group")
-        XCTAssertNil(model.dragPayload)
+        XCTAssertNil(model.current.flatMap { model.drag(of: $0) })
     }
 
     func testASingleShotsDragCarriesNothingBesideIt() async throws {
         let s = try scene()
         let only = try await s.take(width: 400)
         XCTAssertTrue(s.toast.model.othersDragged(with: only.id).isEmpty)
-        XCTAssertNotNil(s.toast.model.dragPayload)
+        XCTAssertNotNil(s.toast.model.current.flatMap { s.toast.model.drag(of: $0) })
     }
 }

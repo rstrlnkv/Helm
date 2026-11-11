@@ -16,7 +16,7 @@ import Foundation
 /// and this type takes paths that have already passed it.
 ///
 /// Every batch removal in the app comes through here — `grep -rn
-/// 'HelmTrash.remove' Sources` says which, and a number written down in this
+/// 'HelmTrash.remove(' Sources` says which, and a number written down in this
 /// paragraph would not. Some pass `trashing`: the move itself, which the
 /// uninstaller takes as a port so its tests can run without a filesystem. The seam was declined once, on the grounds that it
 /// changed this for every caller to serve one; what the copy it left in place
@@ -25,9 +25,10 @@ import Foundation
 /// link's bytes counted once per name, and a batch whose order decided its own
 /// answer.
 ///
-/// `RuleRunner` is the one path still outside, and it is a different shape: one
-/// file at a time inside a rule it has already decided, with no batch for any of
-/// the rules here to be about.
+/// `removeOne` is the other entry: one file at a time inside a rule the caller
+/// has already decided, with no batch for the rules above to be about. It
+/// answers with where the file landed, and shares the batch's classification of
+/// a refusal; its recheck is the stricter one, see `removeOne`.
 public enum HelmTrash {
 
     /// What happened to one path.
@@ -55,6 +56,125 @@ public enum HelmTrash {
         public var failed: [String] { refused.map(\.path) }
     }
 
+    /// The move as macOS makes it: what an engine passes as `trashing` in the app, and what a test replaces.
+    public static let moveToTrash: @Sendable (URL) throws -> Void = {
+        _ = try moveToTrashSayingWhere($0)
+    }
+
+    /// The same move, answering where the Trash put the file. The Trash renames
+    /// what it takes when the name is occupied, so the path the file had is not a
+    /// path anything is at. Nil when macOS took it and would not say.
+    public static let moveToTrashSayingWhere: @Sendable (URL) throws -> URL? = {
+        var landed: NSURL?
+        try FileManager.default.trashItem(at: $0, resultingItemURL: &landed)
+        return landed as URL?
+    }
+
+    /// One file's answer: a sum, so a path cannot be neither or both.
+    public enum OneFile: Equatable, Sendable {
+        /// In the Trash. Nil when macOS took it and would not say where.
+        case trashed(at: URL?)
+        /// Still where it stood. `said` is the system's sentence; nil when Helm
+        /// itself stopped and nothing was attempted.
+        case refused(Refusal, said: String?)
+    }
+
+    /// `path` has passed the caller's gate; `approved` is what its parents resolved
+    /// to when it did. Compared strictly: unlike a batch, no earlier turn can have
+    /// taken the parent, so a parent gone is a change.
+    ///
+    /// No phase, no memory line and no log of its own: a sweep trashes file by
+    /// file, so a reading per file would flood the trail, and the caller records
+    /// each outcome. No ledger either, nobody reads bytes here.
+    ///
+    /// `trashing` throws the way `FileManager` does and **leaves the item gone**:
+    /// a return with the item still standing is refused (`moveChecked`).
+    public static func removeOne(_ path: String,
+                                 approved: PathCanonical.AncestryIdentity?,
+                                 ancestry: (String) -> PathCanonical.AncestryIdentity?,
+                                 trashing: (URL) throws -> URL?) -> OneFile {
+        // Built before the recheck, which is the last thing before the move.
+        let url = URL(fileURLWithPath: path)
+        guard ancestry(path) == approved else {
+            return .refused(Refusal(path: path, reason: .changedSinceScan), said: nil)
+        }
+        do {
+            return .trashed(at: try moveChecked(path) { try trashing(url) })
+        } catch {
+            return .refused(refusal(of: error, path: path, hasSystemExtension: false),
+                            said: HelmFailure.describe(error))
+        }
+    }
+
+    /// What `lstat` says stands at a path. Three answers, because two of them
+    /// were one nil: nothing there (`ENOENT`, or a parent that is no folder) and
+    /// «could not read» (`EACCES` and the rest) are different facts, and only the
+    /// first may go on to the move.
+    private enum Look: Equatable {
+        case nothing
+        case item(dev: UInt64, ino: UInt64)
+        case unreadable
+    }
+
+    private static func look(_ path: String) -> Look {
+        var st = stat()
+        guard lstat(path, &st) == 0 else {
+            return errno == ENOENT || errno == ENOTDIR ? .nothing : .unreadable
+        }
+        return .item(dev: UInt64(bitPattern: Int64(st.st_dev)), ino: UInt64(st.st_ino))
+    }
+
+    /// The two refusals Helm makes of its own around a move, as errors so both
+    /// entries classify them where they classify macOS's.
+    private static let guardDomain = "HelmTrash.guard"
+    private enum Guard: Int {
+        case unreadable = 1, stillInPlace
+
+        var error: NSError {
+            NSError(domain: HelmTrash.guardDomain, code: rawValue, userInfo: [
+                NSLocalizedDescriptionKey: self == .unreadable
+                    ? "the item could not be read at the moment of the move"
+                    : "reported moved, still in place",
+            ])
+        }
+    }
+
+    /// The one place a move is checked, for `remove` and `removeOne` alike.
+    ///
+    /// A move that did not throw is not a move that happened: a sealed or
+    /// system-protected place can answer success and leave the item. So the item
+    /// found at `path` is read before the move (by `lstat`, which does not follow
+    /// a final symlink, as `fileExists` would) and the path again after it; the
+    /// same device and inode still there is a refusal. A *different* file under
+    /// the name is what a caller's replacement put there, and is not.
+    ///
+    /// A path that cannot be read before the move is not attempted, and one that
+    /// cannot be read after it is not believed: both `.unreadable`, a false
+    /// refusal at worst. Nothing there before the move goes on to it, so macOS
+    /// gives the reason it always did.
+    private static func moveChecked<T>(_ path: String, _ move: () throws -> T) throws -> T {
+        let before = look(path)
+        if before == .unreadable { throw Guard.unreadable.error }
+        let result = try move()
+        guard case .item = before else { return result }
+        switch look(path) {
+        case before: throw Guard.stillInPlace.error
+        case .unreadable: throw Guard.unreadable.error
+        default: return result
+        }
+    }
+
+    /// What macOS's answer means for `path`; the one classification both entries use.
+    private static func refusal(of error: Error, path: String, hasSystemExtension: Bool) -> Refusal {
+        if (error as NSError).domain == guardDomain {
+            return Refusal(path: path, reason: (error as NSError).code == Guard.unreadable.rawValue
+                           ? .unreadable : .systemRefused)
+        }
+        return Refusal(path: path, reason: TrashFailure.reason(path: path,
+                                                        errorCode: (error as NSError).code,
+                                                        hasSystemExtension: hasSystemExtension))
+    }
+
     /// Trash `allowed`, and record `outOfScope` for everything the caller's own
     /// gate turned away — the refusal has to arrive with the rest of the batch
     /// or the count and the list disagree.
@@ -65,8 +185,10 @@ public enum HelmTrash {
     ///
     /// `trashing` is the move, and the only reason it is a parameter: a module
     /// that reaches the filesystem through a port has to be able to hand that
-    /// port over here rather than keep a second copy of this loop. It throws the
-    /// way `FileManager` does, because what this does with a failure is read its
+    /// port over here rather than keep a second copy of this loop. It **leaves the
+    /// item gone**: a return with the same item still standing is refused
+    /// (`moveChecked`), as is a path unreadable before the move. It throws the way
+    /// `FileManager` does, because what this does with a failure is read its
     /// `NSError` code — a port that reports an outcome instead wraps it back up.
     ///
     /// `ancestry` names the directory each path's parent chain resolves to. It is
@@ -105,10 +227,7 @@ public enum HelmTrash {
                               ancestry: (String) -> PathCanonical.AncestryIdentity? = {
                                   PathCanonical.ancestryIdentity(of: $0)
                               },
-                              trashing: (URL) throws -> Void = {
-                                  try FileManager.default.trashItem(at: $0,
-                                                                    resultingItemURL: nil)
-                              })
+                              trashing: (URL) throws -> Void = HelmTrash.moveToTrash)
         -> Result {
         // One phase for every deleting module, named per module: only Disk
         // wrapped its call, and Disk was not the outlier, it was the one that got
@@ -185,7 +304,7 @@ public enum HelmTrash {
                 var slate = counted
                 // Read before the move: afterwards the URL points at nothing.
                 let size = FileWeight.reclaimed(of: url, charging: &slate)
-                // Read the ancestry again, now, against what the gate approved. A
+                // Read the ancestry again, now, against the batch's reference. A
                 // swapped symlink lands on a *different existing* directory object, so
                 // a redirected subtree stops here rather than in someone's Documents.
                 //
@@ -193,9 +312,9 @@ public enum HelmTrash {
                 // which is the went-with-its-parent case one folder up in this same
                 // batch (the `NSFileNoSuchFileError` branch below owns that), never a
                 // redirection — trashing a path whose parent has vanished moves
-                // nothing. A parent that appeared where the gate saw none, or moved to
-                // another object, is the change that matters, and both differ from the
-                // reference.
+                // nothing. A parent that appeared where the reference saw none, or moved
+                // to another object, is the change that matters, and both differ from
+                // the reference.
                 if let now = ancestry(path), now != approvedAncestry[index] {
                     refused.append(Refusal(path: path, reason: .changedSinceScan))
                     HelmLog.shared.warn(module,
@@ -203,7 +322,7 @@ public enum HelmTrash {
                     continue
                 }
                 do {
-                    try trashing(url)
+                    try moveChecked(path) { try trashing(url) }
                     removed.append(path)
                     // The one place the batch's ledger grows: what it has charged
                     // is exactly what it has taken.
@@ -225,10 +344,10 @@ public enum HelmTrash {
                     // told so.
                     removed.append(path)
                 } catch {
-                    let reason = TrashFailure.reason(path: path,
-                                                     errorCode: (error as NSError).code,
-                                                     hasSystemExtension: hasSystemExtension(path))
-                    refused.append(Refusal(path: path, reason: reason))
+                    let refusal = refusal(of: error, path: path,
+                                          hasSystemExtension: hasSystemExtension(path))
+                    let reason = refusal.reason
+                    refused.append(refusal)
                     // Composed here rather than through `HelmLog.failure`, which is the
                     // same line at the same level, because **the system's half of it
                     // names the file too**: `trashItem` refusing answers «The file
@@ -239,15 +358,17 @@ public enum HelmTrash {
                     // And for a module whose leaf names software, **not the system's
                     // sentence at all**: macOS quotes a bundle by its *display name*
                     // («“Hidden Title” couldn’t be moved…»), which is not the file's
-                    // name, and a name under four characters is never replaced inside
-                    // a sentence. The domain, the code and Helm's own classification
-                    // say everything the sentence did; the sentence itself reaches the
-                    // screen through the engine's own record of it.
+                    // name, so no replacement could find it. The domain, the code and
+                    // Helm's own classification quote no name, so the line carries
+                    // those and the system's sentence stays out of the log. The
+                    // sentence reaches a screen only through a caller's own record of
+                    // it: the Uninstaller keeps it per path (`saidByPath`) and shows
+                    // it; the Leftovers module keeps none (`Refusal` carries the
+                    // reason alone), so there it is shown nowhere.
                     let said = leaf == .softwareName
                         ? "\((error as NSError).domain) \((error as NSError).code), \(reason.rawValue)"
                         : HelmFailure.describe(error)
-                    HelmLog.shared.error(module, "trash refused \(Redact.path(path, leaf: leaf)): "
-                        + Redact.naming(said, software: path, leaf: leaf))
+                    HelmLog.shared.error(module, "trash refused \(Redact.path(path, leaf: leaf)): \(said)")
                 }
             }
 

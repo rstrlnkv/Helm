@@ -50,6 +50,11 @@ final class FakeDisplayInfo: DisplayInfoPort {
     func builtInFlags() -> [Bool] { flags }
 }
 
+final class FakeLidInfo: LidInfoPort {
+    var lid = true
+    func hasLid() -> Bool { lid }
+}
+
 final class FakeDisplayObserver: DisplayObserverPort {
     private var onChange: (@Sendable () -> Void)?
     func startObserving(_ onChange: @escaping @Sendable () -> Void) { self.onChange = onChange }

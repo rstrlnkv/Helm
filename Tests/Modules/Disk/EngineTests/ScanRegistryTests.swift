@@ -8,7 +8,7 @@ import HelmTestSupport
 /// The engine kept a single box and wrote it unconditionally: a scan starting
 /// replaced whatever was there, and a scan finishing set it to nil whether or
 /// not the thing it cleared was its own. Drilling into an unmeasured folder
-/// issues a second "scan" command while the first is still walking, so the
+/// starts a second scan while the first is still walking, so the
 /// order start-A, start-B, finish-B left the box empty with A still walking the
 /// volume — Stop did nothing, New scan did nothing, and switching the module
 /// off left the walk running and emitting.

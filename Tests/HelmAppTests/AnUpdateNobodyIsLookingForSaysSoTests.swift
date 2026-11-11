@@ -2,6 +2,7 @@ import HelmRuntime
 import HelmTestSupport
 import XCTest
 @testable import HelmApp
+import HelmAppStrings
 
 /// The other half of the update check.
 ///

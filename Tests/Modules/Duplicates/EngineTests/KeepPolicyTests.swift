@@ -224,4 +224,145 @@ final class KeepPolicyTests: XCTestCase {
         XCTAssertNil(SurvivingCopy.reason(among: [file("/only.jpg")], by: rule(.byPlace)))
         XCTAssertNil(SurvivingCopy.reason(among: [FileFacts](), by: rule(.byPlace)))
     }
+
+    // MARK: - Which copy stays: the order the policy hands back
+    //
+    // Which copy stays is the one decision in this module that costs something to
+    // get wrong: the rest are baskets in one click.
+    //
+    // It used to be the alphabetically first path, which is not a belief about
+    // anything — it just happened to be how the list was sorted for display. So
+    // `~/Desktop/photo.jpg` beat `~/Documents/Archive/2019/photo.jpg`, because D
+    // sorts before A, and Helm offered to delete the filed copy and keep the
+    // clutter. The page said so plainly, which only moved the work onto the reader.
+    //
+    // **What the policy owns and what this section owns.** The tests above cover
+    // the two ladders and the tier they rest on; these are the rungs each policy
+    // shares, exercised through `.standard`, plus the promises the ordering makes
+    // whatever the policy is — every copy comes back, none is invented, and the
+    // answer does not depend on the order the walk found them in.
+
+    private func sizedFile(_ path: String, added: Date? = nil, bytes: Int = 1_000) -> FileFacts {
+        FileFacts(path: path, bytes: bytes, fileID: UInt64(abs(path.hashValue)), added: added)
+    }
+    private let standardRule = KeepRule(.standard)
+
+    private func order(_ files: [FileFacts]) -> [String] {
+        SurvivingCopy.order(files, by: standardRule).map(\.path)
+    }
+
+    // MARK: - The older copy wins
+
+    func testTheOldestCopyStaysEvenWhenItsPathSortsLast() {
+        let ordered = order([
+            sizedFile("/Users/r/Pictures/photo.jpg", added: day(500)),
+            sizedFile("/Users/r/Documents/Archive/2019/photo.jpg", added: day(10)),
+        ])
+        XCTAssertEqual(ordered.first, "/Users/r/Documents/Archive/2019/photo.jpg",
+                       "the filed original stays; the later copy is the extra")
+    }
+
+    func testTheRestFollowInTheSameOrderSoTheListIsStable() {
+        let ordered = order([
+            sizedFile("/b.jpg", added: day(30)),
+            sizedFile("/a.jpg", added: day(10)),
+            sizedFile("/c.jpg", added: day(20)),
+        ])
+        XCTAssertEqual(ordered, ["/a.jpg", "/c.jpg", "/b.jpg"])
+    }
+
+    // MARK: - Then the shallower path
+
+    /// Same day, or a filesystem that reports the same second for a batch that
+    /// arrived together. Depth is the next thing that means something: a file
+    /// four folders down was put somewhere on purpose.
+    func testWithEqualDatesTheShallowerPathStays() {
+        let ordered = order([
+            sizedFile("/Users/r/Documents/Projects/2019/Old/photo.jpg", added: day(10)),
+            sizedFile("/Users/r/Documents/photo.jpg", added: day(10)),
+        ])
+        XCTAssertEqual(ordered.first, "/Users/r/Documents/photo.jpg")
+    }
+
+    func testWithEqualDatesAndDepthAlphabeticalDecides() {
+        let ordered = order([
+            sizedFile("/Users/r/b.jpg", added: day(10)),
+            sizedFile("/Users/r/a.jpg", added: day(10)),
+        ])
+        XCTAssertEqual(ordered.first, "/Users/r/a.jpg")
+    }
+
+    // MARK: - When the date is not there
+
+    /// **This test asserted the opposite twice, and the second time its fixture
+    /// could not tell.** It first read a blank date as a *loss* for the copy it
+    /// was missing from, so one blank settled a group outright and every rung
+    /// below — where the file sits, how deep it is — was never asked. It was then
+    /// rewritten as «silence settles nothing, the ladder carries on», and the
+    /// copy without a date was also the shallower one: green whether the missing
+    /// date decided or the depth below it did.
+    ///
+    /// Neither reading is the rule. `KeepReason.undated` is a rung of its own,
+    /// above the date it is missing from, and the copy nothing records the
+    /// arrival of is the copy that stays — because what this module does with the
+    /// rest is offer them for the Trash. Which rung answered is a separate
+    /// question from which copy stays, so it is asked separately: `reason` names
+    /// it, and it is what the group header says out loud.
+    func testAnUnknownDateIsARungOfItsOwnAndTheCopyItIsMissingFromStays() {
+        let copies = [sizedFile("/Users/r/Documents/Archive/z.jpg", added: day(400)),
+                      sizedFile("/Users/r/Documents/a.jpg")]
+
+        XCTAssertEqual(order(copies).first, "/Users/r/Documents/a.jpg",
+                       "the copy whose arrival nothing recorded is the one that stays")
+        XCTAssertEqual(SurvivingCopy.reason(among: copies, by: standardRule), .undated, """
+            and the rung that kept it is the missing date. This fixture's dateless copy \
+            is also its shallower one, so «which copy stays» is green here whichever of \
+            the two rungs decided — `.depth` would mean the group header says «kept: the \
+            shorter path» about a copy that stays for a different reason entirely, and \
+            `.date` would mean it says «arrived first» about a copy nothing on this Mac \
+            knows the arrival of.
+            """)
+    }
+
+    func testWithNoDatesAtAllTheShallowerPathStays() {
+        let ordered = order([
+            sizedFile("/Users/r/Documents/Projects/Old/photo.jpg"),
+            sizedFile("/Users/r/Documents/photo.jpg"),
+        ])
+        XCTAssertEqual(ordered.first, "/Users/r/Documents/photo.jpg")
+    }
+
+    // MARK: - It always answers
+
+    func testEveryPathSurvivesTheOrderingAndNoneIsInventedOrLost() {
+        let paths = ["/a/b/c.jpg", "/a/c.jpg", "/z.jpg", "/a/b/a.jpg"]
+        let ordered = order(paths.map { sizedFile($0, added: day(7)) })
+        XCTAssertEqual(Set(ordered), Set(paths))
+        XCTAssertEqual(ordered.count, paths.count)
+    }
+
+    /// Two files whose facts are identical in every way the rule reads must
+    /// still come back in one fixed order, or the row moves between scans.
+    func testTheOrderDoesNotDependOnTheInputOrder() {
+        let files = [sizedFile("/a/x.jpg", added: day(3)), sizedFile("/b/x.jpg", added: day(3))]
+        XCTAssertEqual(order(files), order(files.reversed()))
+    }
+
+    /// The copies come back whole, not as paths the caller has to look up again:
+    /// the size, the clone family and the date travel with each one.
+    func testTheOrderHandsBackTheCopiesThemselves() {
+        let ordered = SurvivingCopy.order([sizedFile("/late.jpg", added: day(9), bytes: 20),
+                                           sizedFile("/early.jpg", added: day(1), bytes: 10)],
+                                          by: standardRule)
+        XCTAssertEqual(ordered.map(\.bytes), [10, 20])
+        XCTAssertEqual(ordered.first?.added, day(1))
+    }
+
+    func testOneFileIsItsOwnSurvivor() {
+        XCTAssertEqual(order([sizedFile("/only.jpg")]), ["/only.jpg"])
+    }
+
+    func testNoFilesIsNoPaths() {
+        XCTAssertTrue(order([]).isEmpty)
+    }
 }

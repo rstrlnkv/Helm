@@ -133,7 +133,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
                                      locations: ScreenshotsLocations(home: home, desktop: desktop))
         let toast = ShotToastRig.toast(clock)
         let box = Box()
-        let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store, session: session,
+        let controller = CaptureController(store: store, session: session,
                                            presentOverlay: { overlay in box.count += 1; box.overlay = overlay; return overlay.build() },
                                            pins: PinBoard(present: { _ in }, screens: { [] }), toast: toast)
         controllers.append(controller)
@@ -247,8 +247,8 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         guard case .picture(_, let caption, let shown)? = s.toast.model.content else { return XCTFail("\(String(describing: s.toast.model.content))") }
         XCTAssertEqual(caption, ScStr.replaced)
         XCTAssertEqual(shown, original.url)
-        XCTAssertEqual(s.toast.model.reading, FileShotWriter().reading(of: original.url), "the thumbnail holds the file as it is now")
-        XCTAssertNotEqual(s.toast.model.reading, original.reading)
+        XCTAssertEqual(s.toast.model.current?.reading, FileShotWriter().reading(of: original.url), "the thumbnail holds the file as it is now")
+        XCTAssertNotEqual(s.toast.model.current?.reading, original.reading)
         XCTAssertFalse(s.controller.isBusy)
     }
 
@@ -384,6 +384,115 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         XCTAssertFalse(s.controller.isBusy)
     }
 
+    /// Empties the regions of this process's own address space that their owner has marked volatile (memory it has said
+    /// it can do without) and no other: it walks this task's regions, asks each for its purgeable state, and sets
+    /// EMPTY on those answering VOLATILE. Measured here: with the picture made from the file's path (before the
+    /// bytes were read at the opening), a file moved before this call could no longer be encoded after it.
+    ///
+    /// It allocates a purgeable region of its own, writes into it, marks it VOLATILE and asserts that the walk itself
+    /// emptied it. Whether ImageIO or CoreGraphics leave a volatile region of theirs at this point depends on the
+    /// system's caches (the earlier "emptied something" precondition failed on about one run in three), so the walk is
+    /// proven to run and to empty by a region that is certain to be there; the system's own volatile regions, when
+    /// present, are emptied by the same walk. The kernel itself may purge a volatile region before the walk reaches it
+    /// (measured: about one run in twenty); that attempt proves nothing and is made again with a fresh region, up to
+    /// `attempts` times. The region proves the walk, not the editor: whether the editor's decoded picture is ever
+    /// purgeable is the system's choice, and what the tests below prove is that the editor does not need a second
+    /// read of the file whichever regions the system took back.
+    private func emptyVolatileRegions(attempts: Int = 50) {
+        let length = mach_vm_size_t(getpagesize()) * 4
+        for _ in 0..<attempts {
+            var own: mach_vm_address_t = 0
+            guard mach_vm_allocate(mach_task_self_, &own, length, VM_FLAGS_ANYWHERE | VM_FLAGS_PURGABLE) == KERN_SUCCESS else {
+                return XCTFail("no purgeable region could be allocated")
+            }
+            defer { mach_vm_deallocate(mach_task_self_, own, length) }
+            UnsafeMutableRawPointer(bitPattern: UInt(own))?.storeBytes(of: 0x5A, as: UInt8.self)
+            var volatile: Int32 = VM_PURGABLE_VOLATILE
+            guard vm_purgable_control(mach_task_self_, vm_address_t(truncatingIfNeeded: own), VM_PURGABLE_SET_STATE, &volatile) == KERN_SUCCESS else {
+                return XCTFail("the region could not be marked volatile")
+            }
+            if emptyEveryVolatileRegion(watching: own) { return }
+        }
+        XCTFail("the walk never emptied the test's own volatile region in \(attempts) attempts")
+    }
+
+    /// One walk; true when the region at `own` was found VOLATILE and set EMPTY by it.
+    private func emptyEveryVolatileRegion(watching own: mach_vm_address_t) -> Bool {
+        var ownEmptied = false
+        var address: mach_vm_address_t = 0
+        while true {
+            var size: mach_vm_size_t = 0
+            var info = vm_region_basic_info_data_64_t()
+            var count = mach_msg_type_number_t(MemoryLayout<vm_region_basic_info_data_64_t>.size / MemoryLayout<Int32>.size)
+            var object: mach_port_t = 0
+            let found = withUnsafeMutablePointer(to: &info) {
+                $0.withMemoryRebound(to: Int32.self, capacity: Int(count)) {
+                    mach_vm_region(mach_task_self_, &address, &size, VM_REGION_BASIC_INFO_64, $0, &count, &object)
+                }
+            }
+            guard found == KERN_SUCCESS else { break }
+            var state: Int32 = 0
+            if vm_purgable_control(mach_task_self_, vm_address_t(truncatingIfNeeded: address), VM_PURGABLE_GET_STATE, &state) == KERN_SUCCESS,
+               state & VM_PURGABLE_STATE_MASK == VM_PURGABLE_VOLATILE {
+                var empty: Int32 = VM_PURGABLE_EMPTY
+                if vm_purgable_control(mach_task_self_, vm_address_t(truncatingIfNeeded: address), VM_PURGABLE_SET_STATE, &empty) == KERN_SUCCESS,
+                   address == own {
+                    // Read back: the call's success is not the state it left.
+                    var now: Int32 = 0
+                    ownEmptied = vm_purgable_control(mach_task_self_, vm_address_t(truncatingIfNeeded: address), VM_PURGABLE_GET_STATE, &now) == KERN_SUCCESS
+                        && now & VM_PURGABLE_STATE_MASK == VM_PURGABLE_EMPTY
+                }
+            }
+            address += size
+        }
+        return ownEmptied
+    }
+
+    /// The editor's picture is read from the shot's file, and the file is moved while it is open: the edit must come
+    /// out of what the editor holds, not of a second read of a path that no longer leads to the shot.
+    func testARenamedFileWithTheVolatileRegionsEmptiedStillGivesTheEditASeparateFile() async throws {
+        let s = try scene()
+        let original = try await take(s, width: 400, height: 300)
+        let overlay = try await openEditor(s)
+        try FileManager.default.moveItem(at: original.url, to: s.desktop.appendingPathComponent("mine.png"))
+        emptyVolatileRegions()
+        await finish(s, overlay)
+        let said = try XCTUnwrap(refusal(s), "no plaque: \(String(describing: s.toast.model.content))")
+        XCTAssertEqual(said.body, ScStr.refusal(.notReplaced(.changed)), "the edit could not be made from the picture the editor held")
+        XCTAssertEqual(names(s.desktop), ["mine.png", original.url.lastPathComponent].sorted(), "the edit was not saved")
+        XCTAssertEqual(s.trash.asked, [])
+        XCTAssertFalse(s.controller.isBusy)
+    }
+
+    /// With marks drawn the picture is drawn under them when the edit is made, and a picture that cannot be read
+    /// again draws nothing and says nothing: the file would hold the marks alone.
+    func testAnEditWithMarksOnARenamedFileWithTheVolatileRegionsEmptiedKeepsThePictureUnderThem() async throws {
+        let s = try scene()
+        let original = try await take(s, width: 400, height: 300)
+        let overlay = try await openEditor(s)
+        draw(overlay, on: s.display(of: overlay))
+        try FileManager.default.moveItem(at: original.url, to: s.desktop.appendingPathComponent("mine.png"))
+        emptyVolatileRegions()
+        await finish(s, overlay)
+        let saved = names(s.desktop).filter { $0 != "mine.png" }
+        XCTAssertEqual(saved.count, 1, "the edit was not saved: \(names(s.desktop))")
+        let edit = try XCTUnwrap(saved.first.flatMap { image(s.desktop.appendingPathComponent($0)) }, "the edit is no picture")
+        XCTAssertTrue(isPicture(rgb(edit, 3, 3)), "the saved edit lost the picture under its marks: \(rgb(edit, 3, 3)) for \(picture)")
+        XCTAssertEqual(s.trash.asked, [])
+    }
+
+    /// The control: the same emptying with the file left in place. The edit replaces the file, as it does without it, so
+    /// this separates the emptying from the move that the two tests above add to it.
+    func testTheSameEmptyingWithTheFileInPlaceStillReplacesIt() async throws {
+        let s = try scene()
+        let original = try await take(s, width: 400, height: 300)
+        let overlay = try await openEditor(s)
+        emptyVolatileRegions()
+        await finish(s, overlay)
+        XCTAssertEqual(s.trash.moved, [original.url])
+        XCTAssertEqual(names(s.desktop), [original.url.lastPathComponent])
+    }
+
     func testTheTrashRefusingIsToldWithItsReasonAndBothFilesStay() async throws {
         let s = try scene()
         let original = try await take(s, width: 400, height: 300)
@@ -420,7 +529,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         XCTAssertNil(refusal(s))
         guard case .picture(_, let caption, _)? = s.toast.model.content else { return XCTFail("\(String(describing: s.toast.model.content))") }
         XCTAssertEqual(caption, ScStr.replaced)
-        XCTAssertEqual(s.toast.model.reading, FileShotWriter().reading(of: original.url))
+        XCTAssertEqual(s.toast.model.current?.reading, FileShotWriter().reading(of: original.url))
         XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: s.trash.folder.path).count, 2)
     }
 
@@ -569,7 +678,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         let beside = s.desktop.appendingPathComponent(original.url.deletingPathExtension().lastPathComponent + " (1).png")
         XCTAssertEqual(file.path, beside.path, "the thumbnail's file is the edit, where it is")
         XCTAssertEqual(try Data(contentsOf: original.url), stranger, "the stranger was written over")
-        XCTAssertEqual(s.toast.model.reading, FileShotWriter().reading(of: beside), "the thumbnail holds the edit's own reading")
+        XCTAssertEqual(s.toast.model.current?.reading, FileShotWriter().reading(of: beside), "the thumbnail holds the edit's own reading")
         XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: s.trash.folder.path).count, 1, "the original is in the Trash")
 
         // A second Edit, from this thumbnail.

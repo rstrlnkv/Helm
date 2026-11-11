@@ -28,16 +28,21 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
                                  assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(), power: FakePower(),
                                  apps: FakeApps(), pointer: FakePointer(),
-                                 clamshell: clamshell, clock: FakeClock())
+                                 clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
-    /// The control: with no grant of any kind, the first session asks.
+    /// The control: with no grant of any kind, the person's gesture on the lid
+    /// switch asks for one (a Start press never does).
     @MainActor
-    func testWithNoGrantAtAllTheFirstSessionAsksForOne() async {
+    func testWithNoGrantAtAllTheLidSwitchGestureAsksForOne() async {
         clamshell.sudoersInstalled = false
         clamshell.passwordlessGrantExists = false
+        KeepAwakeSettings(store: store).setClamshellEnabled(false)
 
+        engine.activate()
         engine.startSession(minutes: 0)
+        engine.settingsChanged() // the option is seen off before the switch is turned
+        engine.lidSwitchTurned(true)
 
         // The grant question is `sudo -n`, asked off the drawing thread now.
         await waitUntil("the lid asked for the rule") { clamshell.installCalls == 1 }
@@ -71,7 +76,7 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
         clamshell.passwordlessGrantExists = true
         KeepAwakeSettings(store: store).setClamshellEnabled(false)
 
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
 
         // The withdrawal runs on the module's own queue, because a child
         // process must not run on the thread that draws.
@@ -94,7 +99,7 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
         clamshell.passwordlessGrantExists = false
         KeepAwakeSettings(store: store).setClamshellEnabled(false)
 
-        engine.settingsChangedForTests()
+        engine.settingsChanged()
 
         // Asserted after the removal really happened: an absence read before the
         // subject has run is green on any code whatever.

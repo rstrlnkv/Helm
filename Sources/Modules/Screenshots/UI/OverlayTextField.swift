@@ -20,6 +20,9 @@ final class OverlayTextField: NSTextView {
 
     /// The room between the outline and the text, in points; the frame is this much wider on each side than the line.
     static let padding: CGFloat = 3
+    /// What the line's width gains for the caret, and the least width an empty line has.
+    private static let caretRoom: CGFloat = 2
+    private static let emptyWidth: CGFloat = 24
 
     /// Where the line's top-left is, in the superview's own (bottom-left origin) points.
     private var anchor = CGPoint.zero
@@ -66,7 +69,30 @@ final class OverlayTextField: NSTextView {
         isGrammarCheckingEnabled = false
         wantsLayer = true
         layer?.borderWidth = 1
-        layer?.borderColor = NSColor.controlAccentColor.cgColor
+    }
+
+    /// The outline, from the overlay's one table: the accent; under Increase Contrast black outside and white inside it.
+    func outline(_ ink: OverlayInk) {
+        layer?.borderColor = ink.contrastEdgeUnder ?? ink.accent
+        edgeInside?.removeFromSuperlayer()
+        edgeInside = nil
+        guard let edge = ink.contrastEdge else { return }
+        // A sublayer with its actions nulled, since a stroke after `super.draw` is cut by the text view's clip, and a resize off the `setFrameSize`
+        // path would play an implicit action outside any `HelmMotion` curve.
+        let inside = CALayer()
+        inside.borderWidth = 1
+        inside.borderColor = edge
+        inside.actions = ["bounds": NSNull(), "position": NSNull()]
+        inside.frame = bounds.insetBy(dx: 1, dy: 1)
+        layer?.addSublayer(inside)
+        edgeInside = inside
+    }
+
+    private var edgeInside: CALayer?
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        edgeInside?.frame = bounds.insetBy(dx: 1, dy: 1)
     }
 
     @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
@@ -97,7 +123,7 @@ final class OverlayTextField: NSTextView {
         guard let manager = layoutManager, let container = textContainer, let font else { return }
         manager.ensureLayout(for: container)
         let line = manager.usedRect(for: container)
-        let width = max(line.width.rounded(.up) + 2, 24) + Self.padding * 2
+        let width = max(line.width.rounded(.up) + Self.caretRoom, Self.emptyWidth) + Self.padding * 2
         // The layer's own measure, so a line of a fallback font (Japanese, an emoji) is not clipped by the frame.
         let probe = Annotation(tool: .text, start: .zero, end: .zero, style: style, text: string.isEmpty ? " " : string)
         let height = max(AnnotationText.size(of: probe).height, manager.defaultLineHeight(for: font).rounded(.up)) + Self.padding * 2
@@ -138,7 +164,7 @@ final class OverlayTextField: NSTextView {
 
     override func keyDown(with event: NSEvent) {
         // Return, Enter and Esc, unless the input method is composing: then they are its own.
-        if !hasMarkedText(), [53, 36, 76].contains(event.keyCode) { onEnd(); return }
+        if !hasMarkedText(), [ShotKey.escape, ShotKey.returnKey, ShotKey.enter].contains(event.keyCode) { onEnd(); return }
         super.keyDown(with: event)
     }
 

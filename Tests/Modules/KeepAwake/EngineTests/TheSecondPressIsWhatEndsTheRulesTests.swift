@@ -45,7 +45,7 @@ final class TheSecondPressIsWhatEndsTheRulesTests: XCTestCase {
                         assertions: assertions, displayInfo: FakeDisplayInfo(),
                         displayObserver: FakeDisplayObserver(), power: FakePower(),
                         apps: apps, pointer: FakePointer(),
-                        clamshell: FakeClamshell(), clock: clock)
+                        clamshell: FakeClamshell(), clock: clock, lidInfo: FakeLidInfo())
     }
 
     private func timerEndsAutomation(_ on: Bool) {
@@ -206,7 +206,7 @@ final class TheSecondPressIsWhatEndsTheRulesTests: XCTestCase {
     }
 
     /// The one gesture that has to be able to undo itself is not a sequence:
-    /// ⌥⌘K and the panel's own switch read as on/off, and a switch that needed
+    /// The global shortcut and the panel's own switch read as on/off, and a switch that needed
     /// pressing twice to go off would spring back once in front of the reader.
     func testTheOneGestureToggleStaysAllOrNothing() {
         timerEndsAutomation(true)

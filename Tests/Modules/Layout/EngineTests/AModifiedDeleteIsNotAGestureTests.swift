@@ -8,8 +8,10 @@ import Carbon.HIToolbox
 /// asked «is a modifier held» before it looked at which key, so ⌘←, ⌥←, ⌘↑ and
 /// ⌥Delete all arrived as `.chord`. A chord is the one boundary that is *not*
 /// proof the caret moved — the head-inserted tap sees the recorded hotkey's own
-/// keys before Carbon dispatches the action, so `UndoRecord.soften()` forgives
-/// one and `movedTheCaret` is false, which means the word it ended is **stored**.
+/// keys before Carbon dispatches the action, so `UndoRecord.soften()` forgave
+/// one and `movedTheCaret` is false, which meant the word it ended was **stored**.
+/// Now only the chord on the recorded hotkey's key is forgiven; any other
+/// chord invalidates the undo and drops the stored word.
 ///
 /// What a person does: types `ghbdtn `, watches it become `привет `, presses
 /// ⌥Delete to take that word back out, and taps the bound key. What they got:

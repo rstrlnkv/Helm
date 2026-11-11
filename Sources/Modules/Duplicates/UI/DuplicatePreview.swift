@@ -22,16 +22,17 @@ enum DuplicatePreview {
 
 /// The preview itself, as a view rather than the shared panel.
 ///
-/// This replaced `QLPreviewPanel`. The panel is a singleton driven through the
-/// responder chain — something in the chain must answer
-/// `acceptsPreviewPanelControl` — and in this accessory app it never took
-/// control: Space and the context menu both called it and nothing appeared,
-/// on a real build, through both entry points. `QLPreviewView` is an ordinary
-/// `NSView` with none of that machinery, and a sheet needs no key-window
-/// politics. The design spec named this exact fallback before the panel was
-/// tried.
+/// Not `QLPreviewPanel`: the panel is a singleton driven through the responder
+/// chain — something in the chain must answer `acceptsPreviewPanelControl` —
+/// and in this accessory app it never takes control, so Space and the context
+/// menu would both call it and nothing would appear. `QLPreviewView` is an
+/// ordinary `NSView` with none of that machinery, and a sheet needs no
+/// key-window politics.
 struct QuickLookSheet: NSViewRepresentable {
     let url: URL
+
+    /// The smallest the preview sheet's picture is drawn at.
+    static let minimumSize = CGSize(width: 640, height: 420)
 
     func makeNSView(context: Context) -> QLPreviewView {
         // .normal, not .compact: the sheet is the whole experience here,

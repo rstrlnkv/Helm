@@ -26,7 +26,7 @@ private func file(_ folder: URL, width: Int) throws -> URL {
     return url
 }
 
-/// **A group goes to the clipboard in one write, whole or not at all.** A group copied picture by picture is as many
+/// **A group goes to the clipboard in one write: all the shots that are found, or none.** A group copied picture by picture is as many
 /// writes, each taking the board from the one before, and only the last would be there to paste. Read here: the
 /// session's `copyAll` against a board that counts writes (`FakePasteboard.lists`, one entry a write), and the real
 /// port against a pasteboard of the test's own, whose items are counted and whose change count says how many
@@ -41,18 +41,19 @@ final class TheGroupIsCopiedInOneWriteTests: XCTestCase {
 
     private func rig(_ name: String) -> Rig { Rig(home: scratchDirectory(name)) }
 
-    // MARK: Nothing partial
+    // MARK: What is written and what is told
 
-    func testAFileThatIsGoneRefusesTheWholeGroupAndNothingIsOnTheBoard() async throws {
+    func testAFileThatIsGoneIsLeftOutNamedAndTheOthersAreOnTheBoardInOneWrite() async throws {
         let rig = rig("group-gone")
         let folder = scratchDirectory("group-gone-files")
         let gone = try file(folder, width: 12)
         try FileManager.default.removeItem(at: gone)
         let delivery = await rig.session.copyAll([.picture(makeImage(width: 11, height: 6)), .file(gone),
                                                    .picture(makeImage(width: 13, height: 6))])
-        XCTAssertEqual(delivery.refusals, [.encoding], "the person is told of the picture that was not there")
-        XCTAssertFalse(delivery.copied)
-        XCTAssertTrue(rig.pasteboard.lists.isEmpty, "a board with two of the three")
+        XCTAssertEqual(delivery.refusals, [.filesGone([1])], "the person is told which picture was not there")
+        XCTAssertTrue(delivery.copied)
+        XCTAssertEqual(rig.pasteboard.lists.count, 1)
+        XCTAssertEqual(try XCTUnwrap(rig.pasteboard.lists.first).map(width(of:)), [11, 13], "not the two that were found")
         XCTAssertTrue(rig.pasteboard.copies.isEmpty)
     }
 

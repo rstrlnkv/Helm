@@ -5,7 +5,7 @@ import Foundation
 /// The **words** are macOS's own — "Screenshot 2026-09-30 at 14.02.11" in
 /// English, "Снимок экрана — 2026-09-30 в 14.02.11" in Russian — and they are
 /// not here: the engine takes a `ShotNaming` built by the UI target from
-/// Helm's own `.strings`, which copy the template out of `screencaptureui`'s
+/// the module's catalog, which copies the template out of `screencaptureui`'s
 /// table once, at development time. The engine cannot call `L()`, and a
 /// template spelled in eight languages inside an engine would be the second
 /// copy nothing compares against the first.

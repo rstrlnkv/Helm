@@ -140,8 +140,7 @@ final class UndoRecordCountingTests: XCTestCase {
     }
 
     /// One chord is forgiven, because the undo shortcut is itself a chord and
-    /// reaches the tap before Carbon delivers it. A second is not: by then it
-    /// was somebody navigating.
+    /// reaches the tap before Carbon delivers it. A second is not.
     func testOneChordIsForgivenAndASecondIsNot() {
         var undo = record(before: "ghbdtn", after: "привет", trailing: " ")
         undo.soften()

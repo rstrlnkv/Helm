@@ -30,7 +30,7 @@ final class ChoosingTheCopyThatStaysTests: XCTestCase {
     }
 
     private func searched(_ groups: [DuplicateGroup]) async -> DuplicatesViewModel {
-        await searchedModel(over: DuplicatesWire(groups: groups))
+        await searchedModel(over: AnsweringWork(groups: groups))
     }
 
     // MARK: - The choice itself
@@ -111,7 +111,7 @@ final class ChoosingTheCopyThatStaysTests: XCTestCase {
     func testTheRecommendationCanBePutBack() async throws {
         let dvm = await searched([trio()])
         // A policy chosen outright, so the order on screen is one the rule
-        // produced: the fake wire hands back the fixture as it was written, and
+        // produced: the fake work hands back the fixture as it was written, and
         // a «recommendation» read off that would be whatever the test typed.
         dvm.choose(.byDate)
         let recommended = try XCTUnwrap(dvm.groups.first?.paths.first)

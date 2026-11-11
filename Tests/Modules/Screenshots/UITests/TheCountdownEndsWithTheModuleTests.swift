@@ -92,7 +92,7 @@ final class TheCountdownEndsWithTheModuleTests: XCTestCase {
         let session = CaptureSession(capture: capture, writer: disk, trash: NoTrash(), pasteboard: Board(), preferences: NoPreferences(),
                                      shutter: NoShutter(), textReader: NoTextReader(), settings: { ScreenshotsSettings.read(store) },
                                      naming: { .english }, locations: ScreenshotsLocations(home: home, desktop: home))
-        let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store,
+        let controller = CaptureController(store: store,
                                            session: session, presentOverlay: { _ in false },
                                            presentBar: { _ in shown.bump() }, tick: tick(ticks))
         return Rig(controller: controller, capture: capture, disk: disk, ticks: ticks, shown: shown)

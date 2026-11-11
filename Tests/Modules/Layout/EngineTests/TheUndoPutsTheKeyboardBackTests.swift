@@ -28,7 +28,7 @@ final class TheUndoPutsTheKeyboardBackTests: XCTestCase {
             tap: tap, typing: typing, sources: sources,
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
             spell: FakeSpell(valid: ["привет"]),
-            secure: FakeSecure(), automatic: true)
+            secure: FakeSecure(), activation: FakeActivation(), automatic: true)
         engine.activate()
 
         tap.type("ghbdtn"); tap.space()

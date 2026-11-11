@@ -82,7 +82,7 @@ final class TheVetoHappensWithNobodyThereTests: XCTestCase {
                                  displayObserver: FakeDisplayObserver(),
                                  power: power, apps: FakeApps(), pointer: FakePointer(),
                                  clamshell: FakeClamshell(), clock: FakeClock(),
-                                 batteryVeto: BatteryVetoChannel(port: notice,
+                                 lidInfo: FakeLidInfo(), batteryVeto: BatteryVetoChannel(port: notice,
                                                                  words: { Self.words($0) }))
     }
 
@@ -319,7 +319,7 @@ final class TheVetoHappensWithNobodyThereTests: XCTestCase {
                                  displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(),
                                  power: power, apps: FakeApps(), pointer: FakePointer(),
-                                 clamshell: FakeClamshell(), clock: FakeClock())
+                                 clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
         power.snap = (onBattery: false, percent: 100)
         power.says(.mains)
         engine.activate()

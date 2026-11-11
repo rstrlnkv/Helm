@@ -22,6 +22,12 @@ public enum CaptureRefusal: Sendable, Equatable {
     /// The edit is saved and the original was not replaced. Where each reason leaves the two is told by
     /// `ReplaceRefusal`: the original is where it was and the edit beside it, except where a case says otherwise.
     case notReplaced(ReplaceRefusal)
+    /// One shot's file was not found, moved or deleted since it was written, and the shot holds no picture of its own
+    /// (a written shot keeps its path and its thumbnail only): Pin and the single Copy have nothing to use.
+    case fileGone
+    /// «Copy All» left these shots out because their file was not found: zero-based places in the list handed to
+    /// `CaptureSession.copyAll`. The others were written, in one write, unless every file is gone, and then none was.
+    case filesGone([Int])
 }
 
 /// Why an edit did not take its original's place.
@@ -53,6 +59,8 @@ public struct Delivery: @unchecked Sendable {
     /// The original of an edit went to the Trash and the file here has its name. Not set when the name was taken
     /// between the two: the file here is then beside it, and nothing is said of the name.
     public var replaced = false
+    /// The board was written. Can be true together with a `.filesGone` refusal: the shots that were found were
+    /// written and the gone ones are named.
     public var copied = false
     public var refusals: [CaptureRefusal] = []
     /// The first picture that was made, for the thumbnail.
@@ -105,8 +113,9 @@ private final class GroupPass: @unchecked Sendable {
 ///
 /// **Nothing logs a capture, and one thing here is a phase in the activity trail:** the move of an edit's
 /// original to the Trash, which `HelmTrash.remove` opens as it does for every module. The log is for what was
-/// refused — no grant, a failed write, a folder that was refused, an original that was not replaced — and a line
-/// per press would be noise in the file a person attaches to a bug report. Paths go through `Redact`.
+/// refused — no grant, a failed write, a folder that was refused, an original that was not replaced — and for the
+/// warnings of a picture delivered all the same, and a line per press would be noise in the file a person attaches
+/// to a bug report. Paths go through `Redact`. The reading of text, which this session hands to its port, is a phase of its own.
 public final class CaptureSession: @unchecked Sendable {
     private let capture: ScreenCapturing
     private let writer: ShotWriting
@@ -188,7 +197,10 @@ public final class CaptureSession: @unchecked Sendable {
                 HelmLog.shared.warn(category, "edit refused: the shot's file is \(verdict) at \(Redact.path(shot.url.path))")
                 return nil
             }
-            guard let source = CGImageSourceCreateWithURL(shot.url as CFURL, nil),
+            // The bytes are read here: a picture made from the path can be read from the path again, and after this
+            // process's volatile regions were emptied a moved file encoded to nothing and drew blank.
+            guard let bytes = try? Data(contentsOf: shot.url),
+                  let source = CGImageSourceCreateWithData(bytes as CFData, nil),
                   let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
                 HelmLog.shared.warn(category, "edit refused: no picture could be read from \(Redact.path(shot.url.path))")
                 return nil
@@ -362,7 +374,7 @@ public final class CaptureSession: @unchecked Sendable {
                     if layer.tool == .blur {
                         // Opaque whole pixels on the bitmap's own grid: nothing of the picture shows at an edge.
                         // A box with no pixel on the display is skipped; a box that has pixels and
-                        // got no tile makes the file refused (nil), so it is never written with that box undrawn.
+                        // got no tile (the bitmap could not be made) makes `draw` return nil, so no file is written with that box undrawn.
                         guard Pixelate.pixels(of: layer.frame, scale: scale, width: display.width, height: display.height) != nil
                         else { continue }
                         guard let tile = Pixelate.tile(of: display, rect: layer.frame, blockPoints: layer.blockPoints, scale: scale)
@@ -454,9 +466,11 @@ public final class CaptureSession: @unchecked Sendable {
     }
 
     /// Every shot of a group on the clipboard in **one write** (`ShotPasteboard.copy(pngs:)`), in the order given.
-    /// A shot with a file is read back from it, as the single shot's Copy is. **All or none:** a shot that cannot
-    /// be read or encoded refuses the whole copy with `.encoding`, since a board holding fewer pictures than the
-    /// control counted would say nothing of the missing one.
+    /// A shot with a file is read back from it, as the single shot's Copy is. **Three outcomes.** A shot whose file is
+    /// found and cannot be read or encoded refuses the whole copy with `.encoding` (and so does a group with no shot),
+    /// since a board holding fewer pictures than the control counted would say nothing of the missing one. A shot whose
+    /// file is not found is left out and told, `.filesGone` with its place, next to the write of the others
+    /// (`copied` is true); with every file gone nothing is written and `.filesGone` comes back alone.
     ///
     /// **One pass at a time, and a displaced one stops at its next picture.** A press while an earlier pass is still
     /// reading stops that pass (`GroupPass`) and waits behind it on a queue of its own, so two never run side by
@@ -472,32 +486,55 @@ public final class CaptureSession: @unchecked Sendable {
             latestPass?.stop()
             latestPass = pass
         }
-        let pngs: [Data]? = await withTaskCancellationHandler {
+        let encoded: Encoded? = await withTaskCancellationHandler {
             await withCheckedContinuation { continuation in
                 groupQueue.async { continuation.resume(returning: Self.encodeAll(shots, until: pass)) }
             }
         } onCancel: { pass.stop() }
         if pass.isStopped { return delivery }
-        guard let pngs, !pngs.isEmpty else {
+        guard let encoded else {
             HelmLog.shared.warn(category, "a group's picture could not be read or encoded")
             delivery.refusals.append(.encoding)
             return delivery
         }
         guard !Task.isCancelled else { return delivery }
-        switch pasteboard.copy(pngs: pngs) {
-        case .accepted: delivery.copied = true
-        case .refused:
-            HelmLog.shared.warn(category, "the clipboard refused the group's pictures")
-            delivery.refusals.append(.pasteboard)
+        if encoded.pngs.isEmpty && encoded.gone.isEmpty {
+            HelmLog.shared.warn(category, "a group with no picture was asked to be copied")
+            delivery.refusals.append(.encoding)
+            return delivery
+        }
+        if !encoded.pngs.isEmpty {
+            switch pasteboard.copy(pngs: encoded.pngs) {
+            case .accepted: delivery.copied = true
+            case .refused:
+                HelmLog.shared.warn(category, "the clipboard refused the group's pictures")
+                delivery.refusals.append(.pasteboard)
+            }
+        }
+        if !encoded.gone.isEmpty {
+            HelmLog.shared.warn(category, "\(encoded.gone.count) of a group's files were not found")
+            delivery.refusals.append(.filesGone(encoded.gone))
         }
         return delivery
     }
 
-    /// Nil when a picture could not be read or encoded, and when the pass was stopped before the last.
-    private static func encodeAll(_ shots: [ShotSource], until pass: GroupPass) -> [Data]? {
-        var all: [Data] = []
-        for shot in shots {
+    /// What one pass of `encodeAll` made: the pictures of the shots that were found, in order, and the places of those
+    /// whose file was not.
+    private struct Encoded {
+        var pngs: [Data] = []
+        var gone: [Int] = []
+    }
+
+    /// Nil when a picture could not be read or encoded, and when the pass was stopped before the last. A file that is
+    /// not there is not that: it is left out and its place is told.
+    private static func encodeAll(_ shots: [ShotSource], until pass: GroupPass) -> Encoded? {
+        var all = Encoded()
+        for (place, shot) in shots.enumerated() {
             if pass.isStopped { return nil }
+            if case .file(let url) = shot, !FileManager.default.fileExists(atPath: url.path) {
+                all.gone.append(place)
+                continue
+            }
             let png: Data? = autoreleasepool {
                 switch shot {
                 case .picture(let image): return encode(image, as: .png)
@@ -508,7 +545,7 @@ public final class CaptureSession: @unchecked Sendable {
                 }
             }
             guard let png else { return nil }
-            all.append(png)
+            all.pngs.append(png)
         }
         return all
     }

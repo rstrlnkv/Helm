@@ -133,7 +133,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         tap = StaleTap(); sources = StaleSources(); selection = StaleSelection()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
                                   translation: StaleTranslation(), spell: StaleSpell(),
-                                  secure: context, selection: selection,
+                                  secure: context, activation: FakeActivation(), selection: selection,
  fixCapitals: fixCapitals,
                                   settings: Self.boundStore(fixCapitals: fixCapitals))
         engine.activate()
@@ -163,8 +163,8 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     }
 
     /// A selection was converted, which typed into the field and moved the
-    /// caret. `transform` clears the buffer and the undo record for exactly
-    /// that reason and forgets the third one.
+    /// caret. `convertSelection` cleared the buffer and the undo record for exactly
+    /// that reason and left the third standing.
     func testConvertingASelectionLeavesNoWordBehind() async throws {
         let engine = engine()
         tap.type("vjq")
@@ -234,14 +234,13 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     /// The engine refuses to convert a word abandoned by a *click*, because the
     /// caret is somewhere else. Switching apps by keyboard is the same event to
     /// the person and a different one to the tap: every chord arrives as
-    /// `.chord`, which ends the word and remembers it. The real tap never emits
-    /// `.focusChange` at all — grep the sources — so nothing tells the engine
-    /// the app changed.
+    /// `.chord`, which ends the word and remembers it. No event
+    /// tells the engine the app changed.
     ///
     /// `UndoRecord` already carries the bundle id and refuses to fire anywhere
     /// else, on exactly this reasoning: a blind edit is only correct in the app
     /// it was measured in. The remembered word is the same kind of blind edit
-    /// and carries no app at all.
+    /// and carried no app at all.
     func testAWordLeftBehindInAnotherAppIsNotTheGesturesToConvert() {
         let engine = engine()
         tap.type("ghbdtn")
@@ -368,8 +367,8 @@ final class LayoutEngineStaleWordTests: XCTestCase {
 
     /// `deactivate` clears the buffer, the undo record and the remembered word
     /// on purpose, and the existing suite pins that the word path types nothing
-    /// afterwards. The selection path is the same promise and has no guard at
-    /// all: `transform` never asks whether the module is running.
+    /// afterwards. The selection path is the same promise and had no guard at
+    /// all: `convertSelection` did not ask whether the module is running.
     func testATurnedOffModuleDoesNotConvertASelection() async throws {
         let engine = engine()
         selection.text = "ghbdtn"

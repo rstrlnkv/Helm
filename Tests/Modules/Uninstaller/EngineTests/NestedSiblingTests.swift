@@ -79,7 +79,7 @@ final class NestedSiblingTests: XCTestCase {
                                        apps: PartlyVisible(topLevel: topLevel, nested: nested),
                                        fs: NestedFS(entries: entries),
                                        trash: NoTrash(), running: NoRunning())
-        return try await engine.scan(bundleID: id, appPath: "/Applications/Acrobat.app",
+        return await engine.scan(bundleID: id, appPath: "/Applications/Acrobat.app",
                                      appName: "Acrobat")
     }
 

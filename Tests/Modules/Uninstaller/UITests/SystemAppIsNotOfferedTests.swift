@@ -6,7 +6,7 @@ import Module_Uninstaller_Engine
 
 /// Safari, listed at "0 Б", with a checkbox.
 ///
-/// The row now leaves the checkbox out and says "System", the way Disk marks a
+/// The row now leaves the checkbox out and says "System app", the way Disk marks a
 /// row it may not remove. The row is a view, so what is pinned here is the
 /// half a test can hold: the only door into the ticked set refuses to open for
 /// a `com.apple.` identifier. A checkbox that stops being drawn while the set
@@ -41,7 +41,7 @@ final class SystemAppIsNotOfferedTests: XCTestCase {
             ]),
             fs: SilentFS(), trash: NoTrash(), running: NoRunning())
         self.engine = engine
-        return UninstallerViewModel(vm: ModuleViewModel(transport: engine.transport))
+        return modelOver(engine)
     }
 
     func testASystemAppCannotBeTicked() {

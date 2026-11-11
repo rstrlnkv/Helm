@@ -21,9 +21,9 @@ import HelmRuntime
 /// identifier can stop the *real* app's rule from firing, which is a nuisance in
 /// the safe direction and not a way to move somebody's traffic.
 ///
-/// A verdict rather than a `Bool`: the log line and the settings row each have to
-/// say which refusal this was, and «the rule did nothing» with no reason is the
-/// failure ARCHITECTURE.md § VPN was written about.
+/// A verdict rather than a `Bool`: the log line has to say which refusal this
+/// was, and «the rule did nothing» with no reason is the failure
+/// ARCHITECTURE.md § VPN was written about.
 public enum VPNRuleTrust {
 
     /// Exhaustive, and switched over without a `default` wherever it is read: a
@@ -32,9 +32,9 @@ public enum VPNRuleTrust {
     public enum Verdict: String, Equatable, Sendable {
         /// The running instance is signed as the app the person picked.
         case act
-        /// The rule predates identities. It refuses, and the row asks for the app
-        /// to be chosen again — which records the identity and disturbs nothing
-        /// else about the rule.
+        /// The rule predates identities. It refuses; choosing the app again in the
+        /// rules popover records the identity and disturbs nothing else about the
+        /// rule.
         case noIdentityRecorded
         /// The app the person picked carries no signature to bind to. Kept,
         /// because they asked for it, and inert, because an unsigned bundle's
@@ -49,12 +49,33 @@ public enum VPNRuleTrust {
 
     /// - Parameter running: the identity of the instance carrying the rule's
     ///   bundle identifier, or nil when there is nothing to read. The two
-    ///   rule-level verdicts do not depend on it, which is what lets the settings
-    ///   page ask this same function with `nil`.
+    ///   rule-level verdicts do not depend on it. The engine, at a launch, is
+    ///   the only caller.
     public static func judge(rule: VPNAppRule, running: CodeIdentity?) -> Verdict {
-        guard let recorded = rule.identity else { return .noIdentityRecorded }
-        guard recorded.isVerifiable else { return .appNotSigned }
+        let recorded: CodeIdentity
+        switch bound(rule) {
+        case .refused(let verdict): return verdict
+        case .identity(let identity): recorded = identity
+        }
         guard let running, running.isVerifiable else { return .runningInstanceUnreadable }
         return running == recorded ? .act : .mismatch
+    }
+
+    /// The refusal that stands before anything is running: `.noIdentityRecorded` or
+    /// `.appNotSigned`, nil when the rule may yet act. **`judge` asks this first, and
+    /// the engine publishes it** (`StatePayload.ruleRefusals`), so the rules popover's
+    /// note and the log line of a launch that did nothing come from one expression.
+    public static func refusal(of rule: VPNAppRule) -> Verdict? {
+        if case .refused(let verdict) = bound(rule) { return verdict }
+        return nil
+    }
+
+    /// The identity the rule is bound to, or the refusal that stands before anything
+    /// runs: the one place that unwraps it and the one place that refuses.
+    private enum Bound { case identity(CodeIdentity), refused(Verdict) }
+
+    private static func bound(_ rule: VPNAppRule) -> Bound {
+        guard let recorded = rule.identity else { return .refused(.noIdentityRecorded) }
+        return recorded.isVerifiable ? .identity(recorded) : .refused(.appNotSigned)
     }
 }

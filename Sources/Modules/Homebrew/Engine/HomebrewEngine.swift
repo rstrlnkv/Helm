@@ -2,9 +2,10 @@ import Foundation
 import HelmRuntime
 import HelmContract
 
-/// Manages Homebrew via the `brew` CLI. Fast queries answer over `transport.send`
-/// (JSON); long operations (install/uninstall/upgrade/installBrew) stream
-/// `opLog`/`opState` events. One long operation at a time.
+/// Manages Homebrew via the `brew` CLI. The model reads it through the typed
+/// members of "The model's door" and presses through `perform(_:)`; long
+/// operations (install/uninstall/upgrade/installBrew) stream `HomebrewNews` on
+/// `stream()`. One long operation at a time.
 ///
 /// **Every value goes behind a `--`.** Arguments are an array and the executable
 /// path is absolute, so no shell ever sees them and there is nothing to inject
@@ -15,23 +16,25 @@ import HelmContract
 /// searches for `-n`.
 ///
 /// **No gate of its own on a package reference.** The engine executes the name
-/// it is handed off the wire, which is sound only while the transport is
-/// in-process with one sender.
+/// it is handed through the door, which is sound only while the model is the one
+/// caller, in-process.
 public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// This module's id, and the only place it is written down.
     ///
-    /// It is the `module.homebrew.*` prefix of every setting this module has
-    /// ever saved and the category its log lines file under.
-    /// `HomebrewDescriptor.id` is built from this rather than repeating it,
-    /// the direction the descriptors already carry their command enums, so the
+    /// It is the `module.homebrew.*` prefix of the settings saved for this
+    /// module (today only `module.homebrew.enabled`, which `ModuleHost` writes)
+    /// and the category its log lines file under.
+    /// `HomebrewDescriptor.id` is built from this rather than repeating it, so the
     /// two spellings are one. **The string itself never changes** — it names
     /// stored settings already on people's machines.
     public static let moduleID = "homebrew"
 
-    /// What a query that reads only the disk runs with.
+    /// What `list`, `desc`, `uses`, `info` and `config` run with, and `doctor`
+    /// through `doctorEnvironment`.
     ///
-    /// `brew list --versions` and `brew desc` answer about packages already
-    /// installed; neither reading changes when the catalogue is refreshed. Left
+    /// `brew list --versions` answers about packages already installed and
+    /// `brew desc` describes the names it is given; neither reading changes
+    /// when the catalogue is refreshed. Left
     /// to itself brew may refresh it anyway, which turns a question about this
     /// disk into a download nobody asked for — and on a Mac with no network at
     /// all, into a failure to answer something brew already knew.
@@ -42,7 +45,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// on a warm machine, because brew refreshes periodically rather than per
     /// call, so those runs were not paying for a refresh either. A doc comment
     /// here once carried a duration figure read off `helm.log`; the lines it
-    /// cited are `homebrew.outdated`, which is the one query this constant
+    /// cited are `homebrew.outdated`, which is one of the two queries this constant
     /// deliberately excludes — the figure belongs on the deadline comment in
     /// `SystemPorts.swift` instead. No timing claim belongs here that has not
     /// been measured on the queries this actually covers.
@@ -109,13 +112,14 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     private let runner: ProcessRunner
     private let privileged: PrivilegedRunner
     private let user: String
-    private let localTransport: LocalTransport
+    private let news: EngineNews<HomebrewNews>
     private let marker: OpMarker
     private let popularity: PopularityReading
     private let weight: PackageWeight
     private let tools: CommandLineToolsPort
     private let ticker: WaitTicker
-    public let transport: EngineTransport
+    /// Shared by every engine of the process in the app (`OperationGate.process`).
+    private let gate: OperationGate
 
     private let lock = NSLock()
     private var busy = false
@@ -137,8 +141,14 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// Whether the running operation is the install of Homebrew itself, the one
     /// long operation `deactivate()` ends: it is the one that can raise a
     /// password dialog and start `install.sh` on its own, later, for a module
-    /// the person has switched off. Set with the gate, cleared with it.
+    /// the person has switched off. A package operation or a doctor fix is left
+    /// to finish: terminating a half-built `brew` run is how a broken Cellar is
+    /// made (`AQuitMidOperationIsReportedTests`). Set with the gate, cleared with it.
     private var installing = false
+    /// Whether the module is switched off: set by `deactivate()`, cleared by
+    /// `activate()`. While it is set the gate admits no operation, so nothing
+    /// launches a child for a module that is off (`beginBusy`). Under `lock`.
+    private var off = false
     /// What each package was last measured to occupy, keyed `f:name@version`.
     ///
     /// Under the same `lock` as every other field here, read and written in
@@ -163,27 +173,34 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     private static let installerURL = "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
 
     public init(locator: BrewLocator, runner: ProcessRunner, privileged: PrivilegedRunner,
-                user: String, transport: LocalTransport = LocalTransport(),
+                user: String, news: EngineNews<HomebrewNews> = EngineNews(),
                 marker: OpMarker = InMemoryOpMarker(),
                 popularity: PopularityReading = NoPopularity(),
                 weight: PackageWeight = NoPackageWeight(),
                 tools: CommandLineToolsPort = ToolsAlreadyInstalled(),
-                ticker: WaitTicker = NoWaitTicker()) {
+                ticker: WaitTicker = NoWaitTicker(),
+                gate: OperationGate = OperationGate()) {
         self.locator = locator
         self.runner = runner
         self.privileged = privileged
         self.user = user
-        self.localTransport = transport
-        self.transport = transport
+        self.news = news
         self.marker = marker
         self.popularity = popularity
         self.weight = weight
         self.tools = tools
         self.ticker = ticker
-        wireTransport()
+        self.gate = gate
     }
 
     public func activate() {
+        // Where brew is, filed before anything else so a model built just before
+        // this can have its first frame right (`HomebrewNews.brew`). Seen on bench
+        // recordings over a fake; in the app the news reaches the model through
+        // the model's own task and that order is unproved. The locator and not
+        // `status()`: that one takes the quit marker.
+        news.say(.brew(path: locator.brewPath().flatMap { $0.isEmpty ? nil : $0 }),
+                 slot: HomebrewSlot.brewFound.rawValue)
         // Not in `init`, because `init` runs for every module the host knows
         // about and `activate` only for the ones that are switched on: a module
         // the person has turned off never reaches the network for readings its
@@ -207,6 +224,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // lock, never this one, so holding this one across the creation cannot
         // deadlock.
         lock.lock()
+        off = false
         // Cancel before assigning: two activations without a deactivation
         // between them would otherwise orphan the first fetch with nothing left
         // holding it to cancel.
@@ -218,7 +236,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     public func deactivate() {
         cancelTheRefresh()
-        endTheInstall()
+        endTheOperation()
     }
 
     /// The backstop for the routes that do not go through `deactivate()`.
@@ -233,10 +251,15 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         toolsWait = nil
         lock.unlock()
         _ = wait
+        // An engine dropped in the tools wait (no child, a weak tick) would
+        // keep the process-wide gate shut for good. Owner-checked: a no-op
+        // when this engine holds nothing.
+        gate.release(self)
     }
 
-    /// A module switched off while Homebrew is being installed ends the
-    /// operation as stopped, wherever it is — **whether or not there is a wait
+    /// A module switched off shuts the gate (`off`) for **every** kind of
+    /// operation, so nothing starts after it, and ends the **install of
+    /// Homebrew** as stopped, wherever it is — **whether or not there is a wait
     /// to take**. The flag is set under the lock for any busy install, and every
     /// step that would ask Apple, raise the administrator dialog or launch
     /// `install.sh` reads it first (`stoppedBeforeLaunch`), so a switch-off that
@@ -244,8 +267,15 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// reading finds a check waiting for it. The wait, when there is one, is
     /// released here, so no later tick can raise a password dialog from a module
     /// that is off; a child that already runs is terminated, as Stop does.
-    private func endTheInstall() {
+    ///
+    /// **A package operation or a doctor fix is not terminated**: it finishes on
+    /// its own, `busy` stays true and the marker stays until its exit. The exit
+    /// reaches `concludeOp` because `runOp`'s `onExit` holds the engine strongly
+    /// — a weak hold lost it with the engine the host drops — so the marker is
+    /// cleared when the child is gone, and not before.
+    private func endTheOperation() {
         lock.lock()
+        off = true
         guard busy, installing else { lock.unlock(); return }
         stopRequested = true
         let wait = toolsWait
@@ -273,12 +303,13 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     // MARK: - Queries
 
-    public func status() -> BrewStatus {
+    func status() -> BrewStatus {
         let path = locator.brewPath()
         // Not while an operation runs: the marker belongs to the launch after
         // this one, and the page refreshes its status freely.
-        lock.lock(); let running = busy; lock.unlock()
-        let interrupted = running ? nil : marker.take()
+        // Any engine's, not only this one's: a child of the engine this one
+        // replaced may still be running, and its marker is not a report yet.
+        let interrupted = gate.takeMarkerIfFree(marker)
         if let interrupted {
             // The label names a package; the log carries counts and outcomes.
             HelmLog.shared.warn(Self.moduleID,
@@ -290,7 +321,11 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     /// Whether the runner's deadline passed — with the outcome named in the
     /// log, because "brew is hung" shown as an empty list is a lie about the
-    /// machine (`ATimedOutQueryIsANamedRefusalTests`).
+    /// machine (`ATimedOutQueryIsANamedRefusalTests`). The line says "keeping
+    /// the last answer" for every query that comes through here; the callers
+    /// that keep one are the installed, outdated and configuration readings, and
+    /// the descriptions: the model keeps what it held, because `load` writes
+    /// only the keys found.
     private func timedOut(_ status: Int32, query: String) -> Bool {
         guard status == HelmProcess.timedOutStatus else { return false }
         HelmLog.shared.warn(Self.moduleID, "\(query) timed out — keeping the last answer")
@@ -354,7 +389,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// nil when brew did not answer in time — never an empty list, which reads
     /// as a clean machine.
-    public func listInstalled() -> [BrewPackage]? {
+    func listInstalled() -> [BrewPackage]? {
         guard let brew = locator.brewPath() else {
             // The module's whole surface is empty in this case, and until now
             // nothing said why: a person reads "no packages" as a clean machine.
@@ -381,7 +416,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         return packages
     }
 
-    public func outdated() -> [OutdatedPackage]? {
+    func outdated() -> [OutdatedPackage]? {
         guard let brew = locator.brewPath() else { return [] }
         let parsed = HelmActivity.phase("homebrew.outdated") { () -> [OutdatedPackage]? in
             // `runData`, because the parser wants bytes: routing them through a
@@ -417,7 +452,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// A failure splits the batch and asks again. A single bad name in fifty
     /// costs about a dozen calls instead of fifty, and a good batch is still
     /// exactly one.
-    public func descriptions(names: [String], isCask: Bool) -> [String: String] {
+    func descriptions(names: [String], isCask: Bool) -> [String: String] {
         guard let brew = locator.brewPath(), !names.isEmpty else { return [:] }
         // Bounded: the split is a bisection, and a batch refused wholesale
         // walks to a leaf per name (`DescriptionBudget`).
@@ -456,7 +491,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
                               budget: budget)) { a, _ in a }
     }
 
-    public func search(_ query: String) -> [SearchHit]? {
+    func search(_ query: String) -> [SearchHit]? {
         guard let brew = locator.brewPath(), !query.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
         let hits = HelmActivity.phase("homebrew.search") { () -> [SearchHit]? in
             // One call per kind: brew no longer labels a flat result list, and
@@ -493,7 +528,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     /// Which installed packages still need `name`.
     ///
-    /// `brew uninstall` is the only irreversible deletion in the app, and until
+    /// `brew uninstall` is an irreversible deletion, and until
     /// now it was also the only one that would not say what it takes with it:
     /// removing `openssl@3` on this Mac breaks eight installed formulae, and the
     /// dialog asked the same mild question it asks for a leaf.
@@ -523,7 +558,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// `homebrew.*` phase: this is one `brew uses` over one name, and the
     /// registry is phase-level and must not be told that a single sub-second tool
     /// run is bulk work.
-    public func dependents(name: String, isCask: Bool) -> [String]? {
+    func dependents(name: String, isCask: Bool) -> [String]? {
         // Known rather than measured, which is why this one stays `[]`.
         guard !isCask else { return [] }
         guard let brew = locator.brewPath() else {
@@ -555,7 +590,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// when the document itself is not one `BrewInfoParser` recognises — a
     /// shape this build cannot read is not the same sentence as "brew has
     /// nothing to say about this package".
-    public func info(name: String, isCask: Bool) -> PackageInfo? {
+    func info(name: String, isCask: Bool) -> PackageInfo? {
         guard let brew = locator.brewPath() else {
             HelmLog.shared.warn(Self.moduleID, "brew is not installed — cannot ask about a package")
             return nil
@@ -591,7 +626,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// against Homebrew 7.0.1, 2026-09-15: `bottle.files.*.size` is null and
     /// `installed[]` has no size field), so the figure is a walk of the
     /// package's own Cellar directory and nothing else — `PackageWeight`, off
-    /// the cooperative pool at the transport arm that calls this.
+    /// the cooperative pool at `measure(_:version:)`, the door that calls this.
     ///
     /// **Remembered per `name@version`, for this engine's life.** The walk is
     /// the whole cost, and its answer cannot change while that version is the
@@ -606,8 +641,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// **nil is never remembered.** «Nothing was measured» is a live fact about
     /// a directory — a refusal that may be lifted, a keg that may arrive — and
-    /// a remembered nil would keep the tile absent for the life of the app.
-    public func size(name: String, isCask: Bool, version: String) -> Int? {
+    /// a remembered nil would keep the row absent for the life of the app.
+    func size(name: String, isCask: Bool, version: String) -> Int? {
         let key = BrewKey.of(name: name, isCask: isCask) + "@" + version
         lock.lock(); let remembered = sizes[key]; lock.unlock()
         if let remembered { return remembered }
@@ -660,7 +695,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// the page's side, where the installed list already is, and judged again by
     /// `runDoctorFix` against a list read at the press — which is the judgement
     /// that decides whether anything runs.
-    public func doctor() -> [DoctorIssue]? {
+    func doctor() -> [DoctorIssue]? {
         guard let brew = locator.brewPath() else {
             HelmLog.shared.warn(Self.moduleID, "brew is not installed — cannot run doctor")
             return nil
@@ -693,7 +728,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// nil when brew refused, when there is no brew to ask, and when the
     /// document holds no `key: value` line at all — `BrewConfigParser.parse`'s
     /// own doc comment says why the last of those is not an empty reading.
-    public func config() -> BrewConfig? {
+    func config() -> BrewConfig? {
         guard let brew = locator.brewPath() else {
             HelmLog.shared.warn(Self.moduleID,
                                 "brew is not installed — cannot read its configuration")
@@ -727,15 +762,27 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     private func beginBusy(installingBrew: Bool = false) -> Bool {
         lock.lock(); defer { lock.unlock() }
-        if busy { return false }
+        if busy || off || !gate.take(self) { return false }
         busy = true
         stopRequested = false
         installing = installingBrew
         HelmActivity.begin(Self.operationPhase)
         return true
     }
+    /// Names why `beginBusy` said no: a module that is off, or an operation
+    /// that is running. Only the second is a line for the console.
+    private func refuseLaunch(_ verb: String) {
+        lock.lock(); let isOff = off; lock.unlock()
+        if isOff {
+            HelmLog.shared.warn(Self.moduleID, "\(verb) refused: the module is switched off")
+            return
+        }
+        HelmLog.shared.warn(Self.moduleID, "\(verb) refused: another operation is running")
+        emitLog("⚠︎ Another operation is already running.")
+    }
     private func endBusy() {
         lock.lock(); busy = false; installing = false; current = nil; lock.unlock()
+        gate.release(self)
         HelmActivity.end(Self.operationPhase)
         HelmLog.shared.memory("homebrew.operation")
     }
@@ -790,7 +837,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// into a bare `return` — no state, no log, and `stopRequested` never set,
     /// so nothing later could tell that the person had asked. The launch reads
     /// the flag instead (`stoppedBeforeLaunch`).
-    public func stop() {
+    func stop() {
         lock.lock()
         guard busy else { lock.unlock(); return }
         stopRequested = true
@@ -811,7 +858,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     }
 
     /// Whether a Stop — or the module's switch-off, which sets the same flag
-    /// (`endTheInstall`) — arrived before this operation had a child, in which
+    /// (`endTheOperation`) — arrived before this operation had a child, in which
     /// case the operation ends here and the launch must not happen.
     ///
     /// For a package operation that window is a spawn, measured in
@@ -831,11 +878,10 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     }
 
     private func emitLog(_ line: String) {
-        localTransport.emit(EngineEvent(name: HomebrewEvent.opLog.rawValue,
-                                        payload: Data(line.utf8)))
+        news.say(.line(line), slot: HomebrewSlot.opLog.rawValue)
     }
     private func emitState(_ s: OpState) {
-        localTransport.emit(HomebrewEvent.opState, encoding: s)
+        news.say(.state(s), slot: HomebrewSlot.opState.rawValue)
     }
 
     /// `verb` is what happened; `subject` is the package it happened to, kept
@@ -848,16 +894,11 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     private func runOp(verb: String, subject: String? = nil,
                        label: String, launch: String, args: [String],
                        env: [String: String] = HomebrewEngine.operationEnvironment) {
-        guard beginBusy() else {
-            HelmLog.shared.warn(Self.moduleID, "\(verb) refused: another operation is running")
-            emitLog("⚠︎ Another operation is already running.")
-            return
-        }
+        guard beginBusy() else { refuseLaunch(verb); return }
         let what = subject.map { "\(verb) \(Redact.pkg($0))" } ?? verb
         HelmLog.shared.info(Self.moduleID, "\(what) started")
         emitState(OpState(phase: .running, label: label))
-        startChild(label: label, launch: launch, args: args, env: env, reach: .process) { [weak self] code in
-            guard let self else { return }
+        startChild(label: label, launch: launch, args: args, env: env, reach: .process) { code in
             let stopped = self.concludeOp(code: code, label: label)
             self.logEnd(what, code: code, stopped: stopped)
         }
@@ -921,19 +962,19 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         return nil
     }
 
-    public func install(name: String, isCask: Bool) {
+    func install(name: String, isCask: Bool) {
         guard let brew = brewOrRefuse(verb: "install", label: "install \(name)") else { return }
         runOp(verb: "install", subject: name, label: "install \(name)", launch: brew, args: isCask ? ["install", "--cask", "--", name] : ["install", "--", name])
     }
-    public func uninstall(name: String, isCask: Bool) {
+    func uninstall(name: String, isCask: Bool) {
         guard let brew = brewOrRefuse(verb: "uninstall", label: "uninstall \(name)") else { return }
         runOp(verb: "uninstall", subject: name, label: "uninstall \(name)", launch: brew, args: isCask ? ["uninstall", "--cask", "--", name] : ["uninstall", "--", name])
     }
-    public func upgrade(name: String) {
+    func upgrade(name: String) {
         guard let brew = brewOrRefuse(verb: "upgrade", label: "upgrade \(name)") else { return }
         runOp(verb: "upgrade", subject: name, label: "upgrade \(name)", launch: brew, args: ["upgrade", "--", name])
     }
-    public func upgradeAll() {
+    func upgradeAll() {
         guard let brew = brewOrRefuse(verb: "upgrade all", label: "upgrade all") else { return }
         runOp(verb: "upgrade all", label: "upgrade all", launch: brew, args: ["upgrade"])
     }
@@ -950,7 +991,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// between, a terminal uninstalls `periphery`, or Helm's own Installed tab
     /// does, and the argv the page still carries names a package that is not on
     /// this Mac any more. So the list is read **now**, one line before the act,
-    /// and `DoctorFix.judge` is asked again; nothing that arrives on this wire
+    /// and `DoctorFix.judge` is asked again; nothing that arrives through the door
     /// is trusted to have been judged already, including an argv no page ever
     /// drew.
     ///
@@ -963,7 +1004,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// comment gives: `brew` reads a leading `-` as a flag wherever it finds
     /// one, and these operands are words parsed out of brew's own prose.
     /// `["cleanup"]` has no operand and gets no `--`.
-    public func runDoctorFix(_ argv: [String]) {
+    func runDoctorFix(_ argv: [String]) {
         // The command itself, which is what the console's pill and the marker
         // both show — "uninstall periphery", the same shape the other labels
         // have. `brew` is not in it, which is the shape `DoctorFix` judges.
@@ -998,17 +1039,13 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// someone who waited a quarter of an hour has not had `/opt/homebrew` made
     /// for nothing.
     ///
-    /// Arrives through `offTheCooperativePool` — the dialog blocks this thread
+    /// Arrives through `perform(_:)`, on the concurrent global queue — the dialog blocks this thread
     /// for as long as a person takes to find their password.
-    public func installBrew() {
+    func installBrew() {
         // One label, read by every way this operation can end — including the
         // marker, which is compared against nothing but itself.
         let label = Self.installBrewLabel
-        guard beginBusy(installingBrew: true) else {
-            HelmLog.shared.warn(Self.moduleID, "\(label) refused: another operation is running")
-            emitLog("⚠︎ Another operation is already running.")
-            return
-        }
+        guard beginBusy(installingBrew: true) else { refuseLaunch(label); return }
         HelmLog.shared.info(Self.moduleID, "\(label) started")
         emitState(OpState(phase: .running, label: label))
         // `user` is NSUserName(), which on a managed Mac is whatever the
@@ -1239,108 +1276,101 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // to find their password, with a live Stop button on the page the whole
         // time; `startChild` is where a press that landed during it is read.
         startChild(label: label, launch: "/bin/bash", args: ["-c", installer],
-                   env: Self.installerEnvironment, reach: .wholeGroup) { [weak self] code in
-            guard let self else { return }
+                   env: Self.installerEnvironment, reach: .wholeGroup) { code in
             let stopped = self.concludeOp(code: code, label: label,
                                           reason: code == 0 ? nil : .installerFailed)
             self.logEnd(label, code: code, stopped: stopped)
         }
     }
 
-    // MARK: - Transport
+    // MARK: - The model's door
 
-    /// nil folded to the wire's zero bytes — "the module could not answer",
-    /// which a timed-out query is; the view model keeps the last answer it
-    /// had. `fileID`/`line` pass through, so `EngineReply`'s error line still
-    /// names the arm and not this fold.
-    private func reply<T: Encodable>(_ value: T?, for cmd: EngineCommand,
-                                     fileID: String = #fileID, line: Int = #line) -> Data {
-        guard let value else { return Data() }
-        return EngineReply.encode(value, for: cmd, fileID: fileID, line: line)
+    /// The last line, the last state and where brew is, in the order the three kinds
+    /// first appeared, then every line, state and brew after them in the order they
+    /// were said.
+    ///
+    /// **Registered before this returns, in the one hold of the lock that replays
+    /// what was last said** (`EngineNews.stream`): reading the state and then
+    /// subscribing leaves a window an emit falls into, and subscribing before the
+    /// replay hands over an older state after a newer one. Synchronous and not
+    /// actor-isolated, so the model takes it in its own synchronous `init`, before
+    /// its first suspension; the subscriber is counted when this returns. Ending
+    /// the iteration removes the subscriber. Unbounded on purpose: a dropped `.done` is a page
+    /// that never leaves «running»; the console's bound is the model's.
+    public func stream() -> AsyncStream<HomebrewNews> { news.stream() }
+
+    public var subscriberCount: Int { news.subscriberCount }
+
+    // The readings below hop off the cooperative pool: each sync method they
+    // call blocks its thread on a child, a lock or a directory. A nil keeps its
+    // one meaning: «the module could not answer», which a timed-out query is;
+    // what the page does with it is the model's.
+
+    public func readStatus() async -> BrewStatus { await offTheCooperativePool { self.status() } }
+    public func readInstalled() async -> [BrewPackage]? { await offTheCooperativePool { self.listInstalled() } }
+    public func readOutdated() async -> [OutdatedPackage]? { await offTheCooperativePool { self.outdated() } }
+    public func readDescriptions(of names: [String], isCask: Bool) async -> [String: String] {
+        await offTheCooperativePool { self.descriptions(names: names, isCask: isCask) }
     }
+    public func find(_ query: String) async -> [SearchHit]? { await offTheCooperativePool { self.search(query) } }
+    /// Which installed packages still need a given one — asked once, at the
+    /// moment the uninstall is put to the person, and never cached: the answer
+    /// is about a Cellar that changes under the app.
+    public func readDependents(of package: PackageRef) async -> [String]? {
+        await offTheCooperativePool { self.dependents(name: package.name, isCask: package.isCask) }
+    }
+    /// What `brew info --json=v2` knows about one package — asked once, when
+    /// the person opens its detail, and never cached: the answer is about a
+    /// Cellar and a catalogue that both change under the app.
+    public func readInfo(about package: PackageRef) async -> PackageInfo? {
+        await offTheCooperativePool { self.info(name: package.name, isCask: package.isCask) }
+    }
+    /// How much disk one installed package occupies, with the version the figure
+    /// is remembered against.
+    ///
+    /// `PackageRef` and a version, rather than `PackageRef` alone, because **the
+    /// answer is remembered against the version it was measured for**. The engine
+    /// keeps one figure per `name@version` for its own life; the version is the
+    /// half that makes a kept figure honest, since an upgrade replaces the keg the
+    /// walk measured. The page already holds it — it is `PackageInfo`'s
+    /// `installedVersion`, the very row this figure is drawn beside — so nothing
+    /// has to be read twice to name it. Never empty: a package with no installed
+    /// version has no keg to walk.
+    ///
+    /// Off the pool for the plainest reason: this one *is* the filesystem work —
+    /// a walk of one package's Cellar directory, which parks whatever thread it
+    /// runs on for as long as that directory takes.
+    public func measure(_ package: PackageRef, version: String) async -> Int? {
+        await offTheCooperativePool {
+            self.size(name: package.name, isCask: package.isCask, version: version)
+        }
+    }
+    public func readDoctor() async -> [DoctorIssue]? { await offTheCooperativePool { self.doctor() } }
+    public func readConfig() async -> BrewConfig? { await offTheCooperativePool { self.config() } }
 
-    /// **No `default`.** Every case of `HomebrewCommand` has an arm, which is
-    /// what the enum's own doc comment promises — and a `default: break` sat at
-    /// the bottom making that promise false: a case added to the enum would have
-    /// fallen through it and answered `Data()`, which this codebase reads as
-    /// «the module could not answer». The unknown-name door is one line above,
-    /// where it belongs.
-    private func wireTransport() {
-        localTransport.setHandler { [weak self] cmd in
-            guard let self else { return Data() }
-            // The local `json(_:)` these arms shared is `EngineReply` now — the
-            // same fold, where the other eight engines can reach it. Spelled per
-            // arm rather than wrapped again, because the helper takes its `#line`
-            // from the call site and a wrapper would report every arm as itself.
-            guard let name = HomebrewCommand(rawValue: cmd.name) else { return Data() }
-            switch name {
-            case .status:
-                return EngineReply.encode(await offTheCooperativePool { self.status() }, for: cmd)
-            // The four queries below can answer nil — a timeout, which must
-            // not reach the page as an empty machine; `reply` folds it to the
-            // wire's zero bytes.
-            case .listInstalled:
-                return self.reply(await offTheCooperativePool { self.listInstalled() }, for: cmd)
-            case .outdated:
-                return self.reply(await offTheCooperativePool { self.outdated() }, for: cmd)
-            case .search:
-                let query = String(decoding: cmd.payload, as: UTF8.self)
-                return self.reply(await offTheCooperativePool { self.search(query) }, for: cmd)
-            case .dependents:
-                guard let r = EngineReply.decode(PackageRef.self, from: cmd) else { return Data() }
-                return self.reply(await offTheCooperativePool {
-                    self.dependents(name: r.name, isCask: r.isCask)
-                }, for: cmd)
-            case .info:
-                guard let r = EngineReply.decode(PackageRef.self, from: cmd) else { return Data() }
-                return self.reply(await offTheCooperativePool {
-                    self.info(name: r.name, isCask: r.isCask)
-                }, for: cmd)
-            // Off the pool like its neighbours, and for the plainest form of
-            // the reason: this one *is* the filesystem work — a walk of one
-            // package's Cellar directory, which parks whatever thread it runs
-            // on for as long as that directory takes.
-            case .size:
-                guard let r = EngineReply.decode(PackageSizeRequest.self, from: cmd)
-                else { return Data() }
-                return self.reply(await offTheCooperativePool {
-                    self.size(name: r.name, isCask: r.isCask, version: r.version)
-                }, for: cmd)
-            case .doctor:
-                return self.reply(await offTheCooperativePool { self.doctor() }, for: cmd)
-            case .config:
-                return self.reply(await offTheCooperativePool { self.config() }, for: cmd)
-            case .descriptions:
-                guard let r = EngineReply.decode(DescriptionsRequest.self, from: cmd)
-                else { return Data() }
-                let found = await offTheCooperativePool { self.descriptions(names: r.names, isCask: r.isCask) }
-                return EngineReply.encode(found, for: cmd)
-            case .install:
-                if let r = EngineReply.decode(PackageRef.self, from: cmd) {
-                    self.install(name: r.name, isCask: r.isCask)
-                }
-            case .uninstall:
-                if let r = EngineReply.decode(PackageRef.self, from: cmd) {
-                    self.uninstall(name: r.name, isCask: r.isCask)
-                }
-            // Off the pool, unlike its four neighbours: every other operation
-            // arm only *starts* a child and returns, while this one re-reads
-            // the installed list first — two blocking `brew list` runs on the
-            // way to the judge, which is a transport handler parking a
-            // Swift-concurrency pool thread for seconds.
-            case .doctorFix:
-                guard let argv = EngineReply.decode([String].self, from: cmd) else { return Data() }
-                await offTheCooperativePool { self.runDoctorFix(argv) }
-            // A bare name, like `search` — the one-field struct that used to
-            // wrap it bought nothing and cost a second declaration.
-            case .upgrade: self.upgrade(name: String(decoding: cmd.payload, as: UTF8.self))
-            case .upgradeAll: self.upgradeAll()
-            // Off the pool: the dialog inside blocks for as long as a person
-            // takes to find their password, and a tick continues into it.
-            case .installBrew: await offTheCooperativePool { self.installBrew() }
-            case .stop: self.stop()
+    /// Every press, and returns at once; what happens arrives on `stream()`.
+    ///
+    /// **On the concurrent global queue, not the cooperative pool and not a
+    /// serial queue.** A press from the page runs on main, and `runOp` writes the
+    /// marker file and launches a child — so the hop is inside, and no caller can
+    /// forget it. `installBrew` blocks its thread on the administrator's
+    /// password dialog for as long as a person takes, and Stop has to overtake
+    /// it (`AStopBeforeTheChildExistsTests` in
+    /// `StoppingTheInstallAndItsAdminDialogTests.swift`): a serial queue would
+    /// park the Stop behind the dialog, and a pool thread parked there is one the rest of the
+    /// app's `async` work needs. `.userInitiated` is `offTheCooperativePool`'s
+    /// own default.
+    public func perform(_ act: HomebrewAct) {
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
+            switch act {
+            case .install(let package): install(name: package.name, isCask: package.isCask)
+            case .uninstall(let package): uninstall(name: package.name, isCask: package.isCask)
+            case .upgrade(let name): upgrade(name: name)
+            case .upgradeAll: upgradeAll()
+            case .doctorFix(let argv): runDoctorFix(argv)
+            case .installBrew: installBrew()
+            case .stop: stop()
             }
-            return Data()
         }
     }
 }

@@ -61,9 +61,9 @@ public struct AppearancePicker: View {
 enum AppearanceNames {
     static func of(_ mode: AppAppearance) -> String {
         switch mode {
-        case .system: L("Auto")
-        case .light: L("Light")
-        case .dark: L("Dark")
+        case .system: L(.auto)
+        case .light: L(.light)
+        case .dark: L(.dark)
         }
     }
 }

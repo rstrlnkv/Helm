@@ -6,7 +6,7 @@ import SwiftUI
 ///
 /// The detail line under a broken login item gives its width to the reason
 /// first (it is the strongest evidence the item is dead) and lets the path
-/// truncate in the middle. At the 540 pt pane a real reason left the path
+/// truncate in the middle. At a 540 pt pane, which the window no longer gives, a real reason left the path
 /// exactly one glyph: «/», drawn, and read to VoiceOver, saying nothing.
 ///
 /// So the path has a floor: the width of «…» and its own last component at

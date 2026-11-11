@@ -11,16 +11,17 @@ import HelmTestSupport
 /// which is exactly right for every scan that counts punctuation — a call site,
 /// a brace depth, a modifier chain — and exactly wrong for a scan whose subject
 /// **is** a string literal. Put the orphan-translation scan on it and
-/// `L("Off")` becomes `L("")`: all 1054 keys read as dead at once, which is a
+/// `L("Off")` becomes `L("")`: every key reads as dead at once, which is a
 /// guard failing loudly. The other half of that mistake is the one that hides —
 /// reading the file **raw**, where a key named only in a comment reads as alive,
 /// which is a guard that has quietly stopped being able to fail.
 ///
-/// `Sources/HelmApp/AppStrings.swift` really does say «Not `L("Off")`», so the
-/// raw reading really does keep the key «Off» alive by explaining why it is not
-/// used there. Measured across the whole tree on 2026-08-21 the difference
-/// between the two readings was **0 keys**, so nothing was orphaned by it —
-/// this is the hole closed before something falls in it, not after.
+/// The host's strings file once carried a doc comment saying «Not `L("Off")`»
+/// (`git log -S` on that sentence finds it), so the raw reading really did keep
+/// the key «Off» alive by explaining why it was not used there.
+/// Measured across the whole tree on 2026-08-21 the difference between the two
+/// readings was **0 keys**, so nothing was orphaned by it — this is the hole
+/// closed before something falls in it, not after.
 ///
 /// `uncommented` is the third reading: comments blanked, string bodies kept.
 /// It cannot be written by a line filter and it cannot be written without

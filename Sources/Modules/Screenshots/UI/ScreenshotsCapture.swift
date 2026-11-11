@@ -1,5 +1,4 @@
 import AppKit
-import HelmContract
 import HelmRuntime
 import HelmUI
 import Module_Screenshots_Engine
@@ -11,41 +10,7 @@ struct CapturedShot {
     let kind: Kind
 }
 
-/// The door a shortcut goes through: the host calls `begin` and nothing else.
-///
-/// **In-process, and not through the transport.** A 5K display's frozen frame is some
-/// sixty megabytes and the transport is `Data` in both directions, so a capture that
-/// crossed it would be copied at least twice for nothing. The host's action
-/// lands here directly; the engine's own wire carries the settings page's state.
-@MainActor public enum ScreenshotsCapture {
-    private static var controller: CaptureController?
-
-    /// A press. A press while a capture is already open or in flight is dropped:
-    /// the overlay is one machine, and a second freeze over the first would
-    /// photograph the overlay.
-    public static func begin(_ hotkey: ScreenshotsHotkey, vm: ModuleViewModel, store: NamespacedStore) {
-        shared(vm: vm, store: store).begin(hotkey)
-    }
-
-    /// Keyed to the host's view model, which is new on every enable, and dropped
-    /// with the module: a cached controller would be holding a session built for
-    /// an engine that is gone, and an overlay on screen when the module was
-    /// switched off would be a window nothing owns.
-    private static func shared(vm: ModuleViewModel, store: NamespacedStore) -> CaptureController {
-        if let controller, controller.owner === vm { return controller }
-        controller?.teardown()
-        let created = CaptureController(owner: vm, store: store)
-        controller = created
-        ModuleUICache.dropWhenDisabled(ScreenshotsDescriptor.id.rawValue) {
-            controller?.teardown()
-            controller = nil
-        }
-        return created
-    }
-}
-
 @MainActor final class CaptureController {
-    let owner: ModuleViewModel
     private let store: NamespacedStore
     private let session: CaptureSession
     /// Not private: a test drives the thumbnail's lifetime and the Share sheet through it.
@@ -90,13 +55,13 @@ struct CapturedShot {
 
     /// `session`, `presentOverlay`, `presentBar`, `pins`, `toast` and `tick` are seams for a test,
     /// which builds a session over fake ports, counts the presentations and holds
-    /// the countdown still; the running app passes nothing and gets the real ones.
-    init(owner: ModuleViewModel, store: NamespacedStore, session: CaptureSession? = nil,
+    /// the countdown still; the running app passes the session `ScreenshotsWork` made and
+    /// gets the real ones for the rest.
+    init(store: NamespacedStore, session: CaptureSession,
          presentOverlay: @escaping (CaptureOverlay) -> Bool = { $0.present() },
          presentBar: @escaping (CapturePanel) -> Void = { $0.show() },
          pins: PinBoard = PinBoard(), toast: ShotToast = ShotToast(),
          tick: @escaping (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
-        self.owner = owner
         self.store = store
         self.presentOverlay = presentOverlay
         self.presentBar = presentBar
@@ -104,7 +69,7 @@ struct CapturedShot {
         self.pins = pins
         self.toast = toast
         self.bar = CapturePanel(store: store)
-        self.session = session ?? ScreenshotsEngine.makeSession(store: store, naming: { ScStr.naming })
+        self.session = session
         bar.model.capture = { [weak self] mode in self?.capture(from: mode) }
         bar.model.cancel = { [weak self] in self?.cancel() }
         bar.model.modeChosen = { [weak self] in self?.pick(in: $0) }
@@ -414,7 +379,8 @@ struct CapturedShot {
                     image = await session.annotated(freeze, display: display, local: local, layers: layers,
                                                     detached: exit == .pin)
                 }
-                if let image, !Task.isCancelled {
+                guard !Task.isCancelled else { return }
+                if let image {
                     // No `default:`: a new exit must say here what it does, or it would be a save.
                     switch exit {
                     case .confirm, .copy, .save, .share:
@@ -424,12 +390,16 @@ struct CapturedShot {
                     case .pin:
                         pin(image, display: display, local: local, in: freeze)
                     }
+                } else {
+                    failed("the edited shot could not be made (exit \(exit))")
                 }
             case .wholeDisplay(let display):
                 if let frame = freeze.frames.first(where: { $0.id == display }),
                    let image = session.crop(freeze, display: display,
                                             local: Selection.wholeDisplay(CGRect(origin: .zero, size: frame.frame.size))) {
                     await handOff(CapturedShot(image: image, kind: .display))
+                } else {
+                    failed("the whole-display shot could not be made")
                 }
             case .window(let id, let shadow):
                 let picked = await session.window(id, in: freeze, shadow: shadow)
@@ -443,6 +413,12 @@ struct CapturedShot {
             // a press begun since is not this one's to release.
             if !Task.isCancelled { busy = false }
         }
+    }
+
+    /// A shot the person asked for and the module could not make: a warning in the log and the toast's refusal, never silence.
+    private func failed(_ what: String) {
+        HelmLog.shared.warn(ScreenshotsEngine.moduleID, what)
+        toast.showRefusal(.captureFailed)
     }
 
     /// What takes a picked target from the screen as it is **after** the countdown, or nil for a result that is no target.
@@ -508,7 +484,7 @@ struct CapturedShot {
 
     /// Where a finished picture is delivered: copied and/or saved, the shutter, the
     /// thumbnail. A window or a whole display arrives here straight from the overlay
-    /// and does both; an area is **not** picked here any more — its seam is
+    /// and asks for both; an area is **not** picked here any more — its seam is
     /// `OverlayResult.edited`, which composes the editor's layers over the crop and
     /// then calls this with the two things its exit asked for (Return asks for both
     /// and so behaves as this always did, ⌘C only copies, ⌘S only saves). The
@@ -535,7 +511,7 @@ struct CapturedShot {
 
     /// The capsule's Copy: the shot's full picture to the clipboard, from memory or read back from its file.
     private func copyFromThumbnail() {
-        guard let image = toast.fullPicture() else { toast.showRefusal(.encoding); return }
+        guard let image = toast.fullPicture() else { toast.showRefusal(toast.currentFileIsGone ? .fileGone : .encoding); return }
         copyTask?.cancel()
         copyTask = Task {
             let delivery = await session.deliver(image, saves: false, copies: true)

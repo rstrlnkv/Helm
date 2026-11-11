@@ -2,6 +2,7 @@ import HelmContract
 import HelmRuntime
 import HelmUI
 import SwiftUI
+import HelmAppStrings
 
 /// **The column that stands on the window's backdrop: section headings, a row
 /// for each module that is on, and the row for Helm's own three pages at the
@@ -13,6 +14,18 @@ import SwiftUI
 /// plain buttons does not move a selection by arrow keys the way a `List` did,
 /// so Up and Down are handled here and go through
 /// `ShellSidebarRows.neighbour`; at either end they change nothing.
+///
+/// **Typing the first letters of a row's name selects that row**, as a system list's type-select does
+/// (`typeSelect`). The buffer is an event-stream value, so it has three ways to clear and none relies on
+/// an event that may not come: a press after a gap longer than `typeSelectGap` (the time of each press is
+/// compared with the last, there is no timer to cancel; `KeyPress` carries no timestamp, so it is read
+/// when the handler runs), Escape, and the column losing focus. If none of them comes the
+/// buffer lingers, and the next press after any gap starts afresh. A press with ⌘, ⌃ or ⌥ is not text and
+/// passes. The match is by the name the row draws, anchored, blind to case, accents and width; no name in
+/// the eight languages begins with an article. The column is a focusable view, not a text input client,
+/// so a system input method does not compose into it. Tried in a script with the same match options,
+/// not in a running window: katakana typed matches a katakana name; hiragana does not, and the kanji
+/// names (重複, 設定) match nothing typed as kana; pinyin matches nothing.
 ///
 /// **It observes `host` itself.** The rows are filtered by whether a module is
 /// on, and switching a module off in Settings calls `ModuleHost.setEnabled`
@@ -35,6 +48,8 @@ struct ShellSidebar: View {
     @State private var accessibility: PermissionState = .granted
     @State private var screenRecording: PermissionState = .granted
     @FocusState private var focused: Bool
+    @State private var typedText = ""
+    @State private var lastTyped = Date.distantPast
 
     init(model: SettingsModel, collapsed: Bool, toggleCollapsed: @escaping () -> Void) {
         self.model = model
@@ -44,19 +59,59 @@ struct ShellSidebar: View {
     }
 
     /// The owner's measures for the column, which Helm's ladders have no rung
-    /// within a point of. `dotSide` is not one of them: it is the side
-    /// `HelmStatusDot` draws its dot at.
-    nonisolated static let rowHeight: CGFloat = 36
+    /// within a point of. The row's own are in `HelmSidebarRow`.
     nonisolated static let columnPad: CGFloat = 10
-    nonisolated static let glyphSide: CGFloat = 16 * 1.3
     nonisolated static let chevronColumn: CGFloat = 20
-    nonisolated static let selectionRadius: CGFloat = 8
-    nonisolated static let dotSide: CGFloat = 8
     nonisolated static let headingTop: CGFloat = 10
 
-    /// The ink of the mark on a module that is on and cannot act. The one place
-    /// that names it, so choosing another colour changes this line alone.
-    static var blockedInk: Color { HelmSignal.warning }
+    /// How long the type-select buffer waits for the next letter. AppKit exposes no interval for its own
+    /// type-select (`NSEvent` has `doubleClickInterval`, `keyRepeatDelay` and `keyRepeatInterval`, none of them
+    /// type-select's), so the number is ours: well past
+    /// the key-repeat delay, so a held key is not a gap, and short enough that a second word typed a
+    /// moment later starts afresh. Not measured against the system's.
+    nonisolated static let typeSelectGap: TimeInterval = 1
+
+    /// The text a press adds to the type-select buffer, or nil when the press is not text for it.
+    /// **Only Shift and Caps Lock may be held**; ⌘, ⌃ and ⌥ are shortcuts and pass. `.function` and
+    /// `.numericPad` are refused too, as anything not listed (not tried against a running window).
+    nonisolated static func typed(_ press: KeyPress, buffer: String) -> String? {
+        guard acceptsModifiers(press.modifiers) else { return nil }
+        return typeSelectText(press.characters, buffer: buffer)
+    }
+
+    nonisolated static func acceptsModifiers(_ modifiers: EventModifiers) -> Bool {
+        modifiers.subtracting([.shift, .capsLock]).isEmpty
+    }
+
+    /// What of a press's `characters` is text. **Control characters and the function-key range
+    /// (U+F700–U+F8FF, where AppKit puts the arrows, Home, End, F1…) are not text**, so an arrow can
+    /// never join the buffer and be `.handled` away from the move command. A space with an empty
+    /// buffer is not a start (whether space presses anything in this column is untried).
+    nonisolated static func typeSelectText(_ characters: String, buffer: String) -> String? {
+        let refused = { (scalar: Unicode.Scalar) in
+            CharacterSet.controlCharacters.contains(scalar) || (0xF700...0xF8FF).contains(scalar.value)
+        }
+        guard !characters.isEmpty, !characters.unicodeScalars.contains(where: refused) else { return nil }
+        if buffer.isEmpty && characters.trimmingCharacters(in: .whitespaces).isEmpty { return nil }
+        return characters
+    }
+
+    /// The name a row draws, the one string the row, its tooltip and type-select all read.
+    static func title(of row: ShellSidebarRows.Row) -> String {
+        switch row {
+        case .module(let id): return ModuleRegistry.descriptor(id)?.moduleMetadata.shortName ?? ""
+        case .foot: return AppStr.settingsPane
+        }
+    }
+
+    /// What the warning on a blocked row says, the strings the permission note already uses.
+    private var blockedWarning: HelmSidebarRow.Warning {
+        HelmSidebarRow.Warning(mark: AppStr.moduleBlockedByPermission, spoken: AppStr.moduleRowBlockedByPermission)
+    }
+
+    private func position(of row: ShellSidebarRows.Row, in rows: ShellSidebarRows) -> HelmSidebarRow.Position? {
+        rows.position(of: row).map { HelmSidebarRow.Position(index: $0.index, count: $0.count) }
+    }
 
     nonisolated static func direction(_ command: MoveCommandDirection) -> ShellSidebarRows.Direction? {
         switch command {
@@ -127,15 +182,16 @@ struct ShellSidebar: View {
                         }
                         ForEach(group.modules, id: \.self) { id in
                             if let descriptor = ModuleRegistry.descriptor(id) {
-                                ShellSidebarRow(
-                                    title: descriptor.moduleMetadata.shortName,
+                                HelmSidebarRow(
+                                    title: Self.title(of: .module(id)),
                                     glyph: descriptor.moduleGlyph,
                                     selected: current == .module(id),
                                     collapsed: collapsed,
-                                    blocked: ShellSidebarRows.blocked(
+                                    warning: ShellSidebarRows.blocked(
                                         inertWithout: descriptor.moduleMetadata.inertWithout,
                                         disk: diskAccess, accessibility: accessibility,
-                                        screenRecording: screenRecording)) {
+                                        screenRecording: screenRecording) ? blockedWarning : nil,
+                                    position: position(of: .module(id), in: rows)) {
                                     choose(.module(id))
                                 }
                             }
@@ -144,17 +200,17 @@ struct ShellSidebar: View {
                 }
             }
             if collapsed {
-                ShellSidebarRow(title: AppStr.showSidebar, glyph: .expand, selected: false,
-                                collapsed: true, blocked: false, action: toggleCollapsed)
-                footRow(selected: current == .foot)
+                HelmSidebarRow(title: AppStr.showSidebar, glyph: .expand, selected: false,
+                               collapsed: true, action: toggleCollapsed)
+                footRow(selected: current == .foot, in: rows)
             } else {
                 HStack(spacing: HelmSpace.s1) {
-                    footRow(selected: current == .foot).layoutPriority(1)
+                    footRow(selected: current == .foot, in: rows).layoutPriority(1)
                     Button(action: toggleCollapsed) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(.secondary)
-                            .frame(width: Self.chevronColumn, height: Self.rowHeight)
+                            .frame(width: Self.chevronColumn, height: HelmSidebarRow.height)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -175,92 +231,40 @@ struct ShellSidebar: View {
                   let row = Self.landing(from: current, moving: direction, in: rows) else { return }
             choose(row)
         }
+        .onKeyPress(phases: .down) { press in
+            typeSelect(press, in: rows)
+        }
+        .onChange(of: focused) { _, now in if !now { typedText = "" } }
         .helmTracksFullDiskAccess($diskAccess)
         .helmTracksAccessibility($accessibility)
         .helmTracksScreenRecording($screenRecording)
     }
 
-    private func footRow(selected: Bool) -> some View {
-        ShellSidebarRow(title: AppStr.settingsPane, glyph: .settings, selected: selected,
-                        collapsed: collapsed, blocked: false) {
+    private func footRow(selected: Bool, in rows: ShellSidebarRows) -> some View {
+        HelmSidebarRow(title: Self.title(of: .foot), glyph: .settings, selected: selected,
+                       collapsed: collapsed, position: position(of: .foot, in: rows)) {
             choose(.foot)
         }
+    }
+
+    /// One key press of type-select. Escape clears the buffer and passes; a text press after a gap over
+    /// `typeSelectGap` starts a new buffer; a match selects its row, no match changes nothing.
+    private func typeSelect(_ press: KeyPress, in rows: ShellSidebarRows) -> KeyPress.Result {
+        if press.key == .escape {
+            typedText = ""
+            return .ignored
+        }
+        let now = Date()
+        let stale = now.timeIntervalSince(lastTyped) > Self.typeSelectGap
+        guard let text = Self.typed(press, buffer: stale ? "" : typedText) else { return .ignored }
+        typedText = (stale ? "" : typedText) + text
+        lastTyped = now
+        if let row = rows.row(typed: typedText, title: Self.title(of:)) { choose(row) }
+        return .handled
     }
 
     private func choose(_ row: ShellSidebarRows.Row) {
         focused = true
         if let next = Self.selection(choosing: row, from: model.selection) { model.selection = next }
-    }
-}
-
-/// One row: the glyph, filled when the row is selected, and the name; in the
-/// rail the glyph alone. The name is the tooltip in both, for a name cut short
-/// in the column, and the accessibility label.
-private struct ShellSidebarRow: View {
-    let title: String
-    let glyph: ShellGlyph
-    let selected: Bool
-    let collapsed: Bool
-    let blocked: Bool
-    let action: () -> Void
-    @State private var hover = false
-
-    // The owner's fills for the selected and the hovered row.
-    private static let selectedFill = 0.10
-    private static let hoverFill = 0.05
-
-    init(title: String, glyph: ShellGlyph, selected: Bool, collapsed: Bool, blocked: Bool,
-         action: @escaping () -> Void) {
-        self.title = title
-        self.glyph = glyph
-        self.selected = selected
-        self.collapsed = collapsed
-        self.blocked = blocked
-        self.action = action
-    }
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: HelmSpace.s4) {
-                ShellGlyphView(glyph, filled: selected, size: ShellSidebar.glyphSide)
-                    // In the rail the mark sits on the glyph's own frame, so the
-                    // glyph does not shift between a row that has one and one
-                    // that has not. Centred on the frame's corner, the dot
-                    // clears the glyph's strokes.
-                    .overlay(alignment: .topTrailing) { if collapsed && blocked { mark.offset(x: ShellSidebar.dotSide / 2, y: -ShellSidebar.dotSide / 2) } }
-                if !collapsed {
-                    HStack(spacing: HelmSpace.s3) {
-                        Text(title).font(HelmText.rowTitle).lineLimit(1)
-                        if blocked { mark }
-                    }
-                    Spacer(minLength: 0)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: collapsed ? .center : .leading)
-            .padding(.horizontal, collapsed ? 0 : HelmSpace.s4)
-            .frame(height: ShellSidebar.rowHeight)
-            .foregroundStyle(selected ? .primary : .secondary)
-            .background(
-                RoundedRectangle(cornerRadius: ShellSidebar.selectionRadius, style: .continuous)
-                    .fill(Color.primary.opacity(selected ? Self.selectedFill : hover ? Self.hoverFill : 0))
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { hover = $0 }
-        .help(title)
-        .accessibilityLabel(title)
-        .accessibilityValue(blocked ? AppStr.moduleRowBlockedByPermission : "")
-        .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-
-    /// The module is on and cannot act. One fact, a small round mark; the pane
-    /// the row leads to is where it is fixed.
-    private var mark: some View {
-        Circle()
-            .fill(ShellSidebar.blockedInk)
-            .frame(width: ShellSidebar.dotSide, height: ShellSidebar.dotSide)
-            .help(AppStr.moduleBlockedByPermission)
-            .accessibilityLabel(AppStr.moduleBlockedByPermission)
     }
 }

@@ -6,7 +6,7 @@ import Foundation
 /// without a keyboard.
 ///
 /// **It was all-or-nothing, and that is what killed the selection path.** The
-/// tables hold letters only (`character.isLetter`, `UCTranslation.buildTable`),
+/// tables leave out whitespace (`UCTranslation.buildTable`),
 /// and the loop refused the whole string at the first character it could not
 /// find in them. A word is letters, so the last-word path never met the case
 /// and stayed healthy; a selection is a sentence, and a sentence has spaces in

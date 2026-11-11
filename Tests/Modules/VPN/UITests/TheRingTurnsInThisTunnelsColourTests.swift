@@ -28,26 +28,25 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
 
     private func model(_ connections: [(String, String)],
                        book: (VPNSettings) -> Void = { _ in }) -> VPNViewModel {
-        let transport = LocalTransport()
+        let work = FakeVPNWork()
         let store = NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore())
         let settings = VPNSettings(store: store)
-        settings.setNotice(.menuBar)
-        settings.setDropNotice(.menuBar)
-        settings.setAutomationSpin(true)
+        settings.store.set(VPNNotice.menuBar.rawValue, for: VPNSettings.automationNoticeKey)
+        settings.store.set(VPNNotice.menuBar.rawValue, for: VPNSettings.dropNoticeKey)
+        settings.store.set(true, for: VPNSettings.automationSpinKey)
         book(settings)
-        let vm = VPNViewModel(transport: transport, settings: settings)
+        let vm = VPNViewModel(work: work, settings: settings)
         let payload = VPNEngine.StatePayload(
             connections: connections.map {
                 VPNConnection(id: $0.0, name: $0.1, status: .disconnected, kind: "IKEv2")
             },
-            autoConnected: [], defaultName: nil, lastAutomation: nil)
-        transport.emit(EngineEvent(name: VPNEvent.state.rawValue,
-                                   payload: try! JSONEncoder().encode(payload)))
+            autoConnected: [], lastAutomation: nil)
+        work.say(payload)
         for _ in 0..<80 where vm.connections.isEmpty {
             RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
         }
         XCTAssertEqual(vm.connections.count, connections.count,
-                       "the wire did not deliver: nothing below measures anything")
+                       "the stream did not deliver: nothing below measures anything")
         return vm
     }
 
@@ -118,7 +117,7 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
     /// constant spelled twice.
     func testAnUntouchedTunnelFollowsTheModuleWideColour() {
         let vm = model([("id-A", "Office")], book: { settings in
-            settings.setSpinTint("blue", for: .connected)
+            settings.store.set("blue", for: VPNSettings.spinTintKey(.connected))
         })
         XCTAssertEqual(vm.spinTint(for: .connected, on: "Office"), "blue")
     }
@@ -147,7 +146,6 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
                           + "to the store and never read")
         }
         for moduleWide in ["model.automationSpin\n", "model.automationSpin ",
-                           "model.effectiveNotice(for: firing.kind)",
                            "model.spinTint(for: firing.kind)"] {
             XCTAssertFalse(source.contains(moduleWide),
                            "the firing path still reads «\(moduleWide)» module-wide")

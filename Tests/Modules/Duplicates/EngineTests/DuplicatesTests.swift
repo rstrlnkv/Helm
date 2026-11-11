@@ -56,11 +56,7 @@ final class DuplicatesTests: XCTestCase {
     func testSameSizeDifferentContentIsNotADuplicate() {
         let facts = [file("/a", bytes: 5_000_000, id: 1),
                      file("/b", bytes: 5_000_000, id: 2)]
-        let groups = Duplicates.groups(
-            files: facts, minBytes: 1_000_000, by: KeepRule(.standard),
-            partial: { $0.path == "/a" ? "aaaa" : "bbbb" },
-            full: { _ in XCTFail("full hash after partial already split"); return nil })
-        XCTAssertTrue(groups.isEmpty)
+        XCTAssertTrue(Duplicates.refine(facts, by: { $0.path == "/a" ? "aaaa" : "bbbb" }).isEmpty)
     }
 
     /// The partial hash exists to be cheap, not to be right: two files that
@@ -68,25 +64,20 @@ final class DuplicatesTests: XCTestCase {
     func testSamePrefixDifferentTailIsSplitByTheFullHash() {
         let facts = [file("/a", bytes: 5_000_000, id: 1),
                      file("/b", bytes: 5_000_000, id: 2)]
-        let groups = Duplicates.groups(
-            files: facts, minBytes: 1_000_000, by: KeepRule(.standard),
-            partial: { _ in "same-prefix" },
-            full: { $0.path == "/a" ? "AAAA" : "BBBB" })
-        XCTAssertTrue(groups.isEmpty)
+        let byPrefix = Duplicates.refine(facts, by: { _ in "same-prefix" })
+        XCTAssertEqual(byPrefix.count, 1, "the cheap check agrees, so the full hash is asked")
+        XCTAssertTrue(byPrefix.flatMap { Duplicates.refine($0, by: { $0.path == "/a" ? "AAAA" : "BBBB" }) }.isEmpty)
     }
 
     func testTrueDuplicatesGroupWithWastedBytes() {
-        let facts = [file("/a", bytes: 5_000_000, id: 1),
-                     file("/b", bytes: 5_000_000, id: 2),
-                     file("/c", bytes: 5_000_000, id: 3)]
-        let groups = Duplicates.groups(
-            files: facts, minBytes: 1_000_000, by: KeepRule(.standard),
-            partial: { _ in "p" }, full: { _ in "f" })
-        XCTAssertEqual(groups.count, 1)
-        XCTAssertEqual(groups[0].paths.count, 3)
-        XCTAssertEqual(groups[0].bytes, 5_000_000)
+        let identical = [file("/a", bytes: 5_000_000, id: 1),
+                         file("/b", bytes: 5_000_000, id: 2),
+                         file("/c", bytes: 5_000_000, id: 3)]
+        let group = Duplicates.group(identical, by: KeepRule(.standard))
+        XCTAssertEqual(group.paths.count, 3)
+        XCTAssertEqual(group.bytes, 5_000_000)
         // Keeping one costs nothing; the waste is every copy beyond it.
-        XCTAssertEqual(groups[0].wasted, 10_000_000)
+        XCTAssertEqual(group.wasted, 10_000_000)
     }
 
     /// Unreadable is unknown, and unknown must not join a group: reporting a
@@ -96,35 +87,15 @@ final class DuplicatesTests: XCTestCase {
         let facts = [file("/a", bytes: 5_000_000, id: 1),
                      file("/b", bytes: 5_000_000, id: 2),
                      file("/locked", bytes: 5_000_000, id: 3)]
-        let groups = Duplicates.groups(
-            files: facts, minBytes: 1_000_000, by: KeepRule(.standard),
-            partial: { $0.path == "/locked" ? nil : "p" },
-            full: { $0.path == "/locked" ? nil : "f" })
+        let groups = Duplicates.refine(facts, by: { $0.path == "/locked" ? nil : "p" })
         XCTAssertEqual(groups.count, 1)
-        XCTAssertEqual(Set(groups[0].paths), ["/a", "/b"])
-    }
-
-    func testGroupsComeLargestWasteFirst() {
-        let facts = [file("/big1", bytes: 9_000_000, id: 1),
-                     file("/big2", bytes: 9_000_000, id: 2),
-                     file("/sm1", bytes: 2_000_000, id: 3),
-                     file("/sm2", bytes: 2_000_000, id: 4),
-                     file("/sm3", bytes: 2_000_000, id: 5)]
-        let groups = Duplicates.groups(
-            files: facts, minBytes: 1_000_000, by: KeepRule(.standard),
-            partial: { ["\u{2F}big1": "b", "/big2": "b"][$0.path] ?? "s" },
-            full: { ["\u{2F}big1": "b", "/big2": "b"][$0.path] ?? "s" })
-        XCTAssertEqual(groups.count, 2)
-        XCTAssertGreaterThanOrEqual(groups[0].wasted, groups[1].wasted)
+        XCTAssertEqual(Set(groups[0].map(\.path)), ["/a", "/b"])
     }
 
     func testPathsInsideAGroupAreSortedForStableDisplay() {
-        let facts = [file("/z", bytes: 5_000_000, id: 1),
-                     file("/a", bytes: 5_000_000, id: 2)]
-        let groups = Duplicates.groups(
-            files: facts, minBytes: 1_000_000, by: KeepRule(.standard),
-            partial: { _ in "p" }, full: { _ in "f" })
-        XCTAssertEqual(groups[0].paths, ["/a", "/z"])
+        let group = Duplicates.group([file("/z", bytes: 5_000_000, id: 1),
+                                      file("/a", bytes: 5_000_000, id: 2)], by: KeepRule(.standard))
+        XCTAssertEqual(group.paths, ["/a", "/z"])
     }
 }
 

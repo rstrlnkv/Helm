@@ -1,5 +1,4 @@
 import XCTest
-import HelmContract
 import HelmTestSupport
 import HelmUI
 @testable import Module_Homebrew_Engine
@@ -61,7 +60,7 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
                 \(language.rawValue): the question a press on Run raises is not the one the \
                 Uninstall button asks about the same act
                 """)
-            XCTAssertEqual(HomebrewSettingsPage.fixQuestionNote(uninstall),
+            XCTAssertEqual(HomebrewSettingsPage.fixQuestionNote(uninstall, dependents: []),
                            HbStr.uninstallIsPermanent,
                            "\(language.rawValue): the dialog does not say the removal is permanent")
             XCTAssertNil(HomebrewSettingsPage.fixQuestion(cleanup), """
@@ -73,23 +72,15 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
 
     // MARK: - What the press does
 
-    private final class Clinic: EngineTransport, @unchecked Sendable {
-        private let stream = AsyncStream<EngineEvent>.makeStream()
-        var events: AsyncStream<EngineEvent> { stream.stream }
-        private let lock = NSLock()
-        private var sent: [[String]] = []
-        var fired: [[String]] { lock.withLock { sent } }
-
-        func send(_ command: EngineCommand) async throws -> Data {
-            if HomebrewCommand(rawValue: command.name) == .doctorFix,
-               let argv = try? JSONDecoder().decode([String].self, from: command.payload) {
-                lock.withLock { sent.append(argv) }
-            }
-            return Data()
+    /// The argv of every doctor fix the fake was asked to run, in order.
+    private func fired(_ work: FakeHomebrewWork) -> [[String]] {
+        work.acts.compactMap { act in
+            if case .doctorFix(let argv) = act { return argv }
+            return nil
         }
     }
 
-    private func settle(_ clinic: Clinic, until: () -> Bool) async {
+    private func settle(_ work: FakeHomebrewWork, until: () -> Bool) async {
         for _ in 0..<2_000 where !until() { await Task.yield() }
     }
 
@@ -97,11 +88,11 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
     /// it, every «nothing was sent» below is true of a view model that sends
     /// nothing at all.
     func testCleanupStillRunsOnThePress() async {
-        let clinic = Clinic()
-        let model = HomebrewViewModel(vm: ModuleViewModel(transport: clinic))
-        model.askToRunFix(DoctorFix(argv: ["cleanup"], kind: .runnable))
-        await settle(clinic) { !clinic.fired.isEmpty }
-        XCTAssertEqual(clinic.fired, [["cleanup"]], """
+        let work = FakeHomebrewWork()
+        let model = HomebrewViewModel(work: work)
+        await model.askToRunFix(DoctorFix(argv: ["cleanup"], kind: .runnable))
+        await settle(work) { !fired(work).isEmpty }
+        XCTAssertEqual(fired(work), [["cleanup"]], """
             `brew cleanup` did not reach the engine on the press — so this fake sees no commands \
             at all, and the absences below prove nothing
             """)
@@ -109,21 +100,21 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
     }
 
     func testTheDestructiveOneReachesNothingUntilItIsConfirmed() async {
-        let clinic = Clinic()
-        let model = HomebrewViewModel(vm: ModuleViewModel(transport: clinic))
+        let work = FakeHomebrewWork()
+        let model = HomebrewViewModel(work: work)
         let fix = DoctorFix(argv: ["uninstall", "periphery"], kind: .runnable)
 
-        model.askToRunFix(fix)
+        await model.askToRunFix(fix)
         XCTAssertEqual(model.pendingFix, fix, "the press raised no question")
-        await settle(clinic) { !clinic.fired.isEmpty }
-        XCTAssertEqual(clinic.fired, [], """
+        await settle(work) { !fired(work).isEmpty }
+        XCTAssertEqual(fired(work), [], """
             `brew uninstall periphery` was on its way to the engine before anybody had answered \
             the question — which is the single click, with a dialog drawn over it
             """)
 
         model.confirmFix()
-        await settle(clinic) { !clinic.fired.isEmpty }
-        XCTAssertEqual(clinic.fired, [["uninstall", "periphery"]], """
+        await settle(work) { !fired(work).isEmpty }
+        XCTAssertEqual(fired(work), [["uninstall", "periphery"]], """
             answering the question ran nothing, so the dialog is the whole feature and the fix \
             cannot be applied at all
             """)
@@ -134,16 +125,141 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
     /// half is `cancelUninstall`'s own lesson: this view model outlives the
     /// page, so a question left standing is one the next visit opens with.
     func testDecliningRunsNothingAndClearsTheQuestion() async {
-        let clinic = Clinic()
-        let model = HomebrewViewModel(vm: ModuleViewModel(transport: clinic))
-        model.askToRunFix(DoctorFix(argv: ["uninstall", "periphery"], kind: .runnable))
+        let work = FakeHomebrewWork()
+        let model = HomebrewViewModel(work: work)
+        await model.askToRunFix(DoctorFix(argv: ["uninstall", "periphery"], kind: .runnable))
         model.cancelFix()
-        await settle(clinic) { !clinic.fired.isEmpty }
-        XCTAssertEqual(clinic.fired, [], "the fix ran after the person declined it")
+        await settle(work) { !fired(work).isEmpty }
+        XCTAssertEqual(fired(work), [], "the fix ran after the person declined it")
         XCTAssertNil(model.pendingFix)
         // And a confirm with nothing pending is not a second door to the act.
         model.confirmFix()
-        await settle(clinic) { !clinic.fired.isEmpty }
-        XCTAssertEqual(clinic.fired, [], "a confirm with no question standing ran something")
+        await settle(work) { !fired(work).isEmpty }
+        XCTAssertEqual(fired(work), [], "a confirm with no question standing ran something")
+    }
+
+    // MARK: - What it takes with it
+
+    /// **The fix's dialog reads what depends on the package before it asks** —
+    /// the Uninstall button's reading, through the same function. Nothing runs
+    /// before the answer, and the sentence is the one the other dialog draws.
+    func testTheFixDialogShowsWhatStillNeedsThePackageBeforeAnythingRuns() async {
+        let work = FakeHomebrewWork()
+        work.dependents = ["aria2", "node"]
+        let model = HomebrewViewModel(work: work)
+        let fix = DoctorFix(argv: ["uninstall", "openssl@3"], kind: .runnable)
+
+        await model.askToRunFix(fix)
+        XCTAssertEqual(work.dependentsAsked, [PackageRef(name: "openssl@3", isCask: false)],
+                       "the fix's question did not read the dependents")
+        XCTAssertEqual(model.pendingFix, fix, "the control: the question was not raised")
+        XCTAssertEqual(model.dependentsOfPending, ["aria2", "node"])
+        XCTAssertEqual(HomebrewSettingsPage.fixQuestionNote(fix, dependents: model.dependentsOfPending),
+                       HomebrewSettingsPage.uninstallNote(dependents: ["aria2", "node"]))
+        XCTAssertTrue(HomebrewSettingsPage.uninstallNote(dependents: ["aria2", "node"])
+                        .hasSuffix(HbStr.stillNeededBy + "\naria2, node"))
+        XCTAssertEqual(fired(work), [], "`brew uninstall` was sent before the question was answered")
+
+        model.confirmFix()
+        XCTAssertEqual(fired(work), [["uninstall", "openssl@3"]])
+        XCTAssertEqual(model.dependentsOfPending, [], "the reading outlived its question")
+    }
+
+    /// A reading that did not answer is not «nothing depends on it»: the
+    /// question is still asked, with no list and no reassurance.
+    func testAFailedDependentsReadIsNotAReassuranceInTheFixDialog() async {
+        let work = FakeHomebrewWork()
+        work.dependents = nil
+        let model = HomebrewViewModel(work: work)
+        let fix = DoctorFix(argv: ["uninstall", "openssl@3"], kind: .runnable)
+
+        await model.askToRunFix(fix)
+        XCTAssertEqual(work.dependentsAsked.count, 1, "control: nothing was read")
+        XCTAssertEqual(model.pendingFix, fix)
+        XCTAssertEqual(model.dependentsOfPending, [])
+        let note = HomebrewSettingsPage.fixQuestionNote(fix, dependents: model.dependentsOfPending)
+        XCTAssertEqual(note, HbStr.uninstallIsPermanent)
+        XCTAssertFalse(note?.contains(HbStr.stillNeededBy) ?? true)
+        XCTAssertEqual(fired(work), [])
+    }
+
+    /// Declining or leaving retires a read still out: its answer raises nothing.
+    func testACancelledFixAskRaisesNothingWhenItsReadComesBack() async {
+        let work = FakeHomebrewWork()
+        work.dependents = ["node"]
+        work.park("readDependents")
+        let model = HomebrewViewModel(work: work)
+        let ask = Task { await model.askToRunFix(DoctorFix(argv: ["uninstall", "openssl@3"], kind: .runnable)) }
+        await eventually("the read is out") { work.calls.contains("readDependents openssl@3") }
+        model.cancelFix()
+        work.release("readDependents")
+        await ask.value
+        XCTAssertNil(model.pendingFix, "a cancelled ask raised its dialog")
+        XCTAssertEqual(model.dependentsOfPending, [])
+    }
+
+    /// A fix that is not an uninstall has no package to ask about: `cleanup`
+    /// runs on the press and an unrecognised command waits for its answer, and
+    /// neither reads dependents (a reading no dialog would show is a `brew uses`
+    /// launched for nothing).
+    func testOnlyAnUninstallFixReadsDependents() async {
+        let work = FakeHomebrewWork()
+        let model = HomebrewViewModel(work: work)
+        await model.askToRunFix(DoctorFix(argv: ["cleanup"], kind: .runnable))
+        await settle(work) { !fired(work).isEmpty }
+        XCTAssertEqual(fired(work), [["cleanup"]], "control: the cleanup press did not reach the engine")
+        XCTAssertEqual(work.dependentsAsked, [], "a cleanup press read what depends on a package")
+        XCTAssertEqual(model.dependentsOfPending, [])
+
+        let unrecognised = DoctorFix(argv: ["foo"], kind: .runnable)
+        await model.askToRunFix(unrecognised)
+        XCTAssertEqual(model.pendingFix, unrecognised, "control: the unrecognised ask raised no question")
+        XCTAssertEqual(work.dependentsAsked, [], "an unrecognised command read what depends on a package")
+    }
+
+    // MARK: - The question waits for the reading
+
+    /// **The dialog is raised with its list or not at all.** While the read is
+    /// out nothing stands; a dialog raised first would show «nothing needs it»
+    /// for as long as `brew uses` takes, and Run would be one click from a
+    /// deletion the person has not been told the cost of.
+    func testTheFixDialogIsNotRaisedWhileTheDependentsReadIsOut() async {
+        let work = FakeHomebrewWork()
+        work.dependents = ["aria2", "node"]
+        work.park("readDependents")
+        let model = HomebrewViewModel(work: work)
+        let fix = DoctorFix(argv: ["uninstall", "openssl@3"], kind: .runnable)
+        let ask = Task { await model.askToRunFix(fix) }
+        await eventually("the read is out") { work.calls.contains("readDependents openssl@3") }
+        XCTAssertEqual(work.dependentsAsked, [PackageRef(name: "openssl@3", isCask: false)],
+                       "control: the read is not out")
+        XCTAssertNil(model.pendingFix, "the fix's dialog was raised before the dependents came back")
+        XCTAssertEqual(model.dependentsOfPending, [])
+
+        work.release("readDependents")
+        await ask.value
+        XCTAssertEqual(model.pendingFix, fix, "the answer did not raise the question")
+        XCTAssertEqual(model.dependentsOfPending, ["aria2", "node"])
+        XCTAssertEqual(fired(work), [])
+    }
+
+    /// The Uninstall button's door through the same function, the same rule.
+    func testTheUninstallDialogIsNotRaisedWhileTheDependentsReadIsOut() async {
+        let work = FakeHomebrewWork()
+        work.dependents = ["aria2", "node"]
+        work.park("readDependents")
+        let model = HomebrewViewModel(work: work)
+        let wget = BrewPackage(name: "wget", version: "1.25", isCask: false)
+        let ask = Task { await model.askToUninstall(wget) }
+        await eventually("the read is out") { work.calls.contains("readDependents wget") }
+        XCTAssertEqual(work.dependentsAsked, [PackageRef(name: "wget", isCask: false)],
+                       "control: the read is not out")
+        XCTAssertNil(model.pendingUninstall, "the uninstall dialog was raised before the dependents came back")
+        XCTAssertEqual(model.dependentsOfPending, [])
+
+        work.release("readDependents")
+        await ask.value
+        XCTAssertEqual(model.pendingUninstall, wget, "the answer did not raise the question")
+        XCTAssertEqual(model.dependentsOfPending, ["aria2", "node"])
     }
 }

@@ -12,14 +12,16 @@ import HelmRuntime
 /// on the dialog naming the app, the rule or this program. Any process running
 /// as this user could pick that moment by launching the app.
 ///
-/// The prompt now needs a gesture behind it: `startSession`, or the switch's
-/// own rising edge. Automatic paths still engage when the grant already exists,
+/// The prompt now needs a gesture behind it: the lid switch's own rising edge
+/// (`lidSwitchTurned`) and nothing else — a Start press is a gesture on another
+/// control (owner decision 2026-11-11). Automatic paths still engage when the grant already exists,
 /// because that costs no dialog — and the session itself is never held back,
 /// since an IOKit assertion keeps an open Mac awake perfectly well.
 final class APasswordDialogNeedsAGestureTests: XCTestCase {
     private var store: NamespacedStore!
     private var clamshell: FakeClamshell!
     private var apps: FakeApps!
+    private var lidInfo: FakeLidInfo!
     private var engine: KeepAwakeEngine!
 
     override func setUp() {
@@ -30,11 +32,13 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
         clamshell.sudoersInstalled = false
         clamshell.passwordlessGrantExists = false
         apps = FakeApps()
+        lidInfo = FakeLidInfo()
+        lidInfo.lid = true
         engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
                                  assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(), power: FakePower(),
                                  apps: apps, pointer: FakePointer(),
-                                 clamshell: clamshell, clock: FakeClock())
+                                 clamshell: clamshell, clock: FakeClock(), lidInfo: lidInfo)
     }
 
     /// The prompt's answer reaches the engine through `DispatchQueue.main.async`
@@ -58,15 +62,38 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
         }
     }
 
-    /// The control. Pressing a button still asks — otherwise every assertion
-    /// below passes with the feature deleted.
+    /// Decision A. A Start press is not the lid switch: with the option stored
+    /// on and no passwordless rule, Start holds the Mac without the lid rule and
+    /// raises no dialog.
     @MainActor
-    func testStartingASessionByHandStillAsksForTheRule() async {
+    func testStartingASessionByHandDoesNotAskAndHoldsWithoutTheLidRule() async {
         engine.startSession(minutes: 0)
+
+        await waitUntil("the lid asked whether it needs a password") { clamshell.grantChecks > 0 }
+        await engine.drainClamshellForTests()
+        XCTAssertTrue(engine.isActive, "precondition: the press started a session")
+        XCTAssertEqual(clamshell.installCalls, 0,
+                       "a Start press raised the administrator dialog")
+        XCTAssertFalse(engine.clamshellActive, "without a grant the lid rule is not held")
+        XCTAssertFalse(clamshell.disableSleepCalls.contains(true),
+                       "pmset disablesleep was attempted without a grant")
+    }
+
+    /// The control. The lid switch's own gesture still asks — otherwise every
+    /// assertion below passes with the feature deleted.
+    @MainActor
+    func testTheLidSwitchTurnedOnByHandStillAsksForTheRule() async {
+        KeepAwakeSettings(store: store).setClamshellEnabled(false)
+        engine.startSession(minutes: 0)
+        engine.settingsChanged()
+        await engine.drainClamshellForTests()
+        XCTAssertEqual(clamshell.installCalls, 0, "precondition: nothing asked yet")
+
+        engine.lidSwitchTurned(true)
 
         await waitUntil("the lid asked for the rule") { clamshell.installCalls == 1 }
         XCTAssertEqual(clamshell.installCalls, 1,
-                       "a deliberate start is the one place a password dialog belongs")
+                       "the switch's own gesture is the one place a password dialog belongs")
     }
 
     /// The expensive one. A rule fires, the Mac is held awake, and no dialog.
@@ -79,7 +106,7 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
                                     assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                                     displayObserver: FakeDisplayObserver(), power: power,
                                     apps: apps, pointer: FakePointer(),
-                                    clamshell: clamshell, clock: FakeClock())
+                                    clamshell: clamshell, clock: FakeClock(), lidInfo: lidInfo)
 
         let asked = clamshell.grantChecks
         ruled.activate()
@@ -105,7 +132,7 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
                                     assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                                     displayObserver: FakeDisplayObserver(), power: power,
                                     apps: apps, pointer: FakePointer(),
-                                    clamshell: clamshell, clock: FakeClock())
+                                    clamshell: clamshell, clock: FakeClock(), lidInfo: lidInfo)
 
         ruled.activate()
 
@@ -122,6 +149,8 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
     @MainActor
     func testEditingAnUnrelatedSettingDoesNotAskAgain() async {
         engine.startSession(minutes: 0)
+        engine.lidSwitchTurned(false)
+        engine.lidSwitchTurned(true)
         await waitUntil("the lid asked for the rule") { clamshell.installCalls == 1 }
         XCTAssertEqual(clamshell.installCalls, 1, "precondition: the first ask happened")
         // Declined: the file is still absent and the setting is still on.
@@ -130,7 +159,7 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
 
         for _ in 0..<3 {
             let asked = clamshell.grantChecks
-            engine.settingsChangedForTests()
+            engine.settingsChanged()
             await waitForTheQuestion(after: asked)
         }
 
@@ -143,17 +172,130 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
     @MainActor
     func testTurningTheSettingOffAndOnAsksAgain() async {
         engine.startSession(minutes: 0)
+        engine.lidSwitchTurned(false)
+        engine.lidSwitchTurned(true)
         await waitUntil("the lid asked for the rule") { clamshell.installCalls == 1 }
         clamshell.finishInstall(granted: false)
         drainMain()
 
-        KeepAwakeSettings(store: store).setClamshellEnabled(false)
-        engine.settingsChangedForTests()
-        KeepAwakeSettings(store: store).setClamshellEnabled(true)
-        engine.settingsChangedForTests()
+        engine.lidSwitchTurned(false)
+        engine.lidSwitchTurned(true)
 
         await waitUntil("the lid asked for the rule a second time") { clamshell.installCalls == 2 }
         XCTAssertEqual(clamshell.installCalls, 2,
                        "somebody switched it on again and nothing happened")
+    }
+}
+
+/// The lid switch's gesture outside a session (defect lid-switch-outside-session,
+/// owner decision 2026-11-11): it asks for the rule at once, with no session
+/// running, instead of spending the edge and leaving the next Start without it.
+final class TheLidSwitchAsksOutsideASessionTests: XCTestCase {
+    private var store: NamespacedStore!
+    private var clamshell: FakeClamshell!
+    private var engine: KeepAwakeEngine!
+
+    override func setUp() {
+        super.setUp()
+        store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
+        clamshell = FakeClamshell()
+        clamshell.sudoersInstalled = false
+        clamshell.passwordlessGrantExists = false
+        let lidInfo = FakeLidInfo()
+        lidInfo.lid = true
+        engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
+                                 assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
+                                 displayObserver: FakeDisplayObserver(), power: FakePower(),
+                                 apps: FakeApps(), pointer: FakePointer(),
+                                 clamshell: clamshell, clock: FakeClock(), lidInfo: lidInfo)
+        engine.activate()
+        engine.settingsChanged()
+    }
+
+    private func drainMain() {
+        RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
+    }
+
+    @MainActor
+    func testIdleWithNoGrantTheGestureAsksOnce() async {
+        XCTAssertFalse(engine.isActive, "precondition: no session")
+        engine.lidSwitchTurned(true)
+        await waitUntil("the lid asked for the rule") { clamshell.installCalls == 1 }
+        XCTAssertEqual(clamshell.installCalls, 1)
+        XCTAssertFalse(clamshell.disableSleepCalls.contains(true), "nothing is held without a session")
+    }
+
+    @MainActor
+    func testIdleWithAGrantTheGestureAsksNothing() async {
+        clamshell.passwordlessGrantExists = true
+        let asked = clamshell.grantChecks
+        engine.lidSwitchTurned(true)
+        await waitUntil("the lid asked whether it needs a password") { clamshell.grantChecks > asked }
+        await engine.drainClamshellForTests()
+        XCTAssertEqual(clamshell.installCalls, 0)
+    }
+
+    /// A Mac with no lid has nothing to hold: the gesture asks for nothing.
+    @MainActor
+    func testIdleOnAMacWithoutALidTheGestureAsksNothing() async {
+        let lidless = FakeLidInfo()
+        lidless.lid = false
+        let e = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
+                                assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
+                                displayObserver: FakeDisplayObserver(), power: FakePower(),
+                                apps: FakeApps(), pointer: FakePointer(),
+                                clamshell: clamshell, clock: FakeClock(), lidInfo: lidless)
+        e.activate()
+        e.settingsChanged()
+        XCTAssertFalse(e.isActive, "precondition: no session")
+        e.lidSwitchTurned(true)
+        await e.drainClamshellForTests()
+        XCTAssertTrue(KeepAwakeSettings(store: store).clamshellEnabled, "precondition: the gesture happened")
+        XCTAssertEqual(clamshell.installCalls, 0, "a lidless Mac raised the administrator dialog")
+    }
+
+    /// A value is not a gesture, idle or not: the key written from outside
+    /// while no session runs asks nothing.
+    @MainActor
+    func testIdleAnOutsideWriteToTheKeyAsksNothing() async {
+        KeepAwakeSettings(store: store).setClamshellEnabled(true)
+        XCTAssertFalse(engine.isActive, "precondition: no session")
+        engine.settingsChanged()
+        await engine.drainClamshellForTests()
+        XCTAssertEqual(clamshell.installCalls, 0, "a stored value raised the administrator dialog")
+    }
+
+    /// Cancelled, the switch stays on and the page says what it says inside a
+    /// session (nothing refused, no grant): the same state either way.
+    @MainActor
+    func testCancellingLeavesTheStateAsInsideASession() async {
+        engine.lidSwitchTurned(true)
+        await waitUntil("the lid asked for the rule") { clamshell.installCalls == 1 }
+        clamshell.finishInstall(granted: false)
+        drainMain()
+        XCTAssertTrue(KeepAwakeSettings(store: store).clamshellEnabled, "the switch stays on")
+        XCTAssertFalse(engine.clamshellActive, "inside a session a cancel holds no lid rule either")
+        XCTAssertFalse(engine.lidRefused, "inside a session a cancel is not a refusal")
+        XCTAssertFalse(engine.lidGrantRemains, "no grant was left behind")
+        XCTAssertEqual(clamshell.installCalls, 1, "a cancel is not asked again")
+    }
+
+    /// A gesture is not enough, idle or not: it must also *turn the switch on*.
+    /// The same gesture on a key that is already on makes no rising edge, so it
+    /// asks nothing more.
+    @MainActor
+    func testIdleTheGestureOnASwitchAlreadyOnAsksNothingMore() async {
+        engine.lidSwitchTurned(true)
+        await waitUntil("the lid asked for the rule") { clamshell.installCalls == 1 }
+        clamshell.finishInstall(granted: false)
+        drainMain()
+        await engine.drainClamshellForTests()
+        XCTAssertTrue(KeepAwakeSettings(store: store).clamshellEnabled, "precondition: the switch is already on")
+        XCTAssertFalse(engine.isActive, "precondition: no session")
+        XCTAssertEqual(clamshell.installCalls, 1, "precondition: one ask so far")
+        engine.lidSwitchTurned(true)
+        await engine.drainClamshellForTests()
+        drainMain()
+        XCTAssertEqual(clamshell.installCalls, 1, "a gesture with no rising edge raised the dialog again")
     }
 }

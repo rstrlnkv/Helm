@@ -8,7 +8,7 @@ import HelmRuntime
 ///
 /// `brew info --json=v2` carries no size in either direction — measured on this
 /// Mac against Homebrew 7.0.1, 2026-09-15: `bottle.files.*.size` is null and the
-/// `installed[]` entry has no size field at all. So the figure the tile draws
+/// `installed[]` entry has no size field at all. So the figure the row draws
 /// comes from `<prefix>/Cellar/<name>`, and every way that walk can fail has to
 /// answer the same thing: **nil, never 0**. A zero is not a gap on the page, it
 /// is a measurement, and it says a package occupies nothing.
@@ -271,7 +271,7 @@ final class ASizeIsMeasuredNotGuessedTests: XCTestCase {
     }
 
     /// And a version that moved is a different keg: the upgrade that changed the
-    /// number in the tile above changed the one this draws.
+    /// number in the row above changed the one this draws.
     func testAVersionThatMovedIsWalkedAgain() {
         let weight = CountingWeight(answering: 4_096)
         let engine = engine(weight: weight)
@@ -299,7 +299,7 @@ final class ASizeIsMeasuredNotGuessedTests: XCTestCase {
 
     /// A nil is never remembered. «Nothing was measured» is a live fact about a
     /// directory — a refusal that has since been lifted, a keg that has since
-    /// been installed — and a remembered nil would keep the tile absent for the
+    /// been installed — and a remembered nil would keep the row absent for the
     /// life of the app.
     func testARefusalIsNotRemembered() {
         let weight = CountingWeight(answering: nil)

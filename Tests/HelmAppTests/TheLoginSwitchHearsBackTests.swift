@@ -3,6 +3,7 @@ import HelmUI
 import ServiceManagement
 import XCTest
 @testable import HelmApp
+import HelmAppStrings
 
 /// «Open Helm at login» against the only thing that can refuse it.
 ///

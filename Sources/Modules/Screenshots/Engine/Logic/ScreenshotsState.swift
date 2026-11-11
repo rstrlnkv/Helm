@@ -7,7 +7,7 @@ import HelmRuntime
 /// folder macOS saves into (validated), and which of the system's screenshot
 /// boxes are ticked. Settings themselves are the page's own store, and a frame
 /// is never here.
-public struct ScreenshotsState: Codable, Equatable, Sendable {
+public struct ScreenshotsState: Equatable, Sendable {
     /// The folder pictures go to, as a path.
     public var folder: String
     /// Set when macOS names a folder Helm cannot use, and the path above is the

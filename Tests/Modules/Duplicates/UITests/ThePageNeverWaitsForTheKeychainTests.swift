@@ -1,4 +1,3 @@
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
 import HelmUI
@@ -8,7 +7,7 @@ import XCTest
 
 /// **The page is built on the thread that draws, so building it must be free.**
 ///
-/// `DuplicatesViewModel` is `@MainActor` and its `init` read the keep policy —
+/// `DuplicatesViewModel` is `@MainActor` and its first draw reads the keep policy —
 /// which verifies a seal, which needs the key, which comes from the login
 /// keychain. On an ad-hoc build the cdhash changes with every build, no access
 /// list an earlier one wrote still names this one, and the answer is a modal
@@ -16,8 +15,8 @@ import XCTest
 /// `HelmApp_2026-08-19-235500_MacBook.hang`, 19,09 s of a settings window that
 /// could not answer a mouse-up, one target over.
 ///
-/// So the policy starts at the standard belief and arrives from a task the
-/// initialiser holds. Held rather than fired and forgotten, for the reason
+/// So the policy starts at the standard belief and arrives from a task
+/// `appear()` holds. Held rather than fired and forgotten, for the reason
 /// Autopilot's model records: a load nobody can await is a load every test races.
 @MainActor
 final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
@@ -32,7 +31,7 @@ final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
     /// stands in for the login keychain and `SealKeyCache` for what is in front
     /// of it, so «warm» here means what it means in the app.
     private func model(over keys: SealKeyPort) -> DuplicatesViewModel {
-        DuplicatesViewModel(vm: ModuleViewModel(transport: OneAnswerTransport(groups: [])),
+        DuplicatesViewModel(work: AnsweringWork(groups: []),
                             store: store, settings: SettingGuard(keys: keys))
     }
 
@@ -65,6 +64,7 @@ final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
 
         let started = Date()
         let dvm = model(over: SealKeyCache(probe))
+        dvm.appear()
         let built = Date().timeIntervalSince(started)
 
         XCTAssertLessThan(built, 1, """
@@ -85,7 +85,10 @@ final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
         let probe = SealKeyProbe()
         DuplicatesSettings.setKeepPolicy(.byDate, in: store, guardedBy: SettingGuard(keys: probe))
 
-        XCTAssertEqual(model(over: SealKeyCache(probe)).policy, .standard)
+        let dvm = model(over: SealKeyCache(probe))
+        dvm.appear()
+
+        XCTAssertEqual(dvm.policy, .standard)
     }
 
     // MARK: - Warm
@@ -100,6 +103,7 @@ final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
         let probe = SealKeyProbe()
         DuplicatesSettings.setKeepPolicy(.byDate, in: store, guardedBy: SettingGuard(keys: probe))
         let dvm = model(over: SealKeyCache(probe))
+        dvm.appear()
 
         await dvm.firstLoad?.value
 
@@ -113,6 +117,7 @@ final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
     func testTheKeyIsFetchedOffTheThreadThatDraws() async {
         let probe = SealKeyProbe()
         let dvm = model(over: SealKeyCache(probe))
+        dvm.appear()
 
         await dvm.firstLoad?.value
 
@@ -172,6 +177,7 @@ final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
     func testAKeychainThatCannotAnswerLeavesTheStandardBelief() async {
         let silent = SilentSealKey()
         let dvm = model(over: SealKeyCache(silent))
+        dvm.appear()
 
         await dvm.firstLoad?.value
 

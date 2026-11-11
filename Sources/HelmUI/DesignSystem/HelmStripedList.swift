@@ -26,8 +26,8 @@ import SwiftUI
 ///
 /// **Why not `.listRowBackground`.** A background painted row by row cannot
 /// tell which row is even and which is odd once a `Section` — with its own
-/// header row — sits above it; `HomebrewSettingsPage`'s health list carries
-/// three sections in one `List` and its package list two; alternation there is `NSTableView`'s own
+/// header row — sits above it; `HomebrewPackageList` carries two sections in
+/// one `List`; alternation there is `NSTableView`'s own
 /// count of the rows it draws, not a colour this code could compute row by
 /// row and get right.
 ///

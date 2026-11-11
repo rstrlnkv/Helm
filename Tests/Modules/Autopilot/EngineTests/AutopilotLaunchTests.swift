@@ -88,7 +88,7 @@ final class AutopilotLaunchTests: XCTestCase {
         XCTAssertEqual((FileManager.default.enumerator(atPath: root.path)?
             .allObjects as? [String])?.sorted(), ["statement.pdf"],
                        "rules planted after the first launch were adopted and run")
-        XCTAssertTrue(helm.rulesRefused)
+        XCTAssertNotNil(helm.status.refusal)
     }
 }
 
@@ -164,23 +164,5 @@ final class TheLaunchNeverWaitsForTheKeyPortTests: XCTestCase {
 
         wait(for: [returned], timeout: 5)
         helm.deactivate()
-    }
-
-    /// The lock the prompt must not be held under. `trustLock` also answers
-    /// `rulesRefused`, which the settings page reads on the main actor: holding
-    /// it across the port call put the modal prompt between the UI and its own
-    /// state.
-    func testRefusalCanBeReadWhileTheKeyPortHasNotAnswered() throws {
-        let helm = try engineOffThread(stalled)
-        DispatchQueue.global().async { _ = helm.folders }
-        XCTAssertTrue(stalled.waitUntilAsked(), "the premise: something is inside key()")
-
-        let answered = expectation(description: "rulesRefused answered")
-        DispatchQueue.global().async {
-            _ = helm.rulesRefused
-            answered.fulfill()
-        }
-
-        wait(for: [answered], timeout: 5)
     }
 }

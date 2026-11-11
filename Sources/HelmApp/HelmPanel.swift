@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import HelmRuntime
 import HelmUI
+import HelmAppStrings
 
 /// Internal because `HelmPanel` (PanelWindow.swift) hosts it.
 struct HelmPanelContent: View {
@@ -29,8 +30,6 @@ struct HelmPanelContent: View {
     /// opened for a glance, and opening it on the tab somebody happened to
     /// leave last week is a panel that answers a question nobody asked.
     @State private var activeTab = 0
-    /// The strip the panel is drawn in, top to bottom of the screen. The card
-    /// may not be taller than it, and the grid is what gives way.
     /// The card has played its entrance. Set false for the one frame the
     /// entrance animates from, then true again.
     ///
@@ -45,7 +44,8 @@ struct HelmPanelContent: View {
     @State private var showEditButton = AppSettings.showPanelEditButton
     @State private var showSettingsButton = AppSettings.showSettingsButton
     @State private var showQuitButton = AppSettings.showQuitButton
-    @State private var tabLabels = AppSettings.tabLabelStyle
+    /// The strip the panel is drawn in, top to bottom of the screen. The card
+    /// may not be taller than it, and the grid is what gives way.
     @State private var stripHeight: CGFloat = 0
     /// The grid's natural height, so the scroll view never grows past its own
     /// content — otherwise a panel holding two widgets would be as tall as the
@@ -180,7 +180,7 @@ struct HelmPanelContent: View {
         /// module is in this list and not in the other.
         var choosable: [ModuleHost.Live] = []
         for live in host.enabledModules {
-            guard let contribution = live.descriptor.menuBar(live.vm) else { continue }
+            guard let contribution = live.menuBar() else { continue }
             let id = live.descriptor.idRaw
             // The drawer holds everything that is not a tile — a module with no
             // widget, and a module whose widget was taken off. «Not a tile» and
@@ -259,9 +259,9 @@ struct HelmPanelContent: View {
                               content: .module(AnyView(DisabledModuleWidget(descriptor: descriptor))),
                               size: slot.size)
             }
-            let offered = live.descriptor.panelWidgetSizes(live.vm)
+            let offered = live.panelWidgetSizes()
             guard let size = PanelGrid.resolve(slot.size, offered: offered),
-                  let view = live.descriptor.panelWidget(size, live.vm) else { return nil }
+                  let view = live.panelWidget(size) else { return nil }
             return Widget(id: slot.widget, content: .module(view), size: size,
                           offered: PanelWidgetSize.allCases.filter { offered.contains($0) })
         }
@@ -278,8 +278,8 @@ struct HelmPanelContent: View {
 
     private func apply(_ next: PanelLayout) {
         layout = next
-        // On every change, never on «Done». There is no Done to wait for: the
-        // panel closes when it loses focus, which is most of the ways out of it.
+        // On every change, never on «Done»: the panel can close without Done
+        // being pressed, by a click outside, Escape or the icon's own click.
         PanelLayoutStore.write(next, to: AppSettings.store)
     }
 
@@ -446,9 +446,6 @@ struct HelmPanelContent: View {
 
     nonisolated static let gridSpace = "panel.grid"
     nonisolated static let stripSpace = "panel.strip"
-    /// What `EditChrome` pads a tile by while the mode is on — the frames are
-    /// measured outside it, and the drag needs the content rectangle.
-    static let chromeInset: CGFloat = 4
 
     /// Carrying a tile — third architecture, and the reasons each of the first
     /// two failed are what this one is made of.
@@ -483,12 +480,11 @@ struct HelmPanelContent: View {
                           let widget = items.first(where: { $0.id == hit.id })
                     else { return }
                     // The frames are measured outside `EditChrome`, which pads
-                    // every tile by 4 pt in this mode — so the raw frame is the
-                    // tile plus 8 pt each way. The overlay draws the *content*,
-                    // and drawing it at the padded size inflated the carried
+                    // every tile by `EditChrome.overhang` on each side in this
+                    // mode. The overlay draws the *content*, and drawing it at the padded size inflated the carried
                     // tile just enough to be visibly bigger than the slot it
                     // lands in, with a snap down at the handover.
-                    let content = hit.frame.insetBy(dx: Self.chromeInset, dy: Self.chromeInset)
+                    let content = hit.frame.insetBy(dx: EditChrome.overhang, dy: EditChrome.overhang)
                     dragSize = content.size
                     grabOffset = CGSize(width: value.startLocation.x - content.minX,
                                         height: value.startLocation.y - content.minY)
@@ -531,7 +527,7 @@ struct HelmPanelContent: View {
                 // the hand fades instead of being cut — the one exit from a
                 // drag that had no motion at all.
                 guard let home = frames[carried.id]?
-                        .insetBy(dx: Self.chromeInset, dy: Self.chromeInset) else {
+                        .insetBy(dx: EditChrome.overhang, dy: EditChrome.overhang) else {
                     withAnimation(HelmMotion.interface) {
                         dragging = nil
                         dropping = false
@@ -565,7 +561,7 @@ struct HelmPanelContent: View {
                     settle.disablesAnimations = true
                     withTransaction(settle) {
                         if let frame = frames[carried.id] {
-                            let home = frame.insetBy(dx: Self.chromeInset, dy: Self.chromeInset)
+                            let home = frame.insetBy(dx: EditChrome.overhang, dy: EditChrome.overhang)
                             dragLocation = CGPoint(x: home.minX + grabOffset.width,
                                                    y: home.minY + grabOffset.height)
                         }
@@ -674,10 +670,7 @@ struct HelmPanelContent: View {
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .coordinateSpace(name: Self.stripSpace)
-        // The panel is the surface somebody who chose plain module icons
-        // actually looks at, and until this it drew colour plates whatever they
-        // chose — the setting reached the settings sidebar and nothing else.
-        .helmTracksModuleIconStyle { AppSettings.sidebarStyle }
+        .helmRoot()
         // Above everything and clipped by nothing. It used to live inside the
         // scroll view, whose bounds cut the carried tile off at the grid's
         // edge — a thing in your hand disappearing behind the furniture it is
@@ -704,7 +697,6 @@ struct HelmPanelContent: View {
             showEditButton = AppSettings.showPanelEditButton
             showSettingsButton = AppSettings.showSettingsButton
             showQuitButton = AppSettings.showQuitButton
-            tabLabels = AppSettings.tabLabelStyle
         }
         // Every opening, not only the first: the view is built once and stays
         // mounted between them, so `onAppear` fires exactly once in a session
@@ -788,7 +780,7 @@ struct HelmPanelContent: View {
     }
 
     private func emptyState(_ symbol: String, _ title: String, _ hint: String) -> some View {
-        VStack(spacing: 8) {
+        VStack(spacing: HelmSpace.s4) {
             Image(systemName: symbol)
                 .font(.system(size: 30))
                 .foregroundStyle(HelmText.quiet)
@@ -823,12 +815,12 @@ struct HelmPanelContent: View {
             // of corner controls, which is what pushed the footer off the
             // bottom of the screen.
             // Only when there is something pinned. An empty `VStack` has no
-            // height, but the stack around it still puts its 8 pt gap after it
+            // height, but the stack around it still puts its `PanelGrid.gap` after it
             // — so a panel with one tab and nothing being arranged opened with
-            // 20 pt above its first widget where every other edge has 12.
+            // `PanelGrid.padding` plus `PanelGrid.gap` above its first widget where every other edge has `PanelGrid.padding`.
             if showsTabStrip {
                 PanelTabStrip(layout: layout, tabIndex: tabIndex, editing: editing,
-                              labels: tabLabels, selection: tabSelection,
+                              selection: tabSelection,
                               activeTab: pickedTab, pickingGlyph: $pickingGlyph,
                               rename: { tab, current in
                                   draftName = current
@@ -913,7 +905,7 @@ struct HelmPanelContent: View {
                     PanelFooter(editing: editing, showSettings: showSettingsButton,
                                 showQuit: showQuitButton, showEdit: showEditButton) {
                         // The same curve the card's measured height animates on.
-                        // Entering the mode grows every cell by 8 pt and adds
+                        // Entering the mode grows every cell by twice `EditChrome.overhang` and adds
                         // two controls to each, so the grid's height changes
                         // with it — and on `interface` (0.22 snappy) against
                         // the height's `disclosure` (0.30 smooth) the tiles and
@@ -963,10 +955,10 @@ struct HelmPanelContent: View {
         .helmTracksAccessibility($accessibility, alsoOn: .helmPanelDidShow)
         .helmTracksScreenRecording($screenRecording, alsoOn: .helmPanelDidShow)
         // Liquid Glass, and no border of our own: glass supplies its specular
-        // edge, and a hand-drawn hairline on top of it doubles the line. 26 pt
-        // rather than 20 so the radius is concentric with the 14 pt tile cards
-        // inside at 12 pt of padding — that is what makes them read as nested
-        // rather than merely stacked.
+        // edge, and a hand-drawn hairline on top of it doubles the line. `HelmRadius.panel`,
+        // not 20: it is the tile cards' `HelmRadius.frame` (`helmPanelCard`) plus the
+        // `PanelGrid.padding` they sit in, so the two radii are concentric — that is what
+        // makes them read as nested rather than merely stacked.
         .glassEffect(.regular, in: .rect(cornerRadius: HelmRadius.panel))
         .containerShape(.rect(cornerRadius: HelmRadius.panel))
         // Centred in a strip that is wider than the card, so the glass has

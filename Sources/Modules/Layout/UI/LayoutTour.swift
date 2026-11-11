@@ -3,20 +3,11 @@ import HelmUI
 import SwiftUI
 import Module_Layout_Engine
 
-/// What the module does, in four steps you can act on rather than read.
+/// What the module does, in three steps you can act on rather than read: each carries the live control
+/// it is about, so agreeing with a step is switching the thing on, and the second carries the real field.
 ///
-/// **The introduction it replaces was four sentences and a «Got it».** It said
-/// what would happen and left somebody to find the switches afterwards, which
-/// is a manual rather than a start. Every step here carries the live control it
-/// is about, so agreeing with a step *is* switching the thing on, and the
-/// second step carries the real field — type `ghbdtn`, press space, watch it.
-///
-/// **On the page, not in a window.** The lists went to a window because a
-/// button opens that one; this appears by itself on a first visit, and a view
-/// that opens a window when it appears opens one on every offscreen render too.
-/// That is not a guess: this module's introduction was a `.sheet` until
-/// somebody counted «five extra `NSWindow`s per offscreen render, and nothing
-/// of the first screen a new user meets inside the page's own layers».
+/// On the page and not in a window: it appears by itself on a first visit, and a view that opens a
+/// window when it appears opens one on every offscreen render too.
 struct LayoutTour: View {
 
     /// The gesture as it is actually bound, so every sentence naming it is
@@ -61,30 +52,15 @@ struct LayoutTour: View {
             }
 
             content
-                // Every step is a different height, and a card that resizes by
-                // jumping is a card nobody follows. Measured and animated, the
-                // way a reveal is (ARCHITECTURE.md § Design system).
+                // Every step is a different height; the measured frame grows the card. Without the frame the
+                // `switch` arms cross-fade. Not clipped: a clip, with room inside it or without, cuts a text
+                // field's 1 pt outer stroke or changes a toggle's shadow.
                 .helmMeasuredHeight($bodyHeight, animation: HelmMotion.disclosure)
-                // **The measurement, drawn.** `helmMeasuredHeight` only writes
-                // the binding — the frame is the caller's, which is why
-                // `KeepAwakeHero` and `VPNTunnelHero` both carry these two
-                // lines together. Without the second one the card fell back on
-                // SwiftUI's default transition between the `switch` arms, which
-                // is `.opacity`: a cross-fade, against the house rule that a
-                // reveal grows and never fades. `bodyHeight` was written and
-                // read by nobody, and the comment above claimed the motion it
-                // was short of.
                 .frame(height: bodyHeight, alignment: .top)
 
             HStack(spacing: HelmSpace.s5) {
-                // **A way out that is not four presses.** «Got it» is the only
-                // thing that puts the tour away and records that it has been
-                // seen, and it lived on the last step alone — so somebody who
-                // opened it to check one thing walked all four, and a keyboard
-                // or VoiceOver reader traversed a live text field and three
-                // live switches to reach the settings underneath, on every
-                // visit. Same word, same act, in the slot «Back» has not taken
-                // yet.
+                // The way out that is not three presses: the same word and act as the last step's, in the
+                // slot «Back» has not taken yet.
                 if step == 0 {
                     Button(LyStr.introStart) { onDone() }
                         .controlSize(.small)
@@ -120,26 +96,13 @@ struct LayoutTour: View {
         }
     }
 
-    /// **Optional, because an absent sentence is not an empty one.** `Text("")`
-    /// still takes a line: step 2's title sat 35 pt above its field where every
-    /// other title sits 12 above its own explanation, measured.
+    /// Optional, because `Text("")` still takes a line.
     private var explanation: String? {
         switch step {
         case 0: return LyStr.introWhat
-        // **The undo promise, moved here from a step of its own.** It used to
-        // be step 4 — a title, this sentence, a counter and a button, with
-        // `EmptyView()` for content. Two things were wrong with that. The card
-        // kept step 3's measured height for ever, because `helmMeasuredHeight`
-        // refuses a zero, so the last step drew 224 pt with 140 of them empty.
-        // And the sentence is the one the page already draws under «Last
-        // change», at the moment it is useful. Here it lands where somebody has
-        // just watched `ghbdtn` become `привет` and «and if it is wrong?» is
-        // the live question.
+        // The undo promise lands where `ghbdtn` has just become `привет` and «and if it is wrong?» is live.
         case 1: return gesture.map { LyStr.undoHint(gesture: $0) } ?? LyStr.undoImpossible()
-        // No sentence: three labelled switches say what they are, and the one
-        // that stood here told the reader the controls were real — a doubt
-        // nobody has now that the page no longer draws its own copies beneath
-        // them.
+        // No sentence: three labelled switches say what they are.
         default: return nil
         }
     }
@@ -147,24 +110,18 @@ struct LayoutTour: View {
     @ViewBuilder private var content: some View {
         switch step {
         case 0:
-            // What it refuses is the half people are wary of, and it is the
-            // half a sentence about what it *does* cannot carry.
+            // What it refuses is the half a sentence about what it does cannot carry.
             VStack(alignment: .leading, spacing: HelmSpace.s3) {
                 point("checkmark.shield", LyStr.automaticNote)
                 point("hand.raised", LyStr.introWhere)
             }
         case 1:
-            // The real field, not a demonstration: it works here exactly as it
-            // does anywhere else, which is the point of putting it in a tour.
+            // The real field: it works here exactly as it does anywhere else.
             LayoutTestField()
-        // No `default` that draws nothing: every step has a body, so
-        // `helmMeasuredHeight` measures one on every step and the frame below
-        // it can never keep a stale height.
+        // No `default` that draws nothing: every step has a body, so the measurement is never stale.
         default:
             VStack(spacing: 0) {
-                // No note under the first switch: step 1 gave the rule as its
-                // own point, and twenty-five words repeated two cards later is
-                // the duplication this tour was just cured of.
+                // No note under the first switch: step 1 gave the rule as its own point.
                 toggle(LyStr.automatic, nil, $automatic, LayoutKey.automatic)
                 Divider().padding(.vertical, HelmSpace.s2)
                 toggle(LyStr.fixCapitals, LyStr.fixCapitalsNote, $fixCapitals, LayoutKey.fixCapitals)
@@ -177,7 +134,7 @@ struct LayoutTour: View {
     private func point(_ symbol: String, _ text: String) -> some View {
         HStack(alignment: .top, spacing: HelmSpace.s5) {
             Image(systemName: symbol)
-                .frame(width: 18)
+                .frame(width: HelmLayout.symbolColumn)
                 .foregroundStyle(HelmText.quiet)
                 .accessibilityHidden(true)
             Text(text)
@@ -186,9 +143,8 @@ struct LayoutTour: View {
         }
     }
 
-    /// A live control, not a picture of one: agreeing with the step is the
-    /// switching. The write goes where the page's writes go, and tells the
-    /// engine, so a tour left halfway still leaves what was switched switched.
+    /// A live control: the write goes where the page's writes go and tells the engine, so a tour left
+    /// halfway still leaves what was switched switched.
     private func toggle(_ title: String, _ note: String?,
                         _ value: Binding<Bool>, _ key: String) -> some View {
         HelmSettingRow(title, note: note) {

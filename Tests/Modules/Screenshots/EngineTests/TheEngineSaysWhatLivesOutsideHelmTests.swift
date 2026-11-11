@@ -1,6 +1,5 @@
 import Foundation
 import HelmContract
-import HelmRuntime
 import HelmTestSupport
 import XCTest
 @testable import Module_Screenshots_Engine
@@ -10,16 +9,14 @@ private func makeEngine(home: URL, preferences: FakePreferences) -> ScreenshotsE
     try? FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
     return ScreenshotsEngine(preferences: preferences,
                              locations: ScreenshotsLocations(home: home, desktop: desktop),
-                             transport: LocalTransport())
+                             news: EngineNews())
 }
 
 /// The first state the engine's stream yields, or nil if none arrives in time.
 private func firstState(of engine: ScreenshotsEngine, within seconds: Double = 5) async -> ScreenshotsState? {
     await withTaskGroup(of: ScreenshotsState?.self) { group in
         group.addTask {
-            for await event in engine.transport.events where event.name == ScreenshotsEvent.screenshotsState.rawValue {
-                return try? JSONDecoder().decode(ScreenshotsState.self, from: event.payload)
-            }
+            for await state in engine.stream() { return state }
             return nil
         }
         group.addTask {
@@ -58,7 +55,7 @@ final class TheEngineSaysWhatLivesOutsideHelmTests: XCTestCase {
 }
 
 /// What the settings page is told: the folder macOS names, validated, and which
-/// system boxes are ticked. Through the transport, as the page hears it.
+/// system boxes are ticked. Through the news, as the page hears it.
 final class TheEngineTellsThePageWhatItReadTests: XCTestCase {
 
     func testActivationPublishesTheReadingAndALateSubscriberStillGetsIt() async throws {
@@ -66,7 +63,7 @@ final class TheEngineTellsThePageWhatItReadTests: XCTestCase {
         preferences.hotkeys = .read(["28": ["enabled": false]])
         let engine = makeEngine(home: scratchDirectory("shots-engine"), preferences: preferences)
         engine.activate()
-        // Give the read a moment to land; the transport replays it to whoever comes next.
+        // Give the read a moment to land; the news replays it to whoever comes next.
         try await Task.sleep(nanoseconds: 300_000_000)
 
         let found = await firstState(of: engine)
@@ -78,18 +75,13 @@ final class TheEngineTellsThePageWhatItReadTests: XCTestCase {
         engine.deactivate()
     }
 
-    func testTheRefreshCommandReadsAgainAndAnswersWithWhatItRead() async throws {
+    func testARefreshReadsAgainAndSaysWhatItRead() async throws {
         let preferences = FakePreferences()
         let engine = makeEngine(home: scratchDirectory("shots-engine-refresh"), preferences: preferences)
         preferences.savedLocation = 42
-        let reply = try await engine.transport.send(EngineCommand(name: ScreenshotsCommand.refresh.rawValue))
-        let state = try JSONDecoder().decode(ScreenshotsState.self, from: reply)
+        engine.refresh()
+        let found = await firstState(of: engine)
+        let state = try XCTUnwrap(found, "the refresh said nothing")
         XCTAssertEqual(state.folderRefused, .notAPath, "a garbage location was not refused in the page's state")
-    }
-
-    func testAnUnknownCommandIsRefusedAtTheDoor() async throws {
-        let engine = makeEngine(home: scratchDirectory("shots-engine-unknown"), preferences: FakePreferences())
-        let reply = try await engine.transport.send(EngineCommand(name: "capture"))
-        XCTAssertEqual(reply, Data())
     }
 }

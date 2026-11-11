@@ -8,12 +8,11 @@ public struct VPNSettings {
     public func setRulesJSON(_ json: String) { store.set(json, for: "vpnAppRules") }
 
     /// How loudly a *rule* firing is announced — an app launched, an app quit,
-    /// and Helm did what it was told.
+    /// and Helm did what it was told. Nothing in the app writes it any more
+    /// (a card writes its book entry); an old install's stored value is honoured
+    /// here, for every configuration without an entry.
     public var notice: VPNNotice {
-        VPNNotice(rawValue: store.string("automationNotice", default: "")) ?? .menuBar
-    }
-    public func setNotice(_ notice: VPNNotice) {
-        store.set(notice.rawValue, for: "automationNotice")
+        VPNNotice(rawValue: store.string(Self.automationNoticeKey, default: "")) ?? .menuBar
     }
 
     /// How loudly a tunnel **falling over by itself** is announced.
@@ -34,10 +33,7 @@ public struct VPNSettings {
     /// that mode, and a page showing "Notification" selected for a mode that has
     /// never been allowed says something the app will not do.
     public var dropNotice: VPNNotice {
-        VPNNotice(rawValue: store.string("dropNotice", default: "")) ?? .menuBar
-    }
-    public func setDropNotice(_ notice: VPNNotice) {
-        store.set(notice.rawValue, for: "dropNotice")
+        VPNNotice(rawValue: store.string(Self.dropNoticeKey, default: "")) ?? .menuBar
     }
 
     /// The one both sides read, so no caller decides for itself which of the
@@ -55,8 +51,14 @@ public struct VPNSettings {
     /// is a person's to switch off. The cost is exact and is stated under the
     /// switch: with this off *and* the notice set to nothing, a rule fires with
     /// no sign at all.
-    public var automationSpin: Bool { store.bool("automationSpin", default: false) }
-    public func setAutomationSpin(_ on: Bool) { store.set(on, for: "automationSpin") }
+    ///
+    /// The switch is a card's, written to the book; this is the value a
+    /// configuration without an entry inherits.
+    public var automationSpin: Bool { store.bool(Self.automationSpinKey, default: false) }
+    /// Nothing in `Sources` writes it; the tests plant it under this name.
+    static let automationSpinKey = "automationSpin"
+    static let automationNoticeKey = "automationNotice"
+    static let dropNoticeKey = "dropNotice"
 
     /// The colour the ring turns in, per kind of firing. A tunnel going up and
     /// a tunnel going down are the two things worth telling apart at a glance,
@@ -64,16 +66,13 @@ public struct VPNSettings {
     public func spinTint(for kind: VPNAutomation.Kind) -> String {
         store.string(Self.spinTintKey(kind), default: kind.goingUp ? "green" : "orange")
     }
-    public func setSpinTint(_ token: String, for kind: VPNAutomation.Kind) {
-        store.set(token, for: Self.spinTintKey(kind))
-    }
     /// **Two keys for three kinds.** `.dropped` is a third kind of news and not
     /// a third colour: the ring says which way the tunnel went, and there are
     /// two ways. Deriving the key from `rawValue` would have opened a
     /// `spinTint.dropped` nobody sets, so a tunnel that fell over would have
     /// turned the ring in the default orange while the person's own colour for
     /// a tunnel going down sat in the store unread.
-    private static func spinTintKey(_ kind: VPNAutomation.Kind) -> String {
+    static func spinTintKey(_ kind: VPNAutomation.Kind) -> String {
         "spinTint.\(kind.goingUp ? "connected" : "disconnected")"
     }
 
@@ -84,8 +83,11 @@ public struct VPNSettings {
     /// would demote `.system` to the menu-bar label for someone who granted the
     /// permission months ago. The cost of mirroring is that the person can
     /// revoke banners in System Settings and this will not hear about it, so it
-    /// has to be refreshed from `AutomationNotice.prepare` — a read, never a
-    /// request — when the module comes up.
+    /// has to be refreshed: `VPNViewModel.refreshBannerAuthorization` reads macOS,
+    /// prompting nobody, and writes it, from the settings page's `.task` and,
+    /// while that page is up, when the app becomes active, and `VPNViewModel.choose` writes it after
+    /// `AutomationNotice.prepare`, which requests the permission for the mode
+    /// that posts banners. Nothing writes it when the module comes up.
     public var bannerAuthorized: Bool { store.bool("bannerAuthorized", default: false) }
     public func setBannerAuthorized(_ authorized: Bool) {
         store.set(authorized, for: "bannerAuthorized")
@@ -97,9 +99,15 @@ public struct VPNSettings {
     /// where the rules are keyed by bundle id.
     ///
     /// The global settings above (the two notices, the spin and its colours)
-    /// stay exactly where they are and keep meaning what they mean: whatever the book has no entry for inherits them
+    /// stay where they are: whatever the book has no entry for inherits them
     /// (`VPNNoticeBook`). So an installed build that has never opened the new
     /// popover behaves as it did, and there is no migration to run twice.
+    ///
+    /// A card's notice choice, the ring switch and the colours write the book
+    /// alone: the module-wide `automationNotice` and `dropNotice`, which every
+    /// configuration without an entry inherits, are written by nothing in the
+    /// app — an old install's stored value is honoured, a new one reads `.menuBar`. A book entry with no value for a kind is the «none» that inherits;
+    /// an older payload has no book at all and decodes to an empty one.
     public var noticeBook: VPNNoticeBook {
         VPNNoticeBook.decode(store.string("noticeBook", default: "{}"))
     }
@@ -129,10 +137,4 @@ public struct VPNSettings {
         return noticeBook.tint(for: connectionID, kind: kind,
                                fallback: spinTint(for: kind))
     }
-
-    public var lastUsedName: String? {
-        let s = store.string("lastUsedName", default: "")
-        return s.isEmpty ? nil : s
-    }
-    public func setLastUsed(_ name: String) { store.set(name, for: "lastUsedName") }
 }

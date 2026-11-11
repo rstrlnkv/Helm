@@ -13,6 +13,8 @@ struct RingView: View {
     /// True while the scan is still feeding the ring.
     let growing: Bool
     @Binding var hovered: String?
+    /// The arc itself under the pointer, for the tooltip → `tooltipSegment`.
+    @State private var hoveredArc: RingSegment?
     var onSelect: (RingSegment) -> Void
     var onBack: () -> Void
     /// False at the scan root, where the middle of the ring leads nowhere —
@@ -32,6 +34,7 @@ struct RingView: View {
     /// will exist rather than towards a transform of the ones that do.
     var targetLayout: (String) -> [RingSegment]
 
+    @Environment(\.helmAccessibility) private var accessibility
     @State private var hoverPoint: CGPoint?
     /// The wedge currently opening (or closing), and how far along it is.
     /// Non-nil only while the animation runs; hit-testing is suspended then, so
@@ -51,6 +54,10 @@ struct RingView: View {
     /// the spare is what the new outermost ring slides in from during a drill,
     /// and it is drawn only while that is happening.
     static let visibleRings = 3
+
+    /// The folder's size in the middle of the ring: 19 pt, where the kit's
+    /// `HelmText.metricFont` is 16 pt.
+    private static let figureFont = Font.system(size: 19, weight: .medium).monospacedDigit()
 
     /// The elements the drawing implies, in the order the eye reads it: where
     /// you are, then what is in it.
@@ -80,7 +87,7 @@ struct RingView: View {
                 .accessibilityLabel(centreLabel)
                 .accessibilityAddTraits(canGoBack ? [.isButton] : [])
                 .accessibilityAction { if canGoBack { onBack() } }
-            // `path` is empty for both free space and the folded bucket, so it
+            // `path` is empty for both free space and the `isOther` arc, so it
             // cannot be the identity: two elements would collide and one would
             // be dropped.
             ForEach(inner, id: \.startAngle) { segment in
@@ -132,9 +139,13 @@ struct RingView: View {
                 switch phase {
                 case .active(let point):
                     hoverPoint = point
-                    hovered = segment(at: point, center: center, side: side)?.path
+                    hoveredArc = segment(at: point, center: center, side: side)
+                    // The shared binding is keyed by path for the list; an arc with
+                    // none (free space, "other") names no row.
+                    hovered = hoveredArc.flatMap { $0.path.isEmpty ? nil : $0.path }
                 case .ended:
                     hoverPoint = nil
+                    hoveredArc = nil
                     hovered = nil
                 }
             }
@@ -207,16 +218,19 @@ struct RingView: View {
         }
     }
 
-    /// The segment under the cursor; free space and the folded bucket get
-    /// their own labels so the tooltip never shows a bare "…".
+    /// The arc under the cursor, as the whole segment: free space and every
+    /// `isOther` arc (the sliver fold, the scan's folded bucket) have an empty path,
+    /// so a path cannot tell them apart. If a re-layout (the morph) replaces the arcs
+    /// the stored one is no longer in `segments` and the tooltip goes until the
+    /// pointer moves again; it never lands on another arc.
     private var tooltipSegment: RingSegment? {
-        guard let hovered else { return nil }
-        return segments.first { $0.path == hovered && !$0.path.isEmpty }
-            ?? segments.first { $0.isFreeSpace && hovered.isEmpty }
+        guard let hoveredArc, segments.contains(hoveredArc) else { return nil }
+        return hoveredArc
     }
 
     private func tooltip(for segment: RingSegment) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: HelmSpace.s3) {
+            // The tooltip's colour key, 7 pt; the list's dot is 8.
             Circle().fill(color(for: segment)).frame(width: 7, height: 7)
             Text(segment.isOther ? DkStr.otherItems
                                  : (DiskViewModel.folderName(for: segment.path) ?? segment.name))
@@ -238,7 +252,7 @@ struct RingView: View {
                 .foregroundStyle(HelmText.quiet)
                 .lineLimit(1).truncationMode(.middle)
             Text(Bytes(focusBytes))
-                .font(.system(size: 19, weight: .medium).monospacedDigit())
+                .font(RingView.figureFont)
                 .contentTransition(.numericText())
                 // The same curve **and the same length** as the arcs around it.
                 //
@@ -253,12 +267,12 @@ struct RingView: View {
                                                 ? foldingBackLevels : 1),
                            value: focusBytes)
             if growing {
-                Text(DkStr.scanning + "…")
-                    .font(.caption2)
+                Text(DkStr.scanningNow)
+                    .font(HelmText.smallPrint)
                     .foregroundStyle(HelmText.faint)
             }
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, HelmSpace.s4)
     }
 
     // MARK: - Geometry
@@ -274,17 +288,17 @@ struct RingView: View {
                                   angle: angle, radius: radius)
     }
 
-    /// Depth fades toward the rim, hover lifts; free space, folded slivers and
-    /// unreadable folders stay deliberately quiet so real data reads first.
+    /// Depth fades toward the rim, hover lifts; free space and folded slivers
+    /// stay deliberately quiet so real data reads first. An unreadable folder
+    /// has its colour here, and `DiskViewModel.node(from:)` carries the flag.
     private func color(for segment: RingSegment) -> Color {
-        if segment.isFreeSpace { return Color.primary.opacity(0.06) }
-        if segment.noAccess { return Color.orange.opacity(0.22) }
-        if segment.isOther { return Color.primary.opacity(0.10) }
+        if segment.isFreeSpace { return DiskPalette.freeSpace }
+        if segment.noAccess { return DiskPalette.noAccess }
+        if segment.isOther { return DiskPalette.otherItems }
 
-        let base = DiskPalette.base(for: segment.path)
-        let isHovered = hovered == segment.path
-        let recede = 1.0 - Double(segment.ring) * 0.14
-        return base.opacity(isHovered ? 1.0 : recede)
+        let increased = accessibility.increasedContrast
+        if hovered == segment.path { return DiskPalette.base(for: segment.path, increased: increased) }
+        return DiskPalette.wedge(for: segment.path, ring: segment.ring, increased: increased)
     }
 }
 

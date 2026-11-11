@@ -9,7 +9,7 @@ capability are tied by a test: a scanning module conforms its engine to
 
 The clock and the decision are in different targets.
 `Sources/HelmApp/ScanCoordinator.swift` owns the one-minute tick, the notification
-observer, the reading of live system counters and the transport call;
+observer, the reading of live system counters and the call to the live module's `backgroundScan`;
 `Sources/HelmRuntime/ScanSchedule.swift` and `ScanRunner.swift` are pure and decide.
 Every refusal is a named verdict (the cases of `ScanSchedule.Verdict`), and it is logged on
 change only, because a line per module per minute would push everything else out of the
@@ -21,14 +21,15 @@ across ticks rather than trusting one reading, and stays at or above the counter
 idleness is not evidence under fast user switching, so the console session and the
 lock state are read as well.
 
-What crosses the transport is deliberately thin: `ScanReport` is bytes, a count and a
+What a background scan answers is deliberately thin: `ScanReport` is bytes, a count and a
 list of path and size, the shape unlike scanners can all speak, and nil is not an empty
 report. `ScanJournal` keeps the numbers for the last scans per module and the item lists
 for the newest two, stores no localized text, and redirects itself out of the real
-Application Support under test. It sweeps its own abandoned siblings, and the risk is in
-the judgement rather than the removal: `abandonedTestJournals` is pure and tested,
-liveness is asked of the kernel, and the sanity check on the number lives inside the
-decision rather than beside the kill.
+Application Support under test through `TestScratch`, which sweeps the abandoned siblings of
+its prefix. The risk is in the judgement rather than the removal: `TestScratch.abandoned`
+is pure and tested (`ScanJournal.abandonedTestJournals` forwards to it with the journal's
+prefix), liveness is asked of the kernel, and the sanity check on the number lives inside
+the decision rather than beside the kill.
 
 `ScanComparison` is the arithmetic on those two lists and carries whether there was a
 previous one at all; `ScanNews` turns that into something worth saying, measured on

@@ -1,4 +1,5 @@
 import Foundation
+import XCTest
 
 /// The standing documents, named once.
 ///
@@ -8,11 +9,24 @@ import Foundation
 /// one place that says which documents stand and what their headings are.
 public enum StandingDocuments {
 
-    /// The four core documents of the standard, and nothing else.
+    /// The documents of the standard that are in the tree, and nothing else.
     ///
-    /// The crew's briefs are not here: they live in a sibling repository behind the
-    /// `.claude/agents` link, a symlink rather than a repo-relative path.
-    private static let core = ["ARCHITECTURE.md", "CLAUDE.md", "README.md", "CHANGELOG.md"]
+    /// The agent rules are not here: they live outside the tree, behind the
+    /// gitignored `CLAUDE.local.md` link, and `rules()` reads them.
+    private static let core = ["ARCHITECTURE.md", "README.md", "CHANGELOG.md"]
+
+    /// The agent rules, or a skip saying why they are not there. A fresh clone
+    /// or CI has no `CLAUDE.local.md`; that is the state of the machine, not a
+    /// finding, and only the checks about the rules file ask for it.
+    public static func rules(from start: URL = RepoSource.root) throws -> String {
+        guard let text = try RepoSource.rules(from: start) else {
+            if let entry = RepoSource.rulesEntry(from: start) {
+                throw RepoSource.Failure("\(entry.path) exists but the rules reader returned nothing for it")
+            }
+            throw XCTSkip("no CLAUDE.local.md in this checkout or the main one — the agent rules are not in the tree")
+        }
+        return text
+    }
 
     /// `core` and the pages `ARCHITECTURE.md` links.
     public static func all() -> [String] {
@@ -60,7 +74,7 @@ public enum StandingDocuments {
     }
 
     /// The headings of a document by the bare name a pointer writes before the
-    /// section sign: `ARCHITECTURE` (the hub and every page it links) or `CLAUDE`.
+    /// section sign: `ARCHITECTURE` (the hub and every page it links) or `CLAUDE` (the rules file; a skip when it is not reachable).
     public static func headings(of document: String) throws -> [String] {
         switch document {
         case "ARCHITECTURE":
@@ -69,7 +83,7 @@ public enum StandingDocuments {
                 + linkedPages(in: hub).flatMap { headings(in: try RepoSource.text(of: $0)) })
                 .sorted { $0.count > $1.count }
         case "CLAUDE":
-            return headings(in: try RepoSource.text(of: "CLAUDE.md"))
+            return headings(in: try rules())
         default:
             throw RepoSource.Failure("\(document) is not a document whose headings pointers name")
         }

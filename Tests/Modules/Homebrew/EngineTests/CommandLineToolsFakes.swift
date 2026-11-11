@@ -245,30 +245,30 @@ final class WaitRig {
     let ticker = FakeWaitTicker()
     let privileged: ScriptedPrivileged
     let runner = RecordingStreamRunner()
-    let transport = LocalTransport()
+    let news = EngineNews<HomebrewNews>()
     let engine: HomebrewEngine
 
     init(reply: PrivilegedOutcome = .done, holdsDialog: Bool = false, user: String = "tester") {
         tools = FakeCommandLineTools(journal: journal)
         privileged = ScriptedPrivileged(reply: reply, holds: holdsDialog, journal: journal)
         engine = HomebrewEngine(locator: FixedLocator(), runner: runner, privileged: privileged,
-                                user: user, transport: transport, marker: InMemoryOpMarker(),
+                                user: user, news: news, marker: InMemoryOpMarker(),
                                 tools: tools, ticker: ticker)
     }
 
-    /// The latest `opState` and `opLog` the transport would replay to a page
+    /// The latest `opState` and `opLog` the news would replay to a page
     /// opened now. A sentinel emitted before subscribing marks where the replay
     /// ends, so the read is deterministic.
     func replayed() async -> (state: OpState?, log: String?) {
-        transport.emit(EngineEvent(name: "test.sentinel", payload: Data()))
+        news.say(.line("test.sentinel"), slot: "test.sentinel")
         var state: OpState?
         var log: String?
-        for await event in transport.events {
-            if event.name == "test.sentinel" { break }
-            switch HomebrewEvent(rawValue: event.name) {
-            case .opState: state = try? JSONDecoder().decode(OpState.self, from: event.payload)
-            case .opLog: log = String(bytes: event.payload, encoding: .utf8)
-            case .none: break
+        for await item in news.stream() {
+            if case .line("test.sentinel") = item { break }
+            switch item {
+            case .state(let s): state = s
+            case .line(let l): log = l
+            case .brew: break
             }
         }
         return (state, log)

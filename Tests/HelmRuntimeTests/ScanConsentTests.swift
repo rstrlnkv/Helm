@@ -5,7 +5,7 @@ import XCTest
 ///
 /// Nothing in `Sources/` ever wrote `disabledScans`, so this list existed with
 /// no writer and no reader outside the coordinator: the person whose volume is
-/// walked twice a day could learn it only from the log.
+/// walked every day could learn it only from the log.
 final class ScanConsentTests: XCTestCase {
 
     private let scannable = ["duplicates", "uninstaller", "disk"]

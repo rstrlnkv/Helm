@@ -16,12 +16,12 @@ public enum MenuBarIconStyle: String, CaseIterable, Sendable {
 
     public var label: String {
         switch self {
-        case .ring: return L("Ring")
-        case .doubleRing: return L("Double ring")
-        case .ringDot: return L("Ring + dot")
-        case .squircle: return L("Square")
-        case .hexagon: return L("Hexagon")
-        case .capsule: return L("Capsule")
+        case .ring: return L(.ring)
+        case .doubleRing: return L(.doubleRing)
+        case .ringDot: return L(.ringDot)
+        case .squircle: return L(.square)
+        case .hexagon: return L(.hexagon)
+        case .capsule: return L(.capsule)
         }
     }
 
@@ -392,7 +392,7 @@ public enum MenuBarIcon {
 
     private static func nsColor(tintToken: String?) -> NSColor {
         switch tintToken {
-        case nil, "white": return .white
+        case nil: return .white
         // Theme-adaptive, and a trap in a baked bitmap: the glyph is drawn with
         // `lockFocus`, so this resolves once against whatever appearance was
         // current — not the one the image is shown in. In-app previews should
@@ -400,20 +400,12 @@ public enum MenuBarIcon {
         // through `HelmAppearance`. Kept for callers that draw at a moment
         // when the appearance is known to be right.
         case "primary": return .labelColor
-        case "red": return .systemRed
-        case "orange": return .systemOrange
-        case "yellow": return .systemYellow
-        case "green": return .systemGreen
-        case "mint": return .systemMint
-        case "cyan": return .systemCyan
-        case "blue": return .systemBlue
-        case "purple": return .systemPurple
-        case "pink": return .systemPink
-        // A colour the person chose themselves, stored as `#RRGGBB`. Anything
-        // else — a token from a build that had names this one does not, a
-        // hand-edited plist — falls back to white, which is the untinted glyph
+        // Every palette name, the retired ones too, answers from `PaletteColor`.
+        // A colour the person chose themselves, stored as `#RRGGBB`, comes next.
+        // Anything else — a token from a build that had names this one does not,
+        // a hand-edited plist — falls back to white, which is the untinted glyph
         // and the same answer `nil` gives.
-        default: return PaletteTint.custom(tintToken) ?? .white
+        case let token?: return PaletteColor(rawValue: token)?.nsColor ?? PaletteTint.custom(token) ?? .white
         }
     }
 }

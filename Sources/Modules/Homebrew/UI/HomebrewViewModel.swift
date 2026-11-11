@@ -1,16 +1,53 @@
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmUI
 import Module_Homebrew_Engine
 
-@MainActor public final class HomebrewViewModel: ObservableObject {
-    private let client: TransportClient
-    private var eventsTask: Task<Void, Never>?
-    private let vm: ModuleViewModel
+/// What the model asks of the engine: its readings, every press as one `perform`,
+/// and one stream of what the engine says.
+///
+/// A reading answers nil where the engine could not, a timed-out query above all,
+/// and each caller says what it does with that: the lists keep their last answer,
+/// the inspector draws nothing, the doctor reads as refused. A missing brew is nil
+/// to `readInfo`, `readDoctor`, `readConfig` and `readDependents` of a formula
+/// (a cask's dependents are `[]` without asking), and an empty answer to the
+/// list readings. The members are named
+/// apart from the engine's own synchronous ones (`HomebrewEngine.listInstalled`
+/// and the rest, internal): an `async` requirement is met by a sync method of the
+/// same name, and a blocking call would then run wherever the caller's task is.
+protocol HomebrewWork: AnyObject, Sendable {
+    /// The last line, state and brew location, then every one after them in order; registered before it returns.
+    func stream() -> AsyncStream<HomebrewNews>
+    func readStatus() async -> BrewStatus
+    func readInstalled() async -> [BrewPackage]?
+    func readOutdated() async -> [OutdatedPackage]?
+    func readDescriptions(of names: [String], isCask: Bool) async -> [String: String]
+    func find(_ query: String) async -> [SearchHit]?
+    func readDependents(of package: PackageRef) async -> [String]?
+    func readInfo(about package: PackageRef) async -> PackageInfo?
+    func measure(_ package: PackageRef, version: String) async -> Int?
+    func readDoctor() async -> [DoctorIssue]?
+    func readConfig() async -> BrewConfig?
+    /// Returns at once; what happens arrives on `stream()`.
+    func perform(_ act: HomebrewAct)
+}
 
-    @Published public private(set) var status = BrewStatus(installed: false, brewPath: nil)
-    @Published public private(set) var installed: [BrewPackage] = []
+extension HomebrewEngine: HomebrewWork {}
+
+@MainActor public final class HomebrewViewModel: ObservableObject {
+    private let work: any HomebrewWork
+    private var eventsTask: Task<Void, Never>?
+    /// Set by `stop()`, once. A closed model reaches no work (`door`) and hears
+    /// nothing more.
+    private(set) var closed = false
+    /// The one way to the engine. A closed model has none, so no call site can forget.
+    private var door: (any HomebrewWork)? { closed ? nil : work }
+
+    @Published private(set) var status = BrewStatus(installed: false, brewPath: nil)
+    /// Whether `status` is an answer of the engine's and not the seed of
+    /// `HomebrewNews.brew`; the seed applies only while this is false.
+    private var statusRead = false
+    @Published private(set) var installed: [BrewPackage] = []
     /// What happened to the last `brew list` — which is three things and not
     /// two. This was a `Bool`, and the state it could not hold is a refusal:
     /// the flag stayed down for ever and the page spun over it (`ListReading`).
@@ -20,11 +57,11 @@ import Module_Homebrew_Engine
     /// Derived rather than stored beside the reading, for the reason `issues`
     /// is derived from `doctor`: two fields are two accounts of one answer, and
     /// the one that goes stale is the one a page reads.
-    public var loadedInstalled: Bool { installedReading == .answered }
-    @Published public private(set) var outdated: [OutdatedPackage] = []
+    var loadedInstalled: Bool { installedReading == .answered }
+    @Published private(set) var outdated: [OutdatedPackage] = []
     /// `installedReading`'s twin for `brew outdated`.
     @Published private(set) var outdatedReading: ListReading = .notAsked
-    @Published public private(set) var searchHits: [SearchHit] = []
+    @Published private(set) var searchHits: [SearchHit] = []
     /// `installedReading`'s twin for `brew search` — **and the one the page had
     /// nothing at all for.** A search is two `brew search` runs, measured at
     /// about nine seconds, and for those nine seconds the results pane said
@@ -36,8 +73,8 @@ import Module_Homebrew_Engine
     @Published private(set) var searchReading: ListReading = .notAsked
     /// The last of what `brew` said, not all of it. 1000 is `LogTail`'s bound
     /// and this is the same problem: a running record somebody reads the end of.
-    public static let consoleLimit = 1000
-    @Published public private(set) var consoleLines: [String] = []
+    static let consoleLimit = 1000
+    @Published private(set) var consoleLines: [String] = []
     /// **How many lines the console has ever been given; the newest one's
     /// identity is one less.** Never reset, not by `clearConsole` and not by
     /// the trim: a full console keeps `consoleLines.count` at `consoleLimit`
@@ -45,7 +82,7 @@ import Module_Homebrew_Engine
     /// following at line number `consoleLimit`. The line at index `i` is number
     /// `consoleSequence - consoleLines.count + i`, which is what the page gives
     /// each row as its identity, and the newest is `consoleSequence - 1`.
-    @Published public private(set) var consoleSequence = 0
+    @Published private(set) var consoleSequence = 0
 
     /// A console line with the number it was given, for the page's rows.
     struct ConsoleRow: Identifiable {
@@ -59,17 +96,17 @@ import Module_Homebrew_Engine
         let first = consoleSequence - consoleLines.count
         return consoleLines.enumerated().map { ConsoleRow(id: first + $0.offset, text: $0.element) }
     }
-    @Published public private(set) var op: OpState = .idle
+    @Published private(set) var op: OpState = .idle
     /// The uninstall a person is being asked about, and what the Cellar said
     /// still needs it. They move together: the names are read for *this* press
     /// and are cleared with it, so a second dialog can never draw the first
     /// one's answer. It lives here rather than in the page's `@State` because
-    /// the reading is asked for over the transport and arrives after the press.
-    @Published public private(set) var pendingUninstall: BrewPackage?
-    @Published public private(set) var dependentsOfPending: [String] = []
+    /// the reading is asked of the engine and arrives after the press.
+    @Published private(set) var pendingUninstall: BrewPackage?
+    @Published private(set) var dependentsOfPending: [String] = []
     /// Package descriptions keyed by "f:name" / "c:name", fetched in batches
     /// after a list or search loads.
-    @Published public private(set) var descriptions: [String: String] = [:]
+    @Published private(set) var descriptions: [String: String] = [:]
 
     /// What `brew info --json=v2` knows about **the package selected now**, or
     /// nil because nothing is selected, the query has not answered yet, or it
@@ -96,7 +133,7 @@ import Module_Homebrew_Engine
     /// reason.** `brew info` carries no size in either direction, so this is a
     /// walk of the package's own Cellar directory and it lands after the rest of
     /// the inspector — the one wait in the tier long enough that arriving with
-    /// no warning reads as a tile appearing out of nowhere. An `Int?` could not
+    /// no warning reads as a row appearing out of nowhere. An `Int?` could not
     /// say that: «nothing is selected», «a walk is out» and «the walk answered
     /// nothing» were one nil, so the page could not tell a measurement that is
     /// happening from one that is not. `SizeReading` carries the difference;
@@ -110,7 +147,7 @@ import Module_Homebrew_Engine
     ///
     /// **Never `.measured(0)`.** The engine folds a missing keg, a directory
     /// that would not open and a cask into nil (`HomebrewEngine.size`), which
-    /// lands here as `.notMeasured`, because a zero in a tile is not a gap on
+    /// lands here as `.notMeasured`, because a zero in a row is not a gap on
     /// the page — it is a measurement, and it says the package occupies nothing.
     @Published private(set) var size: SizeReading = .notMeasured
 
@@ -161,17 +198,6 @@ import Module_Homebrew_Engine
             case .health: return HbStr.segHealth
             }
         }
-
-        /// The glyph the toolbar switcher draws for this segment when it is
-        /// set to show glyphs. Updates keeps the module's own «an update
-        /// exists» symbol.
-        var symbol: String {
-            switch self {
-            case .installed: return "shippingbox"
-            case .updates: return "arrow.up.circle"
-            case .health: return "stethoscope"
-            }
-        }
     }
     /// Written by the segmented picker's own binding, which never goes through
     /// `select(_:)` — so this half of the subject carries its own retirement.
@@ -205,9 +231,10 @@ import Module_Homebrew_Engine
 
     /// What is selected in each segment, as a `BrewKey` id.
     ///
-    /// Per segment, because the three lists hold different things: the
-    /// package being read in Установленные is not the finding being read in
-    /// Состояние, and coming back to a segment should find what was left there.
+    /// Per package segment, because the two lists hold different things: what
+    /// is selected in Установленные is not what is selected in Обновления, and
+    /// coming back to a segment should find what was left there. Состояние
+    /// selects nothing: its findings open in `HomebrewHealthPage`.
     @Published private(set) var selection: [Segment: String] = [:] {
         didSet { if selection[segment] != oldValue[segment] { subjectMoved() } }
     }
@@ -222,11 +249,10 @@ import Module_Homebrew_Engine
 
     // MARK: - The search field, on every tab
 
-    /// **The window toolbar's own search field, on all three tabs.** Moved
+    /// **The header row's search field, on all three tabs.** Moved
     /// here from the page's `@State` 2026-09-24, so the query survives leaving
-    /// and returning to the page: today, hiding or
-    /// occluding the window unmounts the page, its `@State` is lost, and
-    /// `SettingsToolbar.patchSearch` writes "" back into the field. Kept here
+    /// and returning to the page: hiding or occluding the window unmounts the
+    /// page and its `@State` is lost, so the field would be written back as "". Kept here
     /// instead, that visible change is a cost the owner judges rather than an
     /// engineering slip.
     @Published var query = "" {
@@ -262,7 +288,7 @@ import Module_Homebrew_Engine
     private var pause: Task<Void, Never>?
 
     /// At most one `brew search` chain out at a time: CLAUDE.md's "never an
-    /// unbounded launch behind a control a person can press repeatedly", and
+    /// unbounded launch behind a control pressable repeatedly", and
     /// typing is such a control. `queuedSearch` holds only the latest word
     /// typed while a chain is out; an older one in between is never asked.
     private var searchOut = false
@@ -334,7 +360,7 @@ import Module_Homebrew_Engine
     /// before their list has ever answered — the same `[]` a genuinely empty
     /// answer leaves — so reading emptiness alone asked brew for a word this
     /// Mac had all along, on the first visit to a tab whose own refresh
-    /// (`loadIfNeeded` never asks `brew outdated`, and the page's `refresh`
+    /// (`loadIfNeeded` never asks `brew outdated`, and the manager's `refresh`
     /// for the tab this `didSet`/pause is about has not landed yet) simply
     /// has not finished. Measured: switching to Обновления with «node»
     /// already typed and `[node]` behind `brew outdated` asked brew before
@@ -431,7 +457,7 @@ import Module_Homebrew_Engine
     }
 
     /// The page has stopped describing the package an uninstall was asked
-    /// about, so the ask is retired — including one still out over the wire.
+    /// about, so the ask is retired — including one still out at the engine.
     ///
     /// **The subject of an ask is the pair `(segment, selection[segment])`**,
     /// because that pair is what `packageDetail` draws and the Uninstall button
@@ -439,8 +465,8 @@ import Module_Homebrew_Engine
     /// pressing Cancel and without leaving the page — Back on the narrow
     /// screen, a click on another row, and the segmented picker — and none of
     /// the three is a later press, so `LatestRequest` does not retire the query
-    /// on its own and the answer arrived to raise the app's only irreversible
-    /// deletion over a list, a different package or a different segment
+    /// on its own and the answer arrived to raise an irreversible
+    /// deletion's question over a list, a different package or a different segment
     /// (`MovingOffThePackageRetiresAnUninstallAskTests`). Both fields observe
     /// this rather than each gesture: the two are the only writers of the pair,
     /// and a fourth gesture cannot forget to call it.
@@ -523,7 +549,7 @@ import Module_Homebrew_Engine
     /// person moved away and came back — a second ask is out, and this one's
     /// answer is not the one to draw.
     private func loadInfo(_ ref: PackageRef, token: Int) async {
-        let answer: PackageInfo? = await client.request(HomebrewCommand.info, encoding: ref)
+        let answer = await door?.readInfo(about: ref)
         guard infoAsks.isLatest(token) else { return }
         // Assigned including nil: a refusal is what the page must show nothing
         // for, and this is the line that says so.
@@ -542,15 +568,13 @@ import Module_Homebrew_Engine
         // number `brew info` never said.
         guard let version = answer?.installedVersion, !version.isEmpty else { return }
         // **Said before the ask, and it is the ask that earns it.** This line
-        // and the one under it are one gesture: the tile says a walk is running
+        // and the one under it are one gesture: the row says a walk is running
         // exactly while a walk is running, so there is no state in which the
         // page claims to be counting and nothing is. A package with no installed
-        // version never reaches here, which is why a search hit gets no tile
+        // version never reaches here, which is why a search hit gets no row
         // instead of a promise about a keg that does not exist.
         size = .measuring
-        let measured: Int? = await client.request(
-            HomebrewCommand.size,
-            encoding: PackageSizeRequest(name: ref.name, isCask: ref.isCask, version: version))
+        let measured = await door?.measure(ref, version: version)
         // The same token, asked again: the walk is the longest wait in the
         // inspector, so the screen is likelier to have moved under it than
         // under anything else here. Returning here leaves nothing behind —
@@ -558,7 +582,7 @@ import Module_Homebrew_Engine
         // answer belongs to a package nobody is looking at.
         guard infoAsks.isLatest(token) else { return }
         // A refusal is `.notMeasured` and not a lingering «counting»: the walk
-        // is over, there is no figure, and the tile goes rather than sitting
+        // is over, there is no figure, and the row goes rather than sitting
         // there for ever saying something is still happening.
         size = measured.map(SizeReading.measured) ?? .notMeasured
     }
@@ -593,10 +617,10 @@ import Module_Homebrew_Engine
     /// **A row a query has just hidden is a row that has to stop being
     /// selected.** `reconcile(_:against:)` runs when a list is *replaced*;
     /// this runs when the *filter* moves instead, and it is the one that
-    /// keeps `askToUninstall` from raising its dialog — the app's only
+    /// keeps `askToUninstall` from raising its dialog — an
     /// irreversible deletion — over a row the list no longer shows. Dropping
     /// the selection runs `subjectMoved()` through `selection`'s own
-    /// `didSet`, which is what retires an ask still out over the wire.
+    /// `didSet`, which is what retires an ask still out at the engine.
     ///
     /// Erasing the query does not bring a dropped selection back — a cost the
     /// owner judges, not an oversight: the row it named is not guaranteed to
@@ -652,43 +676,37 @@ import Module_Homebrew_Engine
         section == .found ? PackageStanding.notInstalled(searchHits, installed: installed) : []
     }
 
-    /// One instance per host view model, for the app's lifetime.
-    ///
-    /// Leaving the page in Settings tears down the subtree and its
-    /// `@StateObject`; coming back builds a new one and re-runs `.task`. On a
-    /// fresh instance `descriptions` is empty, so returning to Homebrew re-ran
-    /// `brew list --versions` twice and a `brew desc` batch over every package
-    /// installed — every visit, for a list that had not changed.
-    ///
-    /// Keyed to the view model it was built against, not merely "exists", for
-    /// the reason `DiskViewModel.shared` gives: turning the module off drops
-    /// the engine, and a cache held past that is talking to a corpse.
-    private static var cached: HomebrewViewModel?
-    public static func shared(vm: ModuleViewModel) -> HomebrewViewModel {
-        if let cached, cached.vm === vm { return cached }
-        let created = HomebrewViewModel(vm: vm)
-        cached = created
-        // The descriptor's id, not the word typed again: a module id written by
-        // hand is tied to the thing it names or it is a comment.
-        ModuleUICache.dropWhenDisabled(HomebrewDescriptor.id.rawValue) { cached = nil }
-        return created
-    }
-
-    public init(vm: ModuleViewModel) {
-        self.vm = vm
-        self.client = TransportClient(vm.transport)
-        // Held only to start the loop below — it was a stored property nothing
-        // read after `init`.
-        let events = vm.transport.events
+    /// Built once by `HomebrewDescriptor.makeModule`, so it lives as long as the
+    /// module is switched on and the page reads it instead of owning it. Its init
+    /// asks the engine for nothing but its stream.
+    init(work: any HomebrewWork) {
+        self.work = work
+        let news = work.stream()
         eventsTask = Task { [weak self] in
-            for await e in events {
-                guard let self else { break }   // page closed: stop consuming
-                self.handle(e)
+            for await item in news {
+                guard let self, !self.closed else { break }   // closed: stop consuming
+                self.handle(item)
             }
         }
     }
 
-    /// Ends the event loop, which unregisters the transport subscriber. The
+    /// The host calls this before the engine's `deactivate()`: the model hears
+    /// nothing more and asks nothing more, so an operation the engine ends on
+    /// the way out is not followed by a re-read of a module going off.
+    ///
+    /// The three tokens are retired as well, because a nil from a closed door
+    /// must not read as an answer: `askToUninstall` with nil raises the dialog
+    /// with an empty list.
+    func stop() {
+        closed = true
+        eventsTask?.cancel(); eventsTask = nil
+        pause?.cancel(); infoAsk?.cancel()
+        _ = searches.take(); _ = infoAsks.take()
+        queuedSearch = nil
+        cancelUninstall(); cancelFix()
+    }
+
+    /// Ends the event loop, which unregisters the stream's subscriber. The
     /// `guard` above already released the view model; without this the task
     /// itself waited for an event that may never come.
     deinit { eventsTask?.cancel() }
@@ -715,7 +733,7 @@ import Module_Homebrew_Engine
     /// uninstalled and installed again between two visits — or moved from
     /// `/usr/local` to `/opt/homebrew` — is a new Cellar, and the rows of the
     /// one that is gone each carry an Uninstall button the engine now refuses.
-    public func loadIfNeeded() async {
+    func loadIfNeeded() async {
         await refreshStatus()
         guard status.installed, !loadedInstalled || listedBrew != status.brewPath else { return }
         await refreshInstalled()
@@ -724,22 +742,18 @@ import Module_Homebrew_Engine
     /// The brew the installed list was last read from.
     private var listedBrew: String?
 
-    public var running: Bool { op.phase == .running }
+    var running: Bool { op.phase == .running }
 
     // MARK: - Events
 
-    /// The enum, not the two literals the engine also types out — see
-    /// `HomebrewEvent`. A name that stops matching here empties the console and
-    /// says nothing about why.
-    private func handle(_ e: EngineEvent) {
-        switch HomebrewEvent(rawValue: e.name) {
-        case .opLog:
-            say(String(decoding: e.payload, as: UTF8.self))
+    private func handle(_ item: HomebrewNews) {
+        switch item {
+        case .line(let line):
+            say(line)
             // Bounded, the way `LogTail` is. Nothing trimmed this: it is
-            // cleared by pressing Clear and by starting an install, so on the
+            // cleared by pressing Clear and by starting the install of Homebrew, so on the
             // ordinary path — upgrade, upgrade again, search — it only grew,
-            // for the life of the app, since this view model is cached per host
-            // view model. The engine keeps stderr on purpose because a console
+            // for as long as the module is on. The engine keeps stderr on purpose because a console
             // should show what the tool says, and a `brew` command passes 64 KB
             // of deprecation warnings without trying. Each line is also a view:
             // the page renders a `ForEach` over the whole array and follows
@@ -748,8 +762,13 @@ import Module_Homebrew_Engine
             // From the front, which is what a terminal's scrollback does: the
             // end is the half a person is reading. (`say` does it, so the
             // lines the model writes itself are bounded by the same rule.)
-        case .opState:
-            guard let s = try? JSONDecoder().decode(OpState.self, from: e.payload) else { return }
+        case .brew(let path):
+            // Only a seed, and only while nothing has been read:
+            // `loadIfNeeded` reads the status at every visit, and that reading is
+            // the truth, `interruptedOp` included. A seed that came after it
+            // would wipe it.
+            if !statusRead { status = BrewStatus(installed: path != nil, brewPath: path) }
+        case .state(let s):
             // Before `op` changes, because the line is about the step between
             // the two states.
             if let line = Self.consoleLine(from: op, to: s) { say(line) }
@@ -759,8 +778,6 @@ import Module_Homebrew_Engine
             // non-zero when one package fails to build — everything before it is
             // already upgraded, so the pre-operation lists are stale either way.
             if s.phase == .done || s.phase == .failed { Task { await self.refreshAfterOp() } }
-        case .none:
-            break
         }
     }
 
@@ -818,7 +835,7 @@ import Module_Homebrew_Engine
         if config != nil { await refreshConfig() }
         // And what `brew info` said, which an upgrade rewrites: the first tier
         // takes its version from the list above, so a kept answer left the
-        // heading reading 3.7.0 with the tile under it still saying 3.6.4 — one
+        // heading reading 3.7.0 with the row under it still saying 3.6.4 — one
         // screen carrying two accounts of one package. Last, so the ask goes
         // out against the selection the reconciles above have settled on.
         //
@@ -837,8 +854,11 @@ import Module_Homebrew_Engine
 
     // MARK: - Queries
 
-    public func refreshStatus() async {
-        status = await client.request(HomebrewCommand.status) ?? status
+    func refreshStatus() async {
+        if let read = await door?.readStatus() {
+            status = read
+            statusRead = true
+        }
         // Carried once: the engine's marker is consumed by the read, so only
         // the first status after an interrupted quit says it — into the
         // console, the surface that already narrates operations.
@@ -850,9 +870,9 @@ import Module_Homebrew_Engine
     /// answer" — a hung brew cut off at the runner's deadline — and it used to
     /// replace a real package list with "No packages installed." The last
     /// answer stays; the log names the outcome; Refresh stays live for a retry.
-    public func refreshInstalled() async {
+    func refreshInstalled() async {
         installedReading = .waiting
-        guard let answer: [BrewPackage] = await client.request(HomebrewCommand.listInstalled)
+        guard let answer = await door?.readInstalled()
         else {
             // The last answer stays, and so does the reading that describes it:
             // rows on screen are an answer somebody got, and a refusal on top of
@@ -922,12 +942,12 @@ import Module_Homebrew_Engine
     /// ("no `?? []` on any list reply"), where the last answer is still a true
     /// thing about a machine that has almost certainly not moved.
     func refreshConfig() async {
-        guard let answer: BrewConfig = await client.request(HomebrewCommand.config) else { return }
+        guard let answer = await door?.readConfig() else { return }
         config = answer
     }
 
-    /// **A refusal replaces the issues rather than keeping them.** The other
-    /// three lists keep their last answer when a query is refused, because a
+    /// **A refusal replaces the issues rather than keeping them.** The installed
+    /// and outdated lists keep their last answer when a query is refused, because a
     /// stale package list is still a list of packages and the page says nothing
     /// about it either way. This one is different in kind: the list *is* the
     /// claim about the machine's health, and holding two issues on screen under
@@ -940,13 +960,13 @@ import Module_Homebrew_Engine
         // **The installed list first, because the verdict is about it.**
         // `DoctorFixCandidate.judging` decides `.runnable` against what is on
         // this Mac, and opening this segment on a fresh launch finds that list
-        // unread — every fix would then read `.copyOnly` because the page has
+        // unread — every `uninstall` fix would then read `.copyOnly` because the page has
         // no Cellar rather than because the name is not in it. A list that
-        // refuses leaves `loadedInstalled` false and every fix copy-only, which
+        // refuses with no rows behind it leaves `loadedInstalled` false and every `uninstall` fix copy-only, which
         // is the safe direction and the honest one: Helm withholds the button it
         // has no reading to justify.
         if !loadedInstalled { await refreshInstalled() }
-        guard let answer: [DoctorIssue] = await client.request(HomebrewCommand.doctor) else {
+        guard let answer = await door?.readDoctor() else {
             doctor = .refused
             return
         }
@@ -967,28 +987,42 @@ import Module_Homebrew_Engine
 
     /// The press on Run, which is not the same thing as running it.
     ///
-    /// `FixAsk` decides — `brew cleanup` goes straight to the engine, and
-    /// anything that takes a package off this Mac raises the question the
+    /// `FixAsk` decides — `brew cleanup` would go straight to the engine (no
+    /// fix the page draws is that command today), and anything that takes a
+    /// package off this Mac raises the question the
     /// Uninstall button has raised since somebody noticed it removed an
     /// application on a single click. The judgement is `FixAsk.of`'s and not
     /// this method's, so a test reads it without a `body` in the way.
-    func askToRunFix(_ fix: DoctorFix) {
+    ///
+    /// An `uninstall <name>` fix reads what depends on the package first, through
+    /// `askAboutRemoving` — the same reading, and the same list under the same
+    /// sentence, as the Uninstall button's dialog. A fix names one package, so
+    /// there is one list.
+    func askToRunFix(_ fix: DoctorFix) async {
         switch FixAsk.of(fix.argv) {
         case .runsOnThePress: runDoctorFix(fix)
-        case .uninstalls, .unrecognised: pendingFix = fix
+        case let .uninstalls(name):
+            // A doctor heading names a formula; a cask's dependents are `[]` anyway.
+            await askAboutRemoving(PackageRef(name: name, isCask: false)) { self.pendingFix = fix }
+        case .unrecognised: pendingFix = fix
         }
     }
 
     /// Closes the question without running anything. Called by the dialog's
     /// Cancel and by the page going away, for `cancelUninstall`'s reason: this
     /// object outlives the page, and a question left standing is one the next
-    /// visit opens with.
-    func cancelFix() { pendingFix = nil }
+    /// visit opens with. Also abandons a dependents read still out and clears
+    /// the list, as `cancelUninstall` does; `confirmFix` relies on both.
+    func cancelFix() {
+        _ = uninstallAsks.take()
+        pendingFix = nil
+        dependentsOfPending = []
+    }
 
     /// The press on the dialog Run raised. The only door to a destructive fix.
     func confirmFix() {
         guard let fix = pendingFix else { return }
-        pendingFix = nil
+        cancelFix()
         runDoctorFix(fix)
     }
 
@@ -999,7 +1033,7 @@ import Module_Homebrew_Engine
     /// so a fix that removes a package for good went on a single click while
     /// every other irreversible deletion in Helm asked first.
     ///
-    /// The argv goes over the wire as it was drawn, and that is deliberate:
+    /// The argv goes to the engine as it was drawn, and that is deliberate:
     /// this side does not re-read the Cellar and does not re-judge, because a
     /// second judgement here would be a second one against the same stale
     /// reading. `HomebrewEngine.runDoctorFix` reads the installed list at the
@@ -1007,12 +1041,12 @@ import Module_Homebrew_Engine
     /// the case this design exists for, a package uninstalled in a terminal
     /// between the draw and the press.
     private func runDoctorFix(_ fix: DoctorFix) {
-        client.fire(HomebrewCommand.doctorFix, encoding: fix.argv)
+        door?.perform(.doctorFix(argv: fix.argv))
     }
 
-    public func refreshOutdated() async {
+    func refreshOutdated() async {
         outdatedReading = .waiting
-        guard let answer: [OutdatedPackage] = await client.request(HomebrewCommand.outdated)
+        guard let answer = await door?.readOutdated()
         else {
             outdatedReading = outdated.isEmpty ? .unanswerable : .answered
             // `refreshInstalled`'s own reason: a refusal is a reading, and
@@ -1033,7 +1067,7 @@ import Module_Homebrew_Engine
     /// `loadedInstalled`'s twin, derived from `outdatedReading` for the same
     /// reason. `loadIfNeeded` deliberately never asks `brew outdated`, so this
     /// is false on every launch until somebody opens the segment.
-    public var loadedOutdated: Bool { outdatedReading == .answered }
+    var loadedOutdated: Bool { outdatedReading == .answered }
 
     /// Which search the hits belong to, so an older answer cannot land on a
     /// newer one — and so a search nobody is waiting for any more stops
@@ -1053,7 +1087,7 @@ import Module_Homebrew_Engine
     /// pipe, with the twenty-first launch the one that raised.
     private var searches = LatestRequest()
 
-    public func search(_ q: String) async {
+    func search(_ q: String) async {
         let mine = searches.take()
         // **The old hits go before the new query is sent.** They belong to the
         // word that was typed over, and holding them for as long as this takes
@@ -1063,8 +1097,7 @@ import Module_Homebrew_Engine
         searchHits = []
         reconcileVisible()
         searchReading = .waiting
-        guard let hits: [SearchHit] = await client.request(HomebrewCommand.search,
-                                                           payload: Data(q.utf8))
+        guard let hits = await door?.find(q)
         else {
             // Only for the press still being waited on: a refusal for a word
             // the person has typed over must not put its sentence over a newer
@@ -1083,7 +1116,7 @@ import Module_Homebrew_Engine
                                token: mine)
     }
 
-    public func description(name: String, isCask: Bool) -> String? {
+    func description(name: String, isCask: Bool) -> String? {
         descriptions[BrewKey.of(name: name, isCask: isCask)]
     }
 
@@ -1109,9 +1142,7 @@ import Module_Homebrew_Engine
     private func load(_ names: [String], isCask: Bool, token: Int? = nil) async {
         let wanted = names.filter { descriptions[BrewKey.of(name: $0, isCask: isCask)] == nil }
         guard !wanted.isEmpty,
-              let found: [String: String] = await client.request(
-                  HomebrewCommand.descriptions,
-                  encoding: DescriptionsRequest(names: wanted, isCask: isCask))
+              let found = await door?.readDescriptions(of: wanted, isCask: isCask)
         else { return }
         // A description is keyed by the package it describes, so a late batch
         // is not *wrong* — but writing it republishes the whole dictionary and
@@ -1122,17 +1153,16 @@ import Module_Homebrew_Engine
 
     // MARK: - Operations (fire-and-forget; progress via events)
 
-    public func install(_ hit: SearchHit) {
-        client.fire(HomebrewCommand.install,
-                    encoding: PackageRef(name: hit.name, isCask: hit.isCask))
+    func install(_ hit: SearchHit) {
+        door?.perform(.install(PackageRef(name: hit.name, isCask: hit.isCask)))
     }
     /// Which press the dialog belongs to, so an older query cannot raise one.
     ///
     /// The same counter `search` keeps, for the reason `LatestRequest` gives,
-    /// and here the act it guards is the app's only irreversible deletion.
+    /// and here the act it guards is an irreversible deletion.
     /// Nothing is disabled while this query is out — the page's `disabled`
     /// tracks long operations, not queries — so two presses put two queries in
-    /// flight and the last continuation to resume used to win: the answer for a
+    /// flight, and without this the last continuation to resume wins: the answer for a
     /// package pressed and abandoned would raise its own confirmation dialog, or
     /// swap the title and the list under somebody reading them.
     private var uninstallAsks = LatestRequest()
@@ -1144,25 +1174,32 @@ import Module_Homebrew_Engine
     /// terminal beside this window can change. A refusal — brew hung, brew gone
     /// — leaves the list empty and the dialog says only what it always said;
     /// it must not invent a reassurance out of a query that never answered.
-    public func askToUninstall(_ pkg: BrewPackage) async {
+    func askToUninstall(_ pkg: BrewPackage) async {
+        await askAboutRemoving(PackageRef(name: pkg.name, isCask: pkg.isCask)) { self.pendingUninstall = pkg }
+    }
+
+    /// The one place a confirmation for `brew uninstall` is built, for both
+    /// doors: reads the dependents, and only then calls `raise`, which sets the
+    /// dialog's own pending value. `dependentsOfPending` is shared by the two
+    /// dialogs, so each draws the same "still needed by" content.
+    private func askAboutRemoving(_ ref: PackageRef, raise: () -> Void) async {
+        guard !closed else { return }
         let mine = uninstallAsks.take()
-        let answer: [String]? = await client.request(
-            HomebrewCommand.dependents,
-            encoding: PackageRef(name: pkg.name, isCask: pkg.isCask))
+        let answer = await door?.readDependents(of: ref)
         // Both halves or neither, and only for the press still being waited on:
         // the package named in the title and the names under it are one reading
         // of one Cellar, and a dialog carrying two presses' worth is a sentence
         // about a package that is not the one about to be deleted.
         guard uninstallAsks.isLatest(mine) else { return }
         dependentsOfPending = answer ?? []
-        pendingUninstall = pkg
+        raise()
     }
 
     /// Closes the dialog and abandons whatever reading is still out — a token
     /// taken and dropped, which is how `LatestRequest` retires work in flight.
     /// Without that line a query for an earlier press comes back to a screen
     /// with nothing on it and puts a confirmation there by itself.
-    public func cancelUninstall() {
+    func cancelUninstall() {
         _ = uninstallAsks.take()
         pendingUninstall = nil
         dependentsOfPending = []
@@ -1171,26 +1208,33 @@ import Module_Homebrew_Engine
     /// Sends the uninstall the dialog was raised for, and clears the reading
     /// with it.
     ///
-    /// The only door in this target to `brew uninstall`: a row's button asks
-    /// (`askToUninstall`) and this is the press on the dialog it raised, so the
-    /// deletion cannot be reached without the sentence saying what it takes
-    /// with it. The `uninstall(_:)` that used to sit beside it was a second,
-    /// unconfirmed one, with no caller left outside this type.
-    public func confirmUninstall() {
+    /// One of two doors in this target to `brew uninstall`, the other being
+    /// `confirmFix` for an `uninstall <name>` fix. A row's button asks
+    /// (`askToUninstall`, which reads what depends on the package) and this is
+    /// the press on the dialog it raised, so through this door the deletion
+    /// cannot be reached without the sentence saying what it takes with it; the
+    /// fix's dialog asks too, through the same `askAboutRemoving`. The
+    /// `uninstall(_:)` that used to sit beside it was a third, unconfirmed
+    /// one, with no caller left outside this type.
+    func confirmUninstall() {
         guard let pkg = pendingUninstall else { return }
         cancelUninstall()
-        client.fire(HomebrewCommand.uninstall,
-                    encoding: PackageRef(name: pkg.name, isCask: pkg.isCask))
+        door?.perform(.uninstall(PackageRef(name: pkg.name, isCask: pkg.isCask)))
     }
-    public func upgrade(_ pkg: OutdatedPackage) {
-        client.fire(HomebrewCommand.upgrade, payload: Data(pkg.name.utf8))
+    func upgrade(_ pkg: OutdatedPackage) {
+        door?.perform(.upgrade(name: pkg.name))
     }
-    public func upgradeAll() { client.fire(HomebrewCommand.upgradeAll) }
-    public func installBrew() { consoleLines.removeAll(); client.fire(HomebrewCommand.installBrew) }
-    /// Ends the running operation; the engine reports the exit as `.stopped`.
-    public func stop() { client.fire(HomebrewCommand.stop) }
+    func upgradeAll() { door?.perform(.upgradeAll) }
+    func installBrew() {
+        guard !closed else { return }
+        consoleLines.removeAll()
+        door?.perform(.installBrew)
+    }
+    /// The page's Stop button. Ends the running operation; the engine reports
+    /// the exit as `.stopped`. (`stop()` is the seam's: it closes the model.)
+    func stopOperation() { door?.perform(.stop) }
 
-    public func clearConsole() { consoleLines.removeAll() }
+    func clearConsole() { consoleLines.removeAll() }
 
     /// The one door a console line comes in by: it takes the next number and
     /// keeps the newest `consoleLimit`. Numbered before the trim, so the

@@ -125,7 +125,7 @@ final class ScanJournalOrderAndBoundTests: XCTestCase {
         XCTAssertEqual(journal.entries(module: "disk").map(\.bytes), [2, 1])
     }
 
-    /// Thirty entries, so a module scanned twice a day keeps a fortnight. The
+    /// Thirty entries, so a module scanned once a day keeps a month. The
     /// oldest goes; the file does not grow without end.
     func testTheJournalIsBounded() {
         for i in 0...(ScanJournal.limit + 4) {

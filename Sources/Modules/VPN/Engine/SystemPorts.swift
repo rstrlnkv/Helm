@@ -15,6 +15,45 @@ public final class ScutilRunner: VPNRunnerPort {
     public func run(_ args: [String]) -> HelmProcess.Result {
         HelmProcess.run("/usr/sbin/scutil", args)
     }
+    /// The query form: a `scutil` still running at `timeout` is terminated and
+    /// the answer is `HelmProcess.timedOutStatus` with no output.
+    public func read(_ args: [String], timeout: TimeInterval) -> HelmProcess.Result {
+        HelmProcess.run("/usr/sbin/scutil", args, timeout: timeout)
+    }
+
+    /// The start that carries a secret, in this process: `scutil --nc start`
+    /// takes `--user`, `--password` and `--secret` only as arguments, which every
+    /// process of this user can read while the child lives.
+    ///
+    /// Called on the module's work queue like `run`, and it does not block:
+    /// `SCNetworkConnectionStart` hands the start to the system and returns
+    /// (`linger` true, or the start would be undone when `connection` is
+    /// released at the end of this function). Nothing here is logged: a name
+    /// would be, and the answer is a code.
+    public func start(_ name: String, supplying credentials: VPNCredentials) -> VPNStartAnswer {
+        // Unreadable and absent are different news: only a list that was read
+        // and held no such name is `.noSuchService`.
+        guard let prefs = SCPreferencesCreate(nil, "Helm" as CFString, nil),
+              let set = SCNetworkSetCopyCurrent(prefs),
+              let services = SCNetworkSetCopyServices(set) as? [SCNetworkService]
+        else { return .unreadable }
+        guard let service = services.first(where: { SCNetworkServiceGetName($0) as String? == name })
+        else { return .noSuchService }
+        guard let serviceID = SCNetworkServiceGetServiceID(service),
+              let connection = SCNetworkConnectionCreateWithServiceID(nil, serviceID, nil, nil)
+        else { return .unreadable }
+        // `scutil` hands over by the service's own interface type; a PPP service
+        // says nothing about its transport, the interface under it does.
+        let outer = SCNetworkServiceGetInterface(service)
+        let kind = outer.flatMap { SCNetworkInterfaceGetInterfaceType($0) as String? } ?? ""
+        let inner = outer.flatMap { SCNetworkInterfaceGetInterface($0) }
+            .flatMap { SCNetworkInterfaceGetInterfaceType($0) as String? }
+        let options = VPNStartOptions.userOptions(credentials, interface: kind, inner: inner)
+        guard SCNetworkConnectionStart(connection, options as CFDictionary?, true) else {
+            return .refused(code: SCError())
+        }
+        return .started
+    }
 }
 
 // MARK: - WorkspaceAppObserver
@@ -156,18 +195,22 @@ public final class DynamicStoreNetworkWatch: NetworkWatchPort {
 // MARK: - KeychainCredentials
 
 /// Production `VPNCredentialsPort`: reads the shared-secret/password an
-/// L2TP/IPSec VPN needs so `scutil --nc start` connects silently instead of
-/// prompting for the IPSec shared secret.
+/// L2TP/IPSec VPN needs, so that a start does not prompt for the IPSec shared
+/// secret.
 ///
 /// macOS gates every read of a VPN secret in the System keychain by a
 /// third-party app behind a prompt (System Settings is exempt as an Apple
 /// binary). So we read the System keychain at most ONCE, cache the values in
 /// Helm's own login-keychain items (which we can read back without a prompt),
-/// and use the cache thereafter. Returns nil for VPNs without a stored shared
-/// secret (e.g. IKEv2). Secrets stay in memory / the keychain, never logged.
+/// and use the cache thereafter. Answers `.notNeeded` for VPNs without a stored
+/// shared secret (e.g. IKEv2). Secrets stay in memory / the keychain, never logged.
 public final class KeychainCredentials: VPNCredentialsPort {
     /// Service used for Helm's own cached copy of a VPN's credentials.
     private let helmVPNKeychainService = "com.helm.vpn"
+
+    /// Asks `scutil --nc show` through the module's runner, so the read has the
+    /// same deadline and the same seam as every other.
+    private let runner: VPNRunnerPort
 
     public convenience init() { self.init(purge: Self.purgeItemsWithTheOldAccessList) }
 
@@ -181,7 +224,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// than public: no other target may forget which one it is taking.
     ///
     /// **And it runs off the thread that built this.** That thread is the main
-    /// one — `VPNDescriptor.makeEngine` is `@MainActor` and builds
+    /// one — `VPNDescriptor.makeModule` is `@MainActor` and builds
     /// `VPNSystemPorts()` while the module list is assembled — so a
     /// `SecItemDelete` there is a launch-time keychain call, the family of the
     /// 19,09 s hang fixed in 4dcc5fb6, and on an ad-hoc-signed bundle a dialog
@@ -195,7 +238,8 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// holds whatever thread it is on for as long as a person looks at it,
     /// which is the one thing the cooperative pool's thread-per-core must never
     /// be spent on.
-    init(purge: @escaping @Sendable () -> Void) {
+    init(purge: @escaping @Sendable () -> Void, runner: VPNRunnerPort = ScutilRunner()) {
+        self.runner = runner
         DispatchQueue.global(qos: .utility).async(execute: purge)
     }
 
@@ -238,8 +282,24 @@ public final class KeychainCredentials: VPNCredentialsPort {
         }
     }
 
+    /// Answers `.unreadable` when `--nc show` timed out or exited non-zero (a
+    /// warning names the status or the timeout, the name redacted);
+    /// `.notNeeded` only for a show that ran to the end and kept no secret —
+    /// no `AuthPassword` field, or no output at all.
     public func credentials(for name: String, promptingAllowed: Bool) -> VPNCredentialRead {
-        let show = HelmProcess.run("/usr/sbin/scutil", ["--nc", "show", name]).output
+        let shown = runner.read(["--nc", "show", name], timeout: vpnReadDeadline)
+        // A read that ran out of time or failed is not an empty one: nobody knows
+        // whether a secret is kept, and a connect that went without it would
+        // report success whether it worked or not (`--nc start` answers nothing
+        // either way) — so a rule connect recorded and announced "connected" with
+        // no tunnel. The engine neither starts nor announces on `.unreadable`.
+        if shown.status != 0 {
+            HelmLog.shared.warn(VPNEngine.moduleID, "the configuration of \(Redact.vpn(name)) could not be read "
+                + "(\(shown.status == HelmProcess.timedOutStatus ? "timed out after \(Int(vpnReadDeadline)) s" : "exit status \(shown.status)")); "
+                + "the secret is not known")
+            return .unreadable
+        }
+        let show = shown.output
         // No `AuthPassword` line: this configuration keeps no secret Helm has to
         // supply, and `--nc start` connects it on its own. `.notNeeded` rather
         // than the nil this used to be — see `VPNCredentialRead`, and the
@@ -382,7 +442,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// available yet: it needs the flag on the write, the read *and* the delete
     /// (they must agree or the read stops finding the write), and it needs an
     /// `application-identifier` entitlement this ad-hoc-signed bundle has not got
-    /// — the same Developer ID already blocking `NEVPNManager`, the seal on
+    /// — the same Developer ID already blocking the seal on
     /// `clamshellEnabled` and notarization. It would also be a change to the
     /// credential path that cannot be tested without writing to somebody's real
     /// keychain. `ASecretsProtectionIsNotClaimedTwiceTests` holds the pair
@@ -595,7 +655,7 @@ public final class NetworkQualitySpeed: VPNSpeedPort {
             // exits **0**, and carries no throughput keys at all. So this guard
             // catches only the tool that could not be launched or was killed at
             // its deadline; what refuses an answer that is not one is the
-            // parser's «every field or nothing», which is where the check
+            // parser's «both throughput figures or nothing», which is where the check
             // belongs — the tool has more ways to fail successfully than a
             // status can enumerate.
             guard result.status == 0 else { return nil }

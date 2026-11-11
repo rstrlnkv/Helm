@@ -157,7 +157,7 @@ final class DocumentsNameTheTreeTests: XCTestCase {
     /// directory leaves every mention of its old path wrong while its name still
     /// exists, and "somewhere in the tree there is a file called this" is the
     /// weaker claim the prose is not making. Paths are written from the root
-    /// (`Sources/HelmApp/ChangelogData.swift`) and from inside `Sources`
+    /// (`Sources/HelmAppStrings/ChangelogData.swift`) and from inside `Sources`
     /// (`Modules/Disk/UI/RingView.swift`) about equally often, so both are tried.
     ///
     /// A line number is checked too — `AppDelegate.swift:127` outlived the line
@@ -169,8 +169,8 @@ final class DocumentsNameTheTreeTests: XCTestCase {
     ///
     /// **A bare name with a line number needs a *unique* match.** With no line,
     /// "somewhere in the tree there is a file called this" is exactly the claim
-    /// being made — `SystemPorts.swift` is four different files, one per module
-    /// that has ports, and any of them answers for it. With a line, the document
+    /// being made — `SystemPorts.swift` is several different files, one in each
+    /// of several modules, and any of them answers for it. With a line, the document
     /// is pointing at *one* file, and more than one candidate makes the address
     /// ambiguous, which is a dead address by another name.
     ///

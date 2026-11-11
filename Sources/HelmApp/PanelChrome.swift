@@ -1,13 +1,14 @@
 import SwiftUI
 import HelmRuntime
 import HelmUI
+import HelmAppStrings
 
 // The panel's chrome and its two standing tiles, drawn by the card in
 // `HelmPanel.swift`. Internal rather than `private` for that reason and no
 // other: nothing outside `HelmApp` names any of them.
 
-/// What a widget grows while the panel is being arranged: a dashed frame, a
-/// minus at the top left, and its proportions at the top right.
+/// What a widget grows while the panel is being arranged: a minus at the top
+/// left, and its proportions — or, on the drawer, a pencil — at the top right.
 ///
 /// **Both float at the corners, half outside the tile.** That is where macOS
 /// has put «remove» since the first jiggling icon, and the reason it works is
@@ -48,6 +49,11 @@ struct EditChrome: ViewModifier {
     let remove: () -> Void
     let move: (Int) -> Void
 
+    /// How far the corner controls overhang a tile, and so what the tile is padded by while the mode is on.
+    /// The drag (`HelmPanelContent.gridDrag`, `HelmPanel.swift`) insets each measured frame by it to get the tile's content rectangle.
+    static let overhang = HelmSpace.s2
+
+    @Environment(\.helmTraits) private var traits
     @State private var hovering = false
     @FocusState private var focused: Bool
 
@@ -98,13 +104,13 @@ struct EditChrome: ViewModifier {
                     } label: {
                         Image(systemName: "minus")
                             .font(.system(size: 9, weight: .black))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(HelmText.onFill)
                             .frame(width: 18, height: 18)
-                            .background(Circle().fill(HelmSignal.danger))
+                            .background(Circle().fill(HelmSignal.danger(increased: traits.increasedContrast)))
                             .shadow(radius: 1, y: 0.5)
                     }
                     .buttonStyle(.plain)
-                    .offset(x: -4, y: -4)
+                    .offset(x: -Self.overhang, y: -Self.overhang)
                     .accessibilityLabel(AppStr.removeWidget)
                     .transition(.scale.combined(with: .opacity))
                 }
@@ -118,11 +124,10 @@ struct EditChrome: ViewModifier {
                             Image(systemName: chooseSymbol)
                                 .helmSymbolSwap(chooseSymbol)
                                 .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(choosing ? Color.white : HelmText.quiet)
-                                .padding(.horizontal, 6).padding(.vertical, 3)
-                                .background(Capsule().fill(choosing ? AnyShapeStyle(Color.accentColor)
-                                                           : AnyShapeStyle(.regularMaterial)))
-                                .overlay(Capsule().strokeBorder(HelmSurface.hairline))
+                                .foregroundStyle(choosing ? HelmText.onFill : HelmText.quiet)
+                                .padding(.horizontal, HelmSpace.s3).padding(.vertical, 3)
+                                .helmPillTrack(choosing ? AnyShapeStyle(Color.accentColor)
+                                                        : AnyShapeStyle(.regularMaterial))
                         }
                         .buttonStyle(.plain)
                         .help(AppStr.chooseUtilities)
@@ -131,14 +136,14 @@ struct EditChrome: ViewModifier {
                         sizeControl
                     }
                 }
-                .offset(x: 4, y: -4)
+                .offset(x: Self.overhang, y: -Self.overhang)
                 .transition(.scale.combined(with: .opacity))
             }
             // The room the corner controls overhang by, exactly: the grid
             // lives in a `ScrollView`, which clips at its own bounds. Animated
             // by the mode's own transaction, since it is part of what the mode
             // changes.
-            .padding(active ? 4 : 0)
+            .padding(active ? Self.overhang : 0)
             // Movable by arrow keys, so the arrangement is not the one part of
             // the panel a keyboard cannot reach. No system ring: it is drawn
             // round the frame and arrived as a hard rectangle over glass.
@@ -157,7 +162,7 @@ struct EditChrome: ViewModifier {
     /// Grows leftwards from the corner it is anchored to, which is what a
     /// trailing-aligned stack does by itself.
     private var sizeControl: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: HelmSpace.s1) {
             ForEach(open ? sizes : [size], id: \.self) { option in
                 Button {
                     // Shut on the way out, and say so *before* the resize.
@@ -180,9 +185,9 @@ struct EditChrome: ViewModifier {
                     Text(option.label)
                         .font(.system(size: 10, weight: .semibold))
                         .monospacedDigit()
-                        .foregroundStyle(open && option == size ? Color.white
+                        .foregroundStyle(open && option == size ? HelmText.onFill
                                          : HelmText.quiet)
-                        .padding(.horizontal, 5).padding(.vertical, 2)
+                        .padding(.horizontal, 5).padding(.vertical, HelmSpace.s1)
                         // A capsule inside a capsule. The container is one, and
                         // a 4 pt rounded rectangle inside it is concentric with
                         // nothing — the corner of the chip cut across the curve
@@ -196,9 +201,8 @@ struct EditChrome: ViewModifier {
                 .help(option.label)
             }
         }
-        .padding(2)
-        .background(Capsule().fill(.regularMaterial))
-        .overlay(Capsule().strokeBorder(HelmSurface.hairline))
+        .padding(HelmSpace.s1)
+        .helmPillTrack()
         .focusable()
         .focused($focused)
         // The system ring is drawn round the view's *frame*, and this view is a
@@ -240,15 +244,15 @@ struct UtilitiesSection: View {
             Button {
                 withAnimation(HelmMotion.disclosure) { expanded.toggle() }
             } label: {
-                HStack(spacing: 8) {
+                HStack(spacing: HelmSpace.s4) {
                     Image(systemName: "wrench.and.screwdriver")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(HelmText.quiet)
                     Text(AppStr.utilities).font(.subheadline.weight(.medium))
                     Spacer()
-                    // The panel keeps its own scale — 9 · 10 · 11 · 12, spelled
-                    // out beside this line — and does not answer to the settings
-                    // window's four tokens (ARCHITECTURE.md § Design system).
+                    // `.caption`: one of the small styles the panel keeps for itself,
+                    // beside the `HelmText` faces its rows share with the settings
+                    // window (Architecture/TheMenuBarPanel.md).
                     Text("\(modules.count)").font(.caption).foregroundStyle(HelmText.faint)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 10, weight: .semibold))
@@ -272,9 +276,9 @@ struct UtilitiesSection: View {
             // while the disappearing rows kept drawing over whatever sat
             // below. `helmAccordion` is that shape, and why each half of it is
             // there is written on it.
-            VStack(spacing: 2) {
+            VStack(spacing: HelmSpace.s1) {
                 ForEach(modules, id: \.descriptor.idRaw) { live in
-                    HStack(spacing: 6) {
+                    HStack(spacing: HelmSpace.s3) {
                         utilityRow(live)
                         if choosing {
                             Button { toggle(live.descriptor.idRaw) } label: {
@@ -296,7 +300,7 @@ struct UtilitiesSection: View {
                     }
                 }
             }
-            .padding(.top, 8)
+            .padding(.top, HelmSpace.s4)
             // **The one site where the measurement half is load-bearing.**
             // Everywhere else the block's content is one fixed shape and the
             // only thing that moves is the gate; here the pencil swaps three
@@ -313,16 +317,13 @@ struct UtilitiesSection: View {
         return Button {
             NotificationCenter.default.post(name: .helmOpenSettings, object: live.descriptor.idRaw)
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: HelmSpace.s4) {
                 HelmIconPlate(symbol: meta.sfSymbol,
                               tint: live.descriptor.moduleTint.colour, size: 20)
                 // The short name, as the sidebar asks for: this column is
                 // fixed and «Объекты входа и расширения» is cut mid-word in it.
-                // `.callout` is 12, which is off the settings scale and *on*
-                // the panel's own — the sizes around it in this file are 9,
-                // 10, 11 and 12. The panel is a transient surface with its
-                // own rules (ARCHITECTURE.md § Design system); this is the
-                // one style the tree-wide sweep left where it was.
+                // `.callout` is 12, which is off the settings scale: the
+                // panel's own type, beside .caption and .subheadline.
                 Text(meta.shortName).font(.callout).lineLimit(1)
                 Spacer()
                 Image(systemName: "arrow.up.forward")
@@ -349,7 +350,7 @@ struct UtilitiesSection: View {
 /// added. It is a fact about the machine, so it is computed from the machine.
 struct PermissionsWidget: View {
     let withheld: [PermissionNeed]
-    // No module count. The widget is 320 pt with a button on the same line, so
+    // No module count. The widget is the panel's full width less its padding, with a button on the same line, so
     // a second fact there is a paragraph wrapped around a control at the top of
     // the first thing anybody opens when something is wrong. The settings page
     // has the room and says both.
@@ -400,7 +401,7 @@ struct DisabledModuleWidget: View {
 
     var body: some View {
         HelmWidgetBody {
-            HStack(spacing: 8) {
+            HStack(spacing: HelmSpace.s4) {
                 HelmIconPlate(symbol: descriptor.moduleMetadata.sfSymbol,
                               tint: descriptor.moduleTint.colour, size: 18, active: false)
                 Text(descriptor.moduleMetadata.shortName)

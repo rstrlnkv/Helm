@@ -34,7 +34,8 @@ final class ScanResetTests: XCTestCase {
     func testStartingOverForgetsTheScanOnDiskAsWellAsOnScreen() async throws {
         let store = ScanStore(directory: storeDirectory)
         store.save(saved())
-        let model = DiskViewModel(vm: ModuleViewModel(transport: LocalTransport()), store: store)
+        let model = DiskViewModel(work: AnsweringWork(volumes: []), store: store)
+        await model.appear()
         for _ in 0..<200 where model.result == nil { await Task.yield() }
         XCTAssertNotNil(model.result, "the fixture has to be restored for this to prove anything")
 

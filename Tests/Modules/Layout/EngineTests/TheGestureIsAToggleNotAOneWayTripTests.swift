@@ -31,7 +31,7 @@ final class TheGestureIsAToggleNotAOneWayTripTests: XCTestCase {
         context = ToggleContext(); sources = ToggleSources()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
                                   translation: ToggleTranslation(), spell: ToggleSpell(),
-                                  secure: context)
+                                  secure: context, activation: FakeActivation())
         engine.activate()
         return engine
     }

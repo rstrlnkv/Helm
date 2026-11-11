@@ -1,7 +1,7 @@
 import Foundation
 
 /// Why the folder macOS names was not the one used.
-public enum SaveFolderRefusal: String, Sendable, Codable, Equatable {
+public enum SaveFolderRefusal: String, Sendable, Equatable {
     /// `location` held something that is not a path: a number, data, a list.
     case notAPath
     /// An empty string, or only whitespace.
