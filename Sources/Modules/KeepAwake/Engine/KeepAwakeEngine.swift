@@ -462,7 +462,13 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     private func reconcileActiveSettings() -> ClamshellCoordinator.Edge {
         // Consumed before the `isActive` guard — see `consumeEdge`.
         let edge = lid.consumeEdge()
-        guard isActive else { return edge }
+        guard isActive else {
+            // No session: the switch's own gesture still asks for the rule, so
+            // the next Start finds it. `engage` only installs here; it holds
+            // nothing (`reallyEngage` wants a running session).
+            if edge == .rising, switchGesture, lidInfo.hasLid() { lid.engage(mayPrompt: true) }
+            return edge
+        }
         assertions.release()
         noteIfTheAssertionWasRefused(assertions.preventSleep(display: settings.keepDisplayOn))
         let wantsLid = settings.clamshellEnabled && lidInfo.hasLid()

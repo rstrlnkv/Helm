@@ -32,7 +32,7 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
     }
 
     /// The control: with no grant of any kind, the person's gesture on the lid
-    /// switch during a session asks for one (a Start press never does).
+    /// switch asks for one (a Start press never does).
     @MainActor
     func testWithNoGrantAtAllTheLidSwitchGestureAsksForOne() async {
         clamshell.sudoersInstalled = false

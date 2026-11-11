@@ -477,7 +477,9 @@ final class ClamshellCoordinator: @unchecked Sendable {
     ///
     /// Read before the caller's own «is a session running» guard, so an edge
     /// that happens while the module is idle is *consumed* rather than saved up
-    /// for whichever unrelated edit arrives after a rule starts a session.
+    /// for whichever unrelated edit arrives after a rule starts a session. The
+    /// switch's own rising edge is the exception: it is answered at once by asking
+    /// for the grant (`reconcileActiveSettings`), session or not.
     func consumeEdge() -> Edge {
         let now = settings.clamshellEnabled
         defer { lastSetting = now }

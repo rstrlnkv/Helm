@@ -42,7 +42,7 @@ grant with no revocation is `/opt/homebrew`'s ownership change
 removal, `/bin/rm -f` on the one literal path (`SudoersRule.removeArguments`), so the grant carries its own revocation, which it has to because dragging
 the application to the Trash runs no code. Who may *raise* the password prompt
 is a separate question from what the prompt runs: only the person's gesture on the lid switch
-(`KeepAwakeEngine.lidSwitchTurned`, its rising edge during a running session) may raise it. A Start press
+(`KeepAwakeEngine.lidSwitchTurned`, its rising edge, with or without a running session) may raise it. A Start press
 (`startSession`), a rule starting a session and a store value written from outside never do: `recompute` calls
 `engage(mayPrompt: false)`, which engages silently when a passwordless grant exists and otherwise holds the Mac
 without the lid rule. On a Mac with no lid (`LidInfoPort`) nothing reaches `lid.engage`, and both the per-app and the global
@@ -54,7 +54,7 @@ value that stays true after a dialog was declined.
 `KeepAwakeSettings.clamshellEnabled` is not sealed, for the reason its doc comment
 gives; the mitigation that ships instead is the gesture: a forged value can engage a
 grant the person already gave, and cannot raise a password dialog by itself, but with
-no grant only the lid switch's own gesture does (`lidSwitchTurned`, its rising edge as `consumeEdge` reads it at a settings edit during a session, on a Mac with a lid). A start press does not, with the stored option on or off.
+no grant only the lid switch's own gesture does (`lidSwitchTurned`, its rising edge as `consumeEdge` reads it at a settings edit, in a session or not, on a Mac with a lid). A start press does not, with the stored option on or off.
 
 `PmsetClamshellPort` is the only code that runs the grant's privileged commands, and no test runs it: every engine test builds the engine with
 a fake `ClamshellPort` (`FakeClamshell` or a test's own), and `HelmProcess.run` is called directly, so there is no point at which a test can record argv. Three things in it are held by
