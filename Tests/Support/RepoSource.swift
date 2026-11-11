@@ -55,6 +55,58 @@ public enum RepoSource {
         }
     }
 
+    /// The project's agent rules, `CLAUDE.local.md`, or nil when none is reachable.
+    ///
+    /// The rules live outside the tree and the code folder holds a gitignored
+    /// symlink to them, so a checkout has the file, a linked worktree does not
+    /// (it is found in the main checkout, whose root is the parent of the
+    /// worktree's common git directory — read from the `.git` file's `gitdir`
+    /// and its `commondir`, no process launched) and a fresh clone has neither.
+    /// nil is that third state and nothing else: a file that exists and cannot
+    /// be read throws, so it is never taken for an absent one. `from` is a seam
+    /// for the test that proves the nil path; the default is this repository.
+    public static func rules(from start: URL = root) throws -> String? {
+        guard let found = rulesPaths(from: start).first(where: { FileManager.default.fileExists(atPath: $0.path) })
+        else { return nil }
+        do {
+            return try String(contentsOf: found, encoding: .utf8)
+        } catch {
+            throw RepoSource.Failure("CLAUDE.local.md could not be read: \(error)")
+        }
+    }
+
+    /// The first place a `CLAUDE.local.md` entry of any kind exists (a file, or a
+    /// symlink even a dangling one), judged without `rules(from:)`: whether a
+    /// check may skip must not depend on the reader that could be broken. A nil
+    /// from `rules(from:)` while this is non-nil is a failure naming this path.
+    public static func rulesEntry(from start: URL = root) -> URL? {
+        let fm = FileManager.default
+        return rulesPaths(from: start).first {
+            (try? fm.attributesOfItem(atPath: $0.path)) != nil
+                || (try? fm.destinationOfSymbolicLink(atPath: $0.path)) != nil
+        }
+    }
+
+    /// Where the rules may be: the root, then the main checkout's root, read from
+    /// the `.git` file's `gitdir` and its `commondir` (no process launched).
+    private static func rulesPaths(from start: URL) -> [URL] {
+        var candidates = [start.appendingPathComponent("CLAUDE.local.md")]
+        let dotGit = start.appendingPathComponent(".git")
+        if let pointer = try? String(contentsOf: dotGit, encoding: .utf8),
+           pointer.hasPrefix("gitdir:") {
+            let gitdir = URL(fileURLWithPath: String(pointer.dropFirst("gitdir:".count))
+                .trimmingCharacters(in: .whitespacesAndNewlines), relativeTo: start)
+            if let common = try? String(contentsOf: gitdir.appendingPathComponent("commondir"),
+                                        encoding: .utf8) {
+                let commonDir = URL(fileURLWithPath: common.trimmingCharacters(in: .whitespacesAndNewlines),
+                                    relativeTo: gitdir).standardizedFileURL
+                candidates.append(commonDir.deletingLastPathComponent()
+                    .appendingPathComponent("CLAUDE.local.md"))
+            }
+        }
+        return candidates
+    }
+
     /// The same file, split — which is what a scan wants, since it reports the
     /// line it found something on.
     public static func lines(of relative: String) throws -> [String] {

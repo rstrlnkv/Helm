@@ -126,10 +126,10 @@ final class EverySectionNamedInTheCodeExistsTests: XCTestCase {
     /// Every pointer in the tree, joined and matched against the heading list
     /// of the document it names.
     private func pointers() throws -> [Found] {
-        let headingsByDocument: [String: [String]] = [
-            "ARCHITECTURE": try headings(of: "ARCHITECTURE"),
-            "CLAUDE": try headings(of: "CLAUDE"),
-        ]
+        var headingsByDocument: [String: [String]] = ["ARCHITECTURE": try headings(of: "ARCHITECTURE")]
+        // The rules file is outside the tree: without it a pointer into it is
+        // not judged (alive below), while every other pointer still is.
+        if RepoSource.rulesEntry() != nil { headingsByDocument["CLAUDE"] = try headings(of: "CLAUDE") }
         var out: [Found] = []
         for relative in try swiftFiles() {
             let raw: String
@@ -156,7 +156,8 @@ final class EverySectionNamedInTheCodeExistsTests: XCTestCase {
                 }
                 let candidate = rest.lowercased()
                 let heading = headingsByDocument[document]?.first { candidate.hasPrefix($0) }
-                out.append(Found(file: relative, document: document, alive: heading != nil,
+                let unjudged = document == "CLAUDE" && headingsByDocument["CLAUDE"] == nil
+                out.append(Found(file: relative, document: document, alive: heading != nil || unjudged,
                                  excerpt: String(candidate.prefix(60))))
             }
         }
@@ -176,15 +177,16 @@ final class EverySectionNamedInTheCodeExistsTests: XCTestCase {
         let architecture = try headings(of: "ARCHITECTURE")
         XCTAssertGreaterThan(architecture.count, 20,
             "only \(architecture.count) ARCHITECTURE.md headings — the hub's and its pages' headings were not read")
-        let claude = try headings(of: "CLAUDE")
-        XCTAssertGreaterThan(claude.count, 3,
-            "only \(claude.count) CLAUDE.md headings — the document was not read")
-
         let found = try pointers()
         XCTAssertGreaterThan(found.filter { $0.document == "ARCHITECTURE" }.count, 20,
             "no pointer into ARCHITECTURE.md was found — a guard finding nothing is green over nothing")
         XCTAssertGreaterThan(found.filter { $0.document == "CLAUDE" }.count, 20,
             "no pointer into CLAUDE.md was found — a guard finding nothing is green over nothing")
+
+        // Last, so that a machine without the rules file still ran everything above.
+        let claude = try headings(of: "CLAUDE")
+        XCTAssertGreaterThan(claude.count, 3,
+            "only \(claude.count) CLAUDE.md headings — the document was not read")
     }
 
     func testEverySectionThePointersNameExists() throws {
