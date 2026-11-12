@@ -202,14 +202,7 @@ enum SettingsSelection: Hashable {
 
 @MainActor final class SettingsModel: ObservableObject {
     let host: ModuleHost
-    /// `didSet` announces the change a second time, after the value is stored. `@Published` announces in
-    /// `willSet`, and a view that redraws synchronously inside that announcement reads the old selection.
-    /// Assumed, not measured since the window lost its toolbar (the redraw it was written for was the
-    /// toolbar's): that without this `didSet` the pane's update runs against the old selection, so a selection
-    /// that leaves the log for a module page leaves the pane's page title the log's.
-    @Published var selection: SettingsSelection? = .general {
-        didSet { objectWillChange.send() }
-    }
+    @Published var selection: SettingsSelection? = .general
     /// What the page on screen calls itself, for the window's title bar.
     @Published var pageTitle: HelmPageTitle?
     /// `SettingsWindow.updateWindowAppearsActive()`'s reading, for the header row's and the sidebar rows' dimming
