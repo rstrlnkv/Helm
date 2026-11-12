@@ -88,10 +88,10 @@ public enum LogDestination {
 /// `LogSeed` is the inverse and the only one — see the rule on that type.
 public enum LogLine {
     /// The line an entry would be written as, for anything outside this target
-    /// that has to spell one: «Copy log» is the caller, and what it puts on the
-    /// pasteboard is the line the file carries rather than a second format
-    /// invented at the button. The one that shipped dropped the level, the date
-    /// and the source site.
+    /// that has to spell one: «Copy log» is the caller, through `lines` below,
+    /// and what it puts on the pasteboard is the line the file carries rather
+    /// than a second format invented at the button. The one that shipped dropped
+    /// the level, the date and the source site.
     public static func line(_ entry: LogEntry, timeZone: TimeZone = .current) -> String {
         line(entry, using: stamper(timeZone))
     }

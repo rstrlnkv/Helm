@@ -1,6 +1,7 @@
 import XCTest
 @testable import HelmRuntime
 
+/// Guards the dev build that an «off» saved by the beta silenced (fix 4ce355a9).
 final class LogPolicyTests: XCTestCase {
     func testDevBuildsLogByDefault() {
         XCTAssertTrue(LogPolicy.isEnabled(version: "0.7.0-dev.2", override: nil))
@@ -21,6 +22,9 @@ final class LogPolicyTests: XCTestCase {
     }
 }
 
+/// The one-line-per-event spelling `LogSeed` and «Copy log» read back, and the
+/// only test that flattening a newline is asserted: the Copy-log defect named at
+/// `LogLine.line`.
 final class LogLineTests: XCTestCase {
     private let stamp = Date(timeIntervalSince1970: 1_700_000_000)
 

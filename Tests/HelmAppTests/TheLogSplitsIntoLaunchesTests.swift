@@ -341,6 +341,19 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
         XCTAssertEqual(card.rows[1].heading, HelmDates.day(lines[2].date, language: "en"))
     }
 
+    /// A repeat that ran across midnight is one row, and its heading is the
+    /// span of the days it stands for, not the one day it began on.
+    func testARepeatAcrossMidnightIsHeadedBySpanOfItsDays() {
+        let lines = [start(0), line(30_000, .info, "vpn", "again"), line(43_000, .info, "vpn", "again")]
+        guard let card = build(lines).cards.first, card.rows.count == 1 else {
+            return XCTFail("expected one folded row")
+        }
+        let span = HelmDates.daySpan(from: lines[1].date, to: lines[2].date, language: "en",
+                                     zone: utc.timeZone)
+        XCTAssertEqual(card.rows[0].heading, span)
+        XCTAssertNotEqual(span, HelmDates.day(lines[1].date, language: "en"))
+    }
+
     // MARK: - Words
 
     func testTheFooterSaysHowManyAndWhereTheTailBeginsInEveryLanguage() {

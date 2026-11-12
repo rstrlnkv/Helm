@@ -501,17 +501,17 @@ struct LogView: View {
     }
 
     /// The content's own coordinates, which the rows report their place in.
-    private static let contentSpace = "helm.log.content"
+    private nonisolated static let contentSpace = "helm.log.content"
 
     /// A row that tells `place` where it is in the content whenever that
     /// changes, and when it is no longer drawn. A row's place moves only when the
     /// layout does — a scroll does not move it — so this is not a per-frame cost.
     private func tracked(_ row: LogPresentation.Row, _ view: some View) -> some View {
         view
-            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.contentSpace)) } action: {
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.contentSpace)) } action: { @MainActor in
                 place.rowMoved(row.id, frame: $0)
             }
-            .onDisappear { place.rowGone(row.id) }
+            .onDisappear { @MainActor in place.rowGone(row.id) }
             .id(row.id)
     }
 
@@ -610,26 +610,6 @@ struct LogView: View {
         .buttonStyle(.plain)
         .padding(.horizontal, HelmSpace.s5).padding(.bottom, HelmSpace.s4)
         .accessibilityValue(HelmA11y.expanded(open))
-    }
-
-    /// The day a run of lines belongs to, written when it changes.
-    ///
-    /// **A heading and not a column.** The row carries a time to the
-    /// millisecond, and a date beside it would cost every row about a third of
-    /// its message width in the languages that spell a short date longest; the
-    /// day changes a few times in a log and the row would repeat it a thousand.
-    /// Inside a card it is written where a launch crosses midnight — the card's
-    /// own header names the day it began.
-    ///
-    /// The spelling is `HelmDates.day` — the app's language, a formatter cached
-    /// per language — and the comparison is the reader's calendar day, the same
-    /// clock the row's time is drawn in. Nil for a line on the same day as the
-    /// one above it in what is *shown*, never in what exists.
-    static func dayHeading(for entry: LogEntry, after previous: LogEntry?,
-                           language: String = AppLanguage.current.rawValue,
-                           calendar: Calendar = .current) -> String? {
-        if let previous, calendar.isDate(entry.date, inSameDayAs: previous.date) { return nil }
-        return HelmDates.day(entry.date, language: language)
     }
 
     private func dayHeader(_ text: String) -> some View {

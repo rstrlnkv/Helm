@@ -70,6 +70,14 @@ final class RedactSoftwareLeavesNobodyFedTests: XCTestCase {
                        "~/Library/Containers/" + Redact.app("com.acme.Secret"))
     }
 
+    /// In the *path* the leaf is delimited, so a short name is a name reaching the
+    /// log and is replaced whatever its length.
+    func testAVeryShortNameIsStillTaggedInThePath() {
+        let shown = Redact.path("/Users/x/Library/QuickLook/Ax.qlgenerator",
+                                leaf: .softwareName, home: "/Users/x")
+        XCTAssertEqual(shown, "~/Library/QuickLook/" + Redact.app("Ax") + ".qlgenerator")
+    }
+
     /// A known type in another case is still a known type, and it is kept as
     /// spelled; the stem in front of it is what is tagged.
     func testAKnownExtensionInAnyCaseKeepsItsSpellingAndTagsTheStem() {

@@ -74,11 +74,12 @@ final class TheSuiteDoesNotWriteTheUsersLogTests: XCTestCase {
 
     /// The one that would have caught it.
     ///
-    /// Asserting that the file did not grow passes for free when nothing was
+    /// Asserting that the marker is absent passes for free when nothing was
     /// written at all, so the line is proven to exist first — in the tail, which
-    /// is filled from the same parts the file line is spelled from.
+    /// is filled from the same parts the file line is spelled from. The file's
+    /// size and date are not compared: a Helm or Helm Dev running on the same Mac
+    /// writes that file and would turn the test red with no defect.
     func testAnErrorLoggedByATestDoesNotReachTheFileWeTriage() {
-        let before = shippingLogState()
         let marker = "log destination guard \(UUID().uuidString)"
 
         HelmLog.shared.setEnabled(true)
@@ -89,26 +90,9 @@ final class TheSuiteDoesNotWriteTheUsersLogTests: XCTestCase {
 
         XCTAssertTrue(entries.contains { $0.message == marker },
                       "nothing was logged, so nothing below is a test of anything")
-        XCTAssertEqual(shippingLogState(), before,
-                       "a test run appended to \(shippingLog.path)")
         if let text = try? String(contentsOf: shippingLog, encoding: .utf8) {
             XCTAssertFalse(text.contains(marker),
                            "a test's own error text is in the file people triage")
         }
-    }
-
-    /// Size and modification date together: a rewrite of the same length moves
-    /// one and not the other.
-    private struct FileState: Equatable {
-        let size: Int
-        let modified: Date?
-    }
-
-    /// `size: -1` is the absent file, which is a state worth telling from an
-    /// empty one.
-    private func shippingLogState() -> FileState {
-        let attributes = try? FileManager.default.attributesOfItem(atPath: shippingLog.path)
-        return FileState(size: (attributes?[.size] as? Int) ?? -1,
-                         modified: attributes?[.modificationDate] as? Date)
     }
 }

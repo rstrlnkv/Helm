@@ -276,50 +276,6 @@ enum LogSessions {
         return sessions
     }
 
-    /// **The days a folded row stands for, written the way the language writes a
-    /// span of days** — the system's own interval formatter, and not two days
-    /// joined with a dash: the sign and its spacing are the language's (Japanese
-    /// writes «～», and a day that shares its month or year with the other is
-    /// written once). The long date style `HelmDates.day` uses, which makes a
-    /// span and a heading one family in six of the eight languages; in Chinese
-    /// and Japanese the interval formatter answers in numerals
-    /// (`2026/9/22 – 2026/9/23`) beside a heading spelled `2026年9月22日`. That is
-    /// a known defect, `log-span-zh-ja` in the defect log.
-    ///
-    /// The formatter is kept per language and zone, never in one constant: the
-    /// app's language changes while it runs, and a formatter built per call is
-    /// the cost the page reads a thousand rows to avoid.
-    static func daySpan(from first: Date, to last: Date, language: String,
-                        calendar: Calendar = .current) -> String {
-        let spelled = spanFormatters.formatter(language: language, zone: calendar.timeZone)
-            .string(from: first, to: last)
-        // A formatter that answers nothing leaves the two days as `HelmDates`
-        // writes them rather than an empty heading over a row.
-        return spelled.isEmpty ? HelmDates.day(first, language: language) + " – "
-            + HelmDates.day(last, language: language) : spelled
-    }
-
-    private static let spanFormatters = SpanFormatters()
-
-    private final class SpanFormatters: @unchecked Sendable {
-        private let lock = NSLock()
-        private var made: [String: DateIntervalFormatter] = [:]
-
-        func formatter(language: String, zone: TimeZone) -> DateIntervalFormatter {
-            lock.lock()
-            defer { lock.unlock() }
-            let key = language + "|" + zone.identifier
-            if let found = made[key] { return found }
-            let formatter = DateIntervalFormatter()
-            formatter.locale = Locale(identifier: language)
-            formatter.timeZone = zone
-            formatter.dateStyle = .long
-            formatter.timeStyle = .none
-            made[key] = formatter
-            return formatter
-        }
-    }
-
     /// How many lines after `run[0]` are the unbroken `info` burst.
     private static func startupLength(of run: [LogEntry]) -> Int {
         let opened = run[0].date
@@ -457,6 +413,26 @@ struct LogPresentation {
         var newestID: LogEntry.ID { rows.last?.id ?? startup.last?.id ?? session.lines[0].id }
     }
 
+    /// The day a run of lines belongs to, written when it changes.
+    ///
+    /// **A heading and not a column.** The row carries a time to the
+    /// millisecond, and a date beside it would cost every row about a third of
+    /// its message width in the languages that spell a short date longest; the
+    /// day changes a few times in a log and the row would repeat it a thousand.
+    /// Inside a card it is written where a launch crosses midnight — the card's
+    /// own header names the day it began.
+    ///
+    /// The spelling is `HelmDates.day` — the app's language, a formatter cached
+    /// per language — and the comparison is the reader's calendar day, the same
+    /// clock the row's time is drawn in. Nil for a line on the same day as the
+    /// one above it in what is *shown*, never in what exists.
+    static func dayHeading(for entry: LogEntry, after previous: LogEntry?,
+                           language: String = AppLanguage.current.rawValue,
+                           calendar: Calendar = .current) -> String? {
+        if let previous, calendar.isDate(entry.date, inSameDayAs: previous.date) { return nil }
+        return HelmDates.day(entry.date, language: language)
+    }
+
     let cards: [Card]
     /// **What «Copy log» puts on the pasteboard:** the lines the cards stand for, expanded — every folded repeat and every
     /// start-up line that passed the filters, in the order they arrived, and the
@@ -535,14 +511,14 @@ struct LogPresentation {
                 // across midnight ends on the new day, and compared by its last
                 // line it would swallow the heading of the row that follows it.
                 let above = restRows.last?.first ?? session.lines[0]
-                var heading = LogView.dayHeading(for: run[0], after: above, language: language,
-                                                 calendar: calendar)
+                var heading = LogPresentation.dayHeading(for: run[0], after: above, language: language,
+                                                         calendar: calendar)
                 // A repeat that ran across midnight is one row, and the day it
                 // ended on would be named nowhere if nothing follows it: its
                 // heading is the span, the days the row stands for.
                 if let end = run.last, !calendar.isDate(run[0].date, inSameDayAs: end.date) {
-                    heading = LogSessions.daySpan(from: run[0].date, to: end.date, language: language,
-                                                  calendar: calendar)
+                    heading = HelmDates.daySpan(from: run[0].date, to: end.date, language: language,
+                                                  zone: calendar.timeZone)
                 }
                 restRows.append(Row(lines: run, heading: heading))
             }

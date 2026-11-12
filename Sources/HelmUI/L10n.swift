@@ -405,6 +405,28 @@ public enum HelmDates {
         cache.day(language: language, zone: NSTimeZone.default).string(from: date)
     }
 
+    /// **The days a folded row stands for, written the way the language writes a
+    /// span of days** — the system's own interval formatter, and not two days
+    /// joined with a dash: the sign and its spacing are the language's (Japanese
+    /// writes «～», and a day that shares its month or year with the other is
+    /// written once). The long date style `day` uses, which makes a span and a
+    /// heading one family in six of the eight languages; in Chinese and Japanese
+    /// the interval formatter answers in numerals (`2026/9/22 – 2026/9/23`)
+    /// beside a heading spelled `2026年9月22日`. That is a known defect,
+    /// `log-span-zh-ja` in the defect log.
+    ///
+    /// The formatter is kept per language and zone, never in one constant: the
+    /// app's language changes while it runs, and a formatter built per call is
+    /// the cost the page reads a thousand rows to avoid.
+    public static func daySpan(from first: Date, to last: Date, language: String,
+                               zone: TimeZone) -> String {
+        let spelled = cache.daySpan(language: language, zone: zone).string(from: first, to: last)
+        // A formatter that answers nothing leaves the two days as `day` writes
+        // them rather than an empty heading over a row.
+        return spelled.isEmpty ? day(first, language: language) + " – "
+            + day(last, language: language) : spelled
+    }
+
     private static let cache = Cache()
 
     private final class Cache: @unchecked Sendable {
@@ -413,6 +435,7 @@ public enum HelmDates {
         private var absolutes: [String: DateFormatter] = [:]
         private var days: [String: DateFormatter] = [:]
         private var clocks: [String: DateFormatter] = [:]
+        private var daySpans: [String: DateIntervalFormatter] = [:]
         private var spans: [String: DateComponentsFormatter] = [:]
 
         /// Reads the stored form and nothing else: fixed format, fixed locale.
@@ -441,6 +464,19 @@ public enum HelmDates {
             formatter.timeStyle = .none
             formatter.timeZone = zone
             days[key] = formatter
+            return formatter
+        }
+
+        func daySpan(language: String, zone: TimeZone) -> DateIntervalFormatter {
+            let key = "\(language)|\(zone.identifier)"
+            lock.lock(); defer { lock.unlock() }
+            if let existing = daySpans[key] { return existing }
+            let formatter = DateIntervalFormatter()
+            formatter.locale = Locale(identifier: language)
+            formatter.timeZone = zone
+            formatter.dateStyle = .long
+            formatter.timeStyle = .none
+            daySpans[key] = formatter
             return formatter
         }
 
