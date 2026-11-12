@@ -112,7 +112,7 @@ public enum HelmTrash {
     /// first may go on to the move.
     private enum Look: Equatable {
         case nothing
-        case item(dev: UInt64, ino: UInt64)
+        case item(PathCanonical.FileIdentity)
         case unreadable
     }
 
@@ -121,7 +121,7 @@ public enum HelmTrash {
         guard lstat(path, &st) == 0 else {
             return errno == ENOENT || errno == ENOTDIR ? .nothing : .unreadable
         }
-        return .item(dev: UInt64(bitPattern: Int64(st.st_dev)), ino: UInt64(st.st_ino))
+        return .item(PathCanonical.FileIdentity(status: st))
     }
 
     /// The two refusals Helm makes of its own around a move, as errors so both

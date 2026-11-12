@@ -52,6 +52,10 @@ public enum PathCanonical {
             self.device = device
             self.inode = inode
         }
+        /// The one conversion of a signed `st_dev` to the unsigned bit pattern kept.
+        public init(status: stat) {
+            self.init(device: UInt64(bitPattern: Int64(status.st_dev)), inode: status.st_ino)
+        }
     }
 
     /// Who a file is, as opposed to what it is called.
@@ -62,12 +66,17 @@ public enum PathCanonical {
     /// thing I acted on". A move *across* volumes changes the inode, and the
     /// two callers here fail in the same direction when it does: a mark stops
     /// matching, and a return refuses rather than moving a stranger's file.
-    public struct FileIdentity: Equatable, Sendable, Codable {
+    public struct FileIdentity: Equatable, Sendable {
         public let device: UInt64
         public let inode: UInt64
         public init(device: UInt64, inode: UInt64) {
             self.device = device
             self.inode = inode
+        }
+        /// The same bit pattern as `AncestryIdentity(status:)`, and what Autopilot's history stores.
+        public init(status: stat) {
+            let ancestry = AncestryIdentity(status: status)
+            self.init(device: ancestry.device, inode: ancestry.inode)
         }
     }
 
@@ -80,7 +89,7 @@ public enum PathCanonical {
     public static func identity(of path: String) -> FileIdentity? {
         var info = stat()
         guard lstat(path, &info) == 0 else { return nil }
-        return FileIdentity(device: UInt64(bitPattern: Int64(info.st_dev)), inode: info.st_ino)
+        return FileIdentity(status: info)
     }
 
     /// The identity of the directory `path`'s resolved parent chain leads to.
@@ -96,8 +105,7 @@ public enum PathCanonical {
         // `stat`, not `lstat`: the parent chain is already symlink-resolved, so
         // the two agree — and what is wanted is the object the name leads to.
         guard stat(parent, &info) == 0 else { return nil }
-        return AncestryIdentity(device: UInt64(bitPattern: Int64(info.st_dev)),
-                                inode: info.st_ino)
+        return AncestryIdentity(status: info)
     }
 
     /// The directory a path names, with the leaf resolved too.

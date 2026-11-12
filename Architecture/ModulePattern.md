@@ -181,7 +181,9 @@ reading beside the pooled walk's.
 Its load-bearing facts (attribute **bit** order, the device id from a bulk read,
 the epoch subtraction) are written at the line each governs. A device identifier
 is signed, as `BulkWalk.DeviceID` wraps a signed `st_dev`, and is never converted
-to an unsigned type.
+to an unsigned type. A stored file identity (`PathCanonical.FileIdentity(status:)`) is the
+opposite: it keeps the unsigned bit pattern because Autopilot history is written in it, and
+it is compared, never ordered or subtracted.
 
 A stored field is multiplied by the node count.
 `DiskNode` (`Sources/Modules/Disk/Engine/Logic/DiskNode.swift`) carries a name and

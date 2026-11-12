@@ -47,4 +47,14 @@ final class FileIdentityTests: XCTestCase {
         XCTAssertNotEqual(PathCanonical.identity(of: link.path),
                           PathCanonical.identity(of: file.path))
     }
+
+    /// The device is kept as the unsigned bit pattern of the signed `st_dev`.
+    func testANegativeDeviceKeepsItsBitPattern() {
+        var info = stat()
+        info.st_dev = -5
+        info.st_ino = 9
+        XCTAssertEqual(PathCanonical.FileIdentity(status: info),
+                       PathCanonical.FileIdentity(device: 18446744073709551611, inode: 9))
+        XCTAssertEqual(PathCanonical.AncestryIdentity(status: info).device, 18446744073709551611)
+    }
 }

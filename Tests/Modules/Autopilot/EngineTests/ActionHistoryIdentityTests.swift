@@ -1,4 +1,5 @@
 import XCTest
+import HelmRuntime
 @testable import Module_Autopilot_Engine
 
 /// `PreviewRow.id` was changed today from the file's name to its path, because
@@ -96,5 +97,22 @@ final class ActionHistoryIdentityTests: XCTestCase {
 
         XCTAssertEqual(history.count, 1)
         XCTAssertEqual(history.first?.at, at(2), "the newest of a repeat is the one kept")
+    }
+
+    /// A record as old builds wrote it: the device is the unsigned bit pattern
+    /// of a signed `st_dev` (-5 here). It must still decode, and still equal
+    /// what `FileIdentity(status:)` reads off a stat of that device.
+    func test_a_record_written_by_old_builds_still_matches_its_file() throws {
+        let json = """
+        [{"at":0,"rule":"Sort","file":"a.pdf","path":"/x/a.pdf","kind":"moved","detail":"",
+          "destination":"/y/a.pdf","ruleID":"r","device":18446744073709551611,"inode":77}]
+        """
+        let record = try XCTUnwrap(JSONDecoder().decode([ActionRecord].self, from: Data(json.utf8)).first)
+        var info = stat()
+        info.st_dev = -5
+        info.st_ino = 77
+        XCTAssertEqual(PathCanonical.FileIdentity(device: try XCTUnwrap(record.device),
+                                                  inode: try XCTUnwrap(record.inode)),
+                       PathCanonical.FileIdentity(status: info))
     }
 }

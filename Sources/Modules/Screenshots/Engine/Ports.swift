@@ -99,7 +99,7 @@ public struct ShotReading: Sendable, Equatable {
 
     /// What `fstat` or `lstat` answered.
     public init(_ info: stat) {
-        self.init(identity: PathCanonical.FileIdentity(device: UInt64(bitPattern: Int64(info.st_dev)), inode: info.st_ino),
+        self.init(identity: PathCanonical.FileIdentity(status: info),
                   size: Int64(info.st_size), modifiedSeconds: Int64(info.st_mtimespec.tv_sec),
                   modifiedNanoseconds: Int64(info.st_mtimespec.tv_nsec),
                   isRegularFile: info.st_mode & S_IFMT == S_IFREG)
