@@ -67,3 +67,8 @@ the caller who wants `nil` instead and is not a substitute, since it refuses inf
 too. A bound that is relative to something and proven from one side only is unproven
 from the other, so when a fix adds a bound the question is which direction the tests
 exercise.
+
+The scan settings' key is `com.helm.app` / `settings-seal`; Helm Dev seals under `dev-settings-seal`
+(`SettingsSealItems.of(bundle:)`), so its saves never touch the installed Helm's item. A seal Dev wrote
+before that account existed reads in Dev as broken and refuses safe; `defaults delete com.helm.app.dev`
+once starts Dev clean.
