@@ -143,7 +143,7 @@ public enum KeepGrounds: Equatable, Sendable {
         self.work = work
         self.store = store
         self.settings = settings
-        let remembered = store.string("folder", default: "")
+        let remembered = store.string(DuplicatesSettings.folderKey, default: "")
         if !remembered.isEmpty { folder = URL(fileURLWithPath: remembered) }
     }
 
@@ -265,14 +265,16 @@ public enum KeepGrounds: Equatable, Sendable {
         panel.allowsMultipleSelection = false
         panel.prompt = DupStr.chooseFolder
         guard panel.runModal() == .OK, let url = panel.url else { return }
+        use(folder: url)
+    }
+
+    func use(folder url: URL) {
         folder = url
-        store.set(url.path, for: "folder")
         // Sealed here because here is where the authority is: an open panel the
         // person just used. The background scan reads this value with nobody
         // watching and refuses it if the seal does not match — see `SettingGuard`.
         // The key here is warm: a write is reached by a press on a page already up.
-        store.set(settings.seal(Data(url.path.utf8)) ?? "",
-                  for: SettingGuard.macKey(for: "folder"))
+        DuplicatesSettings.setFolder(url.path, in: store, guardedBy: settings)
         search()
     }
 

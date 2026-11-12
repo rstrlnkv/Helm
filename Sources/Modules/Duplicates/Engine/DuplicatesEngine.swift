@@ -215,7 +215,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         // `ScanRoot` below bounds where it may point; the seal says whether Helm
         // is the one who put it there.
         let stored: String
-        switch DuplicatesSettings.stored("folder", in: store, guardedBy: settings) {
+        switch DuplicatesSettings.stored(DuplicatesSettings.folderKey, in: store, guardedBy: settings) {
         case .unset:
             HelmLog.shared.info("scan", "duplicates: no folder chosen yet")
             return nil

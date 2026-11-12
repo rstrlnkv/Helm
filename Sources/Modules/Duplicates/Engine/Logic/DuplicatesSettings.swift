@@ -34,6 +34,13 @@ public enum DuplicatesSettings {
     /// — the reader simply gets the default for ever.
     public static let keepPolicyKey = "keepPolicy"
 
+    /// Where the sealed folder is stored, in the module's own namespace.
+    ///
+    /// One spelling for a name two targets use, for the reason the keep policy's
+    /// has: the page writes it and the engine reads it, and a key only one side
+    /// changes leaves the reader with «no folder chosen» for ever.
+    public static let folderKey = "folder"
+
     /// The policy this Mac is set to, judged against its seal.
     ///
     /// **One reading for both targets.** The engine applies it and the page
@@ -115,9 +122,20 @@ public enum DuplicatesSettings {
     /// (CLAUDE.md § What not to do, and what breaks if you do).
     public static func setKeepPolicy(_ policy: KeepPolicy, in store: NamespacedStore,
                                      guardedBy settings: SettingGuard) {
-        store.set(policy.rawValue, for: keepPolicyKey)
-        store.set(settings.seal(Data(policy.rawValue.utf8)) ?? "",
-                  for: SettingGuard.macKey(for: keepPolicyKey))
+        setSealed(policy.rawValue, for: keepPolicyKey, in: store, guardedBy: settings)
+    }
+
+    /// Stores the folder and seals it, for the reason the policy is: the
+    /// background scan refuses a folder whose MAC is missing.
+    public static func setFolder(_ path: String, in store: NamespacedStore,
+                                 guardedBy settings: SettingGuard) {
+        setSealed(path, for: folderKey, in: store, guardedBy: settings)
+    }
+
+    private static func setSealed(_ value: String, for key: String, in store: NamespacedStore,
+                                  guardedBy settings: SettingGuard) {
+        store.set(value, for: key)
+        store.set(settings.seal(Data(value.utf8)) ?? "", for: SettingGuard.macKey(for: key))
     }
 
     /// A stored setting, read back through the seal.
