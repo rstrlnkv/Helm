@@ -139,6 +139,7 @@ ConditionsInvariantTests
 ConversionTriggersTests
 CopyAllFromThePileTakesTheFinishedShotsTests
 DeclaredPermissionsTests
+DelayedWorkTests
 DeviceIDTests
 DirectoryListingTests
 DiskAdvisorTests

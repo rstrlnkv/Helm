@@ -386,24 +386,13 @@ public struct SystemCommandLineTools: CommandLineToolsPort {
     }
 }
 
-/// Keeps a scheduled tick alive exactly as long as it is held: releasing the
-/// token cancels it, so an engine that drops its token in `stop()`,
-/// `deactivate()` or `deinit` cannot have a tick land afterwards.
-private final class WaitToken {
-    private let item: DispatchWorkItem
-    init(_ item: DispatchWorkItem) { self.item = item }
-    deinit { item.cancel() }
-}
-
 /// The real ticker. **Not the main queue**, unlike Keep Awake's clock: what a
 /// tick continues into is a blocking password dialog, and that must not be
 /// raised on the thread that draws the page.
 public struct DispatchWaitTicker: WaitTicker {
     public init() {}
     public func schedule(after interval: TimeInterval, _ block: @escaping @Sendable () -> Void) -> AnyObject {
-        let item = DispatchWorkItem(block: block)
-        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + interval, execute: item)
-        return WaitToken(item)
+        DelayedWork.schedule(on: .global(qos: .userInitiated), after: interval, block)
     }
 }
 

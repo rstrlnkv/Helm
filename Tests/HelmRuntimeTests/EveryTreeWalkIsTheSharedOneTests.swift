@@ -1,7 +1,6 @@
 import Foundation
 import HelmTestSupport
 import XCTest
-@testable import HelmRuntime
 
 /// Three modules walk a tree, and there is one walk.
 ///

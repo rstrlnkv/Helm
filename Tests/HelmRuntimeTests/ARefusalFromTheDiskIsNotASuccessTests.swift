@@ -62,11 +62,6 @@ final class ARefusalFromTheDiskIsNotASuccessTests: XCTestCase {
         /// The line the statement opens on, which is what a finding must name.
         let line: Int
         let text: String
-        /// The statement above this one, already folded.
-        let previous: String
-        /// The next line with anything on it, for spotting a body that closes
-        /// immediately after its one expression.
-        let next: String
     }
 
     /// A line that cannot stand alone: it continues the one above it.
@@ -90,12 +85,7 @@ final class ARefusalFromTheDiskIsNotASuccessTests: XCTestCase {
                 folded.append((index + 1, line))
             }
         }
-        return folded.enumerated().map { position, statement in
-            Statement(line: statement.line,
-                      text: statement.text,
-                      previous: position > 0 ? folded[position - 1].text : "",
-                      next: position + 1 < folded.count ? folded[position + 1].text : "")
-        }
+        return folded.map { Statement(line: $0.line, text: $0.text) }
     }
 
     private struct Site {
@@ -104,7 +94,6 @@ final class ARefusalFromTheDiskIsNotASuccessTests: XCTestCase {
         let text: String
         /// Everything in the statement before the call.
         let before: String
-        let statement: Statement
 
         var location: String { "\(file):\(line)" }
     }
@@ -123,8 +112,7 @@ final class ARefusalFromTheDiskIsNotASuccessTests: XCTestCase {
                         line: statement.line,
                         text: statement.text,
                         before: String(statement.text[statement.text.startIndex..<range.lowerBound])
-                            .trimmingCharacters(in: .whitespaces),
-                        statement: statement))
+                            .trimmingCharacters(in: .whitespaces)))
                 }
             }
         }
@@ -284,11 +272,9 @@ final class ARefusalFromTheDiskIsNotASuccessTests: XCTestCase {
     }
 
     private func site(_ text: String) -> Site {
-        let statement = Statement(line: 1, text: text, previous: "", next: "")
         let range = text.range(of: "PrivateFile.")!
         return Site(file: "<literal>", line: 1, text: text,
                     before: String(text[text.startIndex..<range.lowerBound])
-                        .trimmingCharacters(in: .whitespaces),
-                    statement: statement)
+                        .trimmingCharacters(in: .whitespaces))
     }
 }

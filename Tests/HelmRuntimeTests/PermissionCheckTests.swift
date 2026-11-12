@@ -135,4 +135,11 @@ final class PermissionCheckTests: XCTestCase {
                                 errorCode: 513, hasSystemExtension: true),
             .activeSystemExtension)
     }
+
+    /// A folder is no signed bundle, so it is not "ad-hoc signed"; an Apple app
+    /// carries no team id yet is signed, so it is.
+    func testAdHocIsAnAnswerAboutASignatureNotAboutAFolder() {
+        XCTAssertFalse(PermissionCheck.isAdHocSigned(bundleURL: URL(fileURLWithPath: NSTemporaryDirectory())))
+        XCTAssertTrue(PermissionCheck.isAdHocSigned(bundleURL: URL(fileURLWithPath: "/System/Applications/Calculator.app")))
+    }
 }

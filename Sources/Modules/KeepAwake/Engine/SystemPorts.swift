@@ -276,28 +276,11 @@ public final class CGEventPointer: PointerPort {
 
 // MARK: - DispatchClock
 
-/// Token whose lifetime controls the scheduled work item: dropping it (or letting it
-/// deinit) cancels the pending block, matching the engine's "release the AnyObject to
-/// cancel" convention used elsewhere (see expiryToken/jiggleToken/batteryToken).
-private final class DispatchWorkItemToken {
-    private let item: DispatchWorkItem
-
-    init(item: DispatchWorkItem) {
-        self.item = item
-    }
-
-    deinit {
-        item.cancel()
-    }
-}
-
 public final class DispatchClock: Clock {
     public init() {}
 
     public func schedule(after: TimeInterval, _ block: @escaping @Sendable () -> Void) -> AnyObject {
-        let item = DispatchWorkItem(block: block)
-        DispatchQueue.main.asyncAfter(deadline: .now() + after, execute: item)
-        return DispatchWorkItemToken(item: item)
+        DelayedWork.schedule(on: .main, after: after, block)
     }
 
     public func now() -> Date {

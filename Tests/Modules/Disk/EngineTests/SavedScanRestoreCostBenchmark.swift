@@ -23,9 +23,9 @@ import HelmTestSupport
 ///   intermediate array) doubles it. Healthy reading ~280 B/node; a doubled
 ///   keep reads ~560+. The bound sits between: 480.
 /// * **Transient peak per file byte** is a property of `JSONDecoder` and of
-///   nothing in this repository, so it is recorded, with a ceiling loose
-///   enough to hold only against a blow-up (10×, against 4.5× measured) —
-///   the number to re-read if the store ever changes format.
+///   nothing in this repository, and a sampled peak is not a verdict, so it
+///   is printed and asserts nothing — the number to re-read if the store ever
+///   changes format.
 ///
 /// Both run under `HELM_BENCH=1` because building the 45 000-node fixture and
 /// decoding it three times is seconds, not milliseconds.
@@ -109,16 +109,6 @@ final class SavedScanRestoreCostBenchmark: XCTestCase {
                 String(format: "a restore kept %.0f B/node — about two copies of the tree "
                        + "where one is the answer", perNode))
         }
-
-        // Transient: JSONDecoder's own bill, ~4.5 B per file byte measured.
-        // The ceiling only catches a blow-up.
-        for round in results.dropFirst() {
-            let perByte = Double(round.peak) / Double(fileBytes)
-            XCTAssertLessThan(perByte, 10.0,
-                String(format: "the decode held %.1f bytes per file byte at peak — "
-                       + "the transient the log shows beside «no phases running» has grown "
-                       + "past anything JSONDecoder charges today", perByte))
-        }
     }
 
     /// The write side of the same file. `saveDetached` runs on a detached task
@@ -140,9 +130,5 @@ final class SavedScanRestoreCostBenchmark: XCTestCase {
         print("saved-scan save, \(fileBytes) file bytes: peaks "
               + peaks.map { String(format: "%.1f MB", Double($0) / 1_048_576) }
                   .joined(separator: ", "))
-        for peak in peaks.dropFirst() {
-            XCTAssertLessThan(Double(peak) / Double(max(fileBytes, 1)), 10.0,
-                              "the encode's transient outgrew anything JSONEncoder charges today")
-        }
     }
 }

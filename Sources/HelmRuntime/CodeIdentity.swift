@@ -96,10 +96,11 @@ public struct CodeIdentity: Codable, Equatable, Sendable {
         return HexDigest.string(of: unique)
     }
 
-    /// One incantation for both readers. `kSecCodeInfoUnique` comes back under
+    /// One incantation for every reader: this file's two and
+    /// `PermissionCheck.isAdHocSigned`. `kSecCodeInfoUnique` comes back under
     /// these same flags, so asking for the signature twice would be two copies
     /// of the four-line dance rather than two questions.
-    private static func signingInformation(ofBundleAt url: URL) -> [String: Any]? {
+    static func signingInformation(ofBundleAt url: URL) -> [String: Any]? {
         var code: SecStaticCode?
         guard SecStaticCodeCreateWithPath(url as CFURL, [], &code) == errSecSuccess,
               let code else { return nil }

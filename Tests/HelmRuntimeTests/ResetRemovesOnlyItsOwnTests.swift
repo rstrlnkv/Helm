@@ -67,7 +67,6 @@ final class ResetRemovesOnlyItsOwnTests: XCTestCase {
     }
 
     override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(atPath: home)
         reclaimTheHelmFolderThisTestTrashed()
     }
 

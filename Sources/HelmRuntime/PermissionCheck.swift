@@ -54,14 +54,7 @@ public enum PermissionCheck {
     /// applies. Worth telling the user instead of letting them re-check a box
     /// that is already ticked.
     public static func isAdHocSigned(bundleURL: URL = Bundle.main.bundleURL) -> Bool {
-        var staticCode: SecStaticCode?
-        guard SecStaticCodeCreateWithPath(bundleURL as CFURL, [], &staticCode) == errSecSuccess,
-              let code = staticCode else { return false }
-        var info: CFDictionary?
-        guard SecCodeCopySigningInformation(code, SecCSFlags(rawValue: kSecCSSigningInformation),
-                                            &info) == errSecSuccess,
-              let dict = info as? [String: Any] else { return false }
-        return dict["teamid"] == nil
+        CodeIdentity.signingInformation(ofBundleAt: bundleURL).map { $0["teamid"] == nil } ?? false
     }
 
     /// Whether one probe path hands over a byte.
