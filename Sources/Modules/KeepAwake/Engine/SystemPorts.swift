@@ -291,11 +291,20 @@ public final class DispatchClock: Clock {
 // MARK: - PmsetClamshellPort
 
 public final class PmsetClamshellPort: ClamshellPort {
-    private static let sudoersPath = SudoersRule.installedPath
     private static let pmsetPath = SudoersRule.pmsetPath
     private static let sudoPath = "/usr/bin/sudo"
 
-    public init() {}
+    private let sudoersPath: String
+    private let privileged: @Sendable (String) -> PrivilegedOutcome
+
+    /// The two arguments are the seam a test reads the port through: which
+    /// command each half sends to root and how the outcome is read cannot be
+    /// seen from outside otherwise, and swapping them stayed green.
+    public init(sudoersPath: String = SudoersRule.installedPath,
+                privileged: @escaping @Sendable (String) -> PrivilegedOutcome = { PrivilegedRun.run($0) }) {
+        self.sudoersPath = sudoersPath
+        self.privileged = privileged
+    }
 
     public func pmsetReport() -> String {
         HelmProcess.run(Self.pmsetPath, ["-g"]).output
@@ -324,7 +333,7 @@ public final class PmsetClamshellPort: ClamshellPort {
     /// meant the admin prompt came back every session, and the removal added
     /// alongside it could never run at all.
     public func isSudoersInstalled() -> Bool {
-        FileManager.default.fileExists(atPath: Self.sudoersPath)
+        FileManager.default.fileExists(atPath: sudoersPath)
     }
 
     /// Asks sudo, not the filesystem. `-n` fails rather than prompting, and
@@ -335,6 +344,7 @@ public final class PmsetClamshellPort: ClamshellPort {
     }
 
     public func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
+        let privileged = privileged
         DispatchQueue.global(qos: .userInitiated).async {
             let user = NSUserName()
             guard AccountName.isPlausible(user) else {
@@ -348,8 +358,7 @@ public final class PmsetClamshellPort: ClamshellPort {
             // path stood in `ps auxww` for the whole life of the password
             // prompt (`SudoersRule` has the rest). Everything now happens
             // inside root-owned /etc/sudoers.d.
-            let result = HelmProcess.run("/usr/bin/osascript", ["-e", SudoersRule.installScript(user: user)])
-            done(result.status == 0)
+            done(privileged(SudoersRule.installCommand(user: user)) == .done)
         }
     }
 
@@ -363,7 +372,7 @@ public final class PmsetClamshellPort: ClamshellPort {
     /// cannot answer it.
     public func removeSudoersWithoutPassword() -> Bool {
         guard isSudoersInstalled() else { return true }
-        withoutPassword(SudoersRule.removeArguments)
+        _ = withoutPassword(SudoersRule.removeArguments)
         return !isSudoersInstalled()
     }
 
@@ -371,10 +380,10 @@ public final class PmsetClamshellPort: ClamshellPort {
     /// `rm` line existed, or one somebody else wrote. This is the one that puts
     /// the administrator dialog on screen, so only a gesture may reach it.
     public func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
+        let privileged = privileged, sudoersPath = sudoersPath
         DispatchQueue.global(qos: .userInitiated).async {
-            guard self.isSudoersInstalled() else { done(true); return }
-            let result = HelmProcess.run("/usr/bin/osascript", ["-e", SudoersRule.removeScript()])
-            done(result.status == 0)
+            guard FileManager.default.fileExists(atPath: sudoersPath) else { done(true); return }
+            done(privileged(SudoersRule.removeCommand()) == .done)
         }
     }
 }

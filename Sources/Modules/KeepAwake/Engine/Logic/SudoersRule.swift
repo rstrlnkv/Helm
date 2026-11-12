@@ -151,24 +151,6 @@ public enum SudoersRule {
     /// something else entirely. This is the one that costs a password.
     static func removeCommand(paths: Paths = current) -> String { spec(paths.removeArguments) }
 
-    static func installScript(user: String) -> String {
-        privilegedScript(installCommand(user: user))
-    }
-
-    static func removeScript() -> String { privilegedScript(removeCommand()) }
-
-    // MARK: -
-
-    /// `AppleScript` in HelmRuntime, which is where the escaping went: it was
-    /// written out here and again in Homebrew's `OSAPrivilegedRunner`, under a
-    /// comment calling that duplication deliberate «until there is a shared
-    /// privileged runner to put them in». Of everything in this app written
-    /// twice, this was the pair standing between a command root runs and a
-    /// command somebody appends to.
-    private static func privilegedScript(_ command: String) -> String {
-        AppleScript.administratorShellScript(command)
-    }
-
     /// Single quotes, with the one character that can end them turned into a
     /// close-escape-reopen. `AccountName.isPlausible` already refuses a name
     /// with a quote in it; this is what makes that a second line of defence

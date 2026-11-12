@@ -143,7 +143,7 @@ final class SudoersRuleTests: XCTestCase {
 
     func test_privileged_script_is_one_escaped_literal_and_asks_for_admin() {
         let command = SudoersRule.installCommand(user: user)
-        let script = SudoersRule.installScript(user: user)
+        let script = AppleScript.administratorShellScript(command)
         XCTAssertEqual(script, "do shell script \"\(AppleScript.literal(command))\" "
                              + "with administrator privileges")
         // Nothing between the literal's own quotes may close it early: the only

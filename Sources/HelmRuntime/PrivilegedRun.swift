@@ -16,7 +16,8 @@ public enum PrivilegedOutcome: Equatable, Sendable {
 ///
 /// `AppleScript`'s own doc comment predicted this file: the escaping moved to
 /// `HelmRuntime` first «until there is a shared privileged runner to put them
-/// in». Homebrew's `OSAPrivilegedRunner` runs through it.
+/// in». Homebrew's `OSAPrivilegedRunner` and KeepAwake's `PmsetClamshellPort`
+/// run through it.
 public enum PrivilegedRun {
 
     /// AppleScript's number for a cancelled dialog, in the shape `osascript`

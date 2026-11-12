@@ -57,17 +57,14 @@ gives; the mitigation that ships instead is the gesture: a forged value can enga
 grant the person already gave, and cannot raise a password dialog by itself, but with
 no grant only the lid switch's own gesture does (`lidSwitchTurned`, its rising edge as `consumeEdge` reads it at a settings edit, in a session or not, on a Mac with a lid). A start press does not, with the stored option on or off.
 
-`PmsetClamshellPort` is the only code that runs the grant's privileged commands, and no test runs it: every engine test builds the engine with
-a fake `ClamshellPort` (`FakeClamshell` or a test's own), and `HelmProcess.run` is called directly, so there is no point at which a test can record argv. Three things in it are held by
-reading only: every call against the grant goes through `withoutPassword` (`sudo -n`, or a dialog-less caller blocks on a prompt no window owns);
-the argv words come from `SudoersRule` (`disableSleepArguments`, `removeArguments`), never typed here; and `removeSudoers` runs `removeScript()`
-where `installSudoers` runs `installScript(user:)`, a swap that compiles, passes the suite and turns "Remove the rule" into "install it again".
-A change to this class is read against `SudoersRule` line by line and run once by hand on Helm Dev (switch the closed-lid option on, then off, and look
-for the file at `SudoersRule.installedPath` gone). That hand check covers the passwordless
-removal (`removeSudoersWithoutPassword`, `sudo -n rm`), which `ClamshellCoordinator.removeGrant`
-tries first; `removeSudoers` and its `removeScript()` run only when that fails, e.g. for an
-old-form rule without the `rm` line, so the swap above is reached by hand only with such a rule in place. A test wants a process runner injected into the class (a closure `(String, [String]) -> (status, output)`
-defaulting to `HelmProcess.run`), which no one has asked for yet.
+`PmsetClamshellPort` is the only code that runs the grant's privileged commands. Its two administrator-dialog halves take an injected
+`privileged` runner (default `PrivilegedRun.run`) and the rule's path, and `PmsetClamshellPortPrivilegedTests` records which command
+`installSudoers` (`installCommand(user:)`) and `removeSudoers` (`removeCommand()`) send and reads `.done`, `.declined` and `.failed` for each, so a swap or an
+inverted outcome goes red. Not covered: the `sudo -n` halves (`setDisableSleep`, `canDisableSleepWithoutPassword`, `removeSudoersWithoutPassword`) call
+`HelmProcess.run` directly. Held by reading only: every call against the grant goes through `withoutPassword` (`sudo -n`, or a dialog-less caller blocks on a
+prompt no window owns), and the argv words come from `SudoersRule` (`disableSleepArguments`, `removeArguments`), never typed here. A change to this class is read
+against `SudoersRule` line by line and run once by hand on Helm Dev (switch the closed-lid option on, then off, and look for the file at
+`SudoersRule.installedPath` gone); `ClamshellCoordinator.removeGrant` tries the passwordless removal first, `removeSudoers` runs only when that fails.
 
 ## Vetoes and the notice
 
