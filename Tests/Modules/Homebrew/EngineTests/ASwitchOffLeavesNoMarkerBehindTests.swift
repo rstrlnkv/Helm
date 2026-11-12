@@ -74,6 +74,16 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
         func take() -> String? { lock.lock(); defer { lock.unlock() }; defer { label = nil }; return label }
     }
 
+    /// A marker whose `clear()` runs a hook first, to act at the instant between
+    /// the clear and the gate opening.
+    private final class HookedMarker: OpMarker, @unchecked Sendable {
+        let inner = SpyMarker()
+        var onClear: (() -> Void)?
+        func write(_ label: String) { inner.write(label) }
+        func clear() { onClear?(); inner.clear() }
+        func take() -> String? { inner.take() }
+    }
+
     private enum Kind: CaseIterable {
         case installHomebrew, install, upgradeAll, doctorFix
         /// Only the install of Homebrew itself is ended by a switch-off.
@@ -242,24 +252,66 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
 
     /// The order that keeps a late exit from deleting a newer marker: the old
     /// operation clears its marker **before** it gives the gate back, so the new
-    /// one cannot have written by then.
+    /// one cannot have written by then. The marker is hooked: a press on the
+    /// second engine made *inside* `clear()` must be refused, the gate still shut.
     func testTheOldExitClearsBeforeTheGateOpensForTheNextOperation() {
         let runner = Runner()
-        let marker = SpyMarker()
+        let marker = HookedMarker()
         let gate = OperationGate()
         let old = HomebrewEngine(locator: FixedLocator(), runner: runner, privileged: AllowingPrivileged(),
                                  user: "tester", marker: marker, gate: gate)
         let fresh = HomebrewEngine(locator: FixedLocator(), runner: runner, privileged: AllowingPrivileged(),
                                    user: "tester", marker: marker, gate: gate)
+        var handlesInside = -1
+        var writtenInside: String?
+        marker.onClear = {
+            fresh.install(name: "jq", isCask: false)
+            handlesInside = runner.handles.count
+            writtenInside = marker.inner.written
+        }
         old.upgradeAll()
         old.deactivate()
         runner.exitAll(code: 0)
+        marker.onClear = nil
+
+        XCTAssertEqual(handlesInside, 1, "the gate opened before the marker was cleared: a child launched inside clear()")
+        XCTAssertEqual(writtenInside, "upgrade all", "the press made while the old one was being cleared wrote its marker")
+
+        // Control: the sequential hand-over.
         fresh.install(name: "jq", isCask: false)
-        XCTAssertEqual(marker.written, "install jq")
+        XCTAssertEqual(marker.inner.written, "install jq")
 
         runner.exitAll(code: 0)                    // nothing of the old operation is left to exit
-        XCTAssertNil(marker.written)
+        XCTAssertNil(marker.inner.written)
         XCTAssertEqual(runner.handles.count, 2)
+    }
+
+    /// An engine dropped while idle was never the gate's holder: its `deinit`
+    /// must not open another engine's gate.
+    func testADroppedIdleEngineOpensNoOtherEnginesGate() {
+        let runner = Runner()
+        let marker = SpyMarker()
+        let gate = OperationGate()
+        let a = HomebrewEngine(locator: FixedLocator(), runner: runner, privileged: AllowingPrivileged(),
+                               user: "tester", marker: marker, gate: gate)
+        a.upgradeAll()
+        weak var dropped: HomebrewEngine?
+        autoreleasepool {
+            dropped = HomebrewEngine(locator: FixedLocator(), runner: runner, privileged: AllowingPrivileged(),
+                                     user: "tester", marker: marker, gate: gate)
+        }
+        XCTAssertNil(dropped, "the engine was not freed, so deinit did not run")
+
+        let c = HomebrewEngine(locator: FixedLocator(), runner: runner, privileged: AllowingPrivileged(),
+                               user: "tester", marker: marker, gate: gate)
+        c.uninstall(name: "wget", isCask: false)
+        XCTAssertEqual(runner.handles.count, 1, "a dropped idle engine opened the gate for a second brew")
+        XCTAssertEqual(marker.written, "upgrade all", "the running operation's marker was disturbed")
+
+        runner.exitAll(code: 0)                    // control: the gate opens when its holder ends
+        c.uninstall(name: "wget", isCask: false)
+        XCTAssertEqual(runner.handles.count, 2, "the gate stayed shut after the holder ended")
+        runner.exitAll(code: 0)
     }
 
     /// An engine dropped without `deactivate()` while the install waits for
