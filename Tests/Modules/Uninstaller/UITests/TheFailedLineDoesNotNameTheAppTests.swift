@@ -1,6 +1,4 @@
-import HelmContract
 import HelmRuntime
-import HelmUI
 import XCTest
 import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
@@ -36,8 +34,7 @@ final class TheFailedLineDoesNotNameTheAppTests: XCTestCase {
                                path: "/Applications/\(secret).app", sizeBytes: 4_096)
         let work = AnsweringWork(
             apps: [app],
-            scans: [app.bundleID: ScanResult(bundleID: app.bundleID, appPath: app.path,
-                                             appSizeBytes: 0, leftovers: [], runningNow: false)],
+            scans: [app.bundleID: ScanResult(leftovers: [], runningNow: false)],
             removal: UninstallResult(trashed: [], freedBytes: 0,
                                      failures: [TrashFailureInfo(path: app.path,
                                                                  reason: .needsFullDiskAccess,

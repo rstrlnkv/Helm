@@ -33,7 +33,6 @@ final class ScanEmptyNameTests: XCTestCase {
                                        apps: NoApps(), fs: fs,
                                        trash: NoTrash(), running: NoRunning())
         let result = await engine.scan(bundleID: "com.acme.tool",
-                                           appPath: "/Applications/Tool.app",
                                            appName: "")
         XCTAssertEqual(result.leftovers.map(\.path), [],
                        "the scan offered shared folders for removal: \(result.leftovers.map(\.path))")
@@ -50,7 +49,6 @@ final class ScanEmptyNameTests: XCTestCase {
                                        apps: NoApps(), fs: fs,
                                        trash: NoTrash(), running: NoRunning())
         let result = await engine.scan(bundleID: "com.acme.tool",
-                                           appPath: "/Applications/Tool.app",
                                            appName: "Tool")
         XCTAssertEqual(result.leftovers.map(\.path), [])
     }

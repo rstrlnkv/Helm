@@ -143,12 +143,6 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     }
 
     /// Where every leftover this module knows about lives.
-    ///
-    /// It carried a doc comment about running blocking work on a dispatch queue
-    /// so a pool thread is never parked — true of this engine, and about
-    /// `offTheCooperativePool`, which the operations below call directly. The
-    /// helper that sentence described is gone and the sentence stayed, over the
-    /// next declaration it found. Homebrew's engine had the same orphan.
     private var library: URL { home.appendingPathComponent("Library") }
 
     // MARK: - Operations
@@ -258,11 +252,11 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
 
     private func releaseOpenedWorker() { openedWorkerLock.withLock { openedWorkerBusy = false } }
 
-    public func scan(bundleID: String, appPath: String, appName: String) async -> ScanResult {
-        await offTheCooperativePool { self.scanSync(bundleID: bundleID, appPath: appPath, appName: appName) }
+    public func scan(bundleID: String, appName: String) async -> ScanResult {
+        await offTheCooperativePool { self.scanSync(bundleID: bundleID, appName: appName) }
     }
 
-    private func scanSync(bundleID: String, appPath: String, appName: String) -> ScanResult {
+    private func scanSync(bundleID: String, appName: String) -> ScanResult {
         var leftovers: [Leftover] = []
         // Prefix globs overlap the exact candidates they generalise; the same
         // directory must not be listed (or trashed) twice.
@@ -304,14 +298,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         }
         report(refusedPaths, bundleID: bundleID, contested: ownership?.idIsContested ?? false)
         leftovers.sort { $0.sizeBytes > $1.sizeBytes }
-        return ScanResult(bundleID: bundleID, appPath: appPath,
-                          // Zero, deliberately: nothing reads this, and filling it walked the
-                          // whole bundle again — a median of 49 ms per app, 3.2 s for Xcode,
-                          // while the user waits for the review screen. The size shown there
-                          // comes from `InstalledApp`, which already has it.
-                          appSizeBytes: 0,
-                          leftovers: leftovers,
-                          runningNow: running.isRunning(bundleID: bundleID))
+        return ScanResult(leftovers: leftovers, runningNow: running.isRunning(bundleID: bundleID))
     }
 
     /// The per-scan ownership facts, read once each: the app folders' listing,
@@ -361,7 +348,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// back. Too long and everyone waits for an app that stopped in 50 ms.
     ///
     /// **The deadline ends the wait, not the question.** An app that ignores a
-    /// quit does not make this fail or throw; `removeBatch` asks whether the app
+    /// quit does not make this fail or throw; `trashPaths` asks whether the app
     /// still runs once this returns, and a batch still holding one moves nothing.
     func waitUntilGone(bundleID: String,
                       deadline: TimeInterval = 5,
@@ -443,8 +430,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                     stillInstalled += 1
                     return nil
                 }
-                let result = scanSync(bundleID: app.bundleID, appPath: app.path,
-                                      appName: app.name)
+                let result = scanSync(bundleID: app.bundleID, appName: app.name)
                 guard !result.leftovers.isEmpty else {
                     nothingLeft += 1
                     return nil
@@ -568,14 +554,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
             .sorted { $0.totalBytes > $1.totalBytes }
     }
 
-    /// Trashes a batch of paths, which may hold app bundles.
-    public func trashPaths(_ paths: [String],
-                           quittingRunningApps mayQuit: Bool = false) async -> UninstallResult {
-        await removeBatch(paths, quittingRunningApps: mayQuit)
-    }
-
-    /// The batch, with the one question that must not be carried from the scan
-    /// asked again first.
+    /// Trashes a batch of paths, which may hold app bundles, with
+    /// the one question that must not be carried from the scan asked again first.
     ///
     /// The review screen's `running` flag is `ScanResult.runningNow`, read when
     /// the review was built, and it is stale in both directions by the time
@@ -593,8 +573,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// login item, a helper, a double click — or it ignores the quit and
     /// `waitUntilGone` gives up. macOS moves a running app's bundle without a
     /// word, so neither refuses anything of its own accord.
-    private func removeBatch(_ paths: [String],
-                             quittingRunningApps mayQuit: Bool) async -> UninstallResult {
+    public func trashPaths(_ paths: [String],
+                           quittingRunningApps mayQuit: Bool = false) async -> UninstallResult {
         // Off the pool: this reads each bundle's `Info.plist`, and the running
         // port reaches AppKit through the main thread (ARCHITECTURE.md § Running
         // applications).

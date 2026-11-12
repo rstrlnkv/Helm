@@ -75,6 +75,7 @@ final class AppSizeIdentityTests: XCTestCase {
         XCTAssertEqual(Set(UninstallPlan.paths(groups, selectedLeftovers: [])),
                        [small.path, large.path],
                        "one of the two copies is not in the plan its own row queued")
-        XCTAssertEqual(UninstallPlan.totalBytes(groups, selectedLeftovers: []), 940_000)
+        XCTAssertEqual(UninstallPlan.totalBytes(groups, appBytes: [small.path: 40_000, large.path: 900_000],
+                                                     selectedLeftovers: []), 940_000)
     }
 }

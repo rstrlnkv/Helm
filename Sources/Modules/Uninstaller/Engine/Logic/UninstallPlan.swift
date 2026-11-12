@@ -116,10 +116,13 @@ public enum UninstallPlan {
         [.bundle(app: group.app)] + group.leftovers.map { .leftover($0) }
     }
 
-    public static func totalBytes(_ groups: [UninstallGroup], selectedLeftovers: Set<String>) -> Int {
+    /// `appBytes` is the measured size of each bundle, keyed by its path: the app
+    /// in a group carries the list's zero.
+    public static func totalBytes(_ groups: [UninstallGroup], appBytes: [String: Int],
+                                  selectedLeftovers: Set<String>) -> Int {
         var seen: Set<String> = []
         return groups.reduce(0) { sum, group in
-            var subtotal = seen.insert(group.app.path).inserted ? group.app.sizeBytes : 0
+            var subtotal = seen.insert(group.app.path).inserted ? appBytes[group.app.path] ?? 0 : 0
             for leftover in group.leftovers where selectedLeftovers.contains(leftover.path) {
                 if seen.insert(leftover.path).inserted { subtotal += leftover.sizeBytes }
             }

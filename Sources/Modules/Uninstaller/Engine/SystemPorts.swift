@@ -196,7 +196,10 @@ final class WorkspaceAppLister: AppLister {
     /// (Xcode, 3.2 s here) otherwise holds up the other thirty-eight.
     func appSizes(_ apps: [InstalledApp]) -> [String: Int] {
         let fs = self.fs
-        var sizes: [String: Int] = [:]
+        // `nonisolated(unsafe)`: the compiler cannot see `lock`, and the shape it
+        // objects to is the one wanted — one write per index under the lock, and
+        // the read below runs after `concurrentPerform` has joined.
+        nonisolated(unsafe) var sizes: [String: Int] = [:]
         let lock = NSLock()
         DispatchQueue.concurrentPerform(iterations: apps.count) { index in
             let app = apps[index]
@@ -297,7 +300,7 @@ public struct UninstallerSystemPorts {
     }
 }
 
-/// Both uninstaller checks go through the shared CLI in HelmRuntime.
+/// The one question, `activeExtensionHosts`, goes through the shared CLI in HelmRuntime.
 public struct SystemExtensionLister: SystemExtensionPort {
     public init() {}
     /// `hostIdentifiersIfAnswered`, never the folded reader: a tool that did not

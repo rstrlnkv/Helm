@@ -146,10 +146,9 @@ final class AnsweringWork: UninstallerWork, @unchecked Sendable {
         lock.withLock { order = next }
     }
 
-    func scan(bundleID: String, appPath: String, appName: String) async -> ScanResult {
+    func scan(bundleID: String, appName: String) async -> ScanResult {
         note(.scan(bundleID: bundleID))
-        let found = scans[bundleID] ?? ScanResult(bundleID: bundleID, appPath: appPath,
-                                                  appSizeBytes: 0, leftovers: [], runningNow: false)
+        let found = scans[bundleID] ?? ScanResult(leftovers: [], runningNow: false)
         lock.withLock { scansDone += 1 }
         while lock.withLock({ scansHeld }) { try? await Task.sleep(nanoseconds: 5_000_000) }
         return found
@@ -209,8 +208,8 @@ final class HeldWork: UninstallerWork, @unchecked Sendable {
                     now: Date) async -> AppOpenedReading { AppOpenedReading(opened: [:]) }
     var sortOrder: AppSortOrder { .standard }
     func setSortOrder(_ order: AppSortOrder) {}
-    func scan(bundleID: String, appPath: String, appName: String) async -> ScanResult {
-        ScanResult(bundleID: bundleID, appPath: appPath, appSizeBytes: 0, leftovers: [], runningNow: false)
+    func scan(bundleID: String, appName: String) async -> ScanResult {
+        ScanResult(leftovers: [], runningNow: false)
     }
     func scanOrphans() async -> [OrphanGroup] { [] }
     var trashWatch: TrashWatch { .off }

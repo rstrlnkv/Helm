@@ -120,7 +120,8 @@ final class DeletionSafetyTests: XCTestCase {
         let paths = UninstallPlan.paths([group], selectedLeftovers: [path])
         XCTAssertEqual(Set(paths).count, paths.count)
         // …and the size is not counted twice either.
-        XCTAssertEqual(UninstallPlan.totalBytes([group], selectedLeftovers: [path]), 110)
+        XCTAssertEqual(UninstallPlan.totalBytes([group], appBytes: [group.app.path: 100],
+                                                     selectedLeftovers: [path]), 110)
     }
 
     func testNothingToRemoveIsSaidRatherThanAssumed() {

@@ -9,7 +9,7 @@ enum LeftoverMatcher {
         let kind: LeftoverKind
         let matchedByName: Bool
         /// true → `url`'s last component is a `*` pattern to match against siblings
-        /// (Group Containers `*.<id>`, ByHost/LaunchAgents `<id>*.plist`).
+        /// (Group Containers `*<id>*`, ByHost/LaunchAgents `<id>*.plist`).
         let isGlob: Bool
     }
 
@@ -33,7 +33,7 @@ enum LeftoverMatcher {
             && !token.contains("/") && !token.contains("\0")
             // A `*` in the token is the empty-id defect wearing a different
             // hat: every glob below is built by pasting the token next to a
-            // `*`, so an id of "*" yields `**` and `*.*`, which match every
+            // `*`, so an id of "*" yields `**`, which matches every
             // sibling in Caches, Containers, Group Containers and every
             // LaunchAgent on the machine — pre-ticked, because a glob is never
             // `matchedByName`. The plist that supplies the id is the app's own.
@@ -72,7 +72,6 @@ enum LeftoverMatcher {
         add(u("Preferences", "ByHost").appendingPathComponent("\(id)*.plist"), .preferences, glob: true)
         add(u("Containers", id), .containers)
         add(u("Containers").appendingPathComponent("\(id)*"), .containers, glob: true)
-        add(u("Group Containers").appendingPathComponent("*.\(id)"), .groupContainers, glob: true)
         add(u("Group Containers").appendingPathComponent("*\(id)*"), .groupContainers, glob: true)
         add(u("Saved Application State", "\(id).savedState"), .savedState)
         add(u("Logs", id), .logs)

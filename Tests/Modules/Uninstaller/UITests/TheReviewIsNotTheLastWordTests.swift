@@ -1,6 +1,5 @@
 import HelmRuntime
 import HelmTestSupport
-import HelmUI
 import XCTest
 import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
@@ -38,9 +37,7 @@ final class TheReviewIsNotTheLastWordTests: XCTestCase {
         -> AnsweringWork {
         AnsweringWork(
             apps: [tool],
-            scans: [tool.bundleID: ScanResult(bundleID: tool.bundleID, appPath: tool.path,
-                                              appSizeBytes: 0, leftovers: [],
-                                              runningNow: runningAtScan)],
+            scans: [tool.bundleID: ScanResult(leftovers: [], runningNow: runningAtScan)],
             removal: removal)
     }
 

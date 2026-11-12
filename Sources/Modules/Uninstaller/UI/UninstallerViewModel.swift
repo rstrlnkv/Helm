@@ -21,7 +21,7 @@ protocol UninstallerWork: AnyObject, Sendable {
                     now: Date) async -> AppOpenedReading
     var sortOrder: AppSortOrder { get }
     func setSortOrder(_ order: AppSortOrder)
-    func scan(bundleID: String, appPath: String, appName: String) async -> ScanResult
+    func scan(bundleID: String, appName: String) async -> ScanResult
     func scanOrphans() async -> [OrphanGroup]
     func trashPaths(_ paths: [String], quittingRunningApps: Bool) async -> UninstallResult
     var trashWatch: TrashWatch { get }
@@ -227,14 +227,8 @@ extension UninstallerEngine: UninstallerWork {}
     private func fillInSizes() async {
         let sizes = await work.appSizes(apps)
         guard !closed, !sizes.isEmpty else { return }
+        // By path: two copies of one app share a bundle id and each has its own size.
         measuredSizes = sizes
-        apps = apps.map { app in
-            // By path: two copies of one app share a bundle id and each has its
-            // own size.
-            guard let size = sizes[app.path], size != app.sizeBytes else { return app }
-            return InstalledApp(name: app.name, bundleID: app.bundleID,
-                                path: app.path, sizeBytes: size)
-        }
     }
 
     // MARK: - Picking
@@ -269,13 +263,7 @@ extension UninstallerEngine: UninstallerWork {}
     public var reviewBytes: Int? {
         guard !groups.isEmpty,
               groups.allSatisfy({ measuredSizes[$0.app.path] != nil }) else { return nil }
-        let measured = groups.map { group in
-            UninstallGroup(app: InstalledApp(name: group.app.name, bundleID: group.app.bundleID,
-                                             path: group.app.path,
-                                             sizeBytes: measuredSizes[group.app.path] ?? 0),
-                           leftovers: group.leftovers, running: group.running)
-        }
-        return UninstallPlan.totalBytes(measured, selectedLeftovers: selectedLeftovers)
+        return UninstallPlan.totalBytes(groups, appBytes: measuredSizes, selectedLeftovers: selectedLeftovers)
     }
 
     /// Leaving the review ends the round, so the report of the last press goes
@@ -319,8 +307,7 @@ extension UninstallerEngine: UninstallerWork {}
         await withTaskGroup(of: (Int, ScanResult).self) { group in
             for (index, app) in chosen.enumerated() {
                 group.addTask {
-                    (index, await work.scan(bundleID: app.bundleID, appPath: app.path,
-                                            appName: app.name))
+                    (index, await work.scan(bundleID: app.bundleID, appName: app.name))
                 }
             }
             for await item in group { done.append(item) }
@@ -381,11 +368,8 @@ extension UninstallerEngine: UninstallerWork {}
             // Leftovers that stayed put are the whole point of the module, so
             // they get a screen of their own rather than a line to overlook.
             //
-            // There used to be a fallback here, building a failure per path with
-            // the reason `"unknown"`, for a result whose `failed` held paths its
-            // `failures` did not. That was already unreachable — `failed` is
-            // `failures.map(\.path)` — and `"unknown"` was not one of the
-            // reasons, so what it drew was the sentence for a cause nobody knew.
+            // No fallback: `failed` is `failures.map(\.path)`, so every failed
+            // path already has its reason.
             failures = result.failures
         } else {
             resultBanner = UnStr.movedToTrash(moved)

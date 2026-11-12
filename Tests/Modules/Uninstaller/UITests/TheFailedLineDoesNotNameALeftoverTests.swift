@@ -1,6 +1,4 @@
-import HelmContract
 import HelmRuntime
-import HelmUI
 import XCTest
 import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
@@ -41,8 +39,7 @@ final class TheFailedLineDoesNotNameALeftoverTests: XCTestCase {
         let leftover = NSHomeDirectory() + "/Library/Containers/\(id)"
         let work = AnsweringWork(
             apps: [app],
-            scans: [app.bundleID: ScanResult(bundleID: app.bundleID, appPath: app.path,
-                                             appSizeBytes: 0, leftovers: [], runningNow: false)],
+            scans: [app.bundleID: ScanResult(leftovers: [], runningNow: false)],
             removal: UninstallResult(trashed: [app.path], freedBytes: 0,
                                      failures: [TrashFailureInfo(path: leftover,
                                                                  reason: .needsFullDiskAccess,

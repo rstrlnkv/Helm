@@ -6,7 +6,7 @@ import XCTest
 
 /// **A reading of which applications are up is not good for the move.**
 ///
-/// `removeBatch` quits the running applications of a batch one after another, a
+/// `trashPaths` quits the running applications of a batch one after another, a
 /// force quit and a `waitUntilGone` per app, five seconds apiece by default,
 /// before `trashSync` moves anything. After that loop it asks again, and
 /// `held()` returns what is still up as `stillRunning` instead of moving it.
@@ -112,7 +112,7 @@ final class TheRunningReadingIsOlderThanTheMoveTests: XCTestCase {
     /// to move, so the person is told the uninstall worked.
     ///
     /// It costs the engine's own five-second deadline, which is the number that
-    /// ships: `removeBatch` calls `waitUntilGone` with its defaults and there is
+    /// ships: `trashPaths` calls `waitUntilGone` with its defaults and there is
     /// nothing to inject. A shorter one here would be a test of a different
     /// program.
     func testAnAppThatIgnoredTheQuitIsNotReportedAsRemovedCleanly() async throws {

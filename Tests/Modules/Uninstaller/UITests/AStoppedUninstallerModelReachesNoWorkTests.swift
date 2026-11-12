@@ -220,9 +220,9 @@ private final class StoppedWork: UninstallerWork, @unchecked Sendable {
     }
     var sortOrder: AppSortOrder { lock.withLock { order } }
     func setSortOrder(_ order: AppSortOrder) { note("setSortOrder"); lock.withLock { self.order = order } }
-    func scan(bundleID: String, appPath: String, appName: String) async -> ScanResult {
+    func scan(bundleID: String, appName: String) async -> ScanResult {
         note("scan")
-        return ScanResult(bundleID: bundleID, appPath: appPath, appSizeBytes: 1, leftovers: [], runningNow: false)
+        return ScanResult(leftovers: [], runningNow: false)
     }
     func scanOrphans() async -> [OrphanGroup] {
         note("scanOrphans"); return [OrphanGroup(bundleID: "com.example.gone", leftovers: [])]

@@ -79,8 +79,7 @@ final class NestedSiblingTests: XCTestCase {
                                        apps: PartlyVisible(topLevel: topLevel, nested: nested),
                                        fs: NestedFS(entries: entries),
                                        trash: NoTrash(), running: NoRunning())
-        return await engine.scan(bundleID: id, appPath: "/Applications/Acrobat.app",
-                                     appName: "Acrobat")
+        return await engine.scan(bundleID: id, appName: "Acrobat")
     }
 
     /// The shape `SiblingPrefixTests` already refuses, moved one folder down.

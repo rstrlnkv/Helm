@@ -49,15 +49,18 @@ final class UninstallPlanTests: XCTestCase {
     func testSizeCountsTheBundlePlusSelectedLeftoversOnly() {
         let g = group("Alpha", running: false, appSize: 500,
                       leftovers: [leftover("/L1", 10), leftover("/L2", 20)])
-        XCTAssertEqual(UninstallPlan.totalBytes([g], selectedLeftovers: ["/L1"]), 510)
-        XCTAssertEqual(UninstallPlan.totalBytes([g], selectedLeftovers: ["/L1", "/L2"]), 530)
-        XCTAssertEqual(UninstallPlan.totalBytes([g], selectedLeftovers: []), 500)
+        let alpha500 = ["/Applications/Alpha.app": 500]
+        XCTAssertEqual(UninstallPlan.totalBytes([g], appBytes: alpha500, selectedLeftovers: ["/L1"]), 510)
+        XCTAssertEqual(UninstallPlan.totalBytes([g], appBytes: alpha500, selectedLeftovers: ["/L1", "/L2"]), 530)
+        XCTAssertEqual(UninstallPlan.totalBytes([g], appBytes: alpha500, selectedLeftovers: []), 500)
     }
 
     func testEverySelectedAppContributesEvenWithoutLeftovers() {
         let groups = [group("Alpha", running: false, appSize: 100),
                       group("Beta", running: false, appSize: 250)]
-        XCTAssertEqual(UninstallPlan.totalBytes(groups, selectedLeftovers: []), 350)
+        XCTAssertEqual(UninstallPlan.totalBytes(groups, appBytes: ["/Applications/Alpha.app": 100,
+                                                                    "/Applications/Beta.app": 250],
+                                                     selectedLeftovers: []), 350)
         XCTAssertEqual(UninstallPlan.paths(groups, selectedLeftovers: []),
                        ["/Applications/Alpha.app", "/Applications/Beta.app"])
     }
@@ -81,7 +84,8 @@ final class UninstallPlanTests: XCTestCase {
         let duplicate = Leftover(path: "/L/x", kind: .caches, sizeBytes: 10, matchedByName: false)
         let g = UninstallGroup(app: app("Alpha", "com.a.b", size: 100),
                                leftovers: [leftover, duplicate], running: false)
-        XCTAssertEqual(UninstallPlan.totalBytes([g], selectedLeftovers: ["/L/x"]), 110)
+        XCTAssertEqual(UninstallPlan.totalBytes([g], appBytes: [g.app.path: 100],
+                                                     selectedLeftovers: ["/L/x"]), 110)
     }
 
     func testTwoAppsSharingALeftoverTrashItOnce() {

@@ -1,7 +1,6 @@
 import AppKit
 import HelmRuntime
 import HelmTestSupport
-import HelmUI
 import SwiftUI
 import XCTest
 import Module_Uninstaller_Engine
@@ -37,8 +36,7 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
 
     private static func scans(_ list: [InstalledApp]) -> [String: ScanResult] {
         Dictionary(uniqueKeysWithValues: list.map {
-            ($0.bundleID, ScanResult(bundleID: $0.bundleID, appPath: $0.path, appSizeBytes: $0.sizeBytes,
-                                     leftovers: [], runningNow: false))
+            ($0.bundleID, ScanResult(leftovers: [], runningNow: false))
         })
     }
 

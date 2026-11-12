@@ -21,11 +21,12 @@ final class LeftoverMatcherTests: XCTestCase {
         XCTAssertTrue(named.contains { $0.url.path == "/Users/x/Library/Application Support/Tool" })
     }
 
-    func testGroupContainersIsSuffixGlob() {
-        let c = LeftoverMatcher.candidates(bundleID: "com.acme.tool", appName: "Tool", library: lib)
-        let gc = c.first { $0.kind == .groupContainers }
-        XCTAssertNotNil(gc)
-        XCTAssertTrue(gc!.isGlob)
+    func testGroupContainersGlobHasNoDotPrefix() {
+        let c = LeftoverMatcher.candidates(bundleID: "com.acme.tool", appName: "Tool",
+                                           library: URL(fileURLWithPath: "/L"))
+        let gc = c.filter { $0.kind == .groupContainers }
+        XCTAssertEqual(gc.map(\.url.path), ["/L/Group Containers/*com.acme.tool*"])
+        XCTAssertTrue(gc.allSatisfy(\.isGlob))
     }
 
     // MARK: - Extension containers (found the hard way: a VPN app left
@@ -42,9 +43,8 @@ final class LeftoverMatcherTests: XCTestCase {
         let c = LeftoverMatcher.candidates(bundleID: "com.acme.tool", appName: "Tool",
                                            library: URL(fileURLWithPath: "/L"))
         let globs = c.filter { $0.kind == .groupContainers }.map(\.url.path)
-        // 2XZUN9L63Z.com.acme.tool  and  group.com.acme.tool
-        XCTAssertTrue(globs.contains("/L/Group Containers/*.com.acme.tool"), "\(globs)")
-        // …and any suffixed variant of the id itself
+        // 2XZUN9L63Z.com.acme.tool, group.com.acme.tool and any suffixed variant
+        // of the id itself
         XCTAssertTrue(globs.contains("/L/Group Containers/*com.acme.tool*"), "\(globs)")
     }
 

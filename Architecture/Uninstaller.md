@@ -21,7 +21,7 @@ reach the checkbox.
 Quitting is asked rather than assumed. `UninstallerEngine.waitUntilGone` polls to a
 deadline, and the deadline ends the *wait* rather than the question:
 `UninstallPlan.verdict(running:mayQuit:)` is asked again after the quit loop in
-`removeBatch`, and a batch still holding a live app moves nothing and names it in
+`trashPaths`, and a batch still holding a live app moves nothing and names it in
 `stillRunning`, its own field on `UninstallResult` (the doc comment on
 `stillRunning` says why it is not a classified failure).
 

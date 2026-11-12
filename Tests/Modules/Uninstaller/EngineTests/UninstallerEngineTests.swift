@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import Module_Uninstaller_Engine
 
 final class UninstallerEngineTests: XCTestCase {
@@ -28,8 +29,7 @@ final class UninstallerEngineTests: XCTestCase {
             "/Users/x/Library/Caches/com.acme.tool": 100,
             "/Users/x/Library/Preferences/com.acme.tool.plist": 10,
         ])
-        let r = await engine(fs: fs).scan(bundleID: "com.acme.tool",
-                                              appPath: "/Applications/Tool.app", appName: "Tool")
+        let r = await engine(fs: fs).scan(bundleID: "com.acme.tool", appName: "Tool")
         XCTAssertEqual(Set(r.leftovers.map(\.path)),
                        ["/Users/x/Library/Caches/com.acme.tool",
                         "/Users/x/Library/Preferences/com.acme.tool.plist"])
@@ -37,10 +37,23 @@ final class UninstallerEngineTests: XCTestCase {
         XCTAssertFalse(r.runningNow)
     }
 
+    /// The `*<id>*` glob alone finds what `*.<id>` also found: a team-prefixed
+    /// folder, a group-prefixed one and the id with a suffix. A scratch home on
+    /// the real filesystem, so the glob is expanded by the shipping port.
+    func testGroupContainersAreFoundWithoutTheDotPrefixGlob() async throws {
+        let home = scratchDirectory("group-containers")
+        let names = ["group.x.com.acme.tool", "TEAM.com.acme.tool", "com.acme.tool.helper"]
+        for n in names { try write("Library/Group Containers/\(n)/f", in: home) }
+        let r = await UninstallerEngine(home: home, apps: FakeApps(), fs: FMFileSystem(),
+                                        trash: FakeTrash(), running: FakeRunning(running: []))
+            .scan(bundleID: "com.acme.tool", appName: "Tool")
+        XCTAssertEqual(Set(r.leftovers.map { URL(fileURLWithPath: $0.path).lastPathComponent }), Set(names))
+    }
+
     func testScanFlagsRunning() async throws {
         let fs = FakeFS(existing: [:])
         let r = try await engine(fs: fs, running: ["com.acme.tool"])
-            .scan(bundleID: "com.acme.tool", appPath: "/Applications/Tool.app", appName: "Tool")
+            .scan(bundleID: "com.acme.tool", appName: "Tool")
         XCTAssertTrue(r.runningNow)
     }
 

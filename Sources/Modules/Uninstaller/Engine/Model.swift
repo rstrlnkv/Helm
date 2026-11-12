@@ -27,13 +27,9 @@ public struct Leftover: Equatable, Sendable {
 }
 
 public struct ScanResult: Equatable, Sendable {
-    public let bundleID: String
-    public let appPath: String
-    public let appSizeBytes: Int
     public let leftovers: [Leftover]
     public let runningNow: Bool
-    public init(bundleID: String, appPath: String, appSizeBytes: Int, leftovers: [Leftover], runningNow: Bool) {
-        self.bundleID = bundleID; self.appPath = appPath; self.appSizeBytes = appSizeBytes
+    public init(leftovers: [Leftover], runningNow: Bool) {
         self.leftovers = leftovers; self.runningNow = runningNow
     }
 }

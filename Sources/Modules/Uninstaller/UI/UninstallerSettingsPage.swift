@@ -198,7 +198,7 @@ struct UninstallerSettingsPage: View {
         if step == .review {
             bytes = uvm.reviewBytes ?? 0
         } else {
-            bytes = apps.filter { checked.contains($0.bundleID) }.reduce(0) { $0 + $1.sizeBytes }
+            bytes = apps.filter { checked.contains($0.bundleID) }.reduce(0) { $0 + (uvm.measuredSizes[$1.path] ?? 0) }
         }
         guard bytes > 0 else { return "—" }
         return Bytes(bytes)
@@ -214,15 +214,16 @@ struct UninstallerSettingsPage: View {
     /// of them: `AppsEmpty` holds the rule and says why there are two. The
     /// «answered» half is the view model's own flag, the one the footer's count
     /// reads, so the body cannot contradict the line under it.
-    private var appsEmpty: AppsEmpty.Reason? {
-        AppsEmpty.reason(answered: uvm.listAnswered, apps: apps.count, shown: filtered.count)
+    private func appsEmpty(shown: Int) -> AppsEmpty.Reason? {
+        AppsEmpty.reason(answered: uvm.listAnswered, apps: apps.count, shown: shown)
     }
 
-    private var pickStep: some View {
+    @ViewBuilder private var pickStep: some View {
+        let shown = filtered
         VStack(spacing: 0) {
             if loading || !uvm.listAnswered {
                 HelmBusyState()
-            } else if let nothing = appsEmpty {
+            } else if let nothing = appsEmpty(shown: shown.count) {
                 // A statement and no verb: «no applications» would offer to
                 // repeat a question just answered, and «nothing matches this
                 // search» to reload the Mac when the search field that hid the
@@ -230,7 +231,7 @@ struct UninstallerSettingsPage: View {
                 HelmEmptyState(message: UnStr.emptyMessage(nothing))
             } else {
                 List {
-                    ForEach(filtered) { app in
+                    ForEach(shown) { app in
                         appRow(app)
                             .listRowSeparator(.hidden)
                     }

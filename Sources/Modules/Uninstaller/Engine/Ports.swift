@@ -110,11 +110,8 @@ public protocol TrashPort: Sendable {
 /// System extensions block their host app from being moved; the UI needs to
 /// name that reason instead of reporting a bare failure.
 ///
-/// One question, because that is the one this module asks. It also had
-/// `installedExtensions()` — the whole list, reached only by a `systemExtensions`
-/// command no screen ever sent, so a port member and a `systemextensionsctl`
-/// call existed for nobody. The list is still read where somebody draws it:
-/// Leftovers has its own port for it, and answers `nil` when the tool did not.
+/// One question, because only one is asked; Leftovers has its own port for the
+/// whole list.
 public protocol SystemExtensionPort: Sendable {
     /// Bundle ids that currently have an activated system extension, or `nil` when
     /// `systemextensionsctl` did not answer at all.

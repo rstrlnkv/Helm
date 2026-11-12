@@ -1,6 +1,4 @@
 import XCTest
-import HelmContract
-import HelmUI
 import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
@@ -28,8 +26,6 @@ final class SystemAppIsNotOfferedTests: XCTestCase {
         func isKnownToSystem(bundleID: String) -> Bool { false }
     }
 
-    private var engine: UninstallerEngine?
-
     private func viewModel() -> UninstallerViewModel {
         let engine = UninstallerEngine(
             home: URL(fileURLWithPath: "/Users/x"),
@@ -40,7 +36,6 @@ final class SystemAppIsNotOfferedTests: XCTestCase {
                              path: "/Applications/Tool.app", sizeBytes: 10),
             ]),
             fs: SilentFS(), trash: NoTrash(), running: NoRunning())
-        self.engine = engine
         return modelOver(engine)
     }
 

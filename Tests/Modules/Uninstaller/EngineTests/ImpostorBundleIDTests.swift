@@ -78,8 +78,7 @@ final class ImpostorBundleIDTests: XCTestCase {
         let engine = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
                                        apps: apps, fs: ImpostorFS(entries: entries),
                                        trash: NoTrash(), running: NoRunning())
-        return await engine.scan(bundleID: id, appPath: "/Applications/Sketchy.app",
-                                     appName: "Sketchy")
+        return await engine.scan(bundleID: id, appName: "Sketchy")
     }
 
     /// The impostor: a second bundle in `/Applications` declaring the id of an
