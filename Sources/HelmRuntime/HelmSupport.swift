@@ -7,7 +7,7 @@ import Foundation
 /// the log lives.
 ///
 /// It was spelled out by hand in three places — `ScanJournal.defaultDirectory`
-/// builds it from `FileManager`, `ResetPlan.roots` from a home directory, and the
+/// builds it from `FileManager`, `ResetPlan.removablePaths` from a home directory, and the
 /// VPN credential purge needed a third — which is the duplication `HelmRuntime`
 /// exists to end. The two shapes are both here on purpose: a reset is a pure
 /// function of somebody's home directory and has to stay testable without

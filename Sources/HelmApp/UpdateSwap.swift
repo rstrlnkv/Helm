@@ -101,7 +101,7 @@ enum UpdateSwap {
 enum UpdateHandoff {
 
     /// Beside the rest of Helm's durable state, so «Reset all settings» takes it
-    /// with everything else (`ResetPlan.roots`).
+    /// with everything else (`ResetPlan.removablePaths`).
     static var file: URL { HelmSupport.directory.appendingPathComponent("update-handoff") }
 
     /// - Returns: whether the note is on disk.

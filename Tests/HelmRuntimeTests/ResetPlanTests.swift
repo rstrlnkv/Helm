@@ -40,12 +40,4 @@ final class ResetPlanTests: XCTestCase {
             XCTAssertTrue(ResetPlan.mayRemove(path, home: home), "\(path) is Helm's own")
         }
     }
-
-    /// Everything the plan produces must pass its own gate. A list and a gate
-    /// that disagree is the shape of the bug this pair exists to prevent.
-    func testThePlanAgreesWithItsOwnGate() {
-        for path in ResetPlan.removablePaths(home: home) {
-            XCTAssertTrue(ResetPlan.mayRemove(path, home: home))
-        }
-    }
 }

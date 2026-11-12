@@ -18,7 +18,7 @@ import HelmTestSupport
 ///
 /// Everywhere else a test that trashes gives its files unownable names, so the
 /// cleanup can reconstruct `~/.Trash/<name>` and be sure the item is its own
-/// (`TrashScratch`). Here the name comes from `ResetPlan.roots` and it is
+/// (`TrashScratch`). Here the name comes from `ResetPlan.removablePaths` and it is
 /// `Helm`. The UUID in the temporary home above it does not survive the move —
 /// only the moved item's own name does — so **four folders called `Helm` went
 /// into the real Trash on every run**, which is litter that also lies: somebody
@@ -37,8 +37,9 @@ import HelmTestSupport
 /// the one mistake a cleanup must not be able to make.
 ///
 /// What that costs is coverage of the *second* path in the same batch, and
-/// `ResetPlanTests` is where the pair is checked; what `HelmTrash` does with a
-/// batch of two has its own tests, on files that can be cleaned up.
+/// `ResetPlanTests` pins the two directories and the gate's refusals; what
+/// `HelmTrash` does with a batch of two has its own tests, on files that can be
+/// cleaned up.
 final class ResetRemovesOnlyItsOwnTests: XCTestCase {
     private var home: String!
     /// Written into the scan file, and read back before anything is removed

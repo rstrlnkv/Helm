@@ -6,9 +6,9 @@ import Foundation
 /// What "reset everything" is allowed to remove, and the gate that says so.
 ///
 /// This is the one feature in Helm whose whole purpose is deletion, and what it
-/// produces goes straight to `HelmTrash`. So the list and the gate are separate
-/// and a test asserts they agree: a plan that named something its own gate
-/// would refuse is the failure this pair exists to prevent.
+/// produces goes straight to `HelmTrash`. So the plan is the gate's own root
+/// list: `mayRemove` reads `removablePaths`, and `ResetPlanTests` pins that
+/// list literally, so a plan the gate would refuse cannot exist.
 ///
 /// **Only Helm's own two directories.** Not `~/Library/Application Support`,
 /// not `~/Library/Logs`, not a sibling whose name merely starts the same way —
@@ -64,20 +64,18 @@ public enum ResetPlan {
         .relaunch,
     ]
 
-    public static func roots(home: String) -> [String] {
+    /// What a reset removes, and the roots `mayRemove` judges against.
+    /// `HelmTrash.remove` takes the shortest path first, so the logs folder goes
+    /// before Application Support.
+    public static func removablePaths(home: String) -> [String] {
         [HelmSupport.path(home: home),
          "\(home)/Library/Logs/Helm"]
     }
 
-    /// What a reset removes. Listed in the order of `roots`, but `HelmTrash.remove`
-    /// takes the shortest path first, so the logs folder goes before Application
-    /// Support.
-    public static func removablePaths(home: String) -> [String] { roots(home: home) }
-
     /// Whether a reset may touch this path at all.
     public static func mayRemove(_ path: String, home: String) -> Bool {
         let standardized = (path as NSString).standardizingPath
-        return roots(home: home).contains {
+        return removablePaths(home: home).contains {
             standardized == $0 || standardized.hasPrefix($0 + "/")
         }
     }
