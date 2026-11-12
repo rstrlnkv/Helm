@@ -56,8 +56,7 @@ enum Installer {
         // Beta's release, which is newer than its own prerelease, and ends up
         // holding a bundle that calls itself the release's identifier at the
         // dev build's own address.
-        guard let installedID = Bundle.main.bundleIdentifier,
-              identifier(ofBundleAt: newApp) == installedID else {
+        guard isSameProgram(newApp, as: Bundle.main.bundleIdentifier) else {
             throw InstallError.identityMismatch
         }
 
@@ -91,6 +90,13 @@ enum Installer {
         let plist = app.appendingPathComponent("Contents/Info.plist")
         guard let dict = NSDictionary(contentsOf: plist) else { return nil }
         return dict["CFBundleIdentifier"] as? String
+    }
+
+    /// Whether the bundle calls itself the installed program. A missing
+    /// identifier on either side is no match.
+    static func isSameProgram(_ app: URL, as installedID: String?) -> Bool {
+        guard let installedID, let got = identifier(ofBundleAt: app) else { return false }
+        return got == installedID
     }
 
     /// Compares versions ignoring a leading "v" (tag "v0.4.0" vs bundle "0.4.0").

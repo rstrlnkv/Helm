@@ -45,6 +45,16 @@ final class AnUpdateDoesNotSwapOneProgramForAnotherTests: XCTestCase {
         let swap = try XCTUnwrap(body.range(of: "launchSwapScript"))
         XCTAssertLessThan(refusal.lowerBound, swap.lowerBound,
                           "a check after the swap is not a check")
+        XCTAssertTrue(body.contains("isSameProgram(newApp, as: Bundle.main.bundleIdentifier)"),
+                      "the refusal no longer asks whether the downloaded bundle is the installed program")
+    }
+
+    func testOnlyABundleOfTheInstalledProgramPasses() throws {
+        let app = try bundle(id: "com.helm.app")
+        XCTAssertTrue(Installer.isSameProgram(app, as: "com.helm.app"))
+        XCTAssertFalse(Installer.isSameProgram(app, as: "com.helm.app.dev"))
+        XCTAssertFalse(Installer.isSameProgram(app, as: nil))
+        XCTAssertFalse(Installer.isSameProgram(try bundle(id: nil), as: "com.helm.app"))
     }
 
     // Only the release's own identifier takes a published bundle, and that

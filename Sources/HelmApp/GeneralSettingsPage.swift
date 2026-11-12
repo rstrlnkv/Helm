@@ -446,8 +446,7 @@ struct MenuBarSettingsView: View {
 /// **Flat or Liquid Glass**, written to `AppSettings.barAppearance`, whose setter posts
 /// `.helmBarAppearanceChanged` for the window's ground (`helmTracksBarAppearance`,
 /// `ShellContentView`). Its own `@State`, so the page holds nothing for it. The row is
-/// the setter's only caller, so the `guard` in `onChange` and the `onReceive` below hear
-/// nothing but this row's own write.
+/// the setter's only caller, so the row listens for nothing: no write comes from anywhere else.
 struct BarAppearanceRow: View {
     @State private var choice = AppSettings.barAppearance
 
@@ -461,12 +460,8 @@ struct BarAppearanceRow: View {
             .labelsHidden()
             .fixedSize()
             .onChange(of: choice) { _, new in
-                guard new != AppSettings.barAppearance else { return }
                 AppSettings.barAppearance = new
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .helmBarAppearanceChanged)) { _ in
-            choice = AppSettings.barAppearance
         }
     }
 }
