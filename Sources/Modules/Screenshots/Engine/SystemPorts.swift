@@ -27,12 +27,15 @@ private struct Unshared<T>: @unchecked Sendable {
 public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
     private let store: NamespacedStore
     private let dockBounds: DockBounds
+    private let request: @Sendable () -> Void
 
     public init(store: NamespacedStore = NamespacedStore(namespace: ScreenshotsEngine.moduleID,
                                                          backing: UserDefaults.standard),
-                dockBounds: DockBounds = SystemDockBounds()) {
+                dockBounds: DockBounds = SystemDockBounds(),
+                request: @escaping @Sendable () -> Void = { _ = CGRequestScreenCaptureAccess() }) {
         self.store = store
         self.dockBounds = dockBounds
+        self.request = request
     }
 
     public func access() -> CaptureAccess {
@@ -47,9 +50,9 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
     /// observed here. It returns at once and its dialog is the system's, so the
     /// answer is read on the next press.
     public func requestAccess() {
-        guard !store.bool("screenRecordingAsked", default: false) else { return }
-        store.set(true, for: "screenRecordingAsked")
-        _ = CGRequestScreenCaptureAccess()
+        guard !store.bool(ScreenshotsSettings.Key.screenRecordingAsked, default: false) else { return }
+        store.set(true, for: ScreenshotsSettings.Key.screenRecordingAsked)
+        request()
     }
 
     public func freeze(cursor: Bool) async -> FreezeOutcome {

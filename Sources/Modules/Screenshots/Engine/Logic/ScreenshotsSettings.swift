@@ -125,6 +125,14 @@ public struct ScreenshotsSettings: Equatable, Sendable {
         store.set(on, for: Key.rememberSelection)
     }
 
+    /// The one door for choosing a folder as the target: `otherFolder` first, then `saveTarget = .other`. The order holds
+    /// because the settings page's mirror (`targetChanged`) returns early when it reads the target already `.other`, so a
+    /// target written before its folder would leave a pair with no folder behind it.
+    public static func chooseOtherFolder(_ path: String, in store: NamespacedStore) {
+        store.set(path, for: Key.otherFolder)
+        store.set(SaveTarget.other.rawValue, for: Key.saveTarget)
+    }
+
     /// **Deployed stored data: these names never move.**
     public enum Key {
         public static let saveTarget = "saveTarget"
@@ -136,6 +144,8 @@ public struct ScreenshotsSettings: Equatable, Sendable {
         public static let timer = "timer"
         public static let rememberSelection = "rememberSelection"
         public static let panelMode = "panelMode"
+        /// Set once the system's screen-recording request has been made (`SCKCapture.requestAccess`).
+        public static let screenRecordingAsked = "screenRecordingAsked"
         /// The last length the timer was switched on with; `timer` stays "seconds now, 0 is off" and is not re-keyed.
         public static let timerLength = "timerLength"
         /// The panel's move from its place by default, one number per axis (`PanelOffset`).

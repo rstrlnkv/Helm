@@ -38,7 +38,7 @@ public final class ScreenshotsEngine: ModuleEngine, @unchecked Sendable {
     /// target's and the UI target should not know which conform.
     public func session(store: NamespacedStore, naming: @escaping () -> ShotNaming) -> CaptureSession {
         CaptureSession(capture: SCKCapture(store: store), writer: FileShotWriter(), trash: SystemShotTrash(),
-                       pasteboard: SystemShotPasteboard(), preferences: SystemCapturePreferences(),
+                       pasteboard: SystemShotPasteboard(), preferences: preferences,
                        shutter: SystemShutter(), textReader: VisionTextReader(),
                        settings: { ScreenshotsSettings.read(store) }, naming: naming)
     }

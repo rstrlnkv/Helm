@@ -93,12 +93,13 @@ import Module_Screenshots_Engine
     /// «Other…» asks for the folder, and the target is written only once there
     /// is one the capture will accept — the page's own judgement, from the same
     /// function.
-    func choose(_ target: SaveTarget) {
+    func choose(_ target: SaveTarget, ask: @MainActor () -> ScreenshotsSettingsPage.FolderChoice = ScreenshotsSettingsPage.askForFolder) {
         if target == .other {
-            guard case .chosen(let path) = ScreenshotsSettingsPage.askForFolder() else { reload(); return }
-            store.set(path, for: ScreenshotsSettings.Key.otherFolder)
+            guard case .chosen(let path) = ask() else { reload(); return }
+            ScreenshotsSettings.chooseOtherFolder(path, in: store)
+        } else {
+            store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         }
-        store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         reload()
     }
 

@@ -465,22 +465,29 @@ struct ScreenshotsSettingsPage: View {
     /// stored, so the page never shows a choice the engine does not hold.
     private func targetChanged(to value: SaveTarget) {
         chosenRefused = false
-        // The bar chose «Other…» and the mirror followed: it is already stored.
-        if value == .other, ScreenshotsSettings.read(store).saveTarget == .other { return }
-        guard value == .other else {
-            store.set(value.rawValue, for: ScreenshotsSettings.Key.saveTarget)
-            return
-        }
-        switch Self.askForFolder() {
-        case .chosen(let path):
+        switch Self.storeTarget(value, in: store) {
+        case nil: return
+        case .chosen(let path)?:
             otherFolder = path
-            store.set(path, for: ScreenshotsSettings.Key.otherFolder)
-            store.set(value.rawValue, for: ScreenshotsSettings.Key.saveTarget)
             return
-        case .refused: chosenRefused = true
-        case .cancelled: break
+        case .refused?: chosenRefused = true
+        case .cancelled?: break
         }
         target = ScreenshotsSettings.read(store).saveTarget
+    }
+
+    /// The store side of `targetChanged`: nil when the target went in (or was already `.other`, the bar's choice the
+    /// mirror followed), else what the folder question came back with; only a `.chosen` folder is written.
+    static func storeTarget(_ value: SaveTarget, in store: NamespacedStore,
+                            ask: @MainActor () -> FolderChoice = askForFolder) -> FolderChoice? {
+        if value == .other, ScreenshotsSettings.read(store).saveTarget == .other { return nil }
+        guard value == .other else {
+            store.set(value.rawValue, for: ScreenshotsSettings.Key.saveTarget)
+            return nil
+        }
+        let choice = ask()
+        if case .chosen(let path) = choice { ScreenshotsSettings.chooseOtherFolder(path, in: store) }
+        return choice
     }
 
     private func chooseAnother() {
