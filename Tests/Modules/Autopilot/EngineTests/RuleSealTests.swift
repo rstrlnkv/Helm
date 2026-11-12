@@ -202,3 +202,15 @@ final class RuleSealTests: XCTestCase {
                        .rolledBack)
     }
 }
+
+/// What the rule-sequence item's bytes mean. A value that is not a number must
+/// read as unavailable: `absent` is the permissive reading.
+final class RuleSequenceBytesTests: XCTestCase {
+    func testOnlyANumberIsAMark() {
+        XCTAssertEqual(KeychainRuleSequence.sequence(from: Data("42".utf8)), .at(42))
+        XCTAssertEqual(KeychainRuleSequence.sequence(from: Data([0xFF, 0xFE])), .unavailable)
+        XCTAssertEqual(KeychainRuleSequence.sequence(from: Data("abc".utf8)), .unavailable)
+        XCTAssertEqual(KeychainRuleSequence.sequence(from: Data("18446744073709551616".utf8)), .unavailable)
+        XCTAssertEqual(KeychainRuleSequence.sequence(from: Data()), .unavailable)
+    }
+}

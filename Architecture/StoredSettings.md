@@ -8,9 +8,11 @@ open is Helm's own rather than whatever a plist happened to hold. The doc commen
 `SettingGuard`, `SealKeyCache` and `KeychainSealKey` hold the mechanism: the key is
 cached once per process and no verdict is, because the key is a secret created once
 while whether a stored value is Helm's own is a live fact about a plist anything can
-rewrite; a refusal is not cached either. A broken seal refuses in each side's own safe
-direction: the folder is left unwalked, and the disabled list becomes every scannable
-module.
+rewrite; a refusal is not cached either. `KeychainItem.read` (in `KeychainSealKey.swift`) is
+the one read of a keychain item for the seal key and Autopilot's rule sequence:
+`errSecItemNotFound` alone is `absent`, anything else, a success without data
+included, is `refused`. A broken seal refuses in each side's own safe direction: the
+folder is left unwalked, and the disabled list becomes every scannable module.
 
 A stored setting that steers unattended work is sealed, because the property list is
 writable by any process running as the user and an unsealed setting is somebody else

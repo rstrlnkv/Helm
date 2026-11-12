@@ -59,7 +59,7 @@ final class TheRuleItemsAreTheOnesThatShippedTests: XCTestCase {
             XCTAssertTrue(text.contains(literal), "\(literal) is no longer spelled where it shipped")
         }
         XCTAssertTrue(text.contains("account: items.seal"))
-        XCTAssertTrue(text.contains("kSecAttrAccount as String: items.sequence"))
+        XCTAssertTrue(text.contains("service: RuleKeychainItems.service, account: items.sequence"))
         XCTAssertFalse(text.contains("SecItemDelete"), "an item is deleted")
 
         var naming: [String] = []

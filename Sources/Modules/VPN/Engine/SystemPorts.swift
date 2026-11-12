@@ -405,11 +405,10 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// new identity in every build. A caller that cannot tell them apart reports
     /// «no cached credentials» for a cache that is full.
     ///
-    /// **`KeychainSealKey.Read` in `HelmRuntime` is this same triage**, down to the
-    /// `errSecItemNotFound` branch and the `HelmFailure.osStatus` line — the second
-    /// spelling of it, and therefore a hoist that is owed rather than a shape to
-    /// copy a third time. Not taken here: it would refactor an untested,
-    /// security-critical read outside this fix.
+    /// **`KeychainItem.read` in `HelmRuntime` is this same triage**, and it stays a
+    /// second spelling on purpose: this read is an untested, security-critical
+    /// path the VPN area keeps as it is, and moving it would change it outside
+    /// the fix that wrote it.
     ///
     /// **What this cannot tell you**, and it matters for the rule above about
     /// automatic connects never summoning a dialog: whether macOS raises the

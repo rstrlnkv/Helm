@@ -81,38 +81,35 @@ public final class KeychainRuleSequence: RuleSequencePort {
     init(items: RuleKeychainItems) { self.items = items }
 
     private var query: [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: RuleKeychainItems.service,
-         kSecAttrAccount as String: items.sequence]
+        KeychainItem.address(service: RuleKeychainItems.service, account: items.sequence)
     }
 
     public func highWater() -> RuleSequence {
         // A test run never reaches the real item — `KeychainSealKey.key()`
         // gives the reason, and it is this item's too.
         guard !TestProcess.isRunning else { return .unavailable }
-        var request = query
-        request[kSecReturnData as String] = true
-        request[kSecMatchLimit as String] = kSecMatchLimitOne
-        var item: CFTypeRef?
-        let status = SecItemCopyMatching(request as CFDictionary, &item)
-        switch status {
-        case errSecSuccess:
-            // A value that is there and is not a number is not "never sealed":
-            // it is an item this app cannot read the meaning of, and the safe
-            // reading of that is the same as a keychain that will not answer.
-            guard let data = item as? Data,
-                  let text = String(data: data, encoding: .utf8),
-                  let mark = UInt64(text)
-            else { return .unavailable }
-            return .at(mark)
-        case errSecItemNotFound:
+        switch KeychainItem.read(service: RuleKeychainItems.service, account: items.sequence) {
+        case let .found(data):
+            return Self.sequence(from: data)
+        case .absent:
             return .absent
-        default:
-            HelmLog.shared.warn(AutopilotEngine.moduleID,
-                                "could not read which rule set is the current one: "
-                                + HelmFailure.osStatus(status))
+        case let .refused(status):
+            if status != errSecSuccess {
+                HelmLog.shared.warn(AutopilotEngine.moduleID,
+                                    "could not read which rule set is the current one: "
+                                    + HelmFailure.osStatus(status))
+            }
             return .unavailable
         }
+    }
+
+    /// A value that is there and is not a number is not "never sealed": it is an
+    /// item this app cannot read the meaning of, and the safe reading of that is
+    /// the same as a keychain that will not answer.
+    static func sequence(from data: Data) -> RuleSequence {
+        guard let text = String(data: data, encoding: .utf8), let mark = UInt64(text)
+        else { return .unavailable }
+        return .at(mark)
     }
 
     @discardableResult
