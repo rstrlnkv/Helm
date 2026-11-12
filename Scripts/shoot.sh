@@ -10,7 +10,8 @@ set -uo pipefail
 # --nth <n> after a --press picks the n-th (1-based, in the order `HelmReadout ax` prints) of several
 # controls with that name, the same action offered twice on a page; without it two of a name are refused.
 # --arg is a launch argument `-<key> <value>` after `-HelmOpenPage`, which the argument
-# domain answers over defaults and writes nothing. --scroll <fraction> (0 to 1) sets the
+# domain answers over defaults and writes nothing. A Bool is written `--arg <key> '<true/>'`
+# (or `<false/>`): the store reads `as? Bool`, and a bare 1 is a string (NamespacedStore.bool). --scroll <fraction> (0 to 1) sets the
 # vertical scroll bar of the window's widest scroll area after the presses, for the part of a
 # page below the fold; absolute, so a rerun gives the same frame. --panel presses the status
 # item and shoots the panel (layer 101) instead of the window: its button's description is "Helm"
@@ -30,8 +31,11 @@ set -uo pipefail
 #
 # Helm Dev's defaults domain is exported before and after; if it changed, it is deleted
 # and the copy imported (`defaults import` alone merges, so a key added in the run would
-# stay), and a third export is compared with the copy: "defaults restored: identical|
-# DIFFERENT". Only once the checked pid has ended, only the domain com.helm.app.dev.
+# stay), and a third export is compared with the copy, both as xml1 text:
+# "defaults restored: identical|DIFFERENT". Only once the checked pid has ended, only the domain com.helm.app.dev.
+#
+# --inactive brings Finder forward; a Finder window that opens by it is closed, by its window
+# id, before the shot is taken.
 #
 # Exit: 64 usage, 65 a press, scroll or status-item press failed, 69 something missing
 # (no MenuBarAgent for --panel included), 73 another shoot holds the lock (not waited
@@ -107,6 +111,13 @@ quit_dev() {
   echo "Helm Dev $pid still running after 10 s" >&2
 }
 
+# Equal as xml1 text; a plist plutil cannot convert falls back to the byte compare, toward DIFFERENT.
+same_plist() {
+  local a b
+  if a="$(plutil -convert xml1 -o - "$1" 2>/dev/null)" && b="$(plutil -convert xml1 -o - "$2" 2>/dev/null)"; then [ "$a" = "$b" ]
+  else cmp -s "$1" "$2"; fi
+}
+
 finish() {
   local rc=$?
   trap - EXIT
@@ -123,7 +134,7 @@ finish() {
           echo "defaults changed: yes (deleting the domain, importing the copy from before)"
           if defaults delete "$DOMAIN" 2>/dev/null; defaults import "$DOMAIN" "$BEFORE"; then
             defaults export "$DOMAIN" "$OUTDIR/defaults-restored.plist" 2>/dev/null
-            if cmp -s "$BEFORE" "$OUTDIR/defaults-restored.plist"; then echo "defaults restored: identical"
+            if same_plist "$BEFORE" "$OUTDIR/defaults-restored.plist"; then echo "defaults restored: identical"
             else echo "defaults restored: DIFFERENT (copy at $BEFORE)" >&2; fi
           else echo "DEFAULTS IMPORT FAILED, domain $DOMAIN may be empty: the copy is at $BEFORE" >&2; fi
         fi
@@ -215,7 +226,15 @@ if [ "$PANEL" = yes ]; then
   sleep 1
 fi
 
-if [ "$INACTIVE" = yes ]; then open -a Finder; sleep 1; fi
+if [ "$INACTIVE" = yes ]; then
+  finder="$(pgrep -x Finder | head -1)"
+  finder_windows() { [ -n "$finder" ] && "$READOUT" window "$finder" | awk '$1=="window"{print $2}'; }
+  had="$(finder_windows)"
+  open -a Finder; sleep 1
+  for wid in $(finder_windows); do
+    printf '%s\n' "$had" | grep -qx "$wid" || "$READOUT" close "$finder" "$wid" || echo "Finder window $wid not closed" >&2
+  done
+fi
 
 read_window || { echo "the window is gone" >&2; exit 75; }
 B1="${WIN#* }"

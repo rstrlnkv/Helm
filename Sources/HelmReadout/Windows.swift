@@ -40,6 +40,30 @@ enum Windows {
         }
     }
 
+    /// Closes one window of the process by its CoreGraphics id: the Accessibility window whose frame is that
+    /// window's bounds gets its close button pressed. Exit 65 when the id is no window of the pid, none or
+    /// more than one Accessibility window has its frame, or the window has no close button.
+    static func close(_ args: [String]) throws {
+        guard args.count == 2, let pid = Int32(args[0]), let id = Int(args[1]) else { throw Failure.usage("close <pid> <window id>") }
+        guard AXIsProcessTrusted() else { throw Failure.unavailable("Accessibility is not granted to the process at the top of this command's chain") }
+        guard let target = windowList(.optionAll).first(where: { $0.id == id && $0.pid == pid }) else { throw Failure.data("no window \(id) of pid \(pid)") }
+        var names: CFTypeRef?
+        let windows = AXUIElementCopyAttributeValue(AXUIElementCreateApplication(pid), kAXWindowsAttribute as CFString, &names) == .success
+            ? names as? [AXUIElement] ?? [] : []
+        func frame(_ w: AXUIElement) -> CGRect? {
+            var p = CGPoint.zero, s = CGSize.zero, v: CFTypeRef?
+            guard AXUIElementCopyAttributeValue(w, kAXPositionAttribute as CFString, &v) == .success, AXValueGetValue(v as! AXValue, .cgPoint, &p),
+                  AXUIElementCopyAttributeValue(w, kAXSizeAttribute as CFString, &v) == .success, AXValueGetValue(v as! AXValue, .cgSize, &s) else { return nil }
+            return CGRect(origin: p, size: s)
+        }
+        let hits = windows.filter { frame($0) == target.bounds }
+        guard hits.count == 1 else { throw Failure.data("\(hits.count) Accessibility windows have the frame of window \(id)") }
+        var button: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(hits[0], kAXCloseButtonAttribute as CFString, &button) == .success,
+              AXUIElementPerformAction(button as! AXUIElement, kAXPressAction as CFString) == .success else { throw Failure.data("window \(id) has no close button that presses") }
+        print("closed window \(id)")
+    }
+
     /// The path of the process's executable as the kernel holds it (`proc_pidpath`), not argv[0]:
     /// any process can set its own argv[0], none can set this. Exit 65 when the pid has none.
     static func exe(_ args: [String]) throws {

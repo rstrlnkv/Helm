@@ -138,7 +138,7 @@ is taken before and after, the run reports whether it changed, and Helm Dev is e
 SIGTERM sent to the checked pid only; only after that pid is seen to have ended (a Helm Dev
 still running would overwrite it) is a changed domain deleted and the copy imported, since
 `defaults import` alone merges and a key added during the run would survive; a third export
-is compared with the copy and the run prints "defaults restored: identical" or "DIFFERENT". The shot's pixel
+is compared with the copy, both as xml1 text, and the run prints "defaults restored: identical" or "DIFFERENT". The shot's pixel
 size is compared with the window's bounds times the display's scale (`HelmReadout scale`)
 and a disagreement is printed, because `-R` is given a rect and nothing here proves that
 every display arrangement honours it.
@@ -184,6 +184,7 @@ A still proves the look only if it was taken so that a one-point defect shows.
   switch is a setting of somebody's Mac, which no crew member changes.
 - Active and inactive (`--inactive`): a window's material and its controls draw
   differently when it is not key (measured: a light ground read 211 active and 240 inactive).
+  The Finder window that `--inactive` opens is closed by its window id (`HelmReadout close`).
 - Before and after the change, the same page and state: a difference between two shots
   of different states is not the change's.
 - Motion by frames (§ Measuring motion), with `HelmReadout diff` over a crop: a still
