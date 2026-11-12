@@ -110,7 +110,7 @@ final class TheSuiteDoesNotReadTheUsersLastScanTests: XCTestCase {
     /// this test.
     func testTheAppPathIsTheOneEarlierBuildsWrote() {
         let fixture = "/Users/fixture"
-        XCTAssertEqual(HelmSupport.path(home: fixture) + "/Disk/last-scan.json",
+        XCTAssertEqual(HelmSupport.path(home: fixture, folder: .helm) + "/Disk/last-scan.json",
                        "/Users/fixture/Library/Application Support/Helm/Disk/last-scan.json")
     }
 }

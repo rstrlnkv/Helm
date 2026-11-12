@@ -17,8 +17,8 @@ public enum HelmSupport {
 
     /// The folder for a given home directory, as a path. `ResetPlan` names it as
     /// one of the two roots a reset may remove.
-    public static func path(home: String) -> String {
-        "\(home)/Library/Application Support/Helm"
+    public static func path(home: String, folder: DataFolder) -> String {
+        "\(home)/Library/Application Support/\(folder.rawValue)"
     }
 
     /// Where a test run goes instead of into somebody's Application Support. The
@@ -40,9 +40,23 @@ public enum HelmSupport {
     /// sweeps `$TMPDIR` for abandoned directories every time it is asked.
     public static let directory: URL = {
         if TestProcess.isRunning { return testScratch.directory() }
-        let base = FileManager.default.urls(for: .applicationSupportDirectory,
-                                            in: .userDomainMask).first
-        return base?.appendingPathComponent("Helm", isDirectory: true)
-            ?? URL(fileURLWithPath: path(home: NSHomeDirectory()), isDirectory: true)
+        return buildDirectory(base: FileManager.default.urls(for: .applicationSupportDirectory,
+                                                             in: .userDomainMask).first,
+                              home: NSHomeDirectory())
     }()
+
+    /// The folder of this build, `AppBuild.dataFolder`, under `base`. Apart from
+    /// `directory` so a test reaches the build's choice of folder, which under a
+    /// test runner `directory` never makes.
+    static func buildDirectory(base: URL?, home: String) -> URL {
+        directory(base: base, home: home, folder: AppBuild.dataFolder)
+    }
+
+    /// The folder `folder` names under `base`, or under the spelled-out path when
+    /// the lookup answered nothing. Apart from `directory` so a test can hand it
+    /// a base and a folder: under a test runner `directory` is the scratch one.
+    static func directory(base: URL?, home: String, folder: DataFolder) -> URL {
+        base?.appendingPathComponent(folder.rawValue, isDirectory: true)
+            ?? URL(fileURLWithPath: path(home: home, folder: folder), isDirectory: true)
+    }
 }

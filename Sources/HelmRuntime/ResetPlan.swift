@@ -68,7 +68,7 @@ public enum ResetPlan {
     /// `HelmTrash.remove` takes the shortest path first, so the logs folder goes
     /// before Application Support.
     public static func removablePaths(home: String) -> [String] {
-        [HelmSupport.path(home: home),
+        [HelmSupport.path(home: home, folder: .helm),
          "\(home)/Library/Logs/Helm"]
     }
 
