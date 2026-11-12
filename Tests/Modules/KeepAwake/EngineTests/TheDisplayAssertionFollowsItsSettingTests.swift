@@ -24,6 +24,8 @@ import HelmRuntime
 /// argument now. What is **not** machine-checked is that half — creating real
 /// IOKit assertions inside the suite is exactly the thing this module exists to
 /// avoid doing by accident.
+///
+/// Guards: 46331ef9 (display assertion did not follow its setting).
 final class TheDisplayAssertionFollowsItsSettingTests: XCTestCase {
 
     private var backing: InMemoryKeyValueStore!

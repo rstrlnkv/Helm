@@ -18,6 +18,8 @@ import XCTest
 /// listener in `HelmApp` — and no test touched any of them. The failure is
 /// silent in the worst way: Keep Awake goes on working perfectly, and a
 /// different module quietly stops.
+///
+/// Guards: f69e4167 (the nudge was not announced as Helm's own).
 final class PointerNudgeIsAnnouncedTests: XCTestCase {
 
     private var backing: InMemoryKeyValueStore!

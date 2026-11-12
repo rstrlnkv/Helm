@@ -29,6 +29,8 @@ import HelmRuntime
 /// These cases assert **where** the work happens, never how long it takes: the
 /// call has to have happened before the thread is judged, or this is an
 /// absence-passes-vacuously test of a port nobody asked anything.
+///
+/// Guards: bf6c973b (the drawing thread waited on pmset).
 final class TheDrawingThreadNeverWaitsForPmsetTests: XCTestCase {
 
     /// A clamshell port that answers like `FakeClamshell` and also records the

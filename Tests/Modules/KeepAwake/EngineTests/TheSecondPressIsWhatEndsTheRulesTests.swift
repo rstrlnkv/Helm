@@ -18,6 +18,8 @@ import HelmRuntime
 /// step is **derived from what is true**, never stored. Nothing in here plants
 /// a flag and nothing waits for one to expire; every case below changes the
 /// world between the two presses and reads what the next press does.
+///
+/// Guards: f68265fe (one Stop press ended the session and the rules).
 final class TheSecondPressIsWhatEndsTheRulesTests: XCTestCase {
     private let render = "com.example.render"
     private var backing: InMemoryKeyValueStore!

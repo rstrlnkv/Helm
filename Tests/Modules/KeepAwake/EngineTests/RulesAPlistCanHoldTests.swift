@@ -11,6 +11,8 @@ import HelmRuntime
 /// contain. Two writers reach this key without the picker — a hand-edited
 /// plist, and `AppTriggerRules.migrating(from:)`, which turns the older
 /// `autoApps` string list into rules and does nothing about what is in it.
+///
+/// Guards: de97195b (rules a file can hold that the picker never writes).
 final class RulesAPlistCanHoldTests: XCTestCase {
 
     private var backing: InMemoryKeyValueStore!

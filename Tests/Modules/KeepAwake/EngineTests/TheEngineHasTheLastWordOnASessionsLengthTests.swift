@@ -16,6 +16,8 @@ import HelmRuntime
 /// bound a caller applies today is that caller's own —
 /// `command grep -rn 'start(minutes:\|startSession(' Sources/Modules/KeepAwake`
 /// lists them. A clamp in every view is a clamp in no engine.
+///
+/// Guards: 9394ea17 (the engine did not bound the session it was asked to start).
 final class TheEngineHasTheLastWordOnASessionsLengthTests: XCTestCase {
 
     private var store: NamespacedStore!

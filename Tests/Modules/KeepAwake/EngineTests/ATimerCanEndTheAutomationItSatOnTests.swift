@@ -4,6 +4,8 @@ import HelmRuntime
 
 /// The setting end to end: a timed session started while an app rule is
 /// already holding the Mac, and what is left when the timer runs out.
+///
+/// Guards: 8cd68226 (the setting end to end; the engine wiring of the timer-ends-rule choice).
 final class ATimerCanEndTheAutomationItSatOnTests: XCTestCase {
     private var backing: InMemoryKeyValueStore!
     private var store: NamespacedStore!

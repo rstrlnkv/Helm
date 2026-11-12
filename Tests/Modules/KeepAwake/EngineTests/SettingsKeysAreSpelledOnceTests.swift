@@ -16,6 +16,8 @@ import HelmRuntime
 /// setter puts on disk under that exact name, and what the getter finds there.
 /// Both, because a setter and a getter that agree on the *wrong* name are
 /// perfectly consistent and lose every existing answer.
+///
+/// Guards: 667917ad (the key names are on somebody's disk; a rename strands the stored value).
 final class SettingsKeysAreSpelledOnceTests: XCTestCase {
     private var backing: InMemoryKeyValueStore!
     private var settings: KeepAwakeSettings!

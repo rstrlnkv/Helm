@@ -27,6 +27,8 @@ import HelmRuntime
 /// unqualified app rule both hold on this same desktop, and the same qualified
 /// rule holds on a laptop with the charger in. So «the rule never fires» cannot
 /// be what these tests are measuring.
+///
+/// Guards: de97195b (power rule dead on every Mac with no battery).
 final class AnAppRuleOnPowerWithNoBatteryTests: XCTestCase {
 
     private var store: NamespacedStore!

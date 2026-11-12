@@ -19,6 +19,8 @@ import HelmRuntime
 /// and the trail carries it. The screen still says «holding», and deliberately
 /// so for now — saying otherwise is a new field on the payload and a sentence in
 /// eight languages, which is `HelmUI`'s tree.
+///
+/// Guards: bf6c973b (a refused IOKit assertion counted as held).
 final class AnAssertionTheSystemRefusedSaysSoTests: XCTestCase {
 
     private var store: NamespacedStore!

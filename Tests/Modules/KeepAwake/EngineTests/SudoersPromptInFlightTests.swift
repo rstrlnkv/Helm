@@ -187,45 +187,29 @@ final class SudoersPromptInFlightTests: XCTestCase {
 
     // MARK: - One question, asked once
 
-    /// Stop and start again while the prompt is up, which is one click each in
-    /// the panel and needs no timing at all. A Start press never raises the
-    /// dialog (`recompute` engages with `mayPrompt: false`), so a second dialog
-    /// here would mean Start asks again, with the first still unanswered and
-    /// `isSudoersInstalled()` still false.
-    ///
-    /// The person would have two admin password dialogs for one decision, and
-    /// both of them `osascript` writing the same staging file inside
-    /// `/etc/sudoers.d`.
-    func testStartingASessionAgainWhileThePromptIsUpRaisesNoSecondDialog() async {
+    /// Only the person's own gesture raises the dialog: a Start press or an
+    /// unrelated settings change reaches `engage(mayPrompt: false)` and never
+    /// the in-flight flag, so it is not tested here (`AStoredSwitchIsNotAGestureTests`).
+    /// The one way left to ask twice: the person's own gesture, twice. Off and on
+    /// again on the switch while the first prompt is still up is a second rising
+    /// edge, and only the in-flight flag stands between it and a second dialog.
+    func testTheSwitchTurnedOffAndOnAgainWhileThePromptIsUpRaisesNoSecondDialog() async {
         await startSessionWithPromptUp()
 
         let asked = clamshell.grantChecks
-        engine.stopSession()
-        engine.startSession(minutes: 0)
+        engine.lidSwitchTurned(false)
+        engine.lidSwitchTurned(true)
 
         await waitUntil("the lid asked again whether it needs a password") {
             clamshell.grantChecks > asked
         }
+        // The answer is acted on back on main, after the question: read the
+        // count only once that hop has landed, or it is green because the
+        // second request has not been made yet.
+        await engine.drainClamshellForTests()
+        await drainMain()
         XCTAssertEqual(clamshell.installCount, 1,
                        "a second admin password prompt was stacked on the one already up")
-    }
-
-    /// The same edge through the settings page rather than the panel.
-    /// `reconcileActiveSettings` asks `clamshellEnabled && !clamshellActive` —
-    /// which is true for the whole life of the prompt — so *any* settings change
-    /// while it is up asks again: the display toggle, the jiggle interval, a
-    /// battery threshold.
-    func testASettingsChangeWhileThePromptIsUpDoesNotAskAgain() async throws {
-        await startSessionWithPromptUp()
-
-        let asked = clamshell.grantChecks
-        engine.settingsChanged()
-
-        await waitUntil("the lid asked again whether it needs a password") {
-            clamshell.grantChecks > asked
-        }
-        XCTAssertEqual(clamshell.installCount, 1,
-                       "changing an unrelated setting put a second password prompt on screen")
     }
 
     // MARK: - …and the feature still works

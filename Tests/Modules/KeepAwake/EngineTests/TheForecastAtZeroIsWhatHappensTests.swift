@@ -22,6 +22,8 @@ import HelmRuntime
 /// Delete that one line and nothing fails to compile, no test of the timer
 /// notices, and the page tells somebody their render will keep the Mac awake
 /// while the engine has already decided it will not.
+///
+/// Guards: de97195b (the forecast at zero disagreed with what happened).
 final class TheForecastAtZeroIsWhatHappensTests: XCTestCase {
 
     private var store: NamespacedStore!

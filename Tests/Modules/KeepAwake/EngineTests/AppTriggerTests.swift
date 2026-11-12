@@ -4,6 +4,8 @@ import XCTest
 /// An app can hold the Mac awake outright, or only when it is also plugged in
 /// or driving an external display — "keep Final Cut awake, but only while I am
 /// at the desk".
+///
+/// Guards: 05f668e1 (stored rules format; testMigrationFromThePlainList reads the old plain list).
 final class AppTriggerTests: XCTestCase {
     private let plain = AppTrigger(bundleID: "com.apple.FinalCut")
     private var needsDisplay: AppTrigger {

@@ -105,6 +105,23 @@ final class ASessionAPlistCanInventTests: XCTestCase {
         XCTAssertFalse(assertions.held)
     }
 
+    /// A start *after* the deadline: finite, under a day, and a session that
+    /// ended before it began. The deadline is in the future, so only the
+    /// `bounded > 0` floor refuses it.
+    func testAStartAfterTheDeadlineIsNotASession() {
+        let end = FakeClock().now().addingTimeInterval(3600)
+        store.set(true, for: KeepAwakeEngine.SessionKey.on)
+        store.set(end.addingTimeInterval(60).timeIntervalSinceReferenceDate,
+                  for: KeepAwakeEngine.SessionKey.startedAt)
+        store.set(end.timeIntervalSinceReferenceDate, for: KeepAwakeEngine.SessionKey.endsAt)
+
+        let module = engine()
+        module.activate()
+
+        XCTAssertFalse(module.isActive, "a session that ended before it began was restored")
+        XCTAssertFalse(assertions.held)
+    }
+
     /// The same date with a start beside it an hour earlier. The pair is
     /// credible as a *duration*, so the session restores — and the deadline the
     /// engine keeps must be the one it decided on, an hour from now, not the

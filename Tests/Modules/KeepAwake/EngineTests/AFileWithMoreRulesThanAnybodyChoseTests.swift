@@ -21,6 +21,8 @@ import HelmRuntime
 /// is no rules and the banner that says so. Silently truncating to the first 200
 /// would be the one outcome nobody could see — a Mac held awake by rules the page
 /// does not draw, or rules the page draws that hold nothing.
+///
+/// Guards: d18692b8 (rules value unbounded, read on every recompute).
 final class AFileWithMoreRulesThanAnybodyChoseTests: XCTestCase {
 
     private var backing: InMemoryKeyValueStore!

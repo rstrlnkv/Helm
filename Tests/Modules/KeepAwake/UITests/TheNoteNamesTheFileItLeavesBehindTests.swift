@@ -25,6 +25,8 @@ import XCTest
 /// check that reads `AppLanguage.current` inspects one of the eight and reports
 /// on all of them. A translator dropping the path — it looks like noise in a
 /// sentence — leaves that language with a warning about a file it does not name.
+///
+/// Guards: 03545120 (the sudoers grant carries its own revocation).
 final class TheNoteNamesTheFileItLeavesBehindTests: XCTestCase {
 
     /// Everything the lid row can put in front of somebody, in the language

@@ -6,6 +6,8 @@ import XCTest
 /// The decision is small and every branch of it is a judgement rather than
 /// arithmetic, which is why it is a pure unit and not four `if`s inside
 /// `activate()`.
+///
+/// Guards: 5e25c02c (a session outlives the process that started it).
 final class SessionRestoreTests: XCTestCase {
 
     private let now = Date(timeIntervalSince1970: 1_800_000_000)

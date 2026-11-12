@@ -32,6 +32,8 @@ final class ClamshellRecoveryTests: XCTestCase {
 /// permanently unable to sleep. The fixture is real `pmset -g` output, kept
 /// whole rather than reduced to the one line, because the parser is a substring
 /// scan over *every* line and the neighbours are what can defeat it.
+///
+/// Guards: 5f196564 (pmset output read the way the engine reads it on launch).
 final class ClamshellPmsetFixtureTests: XCTestCase {
 
     private let sleepEnabled = """

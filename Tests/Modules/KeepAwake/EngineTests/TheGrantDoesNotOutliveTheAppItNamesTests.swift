@@ -98,6 +98,20 @@ final class TheGrantDoesNotOutliveTheAppItNamesTests: XCTestCase {
                        "a terminating process must never put a password dialog on screen")
     }
 
+    /// The launch look publishes what it found: the option is off and the rule
+    /// is on disk, so the state says a grant remains without anything having
+    /// been removed or declined first.
+    @MainActor
+    func testARuleLeftOnDiskWithTheOptionOffIsPublishedAtLaunch() async {
+        settings.setClamshellEnabled(false)
+
+        engine.activate()
+
+        await waitUntil("the launch look published the grant") { self.engine.lidGrantRemains }
+        XCTAssertTrue(engine.lidGrantRemains)
+        XCTAssertTrue(clamshell.isSudoersInstalled(), "precondition: nothing took it out")
+    }
+
     /// The withdrawal at quit is `sudo -n` or it is nothing. A rule too old to
     /// take itself out is left where it is rather than answered with a dialog
     /// nobody will be there for — which is the defect this module was corrected

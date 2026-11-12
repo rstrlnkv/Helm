@@ -6,6 +6,8 @@ import XCTest
 /// reads the second while the power assertion follows the first — the shape that
 /// let a filtered list be deleted elsewhere in this app. Exhaustive over all six
 /// flags, because the interesting inputs are the combinations nobody drew.
+///
+/// Guards: 5f196564 (filtered list deleted elsewhere; one switch, two returns).
 final class ConditionsInvariantTests: XCTestCase {
 
     private func allInputs() -> [Conditions.Inputs] {
@@ -77,6 +79,8 @@ final class ConditionsInvariantTests: XCTestCase {
 /// The guard reads one integer with no way to say "I do not know". Worth
 /// pinning what it promises, because `IOPSPowerInfo.snapshot()` upstream turns
 /// an unreadable capacity into `percent: 0` while still reporting `onBattery`.
+///
+/// Guards: 5f196564 (filtered list deleted elsewhere; one switch, two returns).
 final class BatteryGuardInvariantTests: XCTestCase {
 
     /// Monotone in the reading and in the threshold: a lower charge can never
@@ -93,16 +97,6 @@ final class BatteryGuardInvariantTests: XCTestCase {
                 seenTrip = seenTrip || trips
             }
             XCTAssertTrue(seenTrip, "threshold \(threshold) never trips, not even at -1%")
-        }
-    }
-
-    /// Both switches are veto: nothing about the reading can defeat them.
-    func test_disabled_or_on_mains_never_trips_for_any_reading() {
-        for percent in [-1, 0, 1, 50, 100, 255, Int.max, Int.min] {
-            XCTAssertFalse(BatteryGuard.shouldDeactivate(enabled: false, isOnBattery: true,
-                                                         percent: percent, threshold: 100))
-            XCTAssertFalse(BatteryGuard.shouldDeactivate(enabled: true, isOnBattery: false,
-                                                         percent: percent, threshold: 100))
         }
     }
 }

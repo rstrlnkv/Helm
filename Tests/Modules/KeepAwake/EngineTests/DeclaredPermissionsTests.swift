@@ -13,6 +13,8 @@ import HelmRuntime
 /// A source scan because the descriptor lives in the UI target, which this
 /// test target cannot import, and because the fact worth pinning is the link
 /// between the two files rather than either one alone.
+///
+/// Guards: 8287d151 (Accessibility grant the pointer nudge needs was not declared).
 final class DeclaredPermissionsTests: XCTestCase {
 
     private var moduleRoot: URL {

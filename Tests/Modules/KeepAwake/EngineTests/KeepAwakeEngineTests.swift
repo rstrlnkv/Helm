@@ -181,6 +181,7 @@ final class KeepAwakeEngineTests: KeepAwakeEngineRig {
     }
 }
 
+/// Guards: bbbb2e84 (toggleSession had no test; every other caller ignores the default duration, mutant green).
 final class KeepAwakeToggleTests: KeepAwakeEngineRig {
 
     // MARK: - The one entrance the hotkey and the panel switch both use

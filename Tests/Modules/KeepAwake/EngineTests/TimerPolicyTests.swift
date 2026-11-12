@@ -1,6 +1,7 @@
 import XCTest
 @testable import Module_KeepAwake_Engine
 
+/// Guards: aff8a787 (extendedMinutes trapped on a stored deadline off the ceiling).
 final class TimerPolicyTests: XCTestCase {
     func test_no_auto_condition_deactivates() {
         XCTAssertEqual(TimerPolicy.onExpiry(hasAutoCondition: false, suppressed: false,

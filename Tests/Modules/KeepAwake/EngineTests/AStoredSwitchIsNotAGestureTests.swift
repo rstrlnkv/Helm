@@ -65,6 +65,24 @@ final class AStoredSwitchIsNotAGestureTests: XCTestCase {
         XCTAssertEqual(clamshell.installCalls, 1)
     }
 
+    /// The falling edge is read against the stored value too. After a relaunch
+    /// the option is already on, so the person's first turn of the switch is a
+    /// turn *off*: an edge baseline that did not start from the stored value
+    /// would read it as no change and leave the passwordless rule on disk.
+    @MainActor
+    func testTheSwitchTurnedOffAfterARelaunchStillTakesTheRuleBack() async {
+        clamshell.sudoersInstalled = true
+        clamshell.passwordlessGrantExists = true
+        engine.startSession(minutes: 0)
+        await engine.drainClamshellForTests()
+
+        engine.lidSwitchTurned(false)
+
+        await waitUntil("the rule was withdrawn") { clamshell.passwordlessRemovals == 1 }
+        XCTAssertEqual(clamshell.passwordlessRemovals, 1,
+                       "the option was switched off and the rule it needed stayed on disk")
+    }
+
     // MARK: - M115: a store value written from outside
 
     /// The red one. Another process (`defaults write`, a sync, a migration)
