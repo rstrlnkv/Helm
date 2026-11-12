@@ -32,7 +32,7 @@ public enum DuplicatesSettings {
     /// One spelling for a name two targets use: the settings page writes it and
     /// the engine reads it, and a key only one side changes is an error nowhere
     /// — the reader simply gets the default for ever.
-    public static let keepPolicyKey = "keepPolicy"
+    static let keepPolicyKey = "keepPolicy"
 
     /// Where the sealed folder is stored, in the module's own namespace.
     ///
@@ -61,7 +61,7 @@ public enum DuplicatesSettings {
     /// `.adopt` door open for ever, and the first value anybody plants would be
     /// adopted and sealed as Helm's own — `AppSettings.disabledScans` shipped
     /// exactly that (ARCHITECTURE.md § Sealed settings).
-    public static func keepPolicy(in store: NamespacedStore?,
+    static func keepPolicy(in store: NamespacedStore?,
                                   guardedBy settings: SettingGuard) -> KeepPolicy {
         switch stored(keepPolicyKey, in: store, guardedBy: settings) {
         case .unset:

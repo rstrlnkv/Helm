@@ -68,7 +68,7 @@ final class WalkFootprintTests: XCTestCase {
 
         // The subject first: the walk really read the fixture. The denominator
         // below is the fixture's own count, because the progress channel is
-        // throttled to a tick every 0.35 s and a walk this size finishes inside
+        // throttled to a tick every BulkWalk.progressInterval and a walk this size finishes inside
         // one — a denominator read from it would divide by nearly nothing.
         XCTAssertEqual(files.count, Self.kept,
                        "the walk kept \(files.count) of \(Self.kept) fixture files, so this "

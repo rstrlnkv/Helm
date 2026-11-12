@@ -57,6 +57,10 @@ public struct BulkEntry: Sendable {
 /// each gate stays with the module that owns its reasons and keeps its own
 /// tests.
 public enum BulkWalk {
+    /// The gap between two progress or snapshot ticks of a scan. About three a
+    /// second is what a person can read; the duplicate finder's first pass alone
+    /// measured 7.6k hash events, and every one reached a main-actor publish.
+    public static let progressInterval: TimeInterval = 0.35
 
     /// One directory's files and the directories that would not open.
     ///

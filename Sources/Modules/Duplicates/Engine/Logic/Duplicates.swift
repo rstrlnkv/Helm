@@ -69,7 +69,7 @@ public struct DuplicateGroup: Equatable, Sendable, Identifiable {
         /// that. `nil` means no family, or a read that failed, and counts as a
         /// file of its own: under-reporting space somebody really gets back is
         /// the worse of the two errors.
-        public let cloneFamily: UInt64?
+        let cloneFamily: UInt64?
         /// When this copy arrived in its folder — the Finder's "Date Added",
         /// the one thing `SurvivingCopy` decides on first.
         ///
@@ -147,7 +147,7 @@ public struct DuplicateGroup: Equatable, Sendable, Identifiable {
     /// What stays is every copy that is not marked — not merely each group's
     /// survivor. A clone left unticked holds its family's blocks exactly as the
     /// survivor does.
-    public static func reclaimable(marking marked: Set<String>,
+    static func reclaimable(marking marked: Set<String>,
                                    in groups: [DuplicateGroup]) -> Int {
         let copies = groups.flatMap(\.copies)
         return CloneShare.reclaimable(

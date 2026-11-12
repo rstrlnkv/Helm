@@ -14,9 +14,7 @@ enum DuplicatePreview {
     /// names it, and a panel opened onto a file that is gone is an empty frame
     /// with no explanation.
     static func target(selection: String?, in groups: [DuplicateGroup]) -> URL? {
-        guard let selection,
-              groups.contains(where: { $0.paths.contains(selection) }) else { return nil }
-        return URL(fileURLWithPath: selection)
+        DuplicateSelection.surviving(selection, in: groups).map(URL.init(fileURLWithPath:))
     }
 }
 

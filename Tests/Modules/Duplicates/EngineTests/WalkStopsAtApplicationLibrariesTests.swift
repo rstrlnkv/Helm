@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 @testable import Module_Duplicates_Engine
 
@@ -20,20 +21,16 @@ final class WalkStopsAtApplicationLibrariesTests: XCTestCase {
     private var fixture: URL!
 
     override func setUpWithError() throws {
-        let fm = FileManager.default
-        fixture = fm.temporaryDirectory
-            .appendingPathComponent("helm-dup-library-\(UUID().uuidString)")
-        try fm.createDirectory(at: fixture.appendingPathComponent("Final Cut.fcpbundle/Masters"),
-                               withIntermediateDirectories: true)
-        // Two identical files above the 1 MB floor: one in the open, one inside
-        // the library. They are a pair only if the library is walked.
+        fixture = scratchDirectory("dup-library")
+        try FileManager.default.createDirectory(
+            at: fixture.appendingPathComponent("Final Cut.fcpbundle/Masters"),
+            withIntermediateDirectories: true)
+        // Identical files above the 1 MB floor: two in the open, one inside the
+        // library. The library one joins the group only if the library is walked.
         let payload = Data(repeating: 0x41, count: 1_200_000)
         try payload.write(to: fixture.appendingPathComponent("holiday.jpg"))
+        try payload.write(to: fixture.appendingPathComponent("holiday copy.jpg"))
         try payload.write(to: fixture.appendingPathComponent("Final Cut.fcpbundle/Masters/holiday.jpg"))
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: fixture)
     }
 
     func testAFileInsideALibraryIsNeverOfferedAsADuplicate() throws {
@@ -41,8 +38,11 @@ final class WalkStopsAtApplicationLibrariesTests: XCTestCase {
         let paths = groups.flatMap(\.paths)
         XCTAssertFalse(paths.contains { $0.contains(".fcpbundle/") },
                        "a path inside an application database reached the result: \(paths)")
-        // And the pair does not form at all, which is the honest outcome: the
-        // copy in the open has nothing to be a duplicate of.
-        XCTAssertTrue(groups.isEmpty, "groups: \(groups)")
+        // The two copies in the open do form a pair, so a scanner that finds
+        // nothing fails here instead of passing for the wrong reason.
+        XCTAssertEqual(groups.count, 1, "groups: \(groups)")
+        XCTAssertEqual(Set(paths),
+                       Set(["holiday.jpg", "holiday copy.jpg"].map { fixture.appendingPathComponent($0).path }),
+                       "groups: \(groups)")
     }
 }

@@ -29,7 +29,7 @@ extension DuplicatesEngine: DuplicatesWork {}
 /// every rung of it is something `SurvivingCopy.separates` has to be able to
 /// answer. A rung that only a human can climb would have to be handled there and
 /// could never be reached.
-public enum KeepGrounds: Equatable, Sendable {
+enum KeepGrounds: Equatable, Sendable {
     /// The rung of the policy's ladder that separated it from the next copy.
     case rung(KeepReason)
     /// Chosen on this page, in this session.
@@ -38,27 +38,27 @@ public enum KeepGrounds: Equatable, Sendable {
 
 /// The module's state: which folder, what was found, what is going to the bin.
 @MainActor public final class DuplicatesViewModel: ObservableObject {
-    public enum Phase: Equatable { case start, searching, result }
+    enum Phase: Equatable { case start, searching, result }
 
-    @Published public private(set) var phase: Phase = .start
+    @Published private(set) var phase: Phase = .start
     /// The folder the last search ran on, and the one the next will.
-    @Published public private(set) var folder: URL?
-    @Published public private(set) var groups: [DuplicateGroup] = []
+    @Published private(set) var folder: URL?
+    @Published private(set) var groups: [DuplicateGroup] = []
     /// What the last walk could not compare: directories it was refused, files
     /// whose digest could not be taken. Held rather than folded into a sentence
     /// here, because the sentence is the page's and the rule is the engine's.
-    @Published public private(set) var unreadable = 0
+    @Published private(set) var unreadable = 0
     /// Application libraries the last walk stepped over rather than opened.
-    @Published public private(set) var librariesSkipped = 0
-    @Published public private(set) var progress: DuplicateProgress?
-    @Published public var basket: [String] = []
-    @Published public private(set) var banner: String?
+    @Published private(set) var librariesSkipped = 0
+    @Published private(set) var progress: DuplicateProgress?
+    @Published var basket: [String] = []
+    @Published private(set) var banner: String?
     /// Paths macOS refused, with their own reasons — see `DiskViewModel`. A
     /// reason chosen for the whole batch describes at most one of them.
-    @Published public private(set) var failures: [HelmTrash.Refusal] = []
+    @Published private(set) var failures: [HelmTrash.Refusal] = []
     /// How many actually moved. `HelmRemovalOutcome` decides what to say from
     /// this and `failures`: a sentence cannot be asked whether it is true.
-    @Published public private(set) var removedCount = 0
+    @Published private(set) var removedCount = 0
     /// The last search did not run to its end — stopped by the person, or
     /// given up by the engine.
     ///
@@ -69,7 +69,7 @@ public enum KeepGrounds: Equatable, Sendable {
     /// the same line drops the request token, so no answer can land after it —
     /// and set again where the engine itself answers nothing, which is its own
     /// way of not finishing. The next search withdraws it on the way in.
-    @Published public private(set) var searchStopped = false
+    @Published private(set) var searchStopped = false
     /// The last removal was stopped by the person, between files of the
     /// verification.
     ///
@@ -79,7 +79,7 @@ public enum KeepGrounds: Equatable, Sendable {
     /// engine's to say. A stopped removal moved nothing, so `removedCount` is 0
     /// and there is no banner; the refusals found before the stop are in
     /// `failures`.
-    @Published public private(set) var removalStopped = false
+    @Published private(set) var removalStopped = false
 
     /// Which search the groups belong to, so a late answer cannot resurrect
     /// itself over a newer one — or over a cancellation, which is a token taken
@@ -92,7 +92,7 @@ public enum KeepGrounds: Equatable, Sendable {
     /// one place.
     /// **It opens on the standard belief and is corrected by `firstLoad`**, and
     /// `readTheStoredPolicy` has why.
-    @Published public private(set) var policy: KeepPolicy = .standard
+    @Published private(set) var policy: KeepPolicy = .standard
 
     /// One line about what the last press did to the marks, or nil.
     ///
@@ -101,7 +101,7 @@ public enum KeepGrounds: Equatable, Sendable {
     /// takes marks off copies that now stay, and «mark every extra copy» passes
     /// over what Helm may not remove. Both are silent changes to a list the
     /// person is holding a figure about, and both happen mostly below the fold.
-    @Published public private(set) var marksNote: String?
+    @Published private(set) var marksNote: String?
 
     /// Groups whose survivor the person chose by hand, keyed by that survivor's
     /// own path.
@@ -155,7 +155,7 @@ public enum KeepGrounds: Equatable, Sendable {
     /// policy, which `stop` does not refuse; a removal already handed to the
     /// engine still lands (the host's `deactivate()` stops it, so as cancelled
     /// if it is still verifying).
-    public func stop() {
+    func stop() {
         closed = true
         _ = searches.take()
         firstLoad?.cancel()
@@ -172,7 +172,7 @@ public enum KeepGrounds: Equatable, Sendable {
     /// in Autopilot's model. The guard is a value and `self` is re-acquired
     /// only for the assignment: a `[weak self]` that calls a method holds the
     /// object for as long as that call runs, and this one waits on the keychain.
-    public func appear() {
+    func appear() {
         guard !closed, firstLoad == nil else { return }
         let settings = self.settings
         firstLoad = Task { [weak self] in
@@ -227,16 +227,16 @@ public enum KeepGrounds: Equatable, Sendable {
     /// through `DuplicateBasket`, which is the same fold `HelmTrash` opens its
     /// slate with, so the bar, the confirmation that quotes it and the banner
     /// afterwards are one arithmetic.
-    public var basketBytes: Int { DuplicateBasket.worth(marking: basket, in: groups) }
+    var basketBytes: Int { DuplicateBasket.worth(marking: basket, in: groups) }
 
-    public func bytes(of path: String) -> Int { DuplicateBasket.bytes(of: path, in: groups) }
+    func bytes(of path: String) -> Int { DuplicateBasket.bytes(of: path, in: groups) }
 
     /// What acting on the whole screen would free — every extra copy Helm may
     /// actually take, through the fold `basketBytes` uses, so pressing «Mark
     /// every extra copy» makes the bar say what the line above the list already
     /// said. `DuplicateBasket` is where the two halves of that promise are kept
     /// together.
-    public var wastedBytes: Int { DuplicateBasket.wasted(in: groups) }
+    var wastedBytes: Int { DuplicateBasket.wasted(in: groups) }
 
     /// Why there is no list — and `nil` when there is one, which is what the
     /// page branches on.
@@ -247,7 +247,7 @@ public enum KeepGrounds: Equatable, Sendable {
     /// every door. `DuplicatesEmpty` holds the rule and says why there are three
     /// answers; `LeftoversViewModel.nothingToShow` is the same property for the
     /// same repair, one module over.
-    public var nothingToShow: DuplicatesEmpty.Reason? {
+    var nothingToShow: DuplicatesEmpty.Reason? {
         DuplicatesEmpty.reason(groups: groups.count, unreadable: unreadable,
                                librariesSkipped: librariesSkipped)
     }
@@ -257,7 +257,7 @@ public enum KeepGrounds: Equatable, Sendable {
     /// The module's own folder picker. Inside Disk the search followed the
     /// ring, which meant it could only look where a ring had already been
     /// drawn; on its own it asks.
-    public func chooseFolder() {
+    func chooseFolder() {
         guard let url = FolderPicker.choose(prompt: DupStr.chooseFolder, startingAt: nil,
                                             canCreate: false, activate: false) else { return }
         use(folder: url)
@@ -286,7 +286,7 @@ public enum KeepGrounds: Equatable, Sendable {
     /// Refused while a removal runs (in `apply`, which the stored-policy reading
     /// shares), like `keep`: the rearrangement could promote a copy the running
     /// request is about to trash.
-    public func choose(_ chosen: KeepPolicy) {
+    func choose(_ chosen: KeepPolicy) {
         guard apply(chosen) else { return }
         DuplicatesSettings.setKeepPolicy(chosen, in: store, guardedBy: settings)
     }
@@ -355,7 +355,7 @@ public enum KeepGrounds: Equatable, Sendable {
     /// **Not while a removal is running.** `emptyBasket` captured its paths at the
     /// first line, so a copy moved to the front here would be shown as staying
     /// while the engine trashes it; the press is refused, as `clearBasket` does.
-    public func keep(_ path: String, in group: DuplicateGroup) {
+    func keep(_ path: String, in group: DuplicateGroup) {
         guard !busy else { return }
         guard let index = groups.firstIndex(where: { $0.id == group.id }),
               let chosen = groups[index].copies.first(where: { $0.path == path })
@@ -379,7 +379,7 @@ public enum KeepGrounds: Equatable, Sendable {
     ///
     /// Refused while a removal runs, for the reason `keep` is: re-ordering could
     /// promote a copy the running request is about to trash.
-    public func restoreRecommendation(for group: DuplicateGroup) {
+    func restoreRecommendation(for group: DuplicateGroup) {
         guard !busy else { return }
         guard let index = groups.firstIndex(where: { $0.id == group.id }) else { return }
         unpin(groups[index])
@@ -392,7 +392,7 @@ public enum KeepGrounds: Equatable, Sendable {
     /// Nil for a group of one, which the list does not draw: `SurvivingCopy`
     /// answers the rung that separated the survivor from the copy that came
     /// closest, and with nothing to compare against there is no rung.
-    public func grounds(of group: DuplicateGroup) -> KeepGrounds? {
+    func grounds(of group: DuplicateGroup) -> KeepGrounds? {
         if isPinned(group) { return .byHand }
         return SurvivingCopy.reason(among: group.copies, by: KeepRule(policy)).map(KeepGrounds.rung)
     }
@@ -425,7 +425,7 @@ public enum KeepGrounds: Equatable, Sendable {
     /// `trash` verifies every pair before anything moves. The page
     /// dims the control too; both, or neither is reliable (ARCHITECTURE.md
     /// § One removal at a time).
-    public func search() {
+    func search() {
         guard !closed, let folder, phase != .searching, !busy else { return }
         phase = .searching
         progress = nil
@@ -508,7 +508,7 @@ public enum KeepGrounds: Equatable, Sendable {
         }
     }
 
-    public func cancel() {
+    func cancel() {
         // Taken and dropped: everything in flight is stale from here.
         _ = searches.take()
         if !closed { work.cancel() }
@@ -526,11 +526,11 @@ public enum KeepGrounds: Equatable, Sendable {
 
     // MARK: - The bin
 
-    public func isBasketed(_ path: String) -> Bool { basket.contains(path) }
+    func isBasketed(_ path: String) -> Bool { basket.contains(path) }
 
     /// Refused while a removal runs, like `clearBasket`: the batch is already out,
     /// so a mark changed here would make the page say what the request does not.
-    public func toggleBasket(_ path: String) {
+    func toggleBasket(_ path: String) {
         guard !busy else { return }
         if let index = basket.firstIndex(of: path) {
             basket.remove(at: index)
@@ -541,7 +541,7 @@ public enum KeepGrounds: Equatable, Sendable {
 
     /// Every path in the group except the first — the first is the copy that
     /// stays, and there is deliberately no way to ask for all of them.
-    public func basketExtras(of group: DuplicateGroup) {
+    func basketExtras(of group: DuplicateGroup) {
         report(skipped: mark(extrasOf: group))
     }
 
@@ -550,7 +550,7 @@ public enum KeepGrounds: Equatable, Sendable {
     /// Deliberately over `mark(extrasOf:)` rather than its own walk of the
     /// groups: two implementations of "which copy survives" is two answers to
     /// the only question on this page that costs someone a file.
-    public func basketAllExtras() {
+    func basketAllExtras() {
         report(skipped: groups.reduce(0) { $0 + mark(extrasOf: $1) })
     }
 
@@ -602,15 +602,15 @@ public enum KeepGrounds: Equatable, Sendable {
     /// `LeftoversViewModel.dropHiddenSelections` records: a removal holding
     /// `busy` across work of its own would refuse the very update that puts the
     /// list right.
-    public func clearBasket() {
+    func clearBasket() {
         guard !busy else { return }
         basket.removeAll()
     }
 
     /// A removal is running. The page dims what would start a second one.
-    @Published public private(set) var busy = false
+    @Published private(set) var busy = false
 
-    public func emptyBasket() async {
+    func emptyBasket() async {
         guard !closed else { return }
         // What goes and what stays, decided beside the gate the engine reads the
         // batch against (`DuplicateBasket`): the plans pair each marked extra
@@ -673,7 +673,7 @@ public enum KeepGrounds: Equatable, Sendable {
             : DupStr.movedToTrash(Bytes(removal.freedBytes))
     }
 
-    public func dismissBanner() {
+    func dismissBanner() {
         clearRemovalReport()
     }
 
@@ -694,7 +694,7 @@ public enum KeepGrounds: Equatable, Sendable {
     /// after it. The press claims nothing — the basket, the groups and `busy`
     /// all stand until the reply says what actually happened, because a stop
     /// that lands once the Trash has the batch is a removal that ran to the end.
-    public func stopRemoval() {
+    func stopRemoval() {
         guard busy, !closed else { return }
         work.stopRemoval()
     }

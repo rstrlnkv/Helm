@@ -183,8 +183,8 @@ public struct TransitFolders: Sendable {
 /// is threading a second parameter through every function of the pipeline — the
 /// shape in which one call site keeps the old behaviour and nothing says so.
 public struct KeepRule: Sendable {
-    public let policy: KeepPolicy
-    public let transit: TransitFolders
+    let policy: KeepPolicy
+    let transit: TransitFolders
 
     public init(_ policy: KeepPolicy, transit: TransitFolders = .system) {
         self.policy = policy

@@ -1,6 +1,5 @@
 import Foundation
 import HelmRuntime
-import HelmUI
 import Module_Duplicates_Engine
 @testable import Module_Duplicates_UI
 
@@ -27,7 +26,6 @@ extension DuplicateGroup {
 
 /// A search or a removal as the work saw it.
 struct SearchAsked: Equatable {
-    let path: String
     let keepPolicy: KeepPolicy
 }
 
@@ -129,7 +127,7 @@ final class AnsweringWork: DuplicatesWork, @unchecked Sendable {
               progress: (@Sendable (DuplicateProgress) -> Void)?) async -> DuplicateFindings? {
         lock.withLock {
             seen.append(.find)
-            searched.append(SearchAsked(path: path, keepPolicy: policy))
+            searched.append(SearchAsked(keepPolicy: policy))
         }
         for tick in ticks { progress?(tick) }
         await parkIfAsked(.find)
@@ -217,8 +215,7 @@ final class HeldWork: DuplicatesWork, @unchecked Sendable {
 /// value is still written. A fake that always has a key cannot be in that state,
 /// and «the policy was saved unsealed» is exactly what the engine refuses.
 final class PlantedSealKey: SealKeyPort, @unchecked Sendable {
-    private let lock = NSLock()
-    private var material: Data?
+    private let material: Data?
     private let firstUse: Bool
 
     init(firstUse: Bool = false, available: Bool = true) {
@@ -226,13 +223,8 @@ final class PlantedSealKey: SealKeyPort, @unchecked Sendable {
         self.material = available ? Data(repeating: 0x24, count: 32) : nil
     }
 
-    /// The keychain going away under the app — or coming back.
-    func becomes(available: Bool) {
-        lock.withLock { material = available ? Data(repeating: 0x24, count: 32) : nil }
-    }
-
     func key() -> SealKey? {
-        guard let material = lock.withLock({ material }) else { return nil }
+        guard let material else { return nil }
         return SealKey(material: material, firstUse: firstUse)
     }
 }

@@ -104,7 +104,7 @@ final class DiskScanner: @unchecked Sendable {
                     lastPath = entry.path
                 }
                 let now = Date()
-                if now.timeIntervalSince(lastEmit) > 0.35 {
+                if now.timeIntervalSince(lastEmit) > BulkWalk.progressInterval {
                     lastEmit = now
                     onProgress?(ScanProgress(filesSeen: filesSeen, bytesSeen: bytesSeen,
                                              currentPath: lastPath))

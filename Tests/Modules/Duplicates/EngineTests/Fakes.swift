@@ -28,7 +28,7 @@ final class ParkedVerify: @unchecked Sendable {
     var calls: Int { lock.lock(); defer { lock.unlock() }; return count }
     func release(_ n: Int) { for _ in 0..<n { gate.signal() } }
 
-    func check(_ remove: String, _ keep: String) -> DuplicateVerification.Verdict {
+    func check(_: String, _: String) -> DuplicateVerification.Verdict {
         lock.lock(); count += 1; lock.unlock()
         gate.wait()
         return verdict

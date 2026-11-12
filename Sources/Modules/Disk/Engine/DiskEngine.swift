@@ -108,7 +108,7 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
         var onPartial: (@Sendable (DiskNode) -> Void)?
         if let updates {
             onPartial = { partialTree in
-                // A shallow snapshot every ~0.35s: the ring grows while the
+                // A shallow snapshot every `BulkWalk.progressInterval`: the ring grows while the
                 // walk is still running.
                 let snapshot = ScanResult(root: DiskEntry(partialTree, depth: 4, path: path),
                                           freeBytes: freeNow,
@@ -120,7 +120,7 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
             // `onProgress` is passed whether or not anyone listens: it is the only
             // writer of `counter`, which `filesScanned` is read from. The snapshot
             // callback is passed only to a caller that wants snapshots, because
-            // asking for it makes the scanner build one every ~0.35s.
+            // asking for it makes the scanner build one every `BulkWalk.progressInterval`.
             guard let tree = scanner.scan(root: path, onProgress: { progress in
                 counter.value = progress.filesSeen
                 updates?(.progress(ScanTick(files: progress.filesSeen, bytes: progress.bytesSeen,

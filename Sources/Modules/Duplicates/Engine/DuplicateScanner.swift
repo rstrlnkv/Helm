@@ -298,7 +298,7 @@ final class DuplicateScanner: @unchecked Sendable {
                 // Once per directory rather than once per file: `Date()` in the
                 // inner loop was a reading taken a hundred thousand times to be
                 // thrown away, and a batch is a directory.
-                if Date().timeIntervalSince(lastEmit) > 0.35 {
+                if Date().timeIntervalSince(lastEmit) > BulkWalk.progressInterval {
                     lastEmit = Date()
                     onProgress?(DuplicateProgress(candidates: 0, hashed: seen))
                 }
@@ -400,7 +400,7 @@ final class DuplicateScanner: @unchecked Sendable {
             lock.lock()
             count += 1
             let now = Date()
-            let due = now.timeIntervalSince(lastEmit) > 0.35
+            let due = now.timeIntervalSince(lastEmit) > BulkWalk.progressInterval
             if due { lastEmit = now }
             let snapshot = min(count, total)
             lock.unlock()
