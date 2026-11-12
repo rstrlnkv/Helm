@@ -18,7 +18,7 @@ import HelmTestSupport
 /// summon an authorization prompt in front of somebody who did nothing.
 ///
 /// Sealing the rules is the wrong repair and is refused: they are read during
-/// `activate()`, and ARCHITECTURE.md § Sealed settings records what a
+/// `activate()`, and (ARCHITECTURE.md § Sealed settings) records what a
 /// keychain read at launch costs on this ad-hoc-signed bundle. What is gated
 /// instead is the prompt itself: an automatic connect may read Helm's own cache
 /// and must give up if the secret is not there.

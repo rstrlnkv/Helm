@@ -36,7 +36,7 @@ public enum ItemStatus: String, Codable, Sendable, Equatable {
     ///
     /// **Its own case rather than `.unreadable`**, which is the sentence
     /// «Helm could not read this file» — false of both of these, and drawn over a
-    /// plist that reads perfectly. ARCHITECTURE.md § Module pattern is the rule
+    /// plist that reads perfectly. (ARCHITECTURE.md § Module pattern) is the rule
     /// being followed: a reason that
     /// needs telling apart gets named, not read out of a shared one.
     case undetermined

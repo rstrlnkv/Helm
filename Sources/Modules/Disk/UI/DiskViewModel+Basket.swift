@@ -36,7 +36,7 @@ extension DiskViewModel {
     /// to read: the report then names a folder the person had just withdrawn.
     ///
     /// The guard is here as well as on the button (`.disabled(dvm.busy)` in
-    /// `DiskResultView`) because ARCHITECTURE.md § One removal at a time asks
+    /// `DiskResultView`) because (ARCHITECTURE.md § One removal at a time) asks
     /// for both — the page is a redraw away, and this method is also what the
     /// bar's menu calls.
     public func toggleBasket(_ entry: DiskEntry) {

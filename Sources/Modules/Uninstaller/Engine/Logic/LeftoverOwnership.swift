@@ -13,7 +13,7 @@ import Foundation
 /// entry it finds past `installedBundleIDs()` before offering it; `scanSync`
 /// put its glob matches past nothing, and a glob hit is never `matchedByName`,
 /// so `UninstallPlan.defaultSelection` arrives with it **already ticked** — the
-/// hazard ARCHITECTURE.md § The gates is about.
+/// hazard (ARCHITECTURE.md § The gates) is about.
 ///
 /// Four rules, because each alone lets a real case through:
 ///

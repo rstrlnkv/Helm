@@ -99,8 +99,8 @@ public struct VPNTunnelState: Equatable, Sendable {
     ///
     /// It began as a `@Published` flag on the view model, set on the press and
     /// cleared by the arrival of any state — a local boolean standing in for a
-    /// live fact somebody else owns, which is the family ARCHITECTURE.md
-    /// § Module pattern names: a port that can change under the app has a reverse
+    /// live fact somebody else owns, which is the family (ARCHITECTURE.md
+    /// § Module pattern) names: a port that can change under the app has a reverse
     /// channel.
     /// It could be wrong in three ways at once: a page opened while a run was
     /// going knew nothing about it, a run outliving the page that started it

@@ -31,7 +31,11 @@ final class NoBareLaunchInTheShellTests: XCTestCase {
 
     func testNothingInTheShellStartsAChildWithoutTheGuard() throws {
         var offences: [String] = []
-        for path in try RepoSource.swiftFiles(under: "Sources/HelmApp") {
+        let paths = try RepoSource.swiftFiles(under: "Sources/HelmApp")
+        XCTAssertGreaterThanOrEqual(paths.count, 40,
+                                    "the scan read \(paths.count) files under Sources/HelmApp where the tree holds 40 or more; "
+                                    + "a scan over fewer is not the shell. Lower it only by deciding to")
+        for path in paths {
             for (index, line) in try RepoSource.lines(of: path).enumerated() {
                 let code = RepoSource.code(line)
                 guard code.contains("try "), code.contains(".run()") else { continue }

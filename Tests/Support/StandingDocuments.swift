@@ -88,4 +88,27 @@ public enum StandingDocuments {
             throw RepoSource.Failure("\(document) is not a document whose headings pointers name")
         }
     }
+
+    /// Closing marks a pointer may carry directly after its heading.
+    private static let closers: Set<Character> = ["`", "\"", "»", "”", "*", "'"]
+    /// Marks that end a pointer.
+    private static let terminators: Set<Character> = [".", ",", ";", ":", ")", "]"]
+
+    /// The heading a pointer's text names, or nil. `rest` is everything
+    /// after the section sign; a match is a heading followed by an optional closing
+    /// mark and then a terminator, whitespace before another § or an
+    /// arrow, or the end of the text.
+    public static func resolve(_ rest: String, headings: [String]) -> String? {
+        var text = Substring(rest.drop(while: { $0 == " " || $0 == "\t" }))
+        if let first = text.first, "«\"“`*".contains(first) { text = text.dropFirst() }
+        for heading in headings where text.hasPrefix(heading) {
+            var after = text.dropFirst(heading.count)
+            if let c = after.first, closers.contains(c) { after = after.dropFirst() }
+            guard let next = after.first else { return heading }
+            if terminators.contains(next) || next == "\n" { return heading }
+            let trimmed = after.drop(while: { $0 == " " || $0 == "\t" })
+            if trimmed.isEmpty || trimmed.hasPrefix("\u{A7}") || trimmed.hasPrefix("→") { return heading }
+        }
+        return nil
+    }
 }

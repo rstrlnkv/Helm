@@ -6,7 +6,7 @@ import XCTest
 
 /// What one walk costs the process, and which of its two loops the cost is in.
 ///
-/// ARCHITECTURE.md § Module pattern reaches both, and **both loops are `BulkWalk`'s
+/// (ARCHITECTURE.md § Module pattern) reaches both, and **both loops are `BulkWalk`'s
 /// now** — the walk moved to `HelmRuntime` so that `FileWeight` and the
 /// duplicate finder could stop enumerating. The **worker** loop reads a
 /// directory at a time and has had its pool for as long as that section has

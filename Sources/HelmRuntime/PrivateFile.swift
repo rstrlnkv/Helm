@@ -141,7 +141,7 @@ public enum PrivateFile {
     /// For the one file this app **appends** to rather than replaces: the log
     /// never passes through `write`, so its mode is whatever the umask gave it
     /// the day it was created — measured 0644 on the machine it was found on,
-    /// where ARCHITECTURE.md § Diagnostics log says 0700 and the folder was
+    /// where (ARCHITECTURE.md § Diagnostics log) says 0700 and the folder was
     /// doing all the work. Called once at launch, never per line: the mode of an
     /// open file is not a question worth asking of every write to it.
     ///

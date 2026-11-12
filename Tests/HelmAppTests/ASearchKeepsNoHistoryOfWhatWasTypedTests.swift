@@ -99,6 +99,14 @@ final class ASearchKeepsNoHistoryOfWhatWasTypedTests: XCTestCase {
             the packages they looked for
             """)
 
+        // The guard below reads the whole domain for the word, so it reads only
+        // what this run wrote when nothing carrying it was there before.
+        let leftovers = Self.keysCarrying(Self.word)
+        XCTAssertEqual(leftovers, [], """
+            precondition: «\(Self.word)» is already in the defaults domain under \(leftovers), so \
+            the reading below would be of somebody else's leftovers
+            """)
+
         // And the word has to actually land, or "no history" is a reading of a
         // field nobody typed into.
         XCTAssertTrue(fixture.mount.type(Self.word),

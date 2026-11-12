@@ -36,7 +36,11 @@ final class TheModeBelongsToTheWriteTests: XCTestCase {
     /// No file in `Sources` hands its mode to a `chmod` that follows the write.
     func testNothingWritesAtomicallyAndTightensAfterwards() throws {
         var offences: [String] = []
-        for read in try SwiftSource.uncommented(under: "Sources") {
+        let reads = try SwiftSource.uncommented(under: "Sources")
+        XCTAssertGreaterThanOrEqual(reads.count, 600,
+                                    "the scan read \(reads.count) files under Sources where the tree holds 600 or more; "
+                                    + "a scan over fewer is not the house rule. Lower it only by deciding to")
+        for read in reads {
             for (number, line) in read.text.split(separator: "\n", omittingEmptySubsequences: false)
                 .enumerated() where line.contains(".atomic") {
                 offences.append("\(read.path):\(number + 1): \(line.trimmingCharacters(in: .whitespaces))")

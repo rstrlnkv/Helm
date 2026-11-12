@@ -39,9 +39,22 @@ final class ReleaseBuildsTheProductTests: XCTestCase {
         let script = try RepoSource.lines(of: "Scripts/package-app.sh")
         let builds = script.filter { $0.hasPrefix("swift build") }
         XCTAssertEqual(builds.count, 1, "expected one release build line, found \(builds)")
-        XCTAssertTrue(builds.first?.contains("--product HelmApp") == true,
+        XCTAssertTrue(builds.first.map { Self.words(of: $0).adjacentPair("--product", "HelmApp") } == true,
                       "the packaging script builds the whole package, which builds "
                       + "HelmTestSupport and its `import XCTest`: \(builds)")
+    }
+
+    /// The command's own words: the line up to a `#` that opens a comment, outside quotes.
+    private static func words(of line: String) -> [String] {
+        var quote: Character?
+        var kept = ""
+        for character in line {
+            if let open = quote { if character == open { quote = nil } }
+            else if character == "\"" || character == "'" { quote = character }
+            else if character == "#", kept.last.map({ $0 == " " }) ?? true { break }
+            kept.append(character)
+        }
+        return kept.split(separator: " ").map(String.init)
     }
 
     /// The half that makes the flag name something declared.
@@ -53,5 +66,11 @@ final class ReleaseBuildsTheProductTests: XCTestCase {
                       + "packaging with nothing to catch it")
         XCTAssertFalse(manifest.contains(#"targets: ["HelmTestSupport"]"#),
                        "the harness is in a product")
+    }
+}
+
+private extension Array where Element == String {
+    func adjacentPair(_ first: String, _ second: String) -> Bool {
+        zip(self, dropFirst()).contains { $0 == first && $1 == second }
     }
 }

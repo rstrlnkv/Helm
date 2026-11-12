@@ -34,11 +34,6 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
     // MARK: - The parser
 
     enum Parser {
-        /// Closing marks a pointer may carry directly after its heading.
-        private static let closers: Set<Character> = ["`", "\"", "»", "”", "*", "'"]
-        /// Marks that end a pointer.
-        private static let terminators: Set<Character> = [".", ",", ";", ":", ")", "]"]
-
         /// Soft line breaks removed: a newline between two non-blank lines
         /// becomes a space, with a quote marker or list indent dropped. A blank
         /// line stays a paragraph break.
@@ -46,24 +41,6 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
             let regex = try! NSRegularExpression(pattern: #"(?<=\S)[ \t]*\n[ \t]*(?:>[ \t]*)?(?=\S)(?![-*+|#][ \t]|\d+\.[ \t]|#)"#)
             return regex.stringByReplacingMatches(
                 in: text, range: NSRange(text.startIndex..., in: text), withTemplate: " ")
-        }
-
-        /// The heading a pointer's text names, or nil. `rest` is everything
-        /// after the section sign; a match is a heading followed by an optional closing
-        /// mark and then a terminator, whitespace before another § or an
-        /// arrow, or the end of the text.
-        static func resolve(_ rest: String, headings: [String]) -> String? {
-            var text = Substring(rest.drop(while: { $0 == " " || $0 == "\t" }))
-            if let first = text.first, "«\"“`*".contains(first) { text = text.dropFirst() }
-            for heading in headings where text.hasPrefix(heading) {
-                var after = text.dropFirst(heading.count)
-                if let c = after.first, closers.contains(c) { after = after.dropFirst() }
-                guard let next = after.first else { return heading }
-                if terminators.contains(next) || next == "\n" { return heading }
-                let trimmed = after.drop(while: { $0 == " " || $0 == "\t" })
-                if trimmed.isEmpty || trimmed.hasPrefix("\u{A7}") || trimmed.hasPrefix("→") { return heading }
-            }
-            return nil
         }
 
         /// What follows each § of a text, up to the next § — so a pointer
@@ -124,7 +101,7 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
         XCTAssertTrue(stray.isEmpty,
             "a section sign outside the arrow shape is read by nothing:\n\(stray.joined(separator: "\n"))")
 
-        let dead = read.pointers.filter { Parser.resolve($0, headings: headings) == nil }
+        let dead = read.pointers.filter { StandingDocuments.resolve($0, headings: headings) == nil }
         XCTAssertTrue(dead.isEmpty, """
             \(dead.count) pointer(s) of CLAUDE.md name no heading of ARCHITECTURE.md exactly:
             \(dead.map { "\u{A7}" + $0.prefix(50) }.joined(separator: "\n"))
@@ -141,7 +118,7 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
             for pointer in Parser.named(in: try RepoSource.text(of: file)) {
                 read += 1
                 guard let known = headingsByDocument[pointer.document] ?? (pointer.document == "CLAUDE" ? nil : []) else { continue }
-                if Parser.resolve(pointer.rest, headings: known) == nil {
+                if StandingDocuments.resolve(pointer.rest, headings: known) == nil {
                     dead.append("\(file) — \(pointer.document) \u{A7}\(pointer.rest.prefix(50))")
                 }
             }
@@ -200,7 +177,7 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
         var extra: [String] = []
         var named: [String] = []
         for tail in Parser.tails(of: rest) {
-            if let heading = Parser.resolve(tail, headings: subHeadings), !named.contains(heading) {
+            if let heading = StandingDocuments.resolve(tail, headings: subHeadings), !named.contains(heading) {
                 named.append(heading)
             } else {
                 extra.append("\u{A7}" + tail.prefix(40))

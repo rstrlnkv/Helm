@@ -136,7 +136,7 @@ public enum RepoSource {
                 refusal = RepoSource.Failure("\(url.path) could not be enumerated: \(error)")
                 return false
             })
-        guard let walk else { return [] }
+        guard let walk else { throw RepoSource.Failure("\(base.path) could not be enumerated") }
         var out: [String] = []
         while let url = walk.nextObject() as? URL {
             guard url.pathExtension == "swift" else { continue }

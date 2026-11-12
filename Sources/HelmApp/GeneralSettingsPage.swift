@@ -44,9 +44,9 @@ struct MenuBarSettingsView: View {
     /// keychain read is a modal authorization dialog. As a `@State` initial value
     /// it was evaluated when SwiftUI installed the state, which is inside
     /// `SettingsWindow.init`, so the dialog stood in front of the settings window
-    /// before the window had drawn anything (ARCHITECTURE.md § Sealed settings —
+    /// before the window had drawn anything (ARCHITECTURE.md § Sealed settings) —
     /// the same fact that keeps `clamshellEnabled` unsealed, reached
-    /// through a second door). Nil rather than an empty set: an empty off-list
+    /// through a second door. Nil rather than an empty set: an empty off-list
     /// means every scan is on, and standing in for "not read yet" with it would
     /// show a whole-volume walk switched on to somebody who never said so.
     @State private var disabledScans: Set<String>?

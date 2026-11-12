@@ -155,7 +155,7 @@ final class EverySectionNamedInTheCodeExistsTests: XCTestCase {
                     rest = String(rest.drop(while: { $0 == " " || $0 == "\t" }))
                 }
                 let candidate = rest.lowercased()
-                let heading = headingsByDocument[document]?.first { candidate.hasPrefix($0) }
+                let heading = StandingDocuments.resolve(candidate, headings: headingsByDocument[document] ?? [])
                 let unjudged = document == "CLAUDE" && headingsByDocument["CLAUDE"] == nil
                 out.append(Found(file: relative, document: document, alive: heading != nil || unjudged,
                                  excerpt: String(candidate.prefix(60))))
@@ -197,5 +197,17 @@ final class EverySectionNamedInTheCodeExistsTests: XCTestCase {
             Either the section is owed to the document, or the pointer belongs to a lesson \
             and goes to role knowledge — the pointer is not deleted to make this pass.
             """)
+    }
+
+    /// The resolver itself, with the negative cases the tree never produces: a
+    /// heading followed by a letter is a longer word, not that heading.
+    func testResolveTakesAHeadingOnlyWhereItEnds() {
+        let headings = ["Removal"]
+        for ok in ["Removal", "Removal.", "Removal, and", "Removal`", "`Removal`.", "Removal \u{A7} Other", "Removal \u{2192} x", "Removal\n"] {
+            XCTAssertEqual(StandingDocuments.resolve(ok, headings: headings), "Removal", ok)
+        }
+        for bad in ["Removals", "Removal takes its traces", "Removalx.", "Nothing"] {
+            XCTAssertNil(StandingDocuments.resolve(bad, headings: headings), bad)
+        }
     }
 }

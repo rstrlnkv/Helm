@@ -31,7 +31,7 @@ public struct VPNCredentials: Equatable, Sendable {
 /// folding it into `.behindAPrompt` told the person to press Connect for a prompt
 /// that is not the problem. The engine neither starts nor announces on it.
 ///
-/// This is the repair ARCHITECTURE.md § Module pattern records for
+/// This is the repair (ARCHITECTURE.md § Module pattern) records for
 /// `PowerSource.supply()`, in the same shape:
 /// the port answers the question it is actually being asked.
 public enum VPNCredentialRead: Equatable, Sendable {

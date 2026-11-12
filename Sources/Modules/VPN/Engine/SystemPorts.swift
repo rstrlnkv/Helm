@@ -112,8 +112,8 @@ public final class DynamicStoreNetworkWatch: NetworkWatchPort {
     /// when the session goes — measured, not assumed: one retain on create, one
     /// release on drop. So a notification already sitting on the queue when the
     /// module is switched off resolves to a live object rather than to freed
-    /// memory, which is what ARCHITECTURE.md § "An observer outlives the thing
-    /// it points at" is about. Clearing the action is what makes that late
+    /// memory, which is what (ARCHITECTURE.md § "An observer outlives the thing
+    /// it points at") is about. Clearing the action is what makes that late
     /// notification a no-op.
     private final class Sink: @unchecked Sendable {
         private let lock = NSLock()

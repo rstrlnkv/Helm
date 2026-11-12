@@ -20,8 +20,8 @@ import HelmRuntime
 /// - A latch in `UserDefaults.standard` is the *calling process's* domain. The
 ///   test domain never holds it, and the deletion is retried on every run.
 ///
-/// Both halves are answered here, and both are the lesson ARCHITECTURE.md
-/// § Diagnostics log already records after a per-process latch let a test target
+/// Both halves are answered here, and both are the lesson (ARCHITECTURE.md
+/// § Diagnostics log) already records after a per-process latch let a test target
 /// wipe the real `helm.log`: **a latch belongs to what it guards, not to whoever
 /// asks.** What it guards is a keychain item, and a marker *inside* the keychain
 /// would mean a keychain read during `init` — which on this ad-hoc-signed bundle

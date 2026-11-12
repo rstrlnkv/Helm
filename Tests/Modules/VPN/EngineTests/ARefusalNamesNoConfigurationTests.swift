@@ -23,7 +23,8 @@ final class ARefusalNamesNoConfigurationTests: XCTestCase {
         let reply = VPNCommandReply.of(.init(status: 0, output: output),
                                        name: name, knownNames: known)
         guard case .refused(let text) = reply else {
-            throw XCTSkip("expected a refusal, got \(reply)")
+            XCTFail("expected a refusal, got \(reply)")
+            throw NSError(domain: "fixture", code: 1, userInfo: [NSLocalizedDescriptionKey: "expected a refusal, got \(reply)"])
         }
         return text
     }

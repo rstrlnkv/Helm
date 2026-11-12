@@ -40,8 +40,8 @@ final class LogLineTests: XCTestCase {
     }
 }
 
-/// The log file was 0644 inside a 0700 folder, where ARCHITECTURE.md § Diagnostics
-/// log describes the 0700 as the protection — measured on the owner's own Mac,
+/// The log file was 0644 inside a 0700 folder, where (ARCHITECTURE.md § Diagnostics
+/// log) describes the 0700 as the protection — measured on the owner's own Mac,
 /// where the folder was doing all of it and the file none.
 ///
 /// Two halves, because a file gets its mode from whoever created it: `append`

@@ -6,7 +6,7 @@ import XCTest
 
 /// What the sweep at the end of a scan costs the process.
 ///
-/// ARCHITECTURE.md § Module pattern puts a pool inside a bulk read of file
+/// (ARCHITECTURE.md § Module pattern) puts a pool inside a bulk read of file
 /// contents and names `resourceValues` loops as the measured exception.
 /// `DiskAdvisor.sweep` is neither a read of file contents nor a `resourceValues`
 /// loop, yet it had no pool: it visits every file node in the finished tree and

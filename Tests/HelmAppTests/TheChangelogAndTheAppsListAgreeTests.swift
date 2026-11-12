@@ -3,9 +3,9 @@ import XCTest
 @testable import HelmApp
 import HelmAppStrings
 
-/// CLAUDE.md § Shipping — what a person does, not a role orders one `CHANGELOG.md` section and the same entries in
-/// `Sources/HelmAppStrings/ChangelogData.swift` for every release, and ARCHITECTURE.md
-/// § What shipped records that the two have drifted about which versions exist before. Nothing in `Tests/` held
+/// (CLAUDE.md § Shipping — what a person does, not a role) orders one `CHANGELOG.md` section and the same entries in
+/// `Sources/HelmAppStrings/ChangelogData.swift` for every release, and (ARCHITECTURE.md
+/// § What shipped) records that the two have drifted about which versions exist before. Nothing in `Tests/` held
 /// them to that: `CHANGELOG.md` is named in two guards over the standing
 /// documents, and neither reads a version out of it.
 ///

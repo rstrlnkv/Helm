@@ -29,7 +29,7 @@ import HelmTestSupport
 ///
 /// `size_in_use` from `malloc_zone_statistics` is what malloc has handed out,
 /// and it rises whether or not the pages behind it are new — the
-/// instrument ARCHITECTURE.md § The memory trail reads a per-object cost from.
+/// instrument (ARCHITECTURE.md § The memory trail) reads a per-object cost from.
 /// Under it the three scales agree with each other and with the JSON figure,
 /// and they no longer depend on what ran first.
 ///

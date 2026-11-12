@@ -139,8 +139,10 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
                                      settings: { settings }, naming: { .english }, now: { fixed },
                                      locations: ScreenshotsLocations(home: folder, desktop: desktop ?? folder))
         let bytes = originalBytes ?? redBytes
-        guard case .written(let shot) = disk.write(bytes, into: folder, base: base, pathExtension: pathExtension) else {
-            throw XCTSkip("the original could not be written", file: file, line: line)
+        let outcome = disk.write(bytes, into: folder, base: base, pathExtension: pathExtension)
+        guard case .written(let shot) = outcome else {
+            XCTFail("the original could not be written: \(outcome)", file: file, line: line)
+            throw NSError(domain: "fixture", code: 1, userInfo: [NSLocalizedDescriptionKey: "the fixture's own write failed: \(outcome)"])
         }
         return Scene(session: session, disk: disk, trash: trash, capture: capture, pasteboard: pasteboard, folder: folder,
                      aside: aside, original: shot, originalBytes: bytes)
@@ -926,8 +928,9 @@ final class TheRealTrashTakesTheEditedShotsOriginalTests: XCTestCase {
         let folder = scratchDirectory("edit-real-trash")
         let redBytes = CaptureSession.encode(makeImage(width: 40, height: 30, red: 255), as: .png)!
         let blue = makeImage(width: 40, height: 30, blue: 255)
-        guard case .written(let original) = FileShotWriter().write(redBytes, into: folder, base: unique, pathExtension: "png") else {
-            throw XCTSkip("the original could not be written")
+        let outcome = FileShotWriter().write(redBytes, into: folder, base: unique, pathExtension: "png")
+        guard case .written(let original) = outcome else {
+            return XCTFail("the original could not be written: \(outcome)")
         }
         let session = CaptureSession(capture: FakeCapture(), writer: FileShotWriter(), trash: SystemShotTrash(), pasteboard: FakePasteboard(),
                                      preferences: FakePreferences(), shutter: FakeShutter(), textReader: FakeTextReader(),
