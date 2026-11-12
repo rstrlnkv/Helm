@@ -104,4 +104,20 @@ final class AQuitMidOperationIsReportedTests: XCTestCase {
         XCTAssertEqual(after.status().interruptedOp, "upgrade all",
                        "the mid-operation status query above consumed the marker")
     }
+
+    /// The marker is stored data: the bytes an earlier build left must read as
+    /// before, once, and the file must be gone after.
+    func testAMarkerWrittenByAnEarlierBuildIsReadAsBefore() throws {
+        let folder = scratchDirectory("brew-marker")
+        let file = folder.appendingPathComponent("homebrew-operation")
+        try Data("upgrade all".utf8).write(to: file)
+
+        XCTAssertEqual(FileOpMarker(directory: folder).take(), "upgrade all")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path),
+                       "taking the marker must remove it")
+
+        try Data("upgrade all".utf8).write(to: file)
+        let fresh = engine(HangingRunner(), marker: FileOpMarker(directory: folder))
+        XCTAssertEqual(fresh.status().interruptedOp, "upgrade all")
+    }
 }

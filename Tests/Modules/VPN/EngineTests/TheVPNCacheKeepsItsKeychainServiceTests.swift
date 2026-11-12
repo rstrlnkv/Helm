@@ -10,11 +10,11 @@ import XCTest
 ///
 /// Any build that answered another service would read an empty cache and ask the
 /// System keychain again (one prompt per VPN), and the one-time purge would miss
-/// the old items. The function takes the bundle identifier so a build can later
-/// answer differently; until then every identifier answers the deployed literal.
+/// the old items. The function takes the bundle identifier: Helm Dev
+/// answers `com.helm.vpn.dev` and every other identifier the deployed literal.
 /// This touches no keychain: it asks a pure function.
 final class TheVPNCacheKeepsItsKeychainServiceTests: XCTestCase {
-    func testEveryBuildAnswersTheDeployedService() {
+    func testEveryNonDevBuildAnswersTheDeployedService() {
         for id in ["com.helm.app", nil, "com.apple.dt.xctest.tool"] {
             XCTAssertEqual(KeychainCredentials.service(for: id), "com.helm.vpn", "\(id ?? "nil")")
         }
