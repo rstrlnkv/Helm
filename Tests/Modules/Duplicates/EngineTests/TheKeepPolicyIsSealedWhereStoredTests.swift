@@ -67,6 +67,16 @@ final class TheKeepPolicyIsSealedWhereStoredTests: XCTestCase {
         XCTAssertEqual(engine(keys).storedKeepPolicy(), .byDate)
     }
 
+    /// The save itself: what `setKeepPolicy` writes is read back as chosen, so it
+    /// wrote the MAC beside the value. A save that stored the value alone would
+    /// come back as a policy nobody sealed, and the search would use the default.
+    func testASavedPolicyIsTheOneTheSearchUses() {
+        let keys = RecordingKey()
+        DuplicatesSettings.setKeepPolicy(.byDate, in: store, guardedBy: SettingGuard(keys: keys))
+
+        XCTAssertEqual(engine(keys).storedKeepPolicy(), .byDate)
+    }
+
     func testAMacThatWasNeverAskedGetsTheDefault() {
         XCTAssertEqual(engine(RecordingKey()).storedKeepPolicy(), .standard)
     }

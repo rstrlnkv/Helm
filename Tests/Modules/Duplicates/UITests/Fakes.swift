@@ -1,6 +1,7 @@
 import Foundation
 import HelmRuntime
 import Module_Duplicates_Engine
+import XCTest
 @testable import Module_Duplicates_UI
 
 // The engine's place in this module's page tests, and the store and waits that
@@ -282,17 +283,25 @@ func duplicatesModel(over work: any DuplicatesWork,
 
 /// A view model that has already searched, with `groups` as the answer.
 @MainActor
-func searchedModel(_ groups: [DuplicateGroup]) async -> DuplicatesViewModel {
-    await searchedModel(over: AnsweringWork(groups: groups))
+func searchedModel(_ groups: [DuplicateGroup], file: StaticString = #filePath,
+                   line: UInt = #line) async -> DuplicatesViewModel {
+    await searchedModel(over: AnsweringWork(groups: groups), file: file, line: line)
 }
 
 /// A view model that has already searched over a work the test goes on
 /// steering — the removal answers, or does not.
+///
+/// **A search that never answers fails here**, naming the wait, and not at the
+/// first assertion that reads a page which never got its result.
 @MainActor
-func searchedModel(over work: any DuplicatesWork) async -> DuplicatesViewModel {
+func searchedModel(over work: any DuplicatesWork, file: StaticString = #filePath,
+                   line: UInt = #line) async -> DuplicatesViewModel {
     let dvm = duplicatesModel(over: work)
     dvm.search()
     for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
+    if dvm.phase != .result {
+        XCTFail("never reached: the search answered and the page shows its result", file: file, line: line)
+    }
     return dvm
 }
 
@@ -304,10 +313,9 @@ func heldModel(_ work: HeldWork) -> DuplicatesViewModel {
     duplicatesModel(over: work, folder: "/some/folder")
 }
 
-/// Room for the tasks already scheduled to land. Spelled three times in
-/// `DuplicateSearchRaceTests` as twenty yields; fifty, because every use is
-/// either waiting for something to appear or asserting that it did not, and
-/// both are stronger the longer they wait.
+/// Room for the tasks already scheduled to land, **before an assertion that
+/// something did not happen**. It proves nothing by itself; a wait for something to
+/// appear is `waitUntil`, which fails when the thing never comes.
 @MainActor
 func settle() async {
     for _ in 0..<50 { await Task.yield() }
@@ -315,8 +323,12 @@ func settle() async {
 
 /// Waits for the search tasks to actually reach the work. Yielding a fixed
 /// number of times is a guess about scheduling; this is the condition the test
-/// depends on.
+/// depends on. Fails, naming the count, when the searches never get there.
 @MainActor
-func untilParked(_ work: HeldWork, count: Int) async {
+func untilParked(_ work: HeldWork, count: Int, file: StaticString = #filePath,
+                 line: UInt = #line) async {
     for _ in 0..<1000 where work.parkedCount < count { await Task.yield() }
+    if work.parkedCount < count {
+        XCTFail("never reached: \(count) search(es) parked on the work", file: file, line: line)
+    }
 }

@@ -19,6 +19,8 @@ import XCTest
 /// different volumes sharing an inode *number* would collapse the same way
 /// if the walk ever left the root's volume again — `DeviceIDTests` is the
 /// record of this exact family.)
+///
+/// Guards a past defect: 1677af73 fix: seven agents over the whole app, and what they found.
 final class DuplicateIdentityTests: XCTestCase {
 
     private func file(_ path: String, bytes: Int, id: UInt64) -> FileFacts {

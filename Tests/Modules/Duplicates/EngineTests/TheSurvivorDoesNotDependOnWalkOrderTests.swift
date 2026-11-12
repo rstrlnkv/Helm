@@ -126,6 +126,22 @@ final class TheSurvivorDoesNotDependOnWalkOrderTests: XCTestCase {
         }
     }
 
+    /// **Copies that tie on every rung above the path are still ordered by it.**
+    ///
+    /// The three-copy fixture above is settled by `.undated` before `.name` is
+    /// reached, so it stays green with the path tie-break gone. Two copies of one
+    /// depth, in one tier, with the same Date Added are separated by nothing but
+    /// their paths, and the survivor must not be whichever the walk met first.
+    func testCopiesTyingOnEveryRungAreSeparatedByTheirPaths() {
+        let tied = [file("/Users/r/B/photo.jpg", added: day(7)),
+                    file("/Users/r/A/photo.jpg", added: day(7))]
+        for policy in KeepPolicy.allCases {
+            let survivors = survivorsOverEveryWalkOrder(tied, rule(policy))
+            XCTAssertEqual(Array(survivors.keys), ["/Users/r/A/photo.jpg"],
+                           "policy «\(policy.rawValue)»: the survivor of a full tie follows the walk order")
+        }
+    }
+
     /// The same cycle, said as the thing the module promises: the copy that stays
     /// is the copy that stays, whichever two it is compared against.
     ///

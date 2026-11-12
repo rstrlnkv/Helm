@@ -16,6 +16,8 @@ import HelmTestSupport
 /// two identical files always agree on length, and they need not agree on
 /// blocks. Grouping by what they occupy would lose duplicates, which is a worse
 /// failure than an imprecise total.
+///
+/// Guards a past defect: 3049f0d9 fix: the three contradictions that needed code, not wording.
 final class WastedBytesTests: XCTestCase {
 
     private var root: URL!

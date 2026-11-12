@@ -19,6 +19,8 @@ import XCTest
 ///
 /// Real `clonefile`: a fixture where a clone's bytes are zero cannot see any of
 /// this, because a clone reports its whole allocated size.
+///
+/// Guards a past defect: 69505181 fix(duplicates): the batch is read against itself, and four other ways the page lied.
 final class TheBatchIsToldWhatStaysTests: XCTestCase {
 
     private var root: URL!

@@ -112,6 +112,8 @@ extension DuplicateScannerTests {
 /// scanner compared the paths as a `Set`, where order cannot be observed.
 ///
 /// So these assert the *first* path, and they run through `find`.
+///
+/// Guards a past defect: 69128315 fix(duplicates): the survivor rule was wired into the pipeline nobody runs.
 final class SurvivorThroughTheScannerTests: XCTestCase {
 
     private var root: URL!

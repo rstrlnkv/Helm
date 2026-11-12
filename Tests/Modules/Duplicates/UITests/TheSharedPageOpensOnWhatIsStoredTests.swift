@@ -18,6 +18,8 @@ import Module_Duplicates_Engine
 /// a fixture in which that never runs — so this is the claim the shared fixture
 /// now has to keep, asserted where the fixture is, rather than only inside the
 /// one test that builds its own ports.
+///
+/// Guards a past defect: 69505181 fix(duplicates): the batch is read against itself, and four other ways the page lied.
 @MainActor
 final class TheSharedPageOpensOnWhatIsStoredTests: XCTestCase {
 

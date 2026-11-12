@@ -20,6 +20,8 @@ import HelmRuntime
 /// Finder's Duplicate command does, and a clone reports its *whole* allocated
 /// size, not zero — which is why "the clone's bytes are 0" fixtures elsewhere in
 /// this target cannot see any of this.
+///
+/// Guards a past defect: f0e00ef3 fix(duplicates): the banner counts what the disk gives back, and the page reaches the screen at all.
 final class TheBannerCountsWhatTheDiskGivesBackTests: XCTestCase {
 
     private var root: URL!

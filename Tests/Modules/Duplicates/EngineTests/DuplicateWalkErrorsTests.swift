@@ -18,6 +18,8 @@ import HelmTestSupport
 /// The existing fixtures chmod individual *files*, which the walk reads past
 /// without a directory being refused; only an unreadable *directory* reaches
 /// this path.
+///
+/// Guards a past defect: 76756c64 fix(duplicates,disk): the walk says what it could not read; roots stop naming volumes.
 final class DuplicateWalkErrorsTests: XCTestCase {
     private var root: URL!
 

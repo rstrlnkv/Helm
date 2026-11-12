@@ -12,6 +12,8 @@ import HelmTestSupport
 /// re-deciding needs the dates and nothing else.
 ///
 /// It is `Date?`: a volume that does not record it has no date to carry.
+///
+/// Guards a past defect: 245d09e6 feat(duplicates): a group's identity outlives its order, and a copy remembers when it arrived.
 final class ACopyRemembersWhenItArrivedTests: XCTestCase {
 
     /// The assembly point the scanner goes through: what the walk read must
@@ -44,6 +46,8 @@ final class ACopyRemembersWhenItArrivedTests: XCTestCase {
 /// that has been wired wrong before: `SurvivingCopy` reached
 /// the pipeline the unit tests drove and not `DuplicateScanner.find`, and the page explained
 /// one rule while the app followed another.
+///
+/// Guards a past defect: 245d09e6 feat(duplicates): a group's identity outlives its order, and a copy remembers when it arrived.
 final class TheScannerCarriesTheDateItReadTests: XCTestCase {
     private var root: URL!
 

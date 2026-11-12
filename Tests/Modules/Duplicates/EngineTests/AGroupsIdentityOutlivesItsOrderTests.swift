@@ -13,6 +13,8 @@ import XCTest
 /// So the identity is taken from the set of paths, sorted, and the assertions
 /// below are structural: they compare an id against another id of the same
 /// group, never against a value a fixture could satisfy by accident.
+///
+/// Guards a past defect: 245d09e6 feat(duplicates): a group's identity outlives its order, and a copy remembers when it arrived.
 final class AGroupsIdentityOutlivesItsOrderTests: XCTestCase {
 
     private func group(_ paths: [String]) -> DuplicateGroup {

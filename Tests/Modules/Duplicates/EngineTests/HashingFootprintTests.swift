@@ -17,6 +17,8 @@ import HelmRuntime
 /// but the defect it guards against is not subtle: without the pool the
 /// footprint tracks the bytes read, which is an order of magnitude past the
 /// bound whatever else is going on.
+///
+/// Guards a past defect: 52eff599 fix(memory): the scan cost the volume it read, not the slice it kept.
 final class HashingFootprintTests: XCTestCase {
 
     private var folder: URL!

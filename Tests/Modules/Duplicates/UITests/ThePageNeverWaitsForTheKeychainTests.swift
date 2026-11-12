@@ -17,6 +17,8 @@ import XCTest
 /// So the policy starts at the standard belief and arrives from a task
 /// `appear()` holds. Held rather than fired and forgotten, for the reason
 /// Autopilot's model records: a load nobody can await is a load every test races.
+///
+/// Guards a past defect: 23dae882 fix(duplicates): the page is built before the keychain has answered.
 @MainActor
 final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
 

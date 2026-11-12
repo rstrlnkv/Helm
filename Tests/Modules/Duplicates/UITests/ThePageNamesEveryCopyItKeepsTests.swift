@@ -14,6 +14,8 @@ import Module_Duplicates_Engine
 /// cannot be recovered from the disk — there is no reverse lookup from a clone
 /// family to its members. `TheBatchIsToldWhatStaysTests` holds the engine's half
 /// on real clones; this holds the page's, which is that the fact is sent at all.
+///
+/// Guards a past defect: 69505181 fix(duplicates): the batch is read against itself, and four other ways the page lied.
 @MainActor
 final class ThePageNamesEveryCopyItKeepsTests: XCTestCase {
 

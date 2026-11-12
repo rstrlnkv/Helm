@@ -63,10 +63,18 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     ///   real disk, and a check that answers on the spot is over before Stop
     ///   can be pressed, so the tests about "while it runs" need one that can
     ///   be mid-read.
+    ///
+    /// - Parameter scanning: builds the scanner for a search, told whether nobody
+    ///   is watching it. Internal for the same reason: the unattended walk stops at
+    ///   `~/Library` of *the home it is given*, and a test can only plant a Library
+    ///   in a scratch home if it can name that home.
     init(store: NamespacedStore? = nil,
          settings: SettingGuard = DuplicatesSettings.guardOfScanSettings,
          trashing: @escaping @Sendable (URL) throws -> Void,
-         verifying: @escaping @Sendable () -> PairCheck) {
+         verifying: @escaping @Sendable () -> PairCheck,
+         scanning: @escaping @Sendable (_ unattended: Bool) -> DuplicateScanner
+            = { DuplicateScanner(unattended: $0) }) {
+        self.scanning = scanning
         self.store = store
         self.settings = settings
         self.trashing = trashing
@@ -76,6 +84,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     private let settings: SettingGuard
     private let trashing: @Sendable (URL) throws -> Void
     private let verifying: @Sendable () -> PairCheck
+    private let scanning: @Sendable (_ unattended: Bool) -> DuplicateScanner
     /// The stop flag of the removal in flight, so `stopRemoval` can reach it.
     private let removalBox = InFlightBox<RemovalStop>()
 
@@ -124,7 +133,7 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     async -> DuplicateFindings? {
         // A new search supersedes any still running.
         finderBox.current?.cancel()
-        let finder = DuplicateScanner(unattended: unattended)
+        let finder = scanning(unattended)
         let slot = finderBox.start(finder)
         defer { slot.finish() }
         return await offTheCooperativePool {

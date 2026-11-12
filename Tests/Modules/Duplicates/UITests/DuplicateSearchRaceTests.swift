@@ -14,6 +14,8 @@ import Module_Duplicates_Engine
 /// The work is hand-cranked: every "find" parks until the test releases
 /// it, so the interleaving is chosen rather than raced. An assertion that
 /// holds only for a lucky delay is not a test.
+///
+/// Guards a past defect: 1677af73 fix: seven agents over the whole app, and what they found.
 @MainActor
 final class DuplicateSearchRaceTests: XCTestCase {
 

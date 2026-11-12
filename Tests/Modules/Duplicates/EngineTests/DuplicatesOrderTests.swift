@@ -9,6 +9,8 @@ import XCTest
 /// asserts a count of 2 and that `/realcopy` is in there; it never asks which
 /// of the two linked names came with it, which is the only part that decides
 /// what gets trashed.
+///
+/// Guards a past defect: 6dec5f2f fix: eight defects a second agent pass turned up.
 final class DuplicatesOrderTests: XCTestCase {
 
     private func day(_ n: Int) -> Date { Date(timeIntervalSince1970: TimeInterval(n) * 86_400) }
