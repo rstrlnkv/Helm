@@ -43,6 +43,12 @@ final class TheScansNobodyWatchesHaveASwitchTests: XCTestCase {
         XCTAssertEqual(rows.filter(\.isOn).count, ScanRunner.scannableModules.count - 1)
     }
 
+    /// The default is built from Disk's descriptor, but the spelling stored and
+    /// read by every earlier build is the literal.
+    func testTheDefaultIsTheSpellingEveryEarlierBuildStored() {
+        XCTAssertEqual(AppSettings.defaultDisabledScans, ["disk"])
+    }
+
     /// Every sentence of the section, in the eight languages — including the
     /// one this machine is not set to. A test gated on `.current` checks one.
     func testTheSectionIsWrittenInAllEightLanguages() {

@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import HelmRuntime
 import HelmUI
+import Module_Disk_UI
 
 extension Notification.Name {
     /// Posted when the host menu-bar icon style changes so the status item redraws.
@@ -117,10 +118,10 @@ extension Notification.Name {
 
     /// What is off before anybody has said anything.
     ///
-    /// Declared once because three readers want it: the getter's own "nothing
-    /// stored" answer, the consent section on the General page, and the tests
-    /// that hold the two together.
-    static let defaultDisabledScans: Set<String> = ["disk"]
+    /// Declared once because two readers want it: the getter's own "nothing
+    /// stored" answer (the warm read that never waits for the keychain goes
+    /// through the getter), and the tests that hold them together.
+    static let defaultDisabledScans: Set<String> = [DiskDescriptor.id.rawValue]
 
     /// Background scans the person switched off, by module id.
     ///
