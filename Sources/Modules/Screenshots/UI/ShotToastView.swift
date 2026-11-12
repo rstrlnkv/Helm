@@ -242,7 +242,7 @@ struct ShotToastView: View {
     private static let frameWidth: CGFloat = 3
     private static let pictureRadius: CGFloat = 5
 
-    /// «Edit · Copy · Show in Finder (· Pin) | ✕», or the pile's «Copy All (N) · Show in Finder | ✕», on glass, 8 pt
+    /// «Edit · Copy · Show in Finder | ✕», or the pile's «Copy All (N) · Show in Finder | ✕», on glass, 8 pt
     /// up from the picture's lower edge.
     ///
     /// **The whole capsule takes the press** (`ShotCapsuleView`): under it lies the drag view, whose click is «Edit»,
@@ -259,7 +259,6 @@ struct ShotToastView: View {
                             model.copyAll()
                         }
                     case .reveal: GlassCell(symbol: "folder", name: ScStr.showInFinder) { reveal(shot) }
-                    case .pin: GlassCell(symbol: "pin", name: ScStr.pin) { model.pin() }
                     case .close: EmptyView()
                     }
                 }

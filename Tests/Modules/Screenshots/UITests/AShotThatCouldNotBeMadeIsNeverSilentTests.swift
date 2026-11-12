@@ -80,7 +80,7 @@ final class AShotThatCouldNotBeMadeIsNeverSilentTests: XCTestCase {
                                                if built { opened.overlays.append(overlay) }
                                                return built
                                            },
-                                           presentBar: { _ in }, pins: PinBoard(present: { _ in }, screens: { [] }), toast: toast)
+                                           presentBar: { _ in }, toast: toast)
         controllers.append(controller)
         return Scene(controller: controller, toast: toast, board: board, disk: disk, opened: opened,
                      display: try XCTUnwrap(frames.first?.id))

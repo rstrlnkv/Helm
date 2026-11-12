@@ -17,9 +17,6 @@ struct CapturedShot {
     let toast: ShotToast
     /// The capsule's Copy in flight, held so `cancel` can reach it.
     private var copyTask: Task<Void, Never>?
-    /// Not private: a test reads what is pinned through it. The pins outlive a capture and
-    /// the module's switch ends them (`teardown`); `cancel` leaves them be.
-    let pins: PinBoard
     /// Not private: a test reads what the bar says through it, and puts no window on a screen.
     let bar: CapturePanel
     private var overlay: CaptureOverlay?
@@ -53,20 +50,19 @@ struct CapturedShot {
     /// and the running app sleeps.
     private let tick: (Duration) async throws -> Void
 
-    /// `session`, `presentOverlay`, `presentBar`, `pins`, `toast` and `tick` are seams for a test,
+    /// `session`, `presentOverlay`, `presentBar`, `toast` and `tick` are seams for a test,
     /// which builds a session over fake ports, counts the presentations and holds
     /// the countdown still; the running app passes the session `ScreenshotsWork` made and
     /// gets the real ones for the rest.
     init(store: NamespacedStore, session: CaptureSession,
          presentOverlay: @escaping (CaptureOverlay) -> Bool = { $0.present() },
          presentBar: @escaping (CapturePanel) -> Void = { $0.show() },
-         pins: PinBoard = PinBoard(), toast: ShotToast = ShotToast(),
+         toast: ShotToast = ShotToast(),
          tick: @escaping (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
         self.store = store
         self.presentOverlay = presentOverlay
         self.presentBar = presentBar
         self.tick = tick
-        self.pins = pins
         self.toast = toast
         self.bar = CapturePanel(store: store)
         self.session = session
@@ -76,7 +72,6 @@ struct CapturedShot {
         toast.onEdit = { [weak self] in self?.editFromThumbnail() }
         toast.onCopy = { [weak self] in self?.copyFromThumbnail() }
         toast.onCopyAll = { [weak self] in self?.copyAllFromPile() }
-        toast.onPin = { [weak self] image, frame in self?.pins.open(image, frame: frame) }
     }
 
     /// Whether a press is in progress at any stage. A test waits on it.
@@ -198,11 +193,9 @@ struct CapturedShot {
         busy = false
     }
 
-    /// The module is going: everything `cancel` ends, and the pins too. A pin is a window the
-    /// person asked to keep, so only the module's own end closes it, never an Esc on the bar.
+    /// The module is going: everything `cancel` ends.
     func teardown() {
         cancel()
-        pins.closeAll()
     }
 
     // MARK: - The full-screen shortcut
@@ -248,7 +241,6 @@ struct CapturedShot {
             let preselection = remembered && ScreenshotsSettings.read(store).rememberSelection
                 ? RememberedSelection.read(store)?.landing(in: freeze.frames) : nil
             let overlay = CaptureOverlay(freeze: freeze, mode: mode, preselection: preselection, store: store,
-                                    pinRoom: { [weak self] in self?.pins.hasRoom ?? false },
                                     textTools: EditorTextTools(read: { [session] in await session.readText(freeze, display: $0, local: $1) },
                                                                copy: { [session] in session.copyText($0) }),
                                     selectionOnly: panel) { [weak self] result in
@@ -301,7 +293,6 @@ struct CapturedShot {
         case .ready(let shown):
             let editing = ShotEdit(shown: shown, original: shot)
             let overlay = CaptureOverlay(freeze: shown.freeze, picture: (shown.display, shown.rect), store: store,
-                                         pinRoom: { [weak self] in self?.pins.hasRoom ?? false },
                                          // The freeze here has the picture in it, so the text read and the boxes blurred are the picture's.
                                          textTools: EditorTextTools(read: { [session] in await session.readText(shown.freeze, display: $0, local: $1) },
                                                                     copy: { [session] in session.copyText($0) })) { [weak self] result in
@@ -376,8 +367,7 @@ struct CapturedShot {
                         ? await session.annotated(editing.shown, local: local, layers: layers) : nil
                 } else {
                     remember(display: display, local: local, in: freeze)
-                    image = await session.annotated(freeze, display: display, local: local, layers: layers,
-                                                    detached: exit == .pin)
+                    image = await session.annotated(freeze, display: display, local: local, layers: layers)
                 }
                 guard !Task.isCancelled else { return }
                 if let image {
@@ -387,8 +377,6 @@ struct CapturedShot {
                         await handOff(CapturedShot(image: image, kind: .area),
                                       saves: exit != .copy, copies: exit != .save,
                                       fileEvenFromClipboard: exit == .save, thenShare: exit == .share, editing: editing)
-                    case .pin:
-                        pin(image, display: display, local: local, in: freeze)
                     }
                 } else {
                     failed("the edited shot could not be made (exit \(exit))")
@@ -460,15 +448,6 @@ struct CapturedShot {
         case .wholeDisplay, .cancelled:
             return nil
         }
-    }
-
-    /// The picture as a window on the selection's own place: no file, no clipboard, no shutter, no toast.
-    private func pin(_ image: CGImage, display: DisplayID, local: CGRect, in freeze: Freeze) {
-        guard let frame = freeze.frames.first(where: { $0.id == display }),
-              let primary = NSScreen.screens.first else { return }
-        pins.open(image, frame: PinGeometry.opening(local: local, scale: frame.scale, imageWidth: frame.image.width,
-                                                    imageHeight: frame.image.height, display: frame.frame,
-                                                    primaryHeight: primary.frame.height))
     }
 
     /// Written for every confirmed area while the option is on, whichever door it

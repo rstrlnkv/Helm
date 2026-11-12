@@ -134,4 +134,23 @@ final class ThePlatesAfterBlurringNeverSayItIsSafeTests: XCTestCase {
             }
         }
     }
+
+    /// Every kind of next input takes a finished reading's plate away, not only a palette action: a press on the screen and Esc each
+    /// clear it. Each is the one line `textPlate = nil` at its own site (CaptureOverlayInput.swift), so each is put up fresh here.
+    func testAPressAndEscEachTakeTheReadingsPlateAway() async throws {
+        let area = CGRect(x: 100, y: 100, width: 400, height: 300)
+        for how in ["press", "esc"] {
+            let tools = EditorTextTools(read: { _, _ in .read([], RecognizedBoxes.Source(pixels: area, scale: 1)) }, copy: { _ in .noText })
+            let rig = try OverlayRig.overlay(scale: 1, area: area, textTools: tools, onResult: { _ in })
+            defer { rig.overlay.close() }
+            rig.overlay.perform(.blurPersonalText)
+            await waitUntil("\(how): the plate came") { rig.overlay.textPlate != nil }
+            if how == "press" {
+                rig.overlay.mouseDown(on: rig.display, at: CGPoint(x: 300, y: 250), flags: [])
+            } else {
+                rig.overlay.escapeAsked()
+            }
+            XCTAssertNil(rig.overlay.textPlate, "\(how): the plate stayed after the next input")
+        }
+    }
 }

@@ -135,7 +135,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         let box = Box()
         let controller = CaptureController(store: store, session: session,
                                            presentOverlay: { overlay in box.count += 1; box.overlay = overlay; return overlay.build() },
-                                           pins: PinBoard(present: { _ in }, screens: { [] }), toast: toast)
+                                           toast: toast)
         controllers.append(controller)
         return Scene(controller: controller, toast: toast, board: board, trash: trash, shutter: shutter, capture: capture, box: box,
                      store: store, desktop: desktop, frames: frames)

@@ -66,7 +66,7 @@ extension CaptureOverlay {
         }
         guard var current = edit, drag == nil, reshaping == nil else { return }
         if action != .eyedropper { sampling = false }
-        pinRefused = false
+        textPlate = nil
         if case .nudge? = action {
             // A repeat after the object was let go of is the held key going on, not a new input.
             if isRepeat && arrowReleasedObject { return }
@@ -201,9 +201,6 @@ extension CaptureOverlay {
         case .exit(let how)?:
             guard !isRepeat else { return }
             popover = nil
-            // No room for a pin: the editor stays, with the picture in it, a pending crop still pending, and says why on the plate
-            // (the toast lies below the overlay and could not be seen).
-            if how == .pin, !pinRoom() { pinRefused = true; return }
             // An exit that is no Return delivers the area as the screen shows it, a pending crop included.
             crop = nil
             // What the screen shows is what is delivered: a stroke still under the
@@ -262,8 +259,6 @@ extension CaptureOverlay {
         guard let held = reading, held.serial == serial, !held.task.isCancelled, var current = edit,
               current.display == held.display, current.rect == held.rect else { return }
         reading = nil
-        // The answer is the later thing to say: a refused pin's plate gives way to it.
-        if case .cancelled = answer {} else { pinRefused = false }
         switch answer {
         case .cancelled: break
         case .failed: textPlate = ScStr.textUnreadable

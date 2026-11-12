@@ -82,11 +82,7 @@ extension CaptureOverlay {
                 scene.ruler = ruler
                 scene.fading = edit.layers.erased
                 scene.selected = edit.layers.draft == nil ? edit.layers.selected : nil
-                if pinRefused {
-                    // By the palette, which the menu was opened from, so that the plate does not lie under the glass.
-                    scene.plate = ScStr.pinLimit
-                    scene.plateByActions = true
-                } else if edit.layers.isArmed {
+                if edit.layers.isArmed {
                     scene.plate = ScStr.confirmClose
                     if let pointer, pointer.display == id { scene.plateAt = pointer.point }
                 } else if let textPlate {
@@ -138,12 +134,12 @@ struct OverlayScene {
     var selected: Annotation?
     /// Where the palette stands; nil is none on this display, or none while drawing, moving, resizing, reshaping or erasing.
     var chrome: EditorChrome?
-    /// What the plate says: the refused pin, Esc's question while it waits for its second press, or a finished reading's answer.
+    /// What the plate says: Esc's question while it waits for its second press, or a finished reading's answer.
     var plate: String?
     /// Where the pointer is while the plate is up, in display-top-left points; the
     /// crosshair stays off while editing, so this is not `pointer`.
     var plateAt: CGPoint?
-    /// The plate is the Pin refusal or a reading's answer: it stands over the palette, or under it with no room above (`plateByActions`).
+    /// The plate is a reading's answer: it stands over the palette, or under it with no room above (`plateByActions`).
     var plateByActions = false
     /// The area is being reshaped, or the eyedropper is on over the area, and the pointer is here, in display-top-left points: the loupe reads the pixel under it.
     var loupeAt: CGPoint?

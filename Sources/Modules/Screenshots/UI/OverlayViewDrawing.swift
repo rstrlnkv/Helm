@@ -180,7 +180,7 @@ extension OverlayView {
     }
 
     /// The plates on screen apart from the area's size over its corner (`cornerLabel`), so a test can ask how many
-    /// there are and where: the coordinates, the size of a drag, the Esc question, the Pin refusal and a reading's answer, which
+    /// there are and where: the coordinates, the size of a drag, the Esc question and a reading's answer, which
     /// stand over or under the palette (`plateByActions`) and not by the pointer.
     var visiblePlates: [LabelLayer] { [coordinateLabel, sizeLabel].filter { !$0.isHidden } }
 

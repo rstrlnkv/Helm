@@ -2,7 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 import Module_Screenshots_Engine
 
-/// The keys the overlay, the bar, the pin and the toast's panel name, by the system's own constants.
+/// The keys the overlay, the bar and the toast's panel name, by the system's own constants.
 enum ShotKey {
     static let escape = UInt16(kVK_Escape)
     static let returnKey = UInt16(kVK_Return)
@@ -18,8 +18,6 @@ enum EditorExit: Equatable {
     case copy
     /// ⌘S: a file only.
     case save
-    /// The ⋯ menu's Pin item, offered only while `PinEntry.isOffered`: the picture stays on the screen as a window. No key.
-    case pin
     /// The ⋯ menu's Share… item: what Return does, then the system's Share sheet at the thumbnail that follows. No key.
     case share
 }

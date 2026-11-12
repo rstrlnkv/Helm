@@ -49,12 +49,11 @@ import Module_Screenshots_Engine
 
     /// What the close control does: the toast's own `close`, set by its owner.
     var dismiss: () -> Void = {}
-    /// What the capsule's Edit, Copy, Copy All and Pin do, what a click on the pile and on «N more» do, what a scroll
+    /// What the capsule's Edit, Copy and Copy All do, what a click on the pile and on «N more» do, what a scroll
     /// over the row does, and what the pointer's coming and going tells the toast's clock: set by its owner.
     var edit: () -> Void = {}
     var copy: () -> Void = {}
     var copyAll: () -> Void = {}
-    var pin: () -> Void = {}
     var unfold: () -> Void = {}
     var showOldest: () -> Void = {}
     var scroll: (CGFloat, Bool) -> Void = { _, _ in }

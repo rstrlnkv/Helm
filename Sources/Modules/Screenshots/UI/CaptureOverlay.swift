@@ -16,7 +16,7 @@ enum OverlayResult {
 }
 
 /// What the editor asks of the capture's session for the text of an area: the overlay holds the freeze, so a call names the display and the
-/// area only. A closure pair and not the session, as `pinRoom` is a closure: the overlay never owns what it asks.
+/// area only. A closure pair and not the session: the overlay never owns what it asks.
 struct EditorTextTools {
     var read: (DisplayID, CGRect) async -> CaptureSession.AreaReading
     var copy: ([RecognizedLine]) -> CaptureSession.TextCopy
@@ -154,12 +154,6 @@ struct EditorTextTools {
     /// The menu while `popUp` has not returned, so that `close` can end its tracking without making a menu never opened.
     var openedMenu: NSMenu?
 
-    /// Whether another pin may open: asked at the ⋯ menu's Pin item (`.exit(.pin)`) and nowhere else, so the
-    /// other exits leave at the limit as ever. The item is built only while `PinEntry.isOffered`.
-    let pinRoom: () -> Bool
-    /// The Pin item was refused for want of room, and the plate says so until the next input. Every input sets it false, so
-    /// it also takes away the plate of a finished reading (`textPlate`), which stands until the same next input.
-    var pinRefused = false { didSet { if !pinRefused { textPlate = nil } } }
     let textTools: EditorTextTools
     /// A reading of the area's text that has not answered: what was asked of it, the task that waits, and the display and area it was
     /// asked for. One at a time. It ends with its answer, with the editor's close, and with any change of the area under it
@@ -167,9 +161,8 @@ struct EditorTextTools {
     var reading: (serial: Int, ask: TextAsk, task: Task<Void, Never>, display: DisplayID, rect: CGRect)?
     var readingsBegun = 0
     enum TextAsk { case copy, blur }
-    /// What the last finished reading says, on the plate by the palette; until the next input. The plates' order, first that applies: the
-    /// refused pin, the Esc question that is still asked, this. An answer that comes while the pin's refusal is up takes the refusal down (it is
-    /// the later thing to say, and Pin can be pressed again); one that comes while the question is asked waits behind it.
+    /// What the last finished reading says, on the plate by the palette; until the next input, which sets it nil. The plates' order, first
+    /// that applies: the Esc question that is still asked, this. An answer that comes while the question is asked waits behind it.
     var textPlate: String?
     /// A nudge let go of the selected object and the arrow key that did it is still down: its repeats
     /// move nothing. Any key or palette click that reaches `perform` while no drag or reshape is under way
@@ -188,12 +181,11 @@ struct EditorTextTools {
     var reportedTarget = false
 
     init(freeze: Freeze, mode: Mode = .area, preselection: (display: DisplayID, rect: CGRect)? = nil,
-         picture: (display: DisplayID, rect: CGRect)? = nil, store: NamespacedStore? = nil, pinRoom: @escaping () -> Bool = { true },
+         picture: (display: DisplayID, rect: CGRect)? = nil, store: NamespacedStore? = nil,
          textTools: EditorTextTools = .none, selectionOnly: Bool = false,
          onFinish: @escaping (OverlayResult) -> Void) {
         self.freeze = freeze
         self.selectionOnly = selectionOnly
-        self.pinRoom = pinRoom
         self.textTools = textTools
         self.store = store
         self.mode = mode
@@ -296,7 +288,7 @@ struct EditorTextTools {
 
     /// Closes as `close` does, after the flash of a shot that was taken: the selection's or the window's shape
     /// goes white and fades for `HelmMotion.interfaceDuration`, and the panels leave when it has. Under Reduce
-    /// Motion, with nothing to flash (a cancel, a whole display, a pin) or with no display to flash on, it is
+    /// Motion, with nothing to flash (a cancel, a whole display) or with no display to flash on, it is
     /// `close()` at once. The picture is already taken from the freeze (the window's own comes from the system,
     /// of that window alone), so nothing the overlay draws in the meantime is in it.
     func close(after result: OverlayResult) {
@@ -315,7 +307,7 @@ struct EditorTextTools {
     private func flashShapes(of result: OverlayResult) -> (rects: [DisplayID: CGRect], window: Bool)? {
         switch result {
         case .edited(let display, let local, _, let exit):
-            return exit == .pin ? nil : ([display: local], false)
+            return ([display: local], false)
         case .window(let id, _):
             guard let hovered, hovered.id == id else { return nil }
             var parts: [DisplayID: CGRect] = [:]

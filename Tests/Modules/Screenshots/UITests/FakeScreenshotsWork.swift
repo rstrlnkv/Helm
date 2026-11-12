@@ -170,12 +170,6 @@ final class FakeScreenshotsScene {
                     return buildOverlay ? overlay.build() : false
                 },
                 presentBar: { _ in holder.scene?.barsPresented += 1 },
-                pins: PinBoard(present: { _ in }, screens: {
-                    NSScreen.screens.compactMap { screen in
-                        (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32)
-                            .map { (DisplayID($0), screen.frame) }
-                    }
-                }),
                 toast: ShotToast(tick: { try await holder.scene?.clock.tick($0) }, windowed: false))
             holder.scene?.controller = made
             holder.scene?.controllersBuilt += 1

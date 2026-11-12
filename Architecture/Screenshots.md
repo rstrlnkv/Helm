@@ -243,8 +243,7 @@ that is a template layer filled with its own tool's colour, and the tip's highli
 object is raised 10 pt, its bottom cut by the palette, and under Reduce Motion it moves at once. The artwork carries no SVG
 filter and no text, because macOS drops a filter without a word; the attribution of the pen, the marker, the pencil, the eraser and the ruler is in `NOTICE.md`; the spotlight's shape was drawn for Helm and its body and band fills are the pen's from the same file.
 
-The other tools, Select, Filled, Save, Share… and, while
-`PinEntry.isOffered`, Pin are items of the ⋯ menu (`EditorMenu` in `Sources/Modules/Screenshots/UI/EditorMenu.swift`):
+The other tools, Select, Filled, Save and Share… are items of the ⋯ menu (`EditorMenu` in `Sources/Modules/Screenshots/UI/EditorMenu.swift`):
 a pure list of values read from the same `EditorBarModel` and the same tool list as the row, and an `NSMenu` filled from
 it at every opening, so a check mark cannot differ from the chosen tool. ⋯ is drawn pressed while the menu is open and
 carries the symbol of a chosen menu tool as a badge, a hidden object in use included. The tool items, the `.menu` and `.shapes` places of `EditorPalette.objects` and `EditorPalette.afterSelect`, show their letter at the right (`EditorMenu.keyEquivalent(of:)`, read from `EditorKeys.toolKeys`; Select, Steps, Crop, Magnifier and Emoji show none, none of the five having a key). `Filler.choose` drops an action sent by a key event whose letter is one of `EditorKeys.toolKeys` (the predicate is `EditorMenu.isSentByAKey`; Return and space pass): the keys act only with the menu closed, by `EditorKeys`.
@@ -348,9 +347,9 @@ them one undo step, which the person sees before Done and can delete or add to, 
 
 **The plates say what was done, never what the picture now is.** After a blur the plate is `Blurred: N. Check the rest yourself.` or `Nothing was blurred. Check the picture yourself.`; no plate of the
 two items says "safe", "hidden", "protected" or "no personal data" or carries a check mark (and `LabelLayer` draws every plate white on translucent black, so none is green), because a card number the rule missed is a leak nobody sees and no line would say so
-(`ThePlatesAfterBlurringNeverSayItIsSafeTests`; its word lists are a tripwire, and the sentences asserted whole are the guard). They use the plate the Esc question and the refused pin use, by the
-palette, and stand until the next input, which `CaptureOverlay` takes away with the refusal's own flag. **The order of the plates, first that applies:** the refused pin, the Esc question while it is still asked, the answer of a reading. An answer
-that comes while the pin's refusal is up takes the refusal down and shows (it is the later thing to say); one that comes while the Esc question is asked waits behind it and shows once the question is gone.
+(`ThePlatesAfterBlurringNeverSayItIsSafeTests`; its word lists are a tripwire, and the sentences asserted whole are the guard). They use the plate the Esc question uses, by the
+palette, and stand until the next input, which `CaptureOverlay` takes away (`textPlate` set nil). **The order of the plates, first that applies:** the Esc question while it is still asked, the answer of a reading. An answer
+that comes while the Esc question is asked waits behind it and shows once the question is gone.
 
 **Text the person covered is not copied** (default taken, the safe direction, in one place: `CopiedText.lines(_:source:notUnder:)`). The reading is of the frame without the layers, so words under a blur, a filled rectangle or ellipse or a step's circle are in it; a line whose box lies wholly or
 partly under one of those layers is left out of the copy (the rectangle round the layer counts, so an ellipse's corners too), and a copy whose every line is covered says `No text was found`. Blur Emails and Phone Numbers needs no such rule: its finds go over
@@ -369,7 +368,7 @@ composes it and calls `CaptureController.handOff` with what the exit asked for: 
 always copies and writes a file by the save target (an edit of a shot that had a file writes one whatever the target says), the copy key only copies, the
 save key only saves — to the macOS folder when the target is the clipboard — and Share…, from the ⋯ menu, does what
 Return does and then opens the system's sheet at the thumbnail (`thenShare`). A window or a
-whole display still arrives at `handOff` directly and asks for both (a picture that cannot be made, for an area, a pin or a whole display, is a log warning and the `captureFailed` refusal on the toast, never silence), and the full-screen
+whole display still arrives at `handOff` directly and asks for both (a picture that cannot be made, for an area or a whole display, is a log warning and the `captureFailed` refusal on the toast, never silence), and the full-screen
 shortcut never comes through it. Esc and a right click are one door, except that in an Edit a right click beside the picture or on another display does nothing (the ways out of an Edit are Done, ✕ and Esc): with no layers they
 close at once, with layers the first press shows a plate and a second closes however
 late, and any other input withdraws the question; no clock is read.
@@ -403,7 +402,7 @@ on whole shots, with «N more» on the farthest shot seen whole. Where each shee
 the label counts and where a scroll rests are `ShotShelf`'s (`Sources/Modules/Screenshots/Engine/Logic/ShotShelf.swift`), pure
 functions the view and the clock both ask. Over the pile the capsule acts on the group: Copy All puts every finished shot on the
 clipboard in one write (`CaptureSession.copyAll`, `ShotPasteboard.copy(pngs:)`), one pass at a time (a press while one reads, or the module going off, stops it at its next picture), Show in Finder selects every
-file, ✕ closes the group, and a drag carries every finished shot of it: a file by its URL, a copied picture as a PNG encoded when a drop asks for it, so a drag begins as cheaply for twenty shots as for one, and a pressed sheet still being written does not keep the others from leaving. A written shot keeps its path and its thumbnail only, so a file that is not found (moved or deleted) cannot be copied or pinned, and is said: Copy All writes the shots that are found, in the list's order, and names the missing ones by their number in the pile (`CaptureRefusal.filesGone`, a place in the list `ShotToast.sources()` hands the session; with every file gone nothing is written), while Pin and the single Copy say `CaptureRefusal.fileGone` and draw no picture (`AShotWhoseFileIsGoneIsNamedAndTheRestIsCopiedTests`, `APinOfAShotWhoseFileIsGoneIsToldNotDrawnBlankTests`); a file that is there and cannot be read is still `encoding`, and the drag and Share skip a gone file without a word. In the row each shot is a single shot again, with its own capsule, click and
+file, ✕ closes the group, and a drag carries every finished shot of it: a file by its URL, a copied picture as a PNG encoded when a drop asks for it, so a drag begins as cheaply for twenty shots as for one, and a pressed sheet still being written does not keep the others from leaving. A written shot keeps its path and its thumbnail only, so a file that is not found (moved or deleted) cannot be copied, and is said: Copy All writes the shots that are found, in the list's order, and names the missing ones by their number in the pile (`CaptureRefusal.filesGone`, a place in the list `ShotToast.sources()` hands the session; with every file gone nothing is written), while the single Copy says `CaptureRefusal.fileGone` and draws no picture (`AShotWhoseFileIsGoneIsNamedAndTheRestIsCopiedTests`, `TheCopyOfAShotWhoseFileIsGoneIsToldNotDrawnBlankTests`); a file that is there and cannot be read is still `encoding`, and the drag and Share skip a gone file without a word. In the row each shot is a single shot again, with its own capsule, click and
 drag, and ✕ closes that shot alone. The row folds back on Esc and once the pointer has been away from it for
 `ShotShelf.foldDelay`, asked of the pointer's place at every step of the clock and not of an exit; Esc reaches it because the
 click that unfolds the pile makes the panel key (`ShotPanel.takesKey`: only a click on the panel itself, only while the row is
@@ -414,7 +413,7 @@ in a white ring, its size `ShotThumbnail.fitted` (`Sources/Modules/Screenshots/E
 reduced copy's pixels, so the view that takes the hover, the click and the drag, and the drag's frame
 are one size while the capsule is down; a picture narrower than the capsule gets a window as wide as the capsule needs (`ShotCapsule.widest`),
 the ring unchanged and at the window's trailing edge, which is the edge `ShotToast.place` stands from the screen's. While the pointer is over a shot whose result is in, a capsule comes up over its lower edge:
-Edit (only where there is a file with its reading, or a held picture, to open on), Copy, Show in Finder (only for a shot with a file), Pin while `PinEntry.isOffered`, and ✕ after a divider;
+Edit (only where there is a file with its reading, or a held picture, to open on), Copy, Show in Finder (only for a shot with a file), and ✕ after a divider;
 while it is up, the view that reports the hover is the picture and the capsule together, and on a picture narrower than the capsule both stand against the picture's trailing edge.
 A click on the picture is Edit (on a folded pile it unfolds the row): `CaptureSession.openEdit` lays the shot over a fresh freeze of the display under the pointer (`PictureOnScreen` in
 `Sources/Modules/Screenshots/Engine/Freeze.swift`), reduced on the screen when it is larger than the display less `PictureOnScreen.margin` (24 pt at the sides; above and below the palette, its gap and `EditorChrome`'s margin, each side capped at a quarter of the display's side, so that the palette is placed outside the picture and never stands on it) and centred on the whole display, and the overlay opens in the editor on the picture's own
@@ -430,24 +429,9 @@ group everything a real panel would show: the keys taken at the unfolding click 
 row, a drag of several shots, the glass of the counter and of «N more», and whether a press in the empty room of the row's panel
 falls through to what lies under it.
 
-## Pin
-
-A third exit, Pin, which no control offers (`PinEntry.isOffered` is false: built and tested, no control reaches it), keeps the picture as a window (`Sources/Modules/Screenshots/UI/ScreenPin.swift`). It is the
-same picture `CaptureSession.annotated` makes for a file, shown by `PinPanel` at the selection's own place and
-size, which `PinGeometry` (`Sources/Modules/Screenshots/Engine/Logic/PinGeometry.swift`) works from the same
-pixel cut; nothing is written, copied, played or toasted, and `CaptureController` is free again as after any
-other exit. A pin is a non-activating panel at `.floating`, the bottom of a ladder the code spells out, from the
-bottom: the pin `.floating`, the toast and the capture panel `.statusBar`, the overlay `.screenSaver`, and the capture
+**The window levels**, from the bottom: the toast and the capture panel `.statusBar`, the overlay `.screenSaver`, and the capture
 panel again while an overlay is open under it, one step above `.screenSaver` (`CapturePanel.level(selecting:)`),
-because its Capture is pressed on top of that overlay. A new capture lies over every pin, and the toast, which would be
-below the overlay, is why the limit of `PinGeometry.limit` open pins is
-said on the editor's plate instead (`CaptureOverlay` asks `pinRoom` at the ⋯ menu's Pin item, built only while `PinEntry.isOffered`, and stays open when
-there is none). A pin is key only once clicked, so Esc closes exactly the pin last touched and no other
-window's; it is moved by dragging, scaled about the pointer by the scroll and made more or less opaque by
-⌥ and the scroll, both bounded. `PinBoard` holds them with one observer of the displays, installed
-with the first pin and removed with the last, which brings a pin wholly onto one screen when a display
-goes (`PinGeometry.rehome`). `CaptureController.cancel` — Esc or the close control on the capture bar —
-closes no pin; only `CaptureController.teardown`, called by `ScreenshotsViewModel.stop` when the module is switched off and at quit, does. Nothing about a pin is stored.
+because its Capture is pressed on top of that overlay.
 
 ## How Screenshots' model reaches its engine
 
@@ -467,8 +451,8 @@ returns, one task in the model that `stop(_:)` cancels before the engine's `deac
 The session and the controller are built at the first press and not in the model's init: the one
 makes the capture ports, the other a panel and a toast, and a press may never come. `stop()` ends the controller
 with `CaptureController.teardown`, so a switch-off in the middle of a capture, or after
-one, closes the press, the countdown, the overlay (open or flashing), the bar, the toast
-and the pins (`ASwitchedOffCaptureClosesEveryWindowTests`), and a press that comes after it builds nothing
+one, closes the press, the countdown, the overlay (open or flashing), the bar and the toast
+(`ASwitchedOffCaptureClosesEveryWindowTests`), and a press that comes after it builds nothing
 (`AStoppedScreenshotsModelReachesNoWorkTests`, `TheStoppedModelMeetsTheOrdersNobodyPlannedTests`). The host's order is the model's `stop()`
 and then the engine's `deactivate()`; the engine's `deactivate()` touches no session, so a
 capture in flight is not left holding a closed engine.
@@ -495,7 +479,6 @@ Every state here is shot on the crew's bench, over a fake port and a synthetic f
 | `toast-row-3`, `toast-row-capsule`, `toast-row-more`, `toast-row-scrolled` | row unfolded, «N more», scrolled | a click on the pile |
 | `toast-refusal-permission`, `toast-refusal-failed`, `toast-refusal-edit`, `toast-refusal-over-pile` | the refusal in the shots' place | a refused capture, write or edit |
 | `panel-single`, `panel-row`, `panel-refusal` | the same in the real panel | as above |
-| `pin`, `pin-scaled`, `pin-faded` | a pin, scaled, faded | Pin, not offered now |
 | `cells` | every `GlassCell` look | none, the bench's sheet of them |
 | `bar-screen`, `bar-window`, `bar-area` | the bar by mode | the third shortcut, a mode |
 | `bar-target` | Capture shown, wider | a target picked |
@@ -510,7 +493,7 @@ Every state here is shot on the crew's bench, over a fake port and a synthetic f
 | `ov-object` | object's accent frame and handles | Select, a click on it |
 | `ov-card` | the picture as a card | Edit from the toast |
 | `ov-ruler`, `ov-sampling`, `ov-spotlight` | strip; loupe and hex plate; dim with a hole | U; the eyedropper; the spotlight |
-| `ov-plate-esc`, `ov-plate-pin`, `ov-plate-text`, `ov-plate-blur` | the plate by its reason | Esc with layers; Pin refused, not offered now; a failed reading; nothing blurred |
+| `ov-plate-esc`, `ov-plate-text`, `ov-plate-blur` | the plate by its reason | Esc with layers; a failed reading; nothing blurred |
 | `ov-flash` | white at its peak | a shot taken |
 | `ed-marks` | the rectangle, arrow, marker, blur, step, magnifier, text and spotlight marks on the picture; the spotlight's hole is almost the area, so the marks stay lit | drawing |
 | `ed-pen`, `ed-eraser` | the object raised | a press on it |

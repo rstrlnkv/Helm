@@ -82,15 +82,4 @@ extension ShotToast {
             return shot.file.map { .file($0) }
         }
     }
-
-    /// The picture as a pin, where the thumbnail stands; the shot leaves the window.
-    func pin() {
-        if currentFileIsGone { showRefusal(.fileGone); return }
-        guard let image = fullPicture(), let shot = model.current,
-              let view = model.unfolded ? model.focused : model.anchor, let window = view.window else { return }
-        // The picture's own rect: the view is larger than the picture while the capsule is up over a small shot.
-        let rect = (view as? ShotDragView)?.pictureFrame ?? view.bounds
-        onPin(image, window.convertToScreen(view.convert(rect, to: nil)))
-        if model.unfolded { remove(shot.id) } else { dismiss() }
-    }
 }

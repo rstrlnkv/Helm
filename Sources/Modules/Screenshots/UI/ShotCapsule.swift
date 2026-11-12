@@ -3,18 +3,17 @@ import HelmUI
 
 /// What the capsule over a thumbnail offers, in order; the ✕ stands after a divider. «Edit» only where there is
 /// something to open the editor on (`ShotToastModel.editSource`), «Show in Finder» only for a shot that has a
-/// file, and Pin only while `PinEntry.isOffered`. A folded pile's capsule acts on the whole group (`pileCells`).
+/// file. A folded pile's capsule acts on the whole group (`pileCells`).
 enum ShotCapsule {
-    enum Cell: Equatable { case edit, copy, copyAll, reveal, pin, close }
+    enum Cell: Equatable { case edit, copy, copyAll, reveal, close }
 
     static func cells(hasFile: Bool, canEdit: Bool) -> [Cell] {
         var cells: [Cell] = canEdit ? [.edit, .copy] : [.copy]
         if hasFile { cells.append(.reveal) }
-        if PinEntry.isOffered { cells.append(.pin) }
         return cells + [.close]
     }
 
-    /// The pile's: «Copy All (N) · Show in Finder | ✕». No Edit and no Pin, which are about one picture; «Show in
+    /// The pile's: «Copy All (N) · Show in Finder | ✕». No Edit, which is about one picture; «Show in
     /// Finder» while any shot of the group has a file.
     static func pileCells(hasFile: Bool) -> [Cell] {
         hasFile ? [.copyAll, .reveal, .close] : [.copyAll, .close]

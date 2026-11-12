@@ -9,7 +9,7 @@ import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **With its defaults, `CaptureController.handOff` copies the picture under every target and saves it by the save target.** Every
-/// pick from the overlay — an area, a window, a whole display by Return — arrives at that one call, the editor's Pin apart. The full-screen
+/// pick from the overlay — an area, a window, a whole display by Return — arrives at that one call. The full-screen
 /// shortcut never goes through it.
 ///
 /// The thumbnail is switched off in every store here, because the toast is a real

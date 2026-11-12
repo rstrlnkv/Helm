@@ -18,11 +18,10 @@ import Module_Screenshots_Engine
     /// the pointer is elsewhere; when the time is up, to hold when it is there; and of an unfolded row at every
     /// step, to fold it once the pointer has been away for `ShotShelf.foldDelay`.
     private var pointerIsOver: () -> Bool = { false }
-    /// What the capsule's Edit, Copy, Copy All and Pin ask of whoever owns the session and the board.
+    /// What the capsule's Edit, Copy and Copy All ask of whoever owns the session.
     var onEdit: () -> Void = {}
     var onCopy: () -> Void = {}
     var onCopyAll: () -> Void = {}
-    var onPin: (CGImage, CGRect) -> Void = { _, _ in }
     /// Makes the panel key when the row unfolds, and gives the keys back when it folds.
     ///
     /// Giving back is ordering the panel out and in again: AppKit has no call that only resigns key. That a key
@@ -80,7 +79,6 @@ import Module_Screenshots_Engine
         model.edit = { [weak self] in self?.onEdit() }
         model.copy = { [weak self] in self?.onCopy() }
         model.copyAll = { [weak self] in self?.onCopyAll() }
-        model.pin = { [weak self] in self?.pin() }
         model.unfold = { [weak self] in self?.unfold() }
         model.showOldest = { [weak self] in self?.showOldest() }
         model.scroll = { [weak self] delta, precise in self?.scroll(by: delta, precise: precise) }

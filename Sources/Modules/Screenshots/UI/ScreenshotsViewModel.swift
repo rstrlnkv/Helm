@@ -72,7 +72,7 @@ extension ScreenshotsEngine: ScreenshotsWork {}
 
     /// The host calls this before the engine's `deactivate()`: the model hears nothing
     /// more and asks nothing more, and the capture goes with it. The press is cancelled,
-    /// and the overlay, the bar, the toast and the pins are closed: windows nothing else
+    /// and the overlay, the bar and the toast are closed: windows nothing else
     /// owns, left up by a switch that came in the middle of a capture or after it.
     func stop() {
         closed = true

@@ -100,23 +100,6 @@ final class ASwitchedOffCaptureClosesEveryWindowTests: XCTestCase {
         }
     }
 
-    /// A pin outlives a capture and Esc on the bar (`cancel()`), and only the module's end closes it. The
-    /// control is the `cancel()`, which leaves it. Fails against a `stop` that only cancels.
-    func testAPinIsClosedByTheSwitchAndNotByACancel() async throws {
-        for pageFirst in orders {
-            let (scene, _) = try makeScene(held: false)
-            if pageFirst { scene.model.refresh() }
-            scene.model.press(.panel)
-            let controller = try XCTUnwrap(scene.controller)
-            controller.pins.open(try ShotToastRig.picture(width: 40, height: 20), frame: CGRect(x: 100, y: 100, width: 50, height: 50))
-            XCTAssertEqual(controller.pins.pins.count, 1, "the subject: a pin is open")
-            controller.cancel()
-            XCTAssertEqual(controller.pins.pins.count, 1, "the control: a cancel leaves the pin (page first: \(pageFirst))")
-            scene.model.stop()
-            XCTAssertEqual(controller.pins.pins.count, 0, "the module went off and the pin stayed (page first: \(pageFirst))")
-        }
-    }
-
     /// A press whose freeze is still in flight when the module goes off opens nothing when the freeze returns.
     /// The control is the same press left alone, which presents its overlay.
     func testAPressInTheFreezeOpensNothingAfterTheSwitch() async throws {

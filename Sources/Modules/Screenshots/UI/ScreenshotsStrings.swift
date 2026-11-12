@@ -233,7 +233,7 @@ enum ScStr {
         }
     }
 
-    /// Fill and Save are items of the ⋯ menu (Fill inside Shapes); Copy is the capsule's cell, read in `ScStr.copy`. Pin is read by the ⋯ menu's Pin item and by the thumbnail capsule's Pin cell, while `PinEntry.isOffered`.
+    /// Fill and Save are items of the ⋯ menu (Fill inside Shapes); Copy is the capsule's cell, read in `ScStr.copy`.
     static var fill: String { L(.fill) }
     /// The submenu of the ⋯ menu that holds the shapes, and the pointer's item: Preview's own words: the
     /// selection tool is the noun «Выбор», key `Selection` of Preview's `DFR-BBBAA77A32-C4EBFEA440.loctable`, and the
@@ -251,10 +251,6 @@ enum ScStr {
     static var closeEditor: String { HelmWord.close }
     /// The editor's checkmark: what Return does.
     static var done: String { HelmWord.done }
-    /// The editor's Pin item on the ⋯ menu, which keeps the picture on the screen as a window.
-    static var pin: String { L(.pin) }
-    /// The plate at the limit of open pins; no number, so no argument.
-    static var pinLimit: String { L(.pinLimit) }
     /// Copy Text: the word of `VisionKitCore.framework`'s `Localizable.loctable`, key `VK_COPY_TEXT_MENU_ITEM_TITLE`, which is Live Text's menu item
     /// (Text kopieren, Copiar texto, Copier le texte, テキストをコピー, Copiar texto, Скопировать текст, 拷贝文本; its Portuguese is the `pt_PT` table's, since `pt_BR` capitalises it).
     static var copyText: String { L(.copyText) }
@@ -274,8 +270,6 @@ enum ScStr {
         let n = HelmBytes.grouped(count, language: language.rawValue)
         return L(.blurred(n), language: language)
     }
-    /// What a screen reader calls a pin.
-    static var pinnedScreenshot: String { L(.pinnedScreenshot) }
 
     // MARK: - The toast
 

@@ -43,7 +43,7 @@ import Module_Screenshots_Engine
     }
 
     /// The host closes the model before the engine goes: its stream ends and the capture
-    /// in flight, its panels and its pins close with it.
+    /// in flight, and its panels close with it.
     public func stop(_ model: ScreenshotsViewModel) { model.stop() }
 
     public func menuBar(_ model: ScreenshotsViewModel) -> MenuBarContribution? { .utility }

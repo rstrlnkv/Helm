@@ -16,7 +16,7 @@ extension CaptureOverlay {
 
     func mouseDown(on display: DisplayID, at local: CGPoint, flags: NSEvent.ModifierFlags) {
         pointer = (display, local)
-        pinRefused = false
+        textPlate = nil
         // No release is guaranteed: a press that finds a reshape open ends it where it was.
         reshaping = nil
         // A press on the palette is the palette's: never a draft, never a new area. Its background is an
@@ -180,7 +180,7 @@ extension CaptureOverlay {
     /// lose, and with layers a second press, whenever it comes; a selected object is let go of first, and that press asks nothing. A drag in
     /// progress is not an edit and leaves at once.
     func escapeAsked() {
-        pinRefused = false
+        textPlate = nil
         // An open input takes this press and nothing else: it places a non-empty text and drops an empty one, and the
         // rule below starts with the next press.
         if typing != nil { endTyping(); return }

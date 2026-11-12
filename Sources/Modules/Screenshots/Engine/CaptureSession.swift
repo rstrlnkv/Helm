@@ -23,7 +23,7 @@ public enum CaptureRefusal: Sendable, Equatable {
     /// `ReplaceRefusal`: the original is where it was and the edit beside it, except where a case says otherwise.
     case notReplaced(ReplaceRefusal)
     /// One shot's file was not found, moved or deleted since it was written, and the shot holds no picture of its own
-    /// (a written shot keeps its path and its thumbnail only): Pin and the single Copy have nothing to use.
+    /// (a written shot keeps its path and its thumbnail only): the single Copy has nothing to use.
     case fileGone
     /// «Copy All» left these shots out because their file was not found: zero-based places in the list handed to
     /// `CaptureSession.copyAll`. The others were written, in one write, unless every file is gone, and then none was.
@@ -236,7 +236,7 @@ public final class CaptureSession: @unchecked Sendable {
     }
 
     /// The one place a selection becomes pixels of a frame: the frame, the whole pixels the selection covers on it
-    /// and the cut of `shot` there, so the file, the pin and a reading of the text are cut from the same picture.
+    /// and the cut of `shot` there, so the file and a reading of the text are cut from the same picture.
     private func part(of freeze: Freeze, display: DisplayID, local rect: CGRect) -> FramePart? {
         guard let frame = freeze.frames.first(where: { $0.id == display }),
               let pixels = ScreenSpace.pixels(ofLocal: rect, scale: frame.scale,
@@ -307,14 +307,12 @@ public final class CaptureSession: @unchecked Sendable {
     /// scale of the display they were drawn on — that display's `FrozenDisplay.scale`
     /// and no screen's — so a stroke is as thick in the file as on the screen, and
     /// the cut's pixel offset is the one `crop` uses, so the layers land on the
-    /// same pixels the overlay showed them over. No layers: the crop itself, which keeps its
-    /// parent's pixels alive — unless `detached`, which draws the cut into a bitmap of its own so
-    /// that what holds it (a pin) holds the selection and not the whole frozen display.
+    /// same pixels the overlay showed them over. No layers: the crop itself.
     public func annotated(_ freeze: Freeze, display: DisplayID, local rect: CGRect,
-                          layers: [Annotation], detached: Bool = false) async -> CGImage? {
+                          layers: [Annotation]) async -> CGImage? {
         guard let found = part(of: freeze, display: display, local: rect) else { return nil }
         let (frame, pixels, cut) = (found.frame, found.pixels, found.cut)
-        guard !layers.isEmpty || detached else { return cut }
+        guard !layers.isEmpty else { return cut }
         let scale = frame.scale
         let display = frame.shot
         return await offTheCooperativePool { Self.draw(layers, over: cut, at: pixels.origin, scale: scale, display: display) }

@@ -83,7 +83,7 @@ one line per engine; the descriptor forwards the id upward.
 registered ids and fails on a rename, since a rename orphans everything anybody
 has configured.
 
-**A module may own windows over the displays.** Screenshots' overlay, toast and pin are panels its UI target builds itself; a window a module needs and the host owns is the other shape, `Architecture/AWindowAModuleNeedsAndTheHostOwns.md`.
+**A module may own windows over the displays.** Screenshots' overlay and toast are panels its UI target builds itself; a window a module needs and the host owns is the other shape, `Architecture/AWindowAModuleNeedsAndTheHostOwns.md`.
 
 ## Ports and logic
 

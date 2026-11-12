@@ -47,7 +47,7 @@ final class OverlayView: NSView {
     let coordinateLabel = LabelLayer()
     let sizeLabel = LabelLayer()
     /// The area's size over its top-left corner while it is edited: a plate of its own, since `sizeLabel` is the
-    /// one by the pointer that the Esc question uses; the Pin refusal stands over the palette.
+    /// one by the pointer that the Esc question uses.
     let cornerLabel = LabelLayer()
     let loupeLayer = LoupeLayer()
     let flashLayer = FlashLayer()
