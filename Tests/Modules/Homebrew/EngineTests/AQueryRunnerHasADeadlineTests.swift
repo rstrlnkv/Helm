@@ -43,6 +43,20 @@ final class AQueryRunnerHasADeadlineTests: XCTestCase {
                           "the bytes query waited past the runner's deadline")
     }
 
+    /// `brew doctor` goes through `runCapturingDiagnostics`, which is `HelmProcess`'s
+    /// merged read now, and must keep the deadline: a hung doctor is a timeout
+    /// with no output, never a wait.
+    func testTheDiagnosticsQueryHasTheSameDeadline() {
+        let runner = ShellProcessRunner(queryTimeout: 0.3)
+        let started = Date()
+        let result = runner.runCapturingDiagnostics("/bin/sleep", ["30"], env: [:])
+        XCTAssertEqual(result.status, HelmProcess.timedOutStatus,
+                       "a hung `brew doctor` returned something other than the named timeout")
+        XCTAssertTrue(result.output.isEmpty, "a doctor that never answered came back with output")
+        XCTAssertLessThan(Date().timeIntervalSince(started), 10,
+                          "the diagnostics query waited past the runner's deadline")
+    }
+
     /// The default is not a test value: it has to clear the slowest real query
     /// with room. The owner's log has warm queries at 0.3–0.6 s and a cold
     /// `brew outdated` (which goes to the network) at 7.4 s; the default must

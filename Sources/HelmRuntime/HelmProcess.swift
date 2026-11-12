@@ -17,6 +17,14 @@ import HelmLaunch
 /// inside that poll. Reading to EOF already proves the child closed its output;
 /// the termination handler supplies the status without the poll.
 public enum HelmProcess {
+    /// Where a tool's standard error goes. `discarded` for every parsed query;
+    /// `merged` only for the one caller whose whole answer is a diagnostic
+    /// (Homebrew's `brew doctor`).
+    public enum StandardError: Sendable {
+        case discarded
+        case merged
+    }
+
     public struct Result: Sendable {
         public let status: Int32
         public let output: String
@@ -40,7 +48,7 @@ public enum HelmProcess {
     /// has not been written yet and goes through `run` or `runData`: a caller
     /// may still ask for more than eight, and what it gets is a queue rather
     /// than eight more processes. **`start` takes no slot**, so a tool launched
-    /// through it (Homebrew's streamed and diagnostic runs, the updater's swap)
+    /// through it (Homebrew's streamed runs, the updater's swap)
     /// is not counted and not held back by this number.
     ///
     /// Eight, and it is a ceiling on *concurrency* rather than a guess at what
@@ -104,15 +112,19 @@ public enum HelmProcess {
     /// into `Data` at the call site. Measured on `outdated()` at 13 MB of
     /// payload: 79–80 MB held at peak through the String round-trip, 50–51 MB
     /// handing the bytes through (`OutdatedQueryAllocationBenchmark`).
+    ///
+    /// `standardError: .merged` points stderr at the same pipe as stdout, in
+    /// write order; the deadline, TERM, grace and KILL are the same.
     public static func runData(_ path: String,
                                _ arguments: [String],
                                env: [String: String]? = nil,
-                               timeout: TimeInterval) -> (status: Int32, output: Data) {
-        runData(path, arguments, env: env, deadline: timeout)
+                               timeout: TimeInterval,
+                               standardError: StandardError = .discarded) -> (status: Int32, output: Data) {
+        runData(path, arguments, env: env, deadline: timeout, standardError: standardError)
     }
 
-    /// Stderr is discarded, not merged: a tool's diagnostics are not its output,
-    /// and every caller here parses what it gets.
+    /// Stderr is discarded unless the one merged caller asks: a tool's
+    /// diagnostics are not its output, and every other caller parses what it gets.
     ///
     /// `nullDevice`, not a `Pipe()`. A pipe nobody reads holds about 64 KB
     /// and then blocks the child in `write(2)` — so it never exits, never
@@ -126,7 +138,8 @@ public enum HelmProcess {
     private static func runData(_ path: String,
                                 _ arguments: [String],
                                 env: [String: String]?,
-                                deadline: TimeInterval?) -> (status: Int32, output: Data) {
+                                deadline: TimeInterval?,
+                                standardError: StandardError = .discarded) -> (status: Int32, output: Data) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: path)
         process.arguments = arguments
@@ -138,8 +151,8 @@ public enum HelmProcess {
 
         let out = Pipe()
         process.standardOutput = out
-        // Discarded: see the doc comment above.
-        process.standardError = FileHandle.nullDevice
+        // Discarded unless merged into the same, read pipe: see the doc comment above.
+        process.standardError = standardError == .merged ? out : FileHandle.nullDevice
 
         let finished = DispatchSemaphore(value: 0)
         process.terminationHandler = { _ in finished.signal() }
@@ -211,10 +224,7 @@ public enum HelmProcess {
     /// any work, and Homebrew's streaming port hands its pipes to a page. Both
     /// had their own `try process.run()`, which is the spelling that aborts the
     /// app: `NSTask` raises an Objective-C exception on some launch paths and a
-    /// Swift `catch` cannot see it. A third, Homebrew's `runCapturingDiagnostics`,
-    /// uses it for a different reason: its child ends within the call, but
-    /// `run` and `runData` discard stderr and this caller wants it read with
-    /// stdout.
+    /// Swift `catch` cannot see it.
     ///
     /// False rather than a throw, because the refusal is already logged here
     /// and a caller that owns the process owns what to do about it — the

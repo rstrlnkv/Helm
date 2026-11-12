@@ -69,15 +69,6 @@ private final class StatusBox: @unchecked Sendable {
     var status: Int32 { lock.lock(); defer { lock.unlock() }; return value }
 }
 
-/// Carries the bytes read on the helper thread in `runCapturingDiagnostics` to
-/// the caller waiting on `readDone`.
-private final class DiagnosticsBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value = Data()
-    func set(_ d: Data) { lock.lock(); value = d; lock.unlock() }
-    func take() -> Data { lock.lock(); defer { lock.unlock() }; return value }
-}
-
 public struct ShellProcessRunner: ProcessRunner {
     /// How long a *query* may go unanswered before it is a hang, not a wait.
     ///
@@ -118,15 +109,14 @@ public struct ShellProcessRunner: ProcessRunner {
     /// `stream` keeps stderr: a console should show what the tool says. It is
     /// output that gets parsed that must not carry diagnostics.
     public func run(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, stdout: String) {
-        let result = HelmProcess.run(launchPath, args, env: environment(env),
-                                     timeout: queryTimeout)
+        let result = HelmProcess.run(launchPath, args, env: env, timeout: queryTimeout)
         return (result.status, result.output)
     }
 
     /// The bytes without the String round-trip — `HelmProcess.runData`'s doc
     /// comment carries the measured difference.
     public func runData(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, stdout: Data) {
-        let r = HelmProcess.runData(launchPath, args, env: environment(env), timeout: queryTimeout)
+        let r = HelmProcess.runData(launchPath, args, env: env, timeout: queryTimeout)
         return (r.status, r.output)
     }
 
@@ -144,51 +134,14 @@ public struct ShellProcessRunner: ProcessRunner {
     /// stream, so it gets the one method that goes and gets it, rather than a
     /// change to `run` that would break every other parser here.
     ///
-    /// **A second launch, not a second `HelmProcess` entry point.**
-    /// `HelmProcess` has nothing that captures both streams together — `run`
-    /// and `runData` discard stderr by design, and `stream`'s pipe-sharing
-    /// trick belongs to a long operation with no deadline. So this follows
-    /// `run`'s shape by hand instead: `HelmProcess.start` for the launch
-    /// guard (never `try p.run()`, for the reason its own doc comment gives),
-    /// read to EOF before waiting on the same reasoning `HelmProcess.run`
-    /// documents, the same environment merge, and the same query deadline —
-    /// past it the child is terminated (TERM, then KILL after a grace) and
-    /// the answer is `HelmProcess.timedOutStatus` with no output, exactly as
-    /// `run` reports a hang.
+    /// **A merged read, through `HelmProcess`.** The same launch guard, launch
+    /// slot, deadline (TERM, then KILL after a grace) and read-before-wait as
+    /// `runData`, with standard error merged into the one pipe; past the
+    /// deadline the answer is `HelmProcess.timedOutStatus` with no output.
     public func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: launchPath)
-        p.arguments = args
-        p.environment = environment(env)
-        let pipe = Pipe()
-        p.standardOutput = pipe
-        p.standardError = pipe
-
-        let finished = DispatchSemaphore(value: 0)
-        p.terminationHandler = { _ in finished.signal() }
-
-        guard HelmProcess.start(p, path: launchPath) else { return (-1, "") }
-
-        // Bounded, on a helper thread, so this one can stop waiting for it —
-        // the same shape `HelmProcess`'s own bounded `runData` uses, for the
-        // same reason: reading is what proves the child has closed both
-        // streams, and it must not be the thing left blocking past the
-        // deadline.
-        let box = DiagnosticsBox()
-        let readDone = DispatchSemaphore(value: 0)
-        DispatchQueue.global(qos: .userInitiated).async {
-            box.set(pipe.fileHandleForReading.readDataToEndOfFile())
-            readDone.signal()
-        }
-        if readDone.wait(timeout: .now() + queryTimeout) == .timedOut {
-            p.terminate()
-            if readDone.wait(timeout: .now() + 2) == .timedOut {
-                kill(p.processIdentifier, SIGKILL)
-            }
-            return (HelmProcess.timedOutStatus, "")
-        }
-        finished.wait()
-        return (p.terminationStatus, String(decoding: box.take(), as: UTF8.self))
+        let r = HelmProcess.runData(launchPath, args, env: env, timeout: queryTimeout,
+                                    standardError: .merged)
+        return (r.status, String(decoding: r.output, as: UTF8.self))
     }
 
     /// **The exit is reported at end of pipe, not at end of process.** These are
