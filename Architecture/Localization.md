@@ -44,7 +44,7 @@ catalog and is read through `HelmWord` (`Sources/HelmUI/HelmWord.swift`) or anot
 lists the files), `String` only: a
 property of the kit answers with the word, not with a resource. A module does pass its own resource into
 the kit's public `L`, which is how one function reads every catalog and why the resource carries its bundle. The same English
-in a catalog and in the kit is a failure (`StringsCoverageTests`), except a value holding a placeholder
+in a catalog and in the kit is a failure (`OneEntryPerKeyTests`), except a value holding a placeholder
 (the kit's `rowPosition` and Screenshots' `toolsShown` are both `%1$@ of %2$@`, the same English with different values in ja and zh). The catalog needs no
 `resources:` entry: SwiftPM processes it on its own and `Scripts/package-app.sh` copies every `*.bundle`
 into `Contents/Resources`, where the target's `Bundle.module` finds it. A catalog sits in a library
@@ -65,16 +65,15 @@ sees it.
 Each guard faces a direction the others are blind to; each file's header, or the doc comment of the test method, says how:
 
 - `Tests/HelmUITests/StringsCoverageTests.swift` — a catalog symbol missing a language or not marked
-  `translated`, a placeholder a translation lost, a `%` rule judged on each value alone (a bare `%` beside a placeholder, `%%` beside none; a lost `%%` is not compared with the English), a word in both the kit and a catalog,
-  an inline table at a call site.
+  `translated`, a placeholder a translation lost, a `%` rule judged on each value alone (a bare `%` beside a placeholder, `%%` beside none; a lost `%%` is not compared with the English), an inline table at a call site, an English value posing as a translation.
 - `Tests/HelmUITests/NoOrphanTranslationsTests.swift` — a catalog symbol nothing asks for, a word asked
   by its English spelling.
 - `Tests/HelmUITests/OneEntryPerKeyTests.swift` — a key written twice in one catalog, which the build
-  passes (measured, exit 0).
+  passes (measured, exit 0), and one English text written under two symbols across the catalogs.
 - `Tests/HelmUITests/PunctuationIsTerminologyTests.swift` — a mark or a space a language
   does not use, in every catalog, and an «ё» in every catalog but the changelog's.
 
-`Tests/Support/ModuleCatalogs.swift` reads the catalogs as data for these guards, and
+`Tests/Support/ModuleCatalogs.swift` reads the catalogs as data for these guards (it throws when the kit's, the host's or the changelog's catalog is missing, and each guard's floor is the 13 it finds), and
 `Tests/Modules/KeepAwake/UITests/TheModuleWordsReachEveryLanguageTests.swift` shows the words
 come out of the built target in the language asked.
 

@@ -75,13 +75,21 @@ public enum ModuleCatalogs {
                                     + "and a guard that read the modules alone would pass")
         }
         found.insert((kitPath, "HelmUI"), at: 0)
-        // The host's two: its own words, and the changelog (the English sentence is the key there).
-        found.append(("Sources/HelmAppStrings/Localizable.xcstrings", "HelmApp"))
-        found.append(("Sources/HelmAppStrings/Changelog.xcstrings", "Changelog"))
         var out: [Catalog] = []
         for (relative, module) in found {
             guard FileManager.default.fileExists(atPath:
                 RepoSource.root.appendingPathComponent(relative).path) else { continue }
+            out.append(try read(relative, module: module))
+        }
+        // The host's two: its own words, and the changelog (the English sentence is the key there).
+        // Unlike a module directory with no UI catalog, a missing one is a moved file, not an absence.
+        for (relative, module) in [("Sources/HelmAppStrings/Localizable.xcstrings", "HelmApp"),
+                                   ("Sources/HelmAppStrings/Changelog.xcstrings", "Changelog")] {
+            guard FileManager.default.fileExists(atPath:
+                RepoSource.root.appendingPathComponent(relative).path) else {
+                throw RepoSource.Failure("\(relative) is not there — its words are in no catalog, "
+                                        + "and a guard that read the others alone would pass")
+            }
             out.append(try read(relative, module: module))
         }
         return out

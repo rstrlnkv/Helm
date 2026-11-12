@@ -155,7 +155,7 @@ final class PunctuationIsTerminologyTests: XCTestCase {
 
     func testNoCatalogButTheChangelogWritesYo() throws {
         let catalogs = try ModuleCatalogs.all()
-        XCTAssertGreaterThanOrEqual(catalogs.count, 12, "the catalogs were not read")
+        XCTAssertGreaterThanOrEqual(catalogs.count, 13, "the catalogs were not read")
         XCTAssertTrue(catalogs.allSatisfy { $0.strings.values.contains { $0["ru"] != nil } },
                       "a catalog carries no Russian, so «no ё» is said of nothing")
         let offences = Self.yoOffences(in: catalogs)

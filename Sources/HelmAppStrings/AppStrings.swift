@@ -235,8 +235,9 @@ public enum AppStr {
     public static var revealLog: String { HelmWord.showInFinder }
     public static var copyLog: String { L(.copyLog) }
     /// Next to the button whose whole purpose is pasting this into a bug report.
-    /// `HelmLog` puts every app name, VPN name and path through `Redact` before
-    /// writing, and that is a reason to press the button rather than a footnote.
+    /// `HelmLog` tags app and VPN names through `Redact` before writing; paths
+    /// keep their folder and file names, and the home folder is written as `~`
+    /// (`Redact.path`). That is a reason to press the button rather than a footnote.
     public static var logRedactionNote: String {
         L(.logRedactionNote)
     }

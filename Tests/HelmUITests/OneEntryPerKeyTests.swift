@@ -13,6 +13,9 @@ import HelmTestSupport
 /// So this reads the catalogs as **text**, which is the one way to see an entry the loader has already
 /// thrown away. **A duplicate key is the rule of different English for a second meaning, wearing a
 /// disguise**: two entries under one key are two meanings somebody translated separately.
+///
+/// Guards the class *one English per meaning*: no key written twice in a catalog, and one English text
+/// is one word across every catalog (a second meaning takes a different English).
 final class OneEntryPerKeyTests: XCTestCase {
 
     /// The keys of the catalog's `"strings"` object, in file order, with their escapes resolved.
@@ -63,7 +66,7 @@ final class OneEntryPerKeyTests: XCTestCase {
 
     func testNoSymbolIsWrittenTwiceInOneCatalog() throws {
         let catalogs = try ModuleCatalogs.all()
-        XCTAssertGreaterThanOrEqual(catalogs.count, 12, "only \(catalogs.count) catalog(s) were read")
+        XCTAssertGreaterThanOrEqual(catalogs.count, 13, "only \(catalogs.count) catalog(s) were read")
         XCTAssertTrue(catalogs.contains { $0.module == "HelmUI" }, "the kit's catalog was not read")
         var offenders: [String] = []
         for catalog in catalogs {
@@ -87,5 +90,37 @@ final class OneEntryPerKeyTests: XCTestCase {
                       + "and says nothing, so which translation ships is decided by file order — give each "
                       + "meaning its own key, or delete the entry that is not the one:\n"
                       + offenders.sorted().joined(separator: "\n"))
+    }
+
+    /// One English text is one word, in the whole of Helm. A word in the kit and in a module catalog is
+    /// two translations of one text, free to drift apart — and a catalog's symbols are internal, so the
+    /// other module cannot reach the copy: a shared word lives in the kit, `HelmWord`. A second meaning
+    /// takes a different English. A value that holds a placeholder is exempt (its argument makes it a
+    /// different sentence), and so are the per-form keys of one word (`wordsPutRightFew` and `…Many`
+    /// are English's one `words put right`, and differ in Russian): one stem, one catalog.
+    func testOneEnglishTextIsOneWordAcrossEveryCatalog() throws {
+        var homes: [String: [String]] = [:]
+        for entry in try ModuleCatalogs.entries(for: .en) where StringsCoverageTests.placeholderPlaces(entry.english).isEmpty {
+            homes[entry.english, default: []].append(entry.name)
+        }
+        XCTAssertGreaterThan(homes.count, 300, "only \(homes.count) English texts were read")
+        let repeated = homes.filter { $0.value.count > 1 && !Self.areFormsOfOneWord($0.value) }
+            .sorted { $0.key < $1.key }
+        XCTAssertTrue(repeated.isEmpty,
+                      "\(repeated.count) English text(s) are written under two symbols:\n"
+                      + repeated.prefix(20).map { "  «\($0.key)»: \($0.value.sorted().joined(separator: ", "))" }
+                        .joined(separator: "\n"))
+    }
+
+    /// `Module.wordFew`, `Module.wordMany`: the same module and the same stem before the plural suffix.
+    static func areFormsOfOneWord(_ names: [String]) -> Bool {
+        let stems = Set(names.map { $0.replacing(/(One|Few|Many|Other)$/, with: "") })
+        return stems.count == 1 && Set(names).count == names.count
+    }
+
+    func testTheFormsOfOneWordAreNotTwoMeanings() {
+        XCTAssertTrue(Self.areFormsOfOneWord(["Layout.wordsPutRightFew", "Layout.wordsPutRightMany"]))
+        XCTAssertFalse(Self.areFormsOfOneWord(["Layout.wordsPutRightFew", "Disk.wordsPutRightMany"]))
+        XCTAssertFalse(Self.areFormsOfOneWord(["Layout.tabs", "Layout.windows"]))
     }
 }

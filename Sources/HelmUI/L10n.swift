@@ -90,6 +90,10 @@ public enum AppLanguage: String, CaseIterable, Sendable {
             return resolved
         }
 
+        /// The first two letters of each preferred language, in order, name the
+        /// catalog: `zh-Hant` goes to the Simplified `zh` catalog and `pt-PT` to
+        /// the Brazilian `pt` one, in line with Info.plist's `zh-Hans` and
+        /// `pt-BR`. A `zh-Hant` translation is a later chain.
         private static func resolve() -> AppLanguage {
             for code in Locale.preferredLanguages {
                 let base = code.prefix(2).lowercased()
@@ -200,16 +204,17 @@ public func Bytes(_ count: Int) -> String {
 /// A number in the user's language: "1,5" where the language writes a comma.
 /// The rule summary printed `String(format: "%.1f", …)` beside sizes that
 /// `Bytes` had already written with a comma, so one line read "1.5 МБ" next to
-/// "1,5 ГБ".
-public func Decimal(_ value: Double, decimals: Int = 1) -> String {
+/// "1,5 ГБ". Not named `Decimal`: a free function of that name shadows
+/// `Foundation.Decimal`, and `Decimal(10000)` then binds to this one.
+public func Fractional(_ value: Double, decimals: Int = 1) -> String {
     HelmBytes.decimal(value, decimals: decimals, language: AppLanguage.current.rawValue)
 }
 
 /// A count in the user's language: "1 499 308", "1.499.308". Beside `Bytes` and
-/// `Decimal` because it is the same mistake one class of number over — a scan
+/// `Fractional` because it is the same mistake one class of number over — a scan
 /// of `/` reported "1499308 files", where macOS itself groups the digits.
 ///
-/// Not `Decimal`, which turns grouping off on purpose: that one writes the
+/// Not `Fractional`, which turns grouping off on purpose: that one writes the
 /// mantissa of a size, where a separator would be a second decimal mark.
 public func Count(_ value: Int, language: AppLanguage = AppLanguage.current) -> String {
     HelmBytes.grouped(value, language: language.rawValue)
@@ -430,13 +435,12 @@ public enum HelmDates {
     private static let cache = Cache()
 
     private final class Cache: @unchecked Sendable {
-        private let lock = NSLock()
-        private var relatives: [String: RelativeDateTimeFormatter] = [:]
-        private var absolutes: [String: DateFormatter] = [:]
-        private var days: [String: DateFormatter] = [:]
-        private var clocks: [String: DateFormatter] = [:]
-        private var daySpans: [String: DateIntervalFormatter] = [:]
-        private var spans: [String: DateComponentsFormatter] = [:]
+        private let relatives = LockedMemo<String, RelativeDateTimeFormatter>()
+        private let absolutes = LockedMemo<String, DateFormatter>()
+        private let days = LockedMemo<String, DateFormatter>()
+        private let clocks = LockedMemo<String, DateFormatter>()
+        private let daySpans = LockedMemo<String, DateIntervalFormatter>()
+        private let spans = LockedMemo<String, DateComponentsFormatter>()
 
         /// Reads the stored form and nothing else: fixed format, fixed locale.
         /// `en_US_POSIX` because a fixed-format formatter on any other locale
@@ -456,39 +460,36 @@ public enum HelmDates {
         /// zone `storage` parsed in, so its day cannot shift.
         func day(language: String, zone: TimeZone) -> DateFormatter {
             let key = "\(language)|\(zone.identifier)"
-            lock.lock(); defer { lock.unlock() }
-            if let existing = days[key] { return existing }
-            let formatter = DateFormatter()
-            formatter.locale = Locale(identifier: language)
-            formatter.dateStyle = .long
-            formatter.timeStyle = .none
-            formatter.timeZone = zone
-            days[key] = formatter
-            return formatter
+            return days.value(for: key) {
+                let formatter = DateFormatter()
+                formatter.locale = Locale(identifier: language)
+                formatter.dateStyle = .long
+                formatter.timeStyle = .none
+                formatter.timeZone = zone
+                return formatter
+            }
         }
 
         func daySpan(language: String, zone: TimeZone) -> DateIntervalFormatter {
             let key = "\(language)|\(zone.identifier)"
-            lock.lock(); defer { lock.unlock() }
-            if let existing = daySpans[key] { return existing }
-            let formatter = DateIntervalFormatter()
-            formatter.locale = Locale(identifier: language)
-            formatter.timeZone = zone
-            formatter.dateStyle = .long
-            formatter.timeStyle = .none
-            daySpans[key] = formatter
-            return formatter
+            return daySpans.value(for: key) {
+                let formatter = DateIntervalFormatter()
+                formatter.locale = Locale(identifier: language)
+                formatter.timeZone = zone
+                formatter.dateStyle = .long
+                formatter.timeStyle = .none
+                return formatter
+            }
         }
 
         func clock(language: String) -> DateFormatter {
-            lock.lock(); defer { lock.unlock() }
-            if let existing = clocks[language] { return existing }
-            let formatter = DateFormatter()
-            formatter.dateStyle = .none
-            formatter.timeStyle = .short
-            formatter.locale = Locale(identifier: language)
-            clocks[language] = formatter
-            return formatter
+            return clocks.value(for: language) {
+                let formatter = DateFormatter()
+                formatter.dateStyle = .none
+                formatter.timeStyle = .short
+                formatter.locale = Locale(identifier: language)
+                return formatter
+            }
         }
 
         /// Keyed by the language *and* the unit set: two formatters per
@@ -496,23 +497,22 @@ public enum HelmDates {
         /// safe to reconfigure under a reader.
         func span(language: String, hours: Bool) -> DateComponentsFormatter {
             let key = "\(language)|\(hours)"
-            lock.lock(); defer { lock.unlock() }
-            if let existing = spans[key] { return existing }
-            let formatter = DateComponentsFormatter()
-            // The locale rides on the calendar: `DateComponentsFormatter` has
-            // no locale of its own, and one with no calendar answers in the
-            // system's language.
-            var calendar = Calendar(identifier: .gregorian)
-            calendar.locale = Locale(identifier: language)
-            formatter.calendar = calendar
-            formatter.unitsStyle = .abbreviated
-            formatter.allowedUnits = hours ? [.hour, .minute] : [.minute, .second]
-            // `dropLeading`, never `dropAll`: a tunnel up for four seconds has
-            // no minutes to show and must still say «4 с» rather than nothing
-            // at all, which is what dropping every zero leaves.
-            formatter.zeroFormattingBehavior = .dropLeading
-            spans[key] = formatter
-            return formatter
+            return spans.value(for: key) {
+                let formatter = DateComponentsFormatter()
+                // The locale rides on the calendar: `DateComponentsFormatter` has
+                // no locale of its own, and one with no calendar answers in the
+                // system's language.
+                var calendar = Calendar(identifier: .gregorian)
+                calendar.locale = Locale(identifier: language)
+                formatter.calendar = calendar
+                formatter.unitsStyle = .abbreviated
+                formatter.allowedUnits = hours ? [.hour, .minute] : [.minute, .second]
+                // `dropLeading`, never `dropAll`: a tunnel up for four seconds has
+                // no minutes to show and must still say «4 с» rather than nothing
+                // at all, which is what dropping every zero leaves.
+                formatter.zeroFormattingBehavior = .dropLeading
+                return formatter
+            }
         }
 
         /// Keyed by the language **and** the style, for the reason `span` above
@@ -524,24 +524,22 @@ public enum HelmDates {
         func relative(language: String,
                       style: HelmDates.AgeStyle) -> RelativeDateTimeFormatter {
             let key = "\(language)|\(style)"
-            lock.lock(); defer { lock.unlock() }
-            if let existing = relatives[key] { return existing }
-            let formatter = RelativeDateTimeFormatter()
-            formatter.unitsStyle = style.system
-            formatter.locale = Locale(identifier: language)
-            relatives[key] = formatter
-            return formatter
+            return relatives.value(for: key) {
+                let formatter = RelativeDateTimeFormatter()
+                formatter.unitsStyle = style.system
+                formatter.locale = Locale(identifier: language)
+                return formatter
+            }
         }
 
         func absolute(language: String) -> DateFormatter {
-            lock.lock(); defer { lock.unlock() }
-            if let existing = absolutes[language] { return existing }
-            let formatter = DateFormatter()
-            formatter.dateStyle = .short
-            formatter.timeStyle = .short
-            formatter.locale = Locale(identifier: language)
-            absolutes[language] = formatter
-            return formatter
+            return absolutes.value(for: language) {
+                let formatter = DateFormatter()
+                formatter.dateStyle = .short
+                formatter.timeStyle = .short
+                formatter.locale = Locale(identifier: language)
+                return formatter
+            }
         }
     }
 }

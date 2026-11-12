@@ -82,7 +82,7 @@ enum RuleSummary {
         if let whole = Int(exactly: value.rounded()), value == value.rounded() {
             return String(whole)
         }
-        return Decimal(value)
+        return Fractional(value)
     }
 
     private static func format(_ value: Double) -> String { number(value) }

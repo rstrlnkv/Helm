@@ -16,7 +16,7 @@ final class NoOrphanTranslationsTests: XCTestCase {
     /// names ships eight translations of a word nobody draws.
     func testNoCatalogSymbolGoesUnnamed() throws {
         let catalogs = try ModuleCatalogs.all()
-        XCTAssertGreaterThanOrEqual(catalogs.count, 12, "only \(catalogs.count) catalog(s) were found, so a pass means nothing")
+        XCTAssertGreaterThanOrEqual(catalogs.count, 13, "only \(catalogs.count) catalog(s) were found, so a pass means nothing")
         XCTAssertTrue(catalogs.contains { $0.module == "HelmUI" }, "the kit's catalog was not read")
         var unnamed: [String] = []
         for catalog in catalogs {

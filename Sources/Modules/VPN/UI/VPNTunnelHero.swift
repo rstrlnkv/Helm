@@ -199,10 +199,10 @@ struct VPNTunnelStrip {
                         note: VPNStr.speedNote(nil))
         }
         return Tile(kind: .speed, label: VPNStr.tileSpeed,
-                    // `Count`, not `Decimal`: the figure is a whole number of
+                    // `Count`, not `Fractional`: the figure is a whole number of
                     // megabits and wants the language's digit grouping;
-                    // `Decimal(speed.down)` binds to `Foundation.Decimal.init(_: Int)`
-                    // and draws «10000» for a 10 Gbit link.
+                    // `Fractional` turns grouping off and draws «10000» for a
+                    // 10 Gbit link.
                     //
                     // **Each arrow sits against its own digits, and there is one
                     // space between the pair**: the narrower string is what keeps

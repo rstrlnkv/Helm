@@ -284,7 +284,7 @@ private struct BreadcrumbBar: View {
         case .scanned:
             if let result = dvm.result {
                 Text(DkStr.scannedIn(result.filesScanned,
-                                     Decimal(result.seconds)))
+                                     Fractional(result.seconds)))
                     .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
             }
         case .none:
