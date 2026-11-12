@@ -74,7 +74,7 @@ script signed and verified, while `.build/` holds an unsigned one with no usable
 identity at all. `Scripts/make-dmg.sh` and
 `Scripts/make-zip.sh` package that signed bundle and refuse one that does not verify.
 `Scripts/package-dev.sh` builds through `Scripts/package-app.sh` and installs **Helm Dev**
-beside the real app; its header says why a separate bundle. Helm Dev is the crew's copy, with its own bundle identifier and defaults domain, and every intermediate build runs there; the owner's copy is built only from work he has accepted. The release scripts are
+beside the real app; its header says why a separate bundle. `--no-launch` (or `HELM_DEV_NO_LAUNCH=1`) installs without opening it, because a launch writes state and a later step needs the installed bundle untouched; the script also waits up to about 10 s for the running Helm Dev to exit and refuses, leaving the installed copy alone, if it does not. Helm Dev is the crew's copy, with its own bundle identifier and defaults domain, and every intermediate build runs there; the owner's copy is built only from work he has accepted. The release scripts are
 `Scripts/package-app.sh`, `Scripts/make-dmg.sh`, `Scripts/make-zip.sh` and
 `Scripts/package-dev.sh`; `Scripts/design` runs inside `Scripts/make-dmg.sh` and
 `Scripts/flags` writes resources the tree commits, so neither is a release step run by
