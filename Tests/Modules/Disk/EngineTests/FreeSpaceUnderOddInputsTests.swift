@@ -205,7 +205,8 @@ final class FreeSpaceUnderOddInputsTests: XCTestCase {
         guard important - plain > 1_000_000_000 else {
             throw XCTSkip("this Mac holds under 1 GB of purgeable space; the readings coincide")
         }
-        let listed = try XCTUnwrap(DiskEngine(trashing: neverTrashes).volumes().first { $0.path == "/" },
+        let listed = try XCTUnwrap(DiskEngine(capacity: SystemVolumeCapacity(), trashing: neverTrashes)
+                                       .volumes().first { $0.path == "/" },
                                    "the boot volume is not in the engine's list")
         XCTAssertLessThan(abs(listed.freeBytes - important), abs(listed.freeBytes - plain), """
             the engine lists \(listed.freeBytes) bytes free on /, where Finder's reading is \
@@ -269,7 +270,7 @@ private struct AnyPathCapacity: VolumeCapacityPort {
 }
 
 /// A port with nothing mounted and no answer for any path.
-private struct SilentCapacity: VolumeCapacityPort {
+struct SilentCapacity: VolumeCapacityPort {
     func mounted() -> [VolumeReadout] { [] }
     func readout(at path: String) -> VolumeReadout? { nil }
 }

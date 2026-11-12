@@ -37,7 +37,7 @@ final class DiskTrashArithmeticTests: XCTestCase {
         let measured = try XCTUnwrap(DiskScanner().scan(root: folder.path)).bytes
         XCTAssertGreaterThan(measured, 0, "the scan has to have measured something")
 
-        let removal = await DiskEngine(trashing: { try FileManager.default.removeItem(at: $0) }).trash([folder.path])
+        let removal = await DiskEngine(capacity: SilentCapacity(), trashing: { try FileManager.default.removeItem(at: $0) }).trash([folder.path])
 
         XCTAssertEqual(removal.removed, [folder.path])
         XCTAssertTrue(removal.refused.isEmpty, "\(removal.refused)")
@@ -65,7 +65,7 @@ final class DiskTrashGateTests: XCTestCase {
 
         let attempted = ProgressBox()
 
-        let removal = await DiskEngine(trashing: { _ in attempted.record(1) }).trash([path])
+        let removal = await DiskEngine(capacity: SilentCapacity(), trashing: { _ in attempted.record(1) }).trash([path])
 
         XCTAssertEqual(attempted.value, 0, "the engine handed a path outside the user's files to the move")
         XCTAssertTrue(removal.removed.isEmpty, "\(removal.removed)")

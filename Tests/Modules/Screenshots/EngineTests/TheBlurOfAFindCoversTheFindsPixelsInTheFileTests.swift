@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import XCTest
+import HelmTestSupport
 @testable import Module_Screenshots_Engine
 
 /// **A blur that "Blur Emails and Phone Numbers" puts over a find leaves none of the find's pixels in the file.**
@@ -45,10 +46,7 @@ final class TheBlurOfAFindCoversTheFindsPixelsInTheFileTests: XCTestCase {
     }
 
     private func makeRig() throws -> Rig {
-        let home = FileManager.default.temporaryDirectory.appendingPathComponent("helm-find-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
-        addTeardownBlock { try? FileManager.default.removeItem(at: home) }
-        return Rig(home: home)
+        Rig(home: scratchDirectory("find"))
     }
 
     /// The pixels of the cut that a normalised box stands on, worked out here from the box alone: the lower-left

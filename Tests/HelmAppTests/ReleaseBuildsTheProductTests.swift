@@ -57,6 +57,16 @@ final class ReleaseBuildsTheProductTests: XCTestCase {
         return kept.split(separator: " ").map(String.init)
     }
 
+    /// The reading itself, with the lines the real script does not hold: a flag
+    /// that sits in a comment, and a flag whose next word is not the product.
+    func testTheProductFlagIsReadOnlyWhereTheCommandSpellsIt() {
+        for bad in ["swift build # --product HelmApp", "swift build --product Other HelmApp"] {
+            XCTAssertFalse(Self.words(of: bad).adjacentPair("--product", "HelmApp"), bad)
+        }
+        XCTAssertTrue(Self.words(of: "swift build -c release --product HelmApp")
+            .adjacentPair("--product", "HelmApp"))
+    }
+
     /// The half that makes the flag name something declared.
     func testTheManifestDeclaresTheAppAsItsOnlyProduct() throws {
         let manifest = try RepoSource.text(of: "Package.swift")

@@ -34,11 +34,15 @@ import XCTest
 /// this should derive its subjects the same way and stop taking a list. The walk
 /// underneath is one — `misses(of:under:)`, which both call.
 ///
-/// Leftovers and VPN are wired to `check(…)` today, and the guard next door
-/// holds Autopilot's and Duplicates' keychain ports through `misses`. No other
-/// module has a guard of this kind — not because their engines are safer, but
-/// because those test directories had other writers in them when this landed.
-/// Wiring one is a `check(…)` call and a fake at each site it names.
+/// Leftovers, VPN, Autopilot (`home`), Disk (`capacity`) and Screenshots
+/// (`preferences`) are wired to `check(…)` today, and the guard next door holds
+/// Autopilot's and Duplicates' keychain ports through `misses`. KeepAwake,
+/// Homebrew, Layout and Uninstaller have no guard of this kind because their
+/// defaults reach nothing on this Mac: `EngineNews()`, `InMemoryOpMarker()`,
+/// `nil`, an in-memory `NamespacedStore`, and a `LedgerStore()` that does not
+/// persist outside the app (`LedgerStore.swift:27-31`). Their keychain defaults
+/// stay with `ATestNamesTheKeychainPortsItBuildsOverTests`. Wiring another module
+/// is a `check(…)` call and a fake at each site it names.
 public enum PortsAtConstruction {
 
     /// Fails when any construction of `engine` under `directory` leaves one of

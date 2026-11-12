@@ -17,8 +17,7 @@ final class AnUpdateDoesNotSwapOneProgramForAnotherTests: XCTestCase {
 
     /// A bundle on disk with nothing in it but the one key that matters.
     private func bundle(id: String?) throws -> URL {
-        let root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("helm-identity-\(UUID().uuidString).app")
+        let root = scratchDirectory("identity").appendingPathComponent("Helm.app")
         let contents = root.appendingPathComponent("Contents")
         try FileManager.default.createDirectory(at: contents, withIntermediateDirectories: true)
         var plist: [String: Any] = ["CFBundleShortVersionString": "9.9.9"]
@@ -29,7 +28,6 @@ final class AnUpdateDoesNotSwapOneProgramForAnotherTests: XCTestCase {
 
     func testABundleReadsItsOwnIdentifier() throws {
         let app = try bundle(id: "com.helm.app")
-        defer { try? FileManager.default.removeItem(at: app) }
         XCTAssertEqual(Installer.identifier(ofBundleAt: app), "com.helm.app")
     }
 

@@ -174,7 +174,8 @@ footprint tracks the volume read rather than the slice size. The sites are what
 parallelism: `Sources/HelmRuntime/ReleaseDigest.swift` has it in a plain serial
 `while`. `resourceValues(forKeys:)` loops
 are the measured exception and take no pool — `URLResourceValues` bridges to small
-value types rather than to a retained buffer.
+value types rather than to a retained buffer. `WalkFootprintTests.swift` holds that
+reading beside the pooled walk's.
 
 `Sources/HelmRuntime/BulkWalk.swift` is the shared walk, over `getattrlistbulk`.
 Its load-bearing facts (attribute **bit** order, the device id from a bulk read,

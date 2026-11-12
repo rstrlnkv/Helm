@@ -21,9 +21,11 @@ import XCTest
 /// 8,5 MB grown — 24 bytes an entry, so the walk with no `autoreleasepool` was
 /// *not* the DiskScanner defect one framework call further out, and a pool here
 /// would have been added on the strength of the story rather than of a reading.
-/// That measurement was taken of a `FileManager` enumeration; the loop under
-/// this test is `BulkWalk.walk` now, which carries the pools the rule asks for,
-/// and the threshold below is what says the promotion did not put the cost back.
+/// That measurement was taken of a `FileManager` enumeration, and
+/// `testAResourceValuesLoopWithNoPoolCostsItsTreeAndNothingMore` holds it: the
+/// loop under the first case is `BulkWalk.walk` now, which carries the pools the
+/// rule asks for, and its threshold is what says the promotion did not put the
+/// cost back.
 final class WalkFootprintTests: XCTestCase {
 
     /// Small files below the size floor, so the walk looks at every one and
@@ -93,6 +95,50 @@ final class WalkFootprintTests: XCTestCase {
             kept — every entry is carrying something out of the loop. The loop is \
             `BulkWalk.walk`'s now, and it has a pool per directory and a pool per batch; \
             check that both are still there before looking at this file's own filter.
+            """)
+    }
+
+    /// **The measured exception, held.** `Architecture/ModulePattern.md` says a
+    /// `resourceValues(forKeys:)` loop takes no pool, because `URLResourceValues`
+    /// bridges to small value types rather than to a retained buffer. This is
+    /// that reading: the same tree, a `FileManager` enumeration, no
+    /// `autoreleasepool`, the allocator's books on the second run. If the
+    /// per-entry growth ever reaches the retained-values reading (hundreds of
+    /// bytes per entry) the exception is false and the rule needs rewriting,
+    /// not this ceiling.
+    func testAResourceValuesLoopWithNoPoolCostsItsTreeAndNothingMore() throws {
+        let root = scratchDirectory("dup-walk-resource-values")
+        try tree(in: root)
+
+        func enumerate() -> Int {
+            var seen = 0
+            let keys: [URLResourceKey] = [.isRegularFileKey, .fileSizeKey]
+            let entries = FileManager.default.enumerator(at: root, includingPropertiesForKeys: keys)
+            while let url = entries?.nextObject() as? URL {
+                guard let values = try? url.resourceValues(forKeys: Set(keys)) else { continue }
+                if values.isRegularFile == true, (values.fileSize ?? 0) > 0 { seen += 1 }
+            }
+            return seen
+        }
+
+        _ = enumerate()
+        let before = AllocatorBooks.allocatedBytes()
+        let seen = enumerate()
+        let after = AllocatorBooks.allocatedBytes()
+
+        // The subject first: the loop really read every file of the fixture.
+        XCTAssertEqual(seen, Self.directories * Self.filesPerDirectory + Self.kept,
+                       "the enumeration read \(seen) files, so this is not measuring the loop")
+
+        let perEntry = Double(after - before) / Double(Self.looked)
+        print(String(format: "resourceValues loop, %d entries: allocator grew %.1f MB (%.0f bytes/entry)",
+                     Self.looked, Double(after - before) / 1_048_576, perEntry))
+        // Three runs alone read 0,0 MB grown, 3 bytes/entry; the same loop
+        // keeping every `URLResourceValues` it read grew 2,9 MB, 379 bytes/entry.
+        // 100 is the first case's ceiling, so the two loops are held to one figure.
+        XCTAssertLessThan(perEntry, 100, """
+            a resourceValues loop with no pool grew \(after - before) bytes over \(Self.looked) \
+            entries (\(perEntry) bytes/entry) — the rule that says it needs none is no longer true.
             """)
     }
 }
