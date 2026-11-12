@@ -91,6 +91,7 @@ final class AFolderThatWentUnreadIsNotAFileTests: XCTestCase {
                                                     withIntermediateDirectories: true)
         }
         try write("locked/inside.plist", in: root, bytes: 16)
+        try write("plain.txt", in: root, bytes: 4)
         // Ahead of the mode change, so it runs before the scratch drain — which
         // cannot remove what it cannot enumerate.
         addTeardownBlock {
@@ -110,5 +111,18 @@ final class AFolderThatWentUnreadIsNotAFileTests: XCTestCase {
         XCTAssertEqual(files.contents(of: root.appendingPathComponent("nope")), .listed([]),
                        "and a folder that is not there stays folded into «nothing in it», "
                        + "which is what four of the scan's seven sources are on a stock Mac")
+        XCTAssertNil(files.exists(locked.appendingPathComponent("inside.plist").path),
+                     "a child of a folder that would not open is «could not tell», not «gone»")
+        XCTAssertEqual(files.exists(root.appendingPathComponent("nope").path), false)
+        XCTAssertEqual(files.exists(empty.path), true)
+
+        let throughAFile = root.appendingPathComponent("plain.txt/child")
+        let tooLong = URL(fileURLWithPath: "/" + String(repeating: "a", count: 2000))
+        XCTAssertEqual(files.exists(throughAFile.path), false,
+                       "a path through a regular file (ENOTDIR) is nothing there")
+        XCTAssertEqual(files.exists(tooLong.path), false,
+                       "a path no file can have (ENAMETOOLONG) is nothing there")
+        XCTAssertEqual(files.contents(of: throughAFile), .listed([]))
+        XCTAssertEqual(files.contents(of: tooLong), .listed([]))
     }
 }

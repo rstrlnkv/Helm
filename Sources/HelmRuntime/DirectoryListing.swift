@@ -15,7 +15,7 @@ public enum DirectoryListing {
     /// and only the first two of those lead to the same finding. The third is a
     /// permission being reported as a fact about somebody's Mac: a scan says a
     /// folder holds nothing when it never opened it, and every screen built on that
-    /// scan repeats the claim. It is the fold `FileSystemLeftovers.exists` was taken
+    /// scan repeats the claim. It is the fold `exists(atPath:)` was taken
     /// apart for one file over — `false` there meant `ENOENT` *and* `EACCES` — and
     /// the repair is the same shape, a third answer nobody can mistake for the
     /// other two.
@@ -50,18 +50,31 @@ public enum DirectoryListing {
     ///
     /// `opendir` decides, because the errno is the answer and `contentsOfDirectory`
     /// throws the same kind of error for every reason — the same reading
-    /// `FileSystemLeftovers.exists` takes for a file. `ENOENT` and `ENOTDIR` are
+    /// `exists(atPath:)` takes for a file. `ENOENT` and `ENOTDIR` are
     /// «there is nothing there», `ENAMETOOLONG` a path no directory can have;
     /// everything else, `EACCES` above all, is «this process may not look».
     public static func contents(of url: URL) -> Contents {
         guard let handle = opendir(url.path) else {
-            switch errno {
-            case ENOENT, ENOTDIR, ENAMETOOLONG: return .listed([])
-            default: return .refused
-            }
+            return isAbsence(errno) ? .listed([]) : .refused
         }
         closedir(handle)
         return .listed(children(of: url))
+    }
+
+    /// `stat`, not `FileManager.fileExists`, because the errno is the answer.
+    ///
+    /// `ENOENT` and `ENOTDIR` are «there is nothing there»; `ENAMETOOLONG` is a
+    /// path no file can have. Everything else — `EACCES` above all, and the one
+    /// this Mac gives for a file under a mode-000 parent — is «this process may
+    /// not look», which is not a fact about the file, and comes back as `nil`.
+    public static func exists(atPath path: String) -> Bool? {
+        var info = stat()
+        guard stat(path, &info) != 0 else { return true }
+        return isAbsence(errno) ? false : nil
+    }
+
+    private static func isAbsence(_ code: Int32) -> Bool {
+        code == ENOENT || code == ENOTDIR || code == ENAMETOOLONG
     }
 
     /// The directory's entries as full URLs, hidden ones included.

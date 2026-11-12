@@ -28,20 +28,7 @@ public struct FileSystemLeftovers: LeftoversFilePort {
         DirectoryListing.contents(of: url)
     }
 
-    /// `stat`, not `FileManager.fileExists`, because the errno is the answer.
-    ///
-    /// `ENOENT` and `ENOTDIR` are «there is nothing there»; `ENAMETOOLONG` is a
-    /// path no file can have. Everything else — `EACCES` above all, and the one
-    /// this Mac gives for a file under a mode-000 parent — is «this process may
-    /// not look», which is not a fact about the file.
-    public func exists(_ path: String) -> Bool? {
-        var info = stat()
-        guard stat(path, &info) != 0 else { return true }
-        switch errno {
-        case ENOENT, ENOTDIR, ENAMETOOLONG: return false
-        default: return nil
-        }
-    }
+    public func exists(_ path: String) -> Bool? { DirectoryListing.exists(atPath: path) }
 
     public func size(_ url: URL) -> Int { FileWeight.allocated(of: url) }
     public func readPlist(_ url: URL) -> PlistData? {
