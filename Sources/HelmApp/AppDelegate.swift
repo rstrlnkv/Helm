@@ -236,7 +236,7 @@ import Module_Uninstaller_UI
     /// already knows how.
 
     func applicationWillTerminate(_ notification: Notification) {
-        HelmLog.shared.info("app", "terminating")
+        HelmLog.shared.terminating()
         // The coordinator owns a repeating tick and a notification observer, and
         // neither goes through an engine's `deactivate()`. Stopped from outside,
         // like every other observer the app starts itself.

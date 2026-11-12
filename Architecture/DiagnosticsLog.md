@@ -117,6 +117,10 @@ says so in its own first line: a seed has no parts to hold, so it parses — onc
 type whose name says so, as the exact inverse of the format, and reading a stamp once a
 minute rather than once a line. It seeds from this process's log files and their
 predecessor on disk, so the pane is not limited to what this process happened to write.
+The launch words («Helm … started», «logging enabled», «logging disabled», «terminating») are
+spelled once, in `LogLine` (`HelmLog.swift`), which `HelmLog.start`, `setEnabled` and
+`terminating()` write through; `LogSeed` recognises them from the same words, and
+`LogSessions` only decides where a launch ends.
 
 The pane follows the newest line by its identity rather than by the tail's count — the
 count is the limit for ever once the tail is full. While Follow is lit and the view is at

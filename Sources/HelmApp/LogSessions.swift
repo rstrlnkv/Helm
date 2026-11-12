@@ -54,7 +54,7 @@ struct LogSession: Identifiable {
     var id: LogEntry.ID { isTailHead ? Self.tailHeadID : lines[0].id }
     private static let tailHeadID = UUID(uuidString: "5E9B6C5A-7A49-4E0B-9F4D-0C2B7D8E1A63")!
     var start: LogEntry? { opensWithLaunch ? lines[0] : nil }
-    var version: String? { start.flatMap(LogSessions.version(of:)) }
+    var version: String? { start.flatMap(LogSeed.version(of:)) }
 
     /// The start-up burst: what a launch says while it switches its modules on.
     var startup: ArraySlice<LogEntry> {
@@ -104,85 +104,7 @@ enum LogCardTitle: Equatable {
 
 enum LogSessions {
 
-    /// **The one place a launch is recognised**, and the one place the words
-    /// `HelmLog.start` writes are spelled a second time. The two sides are held
-    /// together by `TheLogSplitsIntoLaunchesTests`, which has a real `HelmLog`
-    /// write its start line and asks this to read it — a reworded start line
-    /// otherwise turns every card into one long "earlier launch" and nothing
-    /// says so.
-    static let startCategory = "app"
-    private static let startPrefix = "Helm "
-    private static let startSuffix = " started"
-
-    static func isStart(_ entry: LogEntry) -> Bool { version(of: entry) != nil }
-
-    /// The version a start line names, or nil for any other line.
-    ///
-    /// **A start line a crash glued to a torn one is still a start.** A write cut
-    /// short has no newline, so the next launch's first line is appended to it,
-    /// and `LogSeed` — which keeps a line whole and claims nothing — reads the
-    /// pair as one entry whose category is half a line plus the next stamp and
-    /// whose message is the start line's own «[app] Helm … started». The launch
-    /// after a crash is the one somebody opened the page for, so it is read here
-    /// as the launch it is; the entry stays one line, in the place it was.
-    static func version(of entry: LogEntry) -> String? {
-        if entry.category == startCategory, let version = version(inMessage: entry.message) {
-            return version
-        }
-        return versionOfGluedStart(entry)
-    }
-
-    /// The glued pair, whatever byte the tear fell on and whatever level the
-    /// torn line had. `LogSeed` reads the pair as a stamp-level-category-message
-    /// entry when it can and as one whole unreadable message when it cannot, so
-    /// the two are put back into one string — category, «] », message — and the
-    /// start line is looked for at the end of it: its own stamp, «[info] [app]
-    /// Helm … started». A start line standing alone has category `app` and was
-    /// answered before this is asked.
-    ///
-    /// **Not a line that carries a source site.** `HelmLog.warn` and `.error`
-    /// write one on every line, and a glued start never has one — the start
-    /// line is written without a site and is the end of the glued entry — so a
-    /// warning or an error that merely quotes a start line (a copied log line, a
-    /// file named like one) is not a launch. An `info` line has no site either,
-    /// so the same quote at that level cannot be told from a tear by the entry
-    /// alone.
-    private static func versionOfGluedStart(_ entry: LogEntry) -> String? {
-        guard entry.site == nil, entry.message.hasSuffix(startSuffix) else { return nil }
-        let text = entry.category.isEmpty ? entry.message : entry.category + "] " + entry.message
-        let marker = " [info] [\(startCategory)] \(startPrefix)"
-        guard let found = text.range(of: marker, options: .backwards),
-              text.distance(from: text.startIndex, to: found.lowerBound) >= 23,
-              isStamp(text[text.index(found.lowerBound, offsetBy: -23)..<found.lowerBound])
-        else { return nil }
-        return version(inMessage: String(text[text.index(found.upperBound, offsetBy: -startPrefix.count)...]))
-    }
-
-    private static func version(inMessage message: String) -> String? {
-        guard message.hasPrefix(startPrefix), message.hasSuffix(startSuffix),
-              message.count > startPrefix.count + startSuffix.count
-        else { return nil }
-        return String(message.dropFirst(startPrefix.count).dropLast(startSuffix.count))
-    }
-
-    /// Exactly the 23 characters `LogLine.stampFormat` spells.
-    private static func isStamp(_ text: Substring) -> Bool {
-        let stamp = Array(text)
-        guard stamp.count == 23 else { return false }
-        return stamp.indices.allSatisfy { index in
-            switch index {
-            case 4, 7: return stamp[index] == "-"
-            case 10: return stamp[index] == " "
-            case 13, 16: return stamp[index] == ":"
-            case 19: return stamp[index] == "."
-            default: return stamp[index].isASCII && stamp[index].isNumber
-            }
-        }
-    }
-
-    static func isTerminating(_ entry: LogEntry) -> Bool {
-        entry.category == startCategory && entry.message == "terminating"
-    }
+    static func isStart(_ entry: LogEntry) -> Bool { LogSeed.version(of: entry) != nil }
 
     /// **Lines that cannot belong to the launch above them.** A launch is not a
     /// process: two builds no longer share a folder, but older files still
@@ -200,9 +122,9 @@ enum LogSessions {
         // builds that quit one after the other write it twice (49 ms apart in
         // the owner's log), and it belongs to the launch it ends. Anything else
         // after one is another run's.
-        if isTerminating(previous) { return !isTerminating(entry) }
-        guard entry.category == startCategory, let named = loggingEnabled(entry) else { return false }
-        guard previous.category == startCategory && previous.message == "logging disabled" else { return true }
+        if LogSeed.isTerminating(previous) { return !LogSeed.isTerminating(entry) }
+        guard let named = LogSeed.loggingEnabled(entry) else { return false }
+        guard LogSeed.isLoggingDisabled(previous) else { return true }
         // An answer — unless the on edge names a version and the launch above
         // knows its own, and they differ: then the off edge was another launch's.
         guard let enabledAs = named else { return false }
@@ -212,7 +134,7 @@ enum LogSessions {
         // another launch's. A run with no first word of its own to go by (the
         // tail's head) is left whole, as before.
         guard let running = run.first.flatMap(versionOfRun(openedBy:)) else {
-            return run.first.map(isBareLoggingEnabled) ?? false
+            return run.first.map(LogSeed.isBareLoggingEnabled) ?? false
         }
         return enabledAs != running
     }
@@ -221,22 +143,8 @@ enum LogSessions {
     /// build opened by switching logging on, which wrote no start line — the
     /// one on its own «logging enabled (version)».
     private static func versionOfRun(openedBy first: LogEntry) -> String? {
-        if let version = version(of: first) { return version }
-        guard first.category == startCategory, let named = loggingEnabled(first) else { return nil }
-        return named
-    }
-
-    private static func isBareLoggingEnabled(_ entry: LogEntry) -> Bool {
-        entry.category == startCategory && entry.message == "logging enabled"
-    }
-
-    /// `.some(nil)` for a bare «logging enabled» (older builds wrote no version),
-    /// `.some(version)` for «logging enabled (version)», nil for any other line.
-    private static func loggingEnabled(_ entry: LogEntry) -> String?? {
-        let word = "logging enabled"
-        if entry.message == word { return .some(nil) }
-        guard entry.message.hasPrefix(word + " ("), entry.message.hasSuffix(")") else { return nil }
-        return .some(String(entry.message.dropFirst(word.count + 2).dropLast()))
+        if let version = LogSeed.version(of: first) { return version }
+        return LogSeed.loggingEnabled(first) ?? nil
     }
 
     /// **How long after the start line a line still belongs to the burst.**

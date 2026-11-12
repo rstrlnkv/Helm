@@ -87,6 +87,22 @@ public enum LogDestination {
 ///
 /// `LogSeed` is the inverse and the only one — see the rule on that type.
 public enum LogLine {
+    /// **The launch words, spelled once.** `HelmLog` writes them and `LogSeed`
+    /// recognises them from these, so the two sides cannot drift apart.
+    public static let appCategory = "app"
+    static let startedPrefix = "Helm "
+    static let startedSuffix = " started"
+    static let loggingEnabledWord = "logging enabled"
+    public static let loggingDisabled = "logging disabled"
+    public static let terminating = "terminating"
+
+    public static func started(version: String) -> String { startedPrefix + version + startedSuffix }
+
+    /// Bare for a build that knows no version, «logging enabled (version)» otherwise.
+    public static func loggingEnabled(version: String?) -> String {
+        version.map { "\(loggingEnabledWord) (\($0))" } ?? loggingEnabledWord
+    }
+
     /// The line an entry would be written as, for anything outside this target
     /// that has to spell one: «Copy log» is the caller, through `lines` below,
     /// and what it puts on the pasteboard is the line the file carries rather
@@ -235,7 +251,7 @@ public final class HelmLog: @unchecked Sendable {
         // is written, and the paragraph above says so.
         queue.async { Self.allFileURLs.forEach { _ = PrivateFile.harden(at: $0) } }
         guard on else { return }
-        write(.info, "app", "Helm \(version) started")
+        write(.info, LogLine.appCategory, LogLine.started(version: version))
     }
 
     /// Throws away a log written before `Redact` existed.
@@ -278,15 +294,21 @@ public final class HelmLog: @unchecked Sendable {
     /// version back; `LogSeed` still reads the line as it always did, since the
     /// version is part of the message.
     public func setEnabled(_ on: Bool) {
-        if !on { write(.info, "app", "logging disabled") }
+        if !on { write(.info, LogLine.appCategory, LogLine.loggingDisabled) }
         queue.async { self.enabled = on }
         if on {
             // `sync` after the `async` above: the queue is serial, so the version
             // `start` stored is there, and nothing on the queue waits for the
             // caller's thread.
             let version = queue.sync { runVersion }
-            write(.info, "app", version.map { "logging enabled (\($0))" } ?? "logging enabled")
+            write(.info, LogLine.appCategory, LogLine.loggingEnabled(version: version))
         }
+    }
+
+    /// The last line of a launch. Written through here so the words are
+    /// `LogLine`'s and `LogSeed` reads back what this wrote.
+    public func terminating() {
+        write(.info, LogLine.appCategory, LogLine.terminating)
     }
 
     /// The last lines, for the Log page, which shows them arriving rather than

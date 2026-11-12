@@ -85,9 +85,25 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
         let written = log.recentEntries()
 
         XCTAssertEqual(written.count, 1, "start wrote \(written.count) lines, not one")
-        XCTAssertEqual(written.first.flatMap(LogSessions.version(of:)), "9.9.9-dev.1",
+        XCTAssertEqual(written.first.flatMap(LogSeed.version(of:)), "9.9.9-dev.1",
                        "the page cannot read the line HelmLog writes at launch: "
                        + "\(written.first?.category ?? "?") \(written.first?.message ?? "?")")
+    }
+
+    /// The last line of a launch, the same way round: a real log writes
+    /// `terminating()`, the seed reads it back, and the split ends the launch there.
+    func testTheLineHelmLogWritesAtTerminationIsTheOneThePageReads() {
+        let log = HelmLog(seedFiles: [])
+        log.start(version: "9.9.9-dev.1", override: true)
+        log.terminating()
+        log.info("host", "after")
+
+        let written = log.recentEntries()
+
+        XCTAssertTrue(written.count == 3 && LogSeed.isTerminating(written[1]),
+                      "the seed cannot read the line terminating() writes: \(written.map(\.message))")
+        XCTAssertEqual(LogSessions.split(written).map(\.lines.count), [2, 1],
+                       "the launch did not end at its terminating line")
     }
 
     // MARK: - Nothing dropped, nothing moved
@@ -1238,7 +1254,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     func testAStartLineInAnyVersionFormIsAStart() {
         for version in ["0.9.0", "0.9.0-dev.11", "0", "1.0 (beta)", "0.11.1-dev.14+local",
                         "０.１１"] {
-            XCTAssertEqual(LogSessions.version(of: launchStart(0, version)), version, version)
+            XCTAssertEqual(LogSeed.version(of: launchStart(0, version)), version, version)
         }
     }
 
