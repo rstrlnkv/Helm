@@ -1,4 +1,3 @@
-import AppKit
 import HelmRuntime
 import HelmUI
 import Module_Autopilot_Engine
@@ -97,12 +96,8 @@ struct ActionRow: View {
             // The panel is the only way a destination gets in, so a rule cannot
             // name a folder nobody looked at.
             Button(ApStr.chooseDestination) {
-                let panel = NSOpenPanel()
-                panel.canChooseDirectories = true
-                panel.canChooseFiles = false
-                panel.allowsMultipleSelection = false
-                panel.prompt = ApStr.chooseDestination
-                guard panel.runModal() == .OK, let url = panel.url else { return }
+                guard let url = FolderPicker.choose(prompt: ApStr.chooseDestination, startingAt: nil,
+                                                    canCreate: false, activate: false) else { return }
                 action = .move(to: url.path)
             }
             .controlSize(.small)

@@ -1,4 +1,3 @@
-import AppKit
 import HelmContract
 import HelmRuntime
 import HelmUI
@@ -438,12 +437,8 @@ extension AutopilotEngine: AutopilotWork {}
     func addFolder() {
         // No panel from a module that has been switched off.
         guard !closed else { return }
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.prompt = ApStr.addFolder
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let url = FolderPicker.choose(prompt: ApStr.addFolder, startingAt: nil,
+                                            canCreate: false, activate: false) else { return }
         addFolder(at: url.path)
     }
 

@@ -1,4 +1,3 @@
-import AppKit
 import HelmRuntime
 import HelmUI
 import Module_Duplicates_Engine
@@ -259,12 +258,8 @@ public enum KeepGrounds: Equatable, Sendable {
     /// ring, which meant it could only look where a ring had already been
     /// drawn; on its own it asks.
     public func chooseFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.prompt = DupStr.chooseFolder
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let url = FolderPicker.choose(prompt: DupStr.chooseFolder, startingAt: nil,
+                                            canCreate: false, activate: false) else { return }
         use(folder: url)
     }
 

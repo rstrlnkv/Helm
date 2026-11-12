@@ -1,4 +1,3 @@
-import AppKit
 import HelmRuntime
 import HelmUI
 import Module_Autopilot_Engine
@@ -118,13 +117,9 @@ struct RuleEditor: View {
     /// The panel is the only way another folder gets in, as everywhere in this
     /// module. A cancelled panel changes nothing and says nothing.
     private func chooseFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.prompt = ApStr.chooseDestination
-        panel.directoryURL = URL(fileURLWithPath: folder.path)
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let url = FolderPicker.choose(prompt: ApStr.chooseDestination,
+                                            startingAt: URL(fileURLWithPath: folder.path),
+                                            canCreate: false, activate: false) else { return }
         let next = Self.pointing(rule, at: url.path, from: folder, preset: preset, rvm: rvm)
         withAnimation(HelmMotion.disclosure) {
             outOfReach = next == nil

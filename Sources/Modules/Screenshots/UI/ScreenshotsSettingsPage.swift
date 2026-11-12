@@ -515,15 +515,8 @@ struct ScreenshotsSettingsPage: View {
     /// as long as it is up — accepted: a panel of an inactive app is not reliably
     /// answered. Nil when cancelled.
     private static func chooseFolder() -> String? {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.canCreateDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = ScStr.chooseFolder
-        NSApp.activate(ignoringOtherApps: true)
-        guard panel.runModal() == .OK, let url = panel.url else { return nil }
-        return url.path
+        FolderPicker.choose(prompt: ScStr.chooseFolder, startingAt: nil,
+                            canCreate: true, activate: true)?.path
     }
 
     // MARK: - The folder

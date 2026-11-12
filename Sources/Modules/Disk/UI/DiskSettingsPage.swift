@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 import HelmRuntime
 import HelmUI
@@ -223,11 +222,8 @@ struct DiskSettingsPage: View {
     }
 
     private func chooseFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let url = FolderPicker.choose(prompt: nil, startingAt: nil,
+                                            canCreate: false, activate: false) else { return }
         Task { await dvm.scan(path: url.path) }
     }
 }
