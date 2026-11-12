@@ -19,7 +19,6 @@ import Module_Uninstaller_UI
     private var moduleEnabledObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory)
         // Before the status item and the panel exist, so nothing is drawn twice.
         // Before anything draws a string: every `L()` reads the language on
         // every call, so a late apply would leave whatever was built first in
@@ -60,7 +59,6 @@ import Module_Uninstaller_UI
 
         // Every launch: find out what macOS is withholding before a removal
         // silently leaves files behind.
-        PermissionAudit.host = host
         introduceOrAudit()
         // An app dragged to the Trash while Helm is running is the case the
         // sweep alone cannot see, and it is the one people actually do.
@@ -80,8 +78,6 @@ import Module_Uninstaller_UI
                     self?.watchTrashArrivals()
                 }
             }
-        HelmLog.shared.info("permissions", "full disk access probe: \(PermissionCheck.currentFullDiskAccess().rawValue)")
-
         UpdateService.shared.startChecking()
 
         HelmLog.shared.memory("launch")
@@ -115,10 +111,10 @@ import Module_Uninstaller_UI
             store: AppSettings.store,
             actions: WelcomeActions(
                 isModuleEnabled: { [host] id in
-                    ModuleRegistry.all.first { $0.idRaw == id }.map { host.isEnabled($0) } ?? true
+                    ModuleRegistry.descriptor(id).map { host.isEnabled($0) } ?? true
                 },
                 setModuleEnabled: { [host] id, on in
-                    guard let d = ModuleRegistry.all.first(where: { $0.idRaw == id }) else { return }
+                    guard let d = ModuleRegistry.descriptor(id) else { return }
                     host.setEnabled(d, on)
                 },
                 isLaunchAtLogin: { LoginItem.current().isOn },

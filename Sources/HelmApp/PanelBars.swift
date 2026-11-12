@@ -224,7 +224,7 @@ struct PanelGallery: View {
     }
 
     private func ghost(_ id: String, _ live: ModuleHost.Live?) -> some View {
-        let descriptor = live?.descriptor ?? ModuleRegistry.all.first { $0.idRaw == id }
+        let descriptor = live?.descriptor ?? ModuleRegistry.descriptor(id)
         let isDrawer = id == HelmPanelContent.utilitiesWidget
         return Button {
             add(id)

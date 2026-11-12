@@ -53,7 +53,6 @@ private let helmPanelShadowMargin: CGFloat = 28
 
 @MainActor final class HelmPanel: NSObject {
     private let panel: NSPanel
-    private let hosting: NSHostingView<HelmPanelContent>
     private var dismissMonitor: Any?
     private var dismissObserver: NSObjectProtocol?
     private var statusButtonScreenFrame: NSRect = .zero
@@ -100,7 +99,6 @@ private let helmPanelShadowMargin: CGFloat = 28
         // previously swallowed every click.
         let hosting = NSHostingView(rootView: HelmPanelContent(host: host))
         hosting.sizingOptions = []
-        self.hosting = hosting
         panel.contentView = hosting
         super.init()
         dismissObserver = NotificationCenter.default.addObserver(

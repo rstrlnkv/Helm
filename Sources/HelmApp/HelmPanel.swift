@@ -253,7 +253,7 @@ struct HelmPanelContent: View {
                 // Dropping the tile would take the arrangement apart and leave
                 // nobody able to say where the block went — and switching a
                 // module off is not a request to rearrange the panel.
-                guard let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == slot.widget }),
+                guard let descriptor = ModuleRegistry.descriptor(slot.widget),
                       !ModuleHost.shared.isEnabled(descriptor) else { return nil }
                 return Widget(id: slot.widget,
                               content: .module(AnyView(DisabledModuleWidget(descriptor: descriptor))),
@@ -350,7 +350,7 @@ struct HelmPanelContent: View {
         } else {
         body(of: widget)
             .frame(maxWidth: .infinity, alignment: .topLeading)
-            .modifier(EditChrome(active: editing, widget: widget.id, size: widget.size,
+            .modifier(EditChrome(active: editing, size: widget.size,
                                  sizes: widget.offered,
                                  lifted: dragging?.id == widget.id,
                                  wellVisible: well == widget.id,

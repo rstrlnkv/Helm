@@ -26,7 +26,6 @@ import HelmAppStrings
 /// cannot reach.
 struct EditChrome: ViewModifier {
     let active: Bool
-    let widget: String
     let size: PanelWidgetSize
     let sizes: [PanelWidgetSize]
     /// This tile is the one being carried, so it is a slot: no content, and no

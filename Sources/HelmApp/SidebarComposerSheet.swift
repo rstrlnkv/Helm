@@ -267,7 +267,7 @@ struct SidebarComposerRow: View {
                                              registry: SidebarLayoutStore.registry())
         let ids = layout.sections.flatMap(\.modules)
         let on = ids.filter { id in
-            ModuleRegistry.all.first { $0.idRaw == id }.map { host.isEnabled($0) } ?? false
+            ModuleRegistry.descriptor(id).map { host.isEnabled($0) } ?? false
         }.count
         return AppStr.sidebarSummary(on: on, of: ids.count, sections: layout.sections.count)
     }

@@ -8,9 +8,6 @@ import HelmAppStrings
 /// Discovered the hard way: without Full Disk Access an uninstall silently
 /// leaves app containers on disk.
 @MainActor enum PermissionAudit {
-    /// Set by the app delegate so the audit can ask which modules are on.
-    static var host: ModuleHost!
-
     /// Holds the **identity** of the build that last ran this audit and could
     /// read its signature — not a bare flag, and no longer its marketing
     /// version.
@@ -69,19 +66,26 @@ import HelmAppStrings
 
             // Asked for only what an enabled module actually uses: a permission
             // request with no reason behind it is one people deny.
-            let needs = ModuleRegistry.all
-                .filter { host.isEnabled($0) }
-                .flatMap { $0.currentPermissions() }
-            let missing = PermissionAuditPlan.missing(
-                fullDisk: fullDisk, accessibility: accessibility,
-                screenRecording: screenRecording,
-                needsFullDisk: needs.contains(.fullDisk),
-                needsAccessibility: needs.contains(.accessibility),
-                needsScreenRecording: needs.contains(.screenRecording))
+            let needs = PermissionSummary.needed()
+            let missing = missing(needs: needs, fullDisk: fullDisk,
+                                  accessibility: accessibility,
+                                  screenRecording: screenRecording)
 
             guard !missing.isEmpty else { return }
             present(missing)
         }
+    }
+
+    /// The needed permissions that are denied, as the alert lists them.
+    static func missing(needs: [PermissionNeed], fullDisk: PermissionState,
+                        accessibility: PermissionState,
+                        screenRecording: PermissionState) -> [PermissionNeed] {
+        PermissionAuditPlan.missing(
+            fullDisk: fullDisk, accessibility: accessibility,
+            screenRecording: screenRecording,
+            needsFullDisk: needs.contains(.fullDiskAccess),
+            needsAccessibility: needs.contains(.accessibility),
+            needsScreenRecording: needs.contains(.screenRecording))
     }
 
     /// One sheet naming everything that stopped working, and a button per

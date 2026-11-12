@@ -1,6 +1,5 @@
 import HelmTestSupport
 import XCTest
-@testable import HelmApp
 import HelmAppStrings
 
 /// (CLAUDE.md § Shipping — what a person does, not a role) orders one `CHANGELOG.md` section and the same entries in

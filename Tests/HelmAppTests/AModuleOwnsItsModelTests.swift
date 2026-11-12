@@ -19,7 +19,8 @@ final class AModuleOwnsItsModelTests: XCTestCase {
 
     private static let convertedID = "test-owns-model-converted"
     private static let standInID = "test-owns-model-stand-in"
-    private static let allIDs = [convertedID, standInID]
+    private static let secondID = "test-owns-model-second"
+    private static let allIDs = [convertedID, standInID, secondID]
 
     nonisolated static let report = ScanReport(bytes: 4242, count: 2,
                                            items: [ScanItem(path: "/x/a", bytes: 4000),
@@ -90,6 +91,20 @@ final class AModuleOwnsItsModelTests: XCTestCase {
         }
     }
 
+    /// A second module with its own id, for the host-wide ask.
+    private final class Second: Base, ModuleDescriptor {
+        static let id = ModuleID(AModuleOwnsItsModelTests.secondID)
+        static let metadata = ModuleMetadata(id: id, name: "Second", summary: "",
+                                             sfSymbol: "gear", permissions: [])
+        func makeModule(store: NamespacedStore) -> ModuleParts<OwnModel> {
+            ModuleParts(engine: FakeEngine(journal: journal), model: OwnModel())
+        }
+        func menuBar(_ model: OwnModel) -> MenuBarContribution? { nil }
+        func settingsPage(_ model: OwnModel) -> AnyView { AnyView(EmptyView()) }
+        func stop(_ model: OwnModel) {}
+        func backgroundScan(_ parts: ModuleParts<OwnModel>) async -> ScanReport? { nil }
+    }
+
     /// The host's store is `UserDefaults.standard`: the keys written are taken back out.
     override func tearDown() {
         ModuleHost.shared.shutdown()
@@ -135,6 +150,11 @@ final class AModuleOwnsItsModelTests: XCTestCase {
         XCTAssertNil(host.liveModule(Self.convertedID))
     }
 
+    /// Quitting asks no question because there is nobody to answer it:
+    /// `willDisable()` is for the person's switch and for a reset. Keep Awake
+    /// shipped an `osascript` administrator password dialog raised from the
+    /// quit path, for a `/etc/sudoers.d` rule it was trying to take back out, and
+    /// the rule then had to be left behind on every route.
     func testQuittingStopsTheModelBeforeTheEngineToo() throws {
         let d = Converted()
         let host = ModuleHost.shared
@@ -186,5 +206,26 @@ final class AModuleOwnsItsModelTests: XCTestCase {
         XCTAssertEqual(fromConverted, Self.report, "the converted module's own scan was not what answered")
         let builtModel = try XCTUnwrap(converted.built)
         XCTAssertTrue(converted.scanned === builtModel, "the module's scan was not given its own model")
+    }
+
+    /// The reset's ask goes to every live engine, once, and changes nothing else:
+    /// no teardown, and no enabled flag written.
+    func testHandingBackSystemStateAsksEveryLiveEngineAndTearsNothingDown() throws {
+        let first = Converted()
+        let second = Second()
+        let host = ModuleHost.shared
+        host.setEnabled(first, true)
+        host.setEnabled(second, true)
+        UserDefaults.standard.removeObject(forKey: "module.\(Self.convertedID).enabled")
+        UserDefaults.standard.removeObject(forKey: "module.\(Self.secondID).enabled")
+
+        host.handBackSystemState()
+
+        XCTAssertEqual(first.journal.calls, ["willDisable"])
+        XCTAssertEqual(second.journal.calls, ["willDisable"])
+        XCTAssertNotNil(host.liveModule(Self.convertedID))
+        XCTAssertNotNil(host.liveModule(Self.secondID))
+        XCTAssertNil(enabledKey(Self.convertedID), "the ask wrote an enabled flag")
+        XCTAssertNil(enabledKey(Self.secondID), "the ask wrote an enabled flag")
     }
 }

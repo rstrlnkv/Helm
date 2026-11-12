@@ -26,9 +26,6 @@ import XCTest
 /// is worth doing once the last bare launch is gone.
 final class NoBareLaunchInTheShellTests: XCTestCase {
 
-    /// `try` on the same line as a `.run()` that is not `HelmProcess`'s own.
-    private static let bareLaunch = "try process.run()"
-
     func testNothingInTheShellStartsAChildWithoutTheGuard() throws {
         var offences: [String] = []
         let paths = try RepoSource.swiftFiles(under: "Sources/HelmApp")

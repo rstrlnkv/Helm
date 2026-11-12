@@ -176,7 +176,7 @@ struct SidebarComposerListRow: View {
                 header(section)
             }
         case .module(let id, let sectionID):
-            if let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == id }) {
+            if let descriptor = ModuleRegistry.descriptor(id) {
                 module(descriptor, in: sectionID)
             }
         }

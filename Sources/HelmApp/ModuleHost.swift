@@ -18,7 +18,6 @@ import SwiftUI
         /// everything that draws from it goes through the closures below, and the
         /// trash sweep's one `as?` in `AppDelegate`.
         let model: AnyObject
-        let store: NamespacedStore
         let page: @MainActor () -> AnyView
         let menuBar: @MainActor () -> MenuBarContribution?
         let activity: @MainActor () -> ModuleActivity?
@@ -146,7 +145,7 @@ import SwiftUI
         // the engine's construction, so every process that built a module —
         // the offscreen render harness included — got a status item on its Mac.
         d.attachMenuBarPresence()
-        return Live(descriptor: d, engine: parts.engine, model: model, store: s,
+        return Live(descriptor: d, engine: parts.engine, model: model,
                     page: { d.settingsPage(model) },
                     menuBar: { d.menuBar(model) },
                     activity: { d.activity(model) },

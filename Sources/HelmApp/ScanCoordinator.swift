@@ -245,6 +245,12 @@ final class ScanCoordinator {
 
     private func run(_ id: String) async {
         guard let live = host.liveModule(id) else { return }
+        await run(id, scan: live.backgroundScan)
+    }
+
+    /// The seam a test drives with a scan of its own: a live module would need
+    /// a real engine and a walk of the volume.
+    func run(_ id: String, scan: @escaping @MainActor () async -> ScanReport?) async {
         inFlight.insert(id)
         defer { inFlight.remove(id) }
 
@@ -257,11 +263,9 @@ final class ScanCoordinator {
         // for both is what made the day's second run unreachable.
         AppSettings.lastScanAttemptAt[id] = started
 
-        // `begin` with a `defer` on the next line: the interval closes on every
-        // path out, return and cancellation alike.
-        HelmActivity.begin("scan.\(id)")
-        defer { HelmActivity.end("scan.\(id)") }
-        let report = await live.backgroundScan()
+        // The interval is the walk and nothing after it: it closes before the
+        // journal record and the log line, on every path out.
+        let report = await HelmActivity.phase("scan.\(id)") { @Sendable in await scan() }
         let seconds = Date().timeIntervalSince(started)
 
         guard let report else {

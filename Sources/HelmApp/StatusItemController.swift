@@ -178,7 +178,7 @@ import HelmAppStrings
         let groups = layout.sections.map { section in
             StatusMenuBuilder.Group(entries: section.modules
                 .filter { live.contains($0) }
-                .compactMap { id in ModuleRegistry.all.first { $0.idRaw == id } }
+                .compactMap { id in ModuleRegistry.descriptor(id) }
                 .map { StatusMenuBuilder.Entry(id: $0.idRaw,
                                                title: $0.moduleMetadata.name,
                                                symbol: $0.moduleMetadata.sfSymbol) })

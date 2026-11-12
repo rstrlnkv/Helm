@@ -2,7 +2,6 @@ import XCTest
 import AppKit
 import HelmContract
 import HelmTestSupport
-import HelmUI
 @testable import HelmApp
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI

@@ -449,7 +449,7 @@ private struct SettingsDetail: View {
         case .log:
             LogView(settingsTabs: tabs)
         case .module(let id):
-            if let descriptor = ModuleRegistry.all.first(where: { $0.idRaw == id }) {
+            if let descriptor = ModuleRegistry.descriptor(id) {
                 ModuleDetailView(host: model.host, descriptor: descriptor, id: id)
             } else {
                 // A selection can outlive its module (removed build, stale

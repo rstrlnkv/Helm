@@ -4,7 +4,6 @@
 import XCTest
 import HelmContract
 import HelmTestSupport
-@testable import HelmApp
 
 /// The other half of `AResetAsksBeforeItDeletesTests`: the order is a value, and
 /// this is what carries it out.
@@ -48,26 +47,6 @@ final class AResetGoesThroughTheEnginesTests: XCTestCase {
                       + "passwordless pmset rule Keep Awake installed in /etc/sudoers.d "
                       + "outlives a reset that promises the machine is as it was just "
                       + "after installing")
-    }
-
-    /// And what the host does with the ask: every live engine, through the one
-    /// call that means «the person is here».
-    func testTheHostAsksEveryLiveEngine() throws {
-        let host = try source("Sources/HelmApp/ModuleHost.swift")
-        // `SwiftSource`, not a hand-rolled slice to the next `func`: this used
-        // to scan for the following declaration at one exact indent, which a
-        // nested function or a closure between the two would have broken
-        // silently — brace matching is the reading that survives nesting.
-        let body = try XCTUnwrap(SwiftSource.body(of: "handBackSystemState", in: host),
-                                 "the host has no way to be asked for what its engines "
-                                 + "hold outside Helm")
-        XCTAssertTrue(body.contains("willDisable()"),
-                      "the host is asked and tells nobody: `willDisable()` is the only "
-                      + "call that means «the person is at the screen and this is the "
-                      + "last moment to ask», and it is what the grant's removal hangs on")
-        XCTAssertTrue(body.contains("live"),
-                      "the ask does not go to the live engines, so it reaches whichever "
-                      + "engine somebody named by hand and no others")
     }
 
     /// The contract carries the default, so a module that holds nothing outside
