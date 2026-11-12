@@ -1,10 +1,8 @@
 import AppKit
 import CoreGraphics
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
-import HelmUI
 import XCTest
 import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
@@ -33,11 +31,6 @@ final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
         func requestAccess() {}
         func freeze(cursor: Bool) async -> FreezeOutcome { .frozen(freeze) }
         func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
-    }
-    private struct NoPreferences: CapturePreferences {
-        func location() -> RawSetting { RawSetting(nil) }
-        func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
-        func uiSounds() -> RawSetting { RawSetting(nil) }
     }
     private final class Shutter: ShutterPlaying, @unchecked Sendable {
         private let lock = NSLock()

@@ -1,10 +1,8 @@
 import AppKit
 import CoreGraphics
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
-import HelmUI
 import SwiftUI
 import ImageIO
 import XCTest
@@ -74,12 +72,6 @@ final class AsideTrash: ShotTrashing, @unchecked Sendable {
 
 private final class PileShutter: ShutterPlaying, @unchecked Sendable { func play() {} }
 
-private struct PileNoPreferences: CapturePreferences {
-    func location() -> RawSetting { RawSetting(nil) }
-    func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
-    func uiSounds() -> RawSetting { RawSetting(nil) }
-}
-
 /// The freeze, which can be held open: the editor is then still being opened.
 final class PileFrames: ScreenCapturing, @unchecked Sendable {
     let freeze: Freeze
@@ -145,7 +137,7 @@ final class PileScene {
         store.set(true, for: ScreenshotsSettings.Key.thumbnail)
         store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let session = CaptureSession(capture: capture, writer: FileShotWriter(), trash: trash, pasteboard: board,
-                                     preferences: PileNoPreferences(), shutter: PileShutter(), textReader: NoTextReader(),
+                                     preferences: NoPreferences(), shutter: PileShutter(), textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: desktop))
         toast = ShotToast(tick: { _ in try await Task.sleep(for: .seconds(1_000_000)) }, windowed: false)
@@ -168,7 +160,7 @@ final class PileScene {
     @discardableResult
     func take(width: Int, height: Int = 300) async throws -> ShotToastModel.Shot {
         let before = toast.model.shots.count
-        await controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: width, height: height), kind: .area))
+        await controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: width, height: height)))
         let shot = try XCTUnwrap(toast.model.shots.last, "no shot after a hand-off")
         XCTAssertNotNil(shot.file, "the shot has no file")
         XCTAssertNotNil(shot.reading, "the shot has no reading, so it cannot be edited")

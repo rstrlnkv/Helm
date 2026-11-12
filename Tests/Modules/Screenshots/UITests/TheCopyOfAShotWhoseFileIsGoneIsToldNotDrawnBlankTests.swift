@@ -35,7 +35,7 @@ final class TheCopyOfAShotWhoseFileIsGoneIsToldNotDrawnBlankTests: XCTestCase {
         if case .refusal(_, let body, _)? = s.toast.model.refusal { body } else { nil }
     }
 
-    /// The full picture is what Copy and the Share-less drag ask for: for a gone file it is none, not a blank one,
+    /// The full picture is what the single Copy asks for: for a gone file it is none, not a blank one,
     /// and the single Copy says the sentence.
     func testTheFullPictureOfAGoneFileIsNilAndTheCopyOfItSaysTheFileIsGone() async throws {
         let s = try scene()

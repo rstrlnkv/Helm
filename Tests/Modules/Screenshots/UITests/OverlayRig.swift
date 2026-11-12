@@ -1,5 +1,4 @@
 import AppKit
-import HelmContract
 import XCTest
 import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI

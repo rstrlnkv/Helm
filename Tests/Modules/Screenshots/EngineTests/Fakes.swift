@@ -120,20 +120,12 @@ final class FakeWriter: ShotWriting, @unchecked Sendable {
     private var _taken: Set<String> = []
     private var _refuse: WriteRefusal?
     private var _written: [(url: URL, bytes: Int)] = []
-    private var _data: [Data] = []
     private var _readings: [String: ShotReading] = [:]
     private var _inode: UInt64 = 100
-    private var _refusesClaim = false
     let moves: ShotMoves
 
     init(moves: ShotMoves = ShotMoves()) { self.moves = moves }
 
-    /// What is at a path now, as the port reads it.
-    func setReading(_ reading: ShotReading?, at url: URL) { lock.withLock { _readings[url.path] = reading } }
-    var refusesClaim: Bool {
-        get { lock.withLock { _refusesClaim } }
-        set { lock.withLock { _refusesClaim = newValue } }
-    }
     /// The file left: its name is free and nothing is read at it. What a trash that succeeded does to the folder.
     func vanish(_ url: URL) {
         lock.withLock {
@@ -151,8 +143,6 @@ final class FakeWriter: ShotWriting, @unchecked Sendable {
         set { lock.withLock { _refuse = newValue } }
     }
     var written: [(url: URL, bytes: Int)] { lock.withLock { _written } }
-    /// The bytes of each file written, in order.
-    var contents: [Data] { lock.withLock { _data } }
 
     func write(_ png: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
         lock.withLock {
@@ -163,7 +153,6 @@ final class FakeWriter: ShotWriting, @unchecked Sendable {
                 _taken.insert(name)
                 let url = folder.appendingPathComponent(name)
                 _written.append((url, png.count))
-                _data.append(png)
                 _inode += 1
                 let reading = ShotReading(identity: PathCanonical.FileIdentity(device: 1, inode: _inode), size: Int64(png.count),
                                           modifiedSeconds: 1_790_000_000, modifiedNanoseconds: Int64(_inode), isRegularFile: true)
@@ -179,7 +168,7 @@ final class FakeWriter: ShotWriting, @unchecked Sendable {
 
     func claim(_ written: URL, as name: URL) -> Bool {
         lock.withLock {
-            guard !_refusesClaim, let reading = _readings[written.path],
+            guard let reading = _readings[written.path],
                   _readings[name.path] == nil, !_taken.contains(name.lastPathComponent) else { return false }
             _readings[written.path] = nil
             _readings[name.path] = reading
@@ -343,7 +332,6 @@ struct Rig {
     let reader = FakeTextReader()
     let home: URL
     let desktop: URL
-    var settings: ScreenshotsSettings = .defaults
     let session: CaptureSession
 
     init(home: URL, settings: ScreenshotsSettings = .defaults) {

@@ -1,9 +1,7 @@
 import CoreGraphics
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
-import HelmUI
 import XCTest
 import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
@@ -32,16 +30,6 @@ final class TheHandOffCopiesAndSavesTests: XCTestCase {
         }
     }
 
-    private struct NoPreferences: CapturePreferences {
-        func location() -> RawSetting { RawSetting(nil) }
-        func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
-        func uiSounds() -> RawSetting { RawSetting(nil) }
-    }
-
-    private struct NoShutter: ShutterPlaying {
-        func play() {}
-    }
-
     /// A grant nobody asks about: a hand-off never freezes anything.
     private struct NeverAsked: ScreenCapturing {
         func access() -> CaptureAccess { .denied }
@@ -65,21 +53,12 @@ final class TheHandOffCopiesAndSavesTests: XCTestCase {
         return (controller, board, disk)
     }
 
-    func testEveryKindOfPickIsCopiedAndSaved() async throws {
-        for kind in [CapturedShot.Kind.area, .window, .display] {
-            let (controller, board, disk) = controller(saving: .desktop)
-            await controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 20, height: 10), kind: kind))
-            XCTAssertEqual(board.copies, 1, "\(kind): the picture was not copied")
-            XCTAssertEqual(disk.written, 1, "\(kind): the picture was not saved")
-        }
-    }
-
     /// The save target decides the file of an area: the clipboard target makes none, every other makes one. The copy
     /// is made under every target; this is the hand-off's default, which the editor's exits narrow.
     func testTheOneSaveTargetDecidesWhatAnAreaMakes() async throws {
         for target in SaveTarget.allCases {
             let (controller, board, disk) = controller(saving: target)
-            await controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 20, height: 10), kind: .area))
+            await controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 20, height: 10)))
             XCTAssertEqual(board.copies, 1, "target \(target): an area was not copied")
             XCTAssertEqual(disk.written, target == .clipboard ? 0 : 1,
                            "target \(target): an area was \(target == .clipboard ? "saved as a file though the target is the clipboard" : "not saved")")

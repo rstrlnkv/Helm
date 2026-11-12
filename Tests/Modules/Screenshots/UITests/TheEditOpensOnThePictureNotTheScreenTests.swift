@@ -1,7 +1,6 @@
 import AppKit
 import CoreGraphics
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
 import HelmUI
@@ -60,12 +59,6 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
             return .frozen(freeze)
         }
         func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
-    }
-
-    private struct NoPreferences: CapturePreferences {
-        func location() -> RawSetting { RawSetting(nil) }
-        func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
-        func uiSounds() -> RawSetting { RawSetting(nil) }
     }
 
     private final class Box { var overlay: CaptureOverlay?; var count = 0 }
@@ -144,7 +137,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
     // MARK: Helpers
 
     private func take(_ s: Scene, width: Int = 1200, height: Int = 700) async throws -> WrittenShot {
-        await s.controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: width, height: height), kind: .area))
+        await s.controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: width, height: height)))
         let shot = try XCTUnwrap(s.toast.model.editSource?.shot, "nothing to edit after a saved shot")
         let written = try XCTUnwrap(image(shot.url), "the shot's file is no picture")
         let read = rgb(written, 3, 3)
@@ -625,7 +618,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
     /// and no original is moved.
     func testAClipboardOnlyShotEditsAndCopiesAndSavesNoFile() async throws {
         let s = try scene(target: .clipboard)
-        await s.controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 400, height: 300), kind: .area))
+        await s.controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 400, height: 300)))
         let source = try XCTUnwrap(s.toast.model.editSource)
         XCTAssertNil(source.shot, "a shot with no file has no original")
         XCTAssertNotNil(source.held)
@@ -645,7 +638,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
     /// nothing is replaced, since the shot had no file.
     func testAClipboardOnlyShotEditedAfterTheSettingChangedIsSavedAsANewShot() async throws {
         let s = try scene(target: .clipboard)
-        await s.controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 400, height: 300), kind: .area))
+        await s.controller.handOff(CapturedShot(image: try ShotToastRig.picture(width: 400, height: 300)))
         let overlay = try await openEditor(s)
         s.store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         await finish(s, overlay)

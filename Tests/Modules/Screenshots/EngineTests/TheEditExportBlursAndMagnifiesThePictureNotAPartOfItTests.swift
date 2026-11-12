@@ -105,4 +105,58 @@ final class TheEditExportBlursAndMagnifiesThePictureNotAPartOfItTests: XCTestCas
             }
         }
     }
+
+    /// A lens shows the picture twice as large, so under it a gradient is not its own pixels; far from it the file is the picture.
+    func testAMagnifierInTheFileShowsThePictureLargerAndTouchesNothingFarFromIt() throws {
+        let (w, h) = (1200, 700)
+        let picture = gradient(w, h)
+        let shown = try placed(picture)
+        let r = shown.rect
+        let side = 0.3 * r.height
+        let box = CGRect(x: r.minX + 0.55 * r.width, y: r.minY + 0.5 * r.height, width: side, height: side)
+        let layer = Annotation(tool: .magnifier, start: box.origin, end: CGPoint(x: box.maxX, y: box.maxY))
+        XCTAssertTrue(layer.isUsable, "the control: the magnifier is usable")
+        let rig = Rig(home: scratchDirectory("shots-export-lens"))
+        let out = try XCTUnwrap(exported(rig.session, shown, local: r, layer: layer))
+        let file = bytes(out), source = bytes(picture)
+        let k = CGFloat(w) / r.width
+        let inner = CGRect(x: (box.midX - r.minX) * k - side * k * 0.25, y: (box.midY - r.minY) * k - side * k * 0.25,
+                           width: side * k * 0.5, height: side * k * 0.5).integral
+        XCTAssertGreaterThan(inner.width * inner.height, 400, "the control: the region has pixels")
+        let under = differing(file, source, width: w, in: inner)
+        XCTAssertGreaterThan(under, 0.5, "the pixels in the lens are the picture's own (\(under)): the lens was not drawn")
+        let away = differing(file, source, width: w, in: CGRect(x: 0, y: 0, width: Double(w) * 0.4, height: Double(h) * 0.4))
+        XCTAssertEqual(away, 0, "the lens changed pixels far from itself")
+    }
+
+    /// A spotlight is a hole in one dim: under its box the file is the picture; away from it every pixel is darker.
+    func testASpotlightInTheFileDimsThePictureAwayFromItAndLeavesItsInsideAlone() throws {
+        let (w, h) = (1200, 700)
+        let picture = gradient(w, h)
+        let shown = try placed(picture)
+        let r = shown.rect
+        let box = CGRect(x: r.minX + 0.55 * r.width, y: r.minY + 0.5 * r.height, width: 0.3 * r.width, height: 0.3 * r.height)
+        let layer = Annotation(tool: .spotlight, start: box.origin, end: CGPoint(x: box.maxX, y: box.maxY))
+        XCTAssertTrue(layer.isUsable, "the control: the spotlight is usable")
+        let rig = Rig(home: scratchDirectory("shots-export-spotlight"))
+        let out = try XCTUnwrap(exported(rig.session, shown, local: r, layer: layer))
+        let file = bytes(out), source = bytes(picture)
+        let k = CGFloat(w) / r.width
+        let inner = CGRect(x: (box.minX - r.minX) * k, y: (box.minY - r.minY) * k, width: box.width * k, height: box.height * k)
+            .insetBy(dx: 50, dy: 50).integral
+        XCTAssertGreaterThan(inner.width * inner.height, 400, "the control: the region has pixels")
+        XCTAssertEqual(differing(file, source, width: w, in: inner), 0, "the spotlight dimmed its own inside")
+        let away = CGRect(x: 0, y: 0, width: Double(w) * 0.4, height: Double(h) * 0.4)
+        var darker = 0, total = 0
+        for y in Int(away.minY)..<Int(away.maxY) {
+            for x in Int(away.minX)..<Int(away.maxX) {
+                let i = (y * w + x) * 4
+                guard Int(source[i]) + Int(source[i + 1]) + Int(source[i + 2]) > 30 else { continue }
+                total += 1
+                if Int(file[i]) + Int(file[i + 1]) + Int(file[i + 2]) < Int(source[i]) + Int(source[i + 1]) + Int(source[i + 2]) { darker += 1 }
+            }
+        }
+        XCTAssertGreaterThan(total, 400, "the control: the region has lit pixels")
+        XCTAssertEqual(darker, total, "the pixels away from the spotlight are not all dimmed (\(darker) of \(total)): the dim was not drawn")
+    }
 }

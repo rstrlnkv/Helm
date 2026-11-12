@@ -7,7 +7,8 @@ It needs a grant no other module does — Screen & System Audio Recording, the t
 engine. A 5K display's frozen frame is some sixty megabytes, so a frame never crosses
 the port between the model and the engine: the module's `hotkeyPressed` calls the
 model's `press`, which builds a `CaptureController` over a `CaptureSession`
-(`Sources/Modules/Screenshots/Engine/CaptureSession.swift`) made of the engine's own
+(`Sources/Modules/Screenshots/Engine/CaptureSession.swift`, its drawing and encoding in
+`CaptureSession+Drawing.swift` beside it) made of the engine's own
 ports. What the engine tells the model is what the settings page cannot read for itself
 — the validated save folder and which of the system's own screenshot shortcuts are still
 ticked — as `ScreenshotsState` (§ How Screenshots' model reaches its engine).

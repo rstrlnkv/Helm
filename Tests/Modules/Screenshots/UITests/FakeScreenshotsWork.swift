@@ -64,12 +64,6 @@ final class FakeWorkDisk: ShotWriting, @unchecked Sendable {
     }
 }
 
-private struct FakeWorkPreferences: CapturePreferences {
-    func location() -> RawSetting { RawSetting(nil) }
-    func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
-    func uiSounds() -> RawSetting { RawSetting(nil) }
-}
-
 private struct FakeWorkShutter: ShutterPlaying {
     func play() {}
 }
@@ -120,7 +114,7 @@ final class FakeScreenshotsWork: ScreenshotsWork, @unchecked Sendable {
         lock.withLock { _calls.append("session") }
         let home = FileManager.default.temporaryDirectory
         return CaptureSession(capture: screen, writer: disk, trash: NoTrash(), pasteboard: board,
-                              preferences: FakeWorkPreferences(), shutter: FakeWorkShutter(), textReader: NoTextReader(),
+                              preferences: NoPreferences(), shutter: FakeWorkShutter(), textReader: NoTextReader(),
                               settings: { ScreenshotsSettings.read(store) }, naming: naming,
                               locations: ScreenshotsLocations(home: home, desktop: home))
     }

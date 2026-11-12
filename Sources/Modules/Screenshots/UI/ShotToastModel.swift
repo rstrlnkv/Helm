@@ -92,7 +92,7 @@ import Module_Screenshots_Engine
     }
 
     /// The shot an action is about: in the row the one the pointer is on, else the newest. None while a refusal
-    /// covers the shots: nothing of them can be copied, edited, dragged or pinned from under it.
+    /// covers the shots: nothing of them can be copied, edited or dragged from under it.
     var current: Shot? {
         guard refusal == nil else { return nil }
         return (unfolded ? shots.first { $0.id == focus } : nil) ?? shots.last

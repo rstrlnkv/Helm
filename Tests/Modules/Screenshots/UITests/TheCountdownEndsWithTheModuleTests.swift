@@ -1,9 +1,7 @@
 import CoreGraphics
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
-import HelmUI
 import XCTest
 import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
@@ -57,13 +55,6 @@ final class TheCountdownEndsWithTheModuleTests: XCTestCase {
     }
 
     private typealias Board = CountingBoard
-    private struct NoPreferences: CapturePreferences {
-        func location() -> RawSetting { RawSetting(nil) }
-        func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
-        func uiSounds() -> RawSetting { RawSetting(nil) }
-    }
-    private struct NoShutter: ShutterPlaying { func play() {} }
-
     private final class Ticks: @unchecked Sendable {
         private let lock = NSLock()
         private var n = 0

@@ -208,7 +208,7 @@ public final class SCKCapture: ScreenCapturing, @unchecked Sendable {
     private static func isTheDock(_ pid: pid_t) -> Bool {
         var buffer = [CChar](repeating: 0, count: 4 * Int(MAXPATHLEN))
         guard proc_pidpath(pid, &buffer, UInt32(buffer.count)) > 0 else { return false }
-        return String(cString: buffer) == "/System/Library/CoreServices/Dock.app/Contents/MacOS/Dock"
+        return buffer.withUnsafeBufferPointer { String(cString: $0.baseAddress!) } == "/System/Library/CoreServices/Dock.app/Contents/MacOS/Dock"
     }
 
     /// Where the Dock is: its Accessibility bounds when they are on a display, else the

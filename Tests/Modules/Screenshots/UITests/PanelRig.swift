@@ -1,10 +1,8 @@
 import AppKit
 import CoreGraphics
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
-import HelmUI
 import XCTest
 import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
@@ -56,13 +54,6 @@ enum PanelRig {
         func copy(pngs: [Data]) -> PasteOutcome { .accepted }
         func copy(text: String) -> PasteOutcome { .accepted }
     }
-    struct NoPreferences: CapturePreferences {
-        func location() -> RawSetting { RawSetting(nil) }
-        func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
-        func uiSounds() -> RawSetting { RawSetting(nil) }
-    }
-    struct NoShutter: ShutterPlaying { func play() {} }
-
     @MainActor final class Held { var overlay: CaptureOverlay?; var overlays = 0; var bars = 0 }
 
     struct Rig {

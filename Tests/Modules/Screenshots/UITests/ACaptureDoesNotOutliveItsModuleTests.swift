@@ -1,9 +1,7 @@
 import CoreGraphics
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
-import HelmUI
 import XCTest
 import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
@@ -53,16 +51,6 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
     }
 
     private typealias Board = CountingBoard
-
-    private struct NoPreferences: CapturePreferences {
-        func location() -> RawSetting { RawSetting(nil) }
-        func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
-        func uiSounds() -> RawSetting { RawSetting(nil) }
-    }
-
-    private struct NoShutter: ShutterPlaying {
-        func play() {}
-    }
 
     private func frozen(real: Bool = false) throws -> Freeze {
         // Frames for the real screens, which the overlay needs to build its panels.

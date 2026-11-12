@@ -1,6 +1,4 @@
 import AppKit
-import HelmContract
-import HelmRuntime
 import HelmTestSupport
 import XCTest
 import Module_Screenshots_Engine

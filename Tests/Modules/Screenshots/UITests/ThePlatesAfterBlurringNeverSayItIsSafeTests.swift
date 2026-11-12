@@ -1,7 +1,6 @@
 import AppKit
 import CoreGraphics
 import Foundation
-import HelmContract
 import HelmTestSupport
 import HelmUI
 import XCTest

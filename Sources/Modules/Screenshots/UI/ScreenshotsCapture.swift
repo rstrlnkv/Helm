@@ -1,13 +1,10 @@
 import AppKit
 import HelmRuntime
-import HelmUI
 import Module_Screenshots_Engine
 
 /// What the overlay produced, ready for whatever comes next.
 struct CapturedShot {
-    enum Kind { case area, window, display }
     let image: CGImage
-    let kind: Kind
 }
 
 @MainActor final class CaptureController {
@@ -374,7 +371,7 @@ struct CapturedShot {
                     // No `default:`: a new exit must say here what it does, or it would be a save.
                     switch exit {
                     case .confirm, .copy, .save, .share:
-                        await handOff(CapturedShot(image: image, kind: .area),
+                        await handOff(CapturedShot(image: image),
                                       saves: exit != .copy, copies: exit != .save,
                                       fileEvenFromClipboard: exit == .save, thenShare: exit == .share, editing: editing)
                     }
@@ -385,7 +382,7 @@ struct CapturedShot {
                 if let frame = freeze.frames.first(where: { $0.id == display }),
                    let image = session.crop(freeze, display: display,
                                             local: Selection.wholeDisplay(CGRect(origin: .zero, size: frame.frame.size))) {
-                    await handOff(CapturedShot(image: image, kind: .display))
+                    await handOff(CapturedShot(image: image))
                 } else {
                     failed("the whole-display shot could not be made")
                 }
@@ -393,7 +390,7 @@ struct CapturedShot {
                 let picked = await session.window(id, in: freeze, shadow: shadow)
                 guard !Task.isCancelled else { return }
                 switch picked {
-                case .image(let image): await handOff(CapturedShot(image: image, kind: .window))
+                case .image(let image): await handOff(CapturedShot(image: image))
                 case .refused(let reason): toast.showRefusal(reason)
                 }
             }
@@ -423,7 +420,7 @@ struct CapturedShot {
                 let picked = await session.window(id, in: freeze, shadow: shadow)
                 guard !Task.isCancelled else { return }
                 switch picked {
-                case .image(let image): await handOff(CapturedShot(image: image, kind: .window))
+                case .image(let image): await handOff(CapturedShot(image: image))
                 case .refused(let reason): toast.showRefusal(reason)
                 }
             }
@@ -439,7 +436,7 @@ struct CapturedShot {
                     let frame = fresh.frames.first { uuid != nil ? $0.uuid == uuid : $0.id == display }
                     if let frame, CGRect(origin: .zero, size: frame.frame.size).contains(local),
                        let image = session.crop(fresh, display: frame.id, local: local) {
-                        await handOff(CapturedShot(image: image, kind: .area))
+                        await handOff(CapturedShot(image: image))
                     } else {
                         toast.showRefusal(.displayGone)
                     }

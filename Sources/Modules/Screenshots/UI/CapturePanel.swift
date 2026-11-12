@@ -129,7 +129,6 @@ import Module_Screenshots_Engine
 /// so the place it opens in does not depend on the width it was left at.
 @MainActor final class CapturePanel {
     let model: CapturePanelModel
-    private let store: NamespacedStore
     private var panel: BarPanel?
     /// The overlay the person picks on is open: the panel stands above it.
     var selecting = false { didSet { panel?.level = Self.level(selecting: selecting) } }
@@ -152,7 +151,6 @@ import Module_Screenshots_Engine
     }
 
     init(store: NamespacedStore) {
-        self.store = store
         model = CapturePanelModel(store: store)
         model.placeAgain = { [weak self] in
             guard let self, let panel = self.panel else { return }

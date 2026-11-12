@@ -1,7 +1,6 @@
 import AppKit
 import CoreGraphics
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
 import XCTest
@@ -25,11 +24,6 @@ final class AShotThatCouldNotBeMadeIsNeverSilentTests: XCTestCase {
         func requestAccess() {}
         func freeze(cursor: Bool) async -> FreezeOutcome { .frozen(freeze) }
         func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
-    }
-    private struct NoPreferences: CapturePreferences {
-        func location() -> RawSetting { RawSetting(nil) }
-        func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
-        func uiSounds() -> RawSetting { RawSetting(nil) }
     }
     private struct Quiet: ShutterPlaying { func play() {} }
     @MainActor private final class Opened { var overlays: [CaptureOverlay] = [] }

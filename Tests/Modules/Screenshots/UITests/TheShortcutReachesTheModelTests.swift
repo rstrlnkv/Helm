@@ -1,4 +1,3 @@
-import HelmContract
 import HelmTestSupport
 import HelmUI
 import XCTest

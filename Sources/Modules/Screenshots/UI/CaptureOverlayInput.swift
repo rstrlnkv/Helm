@@ -274,13 +274,6 @@ extension CaptureOverlay {
             // A held Return repeats, and a repeat is not a press that asked for anything.
             guard !event.isARepeat else { return }
             if selectionOnly { takeTarget(); return }
-            // A preselection is only ever held under `selectionOnly`, which `takeTarget`
-            // above has already answered, so no caller in Sources reaches this: it would
-            // take the remembered selection into the editor, where the next Return takes the picture.
-            if drag == nil, mode == .area, let preselected {
-                startEditing(display: preselected.display, rect: preselected.rect)
-                return
-            }
             // Nothing selected: the whole display the pointer is on, as macOS does.
             guard drag == nil, let display = pointer?.display ?? freeze.frames.first?.id else { return }
             finish(.wholeDisplay(display))

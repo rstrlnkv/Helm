@@ -14,11 +14,11 @@ import XCTest
 /// fine.
 final class AJPEGIsMadeOfAnyPictureAPNGIsTests: XCTestCase {
 
-    private func picture(space: CGColorSpace, bits: Int, info: UInt32) throws -> CGImage {
+    private func picture(space: CGColorSpace, bits: Int, info: UInt32, alpha: CGFloat = 0.5) throws -> CGImage {
         let context = try XCTUnwrap(CGContext(data: nil, width: 16, height: 16, bitsPerComponent: bits,
                                               bytesPerRow: 0, space: space, bitmapInfo: info),
                                     "the fixture itself could not be drawn")
-        context.setFillColor(CGColor(red: 0.2, green: 0.4, blue: 0.6, alpha: 0.5))
+        context.setFillColor(CGColor(red: 0.2, green: 0.4, blue: 0.6, alpha: alpha))
         context.fill(CGRect(x: 0, y: 0, width: 16, height: 16))
         return try XCTUnwrap(context.makeImage())
     }
@@ -42,5 +42,34 @@ final class AJPEGIsMadeOfAnyPictureAPNGIsTests: XCTestCase {
             if CaptureSession.encode(image, as: .jpeg) == nil { refused.append(what) }
         }
         XCTAssertEqual(refused, [], "a picture a PNG is made of was refused as a JPEG")
+    }
+
+    func testWhatIsTransparentInAPictureIsWhiteInItsJPEG() throws {
+        let space = CGColorSpace(name: CGColorSpace.sRGB)!
+        let clear = try picture(space: space, bits: 8, info: CGImageAlphaInfo.premultipliedLast.rawValue,
+                                alpha: 0)
+        let data = try XCTUnwrap(CaptureSession.encode(clear, as: .jpeg))
+        let source = try XCTUnwrap(CGImageSourceCreateWithData(data as CFData, nil))
+        let decoded = try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        var pixel = [UInt8](repeating: 0, count: 4)
+        let read = try XCTUnwrap(CGContext(data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                                           space: space, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue))
+        read.draw(decoded, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+        XCTAssertGreaterThan(Int(pixel[0]) + Int(pixel[1]) + Int(pixel[2]), 3 * 245,
+                             "a transparent area did not come out white in the JPEG: \(pixel)")
+    }
+
+    /// The white ground is the JPEG's alone: a PNG keeps the transparency it was given.
+    func testWhatIsTransparentInAPictureStaysTransparentInItsPNG() throws {
+        let space = CGColorSpace(name: CGColorSpace.sRGB)!
+        let half = try picture(space: space, bits: 8, info: CGImageAlphaInfo.premultipliedLast.rawValue)
+        let data = try XCTUnwrap(CaptureSession.encode(half, as: .png))
+        let source = try XCTUnwrap(CGImageSourceCreateWithData(data as CFData, nil))
+        let decoded = try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        var pixel = [UInt8](repeating: 0, count: 4)
+        let read = try XCTUnwrap(CGContext(data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                                           space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        read.draw(decoded, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+        XCTAssertLessThan(Int(pixel[3]), 200, "the PNG lost the alpha it was given: \(pixel)")
     }
 }
