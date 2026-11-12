@@ -22,7 +22,21 @@ public enum SudoersRule {
     /// `sudo rm` that takes it away by hand. That is one path spelled on both
     /// sides of a target boundary if it is typed twice, and a command naming a
     /// file this engine stopped writing is worse than no command at all.
-    public static let installedPath = "/etc/sudoers.d/helm-keepawake"
+    ///
+    /// Helm Dev has a file of its own, so switching the lid option on and off
+    /// there never creates, finds or withdraws the real Helm's grant.
+    public static let installedPath = path(bundleIdentifier: Bundle.main.bundleIdentifier)
+
+    /// `helm-keepawake-dev` for Helm Dev, `helm-keepawake` for everything else
+    /// (the release, a test runner, a bundle that will not say what it is).
+    /// No dot in either: `sudo` skips `includedir` files whose name has one.
+    static func fileName(bundleIdentifier: String?) -> String {
+        AppBuild.isDevIdentifier(bundleIdentifier) ? "helm-keepawake-dev" : "helm-keepawake"
+    }
+
+    static func path(bundleIdentifier: String?) -> String {
+        "/etc/sudoers.d/" + fileName(bundleIdentifier: bundleIdentifier)
+    }
 
     /// Written first under this name so sudo never reads a half-written or
     /// unchecked file: the move into place is a rename on the same filesystem.

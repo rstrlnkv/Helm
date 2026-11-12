@@ -32,6 +32,29 @@ final class SudoersRuleTests: XCTestCase {
             """)
     }
 
+    /// Stored data: a rule real Helm installed is found, withdrawn and recovered
+    /// at the path it always had. Only Helm Dev's identifier moves off it.
+    func test_every_identifier_but_helm_devs_keeps_the_original_file() {
+        for identifier in ["com.helm.app", "com.apple.dt.xctest.tool", nil] {
+            XCTAssertEqual(SudoersRule.fileName(bundleIdentifier: identifier), "helm-keepawake")
+            XCTAssertEqual(SudoersRule.path(bundleIdentifier: identifier),
+                           "/etc/sudoers.d/helm-keepawake")
+        }
+    }
+
+    func test_helm_dev_has_a_file_of_its_own_and_it_has_no_dot() {
+        let name = SudoersRule.fileName(bundleIdentifier: AppBuild.devIdentifier)
+        XCTAssertEqual(name, "helm-keepawake-dev")
+        XCTAssertFalse(name.contains("."), "sudo skips includedir files with a dot in the name")
+        XCTAssertEqual(SudoersRule.path(bundleIdentifier: AppBuild.devIdentifier),
+                       "/etc/sudoers.d/helm-keepawake-dev")
+    }
+
+    func test_the_removal_names_the_same_literal_path_as_the_install() {
+        XCTAssertEqual(SudoersRule.removeArguments,
+                       ["/bin/rm", "-f", SudoersRule.installedPath])
+    }
+
     // MARK: - The privileged command
 
     func test_install_command_names_no_user_writable_path() {

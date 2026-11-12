@@ -40,7 +40,8 @@ grant with no revocation is `/opt/homebrew`'s ownership change
 `pmset disablesleep 1` is system-wide, reached through a NOPASSWD rule
 (`SudoersRule`) that ends with an argument-exact entry permitting only its own
 removal, `/bin/rm -f` on the one literal path (`SudoersRule.removeArguments`), so the grant carries its own revocation, which it has to because dragging
-the application to the Trash runs no code. Who may *raise* the password prompt
+the application to the Trash runs no code. The rule's file is `/etc/sudoers.d/helm-keepawake`, and Helm Dev's is
+`helm-keepawake-dev` (`SudoersRule.fileName`), so the two builds never touch each other's grant. Who may *raise* the password prompt
 is a separate question from what the prompt runs: only the person's gesture on the lid switch
 (`KeepAwakeEngine.lidSwitchTurned`, its rising edge, with or without a running session) may raise it. A Start press
 (`startSession`), a rule starting a session and a store value written from outside never do: `recompute` calls

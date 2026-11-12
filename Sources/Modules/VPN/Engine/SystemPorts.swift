@@ -210,6 +210,12 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// deployed under this name and never changes with the build.
     static func service(for bundleIdentifier: String?) -> String { "com.helm.vpn" }
 
+    /// The service the one-time purge may delete, nil for a build that must not
+    /// purge. Helm Dev is one: the deployed items are the real Helm's.
+    static func purgeService(for bundleIdentifier: String?) -> String? {
+        AppBuild.isDevIdentifier(bundleIdentifier) ? nil : service(for: bundleIdentifier)
+    }
+
     /// The keychain query for Helm's cache: every item of the service, or one
     /// account's item. The read, the write and the purge all build it here.
     static func cacheQuery(account: String? = nil) -> [String: Any] {
@@ -271,13 +277,21 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// on every `swift test` run with a latch that could not remember it had.
     private static func purgeItemsWithTheOldAccessList() {
         let marker = CredentialCachePurge.markerURL
-        let fm = FileManager.default
         // The bundle question first, so a test runner reaches neither the disk nor
         // the keychain.
         guard CredentialCachePurge.shouldRun(bundledApp: AppBuild.isBundledApp,
-                                             recorded: fm.fileExists(atPath: marker.path))
+                                             recorded: FileManager.default.fileExists(atPath: marker.path))
         else { return }
-        let status = KeychainCredentials.deleteEveryCacheItem()
+        purgeTheCache(bundleIdentifier: Bundle.main.bundleIdentifier, marker: marker)
+    }
+
+    /// The deleting and the recording, with the keychain call and the marker as
+    /// parameters so a test reads the query sent without a keychain. A build with
+    /// no `purgeService` (Helm Dev) sends nothing and records nothing.
+    static func purgeTheCache(bundleIdentifier: String?, marker: URL,
+                              delete: (CFDictionary) -> OSStatus = SecItemDelete) {
+        guard purgeService(for: bundleIdentifier) != nil else { return }
+        let status = KeychainCredentials.deleteEveryCacheItem(delete)
         // Only once it is actually gone. Helm starts at login, when the keychain
         // can still be locked (`errSecInteractionNotAllowed`); marking the purge
         // done first would leave the readable-by-anything item in place forever,

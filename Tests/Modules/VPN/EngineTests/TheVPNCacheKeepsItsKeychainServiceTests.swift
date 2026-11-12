@@ -39,4 +39,36 @@ final class TheVPNCacheKeepsItsKeychainServiceTests: XCTestCase {
         XCTAssertEqual(sent[kSecAttrService as String] as? String, "com.helm.vpn")
         XCTAssertNil(sent[kSecAttrAccount as String])
     }
+
+    /// The purge itself, driven with a fake delete and a scratch marker: the
+    /// real build sends exactly class generic password plus the deployed service
+    /// and no account; Helm Dev sends nothing.
+    func testThePurgeSendsTheExactQueryAndHelmDevSendsNothing() throws {
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("vpn-purge-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: folder) }
+
+        var sent: [[String: Any]] = []
+        func purge(_ id: String?, marker: String) {
+            KeychainCredentials.purgeTheCache(
+                bundleIdentifier: id,
+                marker: folder.appendingPathComponent(marker)) { q in
+                sent.append(q as? [String: Any] ?? [:])
+                return errSecSuccess
+            }
+        }
+
+        purge("com.helm.app.dev", marker: "dev")
+        XCTAssertTrue(sent.isEmpty, "Helm Dev must not delete the real Helm's items")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: folder.appendingPathComponent("dev").path),
+                       "Helm Dev records no purge either")
+
+        purge("com.helm.app", marker: "real")
+        XCTAssertEqual(sent.count, 1)
+        let query = try XCTUnwrap(sent.first)
+        XCTAssertEqual(query[kSecClass as String] as? String, kSecClassGenericPassword as String)
+        XCTAssertEqual(query[kSecAttrService as String] as? String, "com.helm.vpn")
+        XCTAssertEqual(query.count, 2, "class and service, no account")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent("real").path))
+    }
 }
