@@ -59,7 +59,7 @@ public extension Notification.Name {
     /// not keep itself alive.
     private static weak var armed: HelmHotkeyRecorder?
 
-    public func startRecording() {
+    func startRecording() {
         if let armed = Self.armed, armed !== self { armed.stop() }
         Self.armed = self
         recording = true

@@ -516,8 +516,7 @@ private struct ModuleDetailView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .helmPageHeader(symbol: descriptor.moduleMetadata.sfSymbol,
                             tint: descriptor.moduleTint.colour,
-                            title: descriptor.moduleMetadata.name,
-                            bleeds: descriptor.pageBleeds)
+                            title: descriptor.moduleMetadata.name)
     }
 
     /// The module's own page. A module that is off never gets here: the detail

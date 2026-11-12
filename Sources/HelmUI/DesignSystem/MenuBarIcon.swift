@@ -131,7 +131,7 @@ public enum MenuBarIcon {
     /// `phase` runs 0…1 across the whole spin and the segment goes round
     /// *twice* in it, so half way is one whole revolution and the two ends
     /// meet.
-    public static func makeSpinner(style: MenuBarIconStyle, size: MenuBarIconSize,
+    private static func makeSpinner(style: MenuBarIconStyle, size: MenuBarIconSize,
                                    tintToken: String?, phase: Double) -> NSImage {
         draw(size: size, tintToken: tintToken) { s, colour in
             let path = outline(style: style, size: s)
@@ -360,7 +360,7 @@ public enum MenuBarIcon {
         let s = size.points
         let image = NSImage(size: NSSize(width: s, height: s))
         image.lockFocus()
-        body(s, nsColor(tintToken: tintToken))
+        body(s, nsColor(forTintToken: tintToken))
         image.unlockFocus()
         image.isTemplate = (tintToken == nil)
         return image
@@ -388,10 +388,8 @@ public enum MenuBarIcon {
     private static let spinnerCache = LockedMemo<SpinnerKey, [NSImage]>()
 
     /// Palette lookup, also used for menu-bar text drawn beside the glyph.
-    public static func nsColor(forTintToken token: String?) -> NSColor { nsColor(tintToken: token) }
-
-    private static func nsColor(tintToken: String?) -> NSColor {
-        switch tintToken {
+    public static func nsColor(forTintToken token: String?) -> NSColor {
+        switch token {
         case nil: return .white
         // Theme-adaptive, and a trap in a baked bitmap: the glyph is drawn with
         // `lockFocus`, so this resolves once against whatever appearance was

@@ -27,8 +27,6 @@ import Module_Leftovers_Engine
             star.closeSubpath()
             return star
         }())
-    /// The page draws across the pane; its header must not centre itself.
-    public var pageBleeds: Bool { true }
 
     public init() {}
 

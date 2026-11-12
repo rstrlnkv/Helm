@@ -11,7 +11,7 @@ import SwiftUI
 struct HelmHeaderSearch: NSViewRepresentable {
     /// Wide enough for the longest prompt in any language to read uncut: French's «Rechercher dans le
     /// journal» on the Log page (the spare is stated once, in `SettingsWindow.minSize`'s comment).
-    static let width: CGFloat = 200
+    nonisolated static let width: CGFloat = 200
 
     let search: HelmToolbarSearch
 

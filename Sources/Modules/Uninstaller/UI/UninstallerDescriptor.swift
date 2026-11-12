@@ -37,8 +37,6 @@ import Module_Uninstaller_Engine
             lid.addLine(to: ShellGlyph.pt(14.5, 8))
             return lid
         }())
-    /// The page draws across the pane; its header must not centre itself.
-    public var pageBleeds: Bool { true }
 
     public init() {}
 

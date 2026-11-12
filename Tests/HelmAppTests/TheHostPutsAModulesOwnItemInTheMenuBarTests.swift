@@ -43,6 +43,7 @@ final class TheHostPutsAModulesOwnItemInTheMenuBarTests: XCTestCase {
         func makeModule(store: NamespacedStore) -> ModuleParts<PageModel> {
             ModuleParts(engine: Stub(), model: PageModel())
         }
+        func stop(_ model: PageModel) {}
         func attachMenuBarPresence() { attached += 1 }
         func detachMenuBarPresence() { detached += 1 }
         func menuBar(_ vm: PageModel) -> MenuBarContribution? { nil }

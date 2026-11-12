@@ -314,7 +314,7 @@ struct LogView: View {
                         }
                         Color.clear.frame(height: 0).id(Self.endMarker)
                     }
-                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+                    .helmPageStrip()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .coordinateSpace(.named(Self.contentSpace))
                 }

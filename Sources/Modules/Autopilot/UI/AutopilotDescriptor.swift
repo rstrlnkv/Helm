@@ -28,9 +28,6 @@ import SwiftUI
     public static let glyph = ShellGlyph(
         body: ShellGlyph.rounded([ShellGlyph.pt(4.5, 5), ShellGlyph.pt(20.5, 12), ShellGlyph.pt(4.5, 19), ShellGlyph.pt(8, 12)], 1.5),
         detail: ShellGlyph.lines([[ShellGlyph.pt(8, 12), ShellGlyph.pt(13.5, 12)]]))
-    /// Folders and their rules span the pane; the header must not centre itself
-    /// on the 744 pt form column.
-    public var pageBleeds: Bool { true }
 
     public init() {}
 

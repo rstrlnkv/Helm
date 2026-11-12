@@ -70,7 +70,7 @@ enum Windows {
         guard args.count == 1, let pid = Int32(args[0]) else { throw Failure.usage("exe <pid>") }
         var buffer = [CChar](repeating: 0, count: 4 * Int(MAXPATHLEN))
         guard proc_pidpath(pid, &buffer, UInt32(buffer.count)) > 0 else { throw Failure.data("no executable path for pid \(pid)") }
-        print(String(cString: buffer))
+        print(String(decoding: buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }, as: UTF8.self))
     }
 
     /// Pixels per point of the display holding a point: what a capture of a region there should

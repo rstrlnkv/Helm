@@ -18,8 +18,6 @@ import Module_Disk_Engine
     public static let glyph = ShellGlyph(
         body: ShellGlyph.circle(12, 12, 8.5),
         detail: ShellGlyph.lines([[ShellGlyph.pt(12, 3.5), ShellGlyph.pt(12, 12), ShellGlyph.pt(19.2, 16.4)]]))
-    /// The page draws across the pane; its header must not centre itself.
-    public var pageBleeds: Bool { true }
 
     public init() {}
 

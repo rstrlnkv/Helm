@@ -26,8 +26,6 @@ import SwiftUI
             back.addLine(to: ShellGlyph.pt(16, 7.5))
             return back
         }())
-    /// The page draws across the pane; its header must not centre itself.
-    public var pageBleeds: Bool { true }
 
     public init() {}
 

@@ -301,18 +301,17 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// True for a page whose content spans the pane rather than sitting in the
     /// 744 pt form column. Which pages those are is a command and not a list
     /// here, because a list written into prose is wrong from the next commit:
-    /// `command grep -rn 'pageBleeds: Bool { true }' Sources` names the module
-    /// descriptors that declare it, and the log, which has no descriptor,
-    /// spells `bleeds: true` at its own call to this view. The header the
-    /// settings window draws in its card (`CardHeader`) passes true for every
-    /// page, so there a descriptor's declaration is not read.
+    /// `command grep -rn 'bleeds: true' Sources` names the pages that spell it
+    /// at their own call to this view. The header the settings window draws in
+    /// its card (`CardHeader`) passes true for every page, and every module page
+    /// is mounted there.
     let bleeds: Bool
     /// Whether the page's content passes *under* this strip.
     ///
     /// Not `showsRule:` with a nicer name: a per-page choice about whether to
     /// draw a line is four decisions where there should be none, and this is the
     /// other kind of parameter: a fact about how the page is built, the way
-    /// `bleeds` is a fact a module declares about its own content. No call site
+    /// `bleeds` is a fact about the page's width. No call site
     /// spells it, because the only thing that sets it is `helmPageHeader`,
     /// which is *what laying the header over the content means*.
     let overContent: Bool
@@ -324,10 +323,8 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// first frame.
     ///
     /// **Not `bleeds` under another name, however alike the two look today.**
-    /// Seven things declare each — six module descriptors plus the log —
-    /// and the seven declarations name the same pages; the header in the card
-    /// takes `bleeds` true on all thirteen, so only the declarations coincide.
-    /// They are still different questions: `bleeds` is about the header's **width**, and
+    /// The header in the card takes `bleeds` true on every page, so the two
+    /// coincide there. They are still different questions: `bleeds` is about the header's **width**, and
     /// this is about the **species of the thing under it**. Folding one into
     /// the other would pass every test anybody could write today and fail
     /// silently on the first page where a full-bleed `ScrollView` or a

@@ -53,7 +53,7 @@ public enum PanelGrid {
     /// scrolled with free room between the panel and the Dock. The strip runs
     /// from the status item down to the screen's visible frame, which already
     /// stops at the Dock; the grid scrolls only once that is used up.
-    public static let maximumHeight: CGFloat = 768
+    private static let maximumHeight: CGFloat = 768
 
     /// Columns at a given panel width — never fewer than two.
     ///
@@ -123,7 +123,7 @@ public enum PanelGrid {
     }
 
     /// The least the grid is ever given: one row, rather than a sliver of one.
-    public static let minimumGrid: CGFloat = 120
+    private static let minimumGrid: CGFloat = 120
 
     /// The grid, as rows of indices into `sizes`.
     ///

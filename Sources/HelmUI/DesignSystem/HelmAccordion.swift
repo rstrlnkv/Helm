@@ -100,6 +100,9 @@ public extension View {
     /// so does hit testing — a collapsed row that still answers the pointer is
     /// the same defect for the hand.
     ///
+    /// Content of more than one line needs `.fixedSize(horizontal: false, vertical: true)`
+    /// to be measured whole, as `ShowcaseMotionBoard` does.
+    ///
     /// Alignment is `.top` and not an argument: a block growing from its middle
     /// is not something this app does, and the clip is taken from an edge the
     /// content slides out from under.

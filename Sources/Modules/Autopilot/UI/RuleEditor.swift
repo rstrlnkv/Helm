@@ -69,7 +69,7 @@ struct RuleEditor: View {
                 .font(HelmText.plateTitle)
             Spacer()
         }
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+        .helmPageStrip()
     }
 
     // MARK: - Where
@@ -369,6 +369,6 @@ struct RuleEditor: View {
             .buttonStyle(.borderedProminent)
             .keyboardShortcut(.defaultAction)
         }
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+        .helmPageStrip()
     }
 }

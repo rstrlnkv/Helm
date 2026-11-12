@@ -37,7 +37,7 @@ struct AutopilotSettingsPage: View {
         VStack(spacing: 0) {
             if diskAccess == .denied {
                 HelmPermissionNote(need: .fullDiskAccess, text: ApStr.needsAccess)
-                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+                    .helmPageStrip()
                 Divider()
             }
             // Nothing to say about the order of rules unless the rules are what
@@ -129,7 +129,7 @@ struct AutopilotSettingsPage: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+            .helmPageStrip()
         }
     }
 
@@ -146,7 +146,7 @@ struct AutopilotSettingsPage: View {
                 .controlSize(.small)
                 .fixedSize()
         }
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+        .helmPageStrip()
     }
 
     @ViewBuilder private var content: some View {

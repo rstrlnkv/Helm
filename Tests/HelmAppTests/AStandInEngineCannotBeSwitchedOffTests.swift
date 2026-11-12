@@ -57,6 +57,7 @@ final class AStandInEngineCannotBeSwitchedOffTests: XCTestCase {
         func makeModule(store: NamespacedStore) -> ModuleParts<PageModel> {
             ModuleParts(engine: engine, model: PageModel())
         }
+        func stop(_ model: PageModel) {}
         func menuBar(_ vm: PageModel) -> MenuBarContribution? { nil }
         func settingsPage(_ vm: PageModel) -> AnyView { AnyView(EmptyView()) }
     }

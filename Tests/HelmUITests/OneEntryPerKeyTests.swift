@@ -1,6 +1,5 @@
 import XCTest
 import HelmTestSupport
-@testable import HelmUI
 
 /// A key written twice in one string catalog, which nothing else can see.
 ///

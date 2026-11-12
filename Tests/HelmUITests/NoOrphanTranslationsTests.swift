@@ -1,6 +1,5 @@
 import XCTest
 import HelmTestSupport
-@testable import HelmUI
 
 /// The other direction of `StringsCoverageTests`.
 ///

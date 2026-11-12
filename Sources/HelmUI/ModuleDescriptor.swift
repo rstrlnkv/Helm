@@ -104,8 +104,6 @@ import HelmRuntime
     static var hotkeys: [ModuleHotkey] { get }
     /// A declared shortcut was pressed while the module is live.
     func hotkeyPressed(_ hotkey: ModuleHotkey, _ model: Model)
-    /// See the default implementation below.
-    var pageBleeds: Bool { get }
     /// The widget this module puts in the panel at a given size, or nil if it
     /// has nothing worth saying at that size.
     ///
@@ -119,14 +117,7 @@ import HelmRuntime
     func panelWidgetSizes(_ model: Model) -> Set<PanelWidgetSize>
 }
 public extension ModuleDescriptor {
-    func stop(_ model: Model) {}
     func backgroundScan(_ parts: ModuleParts<Model>) async -> ScanReport? { nil }
-    /// True when the page draws across the whole pane instead of inside the
-    /// 744 pt form column, so its header knows not to centre itself. Only a
-    /// header drawn in the page reads it; the settings window, the only mount of
-    /// a module page, draws its header in the card, which bleeds for every
-    /// page, so in the product it changes nothing.
-    var pageBleeds: Bool { false }
     func statusAppearance(_ model: Model) -> StatusAppearance { .inactive }
     func attachMenuBarPresence() {}
     func detachMenuBarPresence() {}

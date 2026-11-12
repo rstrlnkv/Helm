@@ -28,14 +28,14 @@ public enum PaletteColor: String, CaseIterable, Sendable {
 
     /// What the colour menu offers, in Calendar's order. White leads because it
     /// is the untinted default — `nil` and `"white"` are the same answer in
-    /// `MenuBarIcon.nsColor(tintToken:)`.
+    /// `MenuBarIcon.nsColor(forTintToken:)`.
     public static let offered: [PaletteColor] = [
         .white, .red, .orange, .yellow, .green, .blue, .purple, .brown,
     ]
 
     /// The colour as the menu-bar glyph and its text are drawn: the system's own,
     /// and plain white for `.white` — the untinted glyph, not the swatch's grey.
-    /// The one table both `color` and `MenuBarIcon.nsColor(tintToken:)` read, and
+    /// The one table both `color` and `MenuBarIcon.nsColor(forTintToken:)` read, and
     /// exhaustive, so a new case cannot reach either as white by default.
     public var nsColor: NSColor {
         switch self {

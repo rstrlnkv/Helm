@@ -116,7 +116,7 @@ struct HomebrewManager: View {
             // 38 pt where the other two list screens are 49, and the content
             // jumped when switching between them.
             .frame(minHeight: Self.statusBarContent)
-            .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+            .helmPageStrip()
         }
         // **A press on a row moves; a switch of segment cuts.** Below
         // `HomebrewSplit`'s threshold a press on a row swaps the whole pane for
@@ -212,7 +212,7 @@ struct HomebrewManager: View {
             .accessibilityLabel(HbStr.back)
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+        .helmPageStrip()
     }
 
     /// Which list a segment is showing, and therefore which one Refresh

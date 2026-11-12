@@ -3,6 +3,7 @@ import XCTest
 
 /// The verdict a removal ends on, and which sentence it draws: nothing removed
 /// and nothing refused says nothing, any refusal is said.
+/// Kept for the defect fixed in 18fa5bcb (a removal that did not happen was announced).
 final class RemovalOutcomeTests: XCTestCase {
 
     /// The branch that was still not asking.

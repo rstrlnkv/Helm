@@ -76,6 +76,25 @@ final class HotkeyCombinationTests: XCTestCase {
         XCTAssertNil(HotkeyCombination(keyCode: kVK_ANSI_B, modifiers: Int.max))
     }
 
+    /// The upper bound on a stored modifier mask, proved on a mask that carries one
+    /// of the four.
+    ///
+    /// `testModifiersPastWhatCarbonCanHoldAreNoCombination` feeds `0x1_0000`, which
+    /// holds none of ⌃⌥⇧⌘: since `carriesAModifier` asks for one of the four, that
+    /// value is refused by the four-bit test whatever the ceiling says, and widening
+    /// the ceiling left the whole family green. A bit past `EventModifiers`
+    /// **beside** ⌘ is refused by the ceiling alone.
+    func testABitPastCarbonsMaskBesideCommandIsNoCombination() {
+        for past in [0x1_0000, 0x2_0000, 0x8000_0000] {
+            XCTAssertNil(HotkeyCombination(keyCode: kVK_ANSI_B, modifiers: cmdKey | past),
+                         "⌘ plus 0x\(String(past, radix: 16)): a bit Carbon's mask has no room for was accepted")
+            XCTAssertFalse(HotkeyCombination.carriesAModifier(cmdKey | past),
+                           "⌘ plus 0x\(String(past, radix: 16)): the recorder's predicate says yes")
+        }
+        // The control: the same ⌘ inside the ceiling stands.
+        XCTAssertNotNil(HotkeyCombination(keyCode: kVK_ANSI_B, modifiers: cmdKey | rightControlKey))
+    }
+
     /// The controls, so the refusals above are bounds and not a blanket: the
     /// last value on each side that Carbon has room for still passes.
     func testTheEdgeOfEachRangeIsInside() {

@@ -25,8 +25,6 @@ import Module_Homebrew_Engine
             handle.addLine(to: ShellGlyph.pt(16, 15.5))
             return handle
         }())
-    /// The page draws across the pane; its header must not centre itself.
-    public var pageBleeds: Bool { true }
 
     public init() {}
 

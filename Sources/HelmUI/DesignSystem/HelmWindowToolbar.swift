@@ -250,10 +250,10 @@ public struct HelmPageToolbarContent {
 ///
 /// The last declaration in tree order wins, as the title's does (`HelmPageTitleKey`). The default is computed:
 /// the value holds closures and is not `Sendable`, which a stored static would have to be.
-public struct HelmPageToolbarKey: PreferenceKey {
-    public static var defaultValue: HelmPageToolbarContent? { nil }
+struct HelmPageToolbarKey: PreferenceKey {
+    static var defaultValue: HelmPageToolbarContent? { nil }
 
-    public static func reduce(value: inout HelmPageToolbarContent?, nextValue: () -> HelmPageToolbarContent?) {
+    static func reduce(value: inout HelmPageToolbarContent?, nextValue: () -> HelmPageToolbarContent?) {
         value = nextValue() ?? value
     }
 }
