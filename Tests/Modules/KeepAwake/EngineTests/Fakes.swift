@@ -29,7 +29,6 @@ final class FakeAssertions: SleepAssertions {
     /// is the shape of half the defects in this module: the Mac sleeps, and
     /// every surface says the session is holding it.
     var succeeds = true
-    @discardableResult
     func preventSleep(display: Bool) -> Bool {
         preventCount += 1
         guard succeeds else { return false }

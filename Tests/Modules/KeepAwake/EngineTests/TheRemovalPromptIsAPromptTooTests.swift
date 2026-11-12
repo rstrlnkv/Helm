@@ -42,10 +42,6 @@ private final class RemovalPromptClamshell: ClamshellPort, @unchecked Sendable {
         get { locked { installed } }
         set { locked { installed = newValue } }
     }
-    var pmset: String {
-        get { locked { report } }
-        set { locked { report = newValue } }
-    }
     var removeCount: Int { locked { removes } }
     var installCount: Int { locked { installs } }
 

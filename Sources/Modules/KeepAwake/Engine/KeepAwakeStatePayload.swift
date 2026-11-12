@@ -12,9 +12,9 @@ extension KeepAwakeEngine {
     /// time over there it would be two declarations of one fact, and a field
     /// added to one and not the other would compile and leave the screen on its
     /// defaults.
-    public struct StatePayload: Sendable {
+    public struct StatePayload: Sendable, Equatable {
         public let isActive: Bool
-        public let conditions: [String]
+        public let conditions: Set<ActiveCondition>
         public let clamshellActive: Bool
         public let endDate: Date?
         public let startDate: Date?
@@ -25,7 +25,7 @@ extension KeepAwakeEngine {
         /// Defaulted: empty means «no rule's trigger holds», which is the reading
         /// that shows no caption and no «Paused» note — a screen that says
         /// nothing beats a screen that says the wrong thing.
-        public var triggeredConditions: [String] = []
+        public var triggeredConditions: Set<ActiveCondition> = []
         public var holdingApps: [String] = []
         public var batteryStopped: Bool = false
         /// macOS refused to turn sleep off. The default is the reading that says
@@ -34,9 +34,9 @@ extension KeepAwakeEngine {
         /// The lid option is off and the rule it needed is still on disk.
         public var lidGrantRemains: Bool = false
 
-        public init(isActive: Bool, conditions: [String], clamshellActive: Bool,
+        init(isActive: Bool, conditions: Set<ActiveCondition>, clamshellActive: Bool,
                     endDate: Date?, startDate: Date?, suppressed: Bool,
-                    triggeredConditions: [String] = [], holdingApps: [String] = [],
+                    triggeredConditions: Set<ActiveCondition> = [], holdingApps: [String] = [],
                     batteryStopped: Bool = false, lidRefused: Bool = false,
                     lidGrantRemains: Bool = false) {
             self.isActive = isActive

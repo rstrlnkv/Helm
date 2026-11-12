@@ -34,7 +34,7 @@ final class AssertionsDieWithTheirOwnerTests: XCTestCase {
         var taken = 0
         do {
             let assertions = IOKitSleepAssertions()
-            assertions.preventSleep(display: true)
+            _ = assertions.preventSleep(display: true)
             taken = heldByThisProcess()
             // Asserted first, so a test of the release cannot pass by nothing
             // ever having been taken — the absence-passes-vacuously trap.

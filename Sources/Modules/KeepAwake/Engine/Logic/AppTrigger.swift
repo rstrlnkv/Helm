@@ -6,8 +6,8 @@ import Foundation
 public struct AppTrigger: Codable, Equatable, Sendable, Identifiable {
     public var id: String { bundleID }
     public var bundleID: String
-    public var needsExternalDisplay: Bool
-    public var needsPower: Bool
+    var needsExternalDisplay: Bool
+    var needsPower: Bool
 
     public init(bundleID: String, needsExternalDisplay: Bool = false, needsPower: Bool = false) {
         self.bundleID = bundleID

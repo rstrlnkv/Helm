@@ -4,7 +4,7 @@ import HelmRuntime
 
 /// What the battery guard leaves behind when it ends a session.
 ///
-/// `batteryCheck` ends one by calling `stopSession()`, which is the verb the
+/// The guard once ended one by calling `stopSession()`, which is the verb the
 /// person's own Stop button uses — and `stopSession` suppresses: it sets the
 /// flag that means «an automatic condition is true and is being ignored». The
 /// field's own doc comment says what that flag is for:
@@ -203,7 +203,7 @@ final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
 
     // MARK: - A guard that stops nothing still says it stopped something
 
-    /// `batteryCheck` runs from the power observer, and the power observer
+    /// `recompute` runs from the power observer, and the power observer
     /// fires on every change IOKit reports — each percentage step on a
     /// draining battery, each charging-state change. Nothing in it asks
     /// whether a session is running, so below the floor it writes

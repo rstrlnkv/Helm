@@ -11,44 +11,44 @@ import Module_KeepAwake_Engine
 /// methods for everything the person does — on the main actor, which is where
 /// the engine's mutable state is written from.
 @MainActor public final class KeepAwakeViewModel: ObservableObject {
-    @Published public private(set) var isActive = false
+    @Published private(set) var isActive = false
     /// The engine's own cases, not the strings they travel as. Held as
     /// `Set<String>`, every view that asked a question about them had to spell
     /// the raw names again — `["externalDisplay", "power", "app"]`, twice —
     /// and `KAStr` switched over five more literals to turn one back into a
     /// word. A name that stops matching is not an error anywhere; the row just
     /// goes quiet.
-    @Published public private(set) var activeConditions: Set<ActiveCondition> = []
-    @Published public private(set) var clamshellActive = false
-    @Published public private(set) var endDate: Date?
+    @Published private(set) var activeConditions: Set<ActiveCondition> = []
+    @Published private(set) var clamshellActive = false
+    @Published private(set) var endDate: Date?
     /// Start of the current timed session, for progress rendering.
-    @Published public private(set) var startDate: Date?
+    @Published private(set) var startDate: Date?
     /// An automatic condition is true and is being ignored, because a session
     /// was ended by hand or by a timer. Cleared by the engine when the
     /// condition drops, or by `resumeAutomation`.
-    @Published public private(set) var suppressed = false
+    @Published private(set) var suppressed = false
     /// The rules whose triggers are true right now, obeyed or paused. Unlike
     /// `activeConditions`, a suppressed rule is still in here — which is how
     /// a row can say «Paused» rather than «Not applying right now».
-    @Published public private(set) var triggeredConditions: Set<ActiveCondition> = []
+    @Published private(set) var triggeredConditions: Set<ActiveCondition> = []
     /// Bundle ids of the app rules holding the Mac right now, so the hero can
     /// name them instead of saying «App».
-    @Published public private(set) var holdingApps: [String] = []
+    @Published private(set) var holdingApps: [String] = []
     /// The battery guard has everything stopped, and nothing will run until
     /// the charge comes back or the charger goes in.
-    @Published public private(set) var batteryStopped = false
+    @Published private(set) var batteryStopped = false
     /// macOS was asked to turn sleep off for the whole Mac and refused. The one
     /// state in which the lid switch says one thing and the machine does another.
-    @Published public private(set) var lidRefused = false
+    @Published private(set) var lidRefused = false
     /// The lid option is off and the `/etc/sudoers.d` rule it needed is still
     /// there, because the removal was declined.
-    @Published public private(set) var lidGrantRemains = false
+    @Published private(set) var lidGrantRemains = false
     /// Any rule at all — the input `StopPress` weighs when it decides whether
     /// Stop silences a rule as well as ending the session.
-    public var ruleHolds: Bool { !triggeredConditions.isEmpty }
+    var ruleHolds: Bool { !triggeredConditions.isEmpty }
     /// What the lid row's note says, from the three facts the engine publishes
     /// about it. The rule is `LidRowNote`'s, out in the engine's logic.
-    public var lidRowNote: LidRowNote {
+    var lidRowNote: LidRowNote {
         LidRowNote.of(refused: lidRefused, grantRemains: lidGrantRemains,
                       holding: clamshellActive)
     }
@@ -84,14 +84,12 @@ import Module_KeepAwake_Engine
 
     private func apply(_ p: KeepAwakeEngine.StatePayload) {
         isActive = p.isActive
-        // A name this build does not know is dropped rather than carried as a
-        // string nothing can match.
-        activeConditions = Set(p.conditions.compactMap(ActiveCondition.init(rawValue:)))
+        activeConditions = p.conditions
         clamshellActive = p.clamshellActive
         endDate = p.endDate
         startDate = p.startDate
         suppressed = p.suppressed
-        triggeredConditions = Set(p.triggeredConditions.compactMap(ActiveCondition.init(rawValue:)))
+        triggeredConditions = p.triggeredConditions
         holdingApps = p.holdingApps
         batteryStopped = p.batteryStopped
         lidRefused = p.lidRefused
@@ -103,7 +101,7 @@ import Module_KeepAwake_Engine
 
     /// Start a session of `minutes` — 0 meaning «no deadline». The engine has
     /// the last word on the number.
-    public func start(minutes: Int) { engine.startSession(minutes: minutes) }
+    func start(minutes: Int) { engine.startSession(minutes: minutes) }
 
     /// The Stop button; which of its two meanings this press has is the engine's.
     func stopSession() { engine.stopSession() }

@@ -16,22 +16,22 @@ public struct KeepAwakeSettings {
     public enum Key {
         public static let autoExternalDisplay = "autoExternalDisplay"
         public static let autoPower = "autoPower"
-        public static let autoAppRules = "autoAppRules"
+        static let autoAppRules = "autoAppRules"
         /// The plain bundle-id list older versions wrote. Read, never written.
-        public static let autoApps = "autoApps"
-        public static let keepDisplayOn = "keepDisplayOn"
-        public static let jiggleEnabled = "jiggleEnabled"
-        public static let jiggleIntervalMinutes = "jiggleIntervalMinutes"
-        public static let clamshellEnabled = "clamshellEnabled"
-        public static let batteryGuardEnabled = "batteryGuardEnabled"
+        static let autoApps = "autoApps"
+        static let keepDisplayOn = "keepDisplayOn"
+        static let jiggleEnabled = "jiggleEnabled"
+        static let jiggleIntervalMinutes = "jiggleIntervalMinutes"
+        static let clamshellEnabled = "clamshellEnabled"
+        static let batteryGuardEnabled = "batteryGuardEnabled"
         public static let batteryGuardPercent = "batteryGuardPercent"
-        public static let defaultDurationMinutes = "defaultDurationMinutes"
-        public static let timerEndsAutomation = "timerEndsAutomation"
+        static let defaultDurationMinutes = "defaultDurationMinutes"
+        static let timerEndsAutomation = "timerEndsAutomation"
         /// Not a preference — a note to the *next launch* that this app turned
         /// system sleep off and may not have turned it back on. It was spelled
         /// as a literal at four sites inside the very file whose doc comment is
         /// about not spelling a key twice.
-        public static let clamshellGuard = "clamshellGuard"
+        static let clamshellGuard = "clamshellGuard"
     }
 
     public var autoExternalDisplay: Bool { store.bool(Key.autoExternalDisplay, default: false) }
@@ -164,7 +164,7 @@ public struct KeepAwakeSettings {
     /// raise a password prompt by itself. It can engage a grant the person
     /// already gave.
     public var clamshellEnabled: Bool { store.bool(Key.clamshellEnabled, default: false) }
-    public func setClamshellEnabled(_ on: Bool) { store.set(on, for: Key.clamshellEnabled) }
+    func setClamshellEnabled(_ on: Bool) { store.set(on, for: Key.clamshellEnabled) }
 
     /// On by default, because `defaultDurationMinutes` is 0 — "indefinitely" —
     /// and nothing else in the module ever ends that session: the guard is the

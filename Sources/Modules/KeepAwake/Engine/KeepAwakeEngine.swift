@@ -39,18 +39,18 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     private let clock: Clock
     private let news: EngineNews<StatePayload>
 
-    public private(set) var isActive = false
-    public private(set) var activeConditions: Set<ActiveCondition> = []
+    private(set) var isActive = false
+    private(set) var activeConditions: Set<ActiveCondition> = []
     /// Forwarded, because the state and the panel have always called it this.
-    public var clamshellActive: Bool { lid.active }
+    var clamshellActive: Bool { lid.active }
     /// macOS was asked to turn sleep off and refused, and the lid row says so —
     /// see `ClamshellCoordinator.refused`.
-    public var lidRefused: Bool { lid.refused }
+    var lidRefused: Bool { lid.refused }
     /// The option is off and its passwordless rule is still in `/etc/sudoers.d`.
-    public var lidGrantRemains: Bool { lid.grantRemains }
-    public private(set) var endDate: Date?
+    var lidGrantRemains: Bool { lid.grantRemains }
+    private(set) var endDate: Date?
     /// When the current timed session began (nil when there is no timer).
-    public private(set) var startDate: Date?
+    private(set) var startDate: Date?
 
     private var manualOn = false
     /// An automatic condition is true and is being ignored, because a session
@@ -60,7 +60,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// flag existed from the first version and was published nowhere, so a Mac
     /// that slept with the rule's app still on screen had no account of itself
     /// anywhere. One name for it, here and in the state.
-    public private(set) var suppressed = false
+    private(set) var suppressed = false
     /// The rules whose triggers are true right now — **whether or not they are
     /// being obeyed**, which is what makes this different from
     /// `activeConditions`.
@@ -75,11 +75,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// ending the session — a fact the hero could only state in its `.automatic`
     /// branch, because that was the only branch that could see any conditions at
     /// all.
-    public private(set) var triggeredConditions: Set<ActiveCondition> = []
+    private(set) var triggeredConditions: Set<ActiveCondition> = []
     /// The bundle ids of the app rules that are satisfied right now — so the
     /// screen can say *which* app, rather than «App». Ids rather than names:
     /// the lookup belongs to whoever draws, and names stay out of the state.
-    public private(set) var holdingApps: [String] = []
+    private(set) var holdingApps: [String] = []
     /// The battery guard is holding everything down, and nothing this module
     /// does will run until the charge comes back or the charger goes in.
     ///
@@ -89,7 +89,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// silence the paused-rule banner exists to break, on a state a person is
     /// even less likely to guess at — they pressed «15 min» and nothing
     /// happened.
-    public private(set) var batteryStopped = false
+    private(set) var batteryStopped = false
 
     private var expiryToken: AnyObject?
     private var jiggleToken: AnyObject?
@@ -151,10 +151,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                 + "no app is holding sleep")
         }
         displayObserver.startObserving { [weak self] in self?.recompute() }
-        power.startObserving { [weak self] in
-            self?.batteryCheck()
-            self?.recompute()
-        }
+        power.startObserving { [weak self] in self?.recompute() }
         apps.startObserving { [weak self] in self?.recompute() }
         // Before the recompute, so the session the person started is one of the
         // conditions it resolves rather than something added afterwards.
@@ -493,9 +490,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// The trail is where this lands and **the screen is not, yet**: saying it
     /// on the page is a field on `StatePayload` and a sentence in eight
-    /// languages, and the eight files are `HelmUI`'s. Written beside «holding
-    /// sleep» rather than instead of it, because both are true — the session is
-    /// running, and it is not holding what it says.
+    /// languages in the module's own catalog. Written beside
+    /// «holding sleep» rather than instead of it, because both are true — the
+    /// session is running, and it is not holding what it says.
     private func noteIfTheAssertionWasRefused(_ held: Bool) {
         guard !held else { return }
         HelmLog.shared.warn(Self.moduleID, "the sleep assertion could not be taken; "
@@ -508,8 +505,11 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // or from a hand-edited plist, would otherwise hold a Mac mini awake
         // for ever through a row nobody can see to switch off.
         guard lidInfo.hasLid() else { return false }
-        return settings.autoExternalDisplay
-            && ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags())
+        return settings.autoExternalDisplay && externalDisplayAttached()
+    }
+
+    private func externalDisplayAttached() -> Bool {
+        lidInfo.hasLid() && ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags())
     }
     /// **Definitely** on mains — the only reading that may hold a Mac awake, and
     /// this module's fold of the port's three answers (`PowerInfoPort.supply()`
@@ -534,8 +534,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         return AppTriggerRules.holding(
             rules,
             running: Set(apps.runningBundleIDs()),
-            externalDisplay: lidInfo.hasLid()
-                && ExternalDisplaySupport.hasExternal(builtInFlags: displayInfo.builtInFlags()),
+            externalDisplay: externalDisplayAttached(),
             // The same reading as `powerCondition` above. This site was left on
             // `snapshot()` when that fix landed, so a rule narrowed to «only
             // when plugged in» stayed dead on every Mac without a battery —
@@ -653,17 +652,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         emitState()
     }
 
-    private func batteryCheck() {
-        // One decision, in `recompute`. This used to hold a copy of it and call
-        // `stopSession()`, which is how the guard came to borrow a verb that
-        // means «a person said stop».
-        recompute()
-    }
-
     private func scheduleBatteryWatch() {
         batteryToken = clock.schedule(after: 30) { [weak self] in
             guard let self else { return }
-            self.batteryCheck()
+            self.recompute()
             if self.isActive { self.scheduleBatteryWatch() }
         }
     }
@@ -746,13 +738,12 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     private func emitState() {
         let payload = StatePayload(isActive: isActive,
-                                    conditions: activeConditions.map(\.rawValue).sorted(),
+                                    conditions: activeConditions,
                                     clamshellActive: clamshellActive,
                                     endDate: endDate,
                                     startDate: startDate,
                                     suppressed: suppressed,
-                                    triggeredConditions: triggeredConditions
-                                        .map(\.rawValue).sorted(),
+                                    triggeredConditions: triggeredConditions,
                                     holdingApps: holdingApps,
                                     batteryStopped: batteryStopped,
                                     lidRefused: lidRefused,

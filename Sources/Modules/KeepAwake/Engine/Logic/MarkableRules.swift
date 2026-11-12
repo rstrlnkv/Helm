@@ -28,7 +28,7 @@ public struct MarkableRules: Equatable, Sendable {
     /// - Parameters:
     ///   - hasLid: whether the display rule's row and the lid row are drawn at
     ///     all; both go by the lid, a Mac with none has neither.
-    public static func of(autoExternalDisplay: Bool, autoPower: Bool, lidHolding: Bool,
+    static func of(autoExternalDisplay: Bool, autoPower: Bool, lidHolding: Bool,
                           hasLid: Bool) -> MarkableRules {
         var rules = Set<ActiveCondition>()
         if autoExternalDisplay, hasLid { rules.insert(.externalDisplay) }
