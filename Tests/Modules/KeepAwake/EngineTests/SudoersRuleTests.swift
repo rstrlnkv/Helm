@@ -50,6 +50,24 @@ final class SudoersRuleTests: XCTestCase {
                        "/etc/sudoers.d/helm-keepawake-dev")
     }
 
+    /// Every place the rule's file is named derives from one identifier: Helm Dev
+    /// never installs, stages, withdraws or tells the user to `rm` the real file.
+    func test_every_place_the_file_is_named_follows_the_identifier() {
+        for (id, file) in [(AppBuild.devIdentifier, "helm-keepawake-dev"), ("com.helm.app", "helm-keepawake")] {
+            let paths = SudoersRule.paths(bundleIdentifier: id)
+            let installed = "/etc/sudoers.d/" + file
+            XCTAssertEqual(paths, SudoersRule.Paths(installed: installed, staging: installed + ".new",
+                                                    removeArguments: ["/bin/rm", "-f", installed]))
+            let install = SudoersRule.installCommand(user: "someone", paths: paths)
+            XCTAssertTrue(install.contains("> \(installed).new"))
+            XCTAssertTrue(install.contains("/bin/mv \(installed).new \(installed) "))
+            XCTAssertTrue(SudoersRule.text(user: "someone", paths: paths).contains("sudo rm \(installed)\n"))
+            XCTAssertEqual(SudoersRule.removeCommand(paths: paths), "/bin/rm -f \(installed)")
+        }
+        XCTAssertFalse(SudoersRule.installCommand(user: "someone", paths: SudoersRule.paths(bundleIdentifier: AppBuild.devIdentifier))
+            .contains("helm-keepawake "), "Helm Dev's install never names the real file")
+    }
+
     func test_the_removal_names_the_same_literal_path_as_the_install() {
         XCTAssertEqual(SudoersRule.removeArguments,
                        ["/bin/rm", "-f", SudoersRule.installedPath])

@@ -25,7 +25,28 @@ public enum SudoersRule {
     ///
     /// Helm Dev has a file of its own, so switching the lid option on and off
     /// there never creates, finds or withdraws the real Helm's grant.
-    public static let installedPath = path(bundleIdentifier: Bundle.main.bundleIdentifier)
+    public static let installedPath = current.installed
+
+    /// The two paths and the one argument vector that name the rule's file, all
+    /// derived from the bundle identifier so a test drives them with the Dev id
+    /// and the release id. The one `Bundle.main` read below is the only thing
+    /// no test can pin.
+    struct Paths: Equatable {
+        let installed: String
+        /// Written first under this name so sudo never reads a half-written or
+        /// unchecked file: the move into place is a rename on the same filesystem.
+        let staging: String
+        /// The rule's own withdrawal, for the same reason.
+        let removeArguments: [String]
+    }
+
+    static func paths(bundleIdentifier: String?) -> Paths {
+        let installed = path(bundleIdentifier: bundleIdentifier)
+        return Paths(installed: installed, staging: installed + ".new",
+                     removeArguments: ["/bin/rm", "-f", installed])
+    }
+
+    static let current = paths(bundleIdentifier: Bundle.main.bundleIdentifier)
 
     /// `helm-keepawake-dev` for Helm Dev, `helm-keepawake` for everything else
     /// (the release, a test runner, a bundle that will not say what it is).
@@ -37,10 +58,6 @@ public enum SudoersRule {
     static func path(bundleIdentifier: String?) -> String {
         "/etc/sudoers.d/" + fileName(bundleIdentifier: bundleIdentifier)
     }
-
-    /// Written first under this name so sudo never reads a half-written or
-    /// unchecked file: the move into place is a rename on the same filesystem.
-    static let stagingPath = installedPath + ".new"
 
     static let pmsetPath = "/usr/bin/pmset"
 
@@ -54,8 +71,7 @@ public enum SudoersRule {
         [pmsetPath, "disablesleep", on ? "1" : "0"]
     }
 
-    /// The rule's own withdrawal, for the same reason.
-    static let removeArguments = ["/bin/rm", "-f", installedPath]
+    static let removeArguments = current.removeArguments
 
     /// The file, line by line. As narrow as it was — the two exact commands the
     /// module runs — plus the one that takes the file away again.
@@ -82,15 +98,15 @@ public enum SudoersRule {
     /// that way. ASCII throughout: this is what root writes, and a character
     /// outside it is a question about `printf`, the shell's locale and `visudo`
     /// at once.
-    static func lines(user: String) -> [String] {
+    static func lines(user: String, paths: Paths = current) -> [String] {
         [
             "# Installed by Helm - Keep Awake, closed-lid option.",
             "# Lets this user run exactly the two pmset commands below without a password,",
             "# and lets Helm withdraw this file again without one.",
-            "# Remove it by hand with:  sudo rm \(installedPath)",
+            "# Remove it by hand with:  sudo rm \(paths.installed)",
             grant(user, [spec(disableSleepArguments(on: true)),
                          spec(disableSleepArguments(on: false))]),
-            grant(user, [removeCommand()]),
+            grant(user, [removeCommand(paths: paths)]),
         ]
     }
 
@@ -107,7 +123,9 @@ public enum SudoersRule {
         arguments.joined(separator: " ")
     }
 
-    static func text(user: String) -> String { lines(user: user).joined(separator: "\n") }
+    static func text(user: String, paths: Paths = current) -> String {
+        lines(user: user, paths: paths).joined(separator: "\n")
+    }
 
     /// Write, lock down, check, move — and on any failure remove the staging
     /// file and report the failure. Without the `exit 1` a successful cleanup
@@ -118,19 +136,20 @@ public enum SudoersRule {
     /// the whole command travels as a single AppleScript double-quoted literal,
     /// and a raw newline inside one of those is a syntax error rather than a
     /// newline.
-    static func installCommand(user: String) -> String {
-        let file = lines(user: user).map(shellQuoted).joined(separator: " ")
-        return "/usr/bin/printf '%s\\n' \(file) > \(stagingPath)"
-            + " && /bin/chmod 440 \(stagingPath)"
-            + " && /usr/sbin/visudo -cf \(stagingPath)"
-            + " && /bin/mv \(stagingPath) \(installedPath)"
-            + " || { /bin/rm -f \(stagingPath); exit 1; }"
+    static func installCommand(user: String, paths: Paths = current) -> String {
+        let (staging, installed) = (paths.staging, paths.installed)
+        let file = lines(user: user, paths: paths).map(shellQuoted).joined(separator: " ")
+        return "/usr/bin/printf '%s\\n' \(file) > \(staging)"
+            + " && /bin/chmod 440 \(staging)"
+            + " && /usr/sbin/visudo -cf \(staging)"
+            + " && /bin/mv \(staging) \(installed)"
+            + " || { /bin/rm -f \(staging); exit 1; }"
     }
 
     /// The withdrawal for the case the grant cannot cover it: a rule installed
     /// by a version of Helm from before the `rm` line existed, or one written by
     /// something else entirely. This is the one that costs a password.
-    static func removeCommand() -> String { spec(removeArguments) }
+    static func removeCommand(paths: Paths = current) -> String { spec(paths.removeArguments) }
 
     static func installScript(user: String) -> String {
         privilegedScript(installCommand(user: user))

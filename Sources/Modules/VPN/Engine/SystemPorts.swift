@@ -210,10 +210,11 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// deployed under this name and never changes with the build.
     static func service(for bundleIdentifier: String?) -> String { "com.helm.vpn" }
 
-    /// The service the one-time purge may delete, nil for a build that must not
-    /// purge. Helm Dev is one: the deployed items are the real Helm's.
-    static func purgeService(for bundleIdentifier: String?) -> String? {
-        AppBuild.isDevIdentifier(bundleIdentifier) ? nil : service(for: bundleIdentifier)
+    /// Whether this build may run the one-time purge; Helm Dev may not, the
+    /// deployed items are the real Helm's. What it deletes is `cacheQuery()`,
+    /// whose service does not depend on the build.
+    static func mayPurge(for bundleIdentifier: String?) -> Bool {
+        !AppBuild.isDevIdentifier(bundleIdentifier)
     }
 
     /// The keychain query for Helm's cache: every item of the service, or one
@@ -286,11 +287,11 @@ public final class KeychainCredentials: VPNCredentialsPort {
     }
 
     /// The deleting and the recording, with the keychain call and the marker as
-    /// parameters so a test reads the query sent without a keychain. A build with
-    /// no `purgeService` (Helm Dev) sends nothing and records nothing.
+    /// parameters so a test reads the query sent without a keychain. A build that
+    /// may not purge (Helm Dev) sends nothing and records nothing.
     static func purgeTheCache(bundleIdentifier: String?, marker: URL,
                               delete: (CFDictionary) -> OSStatus = SecItemDelete) {
-        guard purgeService(for: bundleIdentifier) != nil else { return }
+        guard mayPurge(for: bundleIdentifier) else { return }
         let status = KeychainCredentials.deleteEveryCacheItem(delete)
         // Only once it is actually gone. Helm starts at login, when the keychain
         // can still be locked (`errSecInteractionNotAllowed`); marking the purge

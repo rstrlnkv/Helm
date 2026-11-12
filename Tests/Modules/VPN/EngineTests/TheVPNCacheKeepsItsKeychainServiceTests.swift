@@ -71,4 +71,9 @@ final class TheVPNCacheKeepsItsKeychainServiceTests: XCTestCase {
         XCTAssertEqual(query.count, 2, "class and service, no account")
         XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent("real").path))
     }
+
+    func testOnlyTheReleaseMayPurge() {
+        XCTAssertFalse(KeychainCredentials.mayPurge(for: "com.helm.app.dev"))
+        XCTAssertTrue(KeychainCredentials.mayPurge(for: "com.helm.app"))
+    }
 }
