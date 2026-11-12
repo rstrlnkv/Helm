@@ -34,12 +34,10 @@ import XCTest
 /// this should derive its subjects the same way and stop taking a list. The walk
 /// underneath is one — `misses(of:under:)`, which both call.
 ///
-/// Leftovers is the only module wired to `check(…)` today, and the guard next
-/// door holds Autopilot's and Duplicates' keychain ports through `misses`.
-/// VPN keeps a hand-rolled guard of its own (`NoTestTakesAProductionPortTests`),
-/// and no other module has a guard of this kind — not because their engines are
-/// safer, but because those test directories had other writers in them when this
-/// landed.
+/// Leftovers and VPN are wired to `check(…)` today, and the guard next door
+/// holds Autopilot's and Duplicates' keychain ports through `misses`. No other
+/// module has a guard of this kind — not because their engines are safer, but
+/// because those test directories had other writers in them when this landed.
 /// Wiring one is a `check(…)` call and a fake at each site it names.
 public enum PortsAtConstruction {
 

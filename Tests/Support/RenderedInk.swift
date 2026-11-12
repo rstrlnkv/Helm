@@ -18,7 +18,6 @@ import HelmUI
 public final class MountedRender {
 
     public let host: NSHostingView<AnyView>
-    public let appearance: NSAppearance.Name
     /// **The window `host` is the content of**, never ordered in. The settings window's own header row is
     /// not here: a caller that wants it mounts the page under `helmCardHeader`
     /// (`LivePageUnderTheHeaderFixture`, `Tests/HelmAppTests`).
@@ -26,7 +25,6 @@ public final class MountedRender {
 
     public init<V: View>(_ view: V, width: CGFloat, height: CGFloat,
                          appearance: NSAppearance.Name) {
-        self.appearance = appearance
         let named = NSAppearance(named: appearance)
         // The window below is never ordered in, and a page that idles off
         // screen (`helmIdlesOffScreen`) would hand every reading an empty pane.

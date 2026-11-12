@@ -54,7 +54,7 @@ public enum ThreadAllocations {
 
     /// Why a reading could not be taken. Never folded into a zero reading —
     /// see the note on the hook above.
-    public enum Unmeasurable: Error, CustomStringConvertible {
+    enum Unmeasurable: Error, CustomStringConvertible {
         /// libmalloc's undeclared `malloc_logger` slot was not where it has
         /// always been.
         case noHook

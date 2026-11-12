@@ -96,6 +96,10 @@ otherwise swept before it is made readable again.
 `Tests/Support/EachLanguage.swift` runs an assertion about a visible string across the
 eight languages; its doc comment says why, and states the rule a new test follows for the
 language it asks in.
+`Tests/Support/Yielding.swift` holds the two waits. `waitUntil(_:within:)` reads the
+condition every few milliseconds until a wall-clock deadline and then fails naming what
+never happened; the older `waitUntil(_:)` is a yield loop, kept until its last caller
+moves to the bounded one, and then deleted.
 
 ## Harnesses
 

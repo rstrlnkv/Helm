@@ -20,6 +20,26 @@ public extension XCTestCase {
         for _ in 0..<20_000 where !condition() { await Task.yield() }
         XCTAssertTrue(condition(), "never reached: \(what)", file: file, line: line)
     }
+
+    /// Reads `condition` every few milliseconds until it holds or `within` of
+    /// wall-clock time has passed, then fails naming what never happened.
+    ///
+    /// **A deadline and not a count of yields**: the yield loop above ends when
+    /// the loop does, which is however long twenty thousand turns of the
+    /// scheduler take, and a task on another thread reaching a lock is not
+    /// scheduled by yielding on this one. A sleep between reads lets it run, and
+    /// the clock decides when to stop. Same isolation as above, for the same
+    /// reason.
+    @MainActor
+    func waitUntil(_ what: String, within limit: Duration, file: StaticString = #filePath,
+                   line: UInt = #line, _ condition: () -> Bool) async {
+        let clock = ContinuousClock()
+        let deadline = clock.now + limit
+        while !condition(), clock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        XCTAssertTrue(condition(), "never reached: \(what)", file: file, line: line)
+    }
 }
 
 /// A fair chance for a detached task to do the thing, before asserting that it

@@ -35,7 +35,7 @@ public enum StandingDocuments {
 
     /// The repo-relative pages a hub links, in link order — what the hub
     /// links, not what a directory happens to hold.
-    public static func linkedPages(in hub: String) -> [String] {
+    static func linkedPages(in hub: String) -> [String] {
         guard let regex = try? NSRegularExpression(
             pattern: #"\]\((Architecture/[A-Za-z0-9]+\.md)\)"#) else { return [] }
         let ns = hub as NSString

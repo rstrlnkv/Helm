@@ -19,35 +19,8 @@ import XCTest
 /// Mac is still goes green.
 final class NoTestTakesAProductionPortTests: XCTestCase {
 
-    private let required = ["interfaces:", "exit:", "speed:"]
-    /// Spelled in two halves so this file is not its own first offender — it
-    /// reported itself on the run that found it, which is the scan working.
-    private let construction = "VPNEngine" + "("
-
-    func testEveryEngineInThisTargetNamesItsThreeNetworkPorts() throws {
-        var constructions = 0
-        var offenders: [String] = []
-        for file in try RepoSource.swiftFiles(under: "Tests/Modules/VPN/EngineTests") {
-            let lines = try RepoSource.lines(of: file)
-            for (index, line) in lines.enumerated()
-            where RepoSource.code(line).contains(construction) {
-                constructions += 1
-                // The argument list, however it is wrapped: the widest of these
-                // calls runs to five lines.
-                let call = lines[index..<min(index + 8, lines.count)].joined(separator: " ")
-                let missing = required.filter { !call.contains($0) }
-                if !missing.isEmpty {
-                    offenders.append("\(file):\(index + 1) — "
-                                     + "no \(missing.joined(separator: ", "))")
-                }
-            }
-        }
-        XCTAssertGreaterThan(constructions, 20,
-                             "only \(constructions) engines were found in this target, so a "
-                             + "pass proves nothing — the scan is reading the wrong place")
-        XCTAssertTrue(offenders.isEmpty,
-                      "an engine built without naming its network ports takes the production "
-                      + "one: a request to a server, or `networkQuality` for fifteen seconds, "
-                      + "from a unit test:\n" + offenders.joined(separator: "\n"))
+    func testEveryVPNEngineUnderTheVPNTestsNamesItsThreeNetworkPorts() throws {
+        try PortsAtConstruction.check("VPNEngine", under: "Tests/Modules/VPN",
+                                      naming: ["interfaces", "exit", "speed"], atLeast: 50)
     }
 }
