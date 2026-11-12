@@ -41,6 +41,9 @@ plan, and they do not stay either: the reset trashes the marker
 the module on deletes every item of that service once more and the next connect reads the System
 keychain again.
 
+Helm Dev keeps its own cache under `com.helm.vpn.dev` and never runs that purge, so its
+items stay until the cache itself replaces them; the real Helm's `com.helm.vpn` is untouched by Dev.
+
 The steps are `ResetPlan.Step` — `handBackWhatIsOutsideHelm`, `giveBackTheLoginItem`,
 `trashHelmsOwnFolders`, `forgetPreferences`, `relaunch` — and `ResetPlan.order` is that
 order as a value; the doc comments on the first two steps say why they sit where they do,

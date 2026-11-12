@@ -7,7 +7,7 @@ import HelmRuntime
 /// Whether the one-time removal of the old credential cache should run, and where
 /// the record that it has lives.
 ///
-/// The purge itself deletes every item of the service `KeychainCredentials.service(for:)` answers (`com.helm.vpn`), because items
+/// The purge itself deletes every item of the service `KeychainCredentials.service(for:)` answers for the real Helm (`com.helm.vpn`; Helm Dev never purges and keeps `com.helm.vpn.dev`), because items
 /// written by the first implementation carry an access list that let
 /// `/usr/bin/security` read them with no prompt at all. It must happen once per
 /// installation and never again, and two things would run it on **every**

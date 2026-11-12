@@ -206,22 +206,27 @@ public final class DynamicStoreNetworkWatch: NetworkWatchPort {
 /// shared secret (e.g. IKEv2). Secrets stay in memory / the keychain, never logged.
 public final class KeychainCredentials: VPNCredentialsPort {
     /// Service used for Helm's own cached copy of a VPN's credentials, spelled
-    /// in this one place for the cache and for its one-time purge. It is
-    /// deployed under this name and never changes with the build.
-    static func service(for bundleIdentifier: String?) -> String { "com.helm.vpn" }
+    /// in this one place for the cache and for its one-time purge. Both literals
+    /// are data on the owner's Mac once written and are never re-keyed: the real
+    /// Helm's is `com.helm.vpn`, Helm Dev's is `com.helm.vpn.dev`, so Dev's cache
+    /// writes never rebind the real item's access list to Dev's identity.
+    static func service(for bundleIdentifier: String?) -> String {
+        AppBuild.isDevIdentifier(bundleIdentifier) ? "com.helm.vpn.dev" : "com.helm.vpn"
+    }
 
     /// Whether this build may run the one-time purge; Helm Dev may not, the
-    /// deployed items are the real Helm's. What it deletes is `cacheQuery()`,
-    /// whose service does not depend on the build.
+    /// deployed items with the old access list are the real Helm's; Dev's own
+    /// service never held any.
     static func mayPurge(for bundleIdentifier: String?) -> Bool {
         !AppBuild.isDevIdentifier(bundleIdentifier)
     }
 
     /// The keychain query for Helm's cache: every item of the service, or one
     /// account's item. The read, the write and the purge all build it here.
-    static func cacheQuery(account: String? = nil) -> [String: Any] {
+    static func cacheQuery(account: String? = nil,
+                           bundleIdentifier: String? = Bundle.main.bundleIdentifier) -> [String: Any] {
         var q: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
-                                kSecAttrService as String: service(for: Bundle.main.bundleIdentifier)]
+                                kSecAttrService as String: service(for: bundleIdentifier)]
         if let account { q[kSecAttrAccount as String] = account }
         return q
     }

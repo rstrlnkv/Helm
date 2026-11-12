@@ -20,12 +20,25 @@ final class TheVPNCacheKeepsItsKeychainServiceTests: XCTestCase {
         }
     }
 
+    /// Helm Dev's cache is its own service, a pinned literal.
+    func testHelmDevKeepsItsOwnService() {
+        XCTAssertEqual(KeychainCredentials.service(for: "com.helm.app.dev"), "com.helm.vpn.dev")
+    }
+
     /// The purge and the read/write both build their query through `cacheQuery`.
     func testTheQueriesCarryTheDeployedService() {
         XCTAssertEqual(KeychainCredentials.cacheQuery()[kSecAttrService as String] as? String, "com.helm.vpn")
         let one = KeychainCredentials.cacheQuery(account: "x.ss")
         XCTAssertEqual(one[kSecAttrService as String] as? String, "com.helm.vpn")
         XCTAssertEqual(one[kSecAttrAccount as String] as? String, "x.ss")
+    }
+
+    /// Helm Dev's read, write and delete query carries its own service.
+    func testHelmDevsQueriesCarryItsOwnService() {
+        let q = KeychainCredentials.cacheQuery(account: "x.ss", bundleIdentifier: "com.helm.app.dev")
+        XCTAssertEqual(q[kSecAttrService as String] as? String, "com.helm.vpn.dev")
+        let real = KeychainCredentials.cacheQuery(bundleIdentifier: "com.helm.app")
+        XCTAssertEqual(real[kSecAttrService as String] as? String, "com.helm.vpn")
     }
 
     /// The purge's delete sends the deployed service and no account.
