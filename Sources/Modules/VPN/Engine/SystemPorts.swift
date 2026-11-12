@@ -205,8 +205,25 @@ public final class DynamicStoreNetworkWatch: NetworkWatchPort {
 /// and use the cache thereafter. Answers `.notNeeded` for VPNs without a stored
 /// shared secret (e.g. IKEv2). Secrets stay in memory / the keychain, never logged.
 public final class KeychainCredentials: VPNCredentialsPort {
-    /// Service used for Helm's own cached copy of a VPN's credentials.
-    private let helmVPNKeychainService = "com.helm.vpn"
+    /// Service used for Helm's own cached copy of a VPN's credentials, spelled
+    /// in this one place for the cache and for its one-time purge. It is
+    /// deployed under this name and never changes with the build.
+    static func service(for bundleIdentifier: String?) -> String { "com.helm.vpn" }
+
+    /// The keychain query for Helm's cache: every item of the service, or one
+    /// account's item. The read, the write and the purge all build it here.
+    static func cacheQuery(account: String? = nil) -> [String: Any] {
+        var q: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                                kSecAttrService as String: service(for: Bundle.main.bundleIdentifier)]
+        if let account { q[kSecAttrAccount as String] = account }
+        return q
+    }
+
+    /// The purge's delete, with the keychain call as a parameter so a test can
+    /// read the query it sends without touching the keychain.
+    static func deleteEveryCacheItem(_ delete: (CFDictionary) -> OSStatus = SecItemDelete) -> OSStatus {
+        delete(cacheQuery() as CFDictionary)
+    }
 
     /// Asks `scutil --nc show` through the module's runner, so the read has the
     /// same deadline and the same seam as every other.
@@ -260,8 +277,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
         guard CredentialCachePurge.shouldRun(bundledApp: AppBuild.isBundledApp,
                                              recorded: fm.fileExists(atPath: marker.path))
         else { return }
-        let status = SecItemDelete([kSecClass as String: kSecClassGenericPassword,
-                                    kSecAttrService as String: "com.helm.vpn"] as CFDictionary)
+        let status = KeychainCredentials.deleteEveryCacheItem()
         // Only once it is actually gone. Helm starts at login, when the keychain
         // can still be locked (`errSecInteractionNotAllowed`); marking the purge
         // done first would leave the readable-by-anything item in place forever,
@@ -357,9 +373,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
     }
 
     private func query(_ account: String) -> [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: helmVPNKeychainService,
-         kSecAttrAccount as String: account]
+        Self.cacheQuery(account: account)
     }
 
     /// What a read of Helm's own cache found — **three answers, for the reason

@@ -38,9 +38,9 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// saved and the category its log lines file under. `VPNDescriptor.id` is
     /// built from this rather than repeating it, so the two spellings are one. **The
     /// string itself never changes** — it names stored settings already on
-    /// people's machines. The keychain service stays its `com.helm.vpn`
-    /// literal on purpose: it is deployed under its own name
-    /// (`KeychainCredentials`) and must not follow a rename.
+    /// people's machines. The keychain service stays `com.helm.vpn` on
+    /// purpose: it is deployed under its own name
+    /// (`KeychainCredentials.service(for:)`) and must not follow a rename.
     public static let moduleID = "vpn"
 
     private let settings: VPNSettings
