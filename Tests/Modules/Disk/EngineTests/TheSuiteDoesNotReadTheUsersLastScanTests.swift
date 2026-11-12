@@ -7,13 +7,12 @@ import Module_Disk_Engine
 /// index of every file name on their volume, and a suite run reads it.
 ///
 /// `ScanStore()` — the no-argument initializer, which is the one the app uses and
-/// therefore the one every rendered page uses — resolves into their real
-/// Application Support in a test process as readily as in the app. Its two
-/// siblings do not: `ScanJournal.defaultDirectory` and `HelmLog` both ask
-/// `TestProcess.isRunning` and send themselves into `$TMPDIR` instead, and the
-/// comment at `TestProcess` says why in as many words — "asked by anything that
-/// would otherwise write into somebody's real files". Two places in `Sources/`
-/// name `.applicationSupportDirectory`. One of them asks. This is the other.
+/// therefore the one every rendered page uses — takes its default from
+/// `HelmSupport.directory` plus "Disk". That is the one place in `Sources/` that
+/// names `.applicationSupportDirectory`, and it asks `TestProcess.isRunning` and
+/// sends itself into `$TMPDIR` instead, as the comment at `TestProcess` says it
+/// must — "asked by anything that would otherwise write into somebody's real
+/// files". This file pins that the store's default never reaches the person's folder.
 ///
 /// **What it costs, measured 2026-08-11.** Without a store parameter, Disk's
 /// page has `restoreLastScan()` read that file and — when the saved scan is
@@ -39,8 +38,8 @@ import Module_Disk_Engine
 /// beside this one proves that branch really fires, so this is a hazard and not
 /// a turn of phrase.
 ///
-/// The seam is `ScanStore`'s own default, in the shape `ScanJournal` already
-/// has: a per-process directory under `$TMPDIR` when XCTest is loaded, swept the
+/// The seam is `HelmSupport.directory`, which `ScanStore.defaultDirectory` only
+/// appends "Disk" to: a per-process directory under `$TMPDIR` when XCTest is loaded, swept the
 /// way `TestScratchTests` describes, so the redirection does not trade
 /// somebody's file for 452 directories of ours. `init(directory:)` is untouched
 /// by that and must stay untouched — nine tests inject through it.
@@ -93,5 +92,25 @@ final class TheSuiteDoesNotReadTheUsersLastScanTests: XCTestCase {
         let directory = scratchDirectory("store-seam")
         XCTAssertEqual(ScanStore(directory: directory).fileURL,
                        directory.appendingPathComponent("last-scan.json"))
+    }
+
+    /// The store follows the one folder every durable writer uses, so a test run
+    /// gets that folder's own scratch and no second sweep exists for this store.
+    /// The relative layout is pinned whole, so the subfolder name and the file name
+    /// are both held against the real code.
+    func testTheDefaultStoreSitsUnderHelmSupport() {
+        let expected = HelmSupport.directory
+            .appendingPathComponent("Disk/last-scan.json").standardizedFileURL.path
+        XCTAssertEqual(ScanStore().fileURL.standardizedFileURL.path, expected)
+    }
+
+    /// Pins `HelmSupport.path(home:)`'s spelling against the literal the store used
+    /// before it went through `HelmSupport`: base + "Helm". The app branch of
+    /// `HelmSupport.directory` (FileManager + "Helm") is held by reading, not by
+    /// this test.
+    func testTheAppPathIsTheOneEarlierBuildsWrote() {
+        let fixture = "/Users/fixture"
+        XCTAssertEqual(HelmSupport.path(home: fixture) + "/Disk/last-scan.json",
+                       "/Users/fixture/Library/Application Support/Helm/Disk/last-scan.json")
     }
 }

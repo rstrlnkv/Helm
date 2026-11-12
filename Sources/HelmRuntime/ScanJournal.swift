@@ -67,8 +67,7 @@ public final class ScanJournal: @unchecked Sendable {
 
     /// A per-process temporary directory under `swift test`, Application Support
     /// in the app. `TestProcess` decides which, and says why it is the question
-    /// it is; `TestScratch` is the shape of the temporary one, and Disk's
-    /// last-scan cache takes the same one.
+    /// it is; `TestScratch` is the shape of the temporary one.
     private static let testScratch = TestScratch(prefix: "helm-scan-journal-")
 
     public static let defaultDirectory: URL = {

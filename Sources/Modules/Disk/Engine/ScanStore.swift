@@ -15,9 +15,8 @@ public final class ScanStore: @unchecked Sendable {
 
     public convenience init() { self.init(directory: ScanStore.defaultDirectory) }
 
-    /// A per-process temporary directory under `swift test`, Application Support
-    /// in the app — the answer `ScanJournal.defaultDirectory` next door already
-    /// gives, for the same reason and through the same `TestScratch`.
+    /// `Disk` under `HelmSupport.directory`: a per-process temporary directory under
+    /// `swift test`, Application Support's `Helm` folder in the app.
     ///
     /// **This file is an index of every file name on somebody's volume**, and
     /// without the question every test that renders Disk's page read theirs:
@@ -29,16 +28,9 @@ public final class ScanStore: @unchecked Sendable {
     /// and not only read it. `TheSuiteDoesNotReadTheUsersLastScanTests` carries
     /// what it cost the ratchets, in layers and in seconds.
     ///
-    /// Resolved once. Every `ScanStore()` would otherwise ask, and asking sweeps
-    /// `$TMPDIR` — a walk that belongs to the process, not to each store built in
-    /// it.
-    private static let defaultDirectory: URL = {
-        if TestProcess.isRunning { return TestScratch(prefix: "helm-disk-store-").directory() }
-        let base = FileManager.default.urls(for: .applicationSupportDirectory,
-                                            in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSHomeDirectory() + "/Library/Application Support")
-        return base.appendingPathComponent("Helm/Disk", isDirectory: true)
-    }()
+    /// Resolved once, as `HelmSupport.directory` is.
+    private static let defaultDirectory: URL =
+        HelmSupport.directory.appendingPathComponent("Disk", isDirectory: true)
 
     public var fileURL: URL { directory.appendingPathComponent("last-scan.json") }
 
