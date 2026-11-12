@@ -185,8 +185,9 @@ enum LogSessions {
     }
 
     /// **Lines that cannot belong to the launch above them.** A launch is not a
-    /// process: two builds write one folder, and logging can be switched on in
-    /// the middle of a run that wrote no start line. So a launch ends at the line
+    /// process: two builds no longer share a folder, but older files still
+    /// interleave, and logging can be switched on in the middle of a run that
+    /// wrote no start line. So a launch ends at the line
     /// where it says it is terminating — a process that has said so writes
     /// nothing more, and whatever follows is some other's — and a «logging
     /// enabled» that does not answer a «logging disabled» just above it is the

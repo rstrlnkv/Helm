@@ -970,8 +970,9 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     }
 
     /// **Lines after «terminating» are not the terminated launch's.** Two
-    /// builds share one folder (`HelmLog.directory` does not read the bundle
-    /// id), so Helm and Helm Dev running side by side interleave — and a
+    /// builds no longer share a folder (`LogDestination.directory` reads the
+    /// bundle id), but files written before that still interleave, so the rule
+    /// stays: Helm and Helm Dev side by side once interleaved — and a
     /// process that has said it is terminating writes nothing more. What
     /// follows it before the next start line belongs to some other process.
     /// The owner's log has 24 of these, e.g. `helm.log` at 2026-09-30

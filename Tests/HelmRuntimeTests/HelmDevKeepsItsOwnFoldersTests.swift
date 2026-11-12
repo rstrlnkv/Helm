@@ -38,4 +38,17 @@ final class HelmDevKeepsItsOwnFoldersTests: XCTestCase {
         XCTAssertEqual(HelmSupport.buildDirectory(base: nil, home: home).path,
                        "/Users/anna/Library/Application Support/Helm")
     }
+
+    func testHelmDevsResetRootsAreDisjointFromTheReleasesAndItsGateRefusesThem() {
+        let dev = ResetPlan.removablePaths(home: home, folder: .helmDev)
+        let release = ResetPlan.removablePaths(home: home, folder: .helm)
+        XCTAssertTrue(Set(dev).isDisjoint(with: release))
+        for path in release {
+            XCTAssertFalse(ResetPlan.mayRemove(path, home: home, folder: .helmDev), path)
+            XCTAssertFalse(ResetPlan.mayRemove(path + "/helm.log", home: home, folder: .helmDev), path)
+        }
+        for path in dev {
+            XCTAssertFalse(ResetPlan.mayRemove(path, home: home, folder: .helm), path)
+        }
+    }
 }

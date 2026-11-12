@@ -104,9 +104,9 @@ final class TheSuiteDoesNotReadTheUsersLastScanTests: XCTestCase {
         XCTAssertEqual(ScanStore().fileURL.standardizedFileURL.path, expected)
     }
 
-    /// Pins `HelmSupport.path(home:)`'s spelling against the literal the store used
+    /// Pins `HelmSupport.path(home:folder:)`'s spelling against the literal the store used
     /// before it went through `HelmSupport`: base + "Helm". The app branch of
-    /// `HelmSupport.directory` (FileManager + "Helm") is held by reading, not by
+    /// `HelmSupport.directory` (FileManager + the build's `DataFolder.rawValue`) is held by reading, not by
     /// this test.
     func testTheAppPathIsTheOneEarlierBuildsWrote() {
         let fixture = "/Users/fixture"

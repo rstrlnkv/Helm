@@ -100,7 +100,7 @@ language it asks in.
 ## Harnesses
 
 A harness is pointed at a temporary folder, and what it saved under
-`~/Library/Application Support/Helm/` is deleted and the app's own state checked before
+the build's own folder (`~/Library/Application Support/Helm/`, Helm Dev: `Helm Dev/`) is deleted and the app's own state checked before
 the work is called done: real code writes, and the app has twice been handed back with
 somebody's test tree in it and no way out. Whether a thing predates the session is asked
 before anything under `/Applications` is removed, and what a harness launches is proved

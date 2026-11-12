@@ -50,7 +50,7 @@ final class ResetRemovesOnlyItsOwnTests: XCTestCase {
         home = scratchDirectory("reset-test").path
         sentinel = "helm-reset-test-" + UUID().uuidString
         // The two directories a reset is allowed to take…
-        for path in ResetPlan.removablePaths(home: home) {
+        for path in ResetPlan.removablePaths(home: home, folder: .helm) {
             try FileManager.default.createDirectory(atPath: path + "/Disk",
                                                     withIntermediateDirectories: true)
             try sentinel.write(toFile: path + "/Disk/last-scan.json", atomically: true,
@@ -92,8 +92,8 @@ final class ResetRemovesOnlyItsOwnTests: XCTestCase {
     /// is then really moved, which is what proves `HelmTrash` was given a path
     /// it could act on rather than one it would have refused.
     func testItTakesHelmsOwnDirectoryAndLeavesTheNeighbours() throws {
-        let paths = ResetPlan.removablePaths(home: home)
-            .filter { ResetPlan.mayRemove($0, home: home) }
+        let paths = ResetPlan.removablePaths(home: home, folder: .helm)
+            .filter { ResetPlan.mayRemove($0, home: home, folder: .helm) }
         XCTAssertEqual(paths.count, 2, "the plan and its own gate disagree")
 
         let taken = try XCTUnwrap(paths.first { $0.contains("Application Support") })

@@ -28,8 +28,8 @@ public enum LogPolicy {
 /// about whether there is a log at all.
 ///
 /// **A test process must not write into the file people triage.** The log is a
-/// product surface: `~/Library/Logs/Helm/helm.log` is what a dev build is judged
-/// by before it ships, so a line in it reads as something the app did. Logging
+/// product surface: the log of the build under triage (`~/Library/Logs/Helm/helm.log`,
+/// Helm Dev's in `Helm Dev`) is what a dev build is judged by before it ships, so a line in it reads as something the app did. Logging
 /// code under test logs — a test of a failing decode records the failure it provokes —
 /// and those lines wore the shape of a real fault well
 /// enough to be triaged as one.
@@ -49,10 +49,22 @@ public enum LogPolicy {
 /// reason to tell two runs apart, so it does not buy that problem.
 public enum LogDestination {
 
-    public static func directory(home: URL, temporary: URL, underTest: Bool) -> URL {
+    /// The folder under the home directory, spelled from the build's data folder:
+    /// Helm Dev logs in `Library/Logs/Helm Dev`, so it neither writes the real
+    /// Helm's log nor has its salt, rollover and purge latch beside it.
+    /// `ResetPlan` names the same folder.
+    public static func relativePath(folder: DataFolder) -> String {
+        "Library/Logs/\(folder.rawValue)"
+    }
+
+    /// `bundleIdentifier` is the process's own; every identifier but Helm Dev's,
+    /// nil included, keeps `Library/Logs/Helm`.
+    public static func directory(home: URL, temporary: URL, underTest: Bool,
+                                 bundleIdentifier: String? = Bundle.main.bundleIdentifier) -> URL {
         underTest
             ? temporary.appendingPathComponent("helm-test-logs", isDirectory: true)
-            : home.appendingPathComponent("Library/Logs/Helm", isDirectory: true)
+            : home.appendingPathComponent(relativePath(folder: DataFolder.of(identifier: bundleIdentifier)),
+                                          isDirectory: true)
     }
 
     /// What the page's tail is seeded from — the same decision read from the
@@ -146,7 +158,7 @@ public final class HelmLog: @unchecked Sendable {
     private var footprint = FootprintTracker()
     private let footprintQueue = DispatchQueue(label: "helm.log.footprint")
 
-    /// ~/Library/Logs/Helm/helm.log — the place macOS users (and Console.app)
+    /// ~/Library/Logs/Helm/helm.log (Helm Dev: ~/Library/Logs/Helm Dev) — the place macOS users (and Console.app)
     /// expect app logs to live. Somewhere else entirely under test; the reason
     /// is on `LogDestination`.
     ///

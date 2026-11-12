@@ -67,15 +67,26 @@ public enum ResetPlan {
     /// What a reset removes, and the roots `mayRemove` judges against.
     /// `HelmTrash.remove` takes the shortest path first, so the logs folder goes
     /// before Application Support.
-    public static func removablePaths(home: String) -> [String] {
-        [HelmSupport.path(home: home, folder: .helm),
-         "\(home)/Library/Logs/Helm"]
+    /// `folder` is the build's own (`AppBuild.dataFolder`), so Helm Dev's reset
+    /// can only reach Helm Dev's folders and never the real Helm's.
+    public static func removablePaths(home: String, folder: DataFolder) -> [String] {
+        [HelmSupport.path(home: home, folder: folder),
+         "\(home)/\(LogDestination.relativePath(folder: folder))"]
+    }
+
+    /// What a reset hands to the Trash for the process whose bundle id is
+    /// `identifier`: its own build's paths, each through the gate. The one place the
+    /// app layer gets them from, so a test with Helm Dev's id sees what Dev's reset does.
+    public static func trashPaths(home: String, identifier: String?) -> [String] {
+        let folder = DataFolder.of(identifier: identifier)
+        return removablePaths(home: home, folder: folder)
+            .filter { mayRemove($0, home: home, folder: folder) }
     }
 
     /// Whether a reset may touch this path at all.
-    public static func mayRemove(_ path: String, home: String) -> Bool {
+    public static func mayRemove(_ path: String, home: String, folder: DataFolder) -> Bool {
         let standardized = (path as NSString).standardizingPath
-        return removablePaths(home: home).contains {
+        return removablePaths(home: home, folder: folder).contains {
             standardized == $0 || standardized.hasPrefix($0 + "/")
         }
     }

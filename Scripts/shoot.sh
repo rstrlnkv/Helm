@@ -182,7 +182,7 @@ read_window() {
 for i in $(seq 1 20); do read_window && break; sleep 0.5; done
 if [ -z "$WIN" ]; then
   echo "no window of Helm Dev in 10 s; log:" >&2
-  grep "launch page" "$HOME/Library/Logs/Helm/helm.log" | tail -3 >&2
+  grep "launch page" "$HOME/Library/Logs/Helm Dev/helm.log" | tail -3 >&2
   exit 75
 fi
 sleep 1

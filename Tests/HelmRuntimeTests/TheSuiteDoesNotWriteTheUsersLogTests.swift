@@ -37,6 +37,21 @@ final class TheSuiteDoesNotWriteTheUsersLogTests: XCTestCase {
                                               temporary: URL(fileURLWithPath: "/tmp"),
                                               underTest: false)
         XCTAssertEqual(folder.path, "/Users/anna/Library/Logs/Helm")
+        for id in ["com.helm.app", nil] as [String?] {
+            XCTAssertEqual(LogDestination.directory(home: URL(fileURLWithPath: "/Users/anna"),
+                                                    temporary: URL(fileURLWithPath: "/tmp"),
+                                                    underTest: false, bundleIdentifier: id).path,
+                           "/Users/anna/Library/Logs/Helm", "\(id ?? "nil")")
+        }
+    }
+
+    func testHelmDevLogsInAFolderOfItsOwn() {
+        let folder = LogDestination.directory(home: URL(fileURLWithPath: "/Users/anna"),
+                                              temporary: URL(fileURLWithPath: "/tmp"),
+                                              underTest: false,
+                                              bundleIdentifier: "com.helm.app.dev")
+        XCTAssertEqual(folder.path, "/Users/anna/Library/Logs/Helm Dev")
+        XCTAssertNotEqual(folder.path, "/Users/anna/Library/Logs/Helm")
     }
 
     func testATestRunLogsAnywhereButThere() {

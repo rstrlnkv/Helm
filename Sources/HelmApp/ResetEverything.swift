@@ -51,8 +51,7 @@ import HelmRuntime
 
     private static func trashHelmsOwnFolders() {
         let home = NSHomeDirectory()
-        let paths = ResetPlan.removablePaths(home: home)
-            .filter { ResetPlan.mayRemove($0, home: home) }
+        let paths = ResetPlan.trashPaths(home: home, identifier: Bundle.main.bundleIdentifier)
             .filter { FileManager.default.fileExists(atPath: $0) }
 
         let result = HelmTrash.remove(allowed: paths, module: "reset")
