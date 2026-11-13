@@ -15,6 +15,7 @@ import HelmTestSupport
 /// for every file system. So "unreadable" arrives as a zero, which the port
 /// tells from a full disk by the plain reading beside it: important 0 with plain
 /// above zero is a `.fallback`, and only a zero on both is believed as full.
+/// Past defect: fixed in commit 4ce355a9.
 final class FreeSpaceUnderOddInputsTests: XCTestCase {
 
     private let gb = 1_000_000_000

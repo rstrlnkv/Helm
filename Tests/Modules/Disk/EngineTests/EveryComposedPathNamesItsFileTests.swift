@@ -184,4 +184,11 @@ final class EveryComposedPathNamesItsFileTests: XCTestCase {
         let last = try XCTUnwrap(box.last)
         XCTAssertEqual(last.filesSeen, Self.hostileNames.count + 1)
     }
+
+    /// A directory handed over with a trailing slash joins with one slash, not
+    /// two; the one test of that spelling once lived in a class of its own.
+    func testTrailingSlashIsNotDoubled() {
+        XCTAssertEqual(ScanPath.child(of: "/Users/me/", name: "Downloads"),
+                       "/Users/me/Downloads")
+    }
 }

@@ -4,6 +4,7 @@ import HelmTestSupport
 
 /// Against a real fixture tree in tmp — the bulk-attribute walk has too many
 /// byte-layout edge cases to trust without touching an actual filesystem.
+/// Past defect: fixed in commit 76f18e41.
 final class DiskScannerTests: XCTestCase {
     private var fixture: URL!
 

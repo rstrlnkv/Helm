@@ -31,6 +31,7 @@ import XCTest
 /// The fixture is narrow and deep on purpose. The cost is per *path component
 /// composed*, not per file, so depth is the axis that makes a few thousand
 /// files say what a hundred thousand shallow ones would not.
+/// Past defect: fixed in commit 9e9734fb.
 final class ScanFootprintTests: XCTestCase {
 
     /// Deep enough that `charge` walks a real path, small enough that the whole

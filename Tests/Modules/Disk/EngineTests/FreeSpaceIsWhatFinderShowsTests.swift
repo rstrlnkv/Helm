@@ -6,6 +6,7 @@ import XCTest
 /// read `volumeAvailableCapacity`, which on APFS leaves purgeable space out.
 /// These tests hold the choice between the readings, through a fake port that
 /// carries every reading the real one does.
+/// Past defect: fixed in commit 4ce355a9.
 final class FreeSpaceIsWhatFinderShowsTests: XCTestCase {
 
     private let gb = 1_000_000_000

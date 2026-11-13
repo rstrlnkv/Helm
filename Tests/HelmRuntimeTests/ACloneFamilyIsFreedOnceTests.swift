@@ -22,6 +22,7 @@ import HelmTestSupport
 /// **Nothing here is trashed.** The move is `HelmTrash`'s injected `trashing`
 /// closure and it does nothing, so what is measured is the ledger and the files
 /// stay in the scratch directory the teardown drains.
+/// Past defect: fixed in commit 3591c2a7.
 final class ACloneFamilyIsFreedOnceTests: XCTestCase {
 
     private var root: URL!

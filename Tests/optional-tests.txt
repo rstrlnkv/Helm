@@ -140,7 +140,6 @@ DiskScannerTests
 DiskSpliceReachabilityTests
 DiskTrashArithmeticTests
 DiskTreePruneTests
-DiskTreeSpliceTests
 DoctorParserTests
 DuplicateIdentityTests
 DuplicateScannerTests
@@ -235,7 +234,6 @@ ScanComparisonTests
 ScanFootprintTests
 ScanJournalOrderAndBoundTests
 ScanOrderIsTotalTests
-ScanPathTests
 ScanResetTests
 ScanScheduleClockAndPriorityTests
 ScanStoreTests
