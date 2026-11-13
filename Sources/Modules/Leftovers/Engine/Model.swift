@@ -1,16 +1,16 @@
 import Foundation
 
-public enum StaleKind: String, Codable, Sendable, CaseIterable {
+public enum StaleKind: String, Sendable, CaseIterable {
     case launchAgent      // ~/Library/LaunchAgents, /Library/LaunchAgents
     case launchDaemon     // /Library/LaunchDaemons
     case preference       // ~/Library/Preferences/*.plist
-    case systemExtension   // an extension whose host app is gone
+    case systemExtension   // every system extension, live or not
     case plugin           // QuickLook, PreferencePanes, Internet Plug-Ins, Audio
 }
 
 /// Why an item appears in the list. Everything found is shown — hiding what
 /// is in use leaves the user trusting a list they cannot check.
-public enum ItemStatus: String, Codable, Sendable, Equatable {
+public enum ItemStatus: String, Sendable, Equatable {
     /// The owner is gone: safe to remove.
     case orphaned
     /// Belongs to installed software, or points at a file that exists.
@@ -100,7 +100,7 @@ public enum ItemStatus: String, Codable, Sendable, Equatable {
     }
 }
 
-public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
+public struct StaleItem: Equatable, Sendable, Identifiable {
     public var id: String { path }
     public let path: String
     public let identifier: String
@@ -109,12 +109,12 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
     /// What the job points at, when it names an executable that is missing.
     public let missingTarget: String?
     /// Loaded at login — worth flagging, since removing it changes behaviour.
-    public let runAtLoad: Bool
+    let runAtLoad: Bool
     public let status: ItemStatus
     /// Switched off through launchd's own disabled list, not deleted.
     public let disabled: Bool
     /// Whether Helm can move this file without an admin password.
-    public let writable: Bool
+    let writable: Bool
     /// Where a **source** row's directory actually leads, when it is not the
     /// directory it names. Nil on every other row.
     ///
@@ -207,7 +207,7 @@ public struct StaleItem: Codable, Equatable, Sendable, Identifiable {
 /// somebody's login items, needs the path to ask whether this label is the one that
 /// file would register (`LaunchLabel.mayBeSwitched`).
 public struct LeftoversToggle: Sendable {
-    public let label: String
+    let label: String
     public let path: String
     public let disabled: Bool
     public init(label: String, path: String, disabled: Bool) {

@@ -55,6 +55,7 @@ public struct FileSystemLeftovers: LeftoversFilePort {
 /// directory at any depth. Uninstaller pays for that lookup because it once
 /// offered such bundles for deletion while their apps were installed and
 /// running. This module trashes on the same kind of judgement.
+/// An empty `CFBundleIdentifier` is inserted and harmless here, unlike Uninstaller's filter.
 public struct WorkspaceInstalledApps: InstalledAppsPort {
     private let searchDirs: [URL]
 

@@ -110,7 +110,7 @@ final class AFolderThatWentUnreadIsNotAFileTests: XCTestCase {
                        "an empty folder is a reading, not a refusal")
         XCTAssertEqual(files.contents(of: root.appendingPathComponent("nope")), .listed([]),
                        "and a folder that is not there stays folded into «nothing in it», "
-                       + "which is what four of the scan's seven sources are on a stock Mac")
+                       + "which is what four of the scan's eight sources are on a stock Mac")
         XCTAssertNil(files.exists(locked.appendingPathComponent("inside.plist").path),
                      "a child of a folder that would not open is «could not tell», not «gone»")
         XCTAssertEqual(files.exists(root.appendingPathComponent("nope").path), false)

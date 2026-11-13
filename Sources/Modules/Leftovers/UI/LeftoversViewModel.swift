@@ -14,16 +14,16 @@ protocol LeftoversWork: AnyObject, Sendable {
 extension LeftoversEngine: LeftoversWork {}
 
 @MainActor public final class LeftoversViewModel: ObservableObject {
-    @Published public private(set) var items: [StaleItem] = []
-    @Published public private(set) var scanning = false
-    @Published public private(set) var scanned = false
-    @Published public var selected: Set<String> = []
+    @Published private(set) var items: [StaleItem] = []
+    @Published private(set) var scanning = false
+    @Published private(set) var scanned = false
+    @Published var selected: Set<String> = []
     /// Leftovers only by default: the full list is context, not a to-do list.
-    @Published public var showAll = false
-    @Published public private(set) var banner: String?
-    @Published public private(set) var failures: [HelmTrash.Refusal] = []
+    @Published var showAll = false
+    @Published private(set) var banner: String?
+    @Published private(set) var failures: [HelmTrash.Refusal] = []
     /// How many actually moved — see `DiskViewModel.removedCount`.
-    @Published public private(set) var removedCount = 0
+    @Published private(set) var removedCount = 0
     /// How many rows this scan never reached a verdict on — `.undetermined`,
     /// `.unreadable` and the two source statuses, asked of `ItemStatus.judged` rather
     /// than listed here.
@@ -38,10 +38,10 @@ extension LeftoversEngine: LeftoversWork {}
     /// **Over the whole scan, not over the list.** None of them is `.orphaned`,
     /// so the default filter is precisely what hides them: counted over
     /// `visibleItems` it would answer zero in the state it exists to report.
-    @Published public private(set) var uncheckedCount = 0
+    @Published private(set) var uncheckedCount = 0
     /// A removal is running. The page dims what would start a second one — see
     /// `trash`, where the cost of the second is a wrong report about the first.
-    @Published public private(set) var busy = false
+    @Published private(set) var busy = false
 
     private let work: any LeftoversWork
     /// Set when the module is switched off: the engine is held strongly here, so a
@@ -57,14 +57,14 @@ extension LeftoversEngine: LeftoversWork {}
     /// Closes the model; the host calls it before the engine's `deactivate()`: on
     /// the person's switch after `willDisable()` has given the switches back, and
     /// on quit, where no `willDisable()` runs.
-    public func stop() { stopped = true }
+    func stop() { stopped = true }
 
     /// Kinds the user has hidden. System extensions are the common case:
     /// they are informational, and someone reviewing login items does not
     /// want them in the way.
-    @Published public var hiddenKinds: Set<StaleKind> = []
+    @Published var hiddenKinds: Set<StaleKind> = []
 
-    public var visibleItems: [StaleItem] {
+    var visibleItems: [StaleItem] {
         matchingStatus.filter { !hiddenKinds.contains($0.kind) }
     }
 
@@ -74,7 +74,7 @@ extension LeftoversEngine: LeftoversWork {}
     /// asked `items.isEmpty`, and on any ordinary Mac those differ: the scan finds
     /// hundreds of settings files in use and no leftovers at all.
     /// `LeftoversEmpty.reason` holds the rule and says why there are four answers.
-    public var nothingToShow: LeftoversEmpty.Reason? {
+    var nothingToShow: LeftoversEmpty.Reason? {
         LeftoversEmpty.reason(scanned: scanned, visible: visibleItems.count,
                               hiddenByKind: hiddenByKindCount, unchecked: uncheckedCount)
     }
@@ -100,14 +100,14 @@ extension LeftoversEngine: LeftoversWork {}
     /// Counted over what the list actually shows. Counting the whole scan
     /// while the list is filtered made "Выбрать все" tick rows nobody could
     /// see — and then delete them.
-    public var leftoverCount: Int { visibleItems.filter(\.removable).count }
+    var leftoverCount: Int { visibleItems.filter(\.removable).count }
 
     /// What the bar at the bottom is about, both halves of it. It used to pair
     /// the number of removable rows found with the size of the selection, so
     /// "1 item · 0 B" stood under a visible row saying 4 KB. A count and a size
     /// joined by a middle dot read as one measurement, and were two.
-    public var selectedCount: Int { selectedItems.count }
-    public var selectedBytes: Int { selectedItems.reduce(0) { $0 + $1.sizeBytes } }
+    var selectedCount: Int { selectedItems.count }
+    var selectedBytes: Int { selectedItems.reduce(0) { $0 + $1.sizeBytes } }
 
     /// Counted over what the list actually shows — the rule `removeSelected`
     /// follows when it decides what may go.
@@ -116,7 +116,7 @@ extension LeftoversEngine: LeftoversWork {}
     }
 
     /// Everything the user could tick right now.
-    public var selectablePaths: Set<String> {
+    var selectablePaths: Set<String> {
         Set(visibleItems.filter(\.removable).map(\.path))
     }
 
@@ -127,7 +127,7 @@ extension LeftoversEngine: LeftoversWork {}
     /// drops the ticks on rows the removal took — a guard here would be inert
     /// where it looked most careful, and would leave a batch's own rows ticked
     /// under the report saying they are gone.
-    public func dropHiddenSelections() {
+    func dropHiddenSelections() {
         selected.formIntersection(selectablePaths)
     }
 
@@ -140,17 +140,17 @@ extension LeftoversEngine: LeftoversWork {}
     /// only its second half here: `.disabled(lvm.busy)` was one redraw away from
     /// being everything that stood between a press and the selection changing
     /// under a report about to arrive.
-    public func tickAll() {
+    func tickAll() {
         guard !busy else { return }
         selected = selectablePaths
     }
 
-    public func untickAll() {
+    func untickAll() {
         guard !busy else { return }
         selected.removeAll()
     }
 
-    public func setTicked(_ ticked: Bool, path: String) {
+    func setTicked(_ ticked: Bool, path: String) {
         guard !busy else { return }
         if ticked { selected.insert(path) } else { selected.remove(path) }
     }
@@ -178,7 +178,7 @@ extension LeftoversEngine: LeftoversWork {}
     /// would refuse that one too and leave the list showing rows that are already
     /// in the Trash — the inert half of a fix that looks most careful where it does
     /// the most harm, which is the trap `dropHiddenSelections` records.
-    public func scan() async {
+    func scan() async {
         guard !busy, !stopped else { return }
         await reload()
     }
@@ -211,7 +211,7 @@ extension LeftoversEngine: LeftoversWork {}
     /// them: it rescans, so the fresh `items` land on top of the list the removal
     /// is about to report on. The page dims the button as well — both, or neither
     /// is reliable (ARCHITECTURE.md § One removal at a time).
-    public func setDisabled(_ disabled: Bool, item: StaleItem) async {
+    func setDisabled(_ disabled: Bool, item: StaleItem) async {
         guard !busy, !stopped else { return }
         await work.setDisabled(LeftoversToggle(label: item.identifier, path: item.path,
                                                disabled: disabled))
@@ -219,11 +219,11 @@ extension LeftoversEngine: LeftoversWork {}
     }
 
     /// Deletes one item, in use or not — the row asks first when it matters.
-    public func remove(_ item: StaleItem) async {
+    func remove(_ item: StaleItem) async {
         await trash([item.path])
     }
 
-    public func removeSelected() async {
+    func removeSelected() async {
         // `visibleItems`, not `items`. A tick made while the list showed
         // everything survived a switch back to the filtered view: the row
         // disappeared, `selected` kept its path, the count and the size on

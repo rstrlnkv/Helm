@@ -225,8 +225,9 @@ struct LeftoversScanner: Sendable {
         return source.entries
             .filter { $0.pathExtension == "plist" }
             .map { url in
-                // 542 of these here, each asking Foundation for resource values
-                // — the bulk case the house rule is written for.
+                // 542 of these here. The loop asks no resource values (size is
+                // `FileWeight.allocated`); this is the pool `AScanKeepsWhatItFoundTests`
+                // measures, so it stays.
                 autoreleasepool {
                 let identifier = url.deletingPathExtension().lastPathComponent
                 return StaleItem(path: url.path, identifier: identifier,

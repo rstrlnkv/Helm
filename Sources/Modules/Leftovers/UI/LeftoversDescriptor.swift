@@ -38,9 +38,7 @@ import Module_Leftovers_Engine
         return ModuleParts(engine: engine, model: LeftoversViewModel(work: engine))
     }
 
-    /// Closes the model; the host calls it before the engine's `deactivate()`: on
-    /// the person's switch after `willDisable()` has given the switches back, and
-    /// on quit, where no `willDisable()` runs.
+    /// Closes the model; when the host calls it is `LeftoversViewModel.stop()`'s doc.
     public func stop(_ model: LeftoversViewModel) { model.stop() }
 
     public func menuBar(_ model: LeftoversViewModel) -> MenuBarContribution? { .utility }
