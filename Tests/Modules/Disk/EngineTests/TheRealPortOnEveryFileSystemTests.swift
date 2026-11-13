@@ -19,6 +19,7 @@ import HelmTestSupport
 /// - filled until the write fails, every file system reads under 4 MB on the
 ///   plain key; how close the two keys sit on a full disk is asserted as a
 ///   megabyte, not as equality.
+/// Past defect: fixed in commit 4ce355a9.
 final class TheRealPortOnEveryFileSystemTests: XCTestCase {
 
     private let fileSystems = ["ExFAT", "MS-DOS FAT32", "MS-DOS", "HFS+", "APFS"]

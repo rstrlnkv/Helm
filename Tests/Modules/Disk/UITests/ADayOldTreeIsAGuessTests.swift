@@ -15,6 +15,7 @@ import HelmRuntime
 ///
 /// `now:` is a parameter of the method for exactly this reason — the clock is
 /// not something a test may wait for — so nothing here sleeps.
+/// Past defect: fixed in commit 841b9c26.
 @MainActor
 final class ADayOldTreeIsAGuessTests: XCTestCase {
 

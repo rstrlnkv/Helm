@@ -5,8 +5,8 @@ import XCTest
 ///
 /// These two units are used one after the other — the view model splices the
 /// fresh subtree, rebuilds the focus by path, and then asks for the chain down
-/// to the folder the user clicked. Each is tested on its own elsewhere; what
-/// matters here is that a node put in by one is reachable by the other, and
+/// to the folder the user clicked. The splice and the chain are tested here, and
+/// what matters is that a node put in by one is reachable by the other, and
 /// that the shapes the whole-disk scan produces are among them.
 /// Past defect: fixed in commit 6c7f39b5.
 final class DiskSpliceReachabilityTests: XCTestCase {

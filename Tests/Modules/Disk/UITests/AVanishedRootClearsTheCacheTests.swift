@@ -19,6 +19,7 @@ import XCTest
 /// is watched happening, so this watches it — and asserts the fixture was
 /// restored at all first, because a page that restored nothing clears nothing
 /// and would pass this for free.
+/// Past defect: fixed in commit ab5ee725.
 @MainActor
 final class AVanishedRootClearsTheCacheTests: XCTestCase {
 

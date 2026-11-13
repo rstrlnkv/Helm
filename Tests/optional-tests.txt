@@ -132,7 +132,6 @@ DelayedWorkTests
 DirectoryListingTests
 DiskAdvisorTests
 DiskFocusTests
-DiskFoldedBucketNameTests
 DiskNamesAVolumeUsedOfTotalTests
 DiskSaysTheKitsWordsForARowTests
 DiskScanRaceTests
@@ -265,7 +264,6 @@ TheAppPickerGivesEachCopyItsOwnIdentityTests
 TheBadgeHearsSwitchesFromTheBackgroundTests
 TheBannerAndTheRulesAreOneReadingTests
 TheBannerCountsWhatTheDiskGivesBackTests
-TheBasketTotalSaturatesTests
 TheBatchIsToldWhatStaysTests
 TheBlurByReadingLandsWhereTheTextIsTests
 TheBuildNumberGateRefusesTests

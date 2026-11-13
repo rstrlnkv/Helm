@@ -22,6 +22,7 @@ import HelmUI
 /// removal is a no-op — it passes with the arithmetic never running — so the
 /// arithmetic is pinned here, on the single-volume path the button actually
 /// takes.
+/// Past defect: fixed in commit 9e9734fb.
 @MainActor
 final class TrashIsNotFreedSpaceTests: XCTestCase {
 

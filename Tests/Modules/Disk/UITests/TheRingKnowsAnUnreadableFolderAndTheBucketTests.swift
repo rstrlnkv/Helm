@@ -14,6 +14,7 @@ import HelmRuntime
 /// "other" one. The mapping is private, so this reads what it feeds: the
 /// segments the model hands the ring. Drawing the wedge is the look and is
 /// proved by a shot, not here.
+/// Past defect: fixed in commit 394d0a2b.
 @MainActor
 final class TheRingKnowsAnUnreadableFolderAndTheBucketTests: XCTestCase {
 

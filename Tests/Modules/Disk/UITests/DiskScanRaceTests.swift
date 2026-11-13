@@ -18,6 +18,7 @@ import HelmTestSupport
 /// The work is hand-cranked: every scan parks until the test releases it, and
 /// updates are pushed by hand through the sink that scan was given, so the
 /// interleaving is chosen rather than raced.
+/// Past defect: fixed in commit 9f48f0ea.
 @MainActor
 final class DiskScanRaceTests: XCTestCase {
 

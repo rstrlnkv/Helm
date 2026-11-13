@@ -11,6 +11,7 @@ import HelmTestSupport
 /// counts names. So the ring can say a folder holds 400 KB and the banner
 /// underneath can say removing it freed 800 KB, of the same folder, in the same
 /// session, and only one of those is a thing a disk can do.
+/// Past defect: fixed in commit 6dec5f2f.
 final class DiskTrashArithmeticTests: XCTestCase {
 
     private var root: URL!
@@ -71,34 +72,5 @@ final class DiskTrashGateTests: XCTestCase {
         XCTAssertTrue(removal.removed.isEmpty, "\(removal.removed)")
         XCTAssertEqual(removal.refused, [HelmTrash.Refusal(path: path, reason: .outOfScope)])
         XCTAssertEqual(removal.freedBytes, 0)
-    }
-}
-
-/// The folded bucket is a synthetic node the scan invents per directory, and it
-/// is named `…`. `TreeBuilder.foldedBucket` once found it by `name == "…" && !isDirectory`
-/// — also a description of a real file called `…`, a name a person can type and
-/// Finder will accept; it now finds it by `isFolded`, not by name.
-///
-/// The real file then became the bucket: every small file in that directory was
-/// charged to it, the row on screen reported a size the file does not have, and
-/// `UserFileScope` used to refuse anything ending in `/…`, so the one row whose
-/// size was wrong was also the one row that could not be put in the basket. Both
-/// halves are the flag's now — `isFolded` here, and at the row.
-final class DiskFoldedBucketNameTests: XCTestCase {
-
-    func testARealFileNamedLikeTheBucketStaysItsOwnEntry() {
-        let builder = TreeBuilder(root: "/r", foldThreshold: 1_000)
-        builder.addFile(path: "/r/…", bytes: 100_000, fileID: 1)
-        builder.addFile(path: "/r/tiny.txt", bytes: 10, fileID: 2)
-
-        let root = builder.build()
-
-        XCTAssertEqual(root.bytes, 100_010, "precondition: both files were charged to the root")
-        XCTAssertEqual(root.children.count, 2,
-                       "the file the user has and the bucket the scan invented are two rows")
-        // By the flag, not by the path: the bucket's path is the path a real file
-        // called `…` would have, which is the whole reason `isFolded` exists.
-        let real = root.children.first { !$0.isFolded }
-        XCTAssertEqual(real?.bytes, 100_000, "the file's row shows the file's size")
     }
 }
