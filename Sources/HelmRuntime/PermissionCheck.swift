@@ -143,6 +143,11 @@ public extension PermissionCheck {
         open("x-apple.systempreferences:com.apple.Keyboard-Settings.extension")
     }
 
+    /// System Settings → Network, the extension's own identifier.
+    static func openNetworkSettings() {
+        open("x-apple.systempreferences:com.apple.Network-Settings.extension")
+    }
+
     static func openScreenRecordingSettings() {
         open("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
     }

@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 import HelmRuntime
 import HelmUI
 import Module_VPN_Engine
@@ -198,13 +197,7 @@ struct VPNSettingsPage: View {
                            title: VPNStr.noVPNsSystem,
                            message: VPNStr.noVPNsExplain,
                            note: VPNStr.noVPNsNote) {
-                Button(VPNStr.openNetworkSettings) {
-                    // The pane's own identifier, the way `PermissionNeed` opens
-                    // the privacy panes.
-                    if let url = URL(string: "x-apple.systempreferences:com.apple.Network-Settings.extension") {
-                        NSWorkspace.shared.open(url)
-                    }
-                }
+                Button(VPNStr.openNetworkSettings) { PermissionCheck.openNetworkSettings() }
                 .buttonStyle(.borderedProminent)
             }
         } else {

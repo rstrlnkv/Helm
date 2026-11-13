@@ -22,8 +22,6 @@ final class ANameIsNotAnIdentityTests: XCTestCase {
 
     private let clock = TestClock()
 
-    private var at: Date { clock.now }
-
     private func row(_ status: String, _ id: String, _ name: String) -> String {
         "* (\(status)) \(id) IPSec \"\(name)\" [IPSec:1]"
     }

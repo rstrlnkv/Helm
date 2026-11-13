@@ -4,9 +4,7 @@
 import XCTest
 import SwiftUI
 import AppKit
-import HelmContract
 import HelmRuntime
-import HelmUI
 import HelmTestSupport
 @testable import Module_VPN_Engine
 @testable import Module_VPN_UI

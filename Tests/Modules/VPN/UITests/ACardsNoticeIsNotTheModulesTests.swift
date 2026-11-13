@@ -3,7 +3,6 @@
 
 import XCTest
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
 @testable import Module_VPN_Engine

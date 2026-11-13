@@ -95,7 +95,6 @@ final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
     /// nothing can go by unseen.
     private func waitForState(_ news: EngineNews<VPNEngine.StatePayload>, _ what: String,
                               until matches: @escaping @Sendable (VPNEngine.StatePayload) -> Bool,
-                              file: StaticString = #filePath, line: UInt = #line,
                               during act: () async -> Void) async {
         let arrived = XCTestExpectation(description: what)
         let watcher = watchState(news, until: matches, then: arrived)

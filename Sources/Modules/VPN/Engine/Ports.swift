@@ -110,6 +110,11 @@ public protocol VPNRunnerPort: AnyObject {
 /// (Homebrew's ninety seconds is for queries that reach the network).
 public let vpnReadDeadline: TimeInterval = 5
 
+/// Why a read answered nothing, in the words the log carries.
+func vpnReadFailureReason(_ status: Int32) -> String {
+    status == HelmProcess.timedOutStatus ? "timed out after \(Int(vpnReadDeadline)) s" : "exit status \(status)"
+}
+
 /// What `VPNRunnerPort.start(_:supplying:)` found. **No text, so no name in
 /// it** — the system's error is a number, and a number names nobody's VPN.
 public enum VPNStartAnswer: Equatable, Sendable {

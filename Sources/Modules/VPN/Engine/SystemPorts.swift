@@ -331,7 +331,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
         // no tunnel. The engine neither starts nor announces on `.unreadable`.
         if shown.status != 0 {
             HelmLog.shared.warn(VPNEngine.moduleID, "the configuration of \(Redact.vpn(name)) could not be read "
-                + "(\(shown.status == HelmProcess.timedOutStatus ? "timed out after \(Int(vpnReadDeadline)) s" : "exit status \(shown.status)")); "
+                + "(\(vpnReadFailureReason(shown.status))); "
                 + "the secret is not known")
             return .unreadable
         }
