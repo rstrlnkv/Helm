@@ -69,18 +69,14 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
     }
 
     private final class Tap: KeyTapPort, @unchecked Sendable {
-        var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-        var modifiers: (@Sendable (ModifierTap.Input) -> Void)?
         var grant = true
         func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
                    onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
                    died: @escaping @Sendable () -> Void) -> Bool {
             guard grant else { return false }
-            handler = onEvent
-            modifiers = onModifier
             return true
         }
-        func stop() { handler = nil; modifiers = nil }
+        func stop() {}
     }
 
     private final class Sources: LayoutSourcePort, @unchecked Sendable {
@@ -120,8 +116,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
         "ru>en": ["привет": "ghbdtn", "дфых": "las["],
     ]
 
-    private func engine(current: String,
-                        exceptions: [String],
+    private func engine(exceptions: [String],
                         typing: Typing,
                         selection: Selection,
                         sources: Sources) -> LayoutEngine {
@@ -147,7 +142,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
         let typing = Typing()
         let selection = Selection()
         selection.treeText = "ghbdtn"
-        let engine = engine(current: "en", exceptions: [], typing: typing,
+        let engine = engine(exceptions: [], typing: typing,
                             selection: selection,
                             sources: Sources(current: "en", installed: ["en", "ru"]))
         engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Notes")
@@ -166,7 +161,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
         let typing = Typing()
         let selection = Selection()
         selection.treeText = "ghbdtn"
-        let engine = engine(current: "en", exceptions: ["ghbdtn"], typing: typing,
+        let engine = engine(exceptions: ["ghbdtn"], typing: typing,
                             selection: selection,
                             sources: Sources(current: "en", installed: ["en", "ru"]))
         engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Notes")
@@ -186,7 +181,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
         let typing = Typing()
         let selection = Selection()
         selection.treeText = "ghbdtn"
-        let engine = engine(current: "en", exceptions: ["привет"], typing: typing,
+        let engine = engine(exceptions: ["привет"], typing: typing,
                             selection: selection,
                             sources: Sources(current: "en", installed: ["en", "ru"]))
         engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Notes")
@@ -212,7 +207,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
         let typing = Typing()
         let selection = Selection()
         selection.treeText = "дфых"
-        let engine = engine(current: "ru", exceptions: [], typing: typing,
+        let engine = engine(exceptions: [], typing: typing,
                             selection: selection,
                             sources: Sources(current: "ru", installed: ["ru", "en"]))
         engine.convertSelection(selected: "дфых", readIn: "com.apple.Notes")

@@ -1,5 +1,4 @@
 import XCTest
-import HelmContract
 import HelmTestSupport
 @testable import Module_Layout_Engine
 @testable import Module_Layout_UI

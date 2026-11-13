@@ -23,7 +23,7 @@ import Foundation
 /// `ConversionTriggersTests` used that freedom to plant `onReturn: true`, a
 /// state production cannot reach, and prove a branch nothing runs. A fake freer
 /// than the port proves nothing about the port.
-public enum ConversionTriggers {
+enum ConversionTriggers {
 
     /// Return does **not** confirm, and that is not timidity. In Slack,
     /// Telegram and every other chat, Return sends the message and empties the
@@ -32,7 +32,7 @@ public enum ConversionTriggers {
     /// the mistyped word and then a second message with the correction. It
     /// would belong on only where Return means a line break, and no switch can
     /// know which app that is.
-    public static func converts(_ event: TypingBuffer.Event) -> Bool {
+    static func converts(_ event: TypingBuffer.Event) -> Bool {
         switch event {
         case .space: return true
         case .newline: return false

@@ -1,6 +1,5 @@
 import HelmTestSupport
 import XCTest
-@testable import Module_Layout_Engine
 
 /// Every event this module builds takes its source from `helmEventSource()`, the one
 /// place that sets the event marker `CGKeyTap.deliver` drops.

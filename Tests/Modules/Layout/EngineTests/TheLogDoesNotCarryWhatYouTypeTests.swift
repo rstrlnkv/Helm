@@ -51,12 +51,10 @@ final class TheLogDoesNotCarryWhatYouTypeTests: XCTestCase {
 
     private final class FakeTap: KeyTapPort, @unchecked Sendable {
         var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-        var modifiers: (@Sendable (ModifierTap.Input) -> Void)?
         func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
                    onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
                    died: @escaping @Sendable () -> Void) -> Bool {
             handler = onEvent
-            modifiers = onModifier
             return true
         }
         func stop() { handler = nil }

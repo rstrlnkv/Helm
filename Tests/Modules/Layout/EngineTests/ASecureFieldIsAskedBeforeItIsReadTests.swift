@@ -158,7 +158,7 @@ final class ASecureFieldIsAskedBeforeItIsReadTests: XCTestCase {
             the password was pulled out of the accessibility tree before anybody \
             asked whether the field was a password. The role check and the \
             selection read go to the same focused element one round trip apart, \
-            so asking first is free — and the page promises a secure field is \
+            and the page promises a secure field is \
             «skipped whole», not read and then discarded.
             """)
         XCTAssertEqual(selection.replaced, [],

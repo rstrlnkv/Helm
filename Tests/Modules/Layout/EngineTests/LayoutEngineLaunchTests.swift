@@ -39,15 +39,13 @@ private struct LaunchSpell: SpellPort {
 
 private final class LaunchTap: KeyTapPort, @unchecked Sendable {
     var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-    var modifiers: (@Sendable (ModifierTap.Input) -> Void)?
     func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
                onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
                died: @escaping @Sendable () -> Void) -> Bool {
         handler = onEvent
-        modifiers = onModifier
         return true
     }
-    func stop() { handler = nil; modifiers = nil }
+    func stop() { handler = nil }
     func type(_ text: String) { for character in text { handler?(.character(character)) } }
     func send(_ event: TypingBuffer.Event) { handler?(event) }
 }

@@ -76,6 +76,8 @@ enum EmojiPalette {
     /// Presses the frontmost app's own «Emoji & Symbols» item. False when
     /// macOS withholds Accessibility, when nothing is frontmost, or when the
     /// app's menus carry no such item — the caller says no the audible way.
+    /// Reads `NSWorkspace.frontmostApplication` on main itself because it needs
+    /// the pid, which `FrontmostApp` does not offer.
     @MainActor static func openInFrontmostApp() -> Bool {
         guard AXIsProcessTrusted(),
               let front = NSWorkspace.shared.frontmostApplication else { return false }

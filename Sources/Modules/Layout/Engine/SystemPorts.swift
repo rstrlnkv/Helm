@@ -821,7 +821,7 @@ private func systemFocusedElement() -> AXUIElement? {
                                         &focused) == .success,
           let element = focused, CFGetTypeID(element) == AXUIElementGetTypeID()
     else { return nil }
-    return unsafeBitCast(element, to: AXUIElement.self)
+    return unsafeDowncast(element, to: AXUIElement.self)
 }
 
 // MARK: - AppActivation

@@ -48,11 +48,6 @@ private final class EdgeTap: KeyTapPort, @unchecked Sendable {
         modifiers = onModifier
         return true
     }
-    /// One clean press and release of the bound key.
-    func tapKey(_ code: Int64, at: TimeInterval = 0) {
-        modifiers?(.down(code, at: at, othersHeld: false))
-        modifiers?(.up(code, at: at + 0.05))
-    }
     func stop() { handler = nil }
     func type(_ text: String) { for character in text { handler?(.character(character)) } }
     func send(_ event: TypingBuffer.Event) { handler?(event) }

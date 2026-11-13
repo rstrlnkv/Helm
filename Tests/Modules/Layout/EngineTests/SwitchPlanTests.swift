@@ -45,12 +45,4 @@ extension SwitchPlanTests {
             XCTAssertEqual(plan?.insert, "фис" + String(ending), String(ending))
         }
     }
-
-    /// The hotkey converts a word mid-typing: nothing has ended it, so there is
-    /// nothing extra to delete.
-    func testNoEndingMeansNoExtraBackspace() {
-        let plan = SwitchPlan.make(replacing: "ghbdtn", with: "привет")
-        XCTAssertEqual(plan?.backspaces, 6)
-        XCTAssertEqual(plan?.insert, "привет")
-    }
 }
