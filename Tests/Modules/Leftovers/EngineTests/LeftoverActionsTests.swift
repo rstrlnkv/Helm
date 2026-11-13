@@ -37,6 +37,14 @@ final class LeftoverActionsTests: XCTestCase {
         XCTAssertFalse(actions.contains(.delete))
     }
 
+    /// A daemon is never deleted from here, writable file or not: unloading it
+    /// needs root, and a file moved out from under a loaded daemon is not a stop.
+    func testAWritableDaemonStillHasNoDelete() {
+        let actions = LeftoverActions.available(
+            for: item(.launchDaemon, .orphaned, path: "/tmp/com.acme.helper.plist", writable: true))
+        XCTAssertFalse(actions.contains(.delete))
+    }
+
     func testDaemonsOfferNothingButReveal() {
         let actions = LeftoverActions.available(for: item(.launchDaemon, .inUse, writable: false))
         XCTAssertEqual(actions, [.reveal])

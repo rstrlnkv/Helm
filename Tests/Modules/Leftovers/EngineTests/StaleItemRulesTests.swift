@@ -88,6 +88,15 @@ final class StaleItemRulesTests: XCTestCase {
     }
 
     /// Shared plumbing that belongs to no single app.
+    /// A helper carries its owner's id as a prefix. The vendor rule below it only
+    /// sees owners with two or more components, so the prefix rule is the only
+    /// one that keeps a helper of a one-component owner.
+    func testAHelperOfAnInstalledAppIsKeptByItsOwnersPrefix() {
+        XCTAssertFalse(StaleItemRules.isRemovable(
+            identifier: "acme.tool.helper", path: "/Users/x/Library/Preferences/acme.tool.helper.plist",
+            ownerInstalled: false, installedIDs: ["acme"]))
+    }
+
     func testSharedAndSystemNamespacesAreNeverOffered() {
         for id in ["systemgroup.com.apple.icloud.searchpartyd.sharedsettings",
                    "group.com.firecore.infuse.firebase",

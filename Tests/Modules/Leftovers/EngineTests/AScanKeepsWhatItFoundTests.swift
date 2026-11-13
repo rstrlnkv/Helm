@@ -36,6 +36,8 @@ import XCTest
 /// `LeftoversScanner.isItsOwnPlace` refuses a source that is not the directory it
 /// names — so a scratch home handed over unresolved makes every source skipped
 /// and the scan measures nothing while looking exactly like a scan.
+///
+/// Past defect: fixed in `5603872d`.
 final class AScanKeepsWhatItFoundTests: XCTestCase {
 
     /// Enough files that the per-item figure is about the loop rather than about

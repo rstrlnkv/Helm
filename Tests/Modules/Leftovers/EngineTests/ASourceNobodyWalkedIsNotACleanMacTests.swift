@@ -34,6 +34,8 @@ import XCTest
 /// ordinary version itself: «anybody who has ever symlinked a plug-in folder onto
 /// another volume». One of the eight is enough, because it is the *filtered* list
 /// that has to be empty for this message, not the scan.
+///
+/// Past defect: fixed in `5603872d`.
 final class ASourceNobodyWalkedIsNotACleanMacTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 

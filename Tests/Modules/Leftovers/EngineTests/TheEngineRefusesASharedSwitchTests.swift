@@ -1,4 +1,6 @@
 import Foundation
+import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Leftovers_Engine
 
@@ -50,7 +52,8 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
         let recorder = LeftoversFakeSwitcher()
         let engine = LeftoversEngine(home: home, files: files(shared: true),
                                      apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
-                                     switcher: recorder)
+                                     switcher: recorder,
+                                     store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
 
         await send(LeftoversToggle(label: label, path: path, disabled: true), to: engine)
 
@@ -69,7 +72,8 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
         let recorder = LeftoversFakeSwitcher()
         let engine = LeftoversEngine(home: home, files: files(shared: false),
                                      apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
-                                     switcher: recorder)
+                                     switcher: recorder,
+                                     store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
 
         await send(LeftoversToggle(label: label, path: path, disabled: true), to: engine)
 
@@ -82,7 +86,8 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
         let recorder = LeftoversFakeSwitcher()
         let engine = LeftoversEngine(home: home, files: files(shared: true),
                                      apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
-                                     switcher: recorder)
+                                     switcher: recorder,
+                                     store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
 
         await send(LeftoversToggle(label: label,
                                    path: "/Library/LaunchAgents/\(label).plist",

@@ -45,6 +45,8 @@ import XCTest
 /// row that offers a switch nothing can throw does not.
 ///
 /// Expected to fail until one of those lands.
+///
+/// Past defect: fixed in `6de0a337`.
 final class ASwitchTheSystemWillRefuseTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 

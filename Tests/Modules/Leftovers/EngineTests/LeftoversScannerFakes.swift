@@ -131,16 +131,18 @@ struct LeftoversFakeLoaded: LoadedItemsPort {
 /// the login items of whoever runs the suite.
 ///
 /// `setDisabled` returns nothing in the port, so there is no refusal for this to
-/// be freer or poorer about; what it records is the whole of the observable act.
+/// be freer or poorer about; what it records is the whole of the observable act,
+/// the direction included: a give-back is `disabled == false`.
 final class LeftoversFakeSwitcher: LoginItemSwitchPort, @unchecked Sendable {
     private let lock = NSLock()
-    private var seen: [String] = []
+    private var seen: [(label: String, disabled: Bool)] = []
     func setDisabled(_ disabled: Bool, label: String) {
         lock.lock(); defer { lock.unlock() }
-        seen.append(label)
+        seen.append((label, disabled))
     }
-    var labels: [String] {
+    var calls: [(label: String, disabled: Bool)] {
         lock.lock(); defer { lock.unlock() }
         return seen
     }
+    var labels: [String] { calls.map(\.label) }
 }

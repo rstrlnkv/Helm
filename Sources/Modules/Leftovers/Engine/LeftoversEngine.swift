@@ -37,13 +37,18 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
                 apps: InstalledAppsPort = WorkspaceInstalledApps(),
                 loaded: LoadedItemsPort = ActiveExtensions(),
                 switcher: LoginItemSwitchPort = ActiveExtensions(),
-                store: NamespacedStore = NamespacedStore(namespace: LeftoversEngine.moduleID,
-                                                         backing: UserDefaults.standard)) {
+                store: NamespacedStore = LeftoversEngine.defaultStore(backing: UserDefaults.standard)) {
         self.switcher = switcher
         self.home = home
         self.files = files
         self.store = store
         self.scanner = LeftoversScanner(home: home, files: files, apps: apps, extensions: loaded)
+    }
+
+    /// The store the init default uses; a seam so a test can read the raw stored
+    /// key (`module.leftovers.disabledByHelm`) over an in-memory backing.
+    public static func defaultStore(backing: KeyValueStore) -> NamespacedStore {
+        NamespacedStore(namespace: moduleID, backing: backing)
     }
 
     public func activate() {}

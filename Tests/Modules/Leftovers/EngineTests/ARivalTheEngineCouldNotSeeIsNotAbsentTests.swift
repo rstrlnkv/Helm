@@ -1,4 +1,6 @@
 import Foundation
+import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Leftovers_Engine
 
@@ -64,7 +66,8 @@ final class ARivalTheEngineCouldNotSeeIsNotAbsentTests: XCTestCase {
     private func engine(_ files: LeftoversFakeFiles,
                         _ recorder: LeftoversFakeSwitcher) -> LeftoversEngine {
         LeftoversEngine(home: home, files: files, apps: LeftoversFakeApps(),
-                        loaded: LeftoversFakeLoaded(), switcher: recorder)
+                        loaded: LeftoversFakeLoaded(), switcher: recorder,
+                        store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
     }
 
     private func press(_ path: String, on engine: LeftoversEngine) async {

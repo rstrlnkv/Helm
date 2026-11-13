@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 import Module_Leftovers_Engine
 @testable import Module_Leftovers_UI
 
@@ -16,6 +17,8 @@ import Module_Leftovers_Engine
 /// this is about is *two* requests outstanding at once: a fake that could only
 /// hold one open could not represent the moment the defect lives in (CLAUDE.md §
 /// What not to do, and what breaks if you do).
+///
+/// Past defect: fixed in `4c8bbed9`.
 @MainActor
 final class TwoScansLandInRequestOrderTests: XCTestCase {
 
@@ -81,9 +84,9 @@ final class TwoScansLandInRequestOrderTests: XCTestCase {
         let model = LeftoversViewModel(work: work)
 
         let older = Task { await model.scan() }
-        for _ in 0..<50 where work.requests < 1 { await Task.yield() }
+        await waitUntil("scan 1 reaches the fake") { work.requests >= 1 }
         let newer = Task { await model.scan() }
-        for _ in 0..<50 where work.requests < 2 { await Task.yield() }
+        await waitUntil("scan 2 reaches the fake") { work.requests >= 2 }
         XCTAssertEqual(work.requests, 2, "precondition: two scans are in flight at once")
 
         work.answer(1)
@@ -106,9 +109,9 @@ final class TwoScansLandInRequestOrderTests: XCTestCase {
         let model = LeftoversViewModel(work: work)
 
         let older = Task { await model.scan() }
-        for _ in 0..<50 where work.requests < 1 { await Task.yield() }
+        await waitUntil("scan 1 reaches the fake") { work.requests >= 1 }
         let newer = Task { await model.scan() }
-        for _ in 0..<50 where work.requests < 2 { await Task.yield() }
+        await waitUntil("scan 2 reaches the fake") { work.requests >= 2 }
 
         work.answer(0)
         await older.value
@@ -150,7 +153,7 @@ final class TwoScansLandInRequestOrderTests: XCTestCase {
 
         // The scan that builds the list, answered.
         let first = Task { await model.scan() }
-        for _ in 0..<50 where work.requests < 1 { await Task.yield() }
+        await waitUntil("scan 1 reaches the fake") { work.requests >= 1 }
         work.answer(0)
         await first.value
         model.selected = Set(model.selectablePaths)
@@ -158,12 +161,12 @@ final class TwoScansLandInRequestOrderTests: XCTestCase {
 
         // The person presses Scan again — it reaches the fake and stays there.
         let theirs = Task { await model.scan() }
-        for _ in 0..<50 where work.requests < 2 { await Task.yield() }
+        await waitUntil("scan 2 reaches the fake") { work.requests >= 2 }
         XCTAssertEqual(work.requests, 2, "precondition: their scan is in flight")
 
         // And then the removal runs to completion, rescan and all.
         let removal = Task { await model.removeSelected() }
-        for _ in 0..<200 where work.requests < 3 { await Task.yield() }
+        await waitUntil("scan 3 reaches the fake") { work.requests >= 3 }
         XCTAssertEqual(work.requests, 3,
                        "precondition: the removal made its own rescan while theirs was still out")
         work.answer(2)

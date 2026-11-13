@@ -54,7 +54,8 @@ final class TheLogDoesNotNameTheSoftwareTests: XCTestCase {
         let inScope = home.appendingPathComponent("Library/Preferences/\(bundleID).plist").path
         _ = await LeftoversEngine(home: home, files: LeftoversFakeFiles(),
                                   apps: LeftoversFakeApps(), loaded: LeftoversFakeLoaded(),
-                                  switcher: LeftoversFakeSwitcher())
+                                  switcher: LeftoversFakeSwitcher(),
+                                  store: NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)", backing: InMemoryKeyValueStore()))
             .trash([outOfScope, inScope])
         return lines
     }

@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 import Module_Leftovers_Engine
 @testable import Module_Leftovers_UI
 
@@ -79,14 +80,15 @@ final class OneRemovalAtATimeTests: XCTestCase {
 
         let first = Task { await model.removeSelected() }
         // Let the first reach the fake and suspend inside it.
-        for _ in 0..<50 where work.trashRequests == 0 { await Task.yield() }
+        await waitUntil("the removal reaches the fake") { work.trashRequests == 1 }
         XCTAssertEqual(work.trashRequests, 1, "precondition: the first removal is in flight")
 
         // The second press is a task as well: without the gate it reaches the
         // held fake and stays there, so awaiting it here would hang the
         // test rather than fail it.
-        let second = Task { await model.removeSelected() }
-        for _ in 0..<50 { await Task.yield() }
+        var done = false
+        let second = Task { await model.removeSelected(); done = true }
+        await waitUntil("the refused second press completes") { done }
 
         XCTAssertEqual(work.trashRequests, 1,
                        "the batch was sent twice. The second round finds every path already "
@@ -105,7 +107,7 @@ final class OneRemovalAtATimeTests: XCTestCase {
         model.selected = Set(model.selectablePaths)
 
         let running = Task { await model.removeSelected() }
-        for _ in 0..<50 where work.trashRequests == 0 { await Task.yield() }
+        await waitUntil("the removal reaches the fake") { work.trashRequests == 1 }
 
         XCTAssertTrue(model.busy, "nothing on the page can tell that a removal is running")
 
@@ -129,11 +131,12 @@ final class OneRemovalAtATimeTests: XCTestCase {
         model.selected = Set(model.selectablePaths)
 
         let removal = Task { await model.removeSelected() }
-        for _ in 0..<50 where work.trashRequests == 0 { await Task.yield() }
+        await waitUntil("the removal reaches the fake") { work.trashRequests == 1 }
         XCTAssertEqual(work.trashRequests, 1, "precondition: the removal is in flight")
 
-        let press = Task { await model.setDisabled(true, item: one) }
-        for _ in 0..<50 { await Task.yield() }
+        var done = false
+        let press = Task { await model.setDisabled(true, item: one); done = true }
+        await waitUntil("the refused switch press completes") { done }
 
         XCTAssertEqual(work.setDisabledRequests, 0,
                        "launchd was asked to switch a job off in the middle of a removal, and "
@@ -164,11 +167,12 @@ final class OneRemovalAtATimeTests: XCTestCase {
         XCTAssertEqual(before, 1, "precondition: the first scan reached the engine's place")
 
         let removal = Task { await model.removeSelected() }
-        for _ in 0..<50 where work.trashRequests == 0 { await Task.yield() }
+        await waitUntil("the removal reaches the fake") { work.trashRequests == 1 }
         XCTAssertEqual(work.trashRequests, 1, "precondition: the removal is in flight")
 
-        let press = Task { await model.scan() }
-        for _ in 0..<50 { await Task.yield() }
+        var done = false
+        let press = Task { await model.scan(); done = true }
+        await waitUntil("the refused scan press completes") { done }
 
         XCTAssertEqual(work.scanRequests, before,
                        "the toolbar's Scan started a scan in the middle of a removal, and its "
@@ -193,11 +197,12 @@ final class OneRemovalAtATimeTests: XCTestCase {
         model.selected = [one.path]
 
         let removal = Task { await model.removeSelected() }
-        for _ in 0..<50 where work.trashRequests == 0 { await Task.yield() }
+        await waitUntil("the removal reaches the fake") { work.trashRequests == 1 }
         XCTAssertEqual(work.trashRequests, 1, "precondition: the removal is in flight")
 
-        let fromTheMenu = Task { await model.remove(two) }
-        for _ in 0..<50 { await Task.yield() }
+        var done = false
+        let fromTheMenu = Task { await model.remove(two); done = true }
+        await waitUntil("the refused delete from the menu completes") { done }
 
         XCTAssertEqual(work.trashRequests, 1,
                        "a second batch went out from the row's menu while the first was still "

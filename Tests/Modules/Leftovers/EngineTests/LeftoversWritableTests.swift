@@ -27,6 +27,8 @@ import XCTest
 /// of this target since 2026-08-13, because the two fakes that folded writability
 /// to a single flag could not describe one scan with both answers in it. The last
 /// test below is the case they made unwritable.
+///
+/// Past defect: fixed in `e9dd8a65`.
 final class LeftoversWritableTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 

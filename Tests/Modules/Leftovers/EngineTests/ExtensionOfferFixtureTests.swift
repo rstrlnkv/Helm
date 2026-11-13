@@ -15,6 +15,8 @@ import HelmRuntime
 ///
 /// This is the `LaunchctlDisabledTests` shape: a parameter varied between
 /// fixtures that the code under test never reads.
+///
+/// Past defect: fixed in `51247cad`.
 final class ExtensionOfferFixtureTests: XCTestCase {
 
     private let home = URL(fileURLWithPath: "/Users/x")

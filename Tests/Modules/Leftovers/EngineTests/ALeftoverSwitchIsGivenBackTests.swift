@@ -64,12 +64,15 @@ final class ALeftoverSwitchIsGivenBackTests: XCTestCase {
 
         await e.setDisabled(true, label: "com.example.agent.one")
         await e.setDisabled(true, label: "com.example.agent.two")
-        let beforeGiveBack = switcher.labels.count
+        let beforeGiveBack = switcher.calls.count
 
         e.willDisable()
 
-        XCTAssertEqual(switcher.labels.count, beforeGiveBack + 2,
-                       "each recorded label is asked about a second time — the give-back")
+        let giveBack = switcher.calls.dropFirst(beforeGiveBack)
+        XCTAssertEqual(giveBack.map(\.label).sorted(),
+                       ["com.example.agent.one", "com.example.agent.two"])
+        XCTAssertTrue(giveBack.allSatisfy { !$0.disabled },
+                      "the give-back switches each label back on, never off again")
         XCTAssertEqual(store.stringArray("disabledByHelm"), [],
                        "the record is state, not a log: what has been given back is gone from it")
     }
@@ -81,5 +84,35 @@ final class ALeftoverSwitchIsGivenBackTests: XCTestCase {
         engine(switcher, store).willDisable()
         XCTAssertEqual(switcher.labels, [],
                        "an empty record must not become a sweep over the system's own list")
+    }
+
+    /// The record a shipped build wrote: a plain string array under
+    /// `disabledByHelm`. It must still be given back, whatever the build
+    /// that reads it is.
+    func testARecordTheShippedBuildWroteIsGivenBack() throws {
+        let switcher = LeftoversFakeSwitcher()
+        let store = NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)",
+                                    backing: InMemoryKeyValueStore())
+        store.set(["com.example.a", "com.example.b"], for: "disabledByHelm")
+
+        engine(switcher, store).willDisable()
+
+        XCTAssertEqual(switcher.calls.map(\.label).sorted(), ["com.example.a", "com.example.b"])
+        XCTAssertTrue(switcher.calls.allSatisfy { !$0.disabled })
+        XCTAssertEqual(store.stringArray("disabledByHelm"), [])
+    }
+
+    /// The full stored key, spelled out: the record sits under
+    /// `module.leftovers.disabledByHelm` in the default store. The tests above
+    /// pin the bare key only, through a namespace of their own.
+    func testTheDefaultStoreReadsTheKeyTheShippedBuildWrote() throws {
+        let switcher = LeftoversFakeSwitcher()
+        let backing = InMemoryKeyValueStore()
+        backing.set(["com.example.a"], forKey: "module.leftovers.disabledByHelm")
+        let e = engine(switcher, LeftoversEngine.defaultStore(backing: backing))
+
+        e.willDisable()
+
+        XCTAssertEqual(switcher.calls.map(\.label), ["com.example.a"])
     }
 }

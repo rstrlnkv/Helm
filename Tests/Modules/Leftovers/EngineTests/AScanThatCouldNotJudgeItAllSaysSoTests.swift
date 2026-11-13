@@ -14,6 +14,8 @@ import Module_Leftovers_Engine
 ///
 /// So there is a fourth reason for an empty list, and it carries its own count —
 /// the sentence about it cannot be built from a number fetched separately.
+///
+/// Past defect: fixed in `10b8c705`.
 final class AScanThatCouldNotJudgeItAllSaysSoTests: XCTestCase {
 
     /// The three statuses that are a verdict, and the two that are the absence of

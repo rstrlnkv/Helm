@@ -166,6 +166,8 @@ final class LeftoversScanTests: XCTestCase {
 /// stable, so those two came back in whichever order the algorithm happened to
 /// leave them: pressing «Scan again» could swap the pair, in a list where the
 /// row above a checkbox is the whole of what the tick means.
+///
+/// Past defect: fixed in `5603872d`.
 final class ScanOrderIsTotalTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 

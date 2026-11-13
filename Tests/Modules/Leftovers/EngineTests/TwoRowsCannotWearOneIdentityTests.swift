@@ -34,6 +34,8 @@ import XCTest
 /// hands back; `LeftoversFakeLoaded` has always been able to hold it, and no test
 /// had used it — a capability of a fake nobody has exercised is a missing test,
 /// not dead weight (CLAUDE.md).
+///
+/// Past defect: fixed in `5603872d`.
 final class TwoRowsCannotWearOneIdentityTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 

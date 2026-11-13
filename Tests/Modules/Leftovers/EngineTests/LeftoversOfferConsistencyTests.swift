@@ -12,6 +12,8 @@ import XCTest
 ///
 /// Where the two disagree, the person is told both that this cannot be deleted
 /// and, by a ticked box in a batch of thirty, that it is about to be.
+///
+/// Past defect: fixed in `6dec5f2f`.
 final class LeftoversOfferConsistencyTests: XCTestCase {
 
     private let home = URL(fileURLWithPath: "/Users/x")
