@@ -32,16 +32,16 @@ public struct VPNNoticeBook: Equatable, Codable {
     /// One configuration's overrides. Every field is optional, and `nil` is the
     /// whole mechanism: it means «this one was never set, use what the app
     /// says».
-    public struct Entry: Equatable, Codable {
-        public var notice: VPNNotice?
-        public var drop: VPNNotice?
-        public var spin: Bool?
+    struct Entry: Equatable, Codable {
+        var notice: VPNNotice?
+        var drop: VPNNotice?
+        var spin: Bool?
         /// The colour the ring turns for a tunnel going **up**, and for one
         /// going down. Two fields for three kinds, the same arithmetic
         /// `VPNSettings.spinTint` does with its two keys: the ring says which
         /// way the tunnel went, and there are two ways.
-        public var tintUp: String?
-        public var tintDown: String?
+        var tintUp: String?
+        var tintDown: String?
 
         /// **Every field optional is the mechanism, and it is also what lets an
         /// older document decode.** Swift synthesises `decodeIfPresent` for an
@@ -57,7 +57,7 @@ public struct VPNNoticeBook: Equatable, Codable {
 
     private var entries: [String: Entry]
 
-    public init(entries: [String: Entry] = [:]) { self.entries = entries }
+    init(entries: [String: Entry] = [:]) { self.entries = entries }
 
     // MARK: - Reading
 
@@ -66,7 +66,7 @@ public struct VPNNoticeBook: Equatable, Codable {
     /// The kind→setting question stays `VPNNotice.mode`'s, so a teardown Helm
     /// performed and a tunnel that fell over cannot come to mean different
     /// things here than they do everywhere else.
-    public func notice(for id: String, kind: VPNAutomation.Kind,
+    func notice(for id: String, kind: VPNAutomation.Kind,
                        rules: VPNNotice, drop: VPNNotice) -> VPNNotice {
         let entry = entries[id]
         return VPNNotice.mode(for: kind,
@@ -125,7 +125,7 @@ public struct VPNNoticeBook: Equatable, Codable {
 
     // MARK: - The store
 
-    public static func encode(_ book: VPNNoticeBook) -> String {
+    static func encode(_ book: VPNNoticeBook) -> String {
         guard let data = try? JSONEncoder().encode(book.entries.filter { !$0.value.isEmpty }),
               let text = String(data: data, encoding: .utf8)
         else { return "{}" }
@@ -135,7 +135,7 @@ public struct VPNNoticeBook: Equatable, Codable {
     /// Anything that is not a book reads as an empty one, which **inherits**.
     /// The dangerous failure would be reading rubbish as silence: a person whose
     /// store was hand-edited would stop being told their tunnel fell over.
-    public static func decode(_ text: String) -> VPNNoticeBook {
+    static func decode(_ text: String) -> VPNNoticeBook {
         guard let data = text.data(using: .utf8),
               let entries = try? JSONDecoder().decode([String: Entry].self, from: data)
         else { return VPNNoticeBook() }

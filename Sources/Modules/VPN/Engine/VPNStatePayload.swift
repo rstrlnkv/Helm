@@ -114,7 +114,7 @@ public struct VPNTunnelState: Equatable, Sendable {
     /// can be withheld.
     public let measuring: Bool
 
-    public init(name: String, interface: String, since: Date?, bytesIn: UInt64?,
+    init(name: String, interface: String, since: Date?, bytesIn: UInt64?,
                 bytesOut: UInt64?, exit: VPNExitVerdict, speed: VPNSpeedReading?,
                 measuring: Bool = false,
                 excluded: VPNExcludedRoutes.Summary = .none) {

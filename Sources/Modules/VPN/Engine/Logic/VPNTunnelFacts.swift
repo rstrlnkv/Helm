@@ -28,7 +28,7 @@ public struct VPNTunnelFacts: Equatable, Sendable {
     /// The last measurement, whenever it was taken.
     public let speed: VPNSpeedReading?
     /// How old that measurement is, in seconds.
-    public let speedAge: TimeInterval?
+    let speedAge: TimeInterval?
 
     /// After this long a reading is no longer offered as live: the link it
     /// measured is a minute of somebody's traffic away from the one on screen.
@@ -38,7 +38,7 @@ public struct VPNTunnelFacts: Equatable, Sendable {
     /// fail: `speedAge` is non-nil whenever `speed` is, so `(speedAge ?? 0) > 0`
     /// called a reading taken a microsecond ago stale and
     /// `var speedIsStale: Bool { true }` passed the whole suite.
-    public static let speedGoesStaleAfter: TimeInterval = 60
+    static let speedGoesStaleAfter: TimeInterval = 60
 
     /// Whether the figure on screen may still stand as the link's speed now.
     /// True with no measurement at all, so the tile never draws a bare dash and
@@ -49,7 +49,7 @@ public struct VPNTunnelFacts: Equatable, Sendable {
     /// **That last sentence is why this is not the property a note reads.**
     /// «Stale» and «has an age to draw» are different questions and the skewed
     /// stamp answers them oppositely; `speedShowsItsAge` is the second one.
-    public var speedIsStale: Bool {
+    var speedIsStale: Bool {
         guard let speedAge else { return true }
         return speedAge < 0 || speedAge > Self.speedGoesStaleAfter
     }

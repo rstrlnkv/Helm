@@ -23,13 +23,13 @@ public struct VPNAutomation: Equatable, Sendable {
 
         /// Which way the tunnel went. The ring turns in one of two colours and
         /// this is the question it asks: down is down, however it got there.
-        public var goingUp: Bool { self == .connected }
+        var goingUp: Bool { self == .connected }
     }
     public let at: Date
     public let name: String
     public let kind: Kind
 
-    public init(at: Date, name: String, kind: Kind) {
+    init(at: Date, name: String, kind: Kind) {
         self.at = at
         self.name = name
         self.kind = kind
@@ -39,7 +39,7 @@ public struct VPNAutomation: Equatable, Sendable {
     /// register as movement, short enough that it cannot be mistaken for a
     /// progress indicator. The host measures the same window from
     /// `StatusPlan.spinDuration`, so this reads it rather than repeating it.
-    public static let spinDuration: TimeInterval = StatusPlan.spinDuration
+    static let spinDuration: TimeInterval = StatusPlan.spinDuration
     /// How long the name stays. It outlives the ring on purpose: the movement
     /// catches the eye, the word answers what caught it.
     public static let nameDuration: TimeInterval = 3.0

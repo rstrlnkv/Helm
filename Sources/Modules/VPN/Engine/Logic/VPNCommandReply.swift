@@ -24,7 +24,7 @@ import HelmRuntime
 /// The sibling path had already learned this. `UnreadableListTests` exists
 /// because `--nc list` answering nothing looked exactly like a Mac with no VPN
 /// configured. The list was fixed and the two commands were not.
-public enum VPNCommandReply: Equatable, Sendable {
+enum VPNCommandReply: Equatable, Sendable {
     /// `scutil` said nothing, which is what it says when it did the thing.
     case accepted
     /// There is no configuration by that name — renamed, deleted, or a rule
@@ -53,7 +53,7 @@ public enum VPNCommandReply: Equatable, Sendable {
     ///   the diagnostic file is the whole of what redaction exists to prevent.
     ///   Defaulted to nothing so a caller that has no list still gets the name it
     ///   asked about taken out; the engine passes the list it has just read.
-    public static func of(_ result: HelmProcess.Result, name: String,
+    static func of(_ result: HelmProcess.Result, name: String,
                           knownNames: [String] = []) -> VPNCommandReply {
         // **A tool that never ran is not a tool that agreed.** The table above
         // is about `scutil`'s own answers, all of which arrive with status 0 —
@@ -83,7 +83,7 @@ public enum VPNCommandReply: Equatable, Sendable {
     /// What the in-process start said, in the words the `scutil` path gives the
     /// same news. A refusal carries fixed words and at most the system's number, so
     /// it cannot hold a name.
-    public static func of(_ answer: VPNStartAnswer) -> VPNCommandReply {
+    static func of(_ answer: VPNStartAnswer) -> VPNCommandReply {
         switch answer {
         case .started: .accepted
         case .noSuchService: .noSuchService

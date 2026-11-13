@@ -8,8 +8,8 @@ import HelmRuntime
 /// the app's launch and quit.
 public struct VPNAppRule: Codable, Equatable {
     public var vpnName: String
-    public var connectOnLaunch: Bool
-    public var disconnectOnQuit: Bool
+    var connectOnLaunch: Bool
+    var disconnectOnQuit: Bool
     /// What the app the person picked is **signed** as.
     ///
     /// The rule used to be a bundle identifier and nothing else, which is a string
@@ -17,9 +17,9 @@ public struct VPNAppRule: Codable, Equatable {
     /// launch and quit and take somebody's tunnel down. `VPNRuleTrust` is what
     /// reads this; it is optional because rules written before it existed have no
     /// identity, and that is a state with its own answer rather than a default.
-    public var identity: CodeIdentity?
+    var identity: CodeIdentity?
 
-    public init(vpnName: String, connectOnLaunch: Bool = true, disconnectOnQuit: Bool = true,
+    init(vpnName: String, connectOnLaunch: Bool = true, disconnectOnQuit: Bool = true,
                 identity: CodeIdentity? = nil) {
         self.vpnName = vpnName
         self.connectOnLaunch = connectOnLaunch
@@ -100,7 +100,7 @@ public enum VPNRules {
     }
 
     /// Drop rules whose VPN is not among the currently-configured connections.
-    public static func valid(_ rules: [String: VPNAppRule], against connections: [VPNConnection]) -> [String: VPNAppRule] {
+    static func valid(_ rules: [String: VPNAppRule], against connections: [VPNConnection]) -> [String: VPNAppRule] {
         let names = Set(connections.map(\.name))
         return rules.filter { names.contains($0.value.vpnName) }
     }

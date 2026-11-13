@@ -21,7 +21,7 @@ public enum VPNVerb: String, Equatable, Sendable {
     ///
     /// Not `isUp`: a connect that has reached `.connecting` has not arrived, and
     /// the poll exists for exactly that stretch.
-    public var settledStatus: VPNStatus {
+    var settledStatus: VPNStatus {
         switch self {
         case .connect: return .connected
         case .disconnect: return .disconnected

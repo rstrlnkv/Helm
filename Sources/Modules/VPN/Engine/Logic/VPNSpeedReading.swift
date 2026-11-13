@@ -15,7 +15,7 @@ public struct VPNSpeedReading: Equatable, Sendable {
     /// characterise. It used to be stored as `0`, a figure, in a type whose
     /// throughput figures `parse` requires: nobody measured a responsiveness of
     /// zero, and nobody measured one at all.
-    public let rpm: Int?
+    let rpm: Int?
     public let at: Date
     /// **How long the run that produced this took**, or nil when nobody timed
     /// it.
@@ -35,7 +35,7 @@ public struct VPNSpeedReading: Equatable, Sendable {
     /// reading a test's fixed clock produces.
     public let took: TimeInterval?
 
-    public init(down: Int, up: Int, rpm: Int?, at: Date, took: TimeInterval? = nil) {
+    init(down: Int, up: Int, rpm: Int?, at: Date, took: TimeInterval? = nil) {
         self.down = down
         self.up = up
         self.rpm = rpm
@@ -52,7 +52,7 @@ public struct VPNSpeedReading: Equatable, Sendable {
     /// because the tool's output cannot be trusted, and `Int(_: Double)` **traps**
     /// on a value outside `Int`'s range — refusing the document is the difference
     /// between a nil and the app going down on a line of JSON.
-    public static func parse(_ output: String, at: Date,
+    static func parse(_ output: String, at: Date,
                              took: TimeInterval? = nil) -> VPNSpeedReading? {
         guard let data = output.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],

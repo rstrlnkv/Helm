@@ -5,14 +5,12 @@ import Module_VPN_Engine
 
 /// Settings page for the VPN module. Connections are read live from the view
 /// model; per-app automation rules are seeded from the `NamespacedStore` into
-/// local `@State` and written through on every change, notifying the engine
-/// via `reloadRules`.
+/// local `@State` and written through the model (`saveRules`) on every change.
 struct VPNSettingsPage: View {
     /// The three the per-app rules half reads, which lives in `VPNAppRules.swift`
     /// — `private` is per file, and one `@State` of the rules seeded and written
     /// back in one place is the point of keeping them here.
     @ObservedObject var vm: VPNViewModel
-    let store: NamespacedStore
     @State var rules: [String: VPNAppRule]
 
     private let notice: VPNNotice
@@ -37,7 +35,6 @@ struct VPNSettingsPage: View {
 
     init(vm: VPNViewModel, store: NamespacedStore) {
         self.vm = vm
-        self.store = store
         // From the store rather than from `vm`, which is main-actor isolated
         // while this initializer is not. Nothing here may reach macOS's
         // notification centre: `UNUserNotificationCenter.current()` ends a test

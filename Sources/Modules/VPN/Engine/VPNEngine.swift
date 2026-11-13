@@ -550,7 +550,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         lock.lock(); _lastAutomation = firing; lock.unlock()
     }
 
-    public func status(_ name: String) -> VPNStatus {
+    func status(_ name: String) -> VPNStatus {
         connections.first(where: { $0.name == name })?.status ?? .unknown
     }
 

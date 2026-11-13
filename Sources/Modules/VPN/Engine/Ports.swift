@@ -5,10 +5,10 @@ import HelmRuntime
 /// on its own (IKEv2) is answered `VPNCredentialRead.notNeeded`. Secrets never
 /// logged.
 public struct VPNCredentials: Equatable, Sendable {
-    public var user: String?
-    public var password: String?
-    public var secret: String?
-    public init(user: String? = nil, password: String? = nil, secret: String? = nil) {
+    var user: String?
+    var password: String?
+    var secret: String?
+    init(user: String? = nil, password: String? = nil, secret: String? = nil) {
         self.user = user; self.password = password; self.secret = secret
     }
 }
@@ -108,7 +108,7 @@ public protocol VPNRunnerPort: AnyObject {
 /// configuration daemon and answers in milliseconds, so five seconds clears a
 /// loaded Mac many times over and still frees the queue inside one sitting
 /// (Homebrew's ninety seconds is for queries that reach the network).
-public let vpnReadDeadline: TimeInterval = 5
+let vpnReadDeadline: TimeInterval = 5
 
 /// Why a read answered nothing, in the words the log carries.
 func vpnReadFailureReason(_ status: Int32) -> String {

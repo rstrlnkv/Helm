@@ -11,7 +11,7 @@ import SystemConfiguration
 
 /// Production `VPNRunnerPort`: shells out to `/usr/sbin/scutil`.
 public final class ScutilRunner: VPNRunnerPort {
-    public init() {}
+    init() {}
     public func run(_ args: [String]) -> HelmProcess.Result {
         HelmProcess.run("/usr/sbin/scutil", args)
     }
@@ -64,7 +64,7 @@ public final class ScutilRunner: VPNRunnerPort {
 public final class WorkspaceAppObserver: AppObserverPort {
     private var observation: NSKeyValueObservation?
 
-    public init() {}
+    init() {}
 
     /// Through `RunningApps`, never straight to AppKit: the engine calls this
     /// from its own serial queue, and reading the live list from there
@@ -130,7 +130,7 @@ public final class DynamicStoreNetworkWatch: NetworkWatchPort {
     /// its own serial queue to run `scutil` anyway.
     private let queue = DispatchQueue(label: "helm.vpn.network", qos: .utility)
 
-    public init() {}
+    init() {}
     deinit { stopObserving() }
 
     public func startObserving(_ onChange: @escaping @Sendable () -> Void) {
@@ -241,7 +241,7 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// same deadline and the same seam as every other.
     private let runner: VPNRunnerPort
 
-    public convenience init() { self.init(purge: Self.purgeItemsWithTheOldAccessList) }
+    convenience init() { self.init(purge: Self.purgeItemsWithTheOldAccessList) }
 
     /// The purge as an action, so a test can watch when it runs without ever
     /// reaching a keychain.

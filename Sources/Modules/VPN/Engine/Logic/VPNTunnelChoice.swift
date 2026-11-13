@@ -41,7 +41,7 @@ public enum VPNTunnelChoice {
     ///
     /// With no routed tunnel — two tunnels up and the route on Wi-Fi, an
     /// ordinary Mac — nothing is promoted and the list is untouched.
-    public static func primaryFirst(_ tunnels: [VPNTunnelState]) -> [VPNTunnelState] {
+    static func primaryFirst(_ tunnels: [VPNTunnelState]) -> [VPNTunnelState] {
         tunnels.filter { $0.exit.carriesTheDefaultRoute }
             + tunnels.filter { !$0.exit.carriesTheDefaultRoute }
     }

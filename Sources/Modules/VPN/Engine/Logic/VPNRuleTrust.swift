@@ -51,7 +51,7 @@ public enum VPNRuleTrust {
     ///   bundle identifier, or nil when there is nothing to read. The two
     ///   rule-level verdicts do not depend on it. The engine, at a launch, is
     ///   the only caller.
-    public static func judge(rule: VPNAppRule, running: CodeIdentity?) -> Verdict {
+    static func judge(rule: VPNAppRule, running: CodeIdentity?) -> Verdict {
         let recorded: CodeIdentity
         switch bound(rule) {
         case .refused(let verdict): return verdict
@@ -65,7 +65,7 @@ public enum VPNRuleTrust {
     /// `.appNotSigned`, nil when the rule may yet act. **`judge` asks this first, and
     /// the engine publishes it** (`StatePayload.ruleRefusals`), so the rules popover's
     /// note and the log line of a launch that did nothing come from one expression.
-    public static func refusal(of rule: VPNAppRule) -> Verdict? {
+    static func refusal(of rule: VPNAppRule) -> Verdict? {
         if case .refused(let verdict) = bound(rule) { return verdict }
         return nil
     }

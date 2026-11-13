@@ -28,7 +28,7 @@ public struct VPNConnection: Identifiable, Equatable, Sendable {
     public var status: VPNStatus
     public let kind: String?    // e.g. "IKEv2", "IPSec"
 
-    public init(id: String, name: String, status: VPNStatus, kind: String?) {
+    init(id: String, name: String, status: VPNStatus, kind: String?) {
         self.id = id
         self.name = name
         self.status = status
@@ -65,7 +65,7 @@ public struct VPNFailure: Equatable, Sendable {
     /// the verb are two different facts and the sentence needs both.
     public let verb: VPNVerb
 
-    public init(name: String, reason: Reason, verb: VPNVerb) {
+    init(name: String, reason: Reason, verb: VPNVerb) {
         self.name = name
         self.reason = reason
         self.verb = verb

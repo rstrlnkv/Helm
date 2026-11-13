@@ -12,7 +12,7 @@ fell are keyed by the configuration's id with the name beside it, and
 against a `scutil` read, because that tool answers with a short list or none at
 all on a refusal or a Mac mid-boot (`AShortListPrunesNoNoticeBookTests`).
 
-`vpnAppRules` and `noticeBook` have one writer, the model (`VPNViewModel.saveRules`, `updateNoticeBook`); the page writes through it and holds no copy it writes back. `automationNotice`, `dropNotice`, `automationSpin` and `spinTint.*` are read-only fallbacks with no writer.
+`vpnAppRules` and `noticeBook` have one writer, the model (`VPNViewModel.saveRules`, `updateNoticeBook`); the page hands its copy of the rules to `saveRules` and assigns the notice book only from what the model returned. `automationNotice`, `dropNotice`, `automationSpin` and `spinTint.*` are read-only fallbacks with no writer.
 
 A per-app rule is bound to a signature rather than to a bundle identifier
 (`Sources/HelmRuntime/CodeIdentity.swift` says what that buys), judged at launch
@@ -75,7 +75,7 @@ The defaults key `module.vpn.lastUsedName`, which earlier builds could write, is
 
 `VPNViewModel` is built with the engine by the descriptor's `makeModule` and held by the
 host. It calls the engine through `VPNWork` (`VPNViewModel.swift`), an internal port: `stream()`, `refresh()`, `press(_:on:)` for Connect and Disconnect,
-`measureSpeed(_:)` and `reloadRules()` after the page wrote the rules. A name that
+`measureSpeed(_:)` and `reloadRules()`, which `saveRules` calls after it writes the rules. A name that
 does not exist is a build error. `press` is the person's
 door: it takes a `VPNVerb` through an exhaustive switch and always passes `auto: false`,
 and the rules (`VPNAutoConnectCore`) stay inside the engine, which calls `connect` and

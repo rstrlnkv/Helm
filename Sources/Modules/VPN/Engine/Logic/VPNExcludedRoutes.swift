@@ -23,9 +23,9 @@ public enum VPNExcludedRoutes {
     /// alone.** The parser still requires the `SubnetMask` line to finish a
     /// route, so a dictionary the tool cut short is dropped rather than
     /// half-read (`VPNStatusParser`).
-    public struct Route: Equatable, Sendable {
-        public let destination: String
-        public init(destination: String) {
+    struct Route: Equatable, Sendable {
+        let destination: String
+        init(destination: String) {
             self.destination = destination
         }
     }
@@ -52,7 +52,7 @@ public enum VPNExcludedRoutes {
         /// flagged, because «two more» and «forty more» are different news.
         public let others: Int
 
-        public init(localNetwork: Bool, apple: Bool, others: Int) {
+        init(localNetwork: Bool, apple: Bool, others: Int) {
             self.localNetwork = localNetwork
             self.apple = apple
             self.others = others
@@ -61,7 +61,7 @@ public enum VPNExcludedRoutes {
         /// The tunnel that excludes nothing. Not the same as «nobody looked» —
         /// a status read that failed produces no `Reading` at all, so there is
         /// no third state to represent here.
-        public static let none = Summary(localNetwork: false, apple: false, others: 0)
+        static let none = Summary(localNetwork: false, apple: false, others: 0)
     }
 
     /// Apple's network, as one `/8`. A constant with its own name because the
@@ -83,7 +83,7 @@ public enum VPNExcludedRoutes {
         "255.255.255.255",  // broadcast
     ]
 
-    public static func summarize(_ routes: [Route]) -> Summary {
+    static func summarize(_ routes: [Route]) -> Summary {
         var localNetwork = false
         var apple = false
         var others = 0

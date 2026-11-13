@@ -11,7 +11,8 @@ import XCTest
 /// **The engine publishes why a rule will not fire; the page must say it.** The
 /// engine half is `ARuleThatWillNotFireSaysSoTests`; these are the two UI hops it
 /// cannot reach: the verdict -> sentence mapping (a nil there is an unattended rule
-/// that silently does nothing again) and the view model carrying the payload.
+/// that silently does nothing again). The view model carrying the payload is
+/// `TheModelCarriesTheRefusalsTests`.
 @MainActor
 final class ARefusedRuleIsDrawnWithItsNoteTests: XCTestCase {
 
@@ -34,20 +35,5 @@ final class ARefusedRuleIsDrawnWithItsNoteTests: XCTestCase {
             }
             XCTAssertNotEqual(sentences[0], sentences[1], "one sentence for two reasons in \(language)")
         }
-    }
-
-    /// The model hands the page what the engine published, and clears it.
-    func testTheModelCarriesAndWithdrawsTheRefusals() async {
-        let work = FakeVPNWork()
-        let model = VPNViewModel(work: work, settings: seededVPNSettings())
-        let office = VPNConnection(id: "A1", name: "Office", status: .disconnected, kind: "IKEv2")
-        work.say(VPNEngine.StatePayload(connections: [office], autoConnected: [],
-                                        lastAutomation: nil,
-                                        ruleRefusals: ["com.example.app": .appNotSigned]))
-        for _ in 0..<500 where model.ruleRefusals.isEmpty { await Task.yield() }
-        XCTAssertEqual(model.ruleRefusals, ["com.example.app": .appNotSigned])
-        work.say(VPNEngine.StatePayload(connections: [office], autoConnected: [], lastAutomation: nil))
-        for _ in 0..<500 where !model.ruleRefusals.isEmpty { await Task.yield() }
-        XCTAssertEqual(model.ruleRefusals, [:])
     }
 }

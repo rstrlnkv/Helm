@@ -41,7 +41,7 @@ public struct VPNCardAction: Equatable, Sendable {
         }
     }
 
-    public init(word: Word, enabled: Bool) {
+    init(word: Word, enabled: Bool) {
         self.word = word
         self.enabled = enabled
     }

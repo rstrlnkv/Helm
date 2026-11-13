@@ -60,7 +60,7 @@ public enum VPNExitVerdict: Equatable, Sendable {
     /// that answered; with neither the verdict stays `.unknown`, because a
     /// guess here is either a warning about nothing or a reassurance nobody
     /// checked.
-    public static func of(tunnelInterface: String?, primaryInterface: String?,
+    static func of(tunnelInterface: String?, primaryInterface: String?,
                           tunnelIsPrimary: Bool?, countryCode: String?) -> VPNExitVerdict {
         guard let tunnelInterface else { return .unknown }
         if let primaryInterface {

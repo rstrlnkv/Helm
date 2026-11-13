@@ -39,7 +39,7 @@ public struct VPNSettings {
     /// The one both sides read, so no caller decides for itself which of the
     /// two settings a firing answers to. The rule itself is `VPNNotice.mode`,
     /// which is pure and says there why a teardown is not the rules' volume.
-    public func notice(for kind: VPNAutomation.Kind) -> VPNNotice {
+    func notice(for kind: VPNAutomation.Kind) -> VPNNotice {
         VPNNotice.mode(for: kind, rules: notice, drop: dropNotice)
     }
 
