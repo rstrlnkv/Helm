@@ -47,9 +47,8 @@ enum LayoutWidgets {
             self.store = store
             self.onNever = onNever
             self.onAutomatic = onAutomatic
-            _period = State(initialValue: ConversionPeriod(
-                rawValue: store.string(LayoutKey.heroPeriod, default: "")) ?? .today)
-            _automatic = State(initialValue: store.bool(LayoutKey.automatic, default: true))
+            _period = State(initialValue: ConversionPeriod.stored(in: store))
+            _automatic = State(initialValue: store.layoutAutomatic)
         }
 
         var body: some View {

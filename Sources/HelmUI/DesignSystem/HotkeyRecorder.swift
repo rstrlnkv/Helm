@@ -31,14 +31,15 @@ public extension Notification.Name {
     public init(store: NamespacedStore, prefix: String, fallbackLabel: String? = nil) {
         self.store = store
         self.prefix = prefix
-        if store.object("\(prefix)KeyCode") == nil, let fallbackLabel {
+        let keys = HotkeyStoreKeys(prefix: prefix)
+        if store.object(keys.keyCode) == nil, let fallbackLabel {
             label = fallbackLabel
-        } else if let held = HotkeyCombination(keyCode: store.int("\(prefix)KeyCode", default: -1),
-                                               modifiers: store.int("\(prefix)Modifiers", default: 0)) {
+        } else if let held = HotkeyCombination(keyCode: store.int(keys.keyCode, default: -1),
+                                               modifiers: store.int(keys.modifiers, default: 0)) {
             // A pair the manager holds is a shortcut that is live, and a row
             // with no label beside it (absent, not a string, empty) would draw
             // nothing over it: spell it from the pair instead.
-            let stored = store.string("\(prefix)Label", default: "")
+            let stored = store.string(keys.label, default: "")
             label = stored.isEmpty ? held.label : stored
         } else {
             // `<prefix>Label` is a key of its own, and a label beside a pair
@@ -85,9 +86,10 @@ public extension Notification.Name {
     }
 
     public func clear() {
-        store.set(-1, for: "\(prefix)KeyCode")
-        store.set(0, for: "\(prefix)Modifiers")
-        store.set("", for: "\(prefix)Label")
+        let keys = HotkeyStoreKeys(prefix: prefix)
+        store.set(-1, for: keys.keyCode)
+        store.set(0, for: keys.modifiers)
+        store.set("", for: keys.label)
         label = ""
         NotificationCenter.default.post(name: .helmHotkeyChanged, object: nil)
     }
@@ -100,9 +102,10 @@ public extension Notification.Name {
     /// record would be the one they cannot press. Expected from how macOS treats
     /// its own shortcuts; not measured here.
     public func assign(keyCode: Int, carbonModifiers: Int, label: String) {
-        store.set(keyCode, for: "\(prefix)KeyCode")
-        store.set(carbonModifiers, for: "\(prefix)Modifiers")
-        store.set(label, for: "\(prefix)Label")
+        let keys = HotkeyStoreKeys(prefix: prefix)
+        store.set(keyCode, for: keys.keyCode)
+        store.set(carbonModifiers, for: keys.modifiers)
+        store.set(label, for: keys.label)
         self.label = label
         NotificationCenter.default.post(name: .helmHotkeyChanged, object: nil)
     }

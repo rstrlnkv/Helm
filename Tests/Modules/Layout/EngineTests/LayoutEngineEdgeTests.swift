@@ -291,6 +291,20 @@ final class LayoutEngineStoredSettingsTests: XCTestCase {
         XCTAssertEqual(typing.performed.count, seen + 1, "punctuation still confirms by default")
     }
 
+    /// «Fix two capitals» is on for a store nobody has written to. The default
+    /// lives in `LayoutDefault`; this pins the engine's own read of it, which
+    /// a test of the table alone cannot.
+    func testAFreshStoreCorrectsASlippedCapital() async throws {
+        let store = NamespacedStore(namespace: "layout", backing: InMemoryKeyValueStore())
+        let engine = engine(settings: store, table: [:])
+        await rereadSettings(engine)
+
+        tap.type("ПРивет")
+        tap.send(.space)
+        XCTAssertEqual(typing.performed.count, 1, "the capital was left alone on a fresh store")
+        XCTAssertEqual(typing.performed.first?.insert, "Привет ")
+    }
+
     /// A choice the user made stays made across a settings reload — the store
     /// is the source of truth once it has been written to.
     ///

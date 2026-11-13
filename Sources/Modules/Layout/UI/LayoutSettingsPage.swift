@@ -30,24 +30,23 @@ struct LayoutSettingsPage: View {
     init(lvm: LayoutViewModel, store: NamespacedStore) {
         self.lvm = lvm
         self.store = store
-        _automatic = State(initialValue: store.bool(LayoutKey.automatic, default: true))
+        _automatic = State(initialValue: store.layoutAutomatic)
         _exceptionCount = State(initialValue: store.stringArray(LayoutKey.exceptions).count)
         _showTour = State(initialValue: !store.bool(LayoutKey.introSeen, default: false))
-        _audible = State(initialValue: store.bool(LayoutKey.audible, default: false))
+        _audible = State(initialValue: store.layoutAudible)
         _indicator = State(initialValue: store.bool(LayoutKey.indicator, default: false))
         _badgeStyle = State(initialValue:
             BadgeStyle.from(store.string(LayoutKey.badgeStyle, default: BadgeStyle.default.rawValue)))
-        _tapKey = State(initialValue: TapKey.from(store.string(LayoutKey.tapKey, default: TapKey.rightCommand.rawValue)))
+        _tapKey = State(initialValue: store.layoutTapKey)
         _convertKey = StateObject(wrappedValue:
             HelmHotkeyRecorder(store: store, prefix: LayoutHotkey.storePrefix))
-        _fixCapitals = State(initialValue: store.bool(LayoutKey.fixCapitals, default: true))
+        _fixCapitals = State(initialValue: store.layoutFixCapitals)
         builtInBlocked = AppScope.blockedByDefault.filter {
             NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil
         }
         // The count is of what the window draws: the person's rules plus the built-in refusals this Mac has.
         _ruleCount = State(initialValue: Self.ruleCount(store, builtInBlocked))
-        _heroPeriod = State(initialValue: ConversionPeriod(
-            rawValue: store.string(LayoutKey.heroPeriod, default: "")) ?? .today)
+        _heroPeriod = State(initialValue: ConversionPeriod.stored(in: store))
     }
 
     var body: some View {
@@ -90,18 +89,17 @@ struct LayoutSettingsPage: View {
             }
             // The three switches are also written by the tour (step 3); the panel tile writes `automatic`.
             if store.changed(note, is: LayoutKey.automatic) {
-                automatic = store.bool(LayoutKey.automatic, default: true)
+                automatic = store.layoutAutomatic
             }
             if store.changed(note, is: LayoutKey.fixCapitals) {
-                fixCapitals = store.bool(LayoutKey.fixCapitals, default: true)
+                fixCapitals = store.layoutFixCapitals
             }
             if store.changed(note, is: LayoutKey.audible) {
-                audible = store.bool(LayoutKey.audible, default: false)
+                audible = store.layoutAudible
             }
-            // The panel tile's period menu writes this key too (`LayoutWidgets.Tall`); `LayoutDescriptor.storedPeriod` reads it.
+            // The panel tile's period menu writes this key too (`LayoutWidgets.Tall`); `ConversionPeriod.stored(in:)` reads it.
             if store.changed(note, is: LayoutKey.heroPeriod) {
-                heroPeriod = ConversionPeriod(
-                    rawValue: store.string(LayoutKey.heroPeriod, default: "")) ?? .today
+                heroPeriod = ConversionPeriod.stored(in: store)
             }
         }
         // Said once, out loud: losing the grant takes the settings off the page, and nothing a VoiceOver

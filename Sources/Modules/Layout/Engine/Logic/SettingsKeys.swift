@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// The names the two halves of this module agree on.
 ///
@@ -31,6 +32,36 @@ public enum LayoutKey {
     /// that changes what the module does — kept so the page opens where it was
     /// left, the way the sidebar width is.
     public static let heroPeriod = "heroPeriod"
+}
+
+/// What each stored setting holds before anyone has chosen, spelled once for
+/// the engine and the pages that read the same keys.
+public enum LayoutDefault {
+    public static let automatic = true
+    public static let audible = false
+    public static let fixCapitals = true
+    public static let tapKey = TapKey.rightCommand
+}
+
+extension NamespacedStore {
+    /// The four stored settings read with their defaults, so the engine and the
+    /// pages share the read as well as the table: one test of these pins every
+    /// caller.
+    public var layoutAutomatic: Bool { bool(LayoutKey.automatic, default: LayoutDefault.automatic) }
+    public var layoutAudible: Bool { bool(LayoutKey.audible, default: LayoutDefault.audible) }
+    public var layoutFixCapitals: Bool { bool(LayoutKey.fixCapitals, default: LayoutDefault.fixCapitals) }
+    public var layoutTapKey: TapKey {
+        TapKey.from(string(LayoutKey.tapKey, default: LayoutDefault.tapKey.rawValue))
+    }
+}
+
+extension ConversionPeriod {
+    /// The period the page was left on: the panel and the window answer the
+    /// same question, so they must not answer it differently. `.today` when
+    /// nothing is stored or the stored word is not one of ours.
+    public static func stored(in store: NamespacedStore) -> ConversionPeriod {
+        ConversionPeriod(rawValue: store.string(LayoutKey.heroPeriod, default: "")) ?? .today
+    }
 }
 
 /// The chord this module registers with the host, named once.

@@ -903,17 +903,16 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // arrive and find the tap callback blocked. `appRules` was already
         // hoisted for exactly that reason and the five beside it were not.
         let rules = settings.boolTable(LayoutKey.appRules)
-        let readAutomatic = settings.bool(LayoutKey.automatic, default: true)
+        let readAutomatic = settings.layoutAutomatic
         let readExceptions = Exceptions(words: settings.stringArray(LayoutKey.exceptions))
-        let readAudible = settings.bool(LayoutKey.audible, default: false)
-        let readFixCapitals = settings.bool(LayoutKey.fixCapitals, default: true)
+        let readAudible = settings.layoutAudible
+        let readFixCapitals = settings.layoutFixCapitals
         // -1 is the recorder's own «nothing bound», not a keycode. Read out here
         // with its neighbours, before the lock.
-        let recorded = settings.int("\(LayoutHotkey.storePrefix)KeyCode", default: -1)
+        let recorded = settings.int(HotkeyStoreKeys(prefix: LayoutHotkey.storePrefix).keyCode, default: -1)
         let readHotkey: UInt16? = recorded >= 0 ? UInt16(recorded) : nil
         let readTapKey = ModifierTap(
-            key: TapKey.from(settings.string(LayoutKey.tapKey,
-                                             default: TapKey.rightCommand.rawValue)))
+            key: settings.layoutTapKey)
         lock.lock()
         automatic = readAutomatic
         exceptions = readExceptions

@@ -65,11 +65,12 @@ import HelmUI
         // What a stored pair may be is Carbon's question, not this loop's:
         // the guard that stood here converted it with `UInt32(_:)`, which
         // traps. `HotkeyCombination` has the argument and the bounds.
-        if store.object("\(prefix)KeyCode") == nil, let fallback {
+        let keys = HotkeyStoreKeys(prefix: prefix)
+        if store.object(keys.keyCode) == nil, let fallback {
             return HotkeyCombination(keyCode: fallback.keyCode, modifiers: fallback.modifiers)
         }
-        let keyCode = store.int("\(prefix)KeyCode", default: -1)
-        let modifiers = store.int("\(prefix)Modifiers", default: 0)
+        let keyCode = store.int(keys.keyCode, default: -1)
+        let modifiers = store.int(keys.modifiers, default: 0)
         return HotkeyCombination(keyCode: keyCode, modifiers: modifiers)
     }
 

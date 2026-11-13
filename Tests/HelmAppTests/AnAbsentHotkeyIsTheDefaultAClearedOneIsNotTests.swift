@@ -48,6 +48,17 @@ final class AnAbsentHotkeyIsTheDefaultAClearedOneIsNotTests: XCTestCase {
                        "a reopened page showed the default the person had cleared")
     }
 
+    /// What `clear()` leaves in the store, key by key: an assigned shortcut then a cleared one.
+    func testClearingWritesEachOfTheThreeKeys() {
+        let store = store()
+        let recorder = HelmHotkeyRecorder(store: store, prefix: "hotkey", fallbackLabel: fallback.label)
+        recorder.assign(keyCode: 21, carbonModifiers: cmdKey | shiftKey, label: "⇧⌘4")
+        recorder.clear()
+        XCTAssertEqual(store.int("hotkeyKeyCode", default: 99), -1)
+        XCTAssertEqual(store.int("hotkeyModifiers", default: 99), 0)
+        XCTAssertEqual(store.string("hotkeyLabel", default: "x"), "")
+    }
+
     func testARecordedCombinationIsWhatWasRecorded() throws {
         let backing = InMemoryKeyValueStore()
         let store = NamespacedStore(namespace: "test", backing: backing)

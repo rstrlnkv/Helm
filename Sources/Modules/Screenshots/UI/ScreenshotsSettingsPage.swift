@@ -168,11 +168,12 @@ struct ScreenshotsSettingsPage: View {
     /// store nothing was ever recorded into — the one it ships with. Nil for one
     /// that was cleared.
     static func combination(of hotkey: ScreenshotsHotkey, in store: NamespacedStore) -> (keyCode: Int, modifiers: Int)? {
-        guard store.object("\(hotkey.storePrefix)KeyCode") != nil else {
+        let keys = HotkeyStoreKeys(prefix: hotkey.storePrefix)
+        guard store.object(keys.keyCode) != nil else {
             return (hotkey.fallback.keyCode, hotkey.fallback.modifiers)
         }
-        let key = store.int("\(hotkey.storePrefix)KeyCode", default: -1)
-        let modifiers = store.int("\(hotkey.storePrefix)Modifiers", default: 0)
+        let key = store.int(keys.keyCode, default: -1)
+        let modifiers = store.int(keys.modifiers, default: 0)
         guard key >= 0, modifiers > 0 else { return nil }
         return (key, modifiers)
     }
