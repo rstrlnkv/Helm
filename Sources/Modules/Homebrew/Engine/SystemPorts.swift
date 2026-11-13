@@ -4,7 +4,7 @@ import HelmRuntime
 // MARK: - Locator
 
 public struct FSBrewLocator: BrewLocator {
-    public init() {}
+    init() {}
     public func brewPath() -> String? {
         for p in ["/opt/homebrew/bin/brew", "/usr/local/bin/brew"] where FileManager.default.isExecutableFile(atPath: p) {
             return p
@@ -81,11 +81,11 @@ public struct ShellProcessRunner: ProcessRunner {
     /// slowest measured query more than tenfold and still ends a hung brew —
     /// another brew's lock never released, a stalled network read — inside the
     /// same sitting, with the Refresh button live again.
-    public static let defaultQueryTimeout: TimeInterval = 90
+    static let defaultQueryTimeout: TimeInterval = 90
 
     private let queryTimeout: TimeInterval
 
-    public init(queryTimeout: TimeInterval = ShellProcessRunner.defaultQueryTimeout) {
+    init(queryTimeout: TimeInterval = ShellProcessRunner.defaultQueryTimeout) {
         self.queryTimeout = queryTimeout
     }
 
@@ -276,7 +276,7 @@ private struct LiveProcess: RunningProcess, @unchecked Sendable {
 // MARK: - Privileged runner
 
 public struct OSAPrivilegedRunner: PrivilegedRunner {
-    public init() {}
+    init() {}
     /// Through `PrivilegedRun`, which is what makes a cancelled dialog
     /// readable: this used to run `osascript` bare, so the `(-128)` that says
     /// «the person pressed Cancel» went to the standard error `HelmProcess`
@@ -308,7 +308,7 @@ public struct SystemCommandLineTools: CommandLineToolsPort {
     private static let requestDeadline: TimeInterval = 30
     private static let selectDeadline: TimeInterval = 10
 
-    public init() {}
+    init() {}
 
     public func isExecutable(_ path: String) -> Bool {
         FileManager.default.isExecutableFile(atPath: path)
@@ -343,7 +343,7 @@ public struct SystemCommandLineTools: CommandLineToolsPort {
 /// tick continues into is a blocking password dialog, and that must not be
 /// raised on the thread that draws the page.
 public struct DispatchWaitTicker: WaitTicker {
-    public init() {}
+    init() {}
     public func schedule(after interval: TimeInterval, _ block: @escaping @Sendable () -> Void) -> AnyObject {
         DelayedWork.schedule(on: .global(qos: .userInitiated), after: interval, block)
     }
@@ -361,7 +361,7 @@ public struct DispatchWaitTicker: WaitTicker {
 public struct FileOpMarker: OpMarker {
     private let url: URL
 
-    public init(directory: URL = HelmSupport.directory) {
+    init(directory: URL = HelmSupport.directory) {
         url = directory.appendingPathComponent("homebrew-operation")
     }
 
@@ -489,7 +489,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// is why this field starts nil.
     private var stored: PopularityReadings?
 
-    public convenience init(directory: URL = HelmSupport.directory) {
+    convenience init(directory: URL = HelmSupport.directory) {
         self.init(directory: directory, transfer: FilePopularityStore.liveTransfer)
     }
 
@@ -822,7 +822,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
 /// the module is talking to.
 public struct CellarWeight: PackageWeight {
     private let locator: BrewLocator
-    public init(locator: BrewLocator) { self.locator = locator }
+    init(locator: BrewLocator) { self.locator = locator }
 
     public func bytes(ofPackage name: String, isCask: Bool) -> Int? {
         // **First, and before the prefix is even asked for.** A cask has no

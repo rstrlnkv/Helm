@@ -1,7 +1,6 @@
 import XCTest
 import HelmContract
 import HelmTestSupport
-import HelmUI
 import HelmRuntime
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
@@ -45,11 +44,6 @@ final class TheStopButtonReachesTheChildTests: XCTestCase {
             lock.lock(); _handles.append(handle); lock.unlock()
             return handle
         }
-    }
-
-    private func waitUntil(_ what: String, _ condition: () -> Bool) async {
-        for _ in 0..<20_000 where !condition() { await Task.yield() }
-        XCTAssertTrue(condition(), "never reached: \(what)")
     }
 
     func testStopFromTheViewModelTerminatesTheChild() async {

@@ -91,7 +91,7 @@ public protocol ProcessRunner: Sendable {
     func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String)
 }
 
-public extension ProcessRunner {
+extension ProcessRunner {
     @discardableResult
     func stream(_ launchPath: String, _ args: [String], env: [String: String], reach: StopReach,
                 onLine: @escaping @Sendable (String) -> Void,
@@ -200,7 +200,7 @@ public struct PopularityReadings: Sendable, Equatable {
     /// No reading of either kind: a first launch, a refused fetch, a Mac with
     /// no network. Search orders results exactly as it does with no counts at
     /// all, which is brew's own order.
-    public static let none = PopularityReadings(formulae: .none, casks: .none)
+    static let none = PopularityReadings(formulae: .none, casks: .none)
 }
 
 /// Homebrew's published install counts, as this process last managed to read

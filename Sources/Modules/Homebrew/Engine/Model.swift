@@ -68,17 +68,17 @@ enum HomebrewSlot: String, Sendable {
     case brewFound
 }
 
-public struct BrewPackage: Codable, Equatable, Sendable, Identifiable {
+public struct BrewPackage: Equatable, Sendable, Identifiable {
     public let name: String
     public let version: String
     public let isCask: Bool
     public var id: String { BrewKey.of(name: name, isCask: isCask) }
-    public init(name: String, version: String, isCask: Bool) {
+    init(name: String, version: String, isCask: Bool) {
         self.name = name; self.version = version; self.isCask = isCask
     }
 }
 
-public struct OutdatedPackage: Codable, Equatable, Sendable, Identifiable {
+public struct OutdatedPackage: Equatable, Sendable, Identifiable {
     public let name: String
     public let installed: String
     public let latest: String
@@ -88,21 +88,21 @@ public struct OutdatedPackage: Codable, Equatable, Sendable, Identifiable {
     /// button that answers "…is pinned".
     public let pinned: Bool
     public var id: String { BrewKey.of(name: name, isCask: isCask) }
-    public init(name: String, installed: String, latest: String, isCask: Bool,
+    init(name: String, installed: String, latest: String, isCask: Bool,
                 pinned: Bool = false) {
         self.name = name; self.installed = installed; self.latest = latest
         self.isCask = isCask; self.pinned = pinned
     }
 }
 
-public struct SearchHit: Codable, Equatable, Sendable, Identifiable {
+public struct SearchHit: Equatable, Sendable, Identifiable {
     public let name: String
     public let isCask: Bool
     public var id: String { BrewKey.of(name: name, isCask: isCask) }
-    public init(name: String, isCask: Bool) { self.name = name; self.isCask = isCask }
+    init(name: String, isCask: Bool) { self.name = name; self.isCask = isCask }
 }
 
-public struct BrewStatus: Codable, Equatable, Sendable {
+public struct BrewStatus: Equatable, Sendable {
     public let installed: Bool
     public let brewPath: String?
     /// The label of an operation that was still running when Helm last quit —
@@ -122,10 +122,10 @@ public struct BrewStatus: Codable, Equatable, Sendable {
 /// document by hand rather than through a synthesized decode: see that file's
 /// doc comment for why a struct here does not save the work it looks like it
 /// would.
-public struct PackageInfo: Codable, Equatable, Sendable {
+public struct PackageInfo: Equatable, Sendable {
     public let name: String
     public let isCask: Bool
-    public let desc: String?
+    let desc: String?
     public let homepage: String?
     /// nil for every cask — the field does not exist in that document at all.
     public let license: String?
@@ -151,7 +151,7 @@ public struct PackageInfo: Codable, Equatable, Sendable {
     public let dependencies: [String]
     public let caveats: String?
 
-    public init(name: String, isCask: Bool, desc: String?, homepage: String?, license: String?,
+    init(name: String, isCask: Bool, desc: String?, homepage: String?, license: String?,
                 tap: String?, latestVersion: String?, installedVersion: String?,
                 installedAt: Date?, installedOnRequest: Bool?, deprecationReason: String?,
                 replacement: String?, siblings: [String], dependencies: [String],
@@ -232,7 +232,7 @@ public struct OpState: Equatable, Sendable {
     public let exitCode: Int?
     public let reason: OpFailureReason?
     public let waiting: OpWait?
-    public init(phase: OpPhase, label: String, exitCode: Int? = nil,
+    init(phase: OpPhase, label: String, exitCode: Int? = nil,
                 reason: OpFailureReason? = nil, waiting: OpWait? = nil) {
         self.phase = phase; self.label = label; self.exitCode = exitCode
         self.reason = reason; self.waiting = waiting
@@ -243,7 +243,7 @@ public struct OpState: Equatable, Sendable {
 /// How bad `brew doctor` thinks a finding is — the two prefixes it prints,
 /// `Warning:` and `Error:`, named rather than reused as raw strings past
 /// `DoctorParser`.
-public enum DoctorSeverity: String, Codable, Sendable {
+public enum DoctorSeverity: String, Sendable {
     case caution
     case danger
 }
@@ -254,7 +254,7 @@ public enum DoctorSeverity: String, Codable, Sendable {
 /// is data, not an instruction, and judging one runnable is `DoctorFix.judge`'s
 /// job alone (the module's security surface for this feature), not something
 /// this struct or its parser may decide on construction.
-public struct DoctorIssue: Codable, Equatable, Sendable, Identifiable {
+public struct DoctorIssue: Equatable, Sendable, Identifiable {
     public let severity: DoctorSeverity
     public let title: String
     public let body: String
@@ -263,7 +263,7 @@ public struct DoctorIssue: Codable, Equatable, Sendable, Identifiable {
     /// are the same issue, which is exactly the case `DoctorParser` collapses
     /// before this is ever read.
     public var id: String { severity.rawValue + "\u{0}" + title + "\u{0}" + body }
-    public init(severity: DoctorSeverity, title: String, body: String, fix: DoctorFix? = nil) {
+    init(severity: DoctorSeverity, title: String, body: String, fix: DoctorFix? = nil) {
         self.severity = severity; self.title = title; self.body = body; self.fix = fix
     }
 }
@@ -276,7 +276,7 @@ public struct DoctorIssue: Codable, Equatable, Sendable, Identifiable {
 /// the keys beside them never are. The mapping from key to group is
 /// `BrewConfigParser.sections` — hand-written, beside the parser, with a test
 /// naming every key this Mac produced.
-public enum ConfigSection: String, Codable, Sendable, CaseIterable {
+public enum ConfigSection: String, Sendable, CaseIterable {
     /// Homebrew's own installation: its version, its prefix, its checkout, the
     /// Ruby it vendors.
     case brew
@@ -292,7 +292,7 @@ public enum ConfigSection: String, Codable, Sendable, CaseIterable {
 /// The key keeps Homebrew's own spelling and is never translated: `CLT`,
 /// `HOMEBREW_PREFIX` and `Rosetta 2` are Homebrew's words for these things, and
 /// a translated key would name something a person could not then look up.
-public struct ConfigLine: Codable, Equatable, Sendable, Identifiable {
+public struct ConfigLine: Equatable, Sendable, Identifiable {
     public let key: String
     /// Everything after the **first** `: ` — values carry colons of their own
     /// (`https://github.com/Homebrew/brew`, `4.0.6 => /opt/homebrew/…/ruby`),
@@ -303,7 +303,7 @@ public struct ConfigLine: Codable, Equatable, Sendable, Identifiable {
     /// line — the *group* is what the health list holds a row for — but the
     /// conformance is what lets a `ForEach` draw them without an index.
     public var id: String { key }
-    public init(key: String, value: String, section: ConfigSection) {
+    init(key: String, value: String, section: ConfigSection) {
         self.key = key; self.value = value; self.section = section
     }
 }
@@ -317,8 +317,8 @@ public struct ConfigLine: Codable, Equatable, Sendable, Identifiable {
 /// brew printed it, and it is what «Copy for a bug report» puts on the
 /// pasteboard: a bug report asks for what the tool said, not for Helm's reading
 /// of it: a parse is a reading and never the document.
-public struct BrewConfig: Codable, Equatable, Sendable {
+public struct BrewConfig: Equatable, Sendable {
     public let lines: [ConfigLine]
     public let text: String
-    public init(lines: [ConfigLine], text: String) { self.lines = lines; self.text = text }
+    init(lines: [ConfigLine], text: String) { self.lines = lines; self.text = text }
 }

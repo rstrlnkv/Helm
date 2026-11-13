@@ -212,7 +212,7 @@ final class ScriptedPrivileged: PrivilegedRunner, @unchecked Sendable {
 /// Records what it was asked to stream and finishes only when told: a stream
 /// that answered at once would release the busy gate before the call returned.
 final class RecordingStreamRunner: ProcessRunner, @unchecked Sendable {
-    struct Call { let launch: String; let args: [String]; let env: [String: String] }
+    struct Call { let args: [String]; let env: [String: String] }
     private let lock = NSLock()
     private var _calls: [Call] = []
     private var _exits: [@Sendable (Int32) -> Void] = []
@@ -225,7 +225,7 @@ final class RecordingStreamRunner: ProcessRunner, @unchecked Sendable {
     func stream(_ launchPath: String, _ args: [String], env: [String: String],
                 onLine: @escaping @Sendable (String) -> Void,
                 onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        lock.lock(); _calls.append(Call(launch: launchPath, args: args, env: env)); _exits.append(onExit); lock.unlock()
+        lock.lock(); _calls.append(Call(args: args, env: env)); _exits.append(onExit); lock.unlock()
         return NoProcess()
     }
 

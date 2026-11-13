@@ -3,7 +3,6 @@
 
 import XCTest
 import HelmTestSupport
-@testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
 
 /// One `brew search` chain is out at a time, whatever is typed behind it.

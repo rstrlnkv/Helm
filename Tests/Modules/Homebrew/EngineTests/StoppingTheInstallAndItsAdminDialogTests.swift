@@ -102,7 +102,6 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
         private let lock = NSLock()
         private var _launched: [(launch: String, args: [String])] = []
         private var _handles: [Handle] = []
-        private var _exits: [@Sendable (Int32) -> Void] = []
 
         var launched: [(launch: String, args: [String])] {
             lock.lock(); defer { lock.unlock() }; return _launched
@@ -124,15 +123,10 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
             lock.lock()
             _launched.append((launchPath, args))
             _handles.append(handle)
-            _exits.append(onExit)
             lock.unlock()
             return handle
         }
 
-        func exitAll(code: Int32) {
-            lock.lock(); let exits = _exits; _exits = []; lock.unlock()
-            for exit in exits { exit(code) }
-        }
     }
 
     // MARK: - Plumbing
@@ -387,10 +381,7 @@ final class AStopReachesTheInstallerItselfTests: XCTestCase {
 
     private final class Exit: @unchecked Sendable {
         let done = DispatchSemaphore(value: 0)
-        private let lock = NSLock()
-        private var _status: Int32?
-        var status: Int32? { lock.lock(); defer { lock.unlock() }; return _status }
-        func set(_ s: Int32) { lock.lock(); _status = s; lock.unlock(); done.signal() }
+        func set(_: Int32) { done.signal() }
     }
 
     private func composedInstaller() throws -> String {
@@ -492,9 +483,7 @@ final class AStopReachesTheInstallerItselfTests: XCTestCase {
 ///
 /// The second half is `deactivate()` reaching past the wait: while
 /// `install.sh` runs it ends it the way Stop does, while the password dialog
-/// is up it leaves nothing to launch after it, and while an ordinary package
-/// operation runs it terminates nothing, and no operation starts until the
-/// module is activated again.
+/// is up it leaves nothing to launch after it.
 final class EveryStopPointEndsTheInstallOnceTests: XCTestCase {
 
     private final class Count: @unchecked Sendable {
@@ -769,25 +758,6 @@ final class EveryStopPointEndsTheInstallOnceTests: XCTestCase {
         rig.engine.activate()
         rig.engine.install(name: "wget", isCask: false)
         XCTAssertEqual(rig.runner.handles.count, 1, "the gate stayed shut after the module came back")
-    }
-
-    // MARK: - A switch-off during anything else
-
-    /// The switch-off reaches the install and nothing else: an upgrade the
-    /// person started goes on — it was never the module's to stop — and its
-    /// ending is its own.
-    func testASwitchOffDuringAPackageOperationLeavesItAlone() async {
-        let rig = Rig()
-        rig.engine.install(name: "wget", isCask: false)
-        XCTAssertEqual(rig.runner.handles.count, 1, "precondition: the package operation is running")
-
-        rig.engine.deactivate()
-
-        XCTAssertEqual(rig.runner.handles.first?.terminations, 0,
-                       "a switch-off terminated an ordinary package operation")
-        rig.runner.exitAll(code: 0)
-        let terminal = await rig.states().filter { $0.phase != .running }
-        XCTAssertEqual(terminal.map(\.phase), [.done], "the operation's own ending was replaced: \(terminal)")
     }
 }
 

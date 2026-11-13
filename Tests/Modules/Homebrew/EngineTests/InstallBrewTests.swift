@@ -54,15 +54,12 @@ final class InstallBrewTests: XCTestCase {
         private let lock = NSLock()
         private var _streamCalls: [StreamCall] = []
         private var _exits: [@Sendable (Int32) -> Void] = []
-        private var _runCalls: [[String]] = []
 
         var streamCalls: [StreamCall] { lock.lock(); defer { lock.unlock() }; return _streamCalls }
-        var runCalls: [[String]] { lock.lock(); defer { lock.unlock() }; return _runCalls }
 
         func run(_ launchPath: String, _ args: [String],
                  env: [String: String]) -> (status: Int32, stdout: String) {
-            lock.lock(); _runCalls.append(args); lock.unlock()
-            return (0, "")
+            (0, "")
         }
 
         /// Not `doctor`: no fake here needs to answer on the diagnostics stream.

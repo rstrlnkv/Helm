@@ -80,10 +80,6 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
         }
     }
 
-    private func settle(_ work: FakeHomebrewWork, until: () -> Bool) async {
-        for _ in 0..<2_000 where !until() { await Task.yield() }
-    }
-
     /// **The recoverable one still goes on the press.** Asserted first: without
     /// it, every «nothing was sent» below is true of a view model that sends
     /// nothing at all.
@@ -91,7 +87,6 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
         let work = FakeHomebrewWork()
         let model = HomebrewViewModel(work: work)
         await model.askToRunFix(DoctorFix(argv: ["cleanup"], kind: .runnable))
-        await settle(work) { !fired(work).isEmpty }
         XCTAssertEqual(fired(work), [["cleanup"]], """
             `brew cleanup` did not reach the engine on the press — so this fake sees no commands \
             at all, and the absences below prove nothing
@@ -106,14 +101,12 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
 
         await model.askToRunFix(fix)
         XCTAssertEqual(model.pendingFix, fix, "the press raised no question")
-        await settle(work) { !fired(work).isEmpty }
         XCTAssertEqual(fired(work), [], """
             `brew uninstall periphery` was on its way to the engine before anybody had answered \
             the question — which is the single click, with a dialog drawn over it
             """)
 
         model.confirmFix()
-        await settle(work) { !fired(work).isEmpty }
         XCTAssertEqual(fired(work), [["uninstall", "periphery"]], """
             answering the question ran nothing, so the dialog is the whole feature and the fix \
             cannot be applied at all
@@ -129,12 +122,10 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
         let model = HomebrewViewModel(work: work)
         await model.askToRunFix(DoctorFix(argv: ["uninstall", "periphery"], kind: .runnable))
         model.cancelFix()
-        await settle(work) { !fired(work).isEmpty }
         XCTAssertEqual(fired(work), [], "the fix ran after the person declined it")
         XCTAssertNil(model.pendingFix)
         // And a confirm with nothing pending is not a second door to the act.
         model.confirmFix()
-        await settle(work) { !fired(work).isEmpty }
         XCTAssertEqual(fired(work), [], "a confirm with no question standing ran something")
     }
 
@@ -206,7 +197,6 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
         let work = FakeHomebrewWork()
         let model = HomebrewViewModel(work: work)
         await model.askToRunFix(DoctorFix(argv: ["cleanup"], kind: .runnable))
-        await settle(work) { !fired(work).isEmpty }
         XCTAssertEqual(fired(work), [["cleanup"]], "control: the cleanup press did not reach the engine")
         XCTAssertEqual(work.dependentsAsked, [], "a cleanup press read what depends on a package")
         XCTAssertEqual(model.dependentsOfPending, [])

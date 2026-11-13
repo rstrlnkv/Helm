@@ -164,7 +164,8 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
             let tape = news.stream()
             kind.start(running)
             running.deactivate()
-            runner.exitAll(code: kind.terminated == 1 ? 143 : 0)
+            let exitCode: Int32 = kind.terminated == 1 ? 143 : 0
+            runner.exitAll(code: exitCode)
 
             news.say(.line("test.sentinel"), slot: "test.sentinel")
             var terminal: [OpState] = []
@@ -173,6 +174,8 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
                 if case .state(let s) = item, s.phase != .running { terminal.append(s) }
             }
             XCTAssertEqual(terminal.count, 1, "\(kind): ended \(terminal.count) times: \(terminal)")
+            XCTAssertEqual(terminal.first?.phase, exitCode == 0 ? .done : .failed,
+                           "\(kind): the ending's phase does not follow the exit code: \(terminal)")
             // The install is the person's stop; the others end as they ended.
             XCTAssertEqual(terminal.first?.reason == .stopped, kind.terminated == 1,
                            "\(kind): the ending is worded wrongly: \(terminal)")
