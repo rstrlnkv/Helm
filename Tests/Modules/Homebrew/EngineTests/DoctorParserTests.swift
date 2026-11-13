@@ -16,6 +16,7 @@ import XCTest
 /// *between* the second and third repeat rather than only at the end, and
 /// «Some installed formulae are deprecated or disabled» naming `periphery` on
 /// its own indented line.
+/// Kept: the only test of the doctor parser's block collapsing, titles and bodies (the captured 1194-byte fixture); the doctor classes that stay in the default run assert findings and fixes, not these.
 final class DoctorParserTests: XCTestCase {
 
     /// Byte-for-byte what `/tmp/doctor.err` held. Reused across cases so a

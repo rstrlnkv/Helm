@@ -367,6 +367,7 @@ private final class UsesRunner: ProcessRunner, @unchecked Sendable {
 /// the first one's dependents. This is the stored-reading question the tree asks
 /// everywhere — what happened between the reading and the act — and here the act
 /// is a person reading a sentence and deciding.
+/// Kept: guards M217 (backlog, Homebrew; fixed 2026-11-11): both doors to `brew uninstall` read the dependents first and draw one note.
 @MainActor
 final class UninstallNamesWhatStillNeedsItTests: XCTestCase {
 

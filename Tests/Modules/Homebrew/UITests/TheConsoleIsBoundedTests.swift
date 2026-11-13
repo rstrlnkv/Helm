@@ -18,6 +18,7 @@ import Module_Homebrew_Engine
 /// 1000 is `LogTail`'s bound, and this is the same problem: a running record
 /// somebody reads the end of. Taking it from the front is what a terminal's
 /// scrollback does, and the alternative is a number nobody chose.
+/// Kept: guards the defect fixed in 04a21a36 fix(homebrew): the console keeps the last of what brew said, not all of it.
 @MainActor
 final class TheConsoleIsBoundedTests: XCTestCase {
 

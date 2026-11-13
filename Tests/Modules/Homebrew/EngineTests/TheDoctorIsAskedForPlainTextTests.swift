@@ -56,6 +56,7 @@ private struct NoPrivileges: PrivilegedRunner {
     func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
 }
 
+/// Kept: the only test that `brew doctor` is asked uncoloured (measured on 2026-09-29, see above); the coloured-doctor class beside it accepts a refusal as a repair too.
 final class TheDoctorIsAskedForPlainTextTests: XCTestCase {
 
     private static let esc = "\u{1B}"

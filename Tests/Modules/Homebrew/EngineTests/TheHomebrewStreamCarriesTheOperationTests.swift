@@ -50,6 +50,7 @@ private struct NoPrivileges: PrivilegedRunner {
     func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
 }
 
+/// Kept: the only test that the engine's stream delivers lines and states whole and in order, and to a late subscriber; the model-side class reads a fake stream, not the engine's.
 final class TheHomebrewStreamCarriesTheOperationTests: XCTestCase {
 
     private func engine(_ runner: ProcessRunner, _ news: EngineNews<HomebrewNews> = EngineNews())

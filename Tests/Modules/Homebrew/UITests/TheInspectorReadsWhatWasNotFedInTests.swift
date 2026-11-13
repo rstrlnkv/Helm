@@ -15,6 +15,7 @@ import XCTest
 /// The rule under all four: `InspectorState.of` is the only thing that decides
 /// what a button does, and every one of these inputs reaches it from a real
 /// `brew`.
+/// Kept: guards the reconcile gaps closed in ea433871 Guard the three inputs the inspector's own family never put in.
 final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
 
     private let node = BrewPackage(name: "node", version: "26.8.2", isCask: false)

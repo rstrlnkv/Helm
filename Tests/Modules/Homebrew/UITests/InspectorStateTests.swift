@@ -57,6 +57,7 @@ final class InspectorStateTests: XCTestCase {
 /// selection: what an installed, an outdated, a pinned package and a search hit
 /// each offer, what a description adds once it has arrived, and that the health
 /// segment has no inspector. `InspectorStateTests` keeps the lookup by id.
+/// Kept: the only test of the inspector's ordinary branches (installed, outdated, pinned, hit, description); the by-id class and the not-fed-in class pin the exceptions.
 final class InspectorStateDecisionsTests: XCTestCase {
 
     func testNothingSelectedIsItsOwnState() {

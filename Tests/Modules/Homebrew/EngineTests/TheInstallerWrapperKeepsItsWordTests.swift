@@ -162,6 +162,7 @@ final class TheInstallerWrapperKeepsItsWordTests: XCTestCase {
 /// shell's own reaches the console. The command, the stand-in installers and
 /// the stream are the ones `TheInstallerWrapperKeepsItsWordTests` uses: the
 /// harness at the foot of this file serves both.
+/// Kept: the only test of the wrapper's exit code, failed download and console output; its sibling covers Stop only.
 final class TheInstallerWrapperPassesItsCodeAndOutputThroughTests: XCTestCase {
 
     // MARK: - Exit status

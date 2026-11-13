@@ -9,6 +9,7 @@ import XCTest
 /// two files were 453,903 and 399,502 bytes on 2026-09-13, and a ceiling well
 /// above that is the difference between a moved endpoint costing a refusal and
 /// it costing however much whatever now lives there decides to send.
+/// Kept: the only test of the once-a-day rule and the size ceiling before parsing (c01e0f81 added the empty-document case); `ARefusedFetchKeepsTheLastCountsTests` covers the refusal path only.
 final class PopularityRefreshTests: XCTestCase {
 
     func testNothingStoredMeansAFetchIsDue() {

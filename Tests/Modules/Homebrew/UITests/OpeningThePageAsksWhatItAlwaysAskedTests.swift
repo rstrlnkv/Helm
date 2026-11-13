@@ -75,6 +75,7 @@ private struct NoPrivileges: PrivilegedRunner {
     func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
 }
 
+/// Kept: the only test of what the first open and a return visit run through the real model and engine (`outdated` runs `brew update` first).
 @MainActor
 final class OpeningThePageAsksWhatItAlwaysAskedTests: XCTestCase {
 
