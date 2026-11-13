@@ -9,6 +9,8 @@ import XCTest
 
 /// **The editor under the inputs its brief did not name:** a module switched off right after an exit delivers nothing
 /// and sounds no shutter. Panels are built and never ordered in.
+///
+/// Mutant, red here: `cancel` skips the delivery task's cancel.
 @MainActor
 final class TheEditorMeetsTheInputsNobodyPlannedTests: XCTestCase {
 

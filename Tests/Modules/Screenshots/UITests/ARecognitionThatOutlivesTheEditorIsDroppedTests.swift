@@ -65,6 +65,8 @@ private func plates(_ view: OverlayView) -> [String] { view.visiblePlates.compac
 ///
 /// A dropped answer is asserted by what did not happen, so each such test ends with an answer of the same path that does act (the control):
 /// the stale answer was resumed first, so a defect that acted on it would already have acted.
+///
+/// Mutant, red here: `answered` drops the `held.serial == serial` check (red in `ARecognitionForAnAreaThatChangedIsDroppedTests`, same file).
 @MainActor
 final class ARecognitionThatOutlivesTheEditorIsDroppedTests: XCTestCase {
 

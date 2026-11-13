@@ -49,6 +49,8 @@ private func holds(_ out: [UInt32], _ base: [UInt32], width: Int, box: (Int, Int
 }
 
 /// One colour a block in P3, 16-bit sRGB, Adobe RGB, linear, grey and half-transparent pictures.
+///
+/// Mutant, red here: `Pixelate.spaces` has no sRGB fallback (the `grown` bound is `TheMosaicsEdgesMeetEveryRemainderTests`'s).
 final class TheBlurMeetsInputsNobodyFedItTests: XCTestCase {
     func testAPictureWithAlphaSixteenBitsOrAnotherSpaceStillHasOneColourABlock() throws {
         let spaces: [(String, CGColorSpace, Int)] = [("P3", CGColorSpace(name: CGColorSpace.displayP3)!, 8),

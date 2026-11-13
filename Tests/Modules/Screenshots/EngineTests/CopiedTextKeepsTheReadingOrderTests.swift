@@ -6,6 +6,8 @@ import XCTest
 /// **Copy Text puts the text and only the text on the clipboard,** and nothing when there is nothing; a refused copy
 /// is a refusal and its words are in no log line; a reader that failed is a failure, and a reading cancelled in flight
 /// answers nothing.
+///
+/// Mutant, red here: the lines are reversed.
 final class CopiedTextKeepsTheReadingOrderTests: XCTestCase {
 
     private func line(_ string: String, y: CGFloat = 0.5, x: CGFloat = 0.1) -> RecognizedLine {

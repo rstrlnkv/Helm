@@ -9,6 +9,8 @@ import XCTest
 
 /// **Through the overlay: the lines Copy Text hands the clipboard are those the person's own blur does not lie on.** A fake reader answers
 /// with two lines, one under a blur drawn in the editor and one clear of it, and the copy closure records what it was given.
+///
+/// Mutant, red here: the overlay hands every line to the copy.
 @MainActor
 final class TheCopyOfTheTextLeavesOutWhatThePersonCoveredTests: XCTestCase {
 

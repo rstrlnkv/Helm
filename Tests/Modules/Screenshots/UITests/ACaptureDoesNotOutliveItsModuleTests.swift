@@ -21,6 +21,8 @@ import XCTest
 ///
 /// The freeze is held open by a gate, because a fake that answers at once is
 /// over before the switch can be turned.
+///
+/// Mutant, red here: `cancel` skips the press task's cancel.
 @MainActor
 final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
 

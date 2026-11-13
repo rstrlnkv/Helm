@@ -7,6 +7,8 @@ import XCTest
 /// name, and the answer is "(1)", not an overwrite. The real writer, on a real
 /// folder: `Data.write(options: .atomic)` is a rename over whatever is there,
 /// which is exactly how the second capture would eat the first.
+///
+/// Mutant, red here: `FileShotWriter` moves with `rename` instead of `renamex_np` with `RENAME_EXCL`.
 final class ANameIsNeverTakenTwiceTests: XCTestCase {
 
     private let base = "Screenshot 2026-09-30 at 14.02.11"

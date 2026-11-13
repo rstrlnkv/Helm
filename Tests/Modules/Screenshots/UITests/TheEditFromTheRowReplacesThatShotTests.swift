@@ -15,6 +15,8 @@ import XCTest
 /// Total failure of the subject prints: the file of another shot replaced, a neighbour whose bytes or reading moved,
 /// a shot that is in the window twice or not at all, an editor opened on the shot the pointer had moved to by the time
 /// the screen was frozen, a stranger's file moved to the Trash.
+///
+/// Mutant, red here: `handOff` passes `replacing: nil`.
 @MainActor
 final class TheEditFromTheRowReplacesThatShotTests: XCTestCase {
 

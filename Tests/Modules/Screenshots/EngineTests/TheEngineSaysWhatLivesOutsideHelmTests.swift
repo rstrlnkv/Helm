@@ -30,6 +30,8 @@ private func firstState(of engine: ScreenshotsEngine, within seconds: Double = 5
 }
 
 /// A switched-off engine publishes nothing, a read started after deactivation included.
+///
+/// Mutant, red here: `refresh` emits after `stopped`.
 final class TheEngineSaysWhatLivesOutsideHelmTests: XCTestCase {
 
     /// The flag and not only the cancel: a read *started* after the module was

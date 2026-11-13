@@ -8,6 +8,8 @@ import XCTest
 /// anything, a block that took a corner of its neighbour) is a colour the box's source holds and nothing else does,
 /// and a block that is not one colour is read straight off the file's bytes. The grid is the display's pixels at
 /// the block's size, so the box's edges cut blocks, and the edge blocks are read the same as the others.
+///
+/// Mutant, red here: `draw` skips the blur layers.
 final class TheBlurLeavesNoSourcePixelInTheFileTests: XCTestCase {
     private struct Case {
         let scale: CGFloat

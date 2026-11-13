@@ -13,6 +13,8 @@ import HelmTestSupport
 ///
 /// The pictures are 1×, 1.5× and 2×, the area is never on the mosaic's grid, and the finds sit in the middle, at
 /// every edge of the area, in a corner, and larger than the area.
+///
+/// Mutant, red here: `RecognizedBoxes.place` rounds the left edge up (dropping the padding alone stays green here: the padding is beyond the find's pixels).
 final class TheBlurOfAFindCoversTheFindsPixelsInTheFileTests: XCTestCase {
 
     /// Every pixel its own colour: three channels from a hash of the position, so no two neighbours are alike and

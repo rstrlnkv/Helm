@@ -17,6 +17,8 @@ import XCTest
 /// that ends normally is no evidence that nobody cancelled during it, and a
 /// controller that only ever read its own flag after the whole loop would look
 /// right against a tick that returns at once.
+///
+/// Mutant, red here: the countdown does not ask after its wait whether it was cancelled.
 @MainActor
 final class TheCountdownEndsWithTheModuleTests: XCTestCase {
 

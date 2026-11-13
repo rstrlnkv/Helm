@@ -11,6 +11,8 @@ import XCTest
 /// model make it, over a fake of its own: that shows the call goes through (without it, "no call" is what a fake that
 /// records nothing would say too); the stopped model must not make it. The fake is `FakeScreenshotsWork`:
 /// nothing constructs `SCKCapture` and no window is shown.
+///
+/// Mutant, red here: the stopped guard is removed in `press`.
 @MainActor
 final class AStoppedScreenshotsModelReachesNoWorkTests: XCTestCase {
 

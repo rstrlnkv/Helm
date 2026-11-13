@@ -10,6 +10,8 @@ import Module_Screenshots_Engine
 /// `ASwitchedOffCaptureClosesEveryWindowTests` stops one that did, once. Here the model is stopped with its overlay up
 /// and then pressed at, and stopped again; and a second model (the host builds one per enable) must neither inherit
 /// the first one's capture nor lose its own windows when the first is stopped.
+///
+/// Mutant, red here: the same guard is removed in `press`, met after a stop that found a capture open.
 @MainActor
 final class TheStoppedModelMeetsTheOrdersNobodyPlannedTests: XCTestCase {
 

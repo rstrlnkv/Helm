@@ -13,6 +13,8 @@ import Module_Screenshots_Engine
 /// Windows are built and never shown: the overlay through `build()` (panels never ordered in), the bar counted
 /// through its seam, the toast with no panel and a clock the test holds, the pins never presented. Each state is
 /// proved present before the switch (the control) and gone after it.
+///
+/// Mutant, red here: `CaptureController.cancel` skips the toast close.
 @MainActor
 final class ASwitchedOffCaptureClosesEveryWindowTests: XCTestCase {
 

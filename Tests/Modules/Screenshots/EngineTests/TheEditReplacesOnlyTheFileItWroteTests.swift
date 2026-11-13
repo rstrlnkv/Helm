@@ -23,6 +23,8 @@ import XCTest
 ///
 /// Total failure of the subject prints: the changed file in the Trash, a stranger's file overwritten, an edit that is
 /// nowhere, or a replacement reported over a file that was never moved.
+///
+/// Mutant, red here: `CaptureSession.replace` trashes the original without the `ShotReplacement.verdict` check.
 final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
 
     // MARK: The ports of the test: a real folder that keeps a journal, and a Trash that is a folder

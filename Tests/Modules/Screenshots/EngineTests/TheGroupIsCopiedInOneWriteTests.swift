@@ -37,6 +37,8 @@ private func file(_ folder: URL, width: Int) throws -> URL {
 ///
 /// Total failure of the subject prints: a write a picture, a board that holds the first nine of twenty because the tenth
 /// file was unreadable, a refusal that says the clipboard when it was the file, an empty group that reports a copy.
+///
+/// Mutant, red here: `copyAll` writes each PNG separately.
 final class TheGroupIsCopiedInOneWriteTests: XCTestCase {
 
     private func rig(_ name: String) -> Rig { Rig(home: scratchDirectory(name)) }

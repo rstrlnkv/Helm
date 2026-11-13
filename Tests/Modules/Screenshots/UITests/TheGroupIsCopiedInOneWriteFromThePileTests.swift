@@ -15,6 +15,8 @@ private func copied(_ s: PileScene, width: Int) throws {
 
 /// The module goes off with the group's copy in flight: the board is not written afterwards, and a refusal that
 /// would have been said is not said over a window that is gone.
+///
+/// Mutant, red here: `cancel` does not cancel the pile's copy task.
 @MainActor
 final class TheGroupIsCopiedInOneWriteFromThePileTests: XCTestCase {
 

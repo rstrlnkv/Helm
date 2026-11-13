@@ -20,6 +20,8 @@ import XCTest
 /// Total failure of the subject prints: a file with the screen's ground in it, an editor
 /// opened on a file that is not the shot's, a second Done that replaces twice, a thumbnail that offers an Edit it could not
 /// keep, or a replacement that the person is not told of.
+///
+/// Mutant, red here: the overlay of an edit is built with `picture: nil`.
 @MainActor
 final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
 

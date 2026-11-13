@@ -9,6 +9,8 @@ import XCTest
 /// the same never-replace ladder a PNG does.** ScreenCaptureKit can write the
 /// file itself when asked for a type, and a file it writes is a file no ladder
 /// saw. The clipboard gets a PNG whatever the file is.
+///
+/// Mutant, red here: the writer moves a `.jpg` with `rename` and skips the exclusive claim (removing `deliver`'s `ownFormat` guard alone stays green here: it is the edit path, `TheEditReplacesOnlyTheFileItWroteTests`).
 final class TheJPEGIsOursAndNeverReplacesTests: XCTestCase {
 
     private let fixed = Date(timeIntervalSince1970: 1_790_000_000)

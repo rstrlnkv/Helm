@@ -10,6 +10,8 @@ import XCTest
 ///
 /// Total failure of the subject prints: a nil for a picture the person drew a rectangle on, or a file in which the
 /// rectangle is not there.
+///
+/// Mutant, red here: `Pixelate.grown` returns nil.
 final class ABlurBoxOfOnePixelDoesNotCostTheWholeShotTests: XCTestCase {
 
     private func picture(width: Int = 80, height: Int = 50) throws -> CGImage {

@@ -12,6 +12,8 @@ import XCTest
 /// Measured off the file, on a picture of a gradient (a mosaic differs from it): the pixels under a
 /// blur in the lower right of the picture are not the picture's own; the pixels
 /// away from the blur are. Total failure of the subject prints a file equal to the picture under the layer.
+///
+/// Mutant, red here: `annotated` hands `draw` the cut as `display` (red in the case of a part of the picture).
 final class TheEditExportBlursAndMagnifiesThePictureNotAPartOfItTests: XCTestCase {
 
     private let srgb = CGColorSpace(name: CGColorSpace.sRGB)!
@@ -104,6 +106,37 @@ final class TheEditExportBlursAndMagnifiesThePictureNotAPartOfItTests: XCTestCas
                 XCTAssertEqual(away, 0, "\(w)×\(h): the \(name) changed pixels far from itself")
             }
         }
+    }
+
+    /// The same, with the area a part of the picture: the blur is cut from the whole picture, so its pixels are the
+    /// picture's own where the cut has them, and a mosaic made from the cut alone would find no pixel under it.
+    func testABlurInAPartOfThePictureIsMadeOfThePicturesPixels() throws {
+        let (w, h) = (1200, 700)
+        let picture = gradient(w, h)
+        let shown = try placed(picture)
+        let r = shown.rect
+        let part = CGRect(x: r.minX + 0.5 * r.width, y: r.minY + 0.5 * r.height, width: 0.5 * r.width, height: 0.5 * r.height)
+        let box = CGRect(x: r.minX + 0.6 * r.width, y: r.minY + 0.6 * r.height, width: 0.3 * r.width, height: 0.3 * r.height)
+        let layer = Annotation(tool: .blur, start: box.origin, end: CGPoint(x: box.maxX, y: box.maxY))
+        XCTAssertTrue(layer.isUsable, "the control: the blur is usable")
+        let rig = Rig(home: scratchDirectory("shots-export-part"))
+        let out = try XCTUnwrap(exported(rig.session, shown, local: part, layer: layer))
+        let (offsetX, offsetY) = (w / 2, h / 2)
+        XCTAssertEqual(out.width, w - offsetX)
+        XCTAssertEqual(out.height, h - offsetY)
+        let file = bytes(out), source = bytes(picture)
+        // The box in the cut's own pixels: 0.6 to 0.9 of the picture is 0.2 to 0.8 of the half that is cut.
+        let region = CGRect(x: 0.2 * Double(out.width), y: 0.2 * Double(out.height),
+                            width: 0.6 * Double(out.width), height: 0.6 * Double(out.height)).integral
+        var different = 0, total = 0
+        for y in Int(region.minY)..<Int(region.maxY) {
+            for x in Int(region.minX)..<Int(region.maxX) {
+                let i = (y * out.width + x) * 4, j = ((y + offsetY) * w + x + offsetX) * 4
+                total += 1
+                if file[i] != source[j] || file[i + 1] != source[j + 1] || file[i + 2] != source[j + 2] { different += 1 }
+            }
+        }
+        XCTAssertGreaterThan(Double(different) / Double(total), 0.5, "the pixels under the blur are the picture's own: it was not drawn from the picture")
     }
 
     /// A lens shows the picture twice as large, so under it a gradient is not its own pixels; far from it the file is the picture.
