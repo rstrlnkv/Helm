@@ -71,6 +71,13 @@ final class ACaskIsNeverAskedWhatUsesItTests: XCTestCase {
         XCTAssertEqual(runner.calls.first, ["uses", "--installed", "--", "openssl@3"])
     }
 
+    /// Whitespace a shell would have eaten is not part of a package name.
+    func testSurroundingWhitespaceIsNotPartOfAName() {
+        let runner = UsesRunner()
+        runner.stdout = "  aria2  \n\n   \n node \n"
+        XCTAssertEqual(engine(runner).dependents(name: "openssl@3", isCask: false), ["aria2", "node"])
+    }
+
     func testACaskCostsNoToolRun() {
         let runner = UsesRunner()
         let answer = engine(runner).dependents(name: "firefox", isCask: true)

@@ -65,6 +65,7 @@ private struct NoPrivileges: PrivilegedRunner {
     func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
 }
 
+/// Kept: guards the defect fixed in 4b5e0df9 feat(settings): … a Health page of its own.
 final class ADoctorThatNamedNothingReadableIsNotACleanMacTests: XCTestCase {
 
     private static let esc = "\u{1B}"

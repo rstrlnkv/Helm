@@ -49,6 +49,7 @@ private struct BrewAnswer {
     }
 }
 
+/// Kept: guards the defect fixed in 7006109b fix(homebrew): four refusals the module read as good news.
 final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
 
     // MARK: - Fakes

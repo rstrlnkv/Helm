@@ -11,6 +11,7 @@ import XCTest
 ///
 /// The shape below is `brew outdated --json=v2` as Homebrew 6 writes it,
 /// checked against the real command on this machine.
+/// Kept: guards the defect fixed in 63e9bcfe fix: three more from the suspicions list.
 final class BrewPinnedTests: XCTestCase {
 
     /// `parse` answers nil for a document it cannot read, and a `?? []` here

@@ -10,6 +10,7 @@ import HelmRuntime
 /// A list query that timed out answers *nothing*, which this codebase
 /// distinguishes from an empty answer: `nil` here, and the view model keeps the
 /// list it had.
+/// Kept: guards the defect fixed in 882fe986 fix(homebrew): the batch — a hang has a deadline, a press has an answer, a phase has a name.
 final class ATimedOutQueryIsANamedRefusalTests: XCTestCase {
 
     private struct FixedLocator: BrewLocator {

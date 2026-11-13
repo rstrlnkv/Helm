@@ -12,6 +12,7 @@ import HelmTestSupport
 /// retrying — and `deactivate()` runs on every route out of the app,
 /// `applicationWillTerminate` included, so being cancelled mid-fetch is an
 /// ordinary Tuesday rather than an edge case.
+/// Kept: guards the defect fixed in fe2f9044 Fetch Homebrew's install counts once a day, bounded, with the ETag.
 final class ARefusedFetchKeepsTheLastCountsTests: XCTestCase {
 
     private func directoryWithADayOldReading(_ label: String) throws -> URL {

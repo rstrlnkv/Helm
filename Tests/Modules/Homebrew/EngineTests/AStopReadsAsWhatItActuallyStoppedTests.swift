@@ -19,6 +19,7 @@ import HelmRuntime
 ///   run reports non-zero, and nothing is left in the temporary folder.
 ///
 /// Nothing here reaches the network, root or the real installer.
+/// Kept: guards the defect fixed in 4b5e0df9 feat(settings): … a Health page of its own.
 final class AStopReadsAsWhatItActuallyStoppedTests: XCTestCase {
 
     // MARK: - The page and the log

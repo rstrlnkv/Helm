@@ -40,6 +40,7 @@ import HelmRuntime
 /// control below) and over it, at `2n-1`, exactly when the refusal is about the
 /// tool. A threshold above every real case is a check that cannot fail; this
 /// one sits at the level of the naive strategy it replaced.
+/// Kept: guards the defect fixed in 7006109b fix(homebrew): four refusals the module read as good news.
 final class ADescriptionBatchCannotCostMoreThanItsNamesTests: XCTestCase {
 
     private struct FixedLocator: BrewLocator {

@@ -10,6 +10,7 @@ import HelmRuntime
 ///
 /// The subject must really hang: a fake that answers synchronously makes a test
 /// of a deadline vacuous. `/bin/sleep` writes nothing and stays for 30 s.
+/// Kept: guards the defect fixed in 882fe986 fix(homebrew): the batch — a hang has a deadline, a press has an answer, a phase has a name.
 final class AQueryRunnerHasADeadlineTests: XCTestCase {
 
     func testAHungQueryComesBackAsATimeoutNotNever() {
