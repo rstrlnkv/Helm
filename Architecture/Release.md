@@ -72,7 +72,9 @@ assembles and signs in `$TMPDIR/helm-package`, and leaves a copy in `build/` for
 inspection. Only the signed copy under `$TMPDIR` is installed: it is the bundle the
 script signed and verified, while `.build/` holds an unsigned one with no usable
 identity at all. `Scripts/make-dmg.sh` and
-`Scripts/make-zip.sh` package that signed bundle and refuse one that does not verify.
+`Scripts/make-zip.sh` package that signed bundle and refuse one that does not verify,
+or one signed with a local identity; both source `Scripts/staged-bundle.sh` for that
+check and the version read (it is sourced, not run by hand, and `package-app.sh` does not source it).
 `Scripts/package-dev.sh` builds through `Scripts/package-app.sh` and installs **Helm Dev**
 beside the real app; its header says why a separate bundle. `--no-launch` (or `HELM_DEV_NO_LAUNCH=1`) installs without opening it, because a launch writes state and a later step needs the installed bundle untouched; the script also waits up to about 10 s for the running Helm Dev to exit and refuses, leaving the installed copy alone, if it does not. Helm Dev is the crew's copy, with its own bundle identifier and defaults domain, and every intermediate build runs there; the owner's copy is built only from work he has accepted. The release scripts are
 `Scripts/package-app.sh`, `Scripts/make-dmg.sh`, `Scripts/make-zip.sh` and
