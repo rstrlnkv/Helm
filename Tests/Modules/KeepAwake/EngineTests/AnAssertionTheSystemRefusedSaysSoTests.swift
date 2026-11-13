@@ -66,6 +66,8 @@ final class AnAssertionTheSystemRefusedSaysSoTests: XCTestCase {
                        "macOS refused to hold the Mac awake and the module wrote «holding "
                        + "sleep» over it; the log is the only account of a Mac that slept "
                        + "through a session it was asked to sit out")
+        XCTAssertEqual(entries(containing: "could not").map(\.level), [.warn],
+                       "the refusal is a warning: warn is what reaches a bug report, info does not")
     }
 
     /// The control, so the line above cannot be satisfied by a module that
@@ -79,9 +81,12 @@ final class AnAssertionTheSystemRefusedSaysSoTests: XCTestCase {
                        "…and the ordinary line is still written")
     }
 
-    private func lines(containing text: String) -> [String] {
+    private func entries(containing text: String) -> [LogEntry] {
         HelmLog.shared.recentEntries()
             .filter { $0.category == KeepAwakeEngine.moduleID && $0.message.contains(text) }
-            .map(\.message)
+    }
+
+    private func lines(containing text: String) -> [String] {
+        entries(containing: text).map(\.message)
     }
 }

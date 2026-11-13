@@ -93,8 +93,9 @@ final class WalkFootprintTests: XCTestCase {
         XCTAssertLessThan(perEntry, 100, """
             the walk is scaling with what it looked at rather than with the files it \
             kept — every entry is carrying something out of the loop. The loop is \
-            `BulkWalk.walk`'s now, and it has a pool per directory and a pool per batch; \
-            check that both are still there before looking at this file's own filter.
+            `BulkWalk.walk`'s now; look at what the scanner's size floor lets past it \
+            and at this file's own filter. The pools in `BulkWalk.walk` are held by \
+            `ScanFootprintTests`, not here.
             """)
     }
 
