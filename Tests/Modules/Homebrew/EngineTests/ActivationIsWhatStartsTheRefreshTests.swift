@@ -73,4 +73,18 @@ final class ActivationIsWhatStartsTheRefreshTests: XCTestCase {
                        + "other test green")
         engine.deactivate()
     }
+
+    /// And only activation: `init` runs for every module the host knows about, and
+    /// a module the person has turned off must never reach the network. An engine
+    /// that is built and never activated stays silent for the length of the wait.
+    func testAnEngineThatIsNeverActivatedNeverAsks() {
+        let spy = RefreshSpy()
+        spy.asked.isInverted = true
+        let engine = self.engine(spy)
+
+        XCTAssertEqual(XCTWaiter.wait(for: [spy.asked], timeout: 1), .completed,
+                       "an engine nobody activated asked the store to refresh, so a module "
+                       + "that is switched off still fetches the install counts")
+        withExtendedLifetime(engine) {}
+    }
 }

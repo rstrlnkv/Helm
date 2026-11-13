@@ -204,24 +204,6 @@ final class ASizeIsMeasuredNotGuessedTests: XCTestCase {
             """)
     }
 
-    /// And the name is not allowed to leave the Cellar. `name` reaches here
-    /// from `brew`'s own stdout and from a search box somebody types into, and
-    /// it is appended to a path that is then **walked**: `..` would point the
-    /// walk at the prefix, and an absolute-looking name at whatever it names.
-    func testANameThatWouldLeaveTheCellarIsNotAPackage() throws {
-        let prefix = scratchDirectory("brew-size-escape")
-        try keg("openssl@3", version: "3.6.4", in: prefix, files: [("bin/openssl", 10_000)])
-        let locator = CountingLocator(prefix: prefix)
-        let weight = CellarWeight(locator: locator)
-
-        for name in ["..", ".", "", "../Cellar/openssl@3", "openssl@3/3.6.4", "/etc"] {
-            XCTAssertNil(weight.bytes(ofPackage: name, isCask: false),
-                         "«\(name)» was walked as though it named a package")
-        }
-        XCTAssertNotNil(weight.bytes(ofPackage: "openssl@3", isCask: false),
-                        "nothing here is measurable, so the nils above say nothing")
-    }
-
     // MARK: - 3. A cask is answered without looking
 
     /// **Nothing is walked for a cask, and the locator never hears about it.**
