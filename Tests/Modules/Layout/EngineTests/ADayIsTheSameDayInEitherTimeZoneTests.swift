@@ -26,6 +26,8 @@ import XCTest
 /// The figures are the whole of the module's page. A count that goes backwards
 /// through nothing the reader did is the complaint the ledger was written to
 /// answer, one scale over: it replaced a counter that reset at every launch.
+///
+/// Guards a past defect: a day split in two by a time-zone change (fix commit `95da25a3`).
 final class ADayIsTheSameDayInEitherTimeZoneTests: XCTestCase {
 
     private func calendar(_ zone: String) -> Calendar {

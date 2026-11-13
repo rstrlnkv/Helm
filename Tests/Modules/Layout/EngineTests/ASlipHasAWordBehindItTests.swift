@@ -21,6 +21,8 @@ import HelmRuntime
 /// A slip has a **word** behind it. `TypingHabits` stays a pure shape test —
 /// that is all it can honestly be — and the engine asks whether what the shape
 /// proposes is a word in the layout being typed in.
+///
+/// Guards a past defect: abbreviations rewritten by the capital fix (fix commit `618a822d`).
 final class ASlipHasAWordBehindItTests: XCTestCase {
 
     private var typing = FakeTyping()

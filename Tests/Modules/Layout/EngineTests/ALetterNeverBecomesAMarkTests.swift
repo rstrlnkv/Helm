@@ -15,6 +15,8 @@ import XCTest
 /// repair — `cgfcb,j` → `спасибо`, where the comma key was pressed for `б`. A
 /// letter becoming a mark is the opposite: somebody typing letters meant
 /// letters, and no dictionary's opinion outranks that.
+///
+/// Guards a past defect: a word rewritten into one with a bracket on the end (fix commit `d6db4143`).
 final class ALetterNeverBecomesAMarkTests: XCTestCase {
 
     private func decide(_ word: String, _ translated: String) -> LayoutVerdict.Decision {

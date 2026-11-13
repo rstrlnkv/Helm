@@ -21,6 +21,8 @@ import XCTest
 /// A mark at the very start with letters after it — `[jhjij` for «хорошо» —
 /// reads as a letter by the same rule, which is what makes the rule worth
 /// having rather than «inside a word».
+///
+/// Guards a past defect: a key that types a letter in another layout read as a mark (fix commit `96afdc45`).
 final class AKeyIsOnlyPunctuationInOneLayoutTests: XCTestCase {
 
     /// Toy tables in the shape `buildTable` now produces: every key, not only

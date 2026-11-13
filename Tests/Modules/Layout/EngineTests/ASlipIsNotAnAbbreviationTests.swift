@@ -12,6 +12,8 @@ import XCTest
 ///
 /// The fourth letter is what separates them: a slip carries a word behind it,
 /// an abbreviation-plus-suffix does not.
+///
+/// Guards a past defect: CDs, IDs, PCs read as a slipped Shift (fix commit `af50f192`).
 final class ASlipIsNotAnAbbreviationTests: XCTestCase {
 
     func testASlippedShiftIsCorrected() {
