@@ -5,14 +5,13 @@ import Carbon.HIToolbox
 /// A person's clipboard is not borrowed when Helm cannot put it back.
 ///
 /// Defect class kept: a clipboard destroyed (data overwritten; REQUIRED in
-/// ARCHITECTURE.md § What proves what). `AXSelection`'s paste route and copy route
-/// each save a string and restore a string, so a clipboard holding RTF, an image
+/// ARCHITECTURE.md § What proves what). `AXSelection`'s paste route
+/// saves a string and restores a string, so a clipboard holding RTF, an image
 /// or a promised file comes back as plain text or nothing. `PasteboardSafety`
-/// decides; this file guards that each route asks it before the first write or
+/// decides; this file guards that the route asks it before the first write or
 /// key. `PasteboardSafetyTests` keeps the decision itself.
 ///
-/// The fakes carry their ports' states only: a pasteboard with types, a change
-/// count and writes; a focus that answers nothing and refuses a set (the state of
+/// The fakes carry their ports' states only: a pasteboard with types and writes; a focus that answers nothing and refuses a set (the state of
 /// an Electron app); keys that record what was pressed. Nothing here touches the
 /// real pasteboard, the accessibility tree or posts an event.
 final class TheClipboardIsLeftAloneWhenItCannotBeGivenBackTests: XCTestCase {
@@ -24,7 +23,6 @@ final class TheClipboardIsLeftAloneWhenItCannotBeGivenBackTests: XCTestCase {
         private var writeCount = 0
         init(types: [String], string: String? = "mine") { held = types; text = string }
         var types: [String] { lock.withLock { held } }
-        var changeCount: Int { lock.withLock { writeCount } }
         var writes: Int { lock.withLock { writeCount } }
         func string() -> String? { lock.withLock { text } }
         func clear() { lock.withLock { writeCount += 1; held = []; text = nil } }
@@ -64,17 +62,5 @@ final class TheClipboardIsLeftAloneWhenItCannotBeGivenBackTests: XCTestCase {
         _ = borrowing.replaceSelection(with: "привет")
         XCTAssertEqual(plainKeys.pressed, [UInt16(kVK_ANSI_V)], "control: no paste was sent")
         XCTAssertGreaterThan(plain.writes, 0, "control: the clipboard was never used")
-    }
-
-    func testACopyLeavesAClipboardHoldingRichTextAlone() {
-        let (refusing, pasteboard, keys) = selection(types: ["public.rtf"])
-        XCTAssertNil(refusing.selectedText())
-        XCTAssertEqual(keys.pressed, [], "a copy was sent into a clipboard it would destroy")
-        XCTAssertEqual(pasteboard.writes, 0, "the clipboard was written over")
-
-        // Control: plain text only is borrowed, so the same call copies.
-        let (borrowing, _, plainKeys) = selection(types: ["public.utf8-plain-text"])
-        _ = borrowing.selectedText()
-        XCTAssertEqual(plainKeys.pressed, [UInt16(kVK_ANSI_C)], "control: no copy was sent")
     }
 }

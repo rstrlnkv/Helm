@@ -8,7 +8,7 @@ final class UndoRecordEdgeTests: XCTestCase {
                         app: String = "com.apple.Notes", trailing: String = "") -> UndoRecord {
         UndoRecord(event: ConversionEvent(before: before, after: after,
                                           app: app, trailing: trailing),
-                   from: "en", to: "ru")
+                   from: "en")
     }
 
     /// Nothing to put back, or nothing to take away, is not a plan to send zero

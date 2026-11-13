@@ -127,7 +127,7 @@ final class UndoRecordCountingTests: XCTestCase {
     private func record(before: String, after: String, trailing: String) -> UndoRecord {
         UndoRecord(event: ConversionEvent(before: before, after: after,
                                           app: "com.apple.Notes", trailing: trailing),
-                   from: "en", to: "ru")
+                   from: "en")
     }
 
     /// The conversion deleted the word and its ending and typed the

@@ -466,25 +466,21 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// same two refusals apply — a blocked app, a secure field — and one more:
     /// nothing happens unless the result actually differs, because replacing a
     /// selection with itself still clears that app's undo stack.
-    /// `selected` is the text the caller has already read, when it has.
+    /// `selected` is the text the caller has already read.
     ///
     /// `fix()` reads the selection off the main thread precisely because that
     /// read can block, and hands the text here rather than letting this read it
-    /// again on the tap's own callback thread, where `selectedText()` can fall
-    /// through to the ⌘C route and poll the pasteboard for up to 200 ms.
-    /// `selected` is nil only when nobody has read it yet; the read then happens
-    /// here, and that is the one way ⌘C is reached — `fix()` never does it.
+    /// again on the tap's own callback thread.
     ///
     /// `readIn` is the app the caller read that text out of — the pin the word
     /// path has carried on `RememberedWord` since a word typed in Notes was
-    /// converted into Mail. Nil means nobody has read anything yet, so the read
-    /// happens here and pins the app it happens in.
+    /// converted into Mail.
     ///
     /// **Not `private`, and not a door of its own.** Tests reach it directly; the
     /// door people use is `fix()`, which calls this from its hop back to main.
-    func convertSelection(selected: String? = nil, readIn: String? = nil) {
+    func convertSelection(selected: String, readIn: String) {
         guard let selection else { return }
-        let bundleID = readIn ?? secure.frontmostBundleID()
+        let bundleID = readIn
         lock.lock()
         // A module that was turned off types nothing; the check stays though
         // `fix()` asks first, because a door that is not there today is not a
@@ -493,7 +489,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         let allowed = scope.allows(bundleID)
         lock.unlock()
         guard live, allowed, !secure.isSecure() else { return }
-        guard let text = selected ?? selection.selectedText(), !text.isEmpty else { return }
+        let text = selected
 
         let transform = SelectionTransform(convert: { [weak self] source in
             guard let self,
@@ -539,9 +535,9 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // Written where it was read, or not written at all.
         //
         // Everything above was decided about `bundleID`, and by now that verdict
-        // is as old as the read: a whole queue hop when `fix()` did the reading,
-        // or up to 200 ms of pasteboard polling when this call did. The tap cannot
-        // report the app changing in that window — a Space swipe, an alert, a
+        // is as old as the read: a whole queue hop, since `fix()` did the
+        // reading. The tap cannot report
+        // the app changing in that window — a Space swipe, an alert, a
         // call joining and any program calling `activate()` are neither a
         // keystroke nor a left click — so the app is asked for again here, at the
         // last moment before somebody else's text is replaced. Without it the
@@ -690,7 +686,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                                     trailing: trailing.map(String.init) ?? "",
                                     forced: force)
         lock.lock()
-        undo = UndoRecord(event: event, from: from, to: to)
+        undo = UndoRecord(event: event, from: from)
         lastEvent = event
         lastEventUndone = false
         lock.unlock()
@@ -793,10 +789,12 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             // escalated.
             //
             // Asked here as well, off main, before the read; `convertSelection`
-            // asks again on main, which is the thread this background hop exists
-            // to keep clear and the thread the tap callback runs on. `emitState`
-            // carries the sentence about a hung app blocking for the
-            // messenger's timeout; this is the same call.
+            // asks again on main, kept as the same-app focus gate: the field in
+            // front at the write is judged, not only the one read. Main is the
+            // thread this background hop exists to keep clear and the thread
+            // the tap callback runs on. `emitState` carries the sentence about
+            // a hung app blocking for the messenger's timeout; this is the same
+            // call.
             guard !secure.isSecure() else {
                 HelmLog.shared.info(Self.moduleID, "gesture: the field is secure")
                 return
@@ -807,7 +805,10 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             DispatchQueue.main.async { [self] in
                 HelmLog.shared.info(Self.moduleID,
                                     "gesture: \(hasSelection ? "selection" : "last word")")
-                if hasSelection { convertSelection(selected: selected, readIn: readIn); return }
+                if hasSelection, let selected {
+                    convertSelection(selected: selected, readIn: readIn)
+                    return
+                }
                 let bundleID = secure.frontmostBundleID()
                 lock.lock()
                 let undoable = undo?.canUndo(in: bundleID) ?? false
@@ -931,7 +932,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     }
 
     /// Whether the event is a chord: a command, control or option key held.
-    @discardableResult
     private func isAChord(_ event: TypingBuffer.Event) -> Bool {
         if case .chord = event { return true }
         return false
@@ -1028,7 +1028,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // beside it went straight back inside.
         let counted = ledger.totals(now: Date())
         lock.lock()
-        let state = LayoutState(enabled: tapped, automatic: automatic,
+        let state = LayoutState(enabled: tapped,
                                 suspended: suspended,
                                 lastConversion: lastEvent,
                                 lastConversionUndone: lastEventUndone,

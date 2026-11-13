@@ -70,18 +70,12 @@ public struct LedgerFigures: Equatable, Sendable {
 }
 
 /// Every period the hero can be switched to, answered at once.
-///
-/// `since` is when counting began, which is what «all time» means to the person
-/// reading it — nil until the first word is put right. A figure with no scale
-/// is worse than no figure: forty words is a lot in a week and nothing in three
-/// years.
 public struct ConversionTotals: Equatable, Sendable {
     public let today: LedgerFigures
     public let week: LedgerFigures
     public let month: LedgerFigures
     public let year: LedgerFigures
     public let allTime: LedgerFigures
-    public let since: Date?
     /// Words put right on each of the last fourteen days, oldest first, with
     /// a zero for every day nothing happened on.
     ///
@@ -109,17 +103,16 @@ public struct ConversionTotals: Equatable, Sendable {
         week: LedgerFigures(words: 0, characters: 0),
         month: LedgerFigures(words: 0, characters: 0),
         year: LedgerFigures(words: 0, characters: 0),
-        allTime: LedgerFigures(words: 0, characters: 0), since: nil, recent: [])
+        allTime: LedgerFigures(words: 0, characters: 0), recent: [])
 
     public init(today: LedgerFigures, week: LedgerFigures, month: LedgerFigures,
-                year: LedgerFigures, allTime: LedgerFigures, since: Date?,
+                year: LedgerFigures, allTime: LedgerFigures,
                 recent: [Int] = []) {
         self.today = today
         self.week = week
         self.month = month
         self.year = year
         self.allTime = allTime
-        self.since = since
         self.recent = recent
     }
 }
@@ -127,7 +120,6 @@ public struct ConversionTotals: Equatable, Sendable {
 /// What the settings page shows.
 public struct LayoutState: Equatable, Sendable {
     public let enabled: Bool
-    public let automatic: Bool
     /// True while secure input is on: the module is deliberately silent, and
     /// silence needs a visible reason.
     public let suspended: Bool
@@ -147,11 +139,10 @@ public struct LayoutState: Equatable, Sendable {
     /// and the engine may not import `HelmUI`.
     public let noDictionary: [String]
 
-    public init(enabled: Bool, automatic: Bool, suspended: Bool,
+    public init(enabled: Bool, suspended: Bool,
                 lastConversion: ConversionEvent?, lastConversionUndone: Bool,
                 totals: ConversionTotals = .none, noDictionary: [String] = []) {
         self.enabled = enabled
-        self.automatic = automatic
         self.suspended = suspended
         self.lastConversion = lastConversion
         self.lastConversionUndone = lastConversionUndone

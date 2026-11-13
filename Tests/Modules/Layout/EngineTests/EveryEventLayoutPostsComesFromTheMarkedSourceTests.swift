@@ -8,7 +8,7 @@ import XCTest
 /// Defect class kept: the engine reading its own output back as typing (data
 /// overwritten; REQUIRED in ARCHITECTURE.md § What proves what). The marker is
 /// guarded where events are *built* by `HelmsOwnKeystrokesAreNotReadAsTypingTests`;
-/// `SystemCommandKeys.press` (the ⌘C and ⌘V of the clipboard route) builds its own pair
+/// `SystemCommandKeys.press` (the ⌘V of the clipboard route) builds its own pair
 /// and no test constructs it, so a bare `CGEventSource(stateID:)` there would send
 /// the echo to the tap unmarked, read as a chord, and end the undo chance.
 ///

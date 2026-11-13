@@ -15,7 +15,7 @@ protocol LayoutWork: AnyObject, Sendable {
 extension LayoutEngine: LayoutWork {}
 
 @MainActor public final class LayoutViewModel: ObservableObject {
-    @Published public private(set) var state = LayoutState(enabled: false, automatic: true,
+    @Published public private(set) var state = LayoutState(enabled: false,
                                                            suspended: false,
                                                            lastConversion: nil,
                                                            lastConversionUndone: false,

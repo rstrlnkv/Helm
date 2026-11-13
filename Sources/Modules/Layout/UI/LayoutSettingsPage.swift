@@ -13,14 +13,13 @@ struct LayoutSettingsPage: View {
     @State private var exceptionCount: Int
     @State private var ruleCount: Int
     @State private var listsWindow: LayoutListsWindow?
-    /// "On screen now", apart from the stored `introSeen`, so the button can bring the tour back.
+    /// "On screen now", apart from the stored `introSeen` (written once the tour is done), so the button can bring the tour back.
     @State private var showTour: Bool
     @State private var accessibility: PermissionState = .granted
     @State private var audible: Bool
     @State private var indicator: Bool
     @State private var badgeStyle: BadgeStyle
     @State private var tapKey: TapKey
-    @State private var introSeen: Bool
     @StateObject private var convertKey: HelmHotkeyRecorder
     @State private var fixCapitals: Bool
     /// The apps Helm leaves alone before any rule is consulted, filtered to the ones this Mac has; worked
@@ -39,7 +38,6 @@ struct LayoutSettingsPage: View {
         _badgeStyle = State(initialValue:
             BadgeStyle.from(store.string(LayoutKey.badgeStyle, default: BadgeStyle.default.rawValue)))
         _tapKey = State(initialValue: TapKey.from(store.string(LayoutKey.tapKey, default: TapKey.rightCommand.rawValue)))
-        _introSeen = State(initialValue: store.bool(LayoutKey.introSeen, default: false))
         _convertKey = StateObject(wrappedValue:
             HelmHotkeyRecorder(store: store, prefix: LayoutHotkey.storePrefix))
         _fixCapitals = State(initialValue: store.bool(LayoutKey.fixCapitals, default: true))
@@ -131,7 +129,6 @@ struct LayoutSettingsPage: View {
             } onDone: {
                 withAnimation(HelmMotion.interface) { showTour = false }
                 write(true, LayoutKey.introSeen)
-                introSeen = true
             }
         }
     }

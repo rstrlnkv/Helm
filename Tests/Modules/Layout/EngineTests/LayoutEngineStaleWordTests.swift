@@ -76,7 +76,6 @@ private final class StaleSources: LayoutSourcePort, @unchecked Sendable {
 private final class StaleSelection: SelectionPort, @unchecked Sendable {
     var text: String?
     var replaced: [String] = []
-    func selectedText() -> String? { text }
     func selectedTextWithoutClipboard() -> String? { text }
     func replaceSelection(with text: String) -> Bool { replaced.append(text); return true }
 }
@@ -174,7 +173,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         XCTAssertTrue(typing.performed.isEmpty, "precondition: nothing was converted")
 
         selection.text = "ghbdtn"
-        engine.convertSelection()
+        engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Notes")
         XCTAssertEqual(selection.replaced.count, 1, "precondition: the selection was replaced")
 
         engine.convertLastWord()
@@ -331,7 +330,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         let engine = engine()
         context.bundle = "com.apple.Terminal"
         selection.text = "ghbdtn"
-        engine.convertSelection()
+        engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Terminal")
         XCTAssertTrue(selection.replaced.isEmpty)
     }
 
@@ -339,7 +338,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         let engine = engine()
         context.passwordField = true
         selection.text = "ghbdtn"
-        engine.convertSelection()
+        engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Notes")
         XCTAssertTrue(selection.replaced.isEmpty)
     }
 
@@ -349,18 +348,9 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         let engine = engine()
         for blank in ["", "   ", "\n", "\t\t", " \n "] {
             selection.text = blank
-            engine.convertSelection()
+            engine.convertSelection(selected: blank, readIn: "com.apple.Notes")
             XCTAssertTrue(selection.replaced.isEmpty, "selection was \(blank.debugDescription)")
         }
-    }
-
-    /// An app that refuses to say what is selected is an app with no selection,
-    /// and the module has nothing to do rather than something to guess.
-    func testAnAppThatWillNotSayWhatIsSelectedIsLeftAlone() async throws {
-        let engine = engine()
-        selection.text = nil
-        engine.convertSelection()
-        XCTAssertTrue(selection.replaced.isEmpty)
     }
 
     // MARK: - A module that is off
@@ -373,7 +363,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         let engine = engine()
         selection.text = "ghbdtn"
         engine.deactivate()
-        engine.convertSelection()
+        engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Notes")
         XCTAssertTrue(selection.replaced.isEmpty,
                       "a module that is switched off replaced text in another app")
     }

@@ -15,14 +15,12 @@ struct UndoRecord: Equatable, Sendable {
     /// defaulted: a record that cannot say where the keyboard was is a record
     /// that cannot be taken back whole.
     let from: String
-    let to: String
     private var valid = true
     private var softened = false
 
-    init(event: ConversionEvent, from: String, to: String) {
+    init(event: ConversionEvent, from: String) {
         self.event = event
         self.from = from
-        self.to = to
     }
 
     func canUndo(in bundleID: String) -> Bool {

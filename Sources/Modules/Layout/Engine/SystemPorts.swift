@@ -660,19 +660,13 @@ public struct AXSecureContext: SecureContextPort {
 
 // MARK: - Selection
 
-/// The selected text, through the accessibility tree where the app answers and
-/// through the clipboard where it does not.
+/// The selected text, through the accessibility tree; written back through the
+/// tree where the app answers and through the clipboard where it does not.
 ///
-/// Two routes because neither covers the machine. `AXSelectedText` is exact,
-/// instantaneous and leaves nothing behind — and a great many apps do not
-/// implement it: Electron ones, most web views, some of Apple's own. The
-/// fallback is ⌘C: it works nearly everywhere and it costs the clipboard, so it
-/// is second and it puts back what it borrowed.
-///
-/// Only `selectedText()` takes the fallback, and no shipping caller asks it:
-/// `fix()` reads through `selectedTextWithoutClipboard`, so for an app whose
-/// tree says nothing the gesture sees no selection. Writing keeps its
-/// fallback: the tree first, and ⌘V where the app refuses.
+/// Reading has one route. `AXSelectedText` is exact, instantaneous and leaves
+/// nothing behind, and an app whose tree says nothing is treated as having no
+/// selection. Writing keeps its fallback: the tree first, and ⌘V where the app
+/// refuses.
 public struct AXSelection: SelectionPort {
     private let pasteboard: any PasteboardPort
     private let focus: any FocusedTextPort
@@ -686,11 +680,6 @@ public struct AXSelection: SelectionPort {
         self.pasteboard = pasteboard
         self.focus = focus
         self.keys = keys
-    }
-
-    public func selectedText() -> String? {
-        if let text = focus.selectedText(), !text.isEmpty { return text }
-        return copySelection()
     }
 
     public func selectedTextWithoutClipboard() -> String? {
@@ -724,43 +713,6 @@ public struct AXSelection: SelectionPort {
 
     // MARK: The clipboard route
 
-    /// ⌘C, read, and put back what was there.
-    ///
-    /// The restore is not politeness: somebody's clipboard is theirs, and a
-    /// shortcut that quietly eats it is a shortcut people stop using. The
-    /// change count is what tells us the copy actually happened — a selection
-    /// of nothing leaves the pasteboard untouched, and reading it then would
-    /// return whatever was already on it and transliterate *that*.
-    private func copySelection() -> String? {
-        // The same guard the paste route has, on the route that reads.
-        //
-        // `restore` puts back a *string*, so a clipboard holding an image, RTF
-        // or a promised file comes back as plain text or as nothing — which is
-        // the harm `PasteboardSafety` exists to prevent, and it was checked
-        // only where Helm writes. The ⌘C below destroys just as thoroughly, and
-        // this is the route `selectedText()` falls to for a selection the
-        // accessibility API will not answer for, which is most Electron apps and
-        // web views.
-        let held = pasteboard.types
-        guard PasteboardSafety.canBorrow(types: held) else {
-            HelmLog.shared.warn(LayoutEngine.moduleID,
-                                "selection left alone: the clipboard holds \(held.count) " +
-                                "type(s) that would not survive being borrowed")
-            return nil
-        }
-        let saved = pasteboard.string()
-        let before = pasteboard.changeCount
-
-        keys.press(UInt16(kVK_ANSI_C))
-        guard waitForChange(from: before) else {
-            restore(saved)
-            return nil
-        }
-        let copied = pasteboard.string()
-        restore(saved)
-        return copied
-    }
-
     /// Returns whether the app took the text, as far as this route can tell.
     ///
     /// It used to return `true` always. In an app where ⌘V is not paste — a
@@ -768,8 +720,8 @@ public struct AXSelection: SelectionPort {
     /// clipboard, restored it, played the success sound and reported a change
     /// that never happened. There is no receipt for a synthesised keystroke, so
     /// what is checked is the one thing that can be: whether the app read the
-    /// pasteboard at all. `changeCount` does not move on a read, but the
-    /// selection does — if the tree still reports exactly what was selected
+    /// pasteboard at all. The selection moves when the app takes the paste — if
+    /// the tree still reports exactly what was selected
     /// before, nothing replaced it.
     private func pasteSelection(_ text: String, replacing previous: String?) -> Bool {
         let saved = pasteboard.string()
@@ -792,22 +744,11 @@ public struct AXSelection: SelectionPort {
         pasteboard.clear()
         if let saved { pasteboard.setString(saved) }
     }
-
-    /// Polled rather than slept: a fast app answers in a few milliseconds and a
-    /// slow one gets its 200, instead of everyone waiting for the slow one.
-    private func waitForChange(from before: Int) -> Bool {
-        for _ in 0..<20 {
-            usleep(10_000)
-            if pasteboard.changeCount != before { return true }
-        }
-        return false
-    }
 }
 
 /// The general pasteboard, as `AXSelection`'s clipboard route uses it.
 struct SystemPasteboard: PasteboardPort {
     var types: [String] { NSPasteboard.general.types?.map(\.rawValue) ?? [] }
-    var changeCount: Int { NSPasteboard.general.changeCount }
     func string() -> String? { NSPasteboard.general.string(forType: .string) }
     func clear() { NSPasteboard.general.clearContents() }
     func setString(_ text: String) { NSPasteboard.general.setString(text, forType: .string) }

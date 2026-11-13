@@ -67,21 +67,13 @@ final class ASecureFieldIsAskedBeforeItIsReadTests: XCTestCase {
         func frontmostBundleID() -> String { lock.lock(); defer { lock.unlock() }; return bundle }
     }
 
-    /// Counts the readings, and keeps the tree and the clipboard apart the way
-    /// the port does: `selectedTextWithoutClipboard` is the tree alone, and
-    /// `selectedText` falls through to ⌘C when the tree says nothing.
+    /// Counts the readings: `selectedTextWithoutClipboard` is the tree alone.
     private final class Selection: SelectionPort, @unchecked Sendable {
         private let lock = NSLock()
         var treeText: String?
-        var clipboardText: String?
         private var treeReads = 0
         private var written: [String] = []
         var onReplace: (@Sendable () -> Void)?
-        func selectedText() -> String? {
-            lock.lock(); treeReads += 1; let tree = treeText, board = clipboardText
-            lock.unlock()
-            return tree ?? board
-        }
         func selectedTextWithoutClipboard() -> String? {
             lock.lock(); treeReads += 1; let tree = treeText; lock.unlock()
             return tree

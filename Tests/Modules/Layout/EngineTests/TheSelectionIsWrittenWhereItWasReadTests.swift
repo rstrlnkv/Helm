@@ -19,12 +19,9 @@ import XCTest
 /// **The gap was not theoretical.** Both routes read the selection and then act
 /// on the result:
 ///
-/// - `convertSelection` reads `frontmostBundleID()`, runs it past `AppScope`, and
-///   *then*, when its caller passed no text, calls `selectedText()` — which falls
-///   through to ⌘C and polls the pasteboard for up to 200 ms in every app whose
-///   accessibility tree will not answer, which is most Electron apps and most web
-///   views. `fix()` always passes the text, so only a bare call takes that route.
-///   The scope verdict is a fifth of a second old before anything is typed.
+/// - `convertSelection` was handed an app and a text, ran the app past
+///   `AppScope`, and wrote to whichever app was in front at the write. The scope
+///   verdict is as old as the read that preceded it.
 /// - `fix()` read the selection on `DispatchQueue.global`, precisely because
 ///   that read can block, and then hopped back to `DispatchQueue.main`. The text
 ///   crossed a queue boundary; the app it came from did not cross with it.
@@ -93,8 +90,7 @@ final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
         private var storedReplaced: [String] = []
         private var storedReads = 0
         /// Run *inside* the read, which is where the real port spends its time:
-        /// an accessibility round trip, or twenty 10 ms polls of the pasteboard
-        /// waiting for ⌘C. Whatever the person does to their Mac in that window
+        /// an accessibility round trip. Whatever the person does to their Mac in that window
         /// happens here.
         var whileReading: (@Sendable () -> Void)?
 
@@ -110,7 +106,6 @@ final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
             whileReading?()
             return text
         }
-        func selectedText() -> String? { read() }
         func selectedTextWithoutClipboard() -> String? { read() }
         func replaceSelection(with text: String) -> Bool {
             lock.lock(); storedReplaced.append(text); lock.unlock()
@@ -167,20 +162,19 @@ final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
 
     // MARK: - The scope verdict is older than the write
 
-    /// `convertSelection` asked `AppScope` about Notes, spent up to 200 ms reading the
-    /// selection, and replaced text in a terminal — the app class the module
+    /// `convertSelection` asked `AppScope` about Notes, took the selection it was
+    /// given, and replaced text in a terminal — the app class the module
     /// blocks by default, on the stated ground that `ghbdtn` there is as likely
     /// to be a filename as a mistake.
     func testAScopeVerdictIsNotSpentOnAnAppThatArrivedAfterIt() async throws {
         let engine = engine()
         selection.text = "ghbdtn"
-        selection.whileReading = { [context] in context.bundle = "com.apple.Terminal" }
+        context.bundle = "com.apple.Terminal"
 
-        engine.convertSelection()
+        engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Notes")
 
-        XCTAssertEqual(selection.reads, 1,
-                       "precondition: the selection was never read, so nothing below is "
-                       + "about what happened while it was being read")
+        XCTAssertGreaterThan(context.mainReads, 0,
+                             "precondition: the app in front was never asked at the write")
         XCTAssertTrue(selection.replaced.isEmpty, """
             the module typed into a terminal. `AppScope` was asked about the app that was in \
             front before the read and never asked again, so its refusal was spent on an app \
@@ -196,7 +190,7 @@ final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
         let engine = engine()
         selection.text = "ghbdtn"
 
-        engine.convertSelection()
+        engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Notes")
 
         XCTAssertEqual(selection.replaced, ["привет"],
                        "the harness never converts a selection at all")

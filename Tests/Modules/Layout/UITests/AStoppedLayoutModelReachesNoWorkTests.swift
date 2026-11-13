@@ -48,7 +48,7 @@ final class AStoppedLayoutModelReachesNoWorkTests: XCTestCase {
     }
 
     private static func state(enabled: Bool) -> LayoutState {
-        LayoutState(enabled: enabled, automatic: true, suspended: false,
+        LayoutState(enabled: enabled, suspended: false,
                     lastConversion: nil, lastConversionUndone: false)
     }
 
