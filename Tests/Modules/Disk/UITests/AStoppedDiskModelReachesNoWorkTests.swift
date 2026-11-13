@@ -145,7 +145,7 @@ final class AStoppedDiskModelReachesNoWorkTests: XCTestCase {
         XCTAssertNil(dvm.result)
 
         await dvm.appear()
-        for _ in 0..<200 where dvm.result == nil { await Task.yield() }
-        XCTAssertNotNil(dvm.result, "control: the saved scan is read once the model appears")
+        await waitUntil("control: the saved scan is read once the model appears",
+                        within: .seconds(5)) { dvm.result != nil }
     }
 }

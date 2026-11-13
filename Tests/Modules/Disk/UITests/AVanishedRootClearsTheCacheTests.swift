@@ -33,7 +33,9 @@ final class AVanishedRootClearsTheCacheTests: XCTestCase {
 
         let model = DiskViewModel(work: AnsweringWork(volumes: []), store: store)
         await model.appear()
-        for _ in 0..<200 where store.load() != nil { await Task.yield() }
+        await waitUntil("the saved scan of a vanished root was cleared", within: .seconds(5)) {
+            store.load() == nil
+        }
 
         XCTAssertNil(store.load(),
                      "the saved scan survived a root that has gone — if it did not, the read of "

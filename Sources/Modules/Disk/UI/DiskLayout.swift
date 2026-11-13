@@ -9,8 +9,6 @@ import CoreGraphics
 /// | piece                                   | needs   |
 /// |-----------------------------------------|---------|
 /// | ring column (300 pt frame + padding)    |  328 pt |
-/// | list, comfortable for a long file name  |  316 pt |
-/// | both side by side                       |  645 pt |
 /// | bar: back, path, three controls         |  640 pt |
 /// | bar with the scan statement as well     |  788 pt |
 ///

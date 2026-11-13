@@ -78,11 +78,13 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
         XCTAssertTrue(dvm.live, "precondition: the walk is still running")
     }
 
-    /// Room for a detached save to land. The same wait sees one in the controls
-    /// below, which is what makes an absence measured with it mean anything.
-    private func waitForSave(_ store: ScanStore) async {
-        for _ in 0..<200 where !FileManager.default.fileExists(atPath: store.fileURL.path) {
-            await Task.yield()
+    /// Room for a detached save to land. A save that is expected is waited for
+    /// and asserted; one that is not gets a fixed grace, and the tests that
+    /// expect it are the control that the same path still writes.
+    private func waitForSave(_ store: ScanStore, lands: Bool) async {
+        guard lands else { return await grace() }
+        await waitUntil("a detached save landed", within: .seconds(5)) {
+            FileManager.default.fileExists(atPath: store.fileURL.path)
         }
     }
 
@@ -100,7 +102,7 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
 
         XCTAssertEqual(dvm.removedCount, 1, "precondition: the removal ran")
         XCTAssertTrue(dvm.live, "precondition: the walk is still running under it")
-        await waitForSave(store)
+        await waitForSave(store, lands: false)
         XCTAssertFalse(FileManager.default.fileExists(atPath: store.fileURL.path), """
             a tree the walk had not finished was saved. `treeIsComplete` is `!stopped`, and \
             `stopped` is false while a walk is *running* — so every folder in the saved tree \
@@ -125,7 +127,7 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
 
         await dvm.emptyBasket()
 
-        await waitForSave(store)
+        await waitForSave(store, lands: true)
         XCTAssertTrue(FileManager.default.fileExists(atPath: store.fileURL.path),
                       "a finished tree stopped being saved, so the test above proves nothing")
     }
@@ -149,7 +151,7 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
 
         XCTAssertEqual(dvm.focusPath.map(\.path), ["/Volumes/Big", "/Volumes/Big/Sub"],
                        "precondition: the measurement was grafted in and opened")
-        await waitForSave(store)
+        await waitForSave(store, lands: false)
         XCTAssertFalse(FileManager.default.fileExists(atPath: store.fileURL.path), """
             a stopped tree was written to the store by the drill that measured one folder of \
             it. `emptyBasket` asks `treeIsComplete` before saving and `measureAndDrill` asks \
@@ -180,13 +182,10 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
         // The grafted child, not merely the file: `scan(path:)` has already
         // written a tree of its own, so the file existing says nothing about
         // whether this save site fired.
-        var stored: [String] = []
-        for _ in 0..<200 where !stored.contains("/Volumes/Big/Sub/Inner") {
-            stored = (store.load()?.result.root).map(Self.paths(of:)) ?? []
-            await Task.yield()
+        await waitUntil("the drill saved its graft, so the test above proves something",
+                        within: .seconds(5)) {
+            ((store.load()?.result.root).map(Self.paths(of:)) ?? []).contains("/Volumes/Big/Sub/Inner")
         }
-        XCTAssertTrue(stored.contains("/Volumes/Big/Sub/Inner"),
-                      "the drill stopped saving its graft, so the test above proves nothing")
     }
 
     private static func paths(of entry: DiskEntry) -> [String] {

@@ -43,11 +43,9 @@ final class ADayOldTreeIsAGuessTests: XCTestCase {
         let measuredAt = try XCTUnwrap(dvm.completedAt)
         // Asserted before it is asked to go: «the file is not there» is green
         // over a save that never landed.
-        for _ in 0..<200 where !FileManager.default.fileExists(atPath: store.fileURL.path) {
-            await Task.yield()
+        await waitUntil("precondition: the measurement was written down", within: .seconds(5)) {
+            FileManager.default.fileExists(atPath: store.fileURL.path)
         }
-        XCTAssertTrue(FileManager.default.fileExists(atPath: store.fileURL.path),
-                      "precondition: the measurement was written down")
 
         dvm.expireIfStale(now: measuredAt + DiskViewModel.cacheLifetime + 1)
 
@@ -55,10 +53,9 @@ final class ADayOldTreeIsAGuessTests: XCTestCase {
         XCTAssertNil(dvm.result)
         // And the file goes with it: the module reopens on the store, so a tree
         // too old to draw is too old to keep.
-        for _ in 0..<200 where FileManager.default.fileExists(atPath: store.fileURL.path) {
-            await Task.yield()
+        await waitUntil("the file went with the tree", within: .seconds(5)) {
+            !FileManager.default.fileExists(atPath: store.fileURL.path)
         }
-        XCTAssertFalse(FileManager.default.fileExists(atPath: store.fileURL.path))
     }
 
     /// The boundary itself. A tree exactly one lifetime old is still the

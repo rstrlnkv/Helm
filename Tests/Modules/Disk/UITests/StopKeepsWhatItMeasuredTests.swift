@@ -124,12 +124,10 @@ final class StopKeepsWhatItMeasuredTests: XCTestCase {
         await dvm.emptyBasket()
         XCTAssertEqual(dvm.removedCount, 1, "precondition: the removal ran")
         // `saveDetached` is fire-and-forget, so absence is only meaningful after
-        // giving it room to land. The same wait sees the save in
-        // `testTrashingFromAFinishedTreeDoesWriteItToTheStore` below, which is
-        // what makes this assertion mean something.
-        for _ in 0..<200 where !FileManager.default.fileExists(atPath: store.fileURL.path) {
-            await Task.yield()
-        }
+        // giving it room to land. `testTrashingFromAFinishedTreeDoesWriteItToTheStore`
+        // below waits for the save and asserts it, which is what makes this
+        // assertion mean something.
+        await grace()
 
         XCTAssertFalse(FileManager.default.fileExists(atPath: store.fileURL.path),
                        "an unfinished tree was saved; the module will reopen on it "
@@ -152,8 +150,8 @@ final class StopKeepsWhatItMeasuredTests: XCTestCase {
         dvm.toggleBasket(folder("/Volumes/Big/Sub", bytes: 600))
 
         await dvm.emptyBasket()
-        for _ in 0..<200 where !FileManager.default.fileExists(atPath: store.fileURL.path) {
-            await Task.yield()
+        await waitUntil("control: a finished tree is saved", within: .seconds(5)) {
+            FileManager.default.fileExists(atPath: store.fileURL.path)
         }
 
         XCTAssertTrue(FileManager.default.fileExists(atPath: store.fileURL.path),

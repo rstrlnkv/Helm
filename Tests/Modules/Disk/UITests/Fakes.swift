@@ -200,22 +200,39 @@ func folder(_ path: String, bytes: Int, children: [DiskEntry] = []) -> DiskEntry
               isDirectory: true, noAccess: false, children: children)
 }
 
-/// Waits for the scan to park inside `HeldWork`. Yielding a fixed number
-/// of times is a guess about scheduling; this is the condition the test
-/// depends on.
+/// Waits for the scan to park inside `HeldWork`, bounded by wall-clock time,
+/// and fails naming what never happened. Yielding a fixed number of times is a
+/// guess about scheduling; this is the condition the test depends on.
 ///
-/// `@MainActor`, as every caller is: the yields have to run where the view
-/// model's own tasks run, or the wait hops off and measures another thread.
+/// `@MainActor`, as every caller is: the test reads on the actor the view
+/// model's own tasks run on.
 @MainActor
-func untilParked(_ work: HeldWork, count: Int) async {
-    for _ in 0..<1000 where work.parkedCount < count { await Task.yield() }
+func untilParked(_ work: HeldWork, count: Int, file: StaticString = #filePath,
+                 line: UInt = #line) async {
+    await held("\(count) scan(s) parked in HeldWork", file: file, line: line) {
+        work.parkedCount >= count
+    }
 }
 
 /// The same wait for a removal: it has left the model and is suspended inside
 /// `HeldWork.trash`, which is the only moment «while a removal runs» exists in.
 @MainActor
-func untilTrashing(_ work: HeldWork, count: Int = 1) async {
-    for _ in 0..<1000 where work.trashRequests.count < count { await Task.yield() }
+func untilTrashing(_ work: HeldWork, count: Int = 1, file: StaticString = #filePath,
+                   line: UInt = #line) async {
+    await held("\(count) removal(s) reached HeldWork.trash", file: file, line: line) {
+        work.trashRequests.count >= count
+    }
+}
+
+@MainActor
+private func held(_ what: String, file: StaticString, line: UInt,
+                  _ condition: () -> Bool) async {
+    let clock = ContinuousClock()
+    let deadline = clock.now + .seconds(5)
+    while !condition(), clock.now < deadline {
+        try? await Task.sleep(for: .milliseconds(5))
+    }
+    if !condition() { XCTFail("never reached: \(what)", file: file, line: line) }
 }
 
 /// Room for the tasks already scheduled to land. The two copies of this yielded

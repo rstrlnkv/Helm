@@ -34,8 +34,8 @@ final class ScanResetTests: XCTestCase {
         store.save(saved())
         let model = DiskViewModel(work: AnsweringWork(volumes: []), store: store)
         await model.appear()
-        for _ in 0..<200 where model.result == nil { await Task.yield() }
-        XCTAssertNotNil(model.result, "the fixture has to be restored for this to prove anything")
+        await waitUntil("the fixture is restored, for this to prove anything",
+                        within: .seconds(5)) { model.result != nil }
 
         model.newScan()
 
