@@ -39,7 +39,7 @@ final class ARefusedRuleIsDrawnWithItsNoteTests: XCTestCase {
     /// The model hands the page what the engine published, and clears it.
     func testTheModelCarriesAndWithdrawsTheRefusals() async {
         let work = FakeVPNWork()
-        let model = VPNViewModel(work: work)
+        let model = VPNViewModel(work: work, settings: seededVPNSettings())
         let office = VPNConnection(id: "A1", name: "Office", status: .disconnected, kind: "IKEv2")
         work.say(VPNEngine.StatePayload(connections: [office], autoConnected: [],
                                         lastAutomation: nil,

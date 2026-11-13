@@ -18,10 +18,9 @@ import XCTest
 final class ANameReachesTheMenuBarBoundedTests: XCTestCase {
 
     private func appearance(name: String) -> StatusAppearance {
-        let model = VPNViewModel(work: FakeVPNWork())
+        let model = VPNViewModel(work: FakeVPNWork(), settings: seededVPNSettings(notice: .menuBar))
         model.setForTesting(
-            automation: VPNAutomation(at: Date(), name: name, kind: .connected),
-            notice: .menuBar)
+            automation: VPNAutomation(at: Date(), name: name, kind: .connected))
         return VPNDescriptor().statusAppearance(model)
     }
 

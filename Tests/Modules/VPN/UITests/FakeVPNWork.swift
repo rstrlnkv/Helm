@@ -2,8 +2,24 @@
 // Copyright (C) 2026 Helm
 
 import Foundation
+import HelmRuntime
 @testable import Module_VPN_Engine
 @testable import Module_VPN_UI
+
+/// An in-memory `VPNSettings`, seeded through the module's own keys the way the
+/// app's store would hold them: `drop` is the rules' mode unless given.
+func seededVPNSettings(notice: VPNNotice? = nil, drop: VPNNotice? = nil,
+                       bannerAuthorized: Bool = false, spin: Bool = false) -> VPNSettings {
+    let settings = VPNSettings(store: NamespacedStore(namespace: "vpn",
+                                                      backing: InMemoryKeyValueStore()))
+    if let notice = notice ?? drop {
+        settings.store.set(notice.rawValue, for: VPNSettings.automationNoticeKey)
+        settings.store.set((drop ?? notice).rawValue, for: VPNSettings.dropNoticeKey)
+    }
+    settings.setBannerAuthorized(bannerAuthorized)
+    settings.store.set(spin, for: VPNSettings.automationSpinKey)
+    return settings
+}
 
 /// Stands for the engine on the model's side of `VPNWork`: the port's members
 /// and nothing the engine has beyond them.

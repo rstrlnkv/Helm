@@ -53,9 +53,9 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
         let work = FakeVPNWork()
         let descriptor = VPNDescriptor()
         let port = FakeAutomationNotice(state: macOS)
-        let model = VPNViewModel(work: work)
-        model.setForTesting(automation: nil, notice: notice,
-                            bannerAuthorized: mirror, notices: port)
+        let model = VPNViewModel(work: work,
+                                settings: seededVPNSettings(notice: notice, bannerAuthorized: mirror))
+        model.setForTesting(automation: nil, notices: port)
         emit(firing(), on: work)
         await settle(model)
         return (port.posted, descriptor.statusAppearance(model).title)
@@ -127,8 +127,10 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
     func testARepeatedPayloadDoesNotPostTheBannerTwice() async {
         let work = FakeVPNWork()
         let port = FakeAutomationNotice()
-        let model = VPNViewModel(work: work, notices: port)
-        model.setForTesting(automation: nil, notice: .system, bannerAuthorized: true)
+        let model = VPNViewModel(work: work,
+                                settings: seededVPNSettings(notice: .system, bannerAuthorized: true),
+                                notices: port)
+        model.setForTesting(automation: nil)
         let fired = firing()
         emit(fired, on: work)
         await settle(model)
@@ -136,5 +138,16 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
         for _ in 0..<200 { await Task.yield() }
         await model.announcement?.value
         XCTAssertEqual(port.posted.count, 1, "the same firing was announced twice")
+    }
+
+    /// A firing whose name matches no configuration falls back to the
+    /// module-wide settings, and a drop there is the drop setting, not the
+    /// rules' one.
+    func testADropOnANameNoConnectionCarriesAnswersWithTheDropSetting() {
+        let model = VPNViewModel(work: FakeVPNWork(),
+                                 settings: seededVPNSettings(notice: .silent, drop: .system))
+        XCTAssertEqual(model.notice(for: .dropped, on: "Nowhere"), .system,
+                       "a drop with no matching configuration took the rules' volume")
+        XCTAssertEqual(model.notice(for: .connected, on: "Nowhere"), .silent)
     }
 }

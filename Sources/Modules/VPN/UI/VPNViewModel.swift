@@ -65,17 +65,12 @@ extension VPNEngine: VPNWork {}
     @Published private(set) var measuring: String?
 
     private let work: any VPNWork
-    private let settings: VPNSettings?
+    private let settings: VPNSettings
     /// What macOS is asked to post a banner through. Optional because nothing
     /// in a test may reach the real one — `UNUserNotificationCenter.current()`
     /// takes the whole run down from a process that is not a bundled app — so a
     /// view model built without a port simply never posts.
     private var notices: AutomationNoticePort?
-    /// Set only by `setForTesting`; nil in the app, always.
-    private var noticeForTesting: VPNNotice?
-    private var dropNoticeForTesting: VPNNotice?
-    private var bannerAuthorizedForTesting: Bool?
-    private var spinForTesting: Bool?
     private var eventsTask: Task<Void, Never>?
     private(set) var closed = false
     private var expiryTask: Task<Void, Never>?
@@ -93,19 +88,13 @@ extension VPNEngine: VPNWork {}
     /// or any other. Read from the store at every ask rather than cached, so a
     /// change in Settings applies to the next firing instead of to the next
     /// launch. The drop is a separate setting because it is separate news.
-    /// `noticeForTesting` covers the rules' mode and the drop's alike: a test
-    /// that sets a mode is setting the module's voice, and one that wants the
-    /// two to differ passes `dropNotice`.
-    ///
     /// Through `VPNNotice.mode`, which is the same rule the store reads: this end
     /// used to answer «the drop setting for a drop, the rules' setting for
     /// everything else» in its own words, and a teardown Helm performed then took
     /// the rules' volume however loudly the person had asked to hear about losing
     /// a tunnel. Two spellings of one decision, and only one of them was fixed.
     func notice(for kind: VPNAutomation.Kind) -> VPNNotice {
-        let rules = noticeForTesting ?? settings?.notice ?? .menuBar
-        let drop = dropNoticeForTesting ?? noticeForTesting ?? settings?.dropNotice ?? .menuBar
-        return VPNNotice.mode(for: kind, rules: rules, drop: drop)
+        VPNNotice.mode(for: kind, rules: settings.notice, drop: settings.dropNotice)
     }
 
     /// **The configuration a firing happened on, when the name says so without
@@ -129,20 +118,19 @@ extension VPNEngine: VPNWork {}
     /// been given was therefore written to the store and never read — the
     /// popover was a control that changed nothing (`TheRingTurnsInThisTunnelsColourTests`).
     func notice(for kind: VPNAutomation.Kind, on name: String) -> VPNNotice {
-        guard noticeForTesting == nil, dropNoticeForTesting == nil,
-              let settings, let id = connectionID(named: name)
+        guard let id = connectionID(named: name)
         else { return notice(for: kind) }
         return settings.notice(for: kind, connectionID: id)
     }
 
     func automationSpin(on name: String) -> Bool {
-        guard spinForTesting == nil, let settings, let id = connectionID(named: name)
+        guard let id = connectionID(named: name)
         else { return automationSpin }
         return settings.automationSpin(connectionID: id)
     }
 
     func spinTint(for kind: VPNAutomation.Kind, on name: String) -> String {
-        guard let settings, let id = connectionID(named: name)
+        guard let id = connectionID(named: name)
         else { return spinTint(for: kind) }
         return settings.spinTint(for: kind, connectionID: id)
     }
@@ -151,13 +139,12 @@ extension VPNEngine: VPNWork {}
     /// configuration without a book entry inherits, and nothing in the app writes
     /// it. Read at every ask rather than cached, like `notice(for:)`.
     var automationSpin: Bool {
-        spinForTesting ?? settings?.automationSpin ?? false
+        settings.automationSpin
     }
 
     /// The colour that firing turns in.
     func spinTint(for kind: VPNAutomation.Kind) -> String {
-        settings?.spinTint(for: kind)
-            ?? (kind == .connected ? "green" : "orange")
+        settings.spinTint(for: kind)
     }
 
     /// Whether a banner would actually be shown.
@@ -169,7 +156,7 @@ extension VPNEngine: VPNWork {}
     /// was believed while the permission was already gone.
     var bannerAuthorized: Bool {
         if let heard = bannerAuthorization { return heard == .authorized }
-        return bannerAuthorizedForTesting ?? settings?.bannerAuthorized ?? false
+        return settings.bannerAuthorized
     }
 
     /// The mode as it will actually behave, which is not always the mode that
@@ -223,10 +210,10 @@ extension VPNEngine: VPNWork {}
     @discardableResult
     func chooseNotice(_ notice: VPNNotice, for kind: VPNAutomation.Kind,
                       on id: String) -> VPNNoticeBook {
-        let book = settings?.noticeBook ?? VPNNoticeBook()
+        let book = settings.noticeBook
         let written = kind == .dropped ? book.setting(id, drop: notice)
                                        : book.setting(id, notice: notice)
-        settings?.setNoticeBook(written)
+        settings.setNoticeBook(written)
         Task { await choose(notice) }
         return written
     }
@@ -244,22 +231,15 @@ extension VPNEngine: VPNWork {}
 
     private func record(_ answer: NoticeAuthorization) -> NoticeAuthorization {
         bannerAuthorization = answer
-        settings?.setBannerAuthorized(answer == .authorized)
+        settings.setBannerAuthorized(answer == .authorized)
         return answer
     }
 
     /// Test seam. `@testable` reaches it; nothing in the app does. It stands in
     /// for the engine that fires the rule and for the store that holds the mode,
     /// neither of which a test of the status item wants to own.
-    func setForTesting(automation: VPNAutomation?, notice: VPNNotice,
-                       dropNotice: VPNNotice? = nil,
-                       bannerAuthorized: Bool = false,
-                       notices: AutomationNoticePort? = nil,
-                       spin: Bool = false) {
-        noticeForTesting = notice
-        dropNoticeForTesting = dropNotice
-        bannerAuthorizedForTesting = bannerAuthorized
-        spinForTesting = spin
+    func setForTesting(automation: VPNAutomation?,
+                       notices: AutomationNoticePort? = nil) {
         if let notices { self.notices = notices }
         if let automation { adopt(automation) } else { lastAutomation = nil }
     }
@@ -288,7 +268,7 @@ extension VPNEngine: VPNWork {}
     /// `stream()` registers the subscriber and replays the latest state in one
     /// step, so no state emitted from this line on is missed. Nothing is asked
     /// of the engine; what the engine says from now on arrives on the stream.
-    init(work: any VPNWork, settings: VPNSettings? = nil,
+    init(work: any VPNWork, settings: VPNSettings,
          notices: AutomationNoticePort? = nil) {
         self.work = work
         self.settings = settings

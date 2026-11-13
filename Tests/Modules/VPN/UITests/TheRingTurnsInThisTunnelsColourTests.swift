@@ -121,6 +121,16 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
         XCTAssertEqual(vm.spinTint(for: .connected, on: "Office"), "blue")
     }
 
+    /// A name this Mac does not have answers with the module-wide values.
+    func testAFiringOnAnUnknownNameFollowsTheModuleWideValues() {
+        let vm = model([("id-A", "Office")], book: { settings in
+            settings.store.set("blue", for: VPNSettings.spinTintKey(.connected))
+            settings.store.set(false, for: VPNSettings.automationSpinKey)
+        })
+        XCTAssertEqual(vm.spinTint(for: .connected, on: "Nowhere"), "blue")
+        XCTAssertFalse(vm.automationSpin(on: "Nowhere"))
+    }
+
     // MARK: - The firing path asks on the configuration, not the module
 
     /// The half a model-level test cannot reach: **that the menu bar's own path

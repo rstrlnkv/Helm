@@ -20,9 +20,11 @@ final class VPNStatusAppearanceTests: XCTestCase {
                             bannerAuthorized: Bool = false,
                             spin: Bool = false)
                             -> (VPNDescriptor, VPNViewModel) {
-        let model = VPNViewModel(work: FakeVPNWork())
-        model.setForTesting(automation: firing, notice: notice,
-                            bannerAuthorized: bannerAuthorized, spin: spin)
+        let model = VPNViewModel(work: FakeVPNWork(),
+                                settings: seededVPNSettings(notice: notice,
+                                                            bannerAuthorized: bannerAuthorized,
+                                                            spin: spin))
+        model.setForTesting(automation: firing)
         return (VPNDescriptor(), model)
     }
 
@@ -120,7 +122,7 @@ final class VPNStatusAppearanceTests: XCTestCase {
         let work = FakeVPNWork()
         let fresh = firing(secondsAgo: 0)
         emit(fresh, on: work)
-        let model = VPNViewModel(work: work)
+        let model = VPNViewModel(work: work, settings: seededVPNSettings())
         await settle(model)
         XCTAssertEqual(model.lastAutomation, fresh)
     }
@@ -128,7 +130,7 @@ final class VPNStatusAppearanceTests: XCTestCase {
     func testAFiringOlderThanItsNameWindowIsDroppedOnArrival() async {
         let work = FakeVPNWork()
         emit(firing(secondsAgo: VPNAutomation.nameDuration + 5), on: work)
-        let model = VPNViewModel(work: work)
+        let model = VPNViewModel(work: work, settings: seededVPNSettings())
         await settle(model)
         XCTAssertFalse(model.connections.isEmpty, "the payload never arrived, so this "
                        + "test would pass without dropping anything")
@@ -143,9 +145,8 @@ final class VPNStatusAppearanceTests: XCTestCase {
     /// frames after its three seconds were up, until an unrelated firing
     /// happened to redraw it away.
     func testTheNameIsGivenUpWhenItsWindowCloses() async {
-        let model = VPNViewModel(work: FakeVPNWork())
-        model.setForTesting(automation: firing(secondsAgo: VPNAutomation.nameDuration - 0.15),
-                            notice: .menuBar)
+        let model = VPNViewModel(work: FakeVPNWork(), settings: seededVPNSettings(notice: .menuBar))
+        model.setForTesting(automation: firing(secondsAgo: VPNAutomation.nameDuration - 0.15))
         XCTAssertNotNil(model.lastAutomation, "still inside its window, so this proves nothing yet")
 
         for _ in 0..<400 where model.lastAutomation != nil {
@@ -161,13 +162,13 @@ final class VPNStatusAppearanceTests: XCTestCase {
     /// else does.
     func testStatusChangesFireWhenAFiringArrives() {
         let descriptor = VPNDescriptor()
-        let model = VPNViewModel(work: FakeVPNWork())
+        let model = VPNViewModel(work: FakeVPNWork(), settings: seededVPNSettings())
         guard let changes = descriptor.statusChanges(model) else {
             return XCTFail("VPN publishes no status changes, so a firing never reaches the icon")
         }
         var fired = 0
         let token = changes.sink { fired += 1 }
-        model.setForTesting(automation: firing(secondsAgo: 0), notice: .menuBar)
+        model.setForTesting(automation: firing(secondsAgo: 0))
         token.cancel()
         XCTAssertEqual(fired, 1)
     }

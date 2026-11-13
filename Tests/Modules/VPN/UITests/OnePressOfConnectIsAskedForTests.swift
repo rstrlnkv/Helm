@@ -38,7 +38,7 @@ final class OnePressOfConnectIsAskedForTests: XCTestCase {
 
     func testTheModelPublishesWhatTheEngineCouldNotRead() {
         let work = FakeVPNWork()
-        let vm = VPNViewModel(work: work)
+        let vm = VPNViewModel(work: work, settings: seededVPNSettings())
         var payload = VPNEngine.StatePayload(
             connections: [VPNConnection(id: "1", name: "Office", status: .disconnected,
                                         kind: "IPSec")],

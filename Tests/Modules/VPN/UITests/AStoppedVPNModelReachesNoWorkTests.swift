@@ -36,7 +36,7 @@ final class AStoppedVPNModelReachesNoWorkTests: XCTestCase {
 
     func testBuildingTheModelAsksTheEngineNothing() {
         let work = FakeVPNWork()
-        let model = VPNViewModel(work: work)
+        let model = VPNViewModel(work: work, settings: seededVPNSettings())
         XCTAssertEqual(work.calls, ["stream"],
                        "the model asked the engine for something beside its stream when built")
         model.stop()
@@ -44,7 +44,7 @@ final class AStoppedVPNModelReachesNoWorkTests: XCTestCase {
 
     func testAPressAfterStopReachesNoWork() async {
         let work = FakeVPNWork()
-        let model = VPNViewModel(work: work)
+        let model = VPNViewModel(work: work, settings: seededVPNSettings())
 
         // Control: every door reaches the work while the model lives.
         model.refresh()
@@ -74,8 +74,10 @@ final class AStoppedVPNModelReachesNoWorkTests: XCTestCase {
     func testAStateAfterStopIsNotDrawnOrAnnounced() async {
         let work = FakeVPNWork()
         let port = FakeAutomationNotice(state: .authorized)
-        let model = VPNViewModel(work: work, notices: port)
-        model.setForTesting(automation: nil, notice: .system, bannerAuthorized: true)
+        let model = VPNViewModel(work: work,
+                                settings: seededVPNSettings(notice: .system, bannerAuthorized: true),
+                                notices: port)
+        model.setForTesting(automation: nil)
 
         // Control: a state reaches the page, and its firing is announced.
         work.say(Self.state())
