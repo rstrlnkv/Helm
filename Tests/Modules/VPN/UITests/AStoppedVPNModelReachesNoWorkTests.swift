@@ -51,7 +51,7 @@ final class AStoppedVPNModelReachesNoWorkTests: XCTestCase {
         model.connect("Office")
         model.disconnect("Office")
         model.measureSpeed("Office")
-        model.rulesChanged()
+        model.saveRules([:])
         let live = ["stream", "refresh", "connect Office", "disconnect Office",
                     "measureSpeed Office", "reloadRules"]
         XCTAssertEqual(work.calls, live, "control: the presses did not reach the work")
@@ -65,7 +65,7 @@ final class AStoppedVPNModelReachesNoWorkTests: XCTestCase {
         model.connect("Office")
         model.disconnect("Office")
         model.measureSpeed("Office")
-        model.rulesChanged()
+        model.saveRules([:])
         await grace()
         XCTAssertEqual(work.calls, live, "a stopped model reached the engine")
         XCTAssertNil(model.measuring, "a stopped model marked a run nothing will answer")

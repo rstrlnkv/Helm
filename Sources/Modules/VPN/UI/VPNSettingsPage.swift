@@ -15,11 +15,11 @@ struct VPNSettingsPage: View {
     let store: NamespacedStore
     @State var rules: [String: VPNAppRule]
 
-    @State private var notice: VPNNotice
-    @State private var dropNotice: VPNNotice
-    @State private var spin: Bool
-    @State private var spinTintConnected: String
-    @State private var spinTintDisconnected: String
+    private let notice: VPNNotice
+    private let dropNotice: VPNNotice
+    private let spin: Bool
+    private let spinTintConnected: String
+    private let spinTintDisconnected: String
     /// Whether the grid is showing everything or only its first six. Not
     /// stored: it is a state of this visit to the page, and a person who left
     /// it expanded three weeks ago is not asking for a screenful of cards now.
@@ -32,7 +32,7 @@ struct VPNSettingsPage: View {
     /// under this whenever the network moves (`VPNTunnelChoice.chosen`).
     @State private var selectedTunnel: String?
     /// The per-connection overrides, seeded from the store and written through
-    /// on every change — the same shape the rules have, for the same reason.
+    /// the model on every change — the same shape the rules have, for the same reason.
     @State private var noticeBook: VPNNoticeBook
 
     init(vm: VPNViewModel, store: NamespacedStore) {
@@ -44,11 +44,11 @@ struct VPNSettingsPage: View {
         // run outright, and this page is constructed in one.
         let settings = VPNSettings(store: store)
         _rules = State(initialValue: VPNRules.decode(settings.rulesJSON))
-        _notice = State(initialValue: settings.notice)
-        _dropNotice = State(initialValue: settings.dropNotice)
-        _spin = State(initialValue: settings.automationSpin)
-        _spinTintConnected = State(initialValue: settings.spinTint(for: .connected))
-        _spinTintDisconnected = State(initialValue: settings.spinTint(for: .disconnected))
+        self.notice = settings.notice
+        self.dropNotice = settings.dropNotice
+        self.spin = settings.automationSpin
+        self.spinTintConnected = settings.spinTint(for: .connected)
+        self.spinTintDisconnected = settings.spinTint(for: .disconnected)
         _noticeBook = State(initialValue: settings.noticeBook)
     }
 
@@ -295,14 +295,12 @@ struct VPNSettingsPage: View {
             setDropNotice: { chosen in
                 noticeBook = vm.chooseNotice(chosen, for: .dropped, on: c.id)
             },
-            setSpin: { on in write(book.setting(c.id, spin: on)) },
-            setTint: { kind, token in write(book.setting(c.id, tint: token, for: kind)) })
-    }
-
-    /// The book, and the one place it is written.
-    private func write(_ book: VPNNoticeBook) {
-        noticeBook = book
-        VPNSettings(store: store).setNoticeBook(book)
+            setSpin: { on in
+                noticeBook = vm.updateNoticeBook { $0.setting(c.id, spin: on) }
+            },
+            setTint: { kind, token in
+                noticeBook = vm.updateNoticeBook { $0.setting(c.id, tint: token, for: kind) }
+            })
     }
 
 }

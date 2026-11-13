@@ -210,11 +210,20 @@ extension VPNEngine: VPNWork {}
     @discardableResult
     func chooseNotice(_ notice: VPNNotice, for kind: VPNAutomation.Kind,
                       on id: String) -> VPNNoticeBook {
-        let book = settings.noticeBook
-        let written = kind == .dropped ? book.setting(id, drop: notice)
-                                       : book.setting(id, notice: notice)
-        settings.setNoticeBook(written)
+        let written = updateNoticeBook {
+            kind == .dropped ? $0.setting(id, drop: notice) : $0.setting(id, notice: notice)
+        }
         Task { await choose(notice) }
+        return written
+    }
+
+    /// The one writer of the notice book: reads it fresh, applies `change`,
+    /// stores and returns the result, so no caller writes a book it read at
+    /// render time.
+    @discardableResult
+    func updateNoticeBook(_ change: (VPNNoticeBook) -> VPNNoticeBook) -> VPNNoticeBook {
+        let written = change(settings.noticeBook)
+        settings.setNoticeBook(written)
         return written
     }
 
@@ -236,8 +245,8 @@ extension VPNEngine: VPNWork {}
     }
 
     /// Test seam. `@testable` reaches it; nothing in the app does. It stands in
-    /// for the engine that fires the rule and for the store that holds the mode,
-    /// neither of which a test of the status item wants to own.
+    /// for the engine that fires the rule and for the banner port, neither of
+    /// which a test of the status item wants to own.
     func setForTesting(automation: VPNAutomation?,
                        notices: AutomationNoticePort? = nil) {
         if let notices { self.notices = notices }
@@ -395,8 +404,10 @@ extension VPNEngine: VPNWork {}
         guard !closed else { return }
         work.press(.disconnect, on: name)
     }
-    /// The saved rules changed: the engine re-reads them.
-    func rulesChanged() {
+    /// The one writer of the stored rules: saves them, and the engine re-reads
+    /// them unless the model is stopped.
+    func saveRules(_ rules: [String: VPNAppRule]) {
+        settings.setRulesJSON(VPNRules.encode(rules))
         guard !closed else { return }
         work.reloadRules()
     }

@@ -16,11 +16,10 @@ import Module_VPN_Engine
 /// one place — so this is an extension rather than a view of its own.
 extension VPNSettingsPage {
 
-    /// Saves the rules and tells the engine to re-read them. `internal`, because
+    /// Saves the rules through the model, which tells the engine to re-read them. `internal`, because
     /// the card's callbacks live on the page one file over.
     func persist() {
-        VPNSettings(store: store).setRulesJSON(VPNRules.encode(rules))
-        vm.rulesChanged()
+        vm.saveRules(rules)
     }
 
     /// **Where a rule's identity comes from, and the only place it can.** The path

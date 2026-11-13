@@ -12,6 +12,8 @@ fell are keyed by the configuration's id with the name beside it, and
 against a `scutil` read, because that tool answers with a short list or none at
 all on a refusal or a Mac mid-boot (`AShortListPrunesNoNoticeBookTests`).
 
+`vpnAppRules` and `noticeBook` have one writer, the model (`VPNViewModel.saveRules`, `updateNoticeBook`); the page writes through it and holds no copy it writes back. `automationNotice`, `dropNotice`, `automationSpin` and `spinTint.*` are read-only fallbacks with no writer.
+
 A per-app rule is bound to a signature rather than to a bundle identifier
 (`Sources/HelmRuntime/CodeIdentity.swift` says what that buys), judged at launch
 only by `VPNRuleTrust.judge`. Its answer is a `VPNRuleTrust.Verdict` rather than a
