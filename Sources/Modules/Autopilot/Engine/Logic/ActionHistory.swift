@@ -59,7 +59,7 @@ public struct ActionRecord: Codable, Equatable, Sendable, Identifiable {
     /// file this rule ever moved" is one nobody should be offered. Optional
     /// like every field below it: a history written before this build has no
     /// such key, and those records simply have no group.
-    public let run: String?
+    let run: String?
     /// The rule's id, beside the name the row shows.
     ///
     /// Names are not unique — two rules in one folder may be called the same
@@ -74,8 +74,8 @@ public struct ActionRecord: Codable, Equatable, Sendable, Identifiable {
     /// standing in it an hour later. Two halves rather than one struct because
     /// this is stored data, and two Optional numbers is the shape a plist and a
     /// JSON document both already hold.
-    public let device: UInt64?
-    public let inode: UInt64?
+    let device: UInt64?
+    let inode: UInt64?
     /// When this action was put back, if it has been.
     ///
     /// Without it the second press moves a different file: the row still says
@@ -102,7 +102,7 @@ public struct ActionRecord: Codable, Equatable, Sendable, Identifiable {
 
     /// The same record, marked as put back. The row stays — a history that
     /// deleted what it had undone would be a history that hides an action.
-    public func undone(at when: Date) -> ActionRecord {
+    func undone(at when: Date) -> ActionRecord {
         ActionRecord(at: at, rule: rule, file: file, kind: kind, detail: detail,
                      path: path, destination: destination, run: run, ruleID: ruleID,
                      device: device, inode: inode, undoneAt: when)
@@ -115,14 +115,14 @@ public struct ActionRecord: Codable, Equatable, Sendable, Identifiable {
     /// An action happened once and each one is worth its own row. A refusal or
     /// a failure is a *state* — the same file, the same reason, every sweep —
     /// and a hundred rows of it say no more than one does.
-    public var repeatable: Bool { kind == .refused || kind == .failed }
+    var repeatable: Bool { kind == .refused || kind == .failed }
 
-    public func isRepeat(of other: ActionRecord) -> Bool {
+    func isRepeat(of other: ActionRecord) -> Bool {
         kind == other.kind && path == other.path && detail == other.detail
             && rule == other.rule
     }
 
-    public init(at: Date, rule: String, file: String, kind: Kind, detail: String,
+    init(at: Date, rule: String, file: String, kind: Kind, detail: String,
                 path: String = "", destination: String = "", run: String? = nil,
                 ruleID: String? = nil, device: UInt64? = nil, inode: UInt64? = nil,
                 undoneAt: Date? = nil) {
@@ -172,27 +172,27 @@ public enum ActionHistory {
     /// Here rather than on the engine, because the engine is not the only
     /// reader any more: the seal is written and thrown away beside the payload,
     /// and a key spelled in two places is one that only one of them renames.
-    public static let storeKey = "history"
+    static let storeKey = "history"
 
     /// Thirty days, because that is the promise the page makes. Anything older
     /// is a file somebody has long since stopped looking for.
-    public static let window: TimeInterval = 30 * 86_400
+    static let window: TimeInterval = 30 * 86_400
 
     /// A busy Downloads folder acts hundreds of times a day, and this shares a
     /// store with the rules. Unbounded, the history would eventually be the
     /// reason the rules stop saving — which would be Autopilot breaking itself
     /// by keeping too good a record.
-    public static let limit = 500
+    static let limit = 500
 
     public struct Summary: Equatable, Sendable {
-        public var moved = 0, renamed = 0, tagged = 0, trashed = 0
+        var moved = 0, renamed = 0, tagged = 0, trashed = 0
         public var refused = 0, failed = 0
         public var total: Int { moved + renamed + tagged + trashed + refused + failed }
     }
 
     /// The history with one more thing in it: newest first, nothing older than
     /// the window, nothing beyond the limit.
-    public static func recording(_ record: ActionRecord,
+    static func recording(_ record: ActionRecord,
                                  into history: [ActionRecord],
                                  now: Date = Date()) -> [ActionRecord] {
         // A refusal repeats. Nothing about the file changed, nothing is
@@ -215,7 +215,7 @@ public enum ActionHistory {
     /// Applied on the way out as well as on the way in: a store written before
     /// a clock change, or by a build that pruned differently, must not put a
     /// stale row on the page.
-    public static func within(_ history: [ActionRecord], now: Date = Date()) -> [ActionRecord] {
+    static func within(_ history: [ActionRecord], now: Date = Date()) -> [ActionRecord] {
         let oldest = now.addingTimeInterval(-window)
         return history
             .filter { $0.at >= oldest }
@@ -239,18 +239,18 @@ public enum ActionHistory {
 
     /// The store outlives the build that wrote it, so a record this build
     /// cannot read costs the reader a shorter history and nothing worse.
-    public static func decode(_ data: Data?) -> [ActionRecord] {
+    static func decode(_ data: Data?) -> [ActionRecord] {
         guard let data, let history = try? JSONDecoder().decode([ActionRecord].self, from: data)
         else { return [] }
         return history
     }
 
-    public static func encode(_ history: [ActionRecord]) -> Data? {
+    static func encode(_ history: [ActionRecord]) -> Data? {
         try? JSONEncoder().encode(history)
     }
 }
 
-public extension ActionRecord {
+extension ActionRecord {
 
     /// What to remember about one plan and how it turned out, or nothing.
     ///

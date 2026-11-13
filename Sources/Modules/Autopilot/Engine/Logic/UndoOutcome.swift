@@ -75,7 +75,7 @@ public struct UndoReport: Equatable, Sendable {
         public let file: String
         public let outcome: UndoOutcome
 
-        public init(id: String, file: String, outcome: UndoOutcome) {
+        init(id: String, file: String, outcome: UndoOutcome) {
             self.id = id
             self.file = file
             self.outcome = outcome
@@ -104,7 +104,7 @@ public struct UndoReport: Equatable, Sendable {
 
     public let lines: [Line]
 
-    public init(lines: [Line]) { self.lines = lines }
+    init(lines: [Line]) { self.lines = lines }
 
     public var restored: [Line] { lines.filter(\.restored) }
     public var notPutBack: [Line] { lines.filter { !$0.restored } }

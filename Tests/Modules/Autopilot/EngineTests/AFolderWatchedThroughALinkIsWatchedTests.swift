@@ -11,6 +11,8 @@ import HelmTestSupport
 /// `~/Downloads/photo.jpg`, and a leg that matched it to the watched folder by
 /// the folder's *spelling* found no folder at all: the sweep read the folder and
 /// the watcher never acted on anything arriving in it.
+///
+/// Past defect: fixed in 4ce355a9.
 final class AFolderWatchedThroughALinkIsWatchedTests: XCTestCase {
 
     private var home: URL!

@@ -96,15 +96,15 @@ tests. Pure decision logic sits in `Sources/Modules/<Name>/Engine/Logic/`.
 ls Sources/Modules/*/Engine/SystemPorts.swift
 ```
 
-names the modules that hold to the pattern. Three do not, for two different
-reasons: Disk and Duplicates read the file system as their whole subject, so the
+names the modules that hold to the pattern. Two do not, for one reason: Disk and
+Duplicates read the file system as their whole subject, so the
 walk has no port, a port there would be a second name for `FileManager`, and it is
 tested against a real temporary tree instead (Disk's `VolumeCapacityPort` sits
 with its system implementation in `Sources/Modules/Disk/Engine/Ports.swift`, and the move to the Trash
-comes in as a closure); Autopilot's ports `PresetFolderPort` and `RuleSequencePort`
-sit in `Engine/Logic/` where the pattern would put them a directory higher, and that
-is drift rather than a decision; its port `UndoFiles` sits in
-`Sources/Modules/Autopilot/Engine/UndoRunner.swift`.
+comes in as a closure). Autopilot's ports sit in `Sources/Modules/Autopilot/Engine/Ports.swift` and their
+system implementations in `Sources/Modules/Autopilot/Engine/SystemPorts.swift`; the keychain implementations
+(`KeychainRuleKey`, `KeychainRuleSequence`) stay in `RuleKeychain.swift` beside them, because that is the one
+file that names the deployed keychain items, which `TheRuleItemsAreTheOnesThatShippedTests` pins.
 
 **A port that answers more than one thing grows a second door.** Where a system
 read comes back empty for more than one reason, the port either grows a second

@@ -16,6 +16,8 @@ import HelmTestSupport
 /// fails with EINVAL — a «failed» row in the history on every sweep, for
 /// ever, about a folder nobody asked to move. On disk: a scratch home under
 /// `/var/folders`, whose `/private` spelling is a real second spelling.
+///
+/// Past defect: fixed in 4ce355a9.
 final class ARuleNeverMovesItsOwnBucketIntoItselfTests: XCTestCase {
 
     private var home: URL!

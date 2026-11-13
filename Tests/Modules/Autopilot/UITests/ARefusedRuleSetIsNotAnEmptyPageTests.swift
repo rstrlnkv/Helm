@@ -1,6 +1,6 @@
 import HelmRuntime
 import XCTest
-import Module_Autopilot_Engine
+@testable import Module_Autopilot_Engine
 @testable import Module_Autopilot_UI
 
 /// **«You have no folders» is what a tampered rule set looks like on screen.**

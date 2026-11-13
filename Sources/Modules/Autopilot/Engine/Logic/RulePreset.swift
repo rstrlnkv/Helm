@@ -1,5 +1,4 @@
 import Foundation
-import HelmRuntime
 
 /// A rule somebody can have without writing one.
 ///
@@ -20,8 +19,8 @@ import HelmRuntime
 public struct RulePreset: Equatable, Sendable, Identifiable {
     public let kind: PresetKind
     public let folder: PresetFolder
-    public let match: RuleMatch
-    public let conditions: [RuleCondition]
+    let match: RuleMatch
+    let conditions: [RuleCondition]
     public let action: PresetAction
 
     /// The rule's id as well as the preset's, which is the whole mechanism.
@@ -95,7 +94,7 @@ public enum PresetAction: Equatable, Sendable {
     }
 }
 
-public extension RulePreset {
+extension RulePreset {
 
     /// The five, in the order they are offered.
     ///
@@ -103,7 +102,7 @@ public extension RulePreset {
     /// Desktop and the first match wins: a screenshot older than thirty days
     /// belongs in `Screenshots`, and a person who adds both sees exactly that in
     /// the dry run.
-    static let all: [RulePreset] = PresetKind.allCases.map(RulePreset.init(kind:))
+    public static let all: [RulePreset] = PresetKind.allCases.map(RulePreset.init(kind:))
 
     /// What each one is. The switch has no `default`, so a sixth kind cannot be
     /// declared without being described.
@@ -139,43 +138,6 @@ public extension RulePreset {
     }
 }
 
-/// Where this Mac keeps the two folders the presets are about.
-///
-/// A port, because it is the one part of a preset that is not a constant:
-/// `~/Downloads` can be moved, and a Mac in another language keeps it under the
-/// same path with a different display name. Reading the path out of
-/// `FileManager` is the only way to be right about both — and a seam is what
-/// lets a test stand a moved Downloads, or one that leads out of the home
-/// directory, in front of the gate.
-public protocol PresetFolderPort: Sendable {
-    /// The folder's path, or nothing when the system will not say — which is
-    /// not «the default place»: guessing `~/Downloads` for a Mac that keeps it
-    /// elsewhere is how a rule comes to watch a folder nobody meant.
-    func path(of folder: PresetFolder) -> String?
-}
-
-/// The production answer: whatever `FileManager` says, resolved for this user.
-public struct SystemPresetFolders: PresetFolderPort {
-    public init() {}
-
-    public func path(of folder: PresetFolder) -> String? {
-        // **A suite run has no preset folders.** This is the question every site
-        // in the tree that resolves a folder of somebody's own has to ask: a
-        // page built in a test would otherwise hold their real Desktop and
-        // Downloads, offer five rules over them, and be one press away from
-        // watching them. A test that wants an offer plants the paths through
-        // the port, which is what the port is for.
-        guard !TestProcess.isRunning else { return nil }
-        let directory: FileManager.SearchPathDirectory = switch folder {
-        case .desktop: .desktopDirectory
-        case .downloads: .downloadsDirectory
-        }
-        return try? FileManager.default
-            .url(for: directory, in: .userDomainMask, appropriateFor: nil, create: false)
-            .path
-    }
-}
-
 /// A preset the person may actually be offered, with the folder it would run in.
 public struct OfferedPreset: Equatable, Sendable, Identifiable {
     public let preset: RulePreset
@@ -188,11 +150,11 @@ public struct OfferedPreset: Equatable, Sendable, Identifiable {
     /// rule to a folder somebody already watches and then sweeping it would run
     /// *their* other rules over everything in it, which is not what pressing
     /// Done on a preset asked for.
-    public let folderIsNew: Bool
+    let folderIsNew: Bool
 
     public var id: String { preset.id }
 
-    public init(preset: RulePreset, folder: WatchedFolder, folderIsNew: Bool) {
+    init(preset: RulePreset, folder: WatchedFolder, folderIsNew: Bool) {
         self.preset = preset
         self.folder = folder
         self.folderIsNew = folderIsNew

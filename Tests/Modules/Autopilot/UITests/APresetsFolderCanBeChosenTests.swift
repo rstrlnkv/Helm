@@ -1,6 +1,6 @@
 import HelmRuntime
 import XCTest
-import Module_Autopilot_Engine
+@testable import Module_Autopilot_Engine
 @testable import Module_Autopilot_UI
 
 /// **A preset's editor can be pointed at another folder, and the gate is asked

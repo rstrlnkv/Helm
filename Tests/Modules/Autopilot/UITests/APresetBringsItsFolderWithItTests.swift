@@ -1,6 +1,6 @@
 import HelmRuntime
 import XCTest
-import Module_Autopilot_Engine
+@testable import Module_Autopilot_Engine
 @testable import Module_Autopilot_UI
 
 /// **The one folder in this module that does not arrive through the panel.**

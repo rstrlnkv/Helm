@@ -101,14 +101,14 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
 
     /// Throw away a rule set that was not written by Helm, so the page can be
     /// used again. The one thing the card above the folder list may send.
-    public func discardRefusedRules() { rules.discardRefused() }
+    func discardRefusedRules() { rules.discardRefused() }
 
     /// What the page asks for beside the folder list.
     ///
     /// The rules and the reason are asked for together, because the reason is a
     /// side effect of judging the rules — the model asks this and `folders` in
     /// the same breath.
-    public var status: AutopilotStatus {
+    var status: AutopilotStatus {
         let (watched, reason) = rules.decision()
         // One question per folder, asked outside that decision: a page opening
         // is not a reason to hold every other reader of the rule set behind a
@@ -200,7 +200,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// Read through the window on the way out as well as on the way in, so a
     /// store left behind by a machine that was asleep for a month shows nothing
     /// rather than a page of history that is no longer true.
-    public var history: [ActionRecord] {
+    var history: [ActionRecord] {
         ActionHistory.within(ActionHistory.decode(store.data(ActionHistory.storeKey)))
     }
 
@@ -236,7 +236,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// arrives on whatever thread the model's `dropHistory` ran on, so a clear landing
     /// between a `remember`'s read and its write was simply undone, and a row
     /// survived "Clear".
-    public func clearHistory() {
+    func clearHistory() {
         // `sync`, not `async`: the caller's next line reads the history back,
         // and a clear that has not landed yet reads as a clear that did not
         // happen. Safe from `dropHistory`, which runs off the cooperative pool
@@ -314,7 +314,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// second arrival was numbered, and undoing it before the first is what
     /// gives each of them its own name back.
     @discardableResult
-    public func undoRun(_ run: String) -> UndoReport {
+    func undoRun(_ run: String) -> UndoReport {
         putBack { $0.run == run }
     }
 
@@ -365,7 +365,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// run and what happens afterwards cannot drift apart. That is the module's
     /// fourth guarantee — a rule must not run before it has been seen — and the
     /// sentence had come loose from the function that keeps it.
-    public func preview(_ folder: WatchedFolder) -> [RulePlan] {
+    func preview(_ folder: WatchedFolder) -> [RulePlan] {
         // A full folder read per keystroke in the editor, which is bulk work
         // whatever the folder — so it names itself the way `runNow` does, and
         // the reading is inside the phase for the same reason: a phase that has
@@ -405,7 +405,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// that passes `true`. It decides the *banner* too, by not reaching one: the
     /// person pressing Run now is looking at the page the answer is drawn on.
     @discardableResult
-    public func sweep(_ folder: WatchedFolder, manual: Bool = false) -> SweepReport {
+    func sweep(_ folder: WatchedFolder, manual: Bool = false) -> SweepReport {
         swept(folder, manual: manual).report
     }
 
@@ -480,7 +480,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// its condition. The reading is inside the phase — a phase that has ended
     /// cannot be excluded from its own line.
     @discardableResult
-    public func runNow(_ folder: WatchedFolder) -> SweepReport {
+    func runNow(_ folder: WatchedFolder) -> SweepReport {
         HelmActivity.phase("autopilot.runNow") {
             defer { HelmLog.shared.memory("autopilot.runNow") }
             return sweep(folder, manual: true)
@@ -497,7 +497,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// turns "something happened" into "the sweep happened"
     /// (ARCHITECTURE.md § The memory trail).
     @discardableResult
-    public func sweepAll() -> [SweepReport] {
+    func sweepAll() -> [SweepReport] {
         let passes = HelmActivity.phase("autopilot.sweep") {
             folders.filter(\.enabled).map { swept($0, manual: false) }
         }

@@ -1,6 +1,6 @@
 import XCTest
 import HelmTestSupport
-import Module_Autopilot_Engine
+@testable import Module_Autopilot_Engine
 @testable import Module_Autopilot_UI
 
 /// A model nobody has opened asks the engine nothing, and after `stop()` a press

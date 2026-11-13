@@ -16,6 +16,8 @@ import HelmTestSupport
 /// Same names in different folders is the ordinary case for a folder watched
 /// deeper than one level: `report.pdf`, `IMG_0001.JPG`, `invoice.pdf`,
 /// `index.html`, `Icon`.
+///
+/// Past defect: fixed in 6dec5f2f.
 final class PreviewRowIdentityTests: XCTestCase {
 
     private var home: URL!

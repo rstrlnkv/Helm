@@ -33,7 +33,7 @@ public struct PreviewRow: Equatable, Identifiable, Sendable {
     /// same reason the sweep would log.
     public let refusal: RuleOutcome.Refusal?
 
-    public init(_ plan: RulePlan) {
+    init(_ plan: RulePlan) {
         self.init(plan, counters: CounterBook())
     }
 

@@ -135,6 +135,8 @@ final class TheRootCheckLetsThePersonsOwnFolderThroughTests: XCTestCase {
 /// Everything is on disk: a scratch home, real folders, real links. The scratch
 /// home lives under `/var/folders`, so its `/private` spelling is a real second
 /// spelling of the same directory.
+///
+/// Past defect: fixed in 4ce355a9.
 final class ThePersonsOwnFolderReadsUnderEverySpellingTests: XCTestCase {
 
     private var home: URL!

@@ -26,6 +26,8 @@ import XCTest
 /// So the parse moved out of `ConditionRow`'s binding and into the engine, where
 /// it can be read back: the view calls `RuleCondition.fileExtension(typed:)` and
 /// this is what that answers.
+///
+/// Past defect: fixed in 99a2a306.
 final class ADotTypedIntoTheExtensionFieldTests: XCTestCase {
 
     private func typed(_ text: String) -> [String] {

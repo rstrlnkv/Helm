@@ -20,16 +20,16 @@ public struct FileFacts: Equatable, Sendable {
     /// run promised it would.
     public let path: String
     public let kind: FileKind
-    public let bytes: Int
-    public let added: Date
-    public let modified: Date
+    let bytes: Int
+    let added: Date
+    let modified: Date
     /// From `kMDItemWhereFroms` — nil for a file that arrived any other way.
-    public let downloadedFrom: String?
-    public let tags: [String]
-    public let isDirectory: Bool
-    public let now: Date
+    let downloadedFrom: String?
+    let tags: [String]
+    let isDirectory: Bool
+    let now: Date
 
-    public init(name: String, path: String = "", kind: FileKind, bytes: Int,
+    init(name: String, path: String = "", kind: FileKind, bytes: Int,
                 added: Date, modified: Date,
                 downloadedFrom: String? = nil, tags: [String] = [],
                 isDirectory: Bool = false, now: Date = Date()) {
@@ -46,7 +46,7 @@ public struct FileFacts: Equatable, Sendable {
     }
 
     /// Lowercased, without the dot. Empty for a file that has none.
-    public var fileExtension: String {
+    var fileExtension: String {
         (name as NSString).pathExtension.lowercased()
     }
 
@@ -54,7 +54,7 @@ public struct FileFacts: Equatable, Sendable {
     /// `archive.tar` for `archive.tar.gz`, because only the last dot is an
     /// extension. A dotfile keeps its whole name: `.gitignore` is what the file
     /// is called, not an empty name with an extension.
-    public var baseName: String {
+    var baseName: String {
         let name = self.name
         guard !name.hasPrefix(".") else { return name }
         return (name as NSString).deletingPathExtension

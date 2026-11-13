@@ -18,6 +18,8 @@ import HelmTestSupport
 /// this was never going to happen. It is decided in `RulePlan`, the one value
 /// the dry run shows and the runner executes, so both agree without being asked
 /// to.
+///
+/// Past defect: fixed in 4b379093.
 final class ASortRuleDoesNotSortItsOwnBucketsTests: XCTestCase {
 
     private let day = Date(timeIntervalSince1970: 1_800_000_000)
@@ -129,6 +131,8 @@ final class ASortRuleDoesNotSortItsOwnBucketsTests: XCTestCase {
 /// The same thing over a real folder, because the refusal in the owner's log
 /// was a whole sweep's — and because the dry run and the sweep read one value,
 /// which is only worth saying if something asks them both.
+///
+/// Past defect: fixed in 4b379093.
 final class ASweepDoesNotOfferItsOwnBucketTests: XCTestCase {
 
     private var home: URL!

@@ -1,6 +1,6 @@
 import HelmRuntime
 import XCTest
-import Module_Autopilot_Engine
+@testable import Module_Autopilot_Engine
 @testable import Module_Autopilot_UI
 
 /// The editor's half of «the dry run is of one rule alone».

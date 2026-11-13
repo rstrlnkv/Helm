@@ -1,5 +1,5 @@
 import Foundation
-import Module_Autopilot_Engine
+@testable import Module_Autopilot_Engine
 @testable import Module_Autopilot_UI
 
 /// The engine's door as the model sees it, standing for the engine and nothing else.

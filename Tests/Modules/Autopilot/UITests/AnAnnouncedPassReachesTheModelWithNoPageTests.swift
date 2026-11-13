@@ -1,6 +1,6 @@
 import XCTest
 import HelmTestSupport
-import Module_Autopilot_Engine
+@testable import Module_Autopilot_Engine
 @testable import Module_Autopilot_UI
 
 /// The engine says a pass went into the history while no page is open, and the

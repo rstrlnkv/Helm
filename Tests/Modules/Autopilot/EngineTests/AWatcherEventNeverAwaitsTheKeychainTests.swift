@@ -22,6 +22,8 @@ import XCTest
 /// the port has not answered at all. A port that never answers cannot be
 /// beaten by a race — and the test can lose, because moving the read back onto
 /// the caller's thread leaves `returned` unfulfilled whatever the machine.
+///
+/// Past defect: fixed in 92c2bf7d.
 final class AWatcherEventNeverAwaitsTheKeychainTests: XCTestCase {
 
     private var home: URL!

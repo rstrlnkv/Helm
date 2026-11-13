@@ -6,17 +6,17 @@ import Foundation
 /// the same value in both cases — so what someone was shown and what happened
 /// cannot drift apart.
 public struct RulePlan: Equatable, Sendable {
-    public let facts: FileFacts
+    let facts: FileFacts
     public let rule: Rule
     public var action: RuleAction { rule.action }
 
-    public init(facts: FileFacts, rule: Rule) {
+    init(facts: FileFacts, rule: Rule) {
         self.facts = facts
         self.rule = rule
     }
 }
 
-public extension RulePlan {
+extension RulePlan {
 
     /// The first enabled rule whose conditions hold. Nothing, if none do.
     ///

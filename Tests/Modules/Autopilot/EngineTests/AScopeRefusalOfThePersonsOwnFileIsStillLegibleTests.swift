@@ -16,6 +16,8 @@ import HelmTestSupport
 /// What the history makes of that sweep is what these hold: one row per file
 /// the sweep refused, each naming the file, and the pass still named after the
 /// folder it swept. On disk, with the real engine.
+///
+/// Past defect: fixed in 4ce355a9.
 final class AScopeRefusalOfThePersonsOwnFileIsStillLegibleTests: XCTestCase {
 
     private var home: URL!

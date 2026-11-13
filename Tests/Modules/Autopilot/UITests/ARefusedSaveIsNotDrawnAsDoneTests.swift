@@ -1,6 +1,6 @@
 import HelmRuntime
 import XCTest
-import Module_Autopilot_Engine
+@testable import Module_Autopilot_Engine
 @testable import Module_Autopilot_UI
 
 /// **The rule set can stop being Helm's while the page is open, and nothing

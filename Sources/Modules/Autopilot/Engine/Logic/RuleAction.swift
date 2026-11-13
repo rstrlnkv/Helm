@@ -22,7 +22,7 @@ public enum RuleAction: Codable, Equatable, Sendable {
     case trash
 }
 
-public extension RuleAction {
+extension RuleAction {
     /// Whether the action names everything it needs to be carried out.
     ///
     /// The blank states are reachable by design rather than by accident: the

@@ -28,7 +28,7 @@ public struct AutopilotStatus: Equatable, Sendable {
     /// instead of offering returns that would all refuse.
     public let historyRefused: Bool
 
-    public init(refusal: RuleRefusal?, folders: [String: FolderState] = [:],
+    init(refusal: RuleRefusal?, folders: [String: FolderState] = [:],
                 watching: Bool? = nil, historyRefused: Bool = false) {
         self.refusal = refusal
         self.folders = folders

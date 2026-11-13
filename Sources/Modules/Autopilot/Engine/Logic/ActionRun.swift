@@ -25,7 +25,7 @@ public struct ActionRun: Identifiable, Equatable, Sendable {
     /// happened before it is a thing to undo.
     public let records: [ActionRecord]
 
-    public init(id: String, at: Date, folder: String?, records: [ActionRecord]) {
+    init(id: String, at: Date, folder: String?, records: [ActionRecord]) {
         self.id = id
         self.at = at
         self.folder = folder
@@ -42,14 +42,14 @@ public struct ActionRun: Identifiable, Equatable, Sendable {
     public var canBePutBack: Bool { records.count > 1 && !undoable.isEmpty }
 }
 
-public extension ActionHistory {
+extension ActionHistory {
 
     /// The history in passes, newest first.
     ///
     /// Records with no pass of their own each stand alone rather than
     /// collapsing into one enormous group — a history written before this build
     /// has none, and one press over all of it is not a gesture anybody meant.
-    static func runs(of history: [ActionRecord], now: Date = Date()) -> [ActionRun] {
+    public static func runs(of history: [ActionRecord], now: Date = Date()) -> [ActionRun] {
         var order: [String] = []
         var grouped: [String: [ActionRecord]] = [:]
         for record in within(history, now: now) {

@@ -16,6 +16,8 @@ import HelmTestSupport
 /// the folder they name is full.
 ///
 /// On disk: a scratch home, a real link, a real file.
+///
+/// Past defect: fixed in 4ce355a9.
 final class AFolderWatchedThroughALinkIsReadTests: XCTestCase {
 
     private var home: URL!

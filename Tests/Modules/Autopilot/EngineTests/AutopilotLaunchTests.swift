@@ -98,6 +98,8 @@ final class AutopilotLaunchTests: XCTestCase {
 /// fast machine by luck. These assert the structure instead: whether the call
 /// completes while the port has not answered at all. A port that never answers
 /// cannot be beaten by a race.
+///
+/// Past defect: fixed in 4a526944.
 final class TheLaunchNeverWaitsForTheKeyPortTests: XCTestCase {
 
     private var home: URL!
