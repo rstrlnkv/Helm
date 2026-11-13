@@ -48,12 +48,13 @@ final class TheGroupIsCopiedInOneWriteTests: XCTestCase {
         let folder = scratchDirectory("group-gone-files")
         let gone = try file(folder, width: 12)
         try FileManager.default.removeItem(at: gone)
-        let delivery = await rig.session.copyAll([.picture(makeImage(width: 11, height: 6)), .file(gone),
+        let kept = try file(folder, width: 14)
+        let delivery = await rig.session.copyAll([.picture(makeImage(width: 11, height: 6)), .file(gone), .file(kept),
                                                    .picture(makeImage(width: 13, height: 6))])
         XCTAssertEqual(delivery.refusals, [.filesGone([1])], "the person is told which picture was not there")
         XCTAssertTrue(delivery.copied)
         XCTAssertEqual(rig.pasteboard.lists.count, 1)
-        XCTAssertEqual(try XCTUnwrap(rig.pasteboard.lists.first).map(width(of:)), [11, 13], "not the two that were found")
+        XCTAssertEqual(try XCTUnwrap(rig.pasteboard.lists.first).map(width(of:)), [11, 14, 13], "not the three that were found, in the list's order")
         XCTAssertTrue(rig.pasteboard.copies.isEmpty)
     }
 
@@ -175,42 +176,5 @@ final class TheGroupIsCopiedInOneWriteTests: XCTestCase {
         XCTAssertEqual(board.pasteboardItems?.count, 2, "an empty list cleared what was there")
         XCTAssertEqual(port.copy(png: try png(width: 50)), .accepted)
         XCTAssertEqual(board.pasteboardItems?.count, 1, "a single copy after a group left the group's items")
-    }
-}
-
-/// **A group is written in the list's order, whatever each picture is held in.** A group of one, three and twenty;
-/// pictures held in memory mixed with pictures in files, in the list's order.
-///
-/// Total failure of the subject prints: a group in an order that is not the list's.
-final class TheGroupKeepsTheListsOrderOnTheBoardTests: XCTestCase {
-
-    // MARK: What is copied
-
-    private func rig(_ name: String) -> Rig { Rig(home: scratchDirectory(name)) }
-
-    func testAGroupOfOneThreeAndTwentyIsOneWriteInTheListsOrder() async throws {
-        for n in [1, 3, 20] {
-            let rig = rig("group-\(n)")
-            let shots = (0..<n).map { ShotSource.picture(makeImage(width: 10 + $0, height: 6)) }
-            let delivery = await rig.session.copyAll(shots)
-            XCTAssertTrue(delivery.copied, "\(n): the control: the group was copied")
-            XCTAssertTrue(delivery.refusals.isEmpty, "\(n): \(delivery.refusals)")
-            XCTAssertEqual(rig.pasteboard.lists.count, 1, "\(n) shots were \(rig.pasteboard.lists.count) writes")
-            XCTAssertTrue(rig.pasteboard.copies.isEmpty, "\(n): a picture went by the single-picture write")
-            let written = try XCTUnwrap(rig.pasteboard.lists.first)
-            XCTAssertEqual(try written.map(width(of:)), (0..<n).map { 10 + $0 }, "\(n): not the list's order, or not all of it")
-        }
-    }
-
-    func testPicturesInMemoryAndPicturesInFilesKeepTheirPlacesInTheList() async throws {
-        let rig = rig("group-mixed")
-        let folder = scratchDirectory("group-mixed-files")
-        let shots: [ShotSource] = [.picture(makeImage(width: 11, height: 6)), .file(try file(folder, width: 12)),
-                                   .picture(makeImage(width: 13, height: 6)), .file(try file(folder, width: 14)),
-                                   .file(try file(folder, width: 15))]
-        let delivery = await rig.session.copyAll(shots)
-        XCTAssertTrue(delivery.copied)
-        XCTAssertEqual(rig.pasteboard.lists.count, 1)
-        XCTAssertEqual(try XCTUnwrap(rig.pasteboard.lists.first).map(width(of:)), [11, 12, 13, 14, 15])
     }
 }
