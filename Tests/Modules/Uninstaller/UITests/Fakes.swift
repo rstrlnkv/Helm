@@ -187,8 +187,16 @@ final class HeldWork: UninstallerWork, @unchecked Sendable {
     var trashRequests: Int { lock.withLock { trashCount } }
     private let released = AsyncStream<Void>.makeStream()
     private let offers: [TrashedAppLeftovers]
+    private let orphans: [OrphanGroup]
+    private let removal: UninstallResult
 
-    init(offers: [TrashedAppLeftovers]) { self.offers = offers }
+    /// - Parameters:
+    ///   - orphans: what `scanOrphans` answers, at once.
+    ///   - removal: what the held batch answers when released.
+    init(offers: [TrashedAppLeftovers] = [], orphans: [OrphanGroup] = [],
+         removal: UninstallResult = UninstallResult(trashed: [], freedBytes: 0)) {
+        self.offers = offers; self.orphans = orphans; self.removal = removal
+    }
 
     func release() { released.continuation.finish() }
 
@@ -199,7 +207,7 @@ final class HeldWork: UninstallerWork, @unchecked Sendable {
         // Hangs until `release()`. A `return` here would clear `busy` before the
         // caller resumed, and the gate would be untested.
         for await _ in released.stream {}
-        return UninstallResult(trashed: [], freedBytes: 0)
+        return removal
     }
 
     func listApps() async -> [InstalledApp] { [] }
@@ -211,7 +219,7 @@ final class HeldWork: UninstallerWork, @unchecked Sendable {
     func scan(bundleID: String, appName: String) async -> ScanResult {
         ScanResult(leftovers: [], runningNow: false)
     }
-    func scanOrphans() async -> [OrphanGroup] { [] }
+    func scanOrphans() async -> [OrphanGroup] { orphans }
     var trashWatch: TrashWatch { .off }
     func setWatchingTrash(_ on: Bool) {}
     func dismissTrashedApp(bundleID: String) {}

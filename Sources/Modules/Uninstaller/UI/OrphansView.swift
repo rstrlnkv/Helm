@@ -9,18 +9,12 @@ extension OrphanGroup: Identifiable { public var id: String { bundleID } }
 struct OrphansView: View {
     let uvm: UninstallerViewModel
 
-    @State private var groups: [OrphanGroup] = []
-    @State private var scanned = false
-    @State private var scanning = false
-    @State private var selected: Set<String> = []
-    @State private var failures: [TrashFailureInfo] = []
-    @State private var removedCount = 0
-    @State private var busy = false
+    @StateObject private var model: OrphansModel
     @State private var confirming = false
-    @State private var banner: String?
 
-    private var selectedBytes: Int {
-        groups.flatMap(\.leftovers).filter { selected.contains($0.path) }.reduce(0) { $0 + $1.sizeBytes }
+    init(uvm: UninstallerViewModel) {
+        self.uvm = uvm
+        _model = StateObject(wrappedValue: OrphansModel(uvm: uvm))
     }
 
     var body: some View {
@@ -46,35 +40,35 @@ struct OrphansView: View {
     /// nothing — built where the Trash window builds its own, because the two
     /// report the same three states.
     private var removalReport: HelmRemovalOutcome? {
-        .uninstaller(banner, removed: removedCount, failures: failures)
+        .uninstaller(model.banner, removed: model.removedCount, failures: model.failures)
     }
 
     @ViewBuilder private var content: some View {
-        if scanning {
+        if model.scanning {
             HelmBusyState(UnStr.scanningOrphans)
-        } else if !scanned {
+        } else if !model.scanned {
             // The module's own tint, not a colour chosen per state: orange and
             // green here read as a warning and a success on a screen that is
             // only waiting to be asked. A colour shared by several modules
             // would not say which page this is (`ModuleTint.swift`).
             HelmEmptyState(symbol: "clock.arrow.circlepath", tint: UninstallerDescriptor.tint.colour,
                            message: UnStr.orphansIntro) {
-                Button(UnStr.scanOrphans) { Task { await scan() } }
+                Button(UnStr.scanOrphans) { Task { await model.scan() } }
                     .buttonStyle(.borderedProminent)
             }
-        } else if groups.isEmpty {
+        } else if model.groups.isEmpty {
             HelmEmptyState(symbol: "checkmark.circle", tint: UninstallerDescriptor.tint.colour,
                            message: UnStr.noOrphans) {
                 // Not prominent: looking again for something that was not there
                 // is available, not recommended.
-                Button(UnStr.rescan) { Task { await scan() } }
+                Button(UnStr.rescan) { Task { await model.scan() } }
             }
         } else {
             List {
-                ForEach(groups) { group in
+                ForEach(model.groups) { group in
                     Section {
                         ForEach(group.leftovers, id: \.path) { item in
-                            Toggle(isOn: binding(for: item.path)) {
+                            Toggle(isOn: model.binding(for: item.path)) {
                                 VStack(alignment: .leading, spacing: HelmSpace.s1) {
                                     Text(item.path).font(HelmText.rowDetail).lineLimit(1).truncationMode(.middle)
                                     Text(UnStr.kindAndSize(item.kind, Bytes(item.sizeBytes)))
@@ -140,85 +134,23 @@ struct OrphansView: View {
         .task { await uvm.refreshTrashWatch() }
     }
 
-    // Every group's leftovers, which is every leftover on screen: the sections
-    // here do not collapse (a plain inset `List`, no disclosure state), so
-    // "select all" reaches nothing the user cannot scroll to. The confirmation
-    // names the exact count and total before anything moves, and the engine gate
-    // runs on top — so this is the whole visible set, honestly counted.
-    private var allPaths: [String] { groups.flatMap(\.leftovers).map(\.path) }
-    private var allSelected: Bool { selected.count == allPaths.count && !allPaths.isEmpty }
-
     private var footer: some View {
         HStack {
-            Button(UnStr.rescan) { Task { await scan() } }.disabled(busy)
-            // One toggle covers both: "select all" flips to "deselect all" when
-            // everything is already checked.
-            Button(allSelected ? UnStr.selectNone : UnStr.selectAll) {
-                selected = allSelected ? [] : Set(allPaths)
-            }
-            .disabled(busy)
+            Button(UnStr.rescan) { Task { await model.scan() } }.disabled(model.busy)
+            Button(model.allSelected ? UnStr.selectNone : UnStr.selectAll) { model.toggleAll() }
+            .disabled(model.busy)
             Spacer()
-            Text(UnStr.selectedSummary(selected.count, Bytes(selectedBytes)))
+            Text(UnStr.selectedSummary(model.selected.count, Bytes(model.selectedBytes)))
                 .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
             Button(UnStr.moveToTrash) { confirming = true }
                 .buttonStyle(.borderedProminent)
-                .disabled(selected.isEmpty || busy)
+                .disabled(model.selected.isEmpty || model.busy)
         }
         .helmPageStrip()
-        .confirmationDialog(UnStr.confirmTrash(selected.count, Bytes(selectedBytes)),
+        .confirmationDialog(UnStr.confirmTrash(model.selected.count, Bytes(model.selectedBytes)),
                             isPresented: $confirming, titleVisibility: .visible) {
-            Button(UnStr.moveToTrash, role: .destructive) { Task { await trashSelected() } }
+            Button(UnStr.moveToTrash, role: .destructive) { Task { await model.trashSelected() } }
             Button(UnStr.cancel, role: .cancel) {}
         }
     }
-
-    // MARK: - Actions
-
-    private func scan() async {
-        scanning = true; banner = nil
-        // Nil only when the module has been stopped: nothing to show then.
-        groups = await uvm.scanOrphans() ?? []
-        // Nothing is pre-selected. A ticked list of 251 items is a button that
-        // deletes whatever the scan got wrong, and this scan was wrong: apps
-        // one folder down in /Applications read as uninstalled.
-        selected = []
-        scanning = false; scanned = true
-    }
-
-    private func trashSelected() async {
-        // The page refuses a second run itself rather than trusting the footer to
-        // have dimmed the button: `.disabled(busy)` is a redraw away, and the
-        // press comes out of a `confirmationDialog` that holds its own copy of
-        // this view. What a second press costs is not a second deletion — the
-        // files are already in the Trash — but a wrong report about the first:
-        // every path comes back refused, and whichever round answers last is
-        // what this page draws. Measured against a stale copy of the struct: the
-        // `@State` read here is the live one, so this really does refuse.
-        guard !busy else { return }
-        busy = true
-        // Down when the round is over, the rescan below included: a page that
-        // says it is idle over a list it is still rebuilding is the flag
-        // describing something other than the work.
-        defer { busy = false }
-        let result = await uvm.trashPaths(Array(selected))
-        // The rescan first. Its own first statement is `banner = nil`, and it
-        // runs synchronously up to its own await — so an outcome set before it
-        // was wiped inside the same main-actor turn and SwiftUI never drew a
-        // frame in between. This screen has been reporting nothing at all,
-        // including refusals somebody could have acted on.
-        await scan()
-        // Nil only when the module was stopped under the page: nothing moved.
-        guard let result else { return }
-        failures = result.failures
-        removedCount = result.trashed.count
-        banner = UnStr.movedToTrash(Bytes(result.freedBytes))
-    }
-
-    private func binding(for path: String) -> Binding<Bool> {
-        Binding(get: { selected.contains(path) },
-                set: { on in
-                    if on { selected.insert(path) } else { selected.remove(path) }
-                })
-    }
-
 }

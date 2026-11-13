@@ -1,55 +1,62 @@
-import HelmTestSupport
+import HelmRuntime
 import XCTest
+import Module_Uninstaller_Engine
+@testable import Module_Uninstaller_UI
 
-/// **The Leftovers tab starts a removal from a `@State` flag with nothing
+/// **The Leftovers tab starts a removal from a `busy` flag with nothing
 /// standing beside the request.**
 ///
 /// «The model refuses; the page dims. Both, or neither is reliable» —
-/// ARCHITECTURE.md § One removal at a time. `OneRemovalAtATimeEverywhereTests`
-/// (HelmAppTests) enforces it for every module by walking `Sources/Modules` for
-/// files that **send a removal** (`work.trash(`, `work.trashPaths(` or `uvm.trashPaths(`), and
-/// this module has three doors to the Trash, all of which that finds:
-///
-/// - `UninstallerViewModel.removeSelection` — it has the guard;
-/// - `TrashedLeftoversModel.removeSelection` — the unprompted window's own
-///   model, which calls `uvm.trashPaths` itself and is not called a view model;
-///   `TheTrashOfferSendsOneBatchTests` drives that one against a work that
-///   does not answer until it is told to, which is the better proof and is
-///   available because the model is reachable;
-/// - `OrphansView.trashSelected` — this one, whose `busy` is a `@State` on the
-///   view. No behavioural test reaches it: a `@State` inside a `View` struct
-///   has no seam, and the press that starts it comes out of a
-///   `confirmationDialog`. Reading the source is what is left.
+/// Architecture/Removal.md § One removal at a time. `OneRemovalAtATimeEverywhereTests`
+/// (HelmAppTests) enforces it for every module by reading the files that send a
+/// removal; this is the behavioural half for `OrphansModel`, which holds what
+/// the eight of the tab's `@State`s that moved into it held, and so can be driven.
 ///
 /// What a second press costs is not a second deletion — the files are already in
 /// the Trash. It is a **wrong report about the first**: every path comes back
 /// refused, and `trashSelected` writes `failures`, `removedCount` and `banner`
 /// from whichever round answers last.
+///
+/// **The work does not answer until it is told to** (`HeldWork`): a fake that
+/// answers synchronously releases the gate before the call it is gating
+/// returns, so a test built on one passes whether or not the gate exists.
+@MainActor
 final class TheOrphansTabRefusesASecondPressTests: XCTestCase {
 
-    func testTheOrphansTabRefusesASecondRemoval() throws {
-        // `RepoSource.root` rather than a count of parent directories, which is a
-        // fact about where this file sits and breaks silently when it moves
-        // (CLAUDE.md § Where things go).
-        let view = RepoSource.root
-            .appendingPathComponent("Sources/Modules/Uninstaller/UI/OrphansView.swift")
-        let source = try String(contentsOf: view, encoding: .utf8)
+    func testASecondRemovalWhileTheFirstIsRunningIsRefused() async throws {
+        let path = "\(NSHomeDirectory())/Library/Caches/com.gone.app"
+        let work = HeldWork(
+            orphans: [OrphanGroup(bundleID: "com.gone.app", leftovers: [
+                Leftover(path: path, kind: .caches, sizeBytes: 2_048, matchedByName: false)])],
+            removal: UninstallResult(trashed: [path], freedBytes: 2_048))
+        let model = OrphansModel(uvm: modelOver(work))
+        await model.scan()
+        model.toggleAll()
+        XCTAssertEqual(model.selected, [path], "precondition: the leftover is ticked")
 
-        // The hazard first, the guard second. A test that only asks for the
-        // guard passes the day the subject stops existing, and it should say so
-        // instead: if this page no longer starts a removal of its own — because
-        // the request moved behind the view model, which is the other repair —
-        // then this test has outlived its subject and goes with it.
-        XCTAssertTrue(source.contains("uvm.trashPaths"),
-                      "OrphansView no longer sends a batch to the Trash itself. If the "
-                      + "removal moved behind the view model, which already refuses a "
-                      + "second run, delete this test rather than weakening it.")
-        XCTAssertTrue(source.contains("guard !busy"), """
-            the Leftovers tab can start a second removal while the first is still running: \
-            `busy` is a `@State` the footer reads, and `trashSelected` sets it without ever \
-            asking. `OneRemovalAtATimeEverywhereTests` looks for the same guard in this file \
-            too, but no behavioural test can reach it, because a `@State` in a `View` \
-            has no seam.
+        let first = Task { await model.trashSelected() }
+        for _ in 0..<50 where work.trashRequests == 0 { await Task.yield() }
+        XCTAssertEqual(work.trashRequests, 1, "precondition: the first batch is in flight")
+        XCTAssertTrue(model.busy, "nothing on the tab can tell that a removal is running")
+
+        // A task as well: without the guard the second press reaches the held
+        // work and stays there, so awaiting it here would hang the test
+        // rather than fail it.
+        let second = Task { await model.trashSelected() }
+        for _ in 0..<50 { await Task.yield() }
+
+        XCTAssertEqual(work.trashRequests, 1, """
+            the batch went out twice. The second round finds every path already in the \
+            Trash, comes back with a refusal for each, and its answer overwrites the report \
+            of the removal that worked.
             """)
+
+        work.release()
+        _ = await (first.value, second.value)
+
+        XCTAssertFalse(model.busy, "the flag outlived the work it describes")
+        XCTAssertEqual(model.removedCount, 1, "the report is the first round's")
+        XCTAssertTrue(model.failures.isEmpty)
+        XCTAssertNotNil(model.banner)
     }
 }
