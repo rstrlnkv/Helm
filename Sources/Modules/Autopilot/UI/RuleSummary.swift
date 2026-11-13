@@ -28,7 +28,7 @@ enum RuleSummary {
         case let .kind(kind):
             "\(ApStr.fieldKind) \(ApStr.comparisonIs) \(ApStr.kindName(kind))"
         case let .size(comparison, megabytes):
-            "\(ApStr.fieldSize) \(comparison == .largerThan ? ApStr.comparisonLarger : ApStr.comparisonSmaller) \(format(megabytes)) \(ApStr.unitMegabytes)"
+            "\(ApStr.fieldSize) \(comparison == .largerThan ? ApStr.comparisonLarger : ApStr.comparisonSmaller) \(number(megabytes)) \(ApStr.unitMegabytes)"
         case let .dateAdded(comparison, days):
             "\(ApStr.fieldDateAdded) \(describe(comparison)) \(ApStr.days(days))"
         case let .dateModified(comparison, days):
@@ -84,6 +84,4 @@ enum RuleSummary {
         }
         return Fractional(value)
     }
-
-    private static func format(_ value: Double) -> String { number(value) }
 }

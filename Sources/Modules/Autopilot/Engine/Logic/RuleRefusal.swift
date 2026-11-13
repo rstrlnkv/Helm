@@ -6,7 +6,7 @@ import Foundation
 /// whose keychain is locked has rules that are almost certainly their own and a
 /// wait in front of them, and a person whose plist was rewritten has neither.
 /// Only one of them can be answered by throwing the rules away.
-public enum RuleRefusal: String, Codable, Equatable, Sendable {
+public enum RuleRefusal: String, Equatable, Sendable {
     /// The rules in the plist do not match their seal — something other than
     /// Helm wrote them.
     case tampered

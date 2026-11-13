@@ -6,7 +6,7 @@ import Foundation
 /// out of it as the same value: a rule set something else wrote decodes to `[]`,
 /// and so does a Mac that has never had a rule. This carries the facts that tell
 /// those apart — one request, made where the folders are requested.
-public struct AutopilotStatus: Codable, Equatable, Sendable {
+public struct AutopilotStatus: Equatable, Sendable {
     /// Why none of the stored rules are running, or `nil` when they are.
     public let refusal: RuleRefusal?
     /// What reading each watched folder came to, by folder id. A folder that is

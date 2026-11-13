@@ -30,7 +30,7 @@ public enum RuleOutcome: Equatable, Sendable {
     case targetOutOfScope
     case failed(String)
 
-    public enum Refusal: String, CaseIterable, Codable, Equatable, Sendable {
+    public enum Refusal: String, CaseIterable, Equatable, Sendable {
         /// The file is not somewhere a rule may reach — the one thing a refusal for
         /// scope can mean *here*. Its record carries no name and no path
         /// (`RuleOutcome.targetOutOfScope` is the other half).

@@ -18,7 +18,6 @@ final class TestRuleSequence: RuleSequencePort, @unchecked Sendable {
     private var value: UInt64?
     private let available: Bool
     private let writable: Bool
-    private var raises = 0
 
     /// `at` is a Mac that has already sealed a numbered rule set.
     init(at: UInt64? = nil, available: Bool = true, writable: Bool = true) {
@@ -29,7 +28,6 @@ final class TestRuleSequence: RuleSequencePort, @unchecked Sendable {
 
     /// What the keychain holds, for a test that wants to say the mark went up.
     var mark: UInt64? { lock.withLock { value } }
-    var raiseCount: Int { lock.withLock { raises } }
 
     func highWater() -> RuleSequence {
         lock.lock()
@@ -44,7 +42,6 @@ final class TestRuleSequence: RuleSequencePort, @unchecked Sendable {
         defer { lock.unlock() }
         guard writable else { return false }
         value = seq
-        raises += 1
         return true
     }
 }

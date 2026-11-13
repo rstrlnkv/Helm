@@ -160,7 +160,7 @@ struct FolderReader: Sendable {
     private static func path(of fd: Int32) -> String? {
         var buffer = [CChar](repeating: 0, count: Int(MAXPATHLEN))
         guard fcntl(fd, F_GETPATH, &buffer) != -1 else { return nil }
-        return String(cString: buffer)
+        return String(decoding: buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }, as: UTF8.self)
     }
 
     /// Whether the folder is there and Helm may look inside it, without reading
@@ -239,13 +239,10 @@ struct FolderReader: Sendable {
     /// One file. Used by the watcher, which is told about a path rather than a
     /// folder.
     func facts(of url: URL, now: Date = Date()) -> FileFacts? {
-        facts(of: url, keys: [.isDirectoryKey, .isPackageKey, .fileSizeKey,
-                              .addedToDirectoryDateKey, .contentModificationDateKey,
-                              .creationDateKey, .tagNamesKey, .contentTypeKey], now: now)
-    }
-
-    private func facts(of url: URL, keys: [URLResourceKey], now: Date) -> FileFacts? {
-        guard let values = try? url.resourceValues(forKeys: Set(keys)) else { return nil }
+        let keys: Set<URLResourceKey> = [.isDirectoryKey, .isPackageKey, .fileSizeKey,
+                                         .addedToDirectoryDateKey, .contentModificationDateKey,
+                                         .creationDateKey, .tagNamesKey, .contentTypeKey]
+        guard let values = try? url.resourceValues(forKeys: keys) else { return nil }
         return facts(from: values, of: url, now: now)
     }
 

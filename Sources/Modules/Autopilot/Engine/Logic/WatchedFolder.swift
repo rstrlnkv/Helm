@@ -60,7 +60,7 @@ public struct WatchedFolder: Codable, Equatable, Identifiable, Sendable {
 }
 
 /// What a sweep did, per folder.
-public struct SweepReport: Codable, Equatable, Sendable {
+public struct SweepReport: Equatable, Sendable {
     public let folderID: String
     public let examined: Int
     public let acted: Int

@@ -1,7 +1,7 @@
 import Foundation
 
 /// One line of a dry run: the file, and the one thing that would happen to it.
-public struct PreviewRow: Codable, Equatable, Identifiable, Sendable {
+public struct PreviewRow: Equatable, Identifiable, Sendable {
     /// The path, not the name. `ForEach` draws one row per identity, and two
     /// files called `report.pdf` in two folders were two plans and one row — so
     /// the screen a person reads before letting a rule loose hid a file the

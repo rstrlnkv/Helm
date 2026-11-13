@@ -23,6 +23,8 @@ import HelmRuntime
 ///   access, never across a port call: a keychain prompt may be open for as long
 ///   as a person ignores it, and nothing else should queue behind that.
 final class SealedRules: @unchecked Sendable {
+    /// The plist key the rule set is stored under: a stored name, never renamed.
+    static let storeKey = "folders"
     private let store: NamespacedStore
     /// The rule set is read from the engine's queue — the sweep timer and the
     /// FSEvents leg both land there first — and from the model's door, which
@@ -127,7 +129,7 @@ final class SealedRules: @unchecked Sendable {
         // handed a rule set a month later and read it as one that predates
         // the seal.
         let key = RuleKey(material: resolved.material, firstUse: takeTheOneAdoption())
-        guard let data = store.data("folders"), !data.isEmpty else { return [] }
+        guard let data = store.data(Self.storeKey), !data.isEmpty else { return [] }
         // Unreadable is refused here too, and for the same reason as the key: the
         // mark is the half of the seal that says *which* rule set this is, and a
         // keychain that will not answer is "cannot tell", never "any of them".
@@ -167,7 +169,6 @@ final class SealedRules: @unchecked Sendable {
     /// and a read landing between them judges a rule set against the seal of the
     /// one before it — which is the same "something else wrote these" the module
     /// exists to report, said about Helm's own save.
-    ///
     private func write(_ folders: [WatchedFolder]) -> Bool {
         // No key, no save. Writing the rules unsealed would be worse than
         // refusing: the next launch would read them as somebody else's and
@@ -194,17 +195,13 @@ final class SealedRules: @unchecked Sendable {
         // quietly discarded every folder and every rule while the screen
         // went on showing the new state. The old list survives instead, and
         // the failure is in the log.
-        // Clamped first: a condition holding ±∞ makes `JSONEncoder` throw,
-        // and the rules are one JSON value — so one unencodable number in
-        // one rule discarded every folder and every rule the person had,
-        // silently, while the screen went on showing the new state.
         do {
             let data = try JSONEncoder().encode(folders.map(\.storable))
             // Rules first, seal second. Interrupted between the two, the
             // plist holds a rule set whose seal does not fit it — which is
             // refused, and refusing rules the person did save is the
             // survivable half of this pair.
-            store.set(data, for: "folders")
+            store.set(data, for: Self.storeKey)
             seal(data, key)
             // Whatever was in the file before, these are Helm's now.
             refusing(nil)
@@ -284,7 +281,7 @@ final class SealedRules: @unchecked Sendable {
     /// What the seal says about the rules in the plist right now, or `nil` when
     /// there are none. Behind `decisionLock`, like both of its callers.
     private func storedJudgement(_ key: RuleKey) -> RuleSeal.Judgement? {
-        guard let data = store.data("folders"), !data.isEmpty else { return nil }
+        guard let data = store.data(Self.storeKey), !data.isEmpty else { return nil }
         // A mark that cannot be read is not permission to overwrite: `nil` here
         // means "nothing stored", and something is.
         return judged(data, key) ?? .broken
@@ -346,7 +343,7 @@ final class SealedRules: @unchecked Sendable {
     func discardRefused() {
         decisionLock.withLock {
             guard refusal == .tampered else { return }
-            store.set(nil, for: "folders")
+            store.set(nil, for: Self.storeKey)
             store.set(nil, for: RuleSeal.storeKey)
             // The number goes with the rules it numbers. The *mark* does not:
             // it is what stops the discarded set being put back afterwards.

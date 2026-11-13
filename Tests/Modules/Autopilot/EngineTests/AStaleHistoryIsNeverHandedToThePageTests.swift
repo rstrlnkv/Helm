@@ -1,5 +1,4 @@
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
 import XCTest
