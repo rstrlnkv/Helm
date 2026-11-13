@@ -9,6 +9,8 @@ import XCTest
 /// The production ports, tested without a network: the trace parser is read
 /// against text the endpoint really prints, and the dynamic store is asked about
 /// this Mac, which answers whatever it answers.
+///
+/// Past defect: commit 237aa6f9, «fix(vpn): a measurement that cannot start says so, and four digits are grouped» (a port that answered nil to everything passed).
 final class TheSystemPortsAnswerAboutThisMacTests: XCTestCase {
 
     func testTheRegionIsReadFromTheTracesOwnLine() {

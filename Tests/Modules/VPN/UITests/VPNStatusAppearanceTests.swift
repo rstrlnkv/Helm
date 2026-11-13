@@ -13,6 +13,8 @@ import XCTest
 /// than against numbers: a test that says "spinUntil is about 1.2 s from now"
 /// passes whenever the clock is kind to it, which is how a broken fix shipped
 /// green once already.
+///
+/// Guards: the menu-bar windows follow VPNAutomation's own arithmetic (no fix commit; a broken fix shipped green once, per the comment above).
 @MainActor
 final class VPNStatusAppearanceTests: XCTestCase {
 

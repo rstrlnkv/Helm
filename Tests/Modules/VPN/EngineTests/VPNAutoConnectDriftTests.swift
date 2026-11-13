@@ -18,6 +18,8 @@ import XCTest
 /// reaches the core while its app is already running produces a quit with no
 /// matching launch, unless `activate()` replays a launch for that app first: the
 /// user adds a rule from the settings page for an app that is open.
+///
+/// Guards: a rule added for an app that is already running does not disconnect on that app's quit without a matching launch (the review-pass commit 5f196564 fixed it among others).
 final class VPNAutoConnectDriftTests: XCTestCase {
 
     /// The 0→0 case, minimal. Helm never connected this VPN, so it must not

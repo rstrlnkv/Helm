@@ -1,6 +1,7 @@
 import XCTest
 @testable import Module_VPN_Engine
 
+/// Guards: `scutil --nc` status and list lines parse to name, status and id, and garbage lines are skipped (no fix commit; the sibling classes in this file carry 63e9bcfe).
 final class VPNListParserTests: XCTestCase {
     func test_parseStatus() {
         XCTAssertEqual(VPNListParser.parseStatus("Connected"), .connected)
@@ -27,6 +28,8 @@ final class VPNListParserTests: XCTestCase {
 /// the right one — until the name itself carries brackets, at which point the
 /// first pair is still the protocol's. These pin that the name is not searched
 /// and that the tag is read from where scutil writes it.
+///
+/// Past defect: commit 63e9bcfe, «fix: three more from the suspicions list».
 final class VPNListParserBracketTests: XCTestCase {
 
     func testTheProtocolComesFromBeforeTheName() {
@@ -44,6 +47,15 @@ final class VPNListParserBracketTests: XCTestCase {
         XCTAssertEqual(parsed.first?.name, "Office [old]")
         XCTAssertEqual(parsed.first?.kind, "IKEv2",
                        "the name's own brackets were read as the protocol")
+    }
+
+    /// The name's closing quote is the last one before the tag, not the first
+    /// after the opening one.
+    func testANameWithAQuoteInItKeepsItsTagAndItsEnd() {
+        let line = #"* (Connected)   4C9E... --> 4B3F...  "Of"fice [old]" [IKEv2]"#
+        let parsed = VPNListParser.parseList(line)
+        XCTAssertEqual(parsed.first?.name, #"Of"fice [old]"#)
+        XCTAssertEqual(parsed.first?.kind, "IKEv2")
     }
 }
 

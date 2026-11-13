@@ -22,6 +22,8 @@ import HelmTestSupport
 /// they exercise is the one that had been missing: a firing carries the
 /// configuration's *name* (`scutil --nc start` takes a name), the settings are
 /// keyed by its *id*, and something has to turn one into the other.
+///
+/// Guards: a firing's name is joined to the configuration id its per-tunnel settings are keyed by (no fix commit; the code and this test landed together).
 @MainActor
 final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
 

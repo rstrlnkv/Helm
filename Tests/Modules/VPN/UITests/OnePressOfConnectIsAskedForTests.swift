@@ -23,6 +23,8 @@ import HelmTestSupport
 /// so that row is invisible until somebody opens a popover — and a configuration
 /// that cannot raise its tunnel said so nowhere at all. Measured here as «the page
 /// grows a news card, once per locked configuration».
+///
+/// Past defect: commit ed04d30c, «fix(vpn): a rule that cannot reach its secret says so, once, on the screen».
 @MainActor
 final class OnePressOfConnectIsAskedForTests: XCTestCase {
 

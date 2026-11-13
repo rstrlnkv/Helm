@@ -16,6 +16,8 @@ import XCTest
 /// or asks again on every visit to a settings page, spends that one chance on
 /// somebody who was not asking for notifications, so *when* the question is put
 /// is as much a part of this as what is stored.
+///
+/// Past defect: commit b0a3869b, «fix: a VPN card's notice choice applies to that connection only».
 @MainActor
 final class VPNNoticeChoiceTests: XCTestCase {
 

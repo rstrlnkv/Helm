@@ -5,6 +5,7 @@ import XCTest
 import HelmRuntime
 @testable import Module_VPN_Engine
 
+/// Past defect: commit 7851a0c2, «fix(vpn): the tool is asked before the app announces, and a name stops standing in for an identity» (the settle poll ended before the tunnel began to come up).
 final class VPNEngineTests: XCTestCase {
     private func makeSettings() -> VPNSettings {
         VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))

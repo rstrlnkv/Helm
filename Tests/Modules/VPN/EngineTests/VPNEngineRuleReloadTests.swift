@@ -25,6 +25,8 @@ import HelmRuntime
 /// cleared, and `appLaunched` refuses to act on any app it believes is already
 /// launched. Auto-connect for that app is dead for the rest of the session,
 /// with a rule on screen that says it is on.
+///
+/// Past defect: commit 6dec5f2f, «fix: eight defects a second agent pass turned up».
 final class VPNEngineRuleReloadTests: XCTestCase {
     private func settings() -> VPNSettings {
         VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))

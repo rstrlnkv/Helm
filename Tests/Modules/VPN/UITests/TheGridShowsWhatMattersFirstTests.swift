@@ -12,6 +12,8 @@ import HelmRuntime
 /// applies it and the cap, in the one order they can be applied in. Capping before sorting is the same page with the defect back:
 /// nine configurations, the ninth up, six drawn — and the card the page exists
 /// for behind a button.
+///
+/// Guards: the page sorts before it caps, so the connected tunnel is never behind a button (no fix commit; the code and this test landed together).
 @MainActor
 final class TheGridShowsWhatMattersFirstTests: XCTestCase {
 
@@ -38,6 +40,11 @@ final class TheGridShowsWhatMattersFirstTests: XCTestCase {
         let shown = page(list).shownConnections
         XCTAssertEqual(shown.count, VPNGridLayout.collapsedLimit)
         XCTAssertEqual(shown.first?.name, "VPN 9")
+    }
+
+    func testTheNinthConnectionIsOnScreenWhenItIsStillConnecting() {
+        let list = (1...9).map { conn("VPN \($0)", $0 == 9 ? .connecting : .disconnected) }
+        XCTAssertEqual(page(list).shownConnections.first?.name, "VPN 9")
     }
 
     func testNothingIsHiddenWhenThereIsNothingToHide() {

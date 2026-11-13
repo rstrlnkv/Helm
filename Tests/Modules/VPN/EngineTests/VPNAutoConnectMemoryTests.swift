@@ -18,6 +18,8 @@ import HelmRuntime
 /// Asserted on the engine's own record rather than on a rendered number: what
 /// `autoConnected` is *for* is answering "did Helm raise this", and the page's
 /// AUTOMATIC count is one reader of it.
+///
+/// Past defect: commit 51247cad, «fix: eight more, three of them mine from earlier today».
 final class VPNAutoConnectMemoryTests: XCTestCase {
 
     private func makeSettings() -> VPNSettings {
@@ -120,5 +122,34 @@ final class VPNAutoConnectMemoryTests: XCTestCase {
 
         XCTAssertTrue(engine.autoConnected.contains("A"),
                       "a connection Helm asked for and that has not answered yet is still Helm's")
+    }
+
+    /// What the disconnect's clearing of `_cameUp` is for, seen past the settle
+    /// window: the session before left its `came up` behind, the VPN is raised
+    /// again and has not answered yet, and the old entry must not be read as a
+    /// tunnel that went.
+    func test_a_second_session_is_not_forgotten_for_the_first_ones_fall() {
+        let runner = FakeRunner()
+        let clock = TestClock()
+        let engine = VPNEngine(settings: makeSettings(), runner: runner,
+                               apps: FakeApps(),
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               now: { clock.now }, work: .inline)
+
+        runner.listOutput = list("Disconnected")
+        engine.connect("A", auto: true)
+        runner.listOutput = list("Connected")
+        engine.refresh()
+        runner.listOutput = list("Disconnected")
+        engine.disconnect("A", auto: false)
+        engine.connect("A", auto: true)
+
+        engine.refresh()
+        clock.advance(VPNDropSettle.window)
+        engine.refresh()
+
+        XCTAssertTrue(engine.autoConnected.contains("A"),
+                      "the previous session's `came up` outlived its disconnect and was "
+                      + "read as this connection having gone")
     }
 }

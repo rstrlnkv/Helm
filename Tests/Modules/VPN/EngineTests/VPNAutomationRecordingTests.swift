@@ -12,6 +12,8 @@ import HelmRuntime
 /// value itself — name, kind and the moment — rather than on "something
 /// happened", because the failure this guards against is a recording that fires
 /// for everything.
+///
+/// Guards: Helm's own connects, drops and teardowns are recorded and the person's presses are not (no fix commit; teardown recorded without `auto` is red, the `_cameUp` filter of the teardown removed is green).
 final class VPNAutomationRecordingTests: XCTestCase {
 
     private let clock = TestClock()
@@ -142,6 +144,11 @@ final class VPNAutomationRecordingTests: XCTestCase {
         // Something to overwrite: nil afterwards then means "nothing was
         // written", not "nothing was ever written".
         engine.connect("A", auto: true)
+        // Up when the press arrives: a teardown of a tunnel already down records
+        // nothing whoever asked, so holding the fake at Disconnected let the
+        // `auto` check go and the test stay green.
+        runner.listOutput = list("Connected")
+        engine.refresh()
         engine.clearLastAutomationForTesting()
 
         engine.disconnect("A", auto: false)

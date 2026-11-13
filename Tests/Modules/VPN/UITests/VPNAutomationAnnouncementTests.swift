@@ -16,6 +16,8 @@ import XCTest
 /// into the silent one. The invariant below is structural — *some* channel
 /// carries the firing — rather than a check on one of them, because it is
 /// exactly the "both were switched off" state that shipped once.
+///
+/// Guards: some channel, banner or menu-bar label, always carries a firing (no fix commit; the code and this test landed together).
 @MainActor
 final class VPNAutomationAnnouncementTests: XCTestCase {
 

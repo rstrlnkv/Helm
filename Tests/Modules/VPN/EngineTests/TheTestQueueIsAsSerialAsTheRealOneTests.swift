@@ -40,6 +40,8 @@ import XCTest
 /// because the window in the engine is a handful of instructions wide and a
 /// repetition count large enough to catch it reliably is a threshold nobody can
 /// justify. Two callers or one is a structure, and structure does not need luck.
+///
+/// Past defect: commit c0fdd318, «fix(vpn): six repairs, from a blip that cost the tunnel to a decoy interface».
 final class TheTestQueueIsAsSerialAsTheRealOneTests: XCTestCase {
 
     /// How many blocks were inside the queue at once, at the most.

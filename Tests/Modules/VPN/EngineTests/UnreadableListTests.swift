@@ -25,6 +25,8 @@ import HelmRuntime
 /// list` prints before it enumerates anything — present even on a machine with
 /// no VPNs at all, checked against the real tool — or contains at least one row
 /// we could read. Nothing else is an answer.
+///
+/// Past defect: commit 4b7564a0, «fix(vpn): silence from scutil is not "you have no VPNs"».
 final class UnreadableListTests: XCTestCase {
 
     private let header = "Available network connection services in the current set (*=enabled):"

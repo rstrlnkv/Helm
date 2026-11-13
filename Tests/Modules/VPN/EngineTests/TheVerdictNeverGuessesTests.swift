@@ -7,6 +7,8 @@ import XCTest
 /// «Трафик идёт через туннель» is a claim, and it is made from two readings that
 /// fail independently. The one thing this must never do is answer «через
 /// туннель» because a request failed.
+///
+/// Past defect: commit a5bb9e0d, «fix(vpn): the tunnel's interface is asked of scutil, by name» (the routing verdict came from a store lookup that could not answer).
 final class TheVerdictNeverGuessesTests: XCTestCase {
 
     func testTrafficIsInTheTunnelWhenTheDefaultRouteIsTheTunnelsInterface() {

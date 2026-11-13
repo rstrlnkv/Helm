@@ -14,6 +14,8 @@ import XCTest
 /// `apply`, through `announce` — because that is where the mode is chosen, and
 /// a test of `VPNSettings` alone would pass with the view model still reading
 /// the rules' mode for everything.
+///
+/// Guards: a drop reads its own notice setting, not the rules' (no fix commit; the code and this test landed together).
 @MainActor
 final class ADropIsAnnouncedOnItsOwnSettingTests: XCTestCase {
 

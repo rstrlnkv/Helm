@@ -18,6 +18,8 @@ import HelmTestSupport
 ///
 /// What it cannot see: a body that stops calling its hook. That is a change of
 /// look, and a look is proved by shots, not by this class.
+///
+/// Past defect: commit 7851a0c2, «fix(vpn): the tool is asked before the app announces, and a name stops standing in for an identity» (the dot lit during a handshake in the panel tile and the 1×1 widget).
 @MainActor
 final class TheGreenIsOnlyOnATunnelThatIsConnectedTests: XCTestCase {
 

@@ -22,6 +22,8 @@ import HelmTestSupport
 /// the reader under a green dot that all of this Mac's traffic goes through the
 /// VPN — while `17.0.0.0/8`, which is Apple's whole network, was declared
 /// outside it.
+///
+/// Guards: the since-when and exclusions the tool already printed reach the page (no fix commit; the code and this test landed together).
 final class TheToolKnewSinceWhenAllAlongTests: XCTestCase {
 
     /// The tool's own output, trimmed to what the parser reads and with every
