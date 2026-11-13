@@ -66,7 +66,7 @@ public struct Delivery: @unchecked Sendable {
     /// The first picture that was made, for the thumbnail.
     public var image: CGImage?
 
-    public init() {}
+    init() {}
 }
 
 /// Where a shot's full picture is, for a copy of several at once: in memory for a shot that was only copied, in its
@@ -135,7 +135,7 @@ public final class CaptureSession: @unchecked Sendable {
     private let passes = NSLock()
     private var latestPass: GroupPass?
 
-    public init(capture: ScreenCapturing, writer: ShotWriting, trash: ShotTrashing, pasteboard: ShotPasteboard,
+    init(capture: ScreenCapturing, writer: ShotWriting, trash: ShotTrashing, pasteboard: ShotPasteboard,
                 preferences: CapturePreferences, shutter: ShutterPlaying, textReader: ScreenTextReading,
                 settings: @escaping () -> ScreenshotsSettings,
                 naming: @escaping () -> ShotNaming = { .english },
@@ -618,7 +618,7 @@ public final class CaptureSession: @unchecked Sendable {
 
     /// The part of `captureScreens` after the freeze: every display of it, to
     /// the file or the clipboard the setting names.
-    public func deliverScreens(_ freeze: Freeze) async -> Delivery {
+    func deliverScreens(_ freeze: Freeze) async -> Delivery {
         var delivery = Delivery()
         let toBoard = settings().saveTarget == .clipboard
         var copiedOne = false

@@ -4,7 +4,7 @@ import Foundation
 import HelmRuntime
 import HelmTestSupport
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **The editor under the inputs its brief did not name:** a module switched off right after an exit delivers nothing

@@ -4,7 +4,7 @@ import Foundation
 import HelmTestSupport
 import HelmUI
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **After "Blur Emails and Phone Numbers" the plate says what was done, never what the picture now is** — and a result of nothing is not

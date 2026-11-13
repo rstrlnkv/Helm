@@ -9,8 +9,8 @@ public enum ShotThumbnail {
     /// window lives without keeping the frame, and what a drag or a share of the copy would hand over.
     public static let longestEdge: CGFloat = 520
     /// The largest the picture stands on the screen, in points.
-    public static let maxWidth: CGFloat = 200
-    public static let maxHeight: CGFloat = 126
+    static let maxWidth: CGFloat = 200
+    static let maxHeight: CGFloat = 126
 
     /// Far above any display, so that an endless size is a finite one and the scale below is never zero times infinity.
     private static let largestShot: CGFloat = 1_000_000

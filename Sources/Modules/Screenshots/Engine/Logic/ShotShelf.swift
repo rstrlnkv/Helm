@@ -15,13 +15,13 @@ public enum ShotShelf {
     public static let visible = 3
 
     /// The pile: each older sheet stands this far up and left of the one over it, smaller and fainter by these.
-    public static let step: CGFloat = 7
-    public static let shrink: CGFloat = 0.05
-    public static let fade: CGFloat = 0.22
+    static let step: CGFloat = 7
+    static let shrink: CGFloat = 0.05
+    static let fade: CGFloat = 0.22
 
     /// The row: a slot is as wide as the largest picture (`ShotThumbnail.maxWidth`), with this between two slots.
-    public static let gap: CGFloat = 16
-    public static var pitch: CGFloat { ShotThumbnail.maxWidth + gap }
+    static let gap: CGFloat = 16
+    static var pitch: CGFloat { ShotThumbnail.maxWidth + gap }
     /// How wide the cut edge of a row that is between two rests fades to nothing.
     public static let edgeFade: CGFloat = 28
 
@@ -34,7 +34,7 @@ public enum ShotShelf {
     /// A clock that adds up tenths of a second does not reach a whole one: ten of 0.1 are 0.9999999999999999, and
     /// 5 less fifty of them is not 0. What is left of a delay is over when it is within this of nothing, so every
     /// delay of the window is judged by the one question, `isOver(left:)`.
-    public static let clockTolerance: Double = 1e-9
+    static let clockTolerance: Double = 1e-9
     public static func isOver(left: Double) -> Bool { left <= clockTolerance }
 
     // MARK: - The list
@@ -84,7 +84,7 @@ public enum ShotShelf {
     }
 
     /// An offset inside what the row can be scrolled by. One that is not a number is the rest by the newest.
-    public static func clamped(_ offset: CGFloat, count: Int) -> CGFloat {
+    static func clamped(_ offset: CGFloat, count: Int) -> CGFloat {
         offset.clamped(to: 0...farthest(count: count), whenNotANumber: 0)
     }
 
@@ -104,7 +104,7 @@ public enum ShotShelf {
     }
 
     /// Where the slot of the shot of this age begins, from the row's leading edge, at this offset.
-    public static func leading(age: Int, offset: CGFloat, count: Int) -> CGFloat {
+    static func leading(age: Int, offset: CGFloat, count: Int) -> CGFloat {
         width(count: count) - ShotThumbnail.maxWidth - CGFloat(max(age, 0)) * pitch + clamped(offset, count: count)
     }
 

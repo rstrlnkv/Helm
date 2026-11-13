@@ -1,6 +1,6 @@
 import Foundation
 import HelmRuntime
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 
 /// The reading of no file at all, for a fake disk that only counts its writes and keeps none: it hands this back with
 /// each `.written`. Such a disk names `reading(of:)` and `claim(_:as:)` itself, as every fake of a port does: the

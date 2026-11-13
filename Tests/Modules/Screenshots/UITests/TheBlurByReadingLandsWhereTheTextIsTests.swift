@@ -5,7 +5,7 @@ import HelmRuntime
 import HelmTestSupport
 import HelmUI
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **Blur Emails and Phone Numbers puts each box where the text is, in the editor on an area of the screen and in the editor on a

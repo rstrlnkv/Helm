@@ -6,7 +6,7 @@ import HelmTestSupport
 import SwiftUI
 import ImageIO
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// The board of a scene that holds a group: it counts every write by the call that made it, one entry a list.

@@ -100,13 +100,10 @@ struct EditorPopover: View {
 
     // MARK: The percent
 
-    /// The language Helm speaks, not the Mac's region: the percent sign's place follows the first, like the words beside it. A
-    /// format style is a value and holds no cache, so a language changed between two captures is read at once.
-    private static var locale: Locale { Locale(identifier: AppLanguage.current.rawValue) }
-
-    /// «100 %»: a whole percent, with the space or none that the language puts before the sign.
+    /// «100 %»: a whole percent, with the space or none that the language puts before the sign. The language Helm speaks, not
+    /// the Mac's region: the percent sign's place follows the first, like the words beside it.
     static func opacityText(_ value: Double) -> String {
-        value.formatted(.percent.precision(.fractionLength(0)).locale(locale))
+        value.formatted(.percent.precision(.fractionLength(0)).locale(AppLanguage.current.locale))
     }
 }
 

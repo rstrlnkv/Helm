@@ -4,7 +4,7 @@ import Foundation
 import HelmRuntime
 import HelmTestSupport
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **A shot the person asked for and the module could not make is said, in the log and on the toast; it is never a flash and

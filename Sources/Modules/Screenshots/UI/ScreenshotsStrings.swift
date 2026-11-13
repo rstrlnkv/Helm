@@ -310,8 +310,6 @@ enum ScStr {
     }
     static var failedTitle: String { L(.failedTitle) }
 
-    private static var locale: Locale { Locale(identifier: AppLanguage.current.rawValue) }
-
     /// One sentence per thing that can go wrong, and none of them carries a path.
     static func refusal(_ reason: CaptureRefusal) -> String {
         switch reason {
@@ -340,9 +338,9 @@ enum ScStr {
             // One key per count, because the noun and the verb of each language change with it, and the numbers are
             // the language's own (a list formatter keyed by the app's language, built per call, never held).
             if places.count == 1 {
-                L(.refusalOneFileGone((places[0] + 1).formatted(.number.locale(locale))))
+                L(.refusalOneFileGone((places[0] + 1).formatted(.number.locale(AppLanguage.current.locale))))
             } else {
-                L(.refusalSomeFilesGone(places.map { $0 + 1 }.formatted(.list(memberStyle: .number, type: .and).locale(locale))))
+                L(.refusalSomeFilesGone(places.map { $0 + 1 }.formatted(.list(memberStyle: .number, type: .and).locale(AppLanguage.current.locale))))
             }
         }
     }

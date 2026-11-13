@@ -1,7 +1,7 @@
 import CoreGraphics
 import HelmTestSupport
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **A model the host has stopped asks the engine for nothing and draws nothing.**

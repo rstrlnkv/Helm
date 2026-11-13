@@ -32,7 +32,7 @@ public enum AreaFrame {
 
     /// Whether `rect` is wide and tall enough, three dot diameters each way, to offer the middle of
     /// its edges as well as its corners. A smaller one is held by its four corners only, under the press; the screen draws no dot on one under three points (`dotRadius` against `reach(on:)`), though the press still takes it within the reach.
-    public static func offersMidpoints(on rect: CGRect) -> Bool {
+    static func offersMidpoints(on rect: CGRect) -> Bool {
         min(rect.width, rect.height) >= 6 * dotRadius
     }
 
@@ -42,7 +42,7 @@ public enum AreaFrame {
         return handles(of: rect).filter { offersMidpoints(on: rect) || corners.contains($0.handle) }
     }
 
-    public static func handles(of rect: CGRect) -> [(handle: AreaHandle, point: CGPoint)] {
+    static func handles(of rect: CGRect) -> [(handle: AreaHandle, point: CGPoint)] {
         [(.topLeft, CGPoint(x: rect.minX, y: rect.minY)), (.top, CGPoint(x: rect.midX, y: rect.minY)),
          (.topRight, CGPoint(x: rect.maxX, y: rect.minY)), (.right, CGPoint(x: rect.maxX, y: rect.midY)),
          (.bottomRight, CGPoint(x: rect.maxX, y: rect.maxY)), (.bottom, CGPoint(x: rect.midX, y: rect.maxY)),

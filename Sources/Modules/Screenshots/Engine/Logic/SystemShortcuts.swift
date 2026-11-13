@@ -9,7 +9,7 @@ public enum CarbonModifier {
     /// Carbon's, which is what `RegisterEventHotKey` and the recorder store.
     /// The two are different numbers for the same four keys, and comparing them
     /// raw matches nothing: ⌘⇧ is 1 179 648 in one and 768 in the other.
-    public static func fromCocoa(_ flags: Int) -> Int {
+    static func fromCocoa(_ flags: Int) -> Int {
         var out = 0
         if flags & 0x100000 != 0 { out |= cmd }
         if flags & 0x20000 != 0 { out |= shift }
@@ -81,10 +81,10 @@ public struct SystemBoxReading: Sendable, Equatable {
     public let state: BoxState
     /// Carbon's key code and modifier mask — the recorder's spelling — or nil
     /// when the state is unknown and there is nothing to compare.
-    public let keyCode: Int?
-    public let modifiers: Int?
+    let keyCode: Int?
+    let modifiers: Int?
 
-    public init(box: SystemBox, state: BoxState, keyCode: Int?, modifiers: Int?) {
+    init(box: SystemBox, state: BoxState, keyCode: Int?, modifiers: Int?) {
         self.box = box
         self.state = state
         self.keyCode = keyCode
@@ -104,7 +104,7 @@ public enum SystemShortcuts {
     /// registration would answer success for a key that does nothing. And an
     /// **unreadable** reading is not "off" either: it is unknown, and the page
     /// says so rather than drawing a clean bill.
-    public static func boxes(from reading: SymbolicHotkeysReading) -> [SystemBoxReading] {
+    static func boxes(from reading: SymbolicHotkeysReading) -> [SystemBoxReading] {
         switch reading {
         case .unreadable:
             return SystemBox.allCases.map {

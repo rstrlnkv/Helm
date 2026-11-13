@@ -4,7 +4,7 @@ import Foundation
 import HelmTestSupport
 import HelmUI
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **Through the overlay: the lines Copy Text hands the clipboard are those the person's own blur does not lie on.** A fake reader answers

@@ -4,7 +4,7 @@ import Foundation
 import HelmTestSupport
 import HelmUI
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// The reader the overlay is handed: every call waits for `answer`, and it counts what the cancellation reached.

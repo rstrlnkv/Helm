@@ -18,11 +18,11 @@ public enum RecognizedBoxes {
     public struct Source: Sendable, Equatable {
         /// The area as whole pixels of the display's frame, top-left origin — what `ScreenSpace.pixels` gives and
         /// what was cut and handed to the reader.
-        public let pixels: CGRect
+        let pixels: CGRect
         /// Pixels to a point on that display.
-        public let scale: CGFloat
+        let scale: CGFloat
 
-        public init(pixels: CGRect, scale: CGFloat) {
+        init(pixels: CGRect, scale: CGFloat) {
             self.pixels = pixels
             self.scale = scale
         }
@@ -30,8 +30,8 @@ public enum RecognizedBoxes {
 
     /// A box to blur: where, in points, and how coarse.
     public struct Placed: Sendable, Equatable {
-        public let rect: CGRect
-        public let step: AnnotationThickness
+        let rect: CGRect
+        let step: AnnotationThickness
     }
 
     /// Of the padding: across, in lines' heights, each side.
@@ -41,14 +41,14 @@ public enum RecognizedBoxes {
 
     /// The text's own box in the display's points, unpadded, kept to the area; nil when `normalised` is not a
     /// rectangle on the read picture, or nothing of it is in the area.
-    public static func ink(of normalised: CGRect, in source: Source) -> CGRect? {
+    static func ink(of normalised: CGRect, in source: Source) -> CGRect? {
         guard let pixels = framePixels(of: normalised, in: source) else { return nil }
         return points(pixels, scale: source.scale)
     }
 
     /// The box that hides `normalised`: padded, grid-aligned and kept to the area, with the step its height
     /// calls for (`step(forTextHeight:)`); nil when `ink` is.
-    public static func place(_ normalised: CGRect, in source: Source) -> Placed? {
+    static func place(_ normalised: CGRect, in source: Source) -> Placed? {
         guard let text = framePixels(of: normalised, in: source) else { return nil }
         let step = step(forTextHeight: text.height / source.scale)
         let side = Pixelate.block(points: step.points(for: .blur), scale: source.scale)
@@ -67,7 +67,7 @@ public enum RecognizedBoxes {
     /// tool has, and what that leaves readable of such large text is not measured here; no fourth step was added.
     /// A block lower than the text it covers can leave digits that are read back out of the mosaic. A height that
     /// is not a number takes the thickest.
-    public static func step(forTextHeight points: CGFloat) -> AnnotationThickness {
+    static func step(forTextHeight points: CGFloat) -> AnnotationThickness {
         guard points.isFinite else { return .thick }
         return AnnotationThickness.allCases.first { $0.points(for: .blur) >= points } ?? .thick
     }

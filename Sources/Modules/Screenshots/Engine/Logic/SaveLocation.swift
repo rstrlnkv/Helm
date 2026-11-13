@@ -61,7 +61,7 @@ public enum SaveLocation {
     /// because asking the disk about the Desktop or Documents is what raises a
     /// protected-folder prompt, and a body runs on every render. `url` is the
     /// path the raw value spells, or the Desktop when it spells none.
-    public static func shape(raw: Any?, desktop: URL, home: URL) -> SaveFolder {
+    static func shape(raw: Any?, desktop: URL, home: URL) -> SaveFolder {
         guard let raw else { return SaveFolder(url: desktop, refused: nil) }
         guard let text = raw as? String else { return SaveFolder(url: desktop, refused: .notAPath) }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)

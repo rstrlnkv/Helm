@@ -16,13 +16,13 @@ import Foundation
 /// into a bitmap of whole display pixels) as the contents of a layer.
 public enum AnnotationText {
     /// The most graphemes a text keeps; `AnnotationEditing.place` is the one entry that bounds it.
-    public static let maxLength = 256
+    static let maxLength = 256
 
     /// The most scalars one grapheme keeps (a family emoji is seven): a grapheme of thousands of combining marks is
     /// still one grapheme under `maxLength` and a layout the size of the paste. `place` cuts the excess scalars of a
     /// grapheme and keeps one only if the result stays one grapheme of its own; the field refuses a change that
     /// would leave one with more (`fits`).
-    public static let maxScalarsPerGrapheme = 16
+    static let maxScalarsPerGrapheme = 16
 
     /// Whether `text` is within both bounds, `maxLength` graphemes and `maxScalarsPerGrapheme` scalars to each.
     public static func fits(_ text: String) -> Bool {
@@ -32,7 +32,7 @@ public enum AnnotationText {
     /// Whether a character is of the kinds that draw nothing: white space, a control, a format character (zero-width
     /// space and joiners, direction marks, the soft hyphen, the byte order mark) or a separator, alone or all together.
     /// A cheap first test; a character outside these kinds can still be blank (a filler), and `hasInk` is the judge.
-    public static func isInvisible(_ character: Character) -> Bool {
+    static func isInvisible(_ character: Character) -> Bool {
         character.unicodeScalars.allSatisfy { scalar in
             switch scalar.properties.generalCategory {
             case .control, .format, .lineSeparator, .paragraphSeparator, .spaceSeparator, .unassigned: return true
@@ -44,7 +44,7 @@ public enum AnnotationText {
     /// Whether drawing `text` leaves a pixel of ink: the line is drawn as the layer draws it, in the Large step, into a
     /// bitmap of alpha only, and any pixel not zero is ink. What a person can see decides, not the character's category,
     /// so a filler or a lone variation selector is blank and a joined emoji is not.
-    public static func hasInk(_ text: String, tool: AnnotationTool = .text) -> Bool {
+    static func hasInk(_ text: String, tool: AnnotationTool = .text) -> Bool {
         guard !text.isEmpty else { return false }
         let probe = Annotation(tool: tool, start: .zero, end: .zero, style: .standard, text: text)
         let box = probe.frame.insetBy(dx: -overhang, dy: -overhang)
@@ -107,7 +107,7 @@ public enum AnnotationText {
 
     /// The text in `context`, whose user space is the display's top-left points; the ink is the annotation's own
     /// (`Annotation.fillColor`, the opacity in it). Nothing is drawn for no text.
-    public static func draw(_ annotation: Annotation, in context: CGContext) {
+    static func draw(_ annotation: Annotation, in context: CGContext) {
         // An emoji is set in its own colours, which a foreground colour does not change: its opacity is the context's alpha.
         let isEmoji = annotation.tool == .emoji
         guard annotation.tool == .text || isEmoji, let line = line(of: annotation, color: isEmoji ? nil : annotation.fillColor) else { return }

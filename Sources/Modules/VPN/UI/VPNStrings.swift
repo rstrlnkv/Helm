@@ -551,7 +551,7 @@ enum VPNStr {
     /// exit probe answered. Never the service's own spelling of it — a third
     /// party does not get to name a place in Helm's window.
     static func country(_ regionCode: String) -> String? {
-        Locale(identifier: AppLanguage.current.rawValue)
+        AppLanguage.current.locale
             .localizedString(forRegionCode: regionCode)
     }
 }

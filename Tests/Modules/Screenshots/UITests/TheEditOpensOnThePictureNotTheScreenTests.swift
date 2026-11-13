@@ -7,7 +7,7 @@ import HelmUI
 import ImageIO
 import SwiftUI
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **«Edit» opens the palette on the finished picture, never on the screen under it, and «Done» replaces the file that
@@ -441,9 +441,10 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         return ownEmptied
     }
 
-    /// The editor's picture is read from the shot's file, and the file is moved while it is open: the edit must come
-    /// out of what the editor holds, not of a second read of a path that no longer leads to the shot.
-    func testARenamedFileWithTheVolatileRegionsEmptiedStillGivesTheEditASeparateFile() async throws {
+    /// The editor survives an emptying of the process's volatile regions, with the shot's file moved while it is open:
+    /// the edit comes out of what the editor holds, not of a second read of a path that no longer leads to the shot.
+    /// It does not claim the editor's own picture was among what was emptied.
+    func testTheEditorSurvivesTheVolatileRegionsEmptiedWithItsFileMovedAndSavesASeparateFile() async throws {
         let s = try scene()
         let original = try await take(s, width: 400, height: 300)
         let overlay = try await openEditor(s)
@@ -457,9 +458,10 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         XCTAssertFalse(s.controller.isBusy)
     }
 
-    /// With marks drawn the picture is drawn under them when the edit is made, and a picture that cannot be read
-    /// again draws nothing and says nothing: the file would hold the marks alone.
-    func testAnEditWithMarksOnARenamedFileWithTheVolatileRegionsEmptiedKeepsThePictureUnderThem() async throws {
+    /// The editor survives an emptying of the process's volatile regions, with marks drawn and the file moved: the
+    /// picture is drawn under the marks, since a picture that cannot be read again would leave the marks alone in the
+    /// file. It does not claim the editor's own picture was among what was emptied.
+    func testTheEditorSurvivesTheVolatileRegionsEmptiedWithItsFileMovedAndKeepsThePictureUnderTheMarks() async throws {
         let s = try scene()
         let original = try await take(s, width: 400, height: 300)
         let overlay = try await openEditor(s)
@@ -474,9 +476,10 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         XCTAssertEqual(s.trash.asked, [])
     }
 
-    /// The control: the same emptying with the file left in place. The edit replaces the file, as it does without it, so
-    /// this separates the emptying from the move that the two tests above add to it.
-    func testTheSameEmptyingWithTheFileInPlaceStillReplacesIt() async throws {
+    /// The control: the editor survives the same emptying of the process's volatile regions with the file left in place.
+    /// The edit replaces the file, as it does without it, so this separates the emptying from the move that the two
+    /// tests above add to it.
+    func testTheEditorSurvivesTheVolatileRegionsEmptiedWithItsFileInPlaceAndReplacesIt() async throws {
         let s = try scene()
         let original = try await take(s, width: 400, height: 300)
         let overlay = try await openEditor(s)

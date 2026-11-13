@@ -3,7 +3,7 @@ import Foundation
 import HelmRuntime
 import HelmTestSupport
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 // One side of the boundary the Screenshots view model stands on: the engine, as `ScreenshotsWork` names it.

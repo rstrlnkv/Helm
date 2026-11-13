@@ -3,7 +3,7 @@ import Foundation
 
 /// A display, as the system numbers it.
 public struct DisplayID: Hashable, Sendable {
-    public let raw: UInt32
+    let raw: UInt32
     public init(_ raw: UInt32) { self.raw = raw }
 }
 
@@ -28,12 +28,12 @@ public struct FrozenDisplay: @unchecked Sendable {
     public let frame: CGRect
     public let scale: CGFloat
     public let image: CGImage
-    public let withCursor: CGImage?
+    let withCursor: CGImage?
     /// The display's UUID, which survives a re-plug where `id` may not — what a
     /// remembered selection is keyed to. Nil when the system would not give one.
     public let uuid: String?
 
-    public init(id: DisplayID, frame: CGRect, scale: CGFloat, image: CGImage,
+    init(id: DisplayID, frame: CGRect, scale: CGFloat, image: CGImage,
                 withCursor: CGImage? = nil, uuid: String? = nil) {
         self.id = id
         self.frame = frame
@@ -49,7 +49,7 @@ public struct FrozenDisplay: @unchecked Sendable {
 
 /// What the freeze found for one display: its frame, or the fact that it was
 /// listed and then could not be captured — unplugged between the two calls.
-public enum DisplayShot: @unchecked Sendable {
+enum DisplayShot: @unchecked Sendable {
     case image(FrozenDisplay)
     case gone(DisplayID)
 }
@@ -58,15 +58,15 @@ public enum DisplayShot: @unchecked Sendable {
 public struct FrozenWindow: Sendable, Equatable {
     public let id: UInt32
     public let frame: CGRect
-    public let layer: Int
+    let layer: Int
     /// The owning process's name from the same list reading; empty when the list
     /// gave none.
-    public let ownerName: String
+    let ownerName: String
     /// A system surface whose own picture is the thing itself (the Dock, placed by
     /// its Accessibility bounds): asked for by id, not cut from the freeze.
-    public let drawnAlone: Bool
+    let drawnAlone: Bool
 
-    public init(id: UInt32, frame: CGRect, layer: Int, ownerName: String = "", drawnAlone: Bool = false) {
+    init(id: UInt32, frame: CGRect, layer: Int, ownerName: String = "", drawnAlone: Bool = false) {
         self.id = id
         self.frame = frame
         self.layer = layer
@@ -81,11 +81,11 @@ public struct FrozenWindow: Sendable, Equatable {
 /// the freeze, and the act — a click on one of them — comes seconds later, so
 /// `CaptureSession.window` asks again before it believes any entry.
 public struct Freeze: @unchecked Sendable {
-    public let displays: [DisplayShot]
+    let displays: [DisplayShot]
     /// Front to back.
     public let windows: [FrozenWindow]
 
-    public init(displays: [DisplayShot], windows: [FrozenWindow]) {
+    init(displays: [DisplayShot], windows: [FrozenWindow]) {
         self.displays = displays
         self.windows = windows
     }
@@ -110,18 +110,18 @@ public struct PictureOnScreen: @unchecked Sendable {
     /// Where the picture stands on `display`, in that display's own top-left points.
     public let rect: CGRect
     /// The picture at its own size.
-    public let picture: CGImage
+    let picture: CGImage
 
     /// The room kept clear round a picture on its display, in points: at the sides what the area's handles (a dot of 4.5 pt radius and a target of `AreaFrame.reach`, 10 pt, on its edge)
     /// need, above and below what `EditorChrome.place` needs to stand the palette outside the area on either side, the palette,
     /// the gap and the margin (`EditorChrome`'s own constants, so the two cannot drift). `place` passes it to `frame` as the inset; the tests write the 16 and the sum of `EditorChrome`'s three by hand, so that a wrong margin here turns them red.
-    public static let margin = CGSize(width: 24, height: EditorChrome.paletteHeight + EditorChrome.gap + EditorChrome.margin)
+    static let margin = CGSize(width: 24, height: EditorChrome.paletteHeight + EditorChrome.gap + EditorChrome.margin)
 
     /// The picture's pixels to one point of the screen: the display's scale while the picture fits, more when it
     /// was reduced. The two sides have ratios of their own, apart by the rounding of the reduced size to whole pixels
     /// of the display; the larger one is taken, so that the area of the whole picture reaches every pixel of it.
     /// `frame` rounds so that the width's is the larger; the height's decides only for a width of one pixel.
-    public var pixelsPerPoint: CGFloat { max(CGFloat(picture.width) / rect.width, CGFloat(picture.height) / rect.height) }
+    var pixelsPerPoint: CGFloat { max(CGFloat(picture.width) / rect.width, CGFloat(picture.height) / rect.height) }
 
     /// Where a picture of `pixels` stands on a display whose frame is `display` pixels at `scale`: centred, on
     /// whole pixels, reduced to fit with its proportions kept and never enlarged. **The side that does not decide the
@@ -132,7 +132,7 @@ public struct PictureOnScreen: @unchecked Sendable {
     ///
     /// `inset` is the room in points kept clear round the picture on every side (at most a quarter of the side), so that a picture as large as the display is
     /// reduced to the display less it and stays centred on the whole display. The one caller in Sources passes `margin`; the default, no room, is the bare fit the tests of it ask for.
-    public static func frame(pixels: CGSize, on display: CGSize, scale: CGFloat, inset: CGSize = .zero) -> CGRect? {
+    static func frame(pixels: CGSize, on display: CGSize, scale: CGFloat, inset: CGSize = .zero) -> CGRect? {
         guard pixels.width.isFinite, pixels.height.isFinite, pixels.width >= 1, pixels.height >= 1,
               display.width.isFinite, display.height.isFinite, display.width >= 1, display.height >= 1,
               scale.isFinite, scale > 0
@@ -159,7 +159,7 @@ public struct PictureOnScreen: @unchecked Sendable {
     /// `picture` over the frame of `display` in `freeze`, or of the first display when that one is not in it. Nil
     /// when the freeze has no frame or the bitmap could not be made. The composed frame carries no pointer and the
     /// freeze no windows: neither is asked of an edit.
-    public static func place(_ picture: CGImage, over freeze: Freeze, on display: DisplayID?) -> PictureOnScreen? {
+    static func place(_ picture: CGImage, over freeze: Freeze, on display: DisplayID?) -> PictureOnScreen? {
         let frames = freeze.frames
         guard let frame = frames.first(where: { $0.id == display }) ?? frames.first,
               let rect = Self.frame(pixels: CGSize(width: picture.width, height: picture.height),

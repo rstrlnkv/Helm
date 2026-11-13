@@ -3,7 +3,7 @@ import CoreGraphics
 import Foundation
 import HelmTestSupport
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **«Edit» on a shot of the row opens the editor on that shot, and «Done» replaces that shot's file and no other;

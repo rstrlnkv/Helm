@@ -14,7 +14,7 @@ public enum SaveTarget: String, CaseIterable, Sendable {
     case macOS, desktop, documents, clipboard, other
 
     /// A file is written. The clipboard target is the only one that writes none.
-    public var savesAFile: Bool { self != .clipboard }
+    var savesAFile: Bool { self != .clipboard }
 }
 
 /// What the file is encoded as. The clipboard always takes a PNG, whatever this
@@ -23,10 +23,10 @@ public enum SaveTarget: String, CaseIterable, Sendable {
 public enum ShotFormat: String, CaseIterable, Sendable {
     case png, jpeg
 
-    public var pathExtension: String { self == .png ? "png" : "jpg" }
+    var pathExtension: String { self == .png ? "png" : "jpg" }
 
     /// ImageIO's lossy quality for a JPEG. What macOS's own tool uses was not measured.
-    public static let jpegQuality: Double = 0.9
+    static let jpegQuality: Double = 0.9
 }
 
 /// The countdown before a shot. A stored number that is not one of the cases
@@ -68,7 +68,7 @@ public struct ScreenshotsSettings: Equatable, Sendable {
     /// Where the panel stands, as a move from its place by default (`PanelPlace`).
     public var panelOffset: PanelOffset
 
-    public init(saveTarget: SaveTarget = .macOS, otherFolder: String? = nil,
+    init(saveTarget: SaveTarget = .macOS, otherFolder: String? = nil,
                 format: ShotFormat = .png, thumbnail: Bool = true, shutterSound: Bool = true,
                 showCursor: Bool = false, timer: CaptureTimer = .none, timerLength: CaptureTimer = .five,
                 rememberSelection: Bool = false, panelMode: PanelMode = .area, panelOffset: PanelOffset = .zero) {
@@ -142,17 +142,17 @@ public struct ScreenshotsSettings: Equatable, Sendable {
         public static let shutterSound = "shutterSound"
         public static let showCursor = "showCursor"
         public static let timer = "timer"
-        public static let rememberSelection = "rememberSelection"
+        static let rememberSelection = "rememberSelection"
         public static let panelMode = "panelMode"
         /// Set once the system's screen-recording request has been made (`SCKCapture.requestAccess`).
-        public static let screenRecordingAsked = "screenRecordingAsked"
+        static let screenRecordingAsked = "screenRecordingAsked"
         /// The last length the timer was switched on with; `timer` stays "seconds now, 0 is off" and is not re-keyed.
         public static let timerLength = "timerLength"
         /// The panel's move from its place by default, one number per axis (`PanelOffset`).
-        public static let panelOffsetX = "panelOffsetX"
-        public static let panelOffsetY = "panelOffsetY"
+        static let panelOffsetX = "panelOffsetX"
+        static let panelOffsetY = "panelOffsetY"
         /// The editor's memory, read by `EditorMemory` and not by `ScreenshotsSettings`.
-        public static let editorTool = "editorTool"
+        static let editorTool = "editorTool"
         /// The swatch's name, which the Settings row writes: the colour a tool starts with until it has its own: the editor
         /// reads it only while `editorInk` is absent, the Settings row always. Never re-keyed.
         public static let editorColor = "editorColor"
@@ -160,13 +160,13 @@ public struct ScreenshotsSettings: Equatable, Sendable {
         /// more, read as the start of a tool with no entry in `editorInkByTool`; the Settings row's pick removes it (a pick in the editor never writes it).
         public static let editorInk = "editorInk"
         /// Tool raw value → `[red, green, blue]`, each tool's own colour (`EditorMemory`).
-        public static let editorInkByTool = "editorInkByTool"
+        static let editorInkByTool = "editorInkByTool"
         /// Retired, not read: one step for every tool, before each tool had its own. Never reused.
-        public static let editorThickness = "editorThickness"
+        static let editorThickness = "editorThickness"
         /// Tool raw value → step 0…2, and tool raw value → opacity, each tool's own (`EditorMemory`).
-        public static let editorThicknessByTool = "editorThicknessByTool"
-        public static let editorOpacityByTool = "editorOpacityByTool"
-        public static let editorFill = "editorFill"
+        static let editorThicknessByTool = "editorThicknessByTool"
+        static let editorOpacityByTool = "editorOpacityByTool"
+        static let editorFill = "editorFill"
         /// Palette item raw value → shown or hidden, the person's own picks only (`PaletteItems`).
         public static let paletteChoices = "paletteChoices"
     }
@@ -180,8 +180,8 @@ public struct ScreenshotsSettings: Equatable, Sendable {
 /// reads as on, because a sound that is silent for a garbled preference is
 /// harder to find than one that plays. Whether macOS's own capture honours the
 /// key on this Mac was not measured.
-public enum ShutterRule {
-    public static func plays(setting: Bool, uiAudio: Any?) -> Bool {
+enum ShutterRule {
+    static func plays(setting: Bool, uiAudio: Any?) -> Bool {
         guard setting else { return false }
         guard let number = uiAudio as? NSNumber else { return true }
         return number.doubleValue != 0

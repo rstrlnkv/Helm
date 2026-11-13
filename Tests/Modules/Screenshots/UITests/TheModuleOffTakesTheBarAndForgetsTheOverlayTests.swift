@@ -6,7 +6,7 @@ import Module_Screenshots_Engine
 
 /// When the module goes off, the bar leaves the screen and forgets the overlay it picked on.
 @MainActor
-final class TheBarStaysAboveTheOverlayTests: XCTestCase {
+final class TheModuleOffTakesTheBarAndForgetsTheOverlayTests: XCTestCase {
     private var boxes: [PanelRig.Rig] = []
 
     override func tearDown() {

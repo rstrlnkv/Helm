@@ -15,9 +15,9 @@ import CoreGraphics
 /// second spotlight is begun inside the first, and the eraser takes it by its edge.
 public enum Spotlights {
     /// How much of black the dim is: 42 %. The area's own surround is dimmed more (`OverlayView`), so the area reads as lit.
-    public static let dimAlpha: CGFloat = 0.42
+    static let dimAlpha: CGFloat = 0.42
     /// The corner of a spotlight's box, in points, held to half of the shorter side.
-    public static let cornerRadius: CGFloat = 10
+    static let cornerRadius: CGFloat = 10
 
     /// The dim's colour.
     public static var color: CGColor { CGColor(srgbRed: 0, green: 0, blue: 0, alpha: dimAlpha) }
@@ -42,7 +42,7 @@ public enum Spotlights {
     }
 
     /// The dim in `context`, whose user space is the display's top-left points; nothing when no layer is a spotlight.
-    public static func draw(_ layers: [Annotation], within area: CGRect, in context: CGContext) {
+    static func draw(_ layers: [Annotation], within area: CGRect, in context: CGContext) {
         guard let path = dim(of: layers, within: area) else { return }
         context.saveGState()
         context.addPath(path)

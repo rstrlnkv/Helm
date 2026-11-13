@@ -3,7 +3,7 @@ import Foundation
 import HelmRuntime
 import HelmTestSupport
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **A countdown that was cancelled freezes nothing.** The timer's wait is a

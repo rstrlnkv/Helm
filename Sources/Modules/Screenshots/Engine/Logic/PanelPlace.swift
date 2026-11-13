@@ -10,18 +10,18 @@ import HelmRuntime
 /// every stored coordinate (`StoredNumber`), on its own side. Each axis is judged alone: a bad `y` does not take a
 /// good `x` with it.
 public struct PanelOffset: Equatable, Sendable {
-    public var dx: Double
-    public var dy: Double
+    var dx: Double
+    var dy: Double
 
-    public static let zero = PanelOffset(dx: 0, dy: 0)
+    static let zero = PanelOffset(dx: 0, dy: 0)
     static let ceiling = StoredNumber.ceiling
 
-    public init(dx: Double, dy: Double) {
+    init(dx: Double, dy: Double) {
         self.dx = dx.clamped(to: -Self.ceiling...Self.ceiling, whenNotANumber: 0)
         self.dy = dy.clamped(to: -Self.ceiling...Self.ceiling, whenNotANumber: 0)
     }
 
-    public static func read(_ store: NamespacedStore) -> PanelOffset {
+    static func read(_ store: NamespacedStore) -> PanelOffset {
         PanelOffset(dx: StoredNumber.read(store, ScreenshotsSettings.Key.panelOffsetX) ?? 0,
                     dy: StoredNumber.read(store, ScreenshotsSettings.Key.panelOffsetY) ?? 0)
     }
@@ -44,9 +44,9 @@ public struct PanelOffset: Equatable, Sendable {
 /// is the failure this function exists to rule out.
 public enum PanelPlace {
     /// The panel's bottom edge above the bottom of the visible frame, in points.
-    public static let rise: CGFloat = 24
+    static let rise: CGFloat = 24
 
-    public static func standard(size: CGSize, in visible: CGRect) -> CGPoint {
+    static func standard(size: CGSize, in visible: CGRect) -> CGPoint {
         CGPoint(x: visible.midX - size.width / 2, y: visible.minY + rise)
     }
 

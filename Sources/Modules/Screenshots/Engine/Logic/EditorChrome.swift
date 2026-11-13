@@ -22,7 +22,7 @@ public struct EditorChrome: Equatable, Sendable {
     public func covers(_ point: CGPoint) -> Bool { palette.contains(point) || popover?.contains(point) == true }
 
     /// Between the palette and the area, and inside the area from its bottom edge.
-    public static let gap: CGFloat = 14
+    static let gap: CGFloat = 14
     /// Between the palette and its pop-over.
     public static let popoverGap: CGFloat = 8
     /// The nearest the palette comes to the screen's edge, and the room kept free beyond it.

@@ -1,6 +1,6 @@
 import AppKit
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// The text-reading port of a session whose test reads no text: it answers `.failed`, the one answer that

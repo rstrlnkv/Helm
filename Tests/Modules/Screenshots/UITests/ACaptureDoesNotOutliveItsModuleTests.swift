@@ -3,7 +3,7 @@ import Foundation
 import HelmRuntime
 import HelmTestSupport
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **A capture the module was switched off under does nothing afterwards.**

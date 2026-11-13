@@ -49,10 +49,9 @@ final class RulerLayer: CALayer {
     /// A format style holds no cache, so a language changed between two captures is read at once; and a rounding that
     /// lands on nothing is zero, never a minus zero.
     static func text(degrees: CGFloat) -> String {
-        let locale = Locale(identifier: AppLanguage.current.rawValue)
         let whole = Double(degrees.rounded()) + 0
         return Measurement(value: whole, unit: UnitAngle.degrees)
-            .formatted(.measurement(width: .narrow, usage: .asProvided, numberFormatStyle: .number.precision(.fractionLength(0))).locale(locale))
+            .formatted(.measurement(width: .narrow, usage: .asProvided, numberFormatStyle: .number.precision(.fractionLength(0))).locale(AppLanguage.current.locale))
     }
 
     /// Draws `ruler` in `area`, both in the display's top-left points on a view `height` points tall (this layer's own

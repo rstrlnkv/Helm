@@ -17,7 +17,7 @@ import CoreGraphics
 /// of a different part of the desk.
 public enum ScreenSpace {
 
-    public static func appKitRect(fromCG rect: CGRect, primaryHeight: CGFloat) -> CGRect {
+    static func appKitRect(fromCG rect: CGRect, primaryHeight: CGFloat) -> CGRect {
         CGRect(x: rect.minX, y: primaryHeight - rect.maxY, width: rect.width, height: rect.height)
     }
 
@@ -37,7 +37,7 @@ public enum ScreenSpace {
     /// selection dragged to the very edge is a rectangle that ends on the last
     /// pixel and not one past it. Nil when nothing is left — a selection wholly
     /// outside the image, or one that is not a number.
-    public static func pixels(ofLocal rect: CGRect, scale: CGFloat,
+    static func pixels(ofLocal rect: CGRect, scale: CGFloat,
                               imageWidth: Int, imageHeight: Int) -> CGRect? {
         guard rect.origin.x.isFinite, rect.origin.y.isFinite,
               rect.width.isFinite, rect.height.isFinite, scale.isFinite, scale > 0

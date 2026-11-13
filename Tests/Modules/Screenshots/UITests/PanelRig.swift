@@ -4,7 +4,7 @@ import Foundation
 import HelmRuntime
 import HelmTestSupport
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// What the capture panel's test families share: a controller over fake ports whose freezes can be counted and

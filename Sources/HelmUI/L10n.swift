@@ -52,6 +52,12 @@ public enum AppLanguage: String, CaseIterable, Sendable {
         }
     }
 
+    /// The language as a `Locale`, for a format style or a formatter.
+    ///
+    /// Computed, never stored and never static: a format style holds no cache, so a language
+    /// changed between two reads is spoken at the next one.
+    public var locale: Locale { Locale(identifier: rawValue) }
+
     private static let cache = LanguageCache()
 
     private final class LanguageCache: @unchecked Sendable {
@@ -126,7 +132,7 @@ public func L(_ resource: LocalizedStringResource,
               language: AppLanguage = AppLanguage.current,
               remembered: Bool = true) -> String {
     var resource = resource
-    resource.locale = Locale(identifier: language.rawValue)
+    resource.locale = language.locale
     return remembered ? ResourceAnswers.shared.string(for: resource) : String(localized: resource)
 }
 

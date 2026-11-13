@@ -3,7 +3,7 @@ import Foundation
 import HelmRuntime
 import HelmTestSupport
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **With its defaults, `CaptureController.handOff` copies the picture under every target and saves it by the save target.** Every

@@ -6,7 +6,7 @@ import XCTest
 
 /// The window's end and the module switched off take an open row and everything it held.
 @MainActor
-final class TheRowTakesKeyOnlyFromAClickOnItselfTests: XCTestCase {
+final class TheModuleOffTakesTheOpenRowTests: XCTestCase {
 
     private var scenes: [PileScene] = []
 
