@@ -282,9 +282,16 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         toolsWait = nil
         let handle = current
         lock.unlock()
+        endWaitOrTerminate(wait: wait, handle: handle,
+                           waitLine: "\(Self.installBrewLabel) stopped waiting: module switched off")
+    }
+
+    /// The tail Stop and the switch-off share: a wait that was taken is logged
+    /// and concluded here, since no child and no exit are coming; otherwise
+    /// the child, if any, is terminated.
+    private func endWaitOrTerminate(wait: AnyObject?, handle: RunningProcess?, waitLine: String) {
         if wait != nil {
-            HelmLog.shared.info(Self.moduleID,
-                                "\(Self.installBrewLabel) stopped waiting: module switched off")
+            HelmLog.shared.info(Self.moduleID, waitLine)
             concludeOp(code: nil, label: Self.installBrewLabel, reason: nil)
             return
         }
@@ -849,12 +856,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         toolsWait = nil
         lock.unlock()
         HelmLog.shared.info(Self.moduleID, "stop requested")
-        if wait != nil {
-            HelmLog.shared.info(Self.moduleID, "\(Self.installBrewLabel) stopped waiting")
-            concludeOp(code: nil, label: Self.installBrewLabel, reason: nil)
-            return
-        }
-        handle?.terminate()
+        endWaitOrTerminate(wait: wait, handle: handle, waitLine: "\(Self.installBrewLabel) stopped waiting")
     }
 
     /// Whether a Stop — or the module's switch-off, which sets the same flag
@@ -962,21 +964,24 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         return nil
     }
 
+    /// The refusal and the run both name the operation's label, so it is said
+    /// once here by each caller.
+    private func runPackageOp(verb: String, subject: String? = nil, label: String, args: [String]) {
+        guard let brew = brewOrRefuse(verb: verb, label: label) else { return }
+        runOp(verb: verb, subject: subject, label: label, launch: brew, args: args)
+    }
+
     func install(name: String, isCask: Bool) {
-        guard let brew = brewOrRefuse(verb: "install", label: "install \(name)") else { return }
-        runOp(verb: "install", subject: name, label: "install \(name)", launch: brew, args: isCask ? ["install", "--cask", "--", name] : ["install", "--", name])
+        runPackageOp(verb: "install", subject: name, label: "install \(name)", args: isCask ? ["install", "--cask", "--", name] : ["install", "--", name])
     }
     func uninstall(name: String, isCask: Bool) {
-        guard let brew = brewOrRefuse(verb: "uninstall", label: "uninstall \(name)") else { return }
-        runOp(verb: "uninstall", subject: name, label: "uninstall \(name)", launch: brew, args: isCask ? ["uninstall", "--cask", "--", name] : ["uninstall", "--", name])
+        runPackageOp(verb: "uninstall", subject: name, label: "uninstall \(name)", args: isCask ? ["uninstall", "--cask", "--", name] : ["uninstall", "--", name])
     }
     func upgrade(name: String) {
-        guard let brew = brewOrRefuse(verb: "upgrade", label: "upgrade \(name)") else { return }
-        runOp(verb: "upgrade", subject: name, label: "upgrade \(name)", launch: brew, args: ["upgrade", "--", name])
+        runPackageOp(verb: "upgrade", subject: name, label: "upgrade \(name)", args: ["upgrade", "--", name])
     }
     func upgradeAll() {
-        guard let brew = brewOrRefuse(verb: "upgrade all", label: "upgrade all") else { return }
-        runOp(verb: "upgrade all", label: "upgrade all", launch: brew, args: ["upgrade"])
+        runPackageOp(verb: "upgrade all", label: "upgrade all", args: ["upgrade"])
     }
 
     /// Runs one command `brew doctor`'s answer was read as proposing — **after

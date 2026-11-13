@@ -684,6 +684,22 @@ final class EveryStopPointEndsTheInstallOnceTests: XCTestCase {
         }
     }
 
+    /// The two endings of a wait say different sentences in the log, and a
+    /// person reading it tells them apart by those words.
+    func testEachEndingOfTheWaitSaysItsOwnSentenceInTheLog() {
+        for (ending, sentence) in [(Ending.stop, "install Homebrew stopped waiting"),
+                                   (Ending.switchOff, "install Homebrew stopped waiting: module switched off")] {
+            HelmLog.shared.clearTail()
+            let rig = Rig()
+            rig.engine.installBrew()
+            XCTAssertEqual(rig.ticker.live, 1, "\(ending): precondition — the install is waiting")
+
+            end(rig.engine, ending)
+
+            XCTAssertTrue(homebrewLines.contains(sentence), "\(ending): \(homebrewLines)")
+        }
+    }
+
     // MARK: - A switch-off while install.sh runs
 
     /// `deactivate()` with the installer running ends it the way Stop does:
