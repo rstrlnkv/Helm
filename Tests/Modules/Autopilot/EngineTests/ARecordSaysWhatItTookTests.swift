@@ -87,6 +87,19 @@ final class ARecordSaysWhatItTookTests: XCTestCase {
         }
     }
 
+    /// A file refused for lying outside the allowed folders is by definition
+    /// somewhere the person did not mean a rule to go, so the row says the reason
+    /// and the rule and nothing about the file. A refusal for any other reason
+    /// keeps its file: that one is the person's own, in plain sight.
+    func testAScopeRefusalNamesNoFileAndNoPath() throws {
+        let scope = try record(.refused(.outOfScope))
+        XCTAssertEqual(scope.file, "")
+        XCTAssertEqual(scope.path, "")
+
+        let other = try record(.refused(.missing))
+        XCTAssertEqual(other.file, "march.pdf")
+    }
+
     /// A file on a volume that will not answer. The record is still written —
     /// the history's job is to say what happened — and it simply cannot be put
     /// back, which the undo reports as `noIdentity` rather than guessing.

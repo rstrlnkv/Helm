@@ -103,13 +103,26 @@ final class TheDescriptorWalkHoldsItsGroundTests: XCTestCase {
     /// folder was a folder and every read in which it was a link is counted, and
     /// both must have happened.
     func testASubfolderSwappedForALinkWhileTheWalkRunsIsNeverReadThrough() throws {
+        try swapRace(into: "Library/Inbox", leaking: "/Library/")
+    }
+
+    /// The same race with a link to an ordinary folder. A link into `~/Library` is
+    /// also refused by the path the open lands on, so that test stays green with
+    /// `O_NOFOLLOW` gone; a link to a folder the gate allows is refused by the
+    /// open alone.
+    func testASubfolderSwappedForALinkToAnOrdinaryFolderIsNeverReadThrough() throws {
+        try write("Elsewhere/stray.pdf", in: home)
+        try swapRace(into: "Elsewhere", leaking: "/Elsewhere/")
+    }
+
+    private func swapRace(into target: String, leaking marker: String) throws {
         let watched = home.appendingPathComponent("Watched")
         try write("Watched/a.pdf", in: home)
         try write("Watched/m/ok.pdf", in: home)
         // The link waits under a hidden name, which the walk never lists.
         try FileManager.default.createSymbolicLink(
             at: watched.appendingPathComponent(".alt"),
-            withDestinationURL: home.appendingPathComponent("Library/Inbox"))
+            withDestinationURL: home.appendingPathComponent(target))
 
         let flipper = Flipper(watched.appendingPathComponent("m").path,
                               watched.appendingPathComponent(".alt").path)
@@ -130,14 +143,14 @@ final class TheDescriptorWalkHoldsItsGroundTests: XCTestCase {
             let files = reader.reading(in: watched.path, depth: 3).files
             if files.contains(where: { $0.name == "ok.pdf" }) { throughAFolder += 1 }
             if files.contains(where: { $0.name == "m" && !$0.isDirectory }) { overALink += 1 }
-            leaked += files.map(\.path).filter { $0.contains("/Library/") }
+            leaked += files.map(\.path).filter { $0.contains(marker) }
         }
         let swaps = flipper.stop()
 
         XCTAssertGreaterThan(swaps, 100, "precondition: the folder was swapped")
         XCTAssertGreaterThan(throughAFolder, 0, "precondition: some reads descended the real folder")
         XCTAssertGreaterThan(overALink, 0, "precondition: some reads met the link")
-        XCTAssertEqual(leaked, [], "the walk read through a link into ~/Library in \(leaked.count) of \(reads) reads")
+        XCTAssertEqual(leaked, [], "the walk read through a link into \(target) in \(leaked.count) of \(reads) reads")
     }
 
     // MARK: - The ceiling

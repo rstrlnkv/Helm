@@ -75,6 +75,19 @@ final class AFolderReachedThroughALinkIsNotReadTests: XCTestCase {
         XCTAssertTrue(secretIsStillThere)
     }
 
+    /// The engine's gate on its own: a reader with no `home` asks none, so the
+    /// engine's is the only one left to refuse the link.
+    func testTheEnginesOwnGateRefusesTheFolderWhenTheReaderAsksNone() {
+        engine.reader.home = nil
+
+        let report = engine.sweep(hijacked)
+
+        XCTAssertEqual(report.examined, 0, "the folder behind the link was read")
+        XCTAssertEqual(report.folder, .refused)
+        XCTAssertEqual(engine.preview(hijacked), [])
+        XCTAssertTrue(secretIsStillThere)
+    }
+
     func testTheHourlySweepWritesNoNameOfTheProtectedFolderIntoTheHistory() {
         let reports = engine.sweepAll()
 

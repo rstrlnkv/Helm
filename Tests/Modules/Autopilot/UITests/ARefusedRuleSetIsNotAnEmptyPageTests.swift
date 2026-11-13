@@ -97,6 +97,18 @@ final class ARefusedRuleSetIsNotAnEmptyPageTests: XCTestCase {
                        "precondition: the page is holding the folder the gesture is about")
 
         model.setEnabled(false, folder: watched)
+        // The send is a task the gesture starts and does not wait for, so an empty
+        // `saved` straight after it is true of a page with no guard at all. A page
+        // that may save is given the same gesture next, and the answer is read
+        // once its own send has landed: the refused page's, started first, has had
+        // its turn by then.
+        let open = FakeAutopilotWork(folders: [watched])
+        let openModel = self.model(on: open)
+        await openModel.load()
+        openModel.setEnabled(false, folder: watched)
+        let deadline = Date().addingTimeInterval(5)
+        while open.saved.isEmpty, Date() < deadline { try? await Task.sleep(nanoseconds: 10_000_000) }
+        XCTAssertFalse(open.saved.isEmpty, "precondition: a page that may save sent its list")
 
         XCTAssertEqual(work.saved, [], "a refused page wrote a folder list over the refused rules")
     }

@@ -84,6 +84,25 @@ final class TheRootCheckLetsThePersonsOwnFolderThroughTests: XCTestCase {
         XCTAssertTrue(fm.fileExists(atPath: home.appendingPathComponent("Library/Inbox/\(secret)").path))
     }
 
+    /// **The engine's gate is its own.** The reader asks the same question of every
+    /// directory it opens, so with both asking, either one alone would hide the
+    /// other's removal. A reader with no `home` asks none, which leaves the
+    /// engine's gate the only thing between the link and the rules.
+    func testTheEnginesOwnGateRefusesALinkWhenTheReaderAsksNone() throws {
+        let fm = FileManager.default
+        try write("Library/Inbox/\(secret)", in: home)
+        try fm.createSymbolicLink(at: home.appendingPathComponent("Inbox"),
+                                  withDestinationURL: home.appendingPathComponent("Library/Inbox"))
+        let folder = watch(home.appendingPathComponent("Inbox").path)
+        engine.reader.home = nil
+
+        XCTAssertEqual(engine.preview(folder), [])
+        let report = engine.sweep(folder)
+        XCTAssertEqual(report.examined, 0)
+        XCTAssertEqual(report.folder, .refused)
+        XCTAssertFalse(storedText().contains(secret), storedText())
+    }
+
     /// The same, one link further: `~/Inbox -> ~/Hop -> ~/Library/Inbox`.
     func testAChainOfLinksIntoLibraryIsNotRead() throws {
         let fm = FileManager.default
