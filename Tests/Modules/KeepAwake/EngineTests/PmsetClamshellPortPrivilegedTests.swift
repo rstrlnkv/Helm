@@ -1,4 +1,5 @@
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_KeepAwake_Engine
 
@@ -17,9 +18,8 @@ final class PmsetClamshellPortPrivilegedTests: XCTestCase {
     }
 
     private func present() throws -> String {
-        let path = NSTemporaryDirectory() + "helm-sudoers-\(UUID().uuidString)"
+        let path = scratchDirectory("sudoers").appendingPathComponent("rule").path
         XCTAssertTrue(FileManager.default.createFile(atPath: path, contents: Data()))
-        addTeardownBlock { try? FileManager.default.removeItem(atPath: path) }
         return path
     }
 

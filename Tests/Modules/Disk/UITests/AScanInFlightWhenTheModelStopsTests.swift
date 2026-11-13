@@ -29,7 +29,7 @@ final class AScanInFlightWhenTheModelStopsTests: XCTestCase {
         work.emitPartial(0, result: answer("/Volumes/Big"))
         work.release(0, with: answer("/Volumes/Big"))
         await walk.value
-        await settle()
+        await grace()
 
         XCTAssertNil(dvm.result, "a snapshot or an answer reached a stopped model's screen")
         let saved = await store.loadDetached()
@@ -49,7 +49,14 @@ final class AScanInFlightWhenTheModelStopsTests: XCTestCase {
         let dvm = DiskViewModel(work: HeldWork(), store: store)
         dvm.stop()
         await dvm.appear()
-        await settle()
+        await grace()
         XCTAssertNil(dvm.result, "a stopped model read the saved scan back on appear()")
+
+        // The control, through the same wait: the same store read by a model
+        // that was not stopped does come back.
+        let open = DiskViewModel(work: HeldWork(), store: store)
+        await open.appear()
+        await waitUntil("control: a running model reads the saved scan back on appear()",
+                        within: .seconds(5)) { open.result != nil }
     }
 }

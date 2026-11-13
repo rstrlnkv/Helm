@@ -96,6 +96,23 @@ final class AFreshStoreHoldsTheDeployedDefaultsTests: XCTestCase {
         }
     }
 
+    /// «Fix two capitals» is on for a store nobody has written to. The default
+    /// lives in `LayoutDefault`; this pins the engine's own read of it, which
+    /// a test of the table alone cannot: every other test of the capital fix
+    /// writes `true` into the store first.
+    func testAFreshStoreCorrectsASlippedCapital() {
+        let tap = DefaultsTap(), typing = DefaultsTyping()
+        let engine = LayoutEngine(tap: tap, typing: typing, sources: DefaultsSources(),
+                                  translation: DefaultsTranslation(), spell: DefaultsSpell(),
+                                  secure: DefaultsContext(), activation: FakeActivation(),
+                                  sound: DefaultsSound(), settings: store())
+        engine.activate()
+        for c in "ПРивет" { tap.handler?(.character(c)) }
+        tap.handler?(.space)
+        XCTAssertEqual(typing.performed, 1, "the capital was left alone on a fresh store")
+        withExtendedLifetime(engine) {}
+    }
+
     func testAnEmptyStoreReadsTheHeroOnToday() {
         XCTAssertEqual(ConversionPeriod.stored(in: store()), .today)
     }

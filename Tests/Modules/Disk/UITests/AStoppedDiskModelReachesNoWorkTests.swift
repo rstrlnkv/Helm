@@ -140,7 +140,7 @@ final class AStoppedDiskModelReachesNoWorkTests: XCTestCase {
                                               children: []),
                               freeBytes: 0, filesScanned: 1, seconds: 1))
         let dvm = DiskViewModel(work: CountingWork(), store: store)
-        await settle()
+        await grace()
         XCTAssertEqual(dvm.phase, .start, "the model read the saved scan before it appeared")
         XCTAssertNil(dvm.result)
 

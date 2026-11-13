@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 import Module_Duplicates_Engine
 @testable import Module_Duplicates_UI
 
@@ -52,7 +53,7 @@ final class DuplicateSearchRaceTests: XCTestCase {
 
         // The newer one answers first, then the older one arrives late.
         work.release(1, folder: "newer")
-        await settle()
+        await waitUntil("the newer search landed") { !dvm.groups.isEmpty }
         work.release(0, folder: "older")
         await settle()
 

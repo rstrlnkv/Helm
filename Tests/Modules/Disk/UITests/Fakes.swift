@@ -1,5 +1,6 @@
 import Foundation
 import HelmRuntime
+import HelmTestSupport
 @testable import Module_Disk_Engine
 import XCTest
 @testable import Module_Disk_UI
@@ -209,7 +210,7 @@ func folder(_ path: String, bytes: Int, children: [DiskEntry] = []) -> DiskEntry
 @MainActor
 func untilParked(_ work: HeldWork, count: Int, file: StaticString = #filePath,
                  line: UInt = #line) async {
-    await held("\(count) scan(s) parked in HeldWork", file: file, line: line) {
+    await waitUntilWithin("\(count) scan(s) parked in HeldWork", .seconds(5), file: file, line: line) {
         work.parkedCount >= count
     }
 }
@@ -219,20 +220,10 @@ func untilParked(_ work: HeldWork, count: Int, file: StaticString = #filePath,
 @MainActor
 func untilTrashing(_ work: HeldWork, count: Int = 1, file: StaticString = #filePath,
                    line: UInt = #line) async {
-    await held("\(count) removal(s) reached HeldWork.trash", file: file, line: line) {
+    await waitUntilWithin("\(count) removal(s) reached HeldWork.trash", .seconds(5),
+                          file: file, line: line) {
         work.trashRequests.count >= count
     }
-}
-
-@MainActor
-private func held(_ what: String, file: StaticString, line: UInt,
-                  _ condition: () -> Bool) async {
-    let clock = ContinuousClock()
-    let deadline = clock.now + .seconds(5)
-    while !condition(), clock.now < deadline {
-        try? await Task.sleep(for: .milliseconds(5))
-    }
-    if !condition() { XCTFail("never reached: \(what)", file: file, line: line) }
 }
 
 /// Room for the tasks already scheduled to land. The two copies of this yielded

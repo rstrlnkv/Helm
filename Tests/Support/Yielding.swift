@@ -33,13 +33,21 @@ public extension XCTestCase {
     @MainActor
     func waitUntil(_ what: String, within limit: Duration, file: StaticString = #filePath,
                    line: UInt = #line, _ condition: () -> Bool) async {
-        let clock = ContinuousClock()
-        let deadline = clock.now + limit
-        while !condition(), clock.now < deadline {
-            try? await Task.sleep(for: .milliseconds(5))
-        }
-        XCTAssertTrue(condition(), "never reached: \(what)", file: file, line: line)
+        await waitUntilWithin(what, limit, file: file, line: line, condition)
     }
+}
+
+/// `waitUntil(_:within:)` for the helpers that are free functions and have no
+/// test case to call it on. The method above is this, so there is one wait.
+@MainActor
+public func waitUntilWithin(_ what: String, _ limit: Duration, file: StaticString = #filePath,
+                            line: UInt = #line, _ condition: () -> Bool) async {
+    let clock = ContinuousClock()
+    let deadline = clock.now + limit
+    while !condition(), clock.now < deadline {
+        try? await Task.sleep(for: .milliseconds(5))
+    }
+    XCTAssertTrue(condition(), "never reached: \(what)", file: file, line: line)
 }
 
 /// A fair chance for a detached task to do the thing, before asserting that it
