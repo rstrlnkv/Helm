@@ -26,6 +26,8 @@ import HelmRuntime
 /// at `""`, which is what `scutil` prints when it **succeeded**. The whole
 /// recording table was therefore proved against a tool that cannot refuse, which
 /// is why the ordering was never seen.
+///
+/// Past defect: commit 7851a0c2, «fix(vpn): the tool is asked before the app announces, and a name stops standing in for an identity».
 final class ARefusalIsNotAnnouncedAsDoneTests: XCTestCase {
 
     private let at = Date(timeIntervalSince1970: 1_000_000)

@@ -23,6 +23,8 @@ import XCTest
 /// would file one tunnel's figure under another's name, and the refusal is here
 /// in the engine rather than only in the view because the view is not the only
 /// thing that can send a command.
+///
+/// Past defect: commit 38cc0b77, «feat(vpn): the strip is about a tunnel you choose, not the only one it knew».
 final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
 
     private let at = Date(timeIntervalSince1970: 1_700_000_000)

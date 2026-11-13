@@ -32,6 +32,8 @@ import HelmRuntime
 /// it» — without that separation the notice would be drawn under every automatic
 /// connect on the machine, which is a warning that is always true is not a
 /// warning.
+///
+/// Past defect: commit ed04d30c, «fix(vpn): a rule that cannot reach its secret says so, once, on the screen».
 final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
 
     private let header = "Available network connection services:"

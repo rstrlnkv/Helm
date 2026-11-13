@@ -18,6 +18,8 @@ import HelmRuntime
 /// The two failures below are what that costs, and they run in opposite
 /// directions: a drop that is never reported, and a name whose spelling the
 /// parser silently changes so that two configurations become one.
+///
+/// Past defect: commit 7851a0c2, «fix(vpn): the tool is asked before the app announces, and a name stops standing in for an identity».
 final class ANameIsNotAnIdentityTests: XCTestCase {
 
     private let clock = TestClock()

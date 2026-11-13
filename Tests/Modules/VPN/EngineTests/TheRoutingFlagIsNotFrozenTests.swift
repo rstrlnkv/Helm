@@ -34,6 +34,8 @@ import XCTest
 ///
 /// Both directions are wrong and the second is the dangerous one: an absent
 /// answer reads as «not known», a stale one reads as an answer.
+///
+/// Past defect: commit c0fdd318, «fix(vpn): six repairs, from a blip that cost the tunnel to a decoy interface».
 final class TheRoutingFlagIsNotFrozenTests: XCTestCase {
 
     private let list = """

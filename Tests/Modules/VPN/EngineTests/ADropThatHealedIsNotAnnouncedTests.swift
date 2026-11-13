@@ -20,6 +20,8 @@ import XCTest
 /// `LastStatusChangeTime : 14:57:22`. Twice in the two days of log there was to
 /// read. A signal that cries wolf on a blip is a signal people switch off, and
 /// then the real drop is silent too.
+///
+/// Past defect: commit 038fee7f, «fix(vpn): a drop that healed in three seconds is not announced».
 final class ADropThatHealedIsNotAnnouncedTests: XCTestCase {
 
     private let bundleID = "com.example.app"

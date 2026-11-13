@@ -29,6 +29,8 @@ import XCTest
 /// Two tunnels up with the route on one of them is not a contrived fixture: it
 /// is the case `VPNTunnelChoice.primaryFirst` and the whole switcher exist for,
 /// and the button under the second tunnel is the only way to reach this branch.
+///
+/// Past defect: commit c0fdd318, «fix(vpn): six repairs, from a blip that cost the tunnel to a decoy interface».
 final class ARefusedMeasurementIsNotSilenceTests: XCTestCase {
 
     private let header = "Available network connection services:"

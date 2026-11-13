@@ -19,6 +19,8 @@ import XCTest
 /// Every test here drives the engine through its stream rather than reading a
 /// private field, and each names its fake ports: a default argument here reaches
 /// `TraceExit`, which is a real request to Cloudflare from a test run.
+///
+/// Past defect: commit 428f240b, «feat(0.11): the tunnel comes first, hosts leaves the panel, a launch stops killing the app».
 final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
 
     private func makeSettings() -> VPNSettings {

@@ -14,6 +14,8 @@ import HelmRuntime
 /// undoes launches it recorded. That is one gate rather than two, and it is the
 /// only place a check is possible at all, since at quit time there is no longer a
 /// bundle to read.
+///
+/// Past defect: commit 1fe5e099, «fix(vpn): a rule is bound to a signature, and a forged plist stops summoning dialogs».
 final class AForgedBundleCannotDropTheTunnelTests: XCTestCase {
 
     private let bundleID = "com.example.app"

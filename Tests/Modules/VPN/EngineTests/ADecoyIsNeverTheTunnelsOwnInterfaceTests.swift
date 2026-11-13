@@ -40,6 +40,8 @@ import XCTest
 /// interface the traffic is leaving the tunnel *by*.
 ///
 /// Nil is the answer, and the caller is already written for it.
+///
+/// Past defect: commit c0fdd318, «fix(vpn): six repairs, from a blip that cost the tunnel to a decoy interface».
 final class ADecoyIsNeverTheTunnelsOwnInterfaceTests: XCTestCase {
 
     /// The control, and it is the committed fixture's own shape: with the

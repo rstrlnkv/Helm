@@ -48,6 +48,8 @@ import XCTest
 /// The count is taken on `.background`, the queue the app runs on, because
 /// coalescing is about time and `VPNWorkQueue.inline` runs a delayed block at
 /// once. It is held until it stops moving before it is read.
+///
+/// Past defect: commit c0fdd318, «fix(vpn): six repairs, from a blip that cost the tunnel to a decoy interface».
 final class ANetworkBlipIsNotSevenSubprocessesTests: XCTestCase {
 
     /// A counter a `@Sendable` hook can add to.

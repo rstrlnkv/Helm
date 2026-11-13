@@ -30,6 +30,8 @@ import XCTest
 ///
 /// The three-second blip is the cheap case. Any tunnel that re-handshakes once
 /// spends the rest of the session unwatched.
+///
+/// Past defect: commit c0fdd318, «fix(vpn): six repairs, from a blip that cost the tunnel to a decoy interface».
 final class ABlipDoesNotCostHelmItsTunnelTests: XCTestCase {
 
     private let bundleID = "com.example.app"

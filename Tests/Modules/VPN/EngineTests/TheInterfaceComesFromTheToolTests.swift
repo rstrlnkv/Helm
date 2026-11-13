@@ -17,6 +17,8 @@ import XCTest
 /// absent on every Mac — with the suite green, because `FakeInterfaces` was keyed
 /// by service id and could therefore be planted with a pair the real store cannot
 /// produce (CLAUDE.md § What not to do, and what breaks if you do).
+///
+/// Past defect: commit a5bb9e0d, «fix(vpn): the tunnel's interface is asked of scutil, by name».
 final class TheInterfaceComesFromTheToolTests: XCTestCase {
 
     /// `scutil --nc status "incy"` on this machine, 2026-08-18, against a live

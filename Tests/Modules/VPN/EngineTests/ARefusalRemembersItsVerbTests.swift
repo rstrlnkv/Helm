@@ -14,6 +14,8 @@ import HelmRuntime
 /// everything this Mac sends. The same class of sentence
 /// `VPNAutomation.Kind.dropped` exists to warn about, produced by the app itself,
 /// and invisible to every test because the value had no verb in it to be wrong.
+///
+/// Past defect: commit 7851a0c2, «fix(vpn): the tool is asked before the app announces, and a name stops standing in for an identity».
 final class ARefusalRemembersItsVerbTests: XCTestCase {
 
     private let uuid = "11111111-1111-1111-1111-111111111111"

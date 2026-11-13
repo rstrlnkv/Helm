@@ -35,6 +35,8 @@ import XCTest
 /// The fake finishes its prompt: every hang is released in `tearDown`, and every
 /// wait in a test is an expectation with its own bound, so a regression costs
 /// seconds and never the suite.
+///
+/// Past defect: commit ed737900, «fix: scutil reads have a deadline and read the exit status» and backlog rows M104/M278.
 final class AHungScutilDoesNotParkTheModuleTests: XCTestCase {
 
     private static let header = "Available network connection services in the current set (*=enabled):"

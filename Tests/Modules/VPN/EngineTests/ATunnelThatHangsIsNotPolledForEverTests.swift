@@ -18,6 +18,8 @@ import HelmRuntime
 /// good: `VPNCardAction` has a comment about it.
 ///
 /// `listScript` is that repair, and these two tests are what it buys.
+///
+/// Past defect: commit 7851a0c2, «fix(vpn): the tool is asked before the app announces, and a name stops standing in for an identity».
 final class ATunnelThatHangsIsNotPolledForEverTests: XCTestCase {
 
     private let uuid = "11111111-1111-1111-1111-111111111111"

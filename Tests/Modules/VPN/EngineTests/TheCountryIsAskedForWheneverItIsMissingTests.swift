@@ -8,6 +8,8 @@ import XCTest
 /// the state it is really about is «a tunnel is up and has no country». The
 /// difference is a whole class of Mac: one whose VPN comes up at login, before
 /// the menu bar app it is being reported in.
+///
+/// Past defect: commit 428f240b, «feat(0.11): the tunnel comes first, hosts leaves the panel, a launch stops killing the app».
 final class TheCountryIsAskedForWheneverItIsMissingTests: XCTestCase {
 
     private let t0 = Date(timeIntervalSince1970: 1_000_000)

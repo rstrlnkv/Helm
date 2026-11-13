@@ -13,6 +13,8 @@ import HelmRuntime
 /// told when the tunnel went down underneath them and their Mac started sending
 /// in clear. Splitting the kind is only half of it; the settings have to be able
 /// to differ, and the colour must not.
+///
+/// Past defect: commit 50c4088b, «feat(vpn): a tunnel that falls over is its own news, and the page lines up».
 final class ADropIsItsOwnNewsTests: XCTestCase {
     private var settings: VPNSettings!
 

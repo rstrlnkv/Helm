@@ -27,6 +27,8 @@ import HelmRuntime
 /// The sibling path had already learned this. `UnreadableListTests` exists
 /// because `--nc list` answering nothing looked exactly like a Mac with no VPN.
 /// The list was fixed; the two commands were not.
+///
+/// Past defect: commit 34a0e9fc, «fix(vpn): a refused connect is not silence».
 final class ARefusedCommandIsNotSilenceTests: XCTestCase {
 
     // MARK: - The reading

@@ -39,6 +39,8 @@ import XCTest
 /// This is «a reading older than the act» read from the other end: nothing went
 /// stale, something that was still true was thrown away by an ending that had no
 /// news of its own.
+///
+/// Past defect: commit 97fd0d2e, «fix: four readings that said the opposite of what they knew».
 final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
 
     private let header = "Available network connection services:"
