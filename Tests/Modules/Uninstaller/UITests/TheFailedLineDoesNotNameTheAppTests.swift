@@ -1,6 +1,6 @@
 import HelmRuntime
 import XCTest
-import Module_Uninstaller_Engine
+@testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
 /// **The view model's «failed to trash» line is the second place an app's name

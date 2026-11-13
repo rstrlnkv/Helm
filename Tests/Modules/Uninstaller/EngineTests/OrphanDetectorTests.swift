@@ -19,6 +19,8 @@ final class OrphanDetectorTests: XCTestCase {
     }
 
     func testSkipsAppleAndHelmDomains() {
+        XCTAssertFalse(OrphanDetector.isOrphan(name: "com.apple.Safari", installedBundleIDs: installed))
+        XCTAssertFalse(OrphanDetector.isOrphan(name: "com.apple.dt.Xcode", installedBundleIDs: installed))
         XCTAssertFalse(OrphanDetector.isOrphan(name: "com.apple.finder.plist", installedBundleIDs: installed))
         XCTAssertFalse(OrphanDetector.isOrphan(name: "com.helm.app.plist", installedBundleIDs: installed))
     }

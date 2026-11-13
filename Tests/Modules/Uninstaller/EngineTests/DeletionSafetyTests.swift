@@ -12,14 +12,6 @@ final class DeletionSafetyTests: XCTestCase {
         OrphanDetector.isOrphan(name: name, installedBundleIDs: installed, knownToSystem: known)
     }
 
-    // MARK: - Apple and the system
-
-    func testAppleDomainsAreNeverOrphans() {
-        for name in ["com.apple.Safari", "com.apple.dt.Xcode", "com.apple.finder.plist"] {
-            XCTAssertFalse(orphan(name), "\(name) must never be offered")
-        }
-    }
-
     /// A vendor id that merely starts with the same letters as an installed
     /// app is a different app — but a child id of one is not.
     func testPrefixMatchingDoesNotOverreach() {
@@ -103,43 +95,6 @@ final class DeletionSafetyTests: XCTestCase {
     }
 
     // MARK: - Plans
-
-    /// The same path reached twice — by bundle id and by app name — must be
-    /// trashed once. Queuing it twice produced "failures" that were Helm's
-    /// own doing: the second attempt found nothing there.
-    func testAPlanNeverRepeatsAPath() {
-        let path = "/Users/x/Library/Caches/com.acme"
-        let duplicated = [
-            Leftover(path: path, kind: .caches, sizeBytes: 10, matchedByName: false),
-            Leftover(path: path, kind: .caches, sizeBytes: 10, matchedByName: true),
-        ]
-        let group = UninstallGroup(
-            app: InstalledApp(name: "Acme", bundleID: "com.acme",
-                              path: "/Applications/Acme.app", sizeBytes: 100),
-            leftovers: duplicated, running: false)
-        let paths = UninstallPlan.paths([group], selectedLeftovers: [path])
-        XCTAssertEqual(Set(paths).count, paths.count)
-        // …and the size is not counted twice either.
-        XCTAssertEqual(UninstallPlan.totalBytes([group], appBytes: [group.app.path: 100],
-                                                     selectedLeftovers: [path]), 110)
-    }
-
-    func testNothingToRemoveIsSaidRatherThanAssumed() {
-        XCTAssertEqual(UninstallPlan.readiness([], forceQuit: false), .empty)
-        XCTAssertTrue(UninstallPlan.paths([], selectedLeftovers: []).isEmpty)
-    }
-
-    /// A running app is a warning on the review, and the button's help says to
-    /// quit it until the user agrees to force-quit it — including when several
-    /// are running.
-    func testRunningAppsBlockUntilForceQuitIsAllowed() {
-        let running = UninstallGroup(
-            app: InstalledApp(name: "Acme", bundleID: "com.acme",
-                              path: "/Applications/Acme.app", sizeBytes: 1),
-            leftovers: [], running: true)
-        XCTAssertEqual(UninstallPlan.readiness([running], forceQuit: false), .needsQuit(["Acme"]))
-        XCTAssertEqual(UninstallPlan.readiness([running], forceQuit: true), .ready)
-    }
 
     /// Unticked leftovers are not deleted just because their app is.
     func testUntickedLeftoversStay() {

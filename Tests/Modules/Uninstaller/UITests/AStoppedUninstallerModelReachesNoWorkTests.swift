@@ -3,7 +3,7 @@ import HelmRuntime
 import HelmUI
 import HelmContract
 import XCTest
-import Module_Uninstaller_Engine
+@testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
 /// After `stop()` a press on the page reaches no work, no list still in flight

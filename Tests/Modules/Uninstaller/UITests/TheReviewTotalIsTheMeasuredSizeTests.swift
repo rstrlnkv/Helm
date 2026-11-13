@@ -1,7 +1,7 @@
 import HelmRuntime
 import HelmTestSupport
 import XCTest
-import Module_Uninstaller_Engine
+@testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
 /// The review's footer total takes each bundle's size from `measuredSizes`, by

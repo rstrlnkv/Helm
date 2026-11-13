@@ -5,7 +5,7 @@ import Module_Uninstaller_Engine
 
 /// Two steps, AppCleaner-style: tick the apps, then review what was found for
 /// them. Which one the person is on belongs to the module, not to the page.
-public enum UninstallStep: Equatable, Sendable { case pick, review }
+enum UninstallStep: Equatable, Sendable { case pick, review }
 
 /// What the model asks of the engine. A port, so the model's tests hold the
 /// engine's place without a Mac's applications in reach.
@@ -63,36 +63,36 @@ extension UninstallerEngine: UninstallerWork {}
     /// took four seconds, nine on a cold cache — paid on every visit, for a
     /// list that had not changed. Caching the view model alone would not have
     /// helped while the list it produced lived on the page.
-    @Published public private(set) var apps: [InstalledApp] = []
+    @Published private(set) var apps: [InstalledApp] = []
     /// Which sizes have been measured, by path. **Absent means "not measured"**,
     /// which `InstalledApp.sizeBytes == 0` cannot say: the list arrives with
     /// zeros and a bundle that could not be read measures as zero too.
-    @Published public private(set) var measuredSizes: [String: Int] = [:]
+    @Published private(set) var measuredSizes: [String: Int] = [:]
     /// When Spotlight says each app was last opened; `nil` until it has been
     /// asked. An app missing from an answered table has no record.
-    @Published public private(set) var lastOpened: [String: Date]?
+    @Published private(set) var lastOpened: [String: Date]?
     /// Paths the last-opened read did not reach: neither a date nor "no record".
-    @Published public private(set) var lastOpenedUnread: Set<String> = []
+    @Published private(set) var lastOpenedUnread: Set<String> = []
     /// The remembered order, as the engine last said it. The engine owns it.
-    @Published public private(set) var sortOrder: AppSortOrder = .standard
+    @Published private(set) var sortOrder: AppSortOrder = .standard
 
     /// What the list is really ordered by — a stored date order over a Mac where
     /// Spotlight said nothing reads as the name order.
-    public var effectiveSortOrder: AppSortOrder {
+    var effectiveSortOrder: AppSortOrder {
         AppSort.effective(sortOrder, opened: lastOpened)
     }
 
     /// The list in the person's order; search narrows this and never reorders it.
-    public var sortedApps: [InstalledApp] {
+    var sortedApps: [InstalledApp] {
         AppSort.sorted(apps, order: sortOrder, sizes: measuredSizes, opened: lastOpened,
                        unread: lastOpenedUnread)
     }
 
-    public var dateOrderAvailable: Bool { AppSort.dateOrderAvailable(lastOpened) }
+    var dateOrderAvailable: Bool { AppSort.dateOrderAvailable(lastOpened) }
 
     /// True while the names are being fetched. Sizes land afterwards and do not
     /// hold the list back — the names are what somebody is looking for.
-    @Published public private(set) var loadingApps = false
+    @Published private(set) var loadingApps = false
     /// Whether the list has ever been **answered**, which is not the same as
     /// having been asked for: before the page's first `.task` there is no list
     /// and no reason to say «0 apps».
@@ -104,7 +104,7 @@ extension UninstallerEngine: UninstallerWork {}
     /// footer (`AppsEmpty.status(answered:loading:apps:)`) alike: two sources of
     /// "has anybody answered" would drift into a page whose count says
     /// «Counting apps…» over a body claiming the Mac holds no applications.
-    public var listAnswered: Bool { loadedApps }
+    var listAnswered: Bool { loadedApps }
 
     // MARK: - Where the person is, and what they chose
 
@@ -114,21 +114,21 @@ extension UninstallerEngine: UninstallerWork {}
     /// screen threw away a leftovers scan of every ticked app; doing it on the
     /// failure report threw away the only record of what macOS refused and why,
     /// which nothing in the app can produce a second time.
-    @Published public private(set) var step: UninstallStep = .pick
+    @Published private(set) var step: UninstallStep = .pick
     /// Bundle ids ticked on the picker.
-    @Published public private(set) var checked: Set<String> = []
-    @Published public private(set) var groups: [UninstallGroup] = []
-    @Published public private(set) var selectedLeftovers: Set<String> = []
-    @Published public private(set) var failures: [TrashFailureInfo] = []
-    @Published public var forceQuit = false
-    @Published public private(set) var scanning = false
-    @Published public private(set) var busy = false
-    @Published public private(set) var resultBanner: String?
+    @Published private(set) var checked: Set<String> = []
+    @Published private(set) var groups: [UninstallGroup] = []
+    @Published private(set) var selectedLeftovers: Set<String> = []
+    @Published private(set) var failures: [TrashFailureInfo] = []
+    @Published var forceQuit = false
+    @Published private(set) var scanning = false
+    @Published private(set) var busy = false
+    @Published private(set) var resultBanner: String?
 
     /// What the Trash-offer switch is doing, from the engine — the switch's own
     /// position and, when it is on, whether either of the two things it depends on
     /// has refused. See `TrashWatch`.
-    @Published public private(set) var trashWatch: TrashWatch = .off
+    @Published private(set) var trashWatch: TrashWatch = .off
 
     init(work: any UninstallerWork, trashArrivals: AsyncStream<Void>) {
         self.work = work
@@ -173,14 +173,14 @@ extension UninstallerEngine: UninstallerWork {}
 
     /// What the page asks for on appear: the first visit does the work, later
     /// visits show what is already here.
-    public func loadAppsIfNeeded() async {
+    func loadAppsIfNeeded() async {
         guard !closed, !loadedApps else { return }
         await reloadApps()
     }
 
     /// What the Refresh button asks for, and what a removal asks for once it
     /// has changed the list.
-    public func reloadApps() async {
+    func reloadApps() async {
         guard !closed else { return }
         loadingApps = true
         let list = await work.listApps()
@@ -212,13 +212,13 @@ extension UninstallerEngine: UninstallerWork {}
     /// The remembered order, read again on every appearance of the page. The
     /// read is a store's and does not suspend, so no press can land between
     /// asking and assigning.
-    public func refreshSortOrder() async {
+    func refreshSortOrder() async {
         guard !closed else { return }
         sortOrder = work.sortOrder
     }
 
     /// The press answers at once and the engine remembers it.
-    public func setSortOrder(_ order: AppSortOrder) async {
+    func setSortOrder(_ order: AppSortOrder) async {
         sortOrder = order
         work.setSortOrder(order)
     }
@@ -233,26 +233,26 @@ extension UninstallerEngine: UninstallerWork {}
 
     // MARK: - Picking
 
-    public func isChecked(_ bundleID: String) -> Bool { checked.contains(bundleID) }
+    func isChecked(_ bundleID: String) -> Bool { checked.contains(bundleID) }
 
     /// A `com.apple.` app is refused rather than merely undrawn. The row leaves
     /// the checkbox out (`SystemApp.isSystem`), and this is the same rule at the
     /// only place that can put an id into the set — a tick macOS will refuse
     /// costs the person a scan, a click and a failure report to find that out.
-    public func setChecked(_ bundleID: String, _ on: Bool) {
+    func setChecked(_ bundleID: String, _ on: Bool) {
         guard !SystemApp.isSystem(bundleID: bundleID) else { return }
         if on { checked.insert(bundleID) } else { checked.remove(bundleID) }
     }
 
-    public func toggleChecked(_ bundleID: String) { setChecked(bundleID, !isChecked(bundleID)) }
+    func toggleChecked(_ bundleID: String) { setChecked(bundleID, !isChecked(bundleID)) }
 
-    public func clearChecked() { checked.removeAll() }
+    func clearChecked() { checked.removeAll() }
 
     // MARK: - Reviewing
 
-    public func isSelected(leftover path: String) -> Bool { selectedLeftovers.contains(path) }
+    func isSelected(leftover path: String) -> Bool { selectedLeftovers.contains(path) }
 
-    public func setSelected(leftover path: String, _ on: Bool) {
+    func setSelected(leftover path: String, _ on: Bool) {
         if on { selectedLeftovers.insert(path) } else { selectedLeftovers.remove(path) }
     }
 
@@ -260,7 +260,7 @@ extension UninstallerEngine: UninstallerWork {}
     /// measured — a sum with one term missing is a smaller number nobody
     /// measured. Read from `measuredSizes`, which keeps arriving after the review
     /// opened; `groups` is a snapshot and carries the list's zero.
-    public var reviewBytes: Int? {
+    var reviewBytes: Int? {
         guard !groups.isEmpty,
               groups.allSatisfy({ measuredSizes[$0.app.path] != nil }) else { return nil }
         return UninstallPlan.totalBytes(groups, appBytes: measuredSizes, selectedLeftovers: selectedLeftovers)
@@ -270,16 +270,16 @@ extension UninstallerEngine: UninstallerWork {}
     /// with it — the pick screen's own footer draws `resultBanner`, and a
     /// sentence about a batch that was refused for a running app has nothing to
     /// say there.
-    public func backToPick() {
+    func backToPick() {
         step = .pick
         forceQuit = false
         resultBanner = nil
     }
 
-    public func dismissFailures() { failures = [] }
+    func dismissFailures() { failures = [] }
 
     /// Scans every ticked app, then shows the review screen.
-    public func prepareReview() async {
+    func prepareReview() async {
         guard !closed else { return }
         scanning = true
         resultBanner = nil
@@ -325,7 +325,7 @@ extension UninstallerEngine: UninstallerWork {}
     /// read when the review was built, so an app the person had since quit left
     /// the button dead and an app started since then was never asked to quit at
     /// all, and had its bundle moved out from under it.
-    public func removeSelection() async {
+    func removeSelection() async {
         // The model refuses a second run itself rather than trusting the page
         // to have dimmed the button: `.disabled(model.busy)` is a redraw away,
         // and the row menu reaches this by another road.
@@ -387,7 +387,7 @@ extension UninstallerEngine: UninstallerWork {}
     // MARK: - The engine's other doors
 
     /// Leftovers whose app is gone, or nil when the module has been stopped.
-    public func scanOrphans() async -> [OrphanGroup]? {
+    func scanOrphans() async -> [OrphanGroup]? {
         guard !closed else { return nil }
         return await work.scanOrphans()
     }
@@ -400,7 +400,7 @@ extension UninstallerEngine: UninstallerWork {}
     /// It lives here rather than in two `@State`s, which is where it was: the page
     /// kept one for its permission note and the Leftovers tab another for the
     /// switch, and the fact is the module's.
-    public func refreshTrashWatch() async {
+    func refreshTrashWatch() async {
         guard !closed else { return }
         trashWatch = work.trashWatch
     }
@@ -408,7 +408,7 @@ extension UninstallerEngine: UninstallerWork {}
     /// The press answers the switch at once — a `Toggle` would snap back under the
     /// pointer otherwise — and the engine's own reading of what it is now doing
     /// follows immediately.
-    public func setWatchingTrash(_ on: Bool) async {
+    func setWatchingTrash(_ on: Bool) async {
         guard !closed else { return }
         trashWatch = on ? .on : .off
         work.setWatchingTrash(on)
@@ -423,7 +423,7 @@ extension UninstallerEngine: UninstallerWork {}
     /// anyway», and it travels with the batch because the engine is what asks
     /// whether the app is *still* up. The alternative was what this module did:
     /// quit here, from a flag the scan read minutes ago.
-    public func trashPaths(_ paths: [String],
+    func trashPaths(_ paths: [String],
                            quittingRunningApps mayQuit: Bool = false) async -> UninstallResult? {
         guard !closed else { return nil }
         return await work.trashPaths(paths, quittingRunningApps: mayQuit)

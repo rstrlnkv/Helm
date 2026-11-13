@@ -335,7 +335,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                             + "candidate(s) belonging to another installed app")
     }
 
-    func quit(bundleID: String, force: Bool = false) { running.quit(bundleID: bundleID, force: force) }
+    func quit(bundleID: String, force: Bool) { running.quit(bundleID: bundleID, force: force) }
 
     /// Waits for a quit to have actually happened.
     ///

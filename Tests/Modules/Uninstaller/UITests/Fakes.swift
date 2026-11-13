@@ -1,7 +1,7 @@
 import Foundation
 import XCTest
 import HelmRuntime
-import Module_Uninstaller_Engine
+@testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
 // The same two placeholders the engine's tests share, and they are here rather

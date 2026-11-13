@@ -60,7 +60,7 @@ public protocol AppLister: Sendable {
     func trashedApps() -> [TrashedApp]?
 }
 
-public extension AppLister {
+extension AppLister {
     /// What a lister that only lists can answer. `WorkspaceAppLister` overrides
     /// it, because the folders it lists are not where every app lives.
     func installedPaths(forBundleID id: String) -> [String] {
@@ -87,18 +87,18 @@ public protocol FileSystemPort: Sendable {
 }
 
 public struct TrashOutcome: Sendable, Equatable {
-    public let succeeded: Bool
+    let succeeded: Bool
     /// Cocoa error code when it failed (0 when it succeeded or was unknown).
-    public let errorCode: Int
-    public let message: String
+    let errorCode: Int
+    let message: String
 
-    public init(succeeded: Bool, errorCode: Int = 0, message: String = "") {
+    init(succeeded: Bool, errorCode: Int = 0, message: String = "") {
         self.succeeded = succeeded
         self.errorCode = errorCode
         self.message = message
     }
 
-    public static let success = TrashOutcome(succeeded: true)
+    static let success = TrashOutcome(succeeded: true)
 }
 
 public protocol TrashPort: Sendable {

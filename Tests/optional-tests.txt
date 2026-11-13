@@ -217,7 +217,6 @@ PointerNudgeIsAnnouncedTests
 PopularityRefreshTests
 PreviewRowIdentityTests
 RefusalReasonTests
-RefusedPathsAreOneListTests
 ReleaseDigestFootprintTests
 RemovalOutcomeTests
 RenamePatternSubstitutionTests
@@ -366,7 +365,6 @@ ThreeButtonsSpellOneListTests
 TimerPolicyTests
 TrashArrivalTests
 TrashIsNotFreedSpaceTests
-TrashOfferMemoryTests
 TrashOfferSizeTests
 TrashedAppTests
 TreeBuilderTests
@@ -375,6 +373,7 @@ TwoScansLandInRequestOrderTests
 TwoWayConversionTests
 TypingBufferTests
 UninstallNamesWhatStillNeedsItTests
+UninstallPlanFiguresTests
 UninstallerDuplicateBundleIDTests
 UninstallerEngineTests
 UninstallerOrphanScanTests

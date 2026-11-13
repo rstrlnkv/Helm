@@ -3,7 +3,7 @@ import HelmRuntime
 import HelmTestSupport
 import SwiftUI
 import XCTest
-import Module_Uninstaller_Engine
+@testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
 /// **The Apps tab's sort at the inputs its first tests did not feed in.**

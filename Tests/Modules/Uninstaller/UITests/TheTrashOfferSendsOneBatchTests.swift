@@ -1,7 +1,7 @@
 import HelmRuntime
 import HelmTestSupport
 import XCTest
-import Module_Uninstaller_Engine
+@testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
 /// **The fifth model that trashes, and the one a scan by file name would miss.**

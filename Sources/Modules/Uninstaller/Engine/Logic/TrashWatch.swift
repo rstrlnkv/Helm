@@ -39,7 +39,7 @@ public enum TrashWatch: String, Sendable, CaseIterable {
     /// the Trash read is answered by the switch's own press and by every sweep
     /// after it. Treating an unknown as a failure would put a permission note on
     /// the screen of everybody who has just turned the switch on.
-    public static func state(on: Bool, watching: Bool?, trashReadable: Bool?) -> TrashWatch {
+    static func state(on: Bool, watching: Bool?, trashReadable: Bool?) -> TrashWatch {
         guard on else { return .off }
         // A stream that never started is the stronger fact: with nothing watching,
         // whether the Trash reads decides nothing.

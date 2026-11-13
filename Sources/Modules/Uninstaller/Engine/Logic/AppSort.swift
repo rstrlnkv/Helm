@@ -23,7 +23,7 @@ public enum AppSortOrder: String, CaseIterable, Sendable {
     /// any process running as the user can write, so an unknown spelling reads
     /// as the standard order rather than as an error nobody can act on. A case
     /// retired later is kept in the enum and mapped here, never deleted.
-    public init(stored raw: String?) {
+    init(stored raw: String?) {
         self = raw.flatMap(AppSortOrder.init(rawValue:)) ?? .standard
     }
 }
@@ -40,7 +40,7 @@ public struct AppOpenedReading: Equatable, Sendable {
     public let opened: [String: Date]
     /// Paths this read never got to.
     public let unread: [String]
-    public init(opened: [String: Date], unread: [String] = []) {
+    init(opened: [String: Date], unread: [String] = []) {
         self.opened = opened
         self.unread = unread
     }

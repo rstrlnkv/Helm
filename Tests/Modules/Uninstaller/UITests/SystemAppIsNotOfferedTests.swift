@@ -1,5 +1,5 @@
 import XCTest
-import Module_Uninstaller_Engine
+@testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
 /// Safari, listed at "0 Б", with a checkbox.

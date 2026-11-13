@@ -6,7 +6,7 @@ public struct InstalledApp: Equatable, Sendable {
     public let bundleID: String
     public let path: String
     public let sizeBytes: Int
-    public init(name: String, bundleID: String, path: String, sizeBytes: Int) {
+    init(name: String, bundleID: String, path: String, sizeBytes: Int) {
         self.name = name; self.bundleID = bundleID; self.path = path; self.sizeBytes = sizeBytes
     }
 }
@@ -21,7 +21,7 @@ public struct Leftover: Equatable, Sendable {
     public let kind: LeftoverKind
     public let sizeBytes: Int
     public let matchedByName: Bool
-    public init(path: String, kind: LeftoverKind, sizeBytes: Int, matchedByName: Bool) {
+    init(path: String, kind: LeftoverKind, sizeBytes: Int, matchedByName: Bool) {
         self.path = path; self.kind = kind; self.sizeBytes = sizeBytes; self.matchedByName = matchedByName
     }
 }
@@ -29,7 +29,7 @@ public struct Leftover: Equatable, Sendable {
 public struct ScanResult: Equatable, Sendable {
     public let leftovers: [Leftover]
     public let runningNow: Bool
-    public init(leftovers: [Leftover], runningNow: Bool) {
+    init(leftovers: [Leftover], runningNow: Bool) {
         self.leftovers = leftovers; self.runningNow = runningNow
     }
 }
@@ -51,7 +51,7 @@ public struct TrashedAppLeftovers: Equatable, Sendable {
     public let appPath: String
     public let leftovers: [Leftover]
 
-    public init(bundleID: String, name: String, appPath: String, leftovers: [Leftover]) {
+    init(bundleID: String, name: String, appPath: String, leftovers: [Leftover]) {
         self.bundleID = bundleID; self.name = name
         self.appPath = appPath; self.leftovers = leftovers
     }
@@ -79,7 +79,7 @@ public struct TrashFailureInfo: Equatable, Sendable, Identifiable {
     public let reason: TrashFailure.Reason
     /// What macOS said, verbatim — the sheet shows it under the reason.
     public let message: String
-    public init(path: String, reason: TrashFailure.Reason, message: String = "") {
+    init(path: String, reason: TrashFailure.Reason, message: String = "") {
         self.path = path; self.reason = reason; self.message = message
     }
 }
@@ -110,7 +110,7 @@ public struct UninstallResult: Equatable, Sendable {
     /// the person's own "no", which takes it off every screen Helm has.
     public var failed: [String] { failures.map(\.path) }
 
-    public init(trashed: [String], freedBytes: Int, failures: [TrashFailureInfo] = [],
+    init(trashed: [String], freedBytes: Int, failures: [TrashFailureInfo] = [],
                 stillRunning: [String] = []) {
         self.trashed = trashed; self.freedBytes = freedBytes
         self.failures = failures; self.stillRunning = stillRunning
@@ -122,7 +122,7 @@ public struct OrphanGroup: Equatable, Sendable {
     public let bundleID: String
     public let leftovers: [Leftover]
     public var totalBytes: Int { leftovers.reduce(0) { $0 + $1.sizeBytes } }
-    public init(bundleID: String, leftovers: [Leftover]) {
+    init(bundleID: String, leftovers: [Leftover]) {
         self.bundleID = bundleID; self.leftovers = leftovers
     }
 }

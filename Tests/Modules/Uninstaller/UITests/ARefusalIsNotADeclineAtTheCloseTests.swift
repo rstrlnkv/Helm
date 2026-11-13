@@ -1,7 +1,7 @@
 import HelmRuntime
 import HelmTestSupport
 import XCTest
-import Module_Uninstaller_Engine
+@testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
 /// **The record `TrashOfferPlan.answered` refuses to write is written anyway,

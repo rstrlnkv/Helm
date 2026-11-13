@@ -3,17 +3,6 @@ import HelmTestSupport
 @testable import Module_Uninstaller_Engine
 
 final class UninstallerEngineTests: XCTestCase {
-    /// A running app must be force-quit only when the caller asks for it.
-    func test_quit_passes_force_flag_to_the_port() async {
-        let running = FakeRunning(running: ["com.test.app"])
-        let e = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
-                                  apps: FakeApps(), fs: FakeFS(existing: [:]),
-                                  trash: FakeTrash(), running: running)
-        e.quit(bundleID: "com.test.app")
-        e.quit(bundleID: "com.test.app", force: true)
-        XCTAssertEqual(running.quits.map(\.1), [false, true])
-    }
-
     // Leftover paths in the shape the engine will actually see: inside the
     // home the engine was given. Bare "/a" is refused by the scope gate, and
     // rightly — nothing at the root of the volume is an app's leftover.

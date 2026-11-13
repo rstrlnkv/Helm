@@ -37,10 +37,9 @@ private struct StubApps: AppLister {
 /// > as "we looked and it was clean".
 ///
 /// `DuplicatesEngine.backgroundScan` honours it — a refused root returns nil.
-/// `UninstallerEngine.backgroundScan` has **no path to nil at all**: it awaits
-/// `scanOrphans()`, which returns a non-optional array, and wraps whatever came
-/// back. Every failure this module can have therefore arrives at the journal
-/// spelled «проверено, чисто».
+/// `UninstallerEngine.backgroundScan` returns nil when `~/Library` cannot be
+/// seen (`checks.library`) and when the installed-apps reading is empty while
+/// the Library is not (`checks.installed`); the two tests below reach one guard each.
 final class UninstallerBackgroundScanHonestyTests: XCTestCase {
 
     private let home = URL(fileURLWithPath: "/Users/x")
@@ -50,22 +49,7 @@ final class UninstallerBackgroundScanHonestyTests: XCTestCase {
                           running: NoRunning())
     }
 
-    /// The no-permission case, which is the ordinary one: Helm is installed,
-    /// Full Disk Access has not been granted (or was dropped by a new build —
-    /// the project's own notes say every local install drops it), and every
-    /// listing under `~/Library` comes back empty.
-    ///
-    /// Nine directories, not one entry between them. `~/Library/Preferences`
-    /// alone holds hundreds of files on any Mac that has been switched on. This
-    /// is a reading that did not happen, and it is recorded as a scan that ran.
-    func testAnEntirelyUnreadableLibraryIsNotACleanScan() async {
-        let report = await engine(SilentFS()).backgroundScan()
-        XCTAssertNil(report,
-                     "nine unreadable directories were reported as a scan that found nothing")
-    }
-
-    /// The same thing said without relying on how many directories were silent:
-    /// the home Helm was given has no `~/Library` in it at all. There is no Mac
+    /// The no-permission case: the home Helm was given has no `~/Library` in it at all. There is no Mac
     /// in that state — it means the port could not see the home — and the scan
     /// still answers with a finished, empty report.
     func testAHomeWithoutALibraryIsNotACleanScan() async {
@@ -91,13 +75,14 @@ final class UninstallerBackgroundScanHonestyTests: XCTestCase {
         var fs = SilentFS()
         fs.existing = ["/Users/x/Library"]
         fs.listings = [
+            "/Users/x/Library": ["Caches"],
             "/Users/x/Library/Application Support": ["com.acme.tool", "com.other.app"],
             "/Users/x/Library/Caches": ["com.acme.tool", "com.other.app"],
             "/Users/x/Library/Preferences": ["com.acme.tool.plist", "com.other.app.plist"],
         ]
         // The reading failed: no apps, and LaunchServices answers for none either.
         let report = await engine(fs, apps: StubApps(installed: [], known: [])).backgroundScan()
-        XCTAssertNotEqual(report?.count, 6,
+        XCTAssertNil(report,
                           "an empty installed-apps set turned every entry in ~/Library "
                           + "into a removal candidate")
     }

@@ -54,19 +54,19 @@ public enum UninstallPlan {
     }
 
     /// An application that is up at the moment a batch is about to move.
-    public struct RunningApp: Equatable, Sendable {
+    struct RunningApp: Equatable, Sendable {
         /// The bundle in the batch, as the batch spells it.
-        public let path: String
-        public let bundleID: String
+        let path: String
+        let bundleID: String
 
-        public init(path: String, bundleID: String) {
+        init(path: String, bundleID: String) {
             self.path = path
             self.bundleID = bundleID
         }
     }
 
     /// What a batch may do about the applications that are up.
-    public enum RunningVerdict: Equatable, Sendable {
+    enum RunningVerdict: Equatable, Sendable {
         case proceed
         /// Ask each of these to quit, wait for it to be gone, then move.
         case quitFirst([RunningApp])
@@ -89,7 +89,7 @@ public enum UninstallPlan {
     /// and leaves the app running to write them back — the half-uninstall
     /// `waitUntilGone` exists to prevent. Nothing moves, the review stays, and the
     /// person can untick the app or allow the quit.
-    public static func verdict(running: [RunningApp], mayQuit: Bool) -> RunningVerdict {
+    static func verdict(running: [RunningApp], mayQuit: Bool) -> RunningVerdict {
         guard !running.isEmpty else { return .proceed }
         return mayQuit ? .quitFirst(running) : .refuse(running)
     }

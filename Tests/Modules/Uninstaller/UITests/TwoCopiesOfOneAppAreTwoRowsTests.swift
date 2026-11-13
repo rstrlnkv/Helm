@@ -2,7 +2,7 @@ import HelmRuntime
 import HelmTestSupport
 import SwiftUI
 import XCTest
-import Module_Uninstaller_Engine
+@testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
 /// **One bundle id, two things on disk — and two lists still identify by the

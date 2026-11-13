@@ -1,6 +1,6 @@
 import HelmRuntime
 import XCTest
-import Module_Uninstaller_Engine
+@testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
 /// **The Leftovers tab starts a removal from a `busy` flag with nothing
