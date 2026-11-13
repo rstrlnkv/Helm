@@ -31,4 +31,11 @@ final class WindowPickTests: XCTestCase {
         XCTAssertEqual(home?.part, CGRect(x: 1000, y: 100, width: 300, height: 300))
         XCTAssertNil(WindowPick.home(of: CGRect(x: 5000, y: 0, width: 10, height: 10), among: displays))
     }
+
+    /// A window that only touches a display's edge has no part on it: nothing is cut.
+    func testAWindowThatOnlyTouchesADisplaysEdgeBelongsToNone() {
+        let displays = [(id: DisplayID(1), frame: CGRect(x: 0, y: 0, width: 1000, height: 800))]
+        XCTAssertNil(WindowPick.home(of: CGRect(x: 100, y: 800, width: 200, height: 50), among: displays))
+        XCTAssertNil(WindowPick.home(of: CGRect(x: 1000, y: 100, width: 50, height: 200), among: displays))
+    }
 }
