@@ -22,8 +22,8 @@ public final class ScanStore: @unchecked Sendable {
     /// without the question every test that renders Disk's page read theirs:
     /// `DiskViewModel` takes its store as a defaulted argument, so a model built
     /// by `DiskDescriptor.makeModule`, which passes no store, restores whatever
-    /// that file holds once the page calls `appear()`, on a detached task that
-    /// races the render's settle loop. `restoreLastScan` also calls `clear()`
+    /// that file holds once the page calls `appear()`, off the cooperative pool, racing
+    /// the render's settle loop. `restoreLastScan` also calls `clear()`
     /// when the saved root has gone, so a suite run could *delete* their cache
     /// and not only read it. `TheSuiteDoesNotReadTheUsersLastScanTests` carries
     /// what it cost the ratchets, in layers and in seconds.
@@ -51,7 +51,7 @@ public final class ScanStore: @unchecked Sendable {
     /// nothing on the screen would ever mention it.
     ///
     /// It reports to the log rather than upward. There is nobody upward:
-    /// `saveDetached` is the app's only caller and it is a detached task with no
+    /// `saveDetached` is the app's only caller and it is a fire-and-forget task with no
     /// continuation, by construction and for a good reason — the encode is 81 ms
     /// of a full index of the volume and it used to run on the main actor. The
     /// log is a surface the person can open (`LogView` shows the tail live), so
@@ -77,16 +77,11 @@ public final class ScanStore: @unchecked Sendable {
     /// happen on the main actor, so opening Disk Space froze for a tenth of a
     /// second and every scan and every basket emptying froze again.
     public func loadDetached() async -> Cached? {
-        let url = fileURL
-        return await Task.detached(priority: .userInitiated) {
-            guard let data = try? Data(contentsOf: url) else { return nil }
-            return try? JSONDecoder().decode(Cached.self, from: data)
-        }.value
+        await offTheCooperativePool { self.load() }
     }
 
     public func saveDetached(_ result: ScanResult, at date: Date = Date()) {
-        let store = self
-        Task.detached(priority: .utility) { store.save(result, at: date) }
+        Task { await offTheCooperativePool(qos: .utility) { self.save(result, at: date) } }
     }
 
     public func clear() { try? FileManager.default.removeItem(at: fileURL) }

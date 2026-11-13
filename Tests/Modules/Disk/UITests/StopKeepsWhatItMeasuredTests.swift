@@ -125,7 +125,7 @@ final class StopKeepsWhatItMeasuredTests: XCTestCase {
 
         await dvm.emptyBasket()
         XCTAssertEqual(dvm.removedCount, 1, "precondition: the removal ran")
-        // `saveDetached` is a detached task, so absence is only meaningful after
+        // `saveDetached` is fire-and-forget, so absence is only meaningful after
         // giving it room to land. The same wait sees the save in
         // `testTrashingFromAFinishedTreeDoesWriteItToTheStore` below, which is
         // what makes this assertion mean something.

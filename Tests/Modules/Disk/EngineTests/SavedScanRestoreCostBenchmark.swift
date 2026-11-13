@@ -7,7 +7,7 @@ import HelmTestSupport
 /// keep.
 ///
 /// `ScanStore.loadDetached` decodes `last-scan.json` with `JSONDecoder` on a
-/// detached task — **no phase names it**, so in `helm.log` its cost appears as
+/// off-pool task — **no phase names it**, so in `helm.log` its cost appears as
 /// a footprint jump beside «no phases running». Measured against the owner's
 /// real file (8 723 079 bytes, 45 081 nodes, probe of 2026-08-16, three rounds
 /// agreeing): the decode holds a transient peak of 39.6–39.8 MB over start on
@@ -111,7 +111,7 @@ final class SavedScanRestoreCostBenchmark: XCTestCase {
         }
     }
 
-    /// The write side of the same file. `saveDetached` runs on a detached task
+    /// The write side of the same file. `saveDetached` runs off the cooperative pool
     /// after every finished scan and every basket emptying — also with no
     /// phase — so its transient lands in the same no-phase window the samples
     /// show. Recorded here so the encode has a number beside the decode's.

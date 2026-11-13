@@ -64,7 +64,7 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
     private func model(_ work: HeldWork) -> (DiskViewModel, ScanStore) {
         // A store of its own: the module's real one is the person's own last
         // scan, and `scratchDirectory`'s teardown drains, which is what a save
-        // arriving from the view model's own detached task needs.
+        // arriving from the view model's own fire-and-forget task needs.
         let store = ScanStore(directory: scratchDirectory("disk-unfinished"))
         return (DiskViewModel(work: work, store: store), store)
     }

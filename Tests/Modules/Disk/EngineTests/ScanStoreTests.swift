@@ -25,6 +25,21 @@ final class ScanStoreTests: XCTestCase {
         XCTAssertEqual(loaded.savedAt, Date(timeIntervalSince1970: 1_800_000_000))
     }
 
+    /// The detached save is fire-and-forget; it must still carry the date it was given.
+    func testDetachedSaveKeepsTheDateItWasGiven() async throws {
+        let saved = result(root: "/", bytes: 1000)
+        let date = Date(timeIntervalSince1970: 1_800_000_000)
+        store.saveDetached(saved, at: date)
+        var loaded = store.load()
+        for _ in 0..<200 where loaded == nil {
+            try await Task.sleep(nanoseconds: 25_000_000)
+            loaded = store.load()
+        }
+        let cached = try XCTUnwrap(loaded)
+        XCTAssertEqual(cached.result, saved)
+        XCTAssertEqual(cached.savedAt, date)
+    }
+
     func testNothingSavedYet() {
         XCTAssertNil(store.load())
     }
