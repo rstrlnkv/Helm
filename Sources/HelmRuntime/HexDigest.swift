@@ -18,8 +18,8 @@ import Foundation
 /// once per group on every `ForEach` diff, which is a render path. Measured at
 /// `-O` over 100.000 SHA-256 digests, three runs agreeing: 2.25 s the old way
 /// against 0.033 s this way, 22.3 µs a digest against 0.33 µs. The answer is
-/// identical for all 256 byte values, which is what `HexDigestTests` pins —
-/// against the old line written out, not against this one.
+/// identical for all 256 byte values; the settings seals and the release digest
+/// compare it against strings an earlier build wrote.
 public enum HexDigest {
 
     private static let digits = Array("0123456789abcdef".utf8)

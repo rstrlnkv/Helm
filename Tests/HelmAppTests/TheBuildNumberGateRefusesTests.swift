@@ -21,6 +21,8 @@ import HelmTestSupport
 /// so the script is always given a stub `swift` that fails at once and a
 /// `TMPDIR` confined to scratch, and a red run here costs a second and
 /// touches nothing real.
+///
+/// Past defect: commit 6aa086ba, «Pin the build-number gate's git calls and refuse what they can miss».
 final class TheBuildNumberGateRefusesTests: XCTestCase {
 
     private struct Run {

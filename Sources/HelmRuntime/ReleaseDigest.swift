@@ -37,7 +37,7 @@ public enum ReleaseDigest {
 
     /// 64 lowercase hex characters and nothing else: a truncated or decorated
     /// digest must not compare equal to anything.
-    public static func isHexDigest(_ value: String) -> Bool {
+    static func isHexDigest(_ value: String) -> Bool {
         value.count == 64 && value.allSatisfy { $0.isHexDigit && !$0.isUppercase }
     }
 
@@ -51,7 +51,7 @@ public enum ReleaseDigest {
     /// 1204 MB of growth without the pool against 1.0 MB with it. This is the
     /// same defect the duplicate scanner's hash loop had, in a loop that is not
     /// even parallel — see ARCHITECTURE.md § Module pattern.
-    public static func sha256(ofFileAt url: URL) throws -> String {
+    static func sha256(ofFileAt url: URL) throws -> String {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
         var hasher = SHA256()

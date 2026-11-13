@@ -6,7 +6,7 @@ import XCTest
 /// `lastUpdateCheck` is an `Int` in `UserDefaults`, and `checkOnLaunch` did
 /// `now - last` with it — from `applicationDidFinishLaunching`. `Int.min`
 /// there **overflows the subtraction** and traps, so
-/// `defaults write com.helm.app lastUpdateCheck -int -9223372036854775808` is
+/// `defaults write com.helm.app module.app.lastUpdateCheck -int -9223372036854775808` is
 /// an app that terminates at launch. The About page reads the same number to
 /// say "checked 2 hours ago".
 final class UpdateStampTests: XCTestCase {

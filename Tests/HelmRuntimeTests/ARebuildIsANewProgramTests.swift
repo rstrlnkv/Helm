@@ -20,6 +20,8 @@ import XCTest
 /// one byte of code. Nothing here reads the app installed on the machine running
 /// the suite; what is installed there is not this test's business, the same
 /// reason `ABundleIdIsNotAnIdentityTests` next door reads `/bin/ls`.
+///
+/// Past defect: commit b134c772, «Аудит разрешений спрашивает подпись, а не версию».
 final class ARebuildIsANewProgramTests: XCTestCase {
 
     private static let codesign = "/usr/bin/codesign"

@@ -22,6 +22,8 @@ import HelmAppStrings
 /// answers in whichever language a run happens to be in. A version number and a
 /// date are literals in both `CHANGELOG.md` and `ChangelogEntry` — `L()` never
 /// touches them — so there is nothing here for a language to change.
+///
+/// Past defect: commit 06dedd9f, «Hold the changelog and the app's list to the same releases».
 final class TheChangelogAndTheAppsListAgreeTests: XCTestCase {
 
     /// One release, named the same way on both sides of the comparison.

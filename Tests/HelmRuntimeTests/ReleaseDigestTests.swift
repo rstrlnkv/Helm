@@ -71,12 +71,27 @@ final class ReleaseDigestTests: XCTestCase {
         XCTAssertFalse(ReleaseDigest.matches(fileAt: gone, expected: good))
     }
 
-    /// The line the release scripts print, to the character: `echo "sha256
-    /// $(basename "$ZIP") $(/usr/bin/shasum -a 256 "$ZIP" | cut -d" " -f1)"` in
-    /// `Scripts/make-zip.sh`, the same for the image in `Scripts/make-dmg.sh`,
-    /// pasted in the release notes between other lines.
-    func testTheLineTheScriptsPrintIsTheLineTheParserReads() {
-        let printed = "sha256 \(asset) \(good)"
-        XCTAssertEqual(ReleaseDigest.parse(notes: "Notes\n\n\(printed)\n", asset: asset), good)
+    /// The line the release scripts print, run: the single `echo "sha256 …"` of
+    /// `Scripts/make-zip.sh` and of `Scripts/make-dmg.sh`, pasted in the release
+    /// notes between other lines. Each is read out of its script and run with
+    /// `/bin/bash` on a scratch file, so a changed `cut` field, a changed name
+    /// or a removed echo fails here instead of passing against a hand-built copy.
+    func testTheLineTheScriptsPrintIsTheLineTheParserReads() throws {
+        let dir = scratchDirectory("digestline")
+        for (script, variable, name) in [("Scripts/make-zip.sh", "ZIP", "Helm-0.7.1-dev.10.zip"),
+                                         ("Scripts/make-dmg.sh", "DMG", "Helm-0.7.1-dev.10.dmg")] {
+            let lines = try RepoSource.lines(of: script).filter { $0.hasPrefix(#"echo "sha256 "#) }
+            XCTAssertEqual(lines.count, 1, "\(script) must print exactly one digest line")
+            guard let line = lines.first else { continue }
+
+            let file = dir.appendingPathComponent(name)
+            try Data("the real release".utf8).write(to: file)
+            let ran = HelmProcess.run("/bin/bash", ["-c", line],
+                                      env: ["PATH": "/usr/bin:/bin", variable: file.path])
+            XCTAssertEqual(ran.status, 0, "\(script): the digest line did not run")
+            XCTAssertEqual(ReleaseDigest.parse(notes: "Notes\n\n\(ran.output)\nMore\n", asset: name),
+                           try ReleaseDigest.sha256(ofFileAt: file),
+                           "\(script): the line it prints is not the line the parser reads")
+        }
     }
 }

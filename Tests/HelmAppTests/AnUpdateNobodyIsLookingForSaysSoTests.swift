@@ -6,6 +6,9 @@ import HelmAppStrings
 
 /// The other half of the update check.
 ///
+/// **Past defect: a release found while nobody looked left only a log line** (866b17a0,
+/// the commit that added the announcement and this class).
+///
 /// `UpdateCheck` decides what a GitHub response means and eight suites hold it —
 /// and the answer went into a published property that exactly one view reads, on
 /// the About page, inside a settings window a menu-bar app does not open by

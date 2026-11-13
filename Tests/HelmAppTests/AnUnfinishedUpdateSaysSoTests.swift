@@ -81,7 +81,7 @@ final class AnUnfinishedUpdateSaysSoTests: XCTestCase {
     /// (`AFailedCopyKeepsTheInstalledAppTests`); this pins the half
     /// that decides what the script is given and when.
     func testTheAppWritesTheNoteBeforeItHandsOver() throws {
-        let source = try RepoSource.text(of: "Sources/HelmApp/Installer.swift")
+        let source = SwiftSource.uncommented(try RepoSource.text(of: "Sources/HelmApp/Installer.swift"))
         XCTAssertGreaterThan(source.count, 2000, "the installer was not read at all")
 
         let note = try XCTUnwrap(source.range(of: "UpdateHandoff.note("),

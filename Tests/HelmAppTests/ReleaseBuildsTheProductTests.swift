@@ -19,6 +19,8 @@ import HelmTestSupport
 /// build — it is here so the flag names something the manifest says exists,
 /// rather than the product SwiftPM synthesises for an executable target, which
 /// a rename would take away without a word.
+///
+/// Past defect: commit 5e153dfa, «build: the release build builds the app, not the package»; backlog #32 (a flag moved into a trailing comment).
 final class ReleaseBuildsTheProductTests: XCTestCase {
 
     /// Assert the hazard is real before asserting it is fenced off. A test that

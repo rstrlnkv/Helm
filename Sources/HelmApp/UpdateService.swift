@@ -53,7 +53,8 @@ import HelmAppStrings
         case cannotReplaceItself
     }
 
-    @Published private(set) var available: Release?
+    /// Settable from the module so a test can stand an offer in place before `decline`.
+    @Published var available: Release?
     /// What the channel's newest release is, when the running build is a
     /// prerelease ahead of it. Nil in every other state, including while an
     /// update is on offer.
@@ -97,29 +98,18 @@ import HelmAppStrings
     /// The tag as published, never a parsed version: see `UpdateNews.version`.
     static let lastAnnouncedKey = "lastAnnouncedUpdate"
 
-    /// The release cannot be installed from inside Helm, and the browser has
-    /// been sent to the page instead.
+    /// The release cannot be installed from inside Helm, or this build cannot
+    /// be replaced by a published bundle, and the browser has been sent to the
+    /// page instead.
     ///
     /// **The offer goes with it.** The card asks about `available` before it
     /// asks about the note, so leaving the release in place kept «Update ready»
     /// and «Update & Relaunch» on screen while a browser opened by itself — the
     /// exact reading the note was written to prevent. The offer is not on offer
     /// any more: Helm has just declined to take it.
-    func noteManualInstall() {
+    func decline(_ note: Note) {
         installState = .idle
-        note = .manualInstall
-        available = nil
-    }
-
-    /// This build cannot be replaced by a published bundle, and the browser has
-    /// been sent to the page instead.
-    ///
-    /// **The offer goes with it**, for the reason `noteManualInstall` gives: the
-    /// card asks about `available` before it asks about the note, so a release
-    /// left standing keeps «Update & Relaunch» on screen over a refusal.
-    func noteCannotReplaceItself() {
-        installState = .idle
-        note = .cannotReplaceItself
+        self.note = note
         available = nil
     }
 
@@ -200,7 +190,7 @@ import HelmAppStrings
         // being told, at every press, and read the refusal as «install failed».
         guard AppBuild.takesPublishedBuilds else {
             HelmLog.shared.warn("update", "this build is not \(AppBuild.releaseIdentifier) — manual install")
-            noteCannotReplaceItself()
+            decline(.cannotReplaceItself)
             NSWorkspace.shared.open(rel.pageURL)
             return
         }
@@ -210,7 +200,7 @@ import HelmAppStrings
             // so the card went on offering to install what it had just sent
             // somebody else to fetch.
             HelmLog.shared.warn("update", "no installable asset for \(rel.version) — manual install")
-            noteManualInstall()
+            decline(.manualInstall)
             NSWorkspace.shared.open(rel.pageURL)
             return
         }
@@ -232,7 +222,7 @@ import HelmAppStrings
                     // The browser opening on its own, with the row still saying
                     // "update available", reads as the button having done
                     // nothing. Say why before the window goes away.
-                    noteManualInstall()
+                    decline(.manualInstall)
                     NSWorkspace.shared.open(rel.pageURL)
                     return
                 }

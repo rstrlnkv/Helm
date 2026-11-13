@@ -93,7 +93,7 @@ public enum AppBuild {
     public static func isDevIdentifier(_ identifier: String?) -> Bool { identifier == devIdentifier }
 
     /// The Application Support folder name this build writes under.
-    public static var dataFolder: DataFolder { DataFolder.of(identifier: Bundle.main.bundleIdentifier) }
+    static var dataFolder: DataFolder { DataFolder.of(identifier: Bundle.main.bundleIdentifier) }
 
     /// Whether a published bundle can stand where this one stands.
     ///
@@ -115,7 +115,7 @@ public enum AppBuild {
     /// half a test can reach, since a test runner cannot be given a bundle id.
     /// Nil is not the release: a bundle that will not say what it is does not
     /// get a published program written over it.
-    public static func isReleaseIdentifier(_ identifier: String?) -> Bool {
+    static func isReleaseIdentifier(_ identifier: String?) -> Bool {
         identifier == releaseIdentifier
     }
 

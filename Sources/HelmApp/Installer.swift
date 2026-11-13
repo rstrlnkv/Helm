@@ -78,18 +78,18 @@ enum Installer {
         return items.first { $0.pathExtension == "app" }
     }
 
+    private static func info(ofBundleAt app: URL) -> NSDictionary? {
+        NSDictionary(contentsOf: app.appendingPathComponent("Contents/Info.plist"))
+    }
+
     private static func version(ofBundleAt app: URL) -> String? {
-        let plist = app.appendingPathComponent("Contents/Info.plist")
-        guard let dict = NSDictionary(contentsOf: plist) else { return nil }
-        return dict["CFBundleShortVersionString"] as? String
+        info(ofBundleAt: app)?["CFBundleShortVersionString"] as? String
     }
 
     /// What a bundle on disk calls itself. Read exactly the way its version is
     /// read one function up, so the two answers come from one plist.
     static func identifier(ofBundleAt app: URL) -> String? {
-        let plist = app.appendingPathComponent("Contents/Info.plist")
-        guard let dict = NSDictionary(contentsOf: plist) else { return nil }
-        return dict["CFBundleIdentifier"] as? String
+        info(ofBundleAt: app)?["CFBundleIdentifier"] as? String
     }
 
     /// Whether the bundle calls itself the installed program. A missing

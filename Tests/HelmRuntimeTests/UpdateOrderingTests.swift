@@ -6,6 +6,9 @@ import XCTest
 /// `max(by:)` trusts the predicate to be a strict weak ordering. If it is not,
 /// the "newest" release depends on the order GitHub happened to return, which
 /// is creation date — not version.
+///
+/// **Past defect: an offer that depended on GitHub's order** (5f196564, the fix commit
+/// that added this class).
 final class UpdateOrderingTests: XCTestCase {
 
     /// Helm's real published tags, oldest first, including the dev prerelease
@@ -83,6 +86,9 @@ struct SeededGenerator: RandomNumberGenerator {
 /// The list endpoint returns releases newest-*created* first, which is not the
 /// same as newest-versioned: a hotfix cut on an old branch, or a re-published
 /// release, lands at the top with an older tag.
+///
+/// **Past defect: the same offer depending on GitHub's order** (5f196564, with the
+/// class above).
 final class UpdateListOrderTests: XCTestCase {
     private func release(_ tag: String, prerelease: Bool = true) -> String {
         """

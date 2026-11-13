@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Helm
 
 import XCTest
-import HelmRuntime
+@testable import HelmRuntime
 import HelmTestSupport
 @testable import HelmApp
 
@@ -39,7 +39,7 @@ final class AnUpdateDoesNotSwapOneProgramForAnotherTests: XCTestCase {
     }
 
     func testTheRefusalStandsBeforeAnythingIsMoved() throws {
-        let source = try RepoSource.text(of: "Sources/HelmApp/Installer.swift")
+        let source = SwiftSource.uncommented(try RepoSource.text(of: "Sources/HelmApp/Installer.swift"))
         let body = try XCTUnwrap(SwiftSource.body(of: "installZip", in: source))
         let refusal = try XCTUnwrap(body.range(of: "identityMismatch"))
         let swap = try XCTUnwrap(body.range(of: "launchSwapScript"))
@@ -99,13 +99,15 @@ final class AnUpdateDoesNotSwapOneProgramForAnotherTests: XCTestCase {
 /// phase to arrive at `install failed: identityMismatch`, which is the sentence
 /// a person reads as «Helm is broken» rather than «this copy is not the one that
 /// gets replaced».
+///
+/// Past defect: commit 17631929, «Tell a build that cannot be replaced before it fetches the release».
 final class TheReleaseIsAskedAboutBeforeTheDownloadTests: XCTestCase {
 
     /// The finding: the question is asked before the asset is fetched, not
     /// after. Read from the source because the act it guards is a download —
     /// a test that ran it would be a test that downloads a release.
     func testTheQuestionIsAskedBeforeAnythingIsFetched() throws {
-        let source = try RepoSource.text(of: "Sources/HelmApp/UpdateService.swift")
+        let source = SwiftSource.uncommented(try RepoSource.text(of: "Sources/HelmApp/UpdateService.swift"))
         let body = try XCTUnwrap(SwiftSource.body(of: "downloadAndInstall", in: source))
         let asked = try XCTUnwrap(body.range(of: "takesPublishedBuilds"))
         let fetched = try XCTUnwrap(body.range(of: "URLSession.shared.download"))
