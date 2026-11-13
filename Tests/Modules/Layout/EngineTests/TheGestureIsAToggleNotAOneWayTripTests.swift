@@ -19,6 +19,8 @@ import XCTest
 ///
 /// It knows what is in the field, because it put it there: the word it just
 /// restored, in the app it restored it in.
+///
+/// Guards a past defect: the gesture was a one-way trip and its keys carried the held option key (fix commit `fcc7cb28`).
 final class TheGestureIsAToggleNotAOneWayTripTests: XCTestCase {
 
     private var typing = ToggleTyping()

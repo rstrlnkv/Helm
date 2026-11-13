@@ -233,6 +233,8 @@ final class LeftTapKeyTests: XCTestCase {
 /// each event instead means there is no state left to get stuck.
 ///
 /// Shipped broken in 0.7.2-dev.21, which put the 🌐 key into that set.
+///
+/// Guards a past defect: the tap remembered a modifier that never came back up (fix commit `7abc76f3`).
 final class StuckModifierTests: XCTestCase {
 
     func testATapStillFiresAfterAModifierThatNeverReleased() {
@@ -250,6 +252,8 @@ final class StuckModifierTests: XCTestCase {
 
 /// The tap says why it refused, so a gesture that silently never fires leaves
 /// something behind to read.
+///
+/// Guards a past defect: the tap remembered a modifier that never came back up (fix commit `7abc76f3`).
 final class RefusalReasonTests: XCTestCase {
 
     private let rightCommand = TapKey.rightCommand.keyCode!

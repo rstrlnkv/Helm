@@ -10,6 +10,8 @@ import XCTest
 /// word set aside from the panel landed at the bottom of the list in a spelling
 /// nobody had typed, and the same word set aside twice from two places could be
 /// held twice. `Exceptions.adding` is the one answer all three now ask for.
+///
+/// Guards a past defect: the panel's «Never this word» did not reach the engine (fix commit `ad9c679f`).
 final class ThreeButtonsSpellOneListTests: XCTestCase {
 
     func testTheWordIsKeptAsItWasTyped() {

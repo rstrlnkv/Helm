@@ -25,6 +25,8 @@ import XCTest
 /// revoke a real `CGEvent` tap, so `CGKeyTap.theSystemDisabledUs` calling this
 /// channel is checked by reading it. What is covered is everything after the
 /// call: the state the page draws, and the rebuild on the next activation.
+///
+/// Guards a past defect: the page kept saying the tap was on after macOS took it away (fix commit `53525c9e`).
 @MainActor
 final class TheTapSaysWhenMacOSTakesItAwayTests: XCTestCase {
 

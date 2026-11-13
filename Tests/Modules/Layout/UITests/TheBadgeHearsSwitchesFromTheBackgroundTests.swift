@@ -19,6 +19,8 @@ import HelmTestSupport
 /// A source scan, because the defect is in an argument to a registration call.
 /// An offscreen build registers nothing, and no fake can put a real centre into
 /// the suspended state that produces this.
+///
+/// Guards a past defect: the badge was not told of a switch made in the background (fix commit `12dbe673`).
 final class TheBadgeHearsSwitchesFromTheBackgroundTests: XCTestCase {
 
     private var indicator: String {

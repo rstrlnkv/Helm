@@ -9,6 +9,8 @@ import XCTest
 /// whichever the system happens to list first. So the module converted into a
 /// layout the word has nothing to do with, and the person watched it produce
 /// nonsense and switch their keyboard to a language they were not typing.
+///
+/// Guards a past defect: conversion into the first-listed layout with three input sources (fix commit `134128dd`).
 final class OtherSourceTests: XCTestCase {
 
     private let abc = "com.apple.keylayout.ABC"

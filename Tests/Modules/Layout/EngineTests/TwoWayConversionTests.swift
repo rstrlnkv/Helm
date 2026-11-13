@@ -10,6 +10,8 @@ import XCTest
 /// how "select ghbdtn while Russian is on and press the key" ended up doing
 /// nothing at all: Helm asked for Russian → English, and `g` is not on the
 /// Russian keyboard, so the translation declined and the app stayed silent.
+///
+/// Guards a past defect: a selection was converted in one direction only (fix commit `c5a26610`).
 final class TwoWayConversionTests: XCTestCase {
 
     /// Latin gibberish while Russian is active: the forward direction has
