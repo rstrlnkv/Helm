@@ -1,9 +1,7 @@
 import XCTest
 import HelmTestSupport
-import HelmContract
 import HelmRuntime
-import HelmUI
-import Module_Disk_Engine
+@testable import Module_Disk_Engine
 @testable import Module_Disk_UI
 
 /// What the ring is told about two rows the list already tells apart.

@@ -1,8 +1,6 @@
-import HelmContract
 import HelmTestSupport
-import HelmUI
 import XCTest
-import Module_Disk_Engine
+@testable import Module_Disk_Engine
 @testable import Module_Disk_UI
 
 /// Opening the page **deletes** the saved scan when the folder it measured has

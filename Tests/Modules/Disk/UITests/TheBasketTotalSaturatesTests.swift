@@ -1,9 +1,7 @@
 import XCTest
 import HelmTestSupport
-import HelmContract
 import HelmRuntime
-import HelmUI
-import Module_Disk_Engine
+@testable import Module_Disk_Engine
 @testable import Module_Disk_UI
 
 /// Two rows in the basket that each weigh nearly an integer: `basketBytes` is the

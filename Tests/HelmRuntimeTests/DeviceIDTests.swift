@@ -1,6 +1,5 @@
-import HelmRuntime
 import XCTest
-@testable import Module_Disk_Engine
+@testable import HelmRuntime
 
 /// Regression: a whole-disk scan crashed with "Negative value is not
 /// representable". `dev_t` is signed and synthetic volumes report negative

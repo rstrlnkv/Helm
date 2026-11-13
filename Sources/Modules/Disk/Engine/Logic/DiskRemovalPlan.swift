@@ -67,7 +67,7 @@ public enum DiskRemovalPlan {
     ///
     /// Duplicates are the engine's business — it already takes `Array(Set(…))`,
     /// and `HelmTrash` de-duplicates again for its own reasons.
-    public static func targets(basket: [String], advice: [DiskAdvice]) -> [String] {
+    static func targets(basket: [String], advice: [DiskAdvice]) -> [String] {
         basket.flatMap { path in
             advice.first { $0.path == path }?.targets.map(\.path) ?? [path]
         }

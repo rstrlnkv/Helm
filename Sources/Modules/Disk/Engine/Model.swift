@@ -53,7 +53,7 @@ public struct DiskEntry: Codable, Equatable, Sendable, Identifiable {
     /// `RingLayout` for its own). `DiskAdvice.Target` is held to `0...byteCeiling` in
     /// its initialiser, so every advice figure is, in the current form (`targets`)
     /// and in the older one with only `bytes`, which decodes as one target.
-    public static let byteCeiling = 1 << 50
+    static let byteCeiling = 1 << 50
 
     public init(name: String, path: String, bytes: Int, isDirectory: Bool,
                 noAccess: Bool, children: [DiskEntry], isFolded: Bool = false) {
@@ -108,7 +108,7 @@ public struct ScanResult: Codable, Equatable, Sendable {
     }
 }
 
-public extension DiskEntry {
+extension DiskEntry {
     /// Depth-limited snapshot: the UI never draws more than a few rings, and
     /// encoding a million-node tree would cost more than the scan itself.
     ///

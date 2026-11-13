@@ -1,7 +1,6 @@
 import Foundation
-import HelmContract
 import HelmRuntime
-import Module_Disk_Engine
+@testable import Module_Disk_Engine
 import XCTest
 @testable import Module_Disk_UI
 

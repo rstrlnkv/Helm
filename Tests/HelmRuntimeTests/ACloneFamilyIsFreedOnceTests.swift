@@ -1,8 +1,7 @@
 import Darwin
 import XCTest
-import HelmRuntime
 import HelmTestSupport
-@testable import Module_Disk_Engine
+@testable import HelmRuntime
 
 /// What a removal may say it freed, when the files share their blocks.
 ///

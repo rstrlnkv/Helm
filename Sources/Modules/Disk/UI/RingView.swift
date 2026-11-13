@@ -110,7 +110,7 @@ struct RingView: View {
     }
 
     private func label(for segment: RingSegment, total: Int) -> String {
-        if segment.isFreeSpace { return "\(Bytes(segment.bytes)) \(DkStr.free)" }
+        if segment.isFreeSpace { return DkStr.freeAmount(segment.bytes) }
         let name = segment.isOther ? DkStr.otherItems : displayName(segment)
         let share = Int((Double(segment.bytes) / Double(total) * 100).rounded())
         return DkStr.ringShare(name, Bytes(segment.bytes), share)

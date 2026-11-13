@@ -11,8 +11,7 @@ import HelmUI
 /// list-meets-divider change moved 12 pt from the stack to the master, which
 /// leaves the total the same by arithmetic, not by a reading.
 ///
-/// So **560** carries slack over 521, as `DiskLayout.ringAndList` does over its
-/// own measurement.
+/// So **560** carries slack over 521.
 struct HomebrewSplit {
     let availableWidth: CGFloat
 

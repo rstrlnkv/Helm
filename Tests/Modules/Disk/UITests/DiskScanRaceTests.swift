@@ -1,8 +1,6 @@
 import XCTest
 import HelmTestSupport
-import HelmContract
-import HelmUI
-import Module_Disk_Engine
+@testable import Module_Disk_Engine
 @testable import Module_Disk_UI
 
 /// The two orders of events the ring never survived: a snapshot from a scan the

@@ -3,7 +3,7 @@ import HelmUI
 import XCTest
 import Module_Autopilot_Engine
 import Module_Autopilot_UI
-import Module_Disk_Engine
+@testable import Module_Disk_Engine
 import Module_Disk_UI
 import Module_Duplicates_Engine
 import Module_Duplicates_UI

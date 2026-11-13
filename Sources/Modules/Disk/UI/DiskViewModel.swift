@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 import HelmRuntime
 import HelmUI
@@ -22,51 +21,51 @@ protocol DiskWork: AnyObject, Sendable {
 extension DiskEngine: DiskWork {}
 
 @MainActor public final class DiskViewModel: ObservableObject {
-    public enum Phase: Equatable { case start, scanning, result }
+    enum Phase: Equatable { case start, scanning, result }
 
-    @Published public private(set) var phase: Phase = .start
-    @Published public private(set) var volumes: [VolumeInfo] = []
+    @Published private(set) var phase: Phase = .start
+    @Published private(set) var volumes: [VolumeInfo] = []
     /// When `volumes` was last answered; the wedge weighs it against the scan's own reading.
     private var volumesReadAt: Date?
-    // `internal(set)` rather than `private(set)` on the fields below that the
+    // Plain internal rather than `private(set)` on the fields below that the
     // basket writes: the setter's audience is still this type — its basket half
     // lives in `DiskViewModel+Basket.swift`, and `private` stops at the file.
-    @Published public internal(set) var result: ScanResult?
-    @Published public private(set) var tick: ScanTick?
+    @Published var result: ScanResult?
+    @Published private(set) var tick: ScanTick?
     /// Path stack from the scan root to the folder the ring is showing.
-    @Published public internal(set) var focusPath: [DiskEntry] = []
+    @Published var focusPath: [DiskEntry] = []
     /// Laid-out arcs for the current focus. Cached deliberately: recomputing
     /// layout in the view's body meant a full O(n) relayout on every hover
     /// frame — hovering only changes colours, never geometry.
-    @Published public private(set) var segments: [RingSegment] = []
+    @Published private(set) var segments: [RingSegment] = []
     /// True while partial snapshots are still feeding the ring.
-    @Published public private(set) var live = false
+    @Published private(set) var live = false
     /// The path we just came up out of, so the ring can fold back into the
     /// wedge that represents it instead of cross-fading. Cleared once the ring
     /// has consumed it.
-    @Published public var foldingBackFrom: String?
+    @Published var foldingBackFrom: String?
     /// How many levels that fold covers, so the animation can take the time the
     /// distance deserves.
-    @Published public private(set) var foldingBackLevels: Int = 1
+    @Published private(set) var foldingBackLevels: Int = 1
     /// True while a folder deeper than the scan went is being measured.
-    @Published public private(set) var measuring = false
+    @Published private(set) var measuring = false
     /// The scan root's human name: "Macintosh HD", not "/".
-    @Published public private(set) var rootTitle = ""
+    @Published private(set) var rootTitle = ""
     /// What the last scan measured, so it can be measured again. Without it
     /// "Scan again" had nothing to scan and could only start over — it emptied
     /// the screen and showed the volume picker, which is not what it says.
-    @Published public private(set) var scannedPath: String?
-    @Published public var basket: [DiskEntry] = []
+    @Published private(set) var scannedPath: String?
+    @Published var basket: [DiskEntry] = []
     /// The verdict of the last removal, «Moved to the Trash — …»; nil until one has run.
-    @Published public internal(set) var banner: String?
+    @Published var banner: String?
     /// Paths macOS refused. Announcing only what was freed hides these.
     /// With reasons. This was a list of bare paths, and the page printed the
     /// same sentence against every one of them — including the ones macOS
     /// refused for a reason the person could have acted on.
-    @Published public internal(set) var failures: [HelmTrash.Refusal] = []
+    @Published var failures: [HelmTrash.Refusal] = []
     /// How many actually moved. The banner is built before the outcome is
     /// known, so it cannot be asked whether it is true.
-    @Published public internal(set) var removedCount = 0
+    @Published var removedCount = 0
 
     let work: any DiskWork
     /// Set by `stop()`: the module is switched off or Helm is quitting, and a
@@ -81,9 +80,9 @@ extension DiskEngine: DiskWork {}
     /// last scan.
     let store: ScanStore
     /// When the current result landed; drives the cache lifetime.
-    @Published public private(set) var completedAt: Date?
+    @Published private(set) var completedAt: Date?
     /// True while showing a tree restored from disk rather than just measured.
-    @Published public private(set) var restored = false
+    @Published private(set) var restored = false
     /// True while showing a tree the walk never finished — Stop was pressed.
     ///
     /// Every number in such a tree is a **floor**: `TreeBuilder` charges a
@@ -91,7 +90,7 @@ extension DiskEngine: DiskWork {}
     /// bottom of reports what had been counted so far and nothing about the rest.
     /// The screen has to say so, and the tree must never be saved: the module
     /// reopens on whatever the store holds and calls it a measurement.
-    @Published public private(set) var stopped = false
+    @Published private(set) var stopped = false
 
     /// Whether the tree on screen is a finished measurement, and so worth
     /// keeping for the next launch. The one place that decides it, because the
@@ -103,7 +102,7 @@ extension DiskEngine: DiskWork {}
     /// *running* — so it answered yes about a tree still being built, which is
     /// every removal made from a live ring (the bar is drawn over the snapshot
     /// and dimmed only by `busy`).
-    public var treeIsComplete: Bool { !stopped && !live }
+    var treeIsComplete: Bool { !stopped && !live }
 
     /// Names for scans, handed out in order. Two are in flight whenever
     /// somebody drills into a folder the walk has not reached.
@@ -132,7 +131,7 @@ extension DiskEngine: DiskWork {}
     /// the person's switch and on quit. After it the scan, the drill, the
     /// removal, the volume list and the background scan reach no work, and the
     /// mount observers are taken back out.
-    public func stop() {
+    func stop() {
         closed = true
         showingScan = nextScanID()
         mounts = nil
@@ -147,7 +146,7 @@ extension DiskEngine: DiskWork {}
     /// registered; every time:
     /// the volume list, because a tile rebuilt on each opening of the panel
     /// would otherwise show the figure from the first.
-    public func appear() async {
+    func appear() async {
         if !appeared {
             appeared = true
             if !closed { Task { [weak self] in await self?.restoreLastScan() } }
@@ -234,8 +233,8 @@ extension DiskEngine: DiskWork {}
     }
 
     /// A day-old tree is a guess, not a measurement. Called on page appear.
-    public static let cacheLifetime: TimeInterval = 86_400
-    public func expireIfStale(now: Date = Date()) {
+    static let cacheLifetime: TimeInterval = 86_400
+    func expireIfStale(now: Date = Date()) {
         guard phase == .result, !live, let completedAt,
               now.timeIntervalSince(completedAt) > Self.cacheLifetime else { return }
         newScan()
@@ -245,19 +244,19 @@ extension DiskEngine: DiskWork {}
     /// header's question, and it had no name: `live` also gates whether snapshots
     /// may repaint the ring and `measuring` is also the second-walk guard, so the
     /// spinner hung on one of them and a folder measurement ran in silence.
-    public var walking: Bool { live || measuring }
+    var walking: Bool { live || measuring }
 
-    public var focus: DiskEntry? { focusPath.last }
-    public var basketBytes: Int { basket.map(\.bytes).saturatingSum() }
+    var focus: DiskEntry? { focusPath.last }
+    var basketBytes: Int { basket.map(\.bytes).saturatingSum() }
     /// Whether the page draws the bar under the ring — for a basket waiting to
     /// be emptied, or for the report of an emptying that has happened.
     ///
     /// Here rather than in the page because it is the condition three exits have
     /// to satisfy, and a copy of it in the view is a copy that can be satisfied
     /// while the screen still shows the bar.
-    public var showsRemovalBar: Bool { !basket.isEmpty || banner != nil }
+    var showsRemovalBar: Bool { !basket.isEmpty || banner != nil }
 
-    public func loadVolumes() async {
+    func loadVolumes() async {
         guard !closed else { return }
         let list = await work.mountedVolumes()
         volumes = list
@@ -274,7 +273,7 @@ extension DiskEngine: DiskWork {}
         recomputeSegments()
     }
 
-    public func scan(path: String) async {
+    func scan(path: String) async {
         guard !closed else { return }
         // "/" is a path, not a name; the volume list knows what to call it.
         rootTitle = Self.title(for: path, volumes: volumes)
@@ -339,10 +338,8 @@ extension DiskEngine: DiskWork {}
     ///
     /// A restored tree carries its root but not the path it was scanned from,
     /// so that is the fallback: the same place, either way.
-    public func rescan() async {
+    func rescan() async {
         guard let path = scannedPath ?? result?.root.path else { newScan(); return }
-        basket = []
-        clearRemovalReport()
         await scan(path: path)
     }
 
@@ -361,7 +358,7 @@ extension DiskEngine: DiskWork {}
     /// bar is over the tree it belongs to and the invariant holds by keeping
     /// rather than by clearing. The clearing moved to `scan(path:)`, which is now
     /// the only place a tree is replaced.
-    public func cancel() {
+    func cancel() {
         // Nothing in flight belongs to the screen any more. The engine may
         // already have finished walking, in which case the call below
         // changes nothing and only this line keeps the answer off the screen.
@@ -401,7 +398,7 @@ extension DiskEngine: DiskWork {}
         removedCount = 0
     }
 
-    public func newScan() {
+    func newScan() {
         cancel()
         store.clear()
         phase = .start
@@ -420,7 +417,7 @@ extension DiskEngine: DiskWork {}
     }
 
     /// Advice entries ready for the basket.
-    public func entry(for advice: DiskAdvice) -> DiskEntry {
+    func entry(for advice: DiskAdvice) -> DiskEntry {
         DiskEntry(name: advice.name, path: advice.path, bytes: advice.bytes,
                   isDirectory: false, noAccess: false, children: [])
     }
@@ -431,7 +428,7 @@ extension DiskEngine: DiskWork {}
     /// child only — so every arc past the first ring highlighted on hover and
     /// then did nothing. The whole chain is appended, so jumping two levels
     /// still leaves breadcrumbs that describe where you are.
-    public func drill(into path: String) {
+    func drill(into path: String) {
         guard let focus else { return }
         let chain = DiskFocus.chain(from: focus, to: path)
         guard let last = chain.last, last.isDirectory else { return }
@@ -486,7 +483,7 @@ extension DiskEngine: DiskWork {}
         if treeIsComplete { store.saveDetached(measured, at: completedAt ?? Date()) }
     }
 
-    public func back() {
+    func back() {
         guard focusPath.count > 1 else { return }
         foldingBackLevels = 1
         foldingBackFrom = focusPath.last?.path
@@ -494,7 +491,7 @@ extension DiskEngine: DiskWork {}
         recomputeSegments()
     }
 
-    public func jump(to index: Int) {
+    func jump(to index: Int) {
         guard focusPath.indices.contains(index), index < focusPath.count - 1 else { return }
         // There is always exactly one wedge to fold into, however far the jump:
         // the child of the level being returned to that leads to where we were.
@@ -508,13 +505,13 @@ extension DiskEngine: DiskWork {}
 
     /// The name shown for an entry: the scan root carries the volume's name,
     /// and macOS's own folders are named the way Finder names them.
-    public func displayName(for entry: DiskEntry) -> String {
+    func displayName(for entry: DiskEntry) -> String {
         if entry.path == focusPath.first?.path, !rootTitle.isEmpty { return rootTitle }
         return Self.folderName(for: entry.path) ?? entry.name
     }
 
     /// Localized name for a macOS folder, or nil when it has none.
-    public static func folderName(for path: String) -> String? {
+    static func folderName(for path: String) -> String? {
         SystemFolderNames.display(path: path, home: NSHomeDirectory(),
                                   language: AppLanguage.current.rawValue)
     }
@@ -526,7 +523,7 @@ extension DiskEngine: DiskWork {}
     /// A removal is running. The page dims what would start a second one.
     /// Stored here because an extension cannot hold storage; set only by
     /// `emptyBasket`, one file over.
-    @Published public internal(set) var busy = false
+    @Published var busy = false
 
     // MARK: - Updates
 
@@ -549,7 +546,7 @@ extension DiskEngine: DiskWork {}
 
     /// The unattended walk the host's scheduler asks for, answered by return. A
     /// stopped model answers nil, which the scheduler reads as no answer.
-    public func backgroundScan() async -> ScanReport? {
+    func backgroundScan() async -> ScanReport? {
         guard !closed else { return nil }
         return await work.backgroundScan()
     }
@@ -566,21 +563,14 @@ extension DiskEngine: DiskWork {}
     /// and the first frame after it held three spanning 360. Every boundary
     /// moved at once, which is what read as a tear. Animating *towards* this
     /// makes the last frame the first frame by construction.
-    public func ringLayout(forFocusAt path: String) -> [RingSegment] {
-        guard let root = result?.root, let node = Self.find(path, in: root) else { return [] }
+    func ringLayout(forFocusAt path: String) -> [RingSegment] {
+        guard let root = result?.root,
+              let node = path == root.path ? root : DiskFocus.chain(from: root, to: path).last
+        else { return [] }
         // Free space belongs to a volume, not to a folder — the same rule
         // `recomputeSegments` applies, and a drill always lands below the root.
         return RingLayout.layout(focus: Self.node(from: node), path: node.path,
                                  depthLevels: RingView.visibleRings + 1, freeBytes: 0)
-    }
-
-    private static func find(_ path: String, in entry: DiskEntry) -> DiskEntry? {
-        if entry.path == path { return entry }
-        guard path.hasPrefix(entry.path) else { return nil }
-        for child in entry.children {
-            if let hit = find(path, in: child) { return hit }
-        }
-        return nil
     }
 
     func recomputeSegments() {

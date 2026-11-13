@@ -39,7 +39,7 @@ extension DiskViewModel {
     /// `DiskResultView`) because (ARCHITECTURE.md § One removal at a time) asks
     /// for both — the page is a redraw away, and this method is also what the
     /// bar's menu calls.
-    public func toggleBasket(_ entry: DiskEntry) {
+    func toggleBasket(_ entry: DiskEntry) {
         guard !busy else { return }
         if let index = basket.firstIndex(where: { $0.path == entry.path }) {
             basket.remove(at: index)
@@ -48,7 +48,7 @@ extension DiskViewModel {
         }
     }
 
-    public func isBasketed(_ entry: DiskEntry) -> Bool {
+    func isBasketed(_ entry: DiskEntry) -> Bool {
         basket.contains { $0.path == entry.path }
     }
 
@@ -59,11 +59,11 @@ extension DiskViewModel {
     /// folder macOS will not part with and stands for everything inside it. The
     /// question the person answers is asked of *this*, not of the basket, so the
     /// dialog cannot describe a different act from the one it starts.
-    public var removalQuestion: DiskRemovalPlan.Question {
+    var removalQuestion: DiskRemovalPlan.Question {
         DiskRemovalPlan.question(basket: basket, advice: result?.advice ?? [])
     }
 
-    public func emptyBasket() async {
+    func emptyBasket() async {
         // The gate is unchanged — the engine partitions whatever comes out of
         // here and `HelmTrash` still has the last word.
         let paths = removalQuestion.paths

@@ -36,7 +36,7 @@ struct DiskWidget: View {
                 HelmWidgetFigure(Bytes(main.freeBytes), DkStr.free, size)
                 if size != .compact {
                     CapacityBar(volume: main, height: 5, warnsWhenFull: true)
-                    HelmWidgetRow(main.name, Bytes(main.usedBytes) + " / " + Bytes(main.totalBytes))
+                    HelmWidgetRow(main.name, DkStr.usedOfTotal(main))
                 }
                 if size == .tall {
                     // Why that number is that number: every volume the Mac has,
@@ -44,7 +44,7 @@ struct DiskWidget: View {
                     // on the other one.
                     ForEach(vm.volumes.filter { $0.path != main.path }) { volume in
                         HelmWidgetRow(volume.name,
-                                      Bytes(volume.freeBytes) + " " + DkStr.free)
+                                      DkStr.freeAmount(volume.freeBytes))
                     }
                 }
             } else {

@@ -123,8 +123,7 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
             // asking for it makes the scanner build one every `BulkWalk.progressInterval`.
             guard let tree = scanner.scan(root: path, onProgress: { progress in
                 counter.value = progress.filesSeen
-                updates?(.progress(ScanTick(files: progress.filesSeen, bytes: progress.bytesSeen,
-                                            path: progress.currentPath)))
+                updates?(.progress(ScanTick(files: progress.filesSeen)))
             }, onPartial: onPartial) else { return nil }
             let free = self.freeBytes(forPathOn: path)
             return ScanResult(root: DiskEntry(tree, depth: 6, path: path), freeBytes: free,
@@ -198,13 +197,9 @@ private final class FileCounter: @unchecked Sendable {
 
 public struct ScanTick: Equatable, Sendable {
     public let files: Int
-    public let bytes: Int
-    public let path: String
 
-    public init(files: Int, bytes: Int, path: String) {
+    public init(files: Int) {
         self.files = files
-        self.bytes = bytes
-        self.path = path
     }
 }
 

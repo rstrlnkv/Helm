@@ -1,7 +1,7 @@
 import HelmRuntime
 import HelmTestSupport
 import XCTest
-import Module_Disk_Engine
+@testable import Module_Disk_Engine
 
 /// `~/Library/Application Support/Helm/Disk/last-scan.json` is the person's own
 /// index of every file name on their volume, and a suite run reads it.

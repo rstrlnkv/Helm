@@ -3,7 +3,7 @@ import HelmContract
 import HelmRuntime
 import HelmUI
 import HelmTestSupport
-import Module_Disk_Engine
+@testable import Module_Disk_Engine
 @testable import Module_Disk_UI
 
 /// After `stop()` a press on the page reaches no work, and before `appear()` the

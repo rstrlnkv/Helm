@@ -26,6 +26,11 @@ enum DkStr {
     static var openTheModule: String { L(.openDisk) }
 
     static var free: String { L(.free) }
+    /// «X free» as one sentence, so a language puts the figure where it belongs.
+    static func freeAmount(_ bytes: Int) -> String { L(.freeAmount(Bytes(bytes))) }
+    static func usedOfTotal(_ volume: VolumeInfo) -> String {
+        Bytes(volume.usedBytes) + " / " + Bytes(volume.totalBytes)
+    }
     static var moveToTrash: String { HelmWord.moveToTrash }
     /// "Basket" was the only place the English UI used the word: no visible
     /// label says it — the bar itself is headed "To remove".

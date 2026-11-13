@@ -1,8 +1,7 @@
 import XCTest
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
-import Module_Disk_Engine
+@testable import Module_Disk_Engine
 @testable import Module_Disk_UI
 
 /// Inputs the stop tests do not feed: the answer or a snapshot arriving after

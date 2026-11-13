@@ -17,7 +17,7 @@ public struct DiskAdvice: Codable, Equatable, Sendable, Identifiable {
     /// The weight travels with the path because a partial removal has to leave
     /// an honest row behind: half the targets gone and the row still claiming
     /// the whole folder is the same lie in a quieter place.
-    public struct Target: Codable, Equatable, Sendable {
+    struct Target: Codable, Equatable, Sendable {
         public let path: String
         public let bytes: Int
 
@@ -48,7 +48,7 @@ public struct DiskAdvice: Codable, Equatable, Sendable, Identifiable {
     /// What pressing + really removes. Usually `path` itself; for a cache it is
     /// the folder's contents, because the folder is not the app's to take away —
     /// see `DiskAdvisor.cacheFolders`. Never empty, and `bytes` is its total.
-    public let targets: [Target]
+    let targets: [Target]
     /// When the file was last **written**, as epoch seconds — the only date the
     /// scanner has (`ATTR_CMN_MODTIME`), and the one the age thresholds above
     /// are measured against. nil where there is none to give: a cache advice is
@@ -69,7 +69,7 @@ public struct DiskAdvice: Codable, Equatable, Sendable, Identifiable {
 
     /// The contents of a container. The row still names `path` — one row, one
     /// size, one button — and the size is the sum of what will be attempted.
-    public init(name: String, path: String, kind: Kind,
+    init(name: String, path: String, kind: Kind,
                 modified: TimeInterval? = nil, targets: [Target]) {
         self.name = name; self.path = path; self.kind = kind
         self.modified = modified

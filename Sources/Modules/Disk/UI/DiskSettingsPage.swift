@@ -122,12 +122,12 @@ struct DiskSettingsPage: View {
                         .foregroundStyle(HelmText.quiet)
                     Text(volume.name).font(HelmText.sectionHeading)
                     Spacer()
-                    Text(formatted(volume.usedBytes) + " / " + formatted(volume.totalBytes))
+                    Text(DkStr.usedOfTotal(volume))
                         .font(HelmText.figureFont)
                         .foregroundStyle(HelmText.quiet)
                 }
                 CapacityBar(volume: volume, height: 6)
-                Text(formatted(volume.freeBytes) + " " + DkStr.free)
+                Text(DkStr.freeAmount(volume.freeBytes))
                     .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
             }
             .helmCard()
@@ -216,10 +216,6 @@ struct DiskSettingsPage: View {
     }
 
     // MARK: - Helpers
-
-    private func formatted(_ bytes: Int) -> String {
-        Bytes(bytes)
-    }
 
     private func chooseFolder() {
         guard let url = FolderPicker.choose(prompt: nil, startingAt: nil,

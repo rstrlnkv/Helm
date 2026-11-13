@@ -75,12 +75,12 @@ final class DiskTrashGateTests: XCTestCase {
 }
 
 /// The folded bucket is a synthetic node the scan invents per directory, and it
-/// is named `…`. `TreeBuilder.foldedBucket` finds it by `name == "…" && !isDirectory`
-/// — which is also a description of a real file called `…`, a name a person can
-/// type and Finder will accept.
+/// is named `…`. `TreeBuilder.foldedBucket` once found it by `name == "…" && !isDirectory`
+/// — also a description of a real file called `…`, a name a person can type and
+/// Finder will accept; it now finds it by `isFolded`, not by name.
 ///
-/// The real file then becomes the bucket: every small file in that directory is
-/// charged to it, the row on screen reports a size the file does not have, and
+/// The real file then became the bucket: every small file in that directory was
+/// charged to it, the row on screen reported a size the file does not have, and
 /// `UserFileScope` used to refuse anything ending in `/…`, so the one row whose
 /// size was wrong was also the one row that could not be put in the basket. Both
 /// halves are the flag's now — `isFolded` here, and at the row.

@@ -32,7 +32,7 @@ public final class ScanStore: @unchecked Sendable {
     private static let defaultDirectory: URL =
         HelmSupport.directory.appendingPathComponent("Disk", isDirectory: true)
 
-    public var fileURL: URL { directory.appendingPathComponent("last-scan.json") }
+    var fileURL: URL { directory.appendingPathComponent("last-scan.json") }
 
     /// 0700 on the folder and 0600 on the file, through `PrivateFile`: this
     /// cache is a full index of file names on the volume. `~/Library` is already
@@ -57,7 +57,7 @@ public final class ScanStore: @unchecked Sendable {
     /// log is a surface the person can open (`LogView` shows the tail live), so
     /// a refusal reaches somebody without a new sentence in eight languages
     /// claiming a failure they cannot act on.
-    public func save(_ result: ScanResult, at date: Date = Date()) {
+    func save(_ result: ScanResult, at date: Date = Date()) {
         if !PrivateFile.writeMakingTheFolder(Cached(result: result, savedAt: date), at: fileURL) {
             HelmLog.shared.warn(DiskEngine.moduleID,
                                 "the measured tree could not be saved — the next launch opens on "

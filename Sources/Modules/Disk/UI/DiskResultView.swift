@@ -18,52 +18,44 @@ struct DiskResultView: View {
             VStack(spacing: 0) {
                 BreadcrumbBar(dvm: dvm, layout: width)
                 Divider()
-                content(width)
+                content()
             }
         }
     }
 
-    @ViewBuilder private func content(_ layout: DiskLayout) -> some View {
-        if layout.showsRing {
-            HStack(spacing: 0) {
-                // The ring is never replaced: clicking a wedge widens it until
-                // it is the whole circle and only then drills, and coming back
-                // runs the same transform backwards. A cross-fade between two
-                // rings said "something changed"; this says "you are inside
-                // this one".
-                ZStack {
-                    RingView(segments: dvm.segments,
-                             focusName: dvm.focus.map(dvm.displayName(for:)) ?? "",
-                             focusBytes: dvm.focus?.bytes ?? 0,
-                             growing: dvm.live,
-                             hovered: $hovered,
-                             // No animation here: the ring has already opened
-                             // the wedge by the time this runs, and the drill is
-                             // what lands underneath it.
-                             onSelect: { segment in dvm.drill(into: segment.path) },
-                             onBack: { dvm.back() },
-                             canGoBack: dvm.focusPath.count > 1,
-                             displayName: { segment in
-                                 DiskViewModel.folderName(for: segment.path) ?? segment.name
-                             },
-                             foldingBackFrom: dvm.foldingBackFrom,
-                             foldingBackLevels: dvm.foldingBackLevels,
-                             onFoldConsumed: { dvm.foldingBackFrom = nil },
-                             targetLayout: { dvm.ringLayout(forFocusAt: $0) })
-                }
-                // The ring column: the 300 pt frame `DiskLayout` measured it with (its
-                // table's ring-column row), 380 the ceiling a wide pane may stretch it to.
-                .frame(minWidth: 300, idealWidth: 360, maxWidth: 380)
-                .aspectRatio(1, contentMode: .fit)
-                .padding(HelmSpace.s5)
-                Divider()
-                childList
+    @ViewBuilder private func content() -> some View {
+        HStack(spacing: 0) {
+            // The ring is never replaced: clicking a wedge widens it until
+            // it is the whole circle and only then drills, and coming back
+            // runs the same transform backwards. A cross-fade between two
+            // rings said "something changed"; this says "you are inside
+            // this one".
+            ZStack {
+                RingView(segments: dvm.segments,
+                         focusName: dvm.focus.map(dvm.displayName(for:)) ?? "",
+                         focusBytes: dvm.focus?.bytes ?? 0,
+                         growing: dvm.live,
+                         hovered: $hovered,
+                         // No animation here: the ring has already opened
+                         // the wedge by the time this runs, and the drill is
+                         // what lands underneath it.
+                         onSelect: { segment in dvm.drill(into: segment.path) },
+                         onBack: { dvm.back() },
+                         canGoBack: dvm.focusPath.count > 1,
+                         displayName: { segment in
+                             DiskViewModel.folderName(for: segment.path) ?? segment.name
+                         },
+                         foldingBackFrom: dvm.foldingBackFrom,
+                         foldingBackLevels: dvm.foldingBackLevels,
+                         onFoldConsumed: { dvm.foldingBackFrom = nil },
+                         targetLayout: { dvm.ringLayout(forFocusAt: $0) })
             }
-        } else {
-            // Below the width where both fit, the ring is what goes. The list
-            // carries every fact the ring does and needs less room to do it;
-            // a 300 pt ring beside a squeezed list serves neither. No window gives
-            // a pane this narrow today (`DiskLayout.showsRing`).
+            // The ring column: the 300 pt frame `DiskLayout` measured it with (its
+            // table's ring-column row), 380 the ceiling a wide pane may stretch it to.
+            .frame(minWidth: 300, idealWidth: 360, maxWidth: 380)
+            .aspectRatio(1, contentMode: .fit)
+            .padding(HelmSpace.s5)
+            Divider()
             childList
         }
     }
