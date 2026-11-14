@@ -14,7 +14,9 @@ folders, each only if the person switches it on, and three of them are given bac
   module's own record of what it disabled;
 - Helm's own registration in the login-item database
   (`LoginItem.setEnabled` in `Sources/HelmApp/LoginItem.swift`) — unregistered as a step
-  of the plan, because the application registered it and no module owns it;
+  of the plan, because the application registered it and no module owns it. A
+  registration still awaiting the user's approval counts and is unregistered too
+  (`LoginItem.unregisters(from:)`);
 - ownership of `/opt/homebrew`, changed by the in-app Homebrew installer
   (`installBrew`, in `Sources/Modules/Homebrew/Engine/HomebrewEngine.swift`). **This one is
   not given back.** Helm does not record who owned the tree before, and handing it
