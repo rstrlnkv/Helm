@@ -14,6 +14,18 @@ hits of a search and the `info` of a package were cleared before they were asked
 The one query that retries halves its
 batch rather than its timeout.
 
+## The one setting
+
+`module.homebrew.updateBeforeChecking` (a Bool, `UpdateBeforeChecking`) is the module's only
+stored setting: whether `brew outdated` may refresh the catalogue first. ON is the default and
+what an absent key or a value that is not a Bool reads as: the query runs with no
+environment, as before. OFF runs it with `HomebrewEngine.queryEnvironment`
+(`HOMEBREW_NO_AUTO_UPDATE=1`), so it answers from the catalogue brew holds and cannot be cut
+short by the 90 s query deadline in the middle of a `brew update`. The engine reads it at each
+`outdated()`; the model reads it when it is built at activation, and the Updates tab's row
+(`HelmSettingRow` and a switch) writes it. Not sealed: `outdated` has no unattended caller.
+Guarded by `AnAbsentUpdateSettingUpdatesAsBeforeTests`.
+
 ## The model
 
 `HomebrewViewModel` is built once per enable by `HomebrewDescriptor.makeModule`, so

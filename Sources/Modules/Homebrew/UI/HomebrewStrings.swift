@@ -42,6 +42,8 @@ enum HbStr {
 
     static var segInstalled: String { L(.segInstalled) }
     static var segUpdates: String { L(.segUpdates) }
+    static var updateBeforeChecking: String { L(.updateBeforeChecking) }
+    static var updateBeforeCheckingNote: String { L(.updateBeforeCheckingNote) }
     /// What `brew doctor` found. Not "Doctor" — that is Homebrew's own name for
     /// the subcommand and names a tool rather than a question; the segment
     /// beside two lists of packages is about the state of the machine.

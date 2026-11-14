@@ -92,6 +92,14 @@ struct HomebrewPackageList: View {
 
     private func updatesList() -> some View {
         VStack(spacing: 0) {
+            HelmSettingRow(HbStr.updateBeforeChecking, note: HbStr.updateBeforeCheckingNote) {
+                Toggle(HbStr.updateBeforeChecking,
+                       isOn: Binding(get: { hb.refreshesBeforeChecking },
+                                     set: { hb.setRefreshesBeforeChecking($0) }))
+                    .labelsHidden()
+            }
+            .helmPageStrip()
+            Divider()
             // No bar of its own: «Upgrade all» is a declared action of the page's header
             // row, beside Refresh, on `HomebrewManager`'s `.helmWindowToolbar`, visible on
             // this segment only.

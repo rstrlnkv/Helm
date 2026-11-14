@@ -51,6 +51,15 @@ enum DependentsReading: Equatable {
     /// The one way to the engine. A closed model has none, so no call site can forget.
     private var door: (any HomebrewWork)? { closed ? nil : work }
 
+    private let updateBeforeChecking: UpdateBeforeChecking
+    /// What the Updates tab's row shows: whether the next `brew outdated` may refresh the catalogue first.
+    @Published private(set) var refreshesBeforeChecking: Bool
+
+    func setRefreshesBeforeChecking(_ on: Bool) {
+        updateBeforeChecking.isOn = on
+        refreshesBeforeChecking = on
+    }
+
     @Published private(set) var status = BrewStatus(installed: false, brewPath: nil)
     /// Whether `status` is an answer of the engine's and not the seed of
     /// `HomebrewNews.brew`; the seed applies only while this is false.
@@ -687,8 +696,14 @@ enum DependentsReading: Equatable {
     /// Built once by `HomebrewDescriptor.makeModule`, so it lives as long as the
     /// module is switched on and the page reads it instead of owning it. Its init
     /// asks the engine for nothing but its stream.
-    init(work: any HomebrewWork) {
+    ///
+    /// - Parameter updateBeforeChecking: the setting the Updates tab's row shows and
+    ///   writes; the engine of the same module reads it at each `outdated`. Read here,
+    ///   so a model built at activation shows what is stored now.
+    init(work: any HomebrewWork, updateBeforeChecking: UpdateBeforeChecking = .inMemory) {
         self.work = work
+        self.updateBeforeChecking = updateBeforeChecking
+        refreshesBeforeChecking = updateBeforeChecking.isOn
         let news = work.stream()
         eventsTask = Task { [weak self] in
             for await item in news {

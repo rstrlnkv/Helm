@@ -53,7 +53,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// **Not `outdated`, and not `search`.** Those two are answers *about* the
     /// catalogue: refusing the refresh there would let «Updates: 0» stand over a
     /// catalogue weeks old, which is the same lie as an empty list over a full
-    /// Cellar.
+    /// Cellar. The one exception is the person's own: `outdated` runs with this
+    /// environment when the setting `UpdateBeforeChecking` is OFF.
     static let queryEnvironment = ["HOMEBREW_NO_AUTO_UPDATE": "1"]
 
     /// What `brew doctor` runs with: the query environment and
@@ -120,6 +121,9 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     private let ticker: WaitTicker
     /// Shared by every engine of the process in the app (`OperationGate.process`).
     private let gate: OperationGate
+    /// Read at each `outdated()`: ON asks brew with no environment (it refreshes the
+    /// catalogue first), OFF with `queryEnvironment`.
+    private let updateBeforeChecking: UpdateBeforeChecking
 
     private let lock = NSLock()
     private var busy = false
@@ -179,7 +183,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
                 weight: PackageWeight = NoPackageWeight(),
                 tools: CommandLineToolsPort = ToolsAlreadyInstalled(),
                 ticker: WaitTicker = NoWaitTicker(),
-                gate: OperationGate = OperationGate()) {
+                gate: OperationGate = OperationGate(),
+                updateBeforeChecking: UpdateBeforeChecking = .inMemory) {
         self.locator = locator
         self.runner = runner
         self.privileged = privileged
@@ -191,6 +196,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         self.tools = tools
         self.ticker = ticker
         self.gate = gate
+        self.updateBeforeChecking = updateBeforeChecking
     }
 
     public func activate() {
@@ -436,7 +442,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             // `runData`, because the parser wants bytes: routing them through a
             // String held a second copy of the whole payload for the parse
             // (`OutdatedQueryAllocationBenchmark`).
-            let result = runner.runData(brew, ["outdated", "--json=v2"], env: [:])
+            let result = runner.runData(brew, ["outdated", "--json=v2"],
+                                           env: updateBeforeChecking.isOn ? [:] : Self.queryEnvironment)
             guard !refused(result.status, query: "outdated") else { return nil }
             // And the parser answers nil too: bytes that are not the document
             // this decoder knows are not an up-to-date machine either.
