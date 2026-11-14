@@ -202,10 +202,8 @@ struct FolderReader: Sendable {
     /// same order, and `TheWatcherAndTheSweepAskOneQuestionTests` pins the two
     /// answers to each other over a real tree at three depths; an agreement
     /// proven by a test is what makes them one question rather than a sentence
-    /// saying they are. **Known defect F-Y2, in the defect log:** the walk stops
-    /// at `deepest` and this question does not know it, so for a depth past 64 —
-    /// which the UI never writes and the sealed property list does not take by
-    /// hand — the watcher admits files the sweep never reads.
+    /// saying they are. The depth is the folder's capped at `deepest`, as the
+    /// walk caps it, so a stored depth past 64 admits nothing the sweep never reads.
     func admits(_ url: URL, under folder: WatchedFolder) -> Bool {
         let file = url.standardizedFileURL
         var root = URL(fileURLWithPath: folder.path).standardizedFileURL
@@ -221,7 +219,7 @@ struct FolderReader: Sendable {
         }
         let below = components.count - root.pathComponents.count
         guard components.starts(with: root.pathComponents), below >= 1,
-              below <= folder.depth else { return false }
+              below <= min(folder.depth, Self.deepest) else { return false }
         // Every step from the folder down, the file itself included: a file
         // inside a hidden folder is one the walk never reaches either, and
         // a package's descendants are refused at whichever level the package sits.

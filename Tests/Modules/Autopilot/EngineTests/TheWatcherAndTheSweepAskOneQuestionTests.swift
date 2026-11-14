@@ -102,6 +102,26 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
         XCTAssertTrue(reader.admits(deep, under: folder(depth: 2)))
     }
 
+    /// The walk stops at `FolderReader.deepest` whatever depth a folder stores, so
+    /// the watcher refuses what lies below it too: a depth of 70 must not admit
+    /// the file at level 65 that the sweep never returns.
+    func testTheWatcherAdmitsNoDeeperThanTheWalkReads() throws {
+        let levels = (1...64).map { "d\($0)" }
+        let atSixtyFour = levels.dropLast().joined(separator: "/") + "/at64.pdf"
+        let atSixtyFive = levels.joined(separator: "/") + "/at65.pdf"
+        try write(atSixtyFour, in: root, bytes: 10)
+        try write(atSixtyFive, in: root, bytes: 10)
+        XCTAssertTrue(exists(atSixtyFour) && exists(atSixtyFive), "the fixture is not there")
+        let watched = folder(depth: 70)
+
+        let swept = Set(reader.reading(in: root.path, depth: 70).files.map { resolved($0.path) })
+
+        XCTAssertTrue(swept.contains(resolved(path(atSixtyFour))), "the walk did not read level 64")
+        XCTAssertFalse(swept.contains(resolved(path(atSixtyFive))), "the walk read level 65")
+        XCTAssertTrue(reader.admits(URL(fileURLWithPath: path(atSixtyFour)), under: watched))
+        XCTAssertFalse(reader.admits(URL(fileURLWithPath: path(atSixtyFive)), under: watched))
+    }
+
     // MARK: - The one question
 
     /// The tie between the two triggers: for every file in the tree, what the
