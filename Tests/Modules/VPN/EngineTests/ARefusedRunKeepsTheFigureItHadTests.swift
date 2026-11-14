@@ -129,8 +129,7 @@ final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
         // document. **It holds its thread**, the way the real tool holds one for
         // twenty seconds: a fake that answered instantly would be past the
         // measuring state before the stream could be read, and the two ends of the
-        // run would be one event (CLAUDE.md § What not to do, and what breaks if
-        // you do).
+        // run would be one event (ARCHITECTURE.md § Fakes).
         speed.answer = nil
         speed.blocksUntilReleased = true
         await waitForState(news, "the second run is in flight",

@@ -19,7 +19,7 @@ import XCTest
 /// stays alive until then, on top of the tree it is looking at.
 ///
 /// Measured against the allocator's books rather than `MemoryFootprint.current()`
-/// — CLAUDE.md § What not to do, and what breaks if you do.
+/// — ARCHITECTURE.md § The memory trail.
 final class TheAdvisorKeepsOnlyItsAdviceTests: XCTestCase {
 
     /// Enough nodes for a per-node cost to be a reading rather than noise, few

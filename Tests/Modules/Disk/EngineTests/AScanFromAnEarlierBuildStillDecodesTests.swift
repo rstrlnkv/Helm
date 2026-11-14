@@ -5,7 +5,7 @@ import XCTest
 /// opens the module on a ring.
 ///
 /// **A `defaulted` property on a `Codable` payload does not, by itself, make an
-/// older payload decode** (CLAUDE.md). `ScanResult.advice` carries
+/// older payload decode** (ARCHITECTURE.md § A value read back whole). `ScanResult.advice` carries
 /// `= []` in the memberwise initializer and nothing else, so the synthesised
 /// `Decodable` went on requiring the key — and `JSONDecoder` gives up on the
 /// *whole* document rather than filling in the one field, so `ScanStore.Cached`

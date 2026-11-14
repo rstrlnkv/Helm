@@ -16,7 +16,7 @@ import XCTest
 /// NetworkExtension tunnel, `tunnelFacts()` answered nil with it, and the strip was
 /// absent on every Mac — with the suite green, because `FakeInterfaces` was keyed
 /// by service id and could therefore be planted with a pair the real store cannot
-/// produce (CLAUDE.md § What not to do, and what breaks if you do).
+/// produce (ARCHITECTURE.md § Fakes).
 ///
 /// Past defect: commit a5bb9e0d, «fix(vpn): the tunnel's interface is asked of scutil, by name».
 final class TheInterfaceComesFromTheToolTests: XCTestCase {

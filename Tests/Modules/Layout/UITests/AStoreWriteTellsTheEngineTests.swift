@@ -30,7 +30,7 @@ final class AStoreWriteTellsTheEngineTests: XCTestCase {
 
     /// The scan is only worth anything while it is reading the writers, so it
     /// opens by counting them. A rename that empties this list would otherwise
-    /// leave a test passing over nothing — the family CLAUDE.md collects under
+    /// leave a test passing over nothing — the family (ARCHITECTURE.md § What makes a check) collects under
     /// «a check that cannot fail is not a check».
     func testEveryVerbThatWritesASettingAlsoSendsSettingsChanged() throws {
         let file = "Sources/Modules/Layout/UI/LayoutDescriptor.swift"

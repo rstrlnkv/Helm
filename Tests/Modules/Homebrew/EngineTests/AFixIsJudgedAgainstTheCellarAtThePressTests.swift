@@ -99,7 +99,7 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
     }
 
     /// Every port named at construction, the marker included: a defaulted one
-    /// would be this Mac's own (`CLAUDE.md`).
+    /// would be this Mac's own (ARCHITECTURE.md § Fakes).
     private func engine(_ runner: ProcessRunner,
                         _ news: EngineNews<HomebrewNews> = EngineNews()) -> HomebrewEngine {
         HomebrewEngine(locator: FixedLocator(), runner: runner,

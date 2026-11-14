@@ -29,7 +29,7 @@ final class TheEngineRefusesASharedSwitchTests: XCTestCase {
     /// **Every port is named at every construction**, so what the engine reads is
     /// this fixture and never this Mac's own `/Library/LaunchAgents` — the default
     /// argument is the real filesystem, and a forgetful construction would make the
-    /// answer a fact about whoever runs the suite (CLAUDE.md). The promise was
+    /// answer a fact about whoever runs the suite (ARCHITECTURE.md § Fakes). The promise was
     /// written here before anything held it, and `apps:` and `loaded:` were
     /// defaulting the whole time; `EveryEngineNamesItsPortsTests` holds it now.
     private func files(shared: Bool) -> LeftoversFakeFiles {

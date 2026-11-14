@@ -10,7 +10,7 @@ import HelmUI
 /// The row is the one the settings window draws (`helmCardHeader`, `HelmPageHeader.swift`), with
 /// `helmHeaderInCard` set the way `makeShell` sets it, so a page declares into the preference the row reads
 /// (`helmWindowToolbar`) and the row draws what it declared, in the mount's own hosting view. The families that use it
-/// live in `HelmAppTests` because the fixture needs the host's own types (`ShellPageIdentity`; `CLAUDE.md`:
+/// live in `HelmAppTests` because the fixture needs the host's own types (`ShellPageIdentity`; ARCHITECTURE.md § Targets:
 /// app-layer checks in `Tests/HelmAppTests`).
 ///
 /// `selection` is what the row's name and status are read from (`ShellPageIdentity`); a caller settles

@@ -201,7 +201,7 @@ final class TheOfferSwitchSaysWhatItIsDoingTests: XCTestCase {
     /// something is deleted, and reporting that as a missing permission would put a
     /// note on the page of somebody who has every grant. A Trash that is there and
     /// **refused** is nil, which is the Full Disk Access case — every install
-    /// (CLAUDE.md). Reached here with a mode-000 directory rather than by revoking
+    /// (ARCHITECTURE.md § Signing and grants). Reached here with a mode-000 directory rather than by revoking
     /// anything on this machine: `contentsOfDirectory` answers
     /// `NSFileReadNoPermissionError` either way.
     func test_a_missing_trash_is_empty_and_a_refused_one_is_not_an_answer() throws {

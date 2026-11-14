@@ -67,7 +67,7 @@ final class TheRunningReadingIsOlderThanTheMoveTests: XCTestCase {
     /// the batch quits them in turn. Nothing asks again about the first once its
     /// wait has come back, so anything that starts it in the seconds that follow
     /// — and something starting an application without asking Helm is the whole
-    /// point of the family CLAUDE.md names — has its bundle taken out from under
+    /// point of the family (ARCHITECTURE.md § The gates) names — has its bundle taken out from under
     /// it.
     ///
     /// The moment is pinned rather than timed: `FakeRunning` is told that quitting

@@ -222,7 +222,7 @@ final class OnlyANamedHeadingProposesAFixTests: XCTestCase {
 
     // MARK: - The list itself
 
-    /// The hand-written heading list, named entry by entry. CLAUDE.md's rule
+    /// The hand-written heading list, named entry by entry. The house rule
     /// for a hand-written list: adding one without coming here is a failure,
     /// not a silent widening of what this app will offer to run.
     ///

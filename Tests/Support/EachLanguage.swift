@@ -7,8 +7,7 @@ import HelmUI
 ///
 /// The suite runs in whatever language this Mac is set to, so a bare assertion
 /// about a string checks one of eight — and this machine's is Russian, which is how
-/// a mutation planted in an English value once passed a whole suite (CLAUDE.md §
-/// What not to do, and what breaks if you do). The answer is a loop over
+/// a mutation planted in an English value once passed a whole suite (ARCHITECTURE.md § Shared test plumbing). The answer is a loop over
 /// `AppLanguage.allCases` with `override` set and restored, and it was hand-written
 /// in every file that needed it: three identical private copies in the VPN pages
 /// alone, each with its own `let previous` and its own `defer`.

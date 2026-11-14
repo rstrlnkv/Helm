@@ -7,7 +7,7 @@ import Foundation
 /// the walk runs on and read by the test after the call returns. Hand-written
 /// twice — Disk's `ScanFootprintTests` and Duplicates' `WalkFootprintTests`,
 /// under a comment calling it «the same box next door» — before it moved here,
-/// which is the note CLAUDE.md says such a comment is.
+/// which is the note such a comment is.
 public final class ProgressBox: @unchecked Sendable {
     private let lock = NSLock()
     private var stored = 0

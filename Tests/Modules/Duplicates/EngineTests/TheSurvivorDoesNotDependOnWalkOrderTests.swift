@@ -29,8 +29,7 @@ import XCTest
 /// testTheOrderDoesNotDependOnTheInputOrder` reverses a pair of copies whose dates
 /// are both known and equal. Two elements cannot hold a cycle, and a rung that is
 /// silent for *both* orderings of one pair is symmetric — so that test is green for
-/// every predicate this file can write, including one that is wrong. It is the
-/// shape CLAUDE.md § Before you touch the code: a check whose subject
+/// every predicate this file can write, including one that is wrong. It is the shape (ARCHITECTURE.md § What makes a check) names: a check whose subject
 /// cannot exhibit the defect.
 ///
 /// The fixture is machine-independent on purpose: `TransitFolders(roots: [])`

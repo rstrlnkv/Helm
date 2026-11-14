@@ -14,7 +14,7 @@ import XCTest
 /// two copies of this class — `ParkedVerify` answering `.identical` and
 /// `ParkedUnreadableVerify` answering `.unreadable`, each private to its own
 /// file. A comment in the second called it «the same class with the other
-/// verdict», which is the note CLAUDE.md says such a duplication is.
+/// verdict», which is the note such a duplication is.
 final class ParkedVerify: @unchecked Sendable {
     private let lock = NSLock()
     private var count = 0

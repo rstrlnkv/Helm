@@ -22,7 +22,7 @@ import Module_VPN_UI
 ///
 /// **The count is asserted at 1 before it is asserted at 0.** A subscriber that
 /// never registered would pass an assertion about its absence, which is the
-/// vacuous shape CLAUDE.md names: assert first that the thing happened. That
+/// vacuous shape (ARCHITECTURE.md § What makes a check) names: assert first that the thing happened. That
 /// alone was not enough — the subscriber registers before the loop that consumes
 /// it runs at all, so the gate stood open on a module that had not started;
 /// `letTheLoopStart()` below has the measurement.

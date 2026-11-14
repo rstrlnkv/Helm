@@ -12,7 +12,7 @@ import XCTest
 /// load. Eleven `AutopilotEngine` tests took a default that turned out to be the
 /// owner's own keychain and rolled their real rules back; the recorded lesson is to
 /// name the fake at every construction, and nothing was checking that anybody had
-/// (CLAUDE.md § What not to do, and what breaks if you do).
+/// (ARCHITECTURE.md § Fakes).
 ///
 /// Read off the source rather than the behaviour, because the defect is
 /// invisible in a passing run: a test that quietly asked Cloudflare where this

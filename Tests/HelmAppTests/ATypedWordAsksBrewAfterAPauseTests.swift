@@ -64,8 +64,7 @@ final class ATypedWordAsksBrewAfterAPauseTests: XCTestCase {
     }
 
     /// Set well below the owner's real 700 ms, so each case exercises the
-    /// pause itself rather than waiting it out on a real clock — CLAUDE.md's
-    /// own rule for a timing test: run it alone and more than once, which the
+    /// pause itself rather than waiting it out on a real clock — the house rule for a timing test: run it alone and more than once, which the
     /// verification steps for this file do.
     private static let pause: Duration = .milliseconds(120)
 

@@ -26,7 +26,7 @@ private final class EdgeRuleSequence: RuleSequencePort, @unchecked Sendable {
 ///
 /// `APresetsFolderCanBeChosenTests` holds the chooser's decisions against
 /// `/Users/x`, a home that does not exist. `WatchScope` canonicalizes through
-/// the filesystem, and CLAUDE.md's order is that such a gate is tested with
+/// the filesystem, and the order of (ARCHITECTURE.md § The gates) is that such a gate is tested with
 /// paths that exist, because a path that does not is the one input the
 /// filesystem treats differently. So everything here stands on a real scratch
 /// home: real folders, a real link into its `Library`, the `/private` spelling

@@ -8,8 +8,7 @@ import HelmTestSupport
 ///
 /// `ALidThatDidNotWorkSaysSoTests` covers the answer itself: a declined removal
 /// leaves the rule where it is and `lidGrantRemains` says so. Both cases here
-/// are about the state that answer leaves behind, and both are the family
-/// CLAUDE.md names — a local flag standing in for a live external fact, with the
+/// are about the state that answer leaves behind, and both are the family (ARCHITECTURE.md § Ports and logic) names — a local flag standing in for a live external fact, with the
 /// reverse channel sitting unread in the same method.
 ///
 /// `releaseIfUnneeded()` is called from the `settingsChanged` command, which the

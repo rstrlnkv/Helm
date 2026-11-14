@@ -110,7 +110,7 @@ final class StoreNamespacesAreModuleIdsTests: XCTestCase {
     /// no other list. `ListsAgreeWithTheTreeTests` covers only the three that
     /// `ScanRunner.scannableModules` names.
     ///
-    /// So this is a hand-written list, and it is the kind CLAUDE.md allows: it
+    /// So this is a hand-written list, and it is the kind the house rules allow: it
     /// is not a second spelling of anything the tree already knows, it is the
     /// prefixes the registered modules' keys are stored under in people's
     /// defaults. A module gained or renamed on purpose edits it, and that edit

@@ -9,7 +9,7 @@ import XCTest
 /// none of them reach the log.
 ///
 /// The engine says so twice in its own comments — "Counts and shapes, never the
-/// word itself", "the log carries no content" — and CLAUDE.md states the rule
+/// word itself", "the log carries no content" — and (ARCHITECTURE.md § Diagnostics log) states the rule
 /// for the whole app. Twenty-nine test files in this module, and not one of
 /// them touches `HelmLog`. The promise was kept by discipline at each of the
 /// eleven call sites and by nothing else.

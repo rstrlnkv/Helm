@@ -14,7 +14,7 @@ import HelmTestSupport
 /// An automatic connect may not open the System keychain, and an empty credential
 /// cache therefore means a rule cannot raise its tunnel at all. The engine knows
 /// (`VPNSecretBook`); until this landed the only account of it was a line in
-/// `~/Library/Logs/Helm/helm.log`, which is the outcome CLAUDE.md forbids — the app
+/// `~/Library/Logs/Helm/helm.log`, which is the outcome the house rules forbid — the app
 /// silently not doing the thing it was asked.
 ///
 /// **One surface, and it used to be two.** The banner spoke for the configurations

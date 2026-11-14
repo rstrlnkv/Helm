@@ -48,7 +48,7 @@ import XCTest
 /// `ADirectoryThatIsNotTheOneItNamesTests` drives `LeftoversFakeFiles.redirects`, a
 /// dictionary lookup that resolves a link to a target whether or not the target
 /// exists — so the fake can resolve what the real port cannot. That is a fake
-/// *freer* than its port (CLAUDE.md § What not to do, and what breaks if you do),
+/// *freer* than its port (ARCHITECTURE.md § Fakes),
 /// and what it buys is a branch that is proven for a state production never
 /// reaches: the dangling case has no fixture there, because in that fake there is
 /// no such thing as dangling. This file therefore drives the real
@@ -66,7 +66,7 @@ final class ADanglingSourceIsNotItsOwnPlaceTests: XCTestCase {
     /// row.
     ///
     /// A local helper that does *more* than the shared one keeps its own body and
-    /// calls it — CLAUDE.md § Where things go. It calls `FileSystemLeftovers` for
+    /// calls it, as the house rules order. It calls `FileSystemLeftovers` for
     /// everything it answers.
     private struct FilesUnder: LeftoversFilePort {
         let root: String

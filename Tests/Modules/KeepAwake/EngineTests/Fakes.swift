@@ -193,7 +193,7 @@ final class FakeClamshell: ClamshellPort {
     /// a password — the question that is `sudo -n pmset disablesleep 0`, and
     /// which it now asks on a queue of its own. «No dialog was raised» has to be
     /// read *after* the question was answered, or it is green because nobody has
-    /// asked yet, which is the vacuous absence CLAUDE.md warns about.
+    /// asked yet, which is the vacuous absence (ARCHITECTURE.md § What makes a check) warns about.
     private(set) var grantChecks = 0
     func canDisableSleepWithoutPassword() -> Bool {
         grantChecks += 1

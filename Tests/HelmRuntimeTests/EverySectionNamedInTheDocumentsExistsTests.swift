@@ -2,9 +2,9 @@ import HelmTestSupport
 import XCTest
 
 /// Every § pointer written in the standing documents names a heading that
-/// exists, spelled exactly, and `CLAUDE.md` stays inside its byte ceiling.
+/// exists, spelled exactly, and `CLAUDE.local.md` stays inside its byte ceiling.
 ///
-/// **Why this is a test.** `CLAUDE.md` points at the reason for most of its
+/// **Why this is a test.** `CLAUDE.local.md` points at the reason for most of its
 /// orders with a bare `→` then the sign and a heading of `ARCHITECTURE.md`; the
 /// few that point with `→` at a file or a script header are not read here.
 /// `EverySectionNamedInTheCodeExistsTests` reads Swift files only and wants a
@@ -27,7 +27,7 @@ import XCTest
 /// one resolve.
 final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
 
-    /// The ceiling the owner set for `CLAUDE.md` (15 KB); a sentence added past
+    /// The ceiling the owner set for `CLAUDE.local.md` (15 KB); a sentence added past
     /// it has to take a sentence out or move a story to `ARCHITECTURE.md`.
     static let claudeCeilingBytes = 15_360
 
@@ -66,7 +66,7 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
             }
         }
 
-        /// The bare pointers of `CLAUDE.md`: every § after the first arrow of
+        /// The bare pointers of `CLAUDE.local.md`: every § after the first arrow of
         /// a line. Returns the pointers and the lines carrying a § outside
         /// that shape.
         static func arrowPointers(in claude: String) -> (pointers: [String], stray: [String]) {
@@ -84,7 +84,7 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
 
     // MARK: - The documents
 
-    /// The one line of `CLAUDE.md` that mentions the section sign as notation and names no
+    /// The one line of `CLAUDE.local.md` that mentions the section sign as notation and names no
     /// section: the header explaining the arrow.
     private static let notation = "\u{A7} X is a heading"
 
@@ -95,7 +95,7 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
 
         let read = Parser.arrowPointers(in: claude)
         XCTAssertGreaterThan(read.pointers.count, 40,
-            "only \(read.pointers.count) bare pointers read from CLAUDE.md — the parser reads nothing and every verdict is over no text")
+            "only \(read.pointers.count) bare pointers read from CLAUDE.local.md — the parser reads nothing and every verdict is over no text")
 
         let stray = read.stray.filter { !$0.contains(Self.notation) }
         XCTAssertTrue(stray.isEmpty,
@@ -103,7 +103,7 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
 
         let dead = read.pointers.filter { StandingDocuments.resolve($0, headings: headings) == nil }
         XCTAssertTrue(dead.isEmpty, """
-            \(dead.count) pointer(s) of CLAUDE.md name no heading of ARCHITECTURE.md exactly:
+            \(dead.count) pointer(s) of CLAUDE.local.md name no heading of ARCHITECTURE.md exactly:
             \(dead.map { "\u{A7}" + $0.prefix(50) }.joined(separator: "\n"))
             """)
     }
@@ -131,9 +131,9 @@ final class EverySectionNamedInTheDocumentsExistsTests: XCTestCase {
     func testClaudeStaysInsideItsCeiling() throws {
         let size = try StandingDocuments.rules().utf8.count
         XCTAssertGreaterThan(size, 4_000,
-            "CLAUDE.md is \(size) bytes — an emptied file is under every ceiling, and the rules are gone")
+            "CLAUDE.local.md is \(size) bytes — an emptied file is under every ceiling, and the rules are gone")
         XCTAssertLessThanOrEqual(size, Self.claudeCeilingBytes,
-            "CLAUDE.md is \(size) bytes, ceiling \(Self.claudeCeilingBytes) — move a story to ARCHITECTURE.md")
+            "CLAUDE.local.md is \(size) bytes, ceiling \(Self.claudeCeilingBytes) — move a story to ARCHITECTURE.md")
     }
 
     // MARK: - The pages of the wiki

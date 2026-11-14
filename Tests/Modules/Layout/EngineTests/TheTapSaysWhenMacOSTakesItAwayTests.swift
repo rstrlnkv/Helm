@@ -18,7 +18,7 @@ import XCTest
 /// to the keyboard until they relaunch.
 ///
 /// A local flag standing in for a live external fact, with no channel back from the
-/// port that knows (CLAUDE.md § What not to do, and what breaks if you do). The
+/// port that knows (ARCHITECTURE.md § Ports and logic). The
 /// channel is `died`.
 ///
 /// **What is not covered here, and cannot be.** No test process can make macOS

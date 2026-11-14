@@ -120,8 +120,7 @@ final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
         await refreshed(engine, on: news) { $0.tunnels.first?.exit != nil }
         // Long enough for the request to have come back empty: the assertion below
         // is an absence, and an absence also holds while the first attempt is still
-        // out — which would make this pass with the gate deleted (CLAUDE.md § What
-        // not to do, and what breaks if you do).
+        // out — which would make this pass with the gate deleted (ARCHITECTURE.md § What makes a check).
         await waitUntil("the first attempt came back") { exit.asks == 1 }
         for _ in 0..<3 {
             await refreshed(engine, on: news) { _ in true }

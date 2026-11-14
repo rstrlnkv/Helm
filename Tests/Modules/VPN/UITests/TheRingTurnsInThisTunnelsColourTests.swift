@@ -142,7 +142,7 @@ final class TheRingTurnsInThisTunnelsColourTests: XCTestCase {
     /// green while the popover changed nothing. Driving the descriptor here is
     /// not the answer: its view model comes with the app's real store as a
     /// default argument, and eleven engine tests once rolled back the owner's
-    /// own Autopilot exactly that way (CLAUDE.md). So the guard is on the
+    /// own Autopilot exactly that way (ARCHITECTURE.md § Fakes). So the guard is on the
     /// source: in the firing path, each of the three is asked with the
     /// configuration's name.
     func testTheDescriptorAsksAllThreeOnTheConfigurationThatFired() throws {

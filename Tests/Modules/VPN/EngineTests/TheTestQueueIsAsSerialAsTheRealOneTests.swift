@@ -18,7 +18,7 @@ import XCTest
 /// started them. Under `.inline` they arrive *inside* it, on another thread,
 /// which is the one thing the real queue rules out.
 ///
-/// So this is CLAUDE.md § What not to do, and what breaks if you do, read of the
+/// So this is (ARCHITECTURE.md § Fakes) read of the
 /// queue itself: the fake admits a state the real one cannot produce, and every
 /// test in this module is written against the fake.
 ///

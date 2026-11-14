@@ -15,7 +15,7 @@ import XCTest
 /// disabled list decides the «Disabled» badge — this module's whole reassurance that
 /// a login item will not run.
 ///
-/// The family CLAUDE.md names: a local reading standing in for a live external fact,
+/// The family (ARCHITECTURE.md § Ports and logic) names: a local reading standing in for a live external fact,
 /// with no channel from the port that knows. Two facts, «nothing is loaded» and
 /// «nobody answered», and nothing could tell them apart — including a test, which is
 /// why `LeftoversFakeLoaded` now holds `nil` as well.

@@ -6,7 +6,7 @@ import XCTest
 /// **Why this is a test.** `DocumentsNameTheTreeTests` reads the backticked
 /// paths in the standing documents, but only file paths, a span ending in an
 /// extension it knows — a directory has none and falls through. The map moved
-/// out of `CLAUDE.md` into `ARCHITECTURE.md` when the documents were split by
+/// out of the rules file into `ARCHITECTURE.md` when the documents were split by
 /// mood: a table saying where a thing lives describes how Helm is built, and
 /// that is the other document's genre. Moving it did not make it checkable, so
 /// this is still the only thing standing between a renamed directory and the

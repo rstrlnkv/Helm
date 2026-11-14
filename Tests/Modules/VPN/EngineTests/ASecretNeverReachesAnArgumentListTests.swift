@@ -8,7 +8,7 @@ import HelmTestSupport
 
 /// **A secret never rides in an argument list, whichever tool carries it.**
 ///
-/// (CLAUDE.md § What not to do, and what breaks if you do) (the line on a secret a tool reads;
+/// (the line on a secret a tool reads;
 /// → ARCHITECTURE.md § Running other programs): a secret a tool reads from its terminal
 /// goes there, never in argv, env, file or log. An argument list is readable by
 /// every process running as this user for as long as the child lives, and a

@@ -47,7 +47,7 @@ The engine asks whether a path is there through the port's `exists`, which is `D
 
 `LeftoverActions.isApplesOrProtected` is the one Apple-or-protected predicate, and both `available(for:)` and `whyDeleteIsWithheld(from:)` stand on it, so the page cannot offer what the reason says is withheld.
 
-`StaleItemRules.protectedPrefixes` is a second protected-prefix list, kept on purpose beside `UserFileScope.protectedPrefixes`: the first judges what the scan offers, the second is the gate every removal passes, and each stays authoritative for its own question (Architecture/WhatIsDeliberatelyNotHere.md, "Not one list of protected prefixes").
+`StaleItemRules.protectedPrefixes` is a second protected-prefix list, kept on purpose beside `UserFileScope.protectedPrefixes`: the first judges what the scan offers, the second is the gate a removal of the user's files passes (Leftovers' own removal passes `RemovableScope.partition`, `LeftoversEngine.trash`), and each stays authoritative for its own question (Architecture/WhatIsDeliberatelyNotHere.md, "Not one list of protected prefixes").
 
 Kept tests, one per guarantee:
 

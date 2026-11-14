@@ -94,7 +94,7 @@ final class AnsweringWork: DuplicatesWork, @unchecked Sendable {
 
     /// The engine answering again, or holding what it is asked. A port that can
     /// change while the app runs hands that state back rather than being fixed at
-    /// init (CLAUDE.md § What not to do, and what breaks if you do).
+    /// init (ARCHITECTURE.md § Ports and logic).
     func answers(_ next: Answer) { lock.withLock { answer = next } }
 
     /// The same, for one call only.

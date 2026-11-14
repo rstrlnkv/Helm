@@ -76,7 +76,7 @@ private struct NoPrivileges: PrivilegedRunner {
 /// the optional chain resolves the weak reference, reads the port out of it and
 /// lets the engine go before the call suspends, so `deinit` still runs.
 /// `Task { [weak self] in await self?.someAsyncMethodOfTheEngine() }` — the
-/// shape CLAUDE.md names, where the method holds `self` for as long as it runs
+/// shape (ARCHITECTURE.md § State that outlives a page and ends with its module) names, where the method holds `self` for as long as it runs
 /// — fails the second case below at its five-second wait. So what is held here
 /// is "the engine can be dropped while the fetch is in flight", which is the
 /// property that matters; the capture list is protected only through it.
@@ -88,7 +88,7 @@ private struct NoPrivileges: PrivilegedRunner {
 ///
 /// Both cases are wall-clock waits and not cooperative yields: the refresh runs
 /// on a task of its own, so a yield would buy a turn on the pool and no time at
-/// all (CLAUDE.md § What not to do, and what breaks if you do). They complete in
+/// all (ARCHITECTURE.md § Fakes). They complete in
 /// milliseconds when cancellation works and time out when it does not.
 final class TheRefreshEndsWithTheEngineTests: XCTestCase {
 

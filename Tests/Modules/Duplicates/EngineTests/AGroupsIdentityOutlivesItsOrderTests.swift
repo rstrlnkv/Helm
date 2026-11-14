@@ -63,7 +63,7 @@ final class AGroupsIdentityOutlivesItsOrderTests: XCTestCase {
     }
 
     /// The id is a derived value, so it must not be a place a path can be read
-    /// out of. Ids reach diagnostics — the log carries no names (CLAUDE.md), and
+    /// out of. Ids reach diagnostics — the log carries no names (ARCHITECTURE.md § Diagnostics log), and
     /// a joined list of paths would carry every one of them.
     func testTheIdDoesNotSpellThePathsItWasMadeFrom() {
         let id = group(three).id

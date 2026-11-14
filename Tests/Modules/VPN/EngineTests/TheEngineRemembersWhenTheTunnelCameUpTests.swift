@@ -42,7 +42,7 @@ final class TheEngineRemembersWhenTheTunnelCameUpTests: XCTestCase {
     /// Every port named, including the three this feature added: their production
     /// defaults reach the network and a subprocess that runs for fifteen seconds,
     /// and a construction that forgets one of them is an integration test nobody
-    /// asked for (CLAUDE.md § What not to do, and what breaks if you do).
+    /// asked for (ARCHITECTURE.md § Fakes).
     private func makeEngine(_ runner: FakeRunner,
                             news: EngineNews<VPNEngine.StatePayload>,
                             interfaces: FakeInterfaces,

@@ -16,7 +16,7 @@ import HelmRuntime
 /// same scan» was a state no test in those files could write down — and
 /// `ScanOrderIsTotalTests` builds exactly that pair, with the `/Library` copy
 /// coming back `writable: true`, which on a real Mac it never is. That is the
-/// unrepresentable-state shape CLAUDE.md names, in a fixture rather than in a fake
+/// unrepresentable-state shape (ARCHITECTURE.md § Fakes) names, in a fixture rather than in a fake
 /// of a port: the same defect `LeftoversWritableTests` had already found in the
 /// other direction and fixed *locally*, by locking the item instead of its folder.
 ///

@@ -10,8 +10,7 @@ import Foundation
 /// pair**, because the port cannot answer that question any more: the id the
 /// module has is a configuration's and the store is keyed by network service, so
 /// every such pair this fake accepted was one the system could not produce, and
-/// the suite stayed green while the strip was absent on every Mac (CLAUDE.md
-/// § What not to do, and what breaks if you do). The interface is `scutil`'s answer
+/// the suite stayed green while the strip was absent on every Mac (ARCHITECTURE.md § Fakes). The interface is `scutil`'s answer
 /// now, so it is `FakeRunner.statusOutput` — keyed by the name the tool takes.
 ///
 /// **Every one of them is reached from a thread that is not the test's** — the
@@ -81,7 +80,7 @@ final class FakeExit: VPNExitPort, @unchecked Sendable {
     /// different exit from the one already in flight, which is the whole reason the
     /// engine has to tell the two answers apart. With one fixed answer that state
     /// is unrepresentable, and any test of it passes against an engine that keeps
-    /// the wrong one (CLAUDE.md § What not to do, and what breaks if you do).
+    /// the wrong one (ARCHITECTURE.md § Fakes).
     var queued: [String?] {
         get { lock.lock(); defer { lock.unlock() }; return _queued }
         set { lock.lock(); _queued = newValue; lock.unlock() }
@@ -114,8 +113,7 @@ final class FakeExit: VPNExitPort, @unchecked Sendable {
     func regionCode() async -> String? {
         // A synchronous property that takes the lock and returns the value, never
         // an `await` with the lock held: Swift 6 makes `NSLock.lock()` unavailable
-        // inside an `async` function outright (CLAUDE.md § What not to do, and what
-        // breaks if you do).
+        // inside an `async` function outright.
         let asked = enter()
         if asked.hangs { try? await Task.sleep(nanoseconds: .max) }
         // Polled rather than parked on a semaphore: this is an `async` function
@@ -145,8 +143,7 @@ final class FakeExit: VPNExitPort, @unchecked Sendable {
 /// the protocol and why the engine keeps it off its serial queue. A fake that
 /// answers the instant it is called makes every test of that arrangement vacuous:
 /// «a Connect pressed while a measurement is in flight» and «the tile says
-/// Measuring…» are both states the subject is already past (CLAUDE.md § What not to
-/// do, and what breaks if you do).
+/// Measuring…» are both states the subject is already past (ARCHITECTURE.md § Fakes).
 final class FakeSpeed: VPNSpeedPort, @unchecked Sendable {
     private let lock = NSLock()
     private var _answer: VPNSpeedReading?

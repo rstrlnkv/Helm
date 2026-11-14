@@ -13,7 +13,7 @@ import XCTest
 /// any moment by something the page never saw happen.
 ///
 /// What the page has instead is `refusal`, read once at load and consulted by
-/// `save()` as `guard refusal == nil`, which is CLAUDE.md's family by name: a
+/// `save()` as `guard refusal == nil`, which is the family (ARCHITECTURE.md § Ports and logic) names: a
 /// local flag standing in for a live external fact, with no reverse channel from
 /// the port that knows. And there is no channel to have: the one thing the
 /// engine says unasked is that a pass went into the history, and

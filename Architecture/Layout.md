@@ -50,7 +50,7 @@ first (`TheEngineLetsGoOfItsObserversTests`, `TheActivationPortKeepsOneWatchTest
 
 The page and the engine spell each stored name once, in `LayoutKey` (`Sources/Modules/Layout/Engine/Logic/SettingsKeys.swift`): a setting added there first, its default read where the engine reads it, and a fresh store holds the deployed defaults (`AFreshStoreHoldsTheDeployedDefaultsTests`). The convert hotkey's three keys are `<prefix>KeyCode`, `<prefix>Modifiers` and `<prefix>Label` under `LayoutHotkey.storePrefix`, spelled only by `HotkeyStoreKeys` (`Sources/HelmRuntime/HotkeyFallback.swift`) and never moved.
 
-The selection is read through the accessibility API alone: there is no ⌘C route, and ⌘V is kept only for an app that refuses the write (owner decision 3). The 120 ms wait between that ⌘V and the clipboard's restore stays on main (owner decision Q14; the reason is in `pasteSelection`'s comment). The second `isSecure()` ask in `convertSelection` also stays on main: that ask is the gate, and moving it off main would read a secure field before it is judged.
+The selection is read through the accessibility API alone: there is no ⌘C route, and ⌘V is kept only for an app that refuses the write (owner decision 3). The 120 ms wait between that ⌘V and the clipboard's restore stays on main (owner decision Q14; `pasteSelection`'s comment gives only why it is 120 ms long). The second `isSecure()` ask in `convertSelection` also stays on main: that ask is the gate, and moving it off main would read a secure field before it is judged.
 
 Kept tests, one per guarantee:
 

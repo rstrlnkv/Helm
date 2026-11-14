@@ -58,7 +58,7 @@ final class ActivationIsWhatStartsTheRefreshTests: XCTestCase {
 
     /// A wall-clock wait and not a cooperative yield: the ask lands on a task
     /// of its own, so a yield would buy a turn on the pool and no time at all
-    /// (CLAUDE.md § What not to do, and what breaks if you do).
+    /// (ARCHITECTURE.md § Fakes).
     func testActivationAsksTheStoreToRefresh() {
         let spy = RefreshSpy()
         // Held for the length of the wait: `deinit` cancels the refresh, so an

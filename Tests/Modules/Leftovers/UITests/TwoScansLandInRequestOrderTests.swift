@@ -15,8 +15,7 @@ import Module_Leftovers_Engine
 ///
 /// The fake below is a gate per request rather than one gate, because the state
 /// this is about is *two* requests outstanding at once: a fake that could only
-/// hold one open could not represent the moment the defect lives in (CLAUDE.md §
-/// What not to do, and what breaks if you do).
+/// hold one open could not represent the moment the defect lives in (ARCHITECTURE.md § Fakes).
 ///
 /// Past defect: fixed in `4c8bbed9`.
 @MainActor

@@ -11,7 +11,7 @@ import HelmRuntime
 /// a hand edit — and Helm never looks again: system sleep stays off machine-wide,
 /// every screen says Keep Awake is idle, and the Mac does not sleep until
 /// somebody works out what `pmset -g` is saying. It is the one setting in this
-/// module that steers privileged work with nobody watching, and CLAUDE.md's seal
+/// module that steers privileged work with nobody watching, and the seal of (ARCHITECTURE.md § Sealed settings)
 /// cannot be used on it (`clamshellEnabled`'s own doc comment has the reason: an
 /// ad-hoc signed bundle meets a keychain dialog at every install).
 ///

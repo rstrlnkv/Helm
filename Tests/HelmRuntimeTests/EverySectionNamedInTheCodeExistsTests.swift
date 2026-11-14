@@ -1,7 +1,7 @@
 import HelmTestSupport
 import XCTest
 
-/// Every `ARCHITECTURE.md` § and `CLAUDE.md` § pointer in the source names a
+/// Every `ARCHITECTURE.md` § and `CLAUDE.local.md` § pointer in the source names a
 /// heading its document still has.
 ///
 /// **Why this is a test.** `ARCHITECTURE.md` was reorganised and the pointers
@@ -20,12 +20,12 @@ import XCTest
 ///
 /// **Why both documents.** An early reader written for this repair covered
 /// `ARCHITECTURE.md` alone and reported nothing dead — over a tree that also
-/// carries pointers into `CLAUDE.md`, left unread entirely. Pointers land in
+/// carries pointers into `CLAUDE.local.md`, left unread entirely. Pointers land in
 /// both documents, so a guard built to watch one is blind to every pointer
 /// aimed at the other, whichever one that is; `testTheCanaryReadsBothTreesAndBothDocuments`
-/// is what pins this, asserting pointers into each document separately so a
-/// reader that silently stopped covering one of them fails there before it
-/// can fail anywhere else.
+/// is what pins this, asserting that both documents' headings were read and
+/// that pointers into `ARCHITECTURE.md` were found, so a reader that silently
+/// stopped covering one of them fails there before it can fail anywhere else.
 ///
 /// **Why both spellings.** Nothing here stops a comment from writing the
 /// `.md`-less form of either document's name right before `§`, and a guard
@@ -40,7 +40,7 @@ import XCTest
 /// missed the spelling without `.md`, and a third missed the pointers whose
 /// document name ends one `///` line and whose `§` begins the next —
 /// `Sources/HelmRuntime/LockedMemo.swift` and `Sources/Modules/VPN/Engine/VPNEngine.swift`
-/// among them, both citing `CLAUDE.md` § What not to do, and what breaks if
+/// among them, both citing `CLAUDE.local.md` § What not to do, and what breaks if
 /// you do. A Swift string literal split by `+` concatenation is a fourth
 /// continuation shape with no comment marker anywhere near it:
 /// `Tests/HelmAppTests/PanelBarsCarryNoLifetimeTests.swift` closes one line
@@ -51,7 +51,7 @@ import XCTest
 /// this guard existed to say so on its own.
 ///
 /// **Why headings are matched by prefix and not cut at the first comma.**
-/// `CLAUDE.md`'s own headings carry commas and em dashes — `## What not to
+/// `CLAUDE.local.md`'s own headings carry commas and em dashes — `## What not to
 /// do, and what breaks if you do` is pointed at from dozens of call sites —
 /// so a name is not "the text up to the first punctuation mark a heading
 /// cannot contain"; there is no such mark a heading is guaranteed to lack. It
@@ -71,11 +71,11 @@ import XCTest
 /// tree has grown.
 final class EverySectionNamedInTheCodeExistsTests: XCTestCase {
 
-    /// A pointer's own shape: the document's bare name, an optional `.md`,
+    /// A pointer's own shape: the document's bare name, an optional `.local`, an optional `.md`,
     /// then `§`. Group 1 is the document name alone, which is also the key
     /// `headings(of:)` is read under.
     private static let pointer = try! NSRegularExpression(
-        pattern: #"\b(ARCHITECTURE|CLAUDE)(?:\.md)?[ \t]*§[ \t]*"#)
+        pattern: #"\b(ARCHITECTURE|CLAUDE)(?:\.local)?(?:\.md)?[ \t]*§[ \t]*"#)
 
     /// A Swift string literal split across lines by `+` concatenation: a
     /// closing quote, a line break and its indentation, then the reopening
@@ -180,13 +180,11 @@ final class EverySectionNamedInTheCodeExistsTests: XCTestCase {
         let found = try pointers()
         XCTAssertGreaterThan(found.filter { $0.document == "ARCHITECTURE" }.count, 20,
             "no pointer into ARCHITECTURE.md was found — a guard finding nothing is green over nothing")
-        XCTAssertGreaterThan(found.filter { $0.document == "CLAUDE" }.count, 20,
-            "no pointer into CLAUDE.md was found — a guard finding nothing is green over nothing")
 
         // Last, so that a machine without the rules file still ran everything above.
         let claude = try headings(of: "CLAUDE")
         XCTAssertGreaterThan(claude.count, 3,
-            "only \(claude.count) CLAUDE.md headings — the document was not read")
+            "only \(claude.count) CLAUDE.local.md headings — the document was not read")
     }
 
     func testEverySectionThePointersNameExists() throws {

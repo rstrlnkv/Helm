@@ -84,7 +84,7 @@ final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
     /// `apps:` and `loaded:` went on defaulting to `WorkspaceInstalledApps` and
     /// `ActiveExtensions` — the second of which shells out to `launchctl
     /// print-disabled gui/$(getuid())`, so these three answers were partly facts
-    /// about whoever ran the suite (CLAUDE.md: a default argument naming a real
+    /// about whoever ran the suite (ARCHITECTURE.md § Fakes: a default argument naming a real
     /// port makes every forgetful construction an integration test).
     private var switchable: LeftoversFakeFiles {
         var files = LeftoversFakeFiles()

@@ -9,7 +9,7 @@ import XCTest
 /// read by `TheMapNamesRealDirectoriesTests`, any other, outside `CHANGELOG.md`,
 /// by the removal's `command grep` (ARCHITECTURE.md § Removal takes its traces).
 ///
-/// **Why this is a test and not a habit.** `ARCHITECTURE.md` and `CLAUDE.md`
+/// **Why this is a test and not a habit.** `ARCHITECTURE.md` and the rules file
 /// describe the app as it is now, and nothing checked that claim: on 2026-08-03
 /// an audit found the file count seven out of date, "there are three gates"
 /// after a fourth had been added, a line number that had moved by a hundred

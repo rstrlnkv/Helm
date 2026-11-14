@@ -6,7 +6,7 @@ import XCTest
 /// The log carries no names, and nothing checked that this module's lines obey
 /// it.
 ///
-/// CLAUDE.md states the rule and `Redact` implements it, with three test files
+/// (ARCHITECTURE.md § Diagnostics log) states the rule and `Redact` implements it, with three test files
 /// of its own. What none of them can see is the *call site*: a line written as
 /// `info("vpn", "connect \(name)")` instead of `Redact.vpn(name)` compiles,
 /// reads correctly, and puts somebody's employer in the file they are asked to
