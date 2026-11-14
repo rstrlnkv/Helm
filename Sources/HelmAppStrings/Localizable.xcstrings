@@ -3393,55 +3393,55 @@
         }
       }
     },
-    "logNoteStable": {
+    "logNoteStableAt": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vor einer Problemmeldung einschalten. Die Datei liegt in ~/Library/Logs/Helm."
+            "value": "Vor einer Problemmeldung einschalten. Die Datei liegt in %@."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Turn on before reporting a problem. The file lives in ~/Library/Logs/Helm."
+            "value": "Turn on before reporting a problem. The file lives in %@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Actívalo antes de informar de un problema. El archivo está en ~/Library/Logs/Helm."
+            "value": "Actívalo antes de informar de un problema. El archivo está en %@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activez-le avant de signaler un problème. Le fichier est dans ~/Library/Logs/Helm."
+            "value": "Activez-le avant de signaler un problème. Le fichier est dans %@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "問題を報告する前にオンにしてください。ファイルは ~/Library/Logs/Helm。"
+            "value": "問題を報告する前にオンにしてください。ファイルは %@。"
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ative antes de relatar um problema. O arquivo fica em ~/Library/Logs/Helm."
+            "value": "Ative antes de relatar um problema. O arquivo fica em %@."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Включите перед тем, как сообщить о проблеме. Файл — в ~/Library/Logs/Helm."
+            "value": "Включите перед тем, как сообщить о проблеме. Файл — в %@."
           }
         },
         "zh": {
           "stringUnit": {
             "state": "translated",
-            "value": "报告问题前请开启。文件位于 ~/Library/Logs/Helm。"
+            "value": "报告问题前请开启。文件位于 %@。"
           }
         }
       }

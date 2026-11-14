@@ -289,6 +289,11 @@ struct LogView: View {
         let count: Int
     }
 
+    /// The folder this build's log really lives in (`HelmLog.fileURL`), home as `~`.
+    private static var logFolder: String {
+        (HelmLog.fileURL.deletingLastPathComponent().path as NSString).abbreviatingWithTildeInPath
+    }
+
     @ViewBuilder private func lines(_ page: LogPresentation) -> some View {
         if page.isEmpty {
             // No symbol: the header already draws this exact mark 610 pt above,
@@ -296,7 +301,7 @@ struct LogView: View {
             // and nothing else.
             HelmEmptyState(message: entries.isEmpty ? AppStr.logEmpty : AppStr.logNothingMatches,
                            note: entries.isEmpty && !loggingOn && !AppBuild.isDev
-                               ? AppStr.logNoteStable : nil) {
+                               ? AppStr.logNoteStableAt(Self.logFolder) : nil) {
                 if !entries.isEmpty {
                     Button(AppStr.logAllModules) {
                         chosen = []

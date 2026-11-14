@@ -231,7 +231,7 @@ public enum AppStr {
     /// *while deciding*, and it described a mouse jiggle.
     static var accessibilityWhy: String { L(.accessibilityWhy) }
     public static var writeLog: String { L(.writeLog) }
-    public static var logNoteStable: String { L(.logNoteStable) }
+    public static func logNoteStableAt(_ folder: String) -> String { L(.logNoteStableAt(folder)) }
     public static var revealLog: String { HelmWord.showInFinder }
     public static var copyLog: String { L(.copyLog) }
     /// Next to the button whose whole purpose is pasting this into a bug report.
