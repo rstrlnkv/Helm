@@ -143,6 +143,14 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         sweepNotice?.cancel()
     }
 
+    /// An engine dropped without `deactivate` still stops its timer and its
+    /// pending banner. Not dispatched onto `queue`: `FolderWatcher` stops in its
+    /// own `deinit`.
+    deinit {
+        sweepTimer?.cancel()
+        sweepNotice?.cancel()
+    }
+
     /// On the engine's queue, including the *read*.
     ///
     /// Reading `folders` resolves the key, and both callers arrive on a thread
