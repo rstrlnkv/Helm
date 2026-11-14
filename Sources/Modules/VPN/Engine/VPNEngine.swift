@@ -393,9 +393,10 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // After the lock, because it asks what the page was last told — and the
         // question has to be asked before this reading is emitted over it.
         stampWhatCameUp(parsed)
-        // **One question about this Mac, asked once for the whole refresh**: the
-        // two calls below and the final `emitState` need it, and two answers can
-        // disagree inside one reading.
+        // **One question about this Mac, asked once for the whole refresh**: its
+        // three consumers, `readInterfaces`, `noticeTheRouteAndAskWhereWeAre` and
+        // the final `emitState(primary:)`, share it, and two answers can disagree
+        // inside one reading.
         let primary = interfaces.primaryInterface()
         readInterfaces(parsed, whileStoreSays: primary)
         // After `readInterfaces`, never before: the gate asks whether a tunnel

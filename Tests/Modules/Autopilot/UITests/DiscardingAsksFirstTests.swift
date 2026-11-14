@@ -114,6 +114,11 @@ final class DiscardingAsksFirstTests: XCTestCase {
         XCTAssertTrue(history.contains("Button(ApStr.historyClear) { clear(.history) }"))
         XCTAssertTrue(history.contains("Button(ApStr.discardHistory) { clear(.refusedHistory) }"))
         XCTAssertTrue(page.contains("clear: { rvm.ask($0) }"), "the history section's clear no longer only asks")
+        // The confirm button hands over what the dialog showed, read before the dialog clears it.
+        // The capture is in the synchronous closure, before the Task that awaits the drop.
+        XCTAssertTrue(page.contains("let asked = rvm.pendingDiscard\n                Task { await rvm.confirmDiscard(asked) }"),
+                      "the confirm button no longer captures what was asked before the Task, or no longer passes it")
+        XCTAssertFalse(page.contains("confirmDiscard()"), "the confirm button reads pendingDiscard after the dialog cleared it")
         for name in ["AutopilotSettingsPage.swift", "HistorySection.swift"] {
             let text = try source(name)
             for drop in ["discardRefusedRules", "clearHistory", "dropHistory"] {
