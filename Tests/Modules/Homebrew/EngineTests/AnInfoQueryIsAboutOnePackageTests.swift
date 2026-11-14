@@ -18,7 +18,7 @@ import HelmRuntime
 ///
 /// The payload is JSON, so this one runs through `runData` — the same reason
 /// `outdated()` does, and the same reason its fake speaks `Data` rather than
-/// `String` (`OutdatedQueryAllocationBenchmark`'s `CannedRunner`).
+/// `String`.
 private final class InfoRunner: ProcessRunner, @unchecked Sendable {
     private let lock = NSLock()
     private var _calls: [[String]] = []

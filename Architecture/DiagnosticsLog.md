@@ -91,9 +91,8 @@ an update carries a process ceiling over one large file instead, run only with
 `Tests/HelmRuntimeTests/MemoryTrailCoverageTests.swift` holds the list of phases
 obliged to carry a reading at all.
 
-`Tests/Support/ThreadAllocations.swift` judges one call by the requests it made and never
-by a high-water sampled from those books, which are the whole process's (its doc comment
-holds the measurement). A memory peak is never attributed to a neighbouring log line; the
+A call is judged by the requests it made and never
+by a high-water sampled from those books, which are the whole process's. A memory peak is never attributed to a neighbouring log line; the
 same signature is looked for in a run where the suspect was idle, and the log that raised
 the suspicion usually holds the run that settles it. Bulk phases carry both the named
 interval and the memory reading or stay out of the trail, and the trail never says the app
