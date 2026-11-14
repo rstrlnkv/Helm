@@ -15,7 +15,9 @@ final class ADeclinedUpdateTakesTheOfferAwayTests: XCTestCase {
 
     private func service() -> UpdateService {
         let s = UpdateService(notices: FakeAutomationNotice(),
-                              store: AppSettings.store.over(InMemoryKeyValueStore()))
+                              store: AppSettings.store.over(InMemoryKeyValueStore()),
+                              feed: { _ in throw URLError(.notConnectedToInternet) },
+                              channelBacking: InMemoryKeyValueStore())
         s.available = UpdateService.Release(
             version: "9.9.9", pageURL: URL(string: "https://example.invalid/r")!,
             zipURL: nil, downloadURL: nil, notes: "")

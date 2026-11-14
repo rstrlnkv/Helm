@@ -64,12 +64,25 @@ import HelmAppStrings
     /// A short status for the settings row after a manual check (nil = idle).
     @Published private(set) var note: Note?
 
-    /// The app's one instance is `shared`; a test passes its own notice port and store.
+    /// What asks GitHub: one request, one answer. The app's is `URLSession`; a test
+    /// passes a feed it can hold and release.
+    typealias Feed = @Sendable (URLRequest) async throws -> (Data, URLResponse)
+
+    /// The app's one instance is `shared`; a test passes its own notice port, store,
+    /// feed and the backing the channel is kept in.
     init(notices: AutomationNoticePort = SystemAutomationNotice(area: UpdateService.logArea),
-         store: NamespacedStore = AppSettings.store) {
+         store: NamespacedStore = AppSettings.store,
+         feed: @escaping Feed = { try await URLSession.shared.data(for: $0) },
+         channelBacking: KeyValueStore = UserDefaults.standard) {
         self.notices = notices
         self.store = store
+        self.feed = feed
+        self.channelBacking = channelBacking
     }
+
+    private let feed: Feed
+    /// Where the channel is kept: the bare `updateChannel` key, app-wide.
+    private let channelBacking: KeyValueStore
 
     /// Where the two stamps this service keeps are written — when it last
     /// looked, and what it last said out loud.
@@ -140,6 +153,10 @@ import HelmAppStrings
     }
 
     func checkNow() { Task { await performCheck(manual: true) } }
+
+    /// The newest manual check, so only it clears `checking`: an older one that
+    /// finishes late must not stop the spinner of the one still waiting.
+    private var manualChecks = LatestRequest()
 
     /// How often the day's check is given a chance to happen. Not how often it
     /// happens — `checkOnLaunch` still refuses inside 24 hours.
@@ -253,36 +270,47 @@ import HelmAppStrings
     }
 
     /// Update channel, persisted app-wide (not a module setting).
-    static var channel: UpdateCheck.Channel {
+    var channel: UpdateCheck.Channel {
         get {
-            UpdateCheck.Channel.stored(UserDefaults.standard.string(forKey: "updateChannel"))
+            UpdateCheck.Channel.stored(channelBacking.object(forKey: "updateChannel") as? String)
         }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: "updateChannel") }
+        set { channelBacking.set(newValue.rawValue, forKey: "updateChannel") }
     }
 
     /// Switching channels re-checks immediately: a dev opt-in should surface a
     /// prerelease at once, and opting back out must drop a prerelease offer.
     func setChannel(_ channel: UpdateCheck.Channel) {
-        guard channel != Self.channel else { return }
-        Self.channel = channel
+        guard channel != self.channel else { return }
+        self.channel = channel
         available = nil
         aheadOfChannel = nil
         checkNow()
     }
 
     private func performCheck(manual: Bool) async {
-        if manual { checking = true; note = nil }
-        defer { checking = false }
+        var token = 0
+        if manual {
+            token = manualChecks.take()
+            checking = true
+            note = nil
+        }
+        defer { if manual, manualChecks.isLatest(token) { checking = false } }
 
-        let channel = Self.channel
+        let channel = self.channel
         var req = URLRequest(url: URL(string: channel.endpoint(repo: repo))!)
         req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         req.setValue("Helm", forHTTPHeaderField: "User-Agent")
         req.timeoutInterval = 15
 
         do {
-            let (data, resp) = try await URLSession.shared.data(for: req)
+            let (data, resp) = try await feed(req)
             guard let http = resp as? HTTPURLResponse else { return }
+            // The channel was switched while this was in flight: the answer is
+            // for the channel left, and `setChannel` has already dropped its offer.
+            guard channel == self.channel else {
+                HelmLog.shared.info("update", "dropped an answer for \(channel.rawValue) — the channel changed")
+                return
+            }
             // What the response MEANS is decided by the unit-tested core.
             // Beta reads a single release; dev reads the list of releases.
             let outcome = channel == .beta
@@ -330,7 +358,7 @@ import HelmAppStrings
                 tellSomebodyAboutIt(r.version, startedByHand: manual)
             }
         } catch {
-            if manual { note = .checkFailed }
+            if manual, channel == self.channel { note = .checkFailed }
         }
     }
 

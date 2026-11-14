@@ -45,7 +45,7 @@ private enum ChannelInk {
 /// `SettingsWindow.swift`, and nothing outside `HelmApp` names it.
 struct AboutHelmView: View {
     @State private var showWhatsNew = false
-    @State private var channel = UpdateService.channel
+    @State private var channel = UpdateService.shared.channel
     @ObservedObject private var updater = UpdateService.shared
 
     private var shortVersion: String {

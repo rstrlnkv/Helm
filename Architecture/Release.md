@@ -146,6 +146,12 @@ be swapped in either. A build whose bundle identifier is not the release's
 `Installer.installZip` throws `identityMismatch` unless the unpacked bundle's identifier
 is the installed one's.
 
+`UpdateService` takes the two things outside the process as ports, a feed that answers one
+GitHub request and the store the `updateChannel` key is kept in (still the bare key in
+`UserDefaults.standard`, app-wide, not a module setting); a test names both at every
+construction. An answer that comes back for a channel the person has since left is dropped,
+and only a manual check clears the spinner, and only while it is the newest manual check.
+
 ## What shipped
 
 `CHANGELOG.md` at the root of the tree is the canonical English record and is not
