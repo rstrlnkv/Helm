@@ -26,6 +26,9 @@ final class FakeAutopilotWork: AutopilotWork, @unchecked Sendable {
     private var seen: [String] = []
     private var savedLists: [[WatchedFolder]] = []
     private var asked: WatchedFolder?
+    private var holdsFirst = false
+    private var released = false
+    private var held: CheckedContinuation<Void, Never>?
 
     init(folders: [WatchedFolder] = [],
          status: AutopilotStatus = AutopilotStatus(refusal: nil),
@@ -44,6 +47,13 @@ final class FakeAutopilotWork: AutopilotWork, @unchecked Sendable {
     func answers(_ next: AutopilotStatus) { lock.withLock { status = next } }
     func holdsHistory(_ next: [ActionRecord]) { lock.withLock { history = next } }
 
+    /// The first `save` waits, after it has been recorded, until `releaseTheFirstSave()`:
+    /// the engine's lock being taken by a later caller first.
+    func holdsTheFirstSave() { lock.withLock { holdsFirst = true } }
+    func releaseTheFirstSave() {
+        lock.withLock { released = true; held?.resume(); held = nil }
+    }
+
     // What the model did.
     var calls: [String] { lock.withLock { seen } }
     var saved: [[WatchedFolder]] { lock.withLock { savedLists } }
@@ -57,11 +67,18 @@ final class FakeAutopilotWork: AutopilotWork, @unchecked Sendable {
     func readHistory() async -> [ActionRecord] { lock.withLock { seen.append("readHistory"); return history } }
 
     func save(_ list: [WatchedFolder]) async {
-        lock.withLock {
+        let hold = lock.withLock {
             seen.append("save")
             savedLists.append(list)
-            if status.refusal == nil { folders = list }
+            return holdsFirst && savedLists.count == 1
         }
+        if hold {
+            await withCheckedContinuation { (next: CheckedContinuation<Void, Never>) in
+                lock.lock()
+                if released { lock.unlock(); next.resume() } else { held = next; lock.unlock() }
+            }
+        }
+        lock.withLock { if status.refusal == nil { folders = list } }
     }
 
     func dropRefusedRules() async { note("dropRefusedRules") }

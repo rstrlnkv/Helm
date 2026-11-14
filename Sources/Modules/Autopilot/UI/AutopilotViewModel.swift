@@ -53,6 +53,9 @@ extension AutopilotEngine: AutopilotWork {}
     /// ping is no reason to read the rule store early.
     private var loaded = false
     private var listening: Task<Void, Never>?
+    /// The tail of the chain of saves: each send waits for the one before it, so the
+    /// list made last is the list stored last.
+    private var lastSave: Task<Void, Never>?
 
     /// Built once, by the descriptor's `makeModule`, at launch, and held by the
     /// host for the life of the module — so **the initialiser asks the engine
@@ -402,8 +405,22 @@ extension AutopilotEngine: AutopilotWork {}
         // only when it was the last one — a folder no longer watched.
         refreshPresets()
         guard refusal == nil else { return }
-        let list = folders
-        Task { await sendFolders(list) }
+        send(folders)
+    }
+
+    /// One link on the chain. `offTheCooperativePool` runs independent Tasks on the
+    /// global concurrent queue, so two of them race for the engine's lock and an
+    /// older list could land last; this link starts only once the one before has
+    /// finished, and a caller that must wait for its own write awaits the returned link.
+    @discardableResult
+    private func send(_ list: [WatchedFolder]) -> Task<Void, Never> {
+        let previous = lastSave
+        let link = Task { [weak self] in
+            await previous?.value
+            await self?.sendFolders(list)
+        }
+        lastSave = link
+        return link
     }
 
     /// The same write, waited for, **and then the engine asked what became of
@@ -527,7 +544,7 @@ extension AutopilotEngine: AutopilotWork {}
         }
         refreshPresets()
         guard refusal == nil else { return }
-        await sendFolders(folders)
+        await send(folders).value
     }
 
     /// **A folder that arrives with a rule already in it, and no panel.**
@@ -564,7 +581,7 @@ extension AutopilotEngine: AutopilotWork {}
         fresh.rules = [rule]
         folders.append(fresh)
         refreshPresets()
-        await sendFolders(folders)
+        await send(folders).value
         if sweeps { await runNow(fresh) }
     }
 

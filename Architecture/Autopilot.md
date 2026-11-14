@@ -65,6 +65,10 @@ on that queue, serialised with the hourly sweep and the FSEvents leg. Run now re
 folder that is switched off in the engine, not only at the button. The gates are below
 these calls and are not reached around.
 
+Saves are one chain in the model (`lastSave` in `AutopilotViewModel.swift`): each waits for the
+one before it, because independent Tasks on the global queue raced for the engine's lock and
+an older list could land last. `TheLaterSaveLandsLastTests` holds it (past defect).
+
 The one thing the engine says unasked, that a pass went into the history, is not a call of
 the model's. The engine is built with a `historyChanged` closure, called only after the
 history and its seal were written; the descriptor makes it yield into a one-slot
