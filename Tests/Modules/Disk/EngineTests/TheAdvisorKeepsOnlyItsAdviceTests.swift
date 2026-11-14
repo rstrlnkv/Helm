@@ -87,7 +87,7 @@ final class TheAdvisorKeepsOnlyItsAdviceTests: XCTestCase {
         //     the same sweep with a pool inside it:    0 bytes/node (0.0 MB)
         //
         // 25 fails the defect by more than a factor of two and passes the repair
-        // by the whole of it. A number above 56 would have recorded the present
+        // by the whole of it. A number above 88 would have recorded the present
         // rather than guarded it.
         XCTAssertLessThan(perNode, 25, """
             the advisor is keeping every path it judged rather than the advice it produced. \
