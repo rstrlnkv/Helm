@@ -102,8 +102,11 @@ public struct ScanResult: Codable, Equatable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         root = try c.decode(DiskEntry.self, forKey: .root)
         freeBytes = try c.decode(Int.self, forKey: .freeBytes).clamped(to: 0...DiskEntry.byteCeiling)
-        filesScanned = try c.decode(Int.self, forKey: .filesScanned)
+        filesScanned = try c.decode(Int.self, forKey: .filesScanned).clamped(to: 0...Int.max)
+        // JSON cannot carry NaN, and 0 is the answer if it ever does. One day of
+        // walking is the ceiling; both figures reach `Count` and `Fractional(seconds)`.
         seconds = try c.decode(Double.self, forKey: .seconds)
+            .clamped(to: 0...86_400, whenNotANumber: 0)
         advice = try c.decodeIfPresent([DiskAdvice].self, forKey: .advice) ?? []
     }
 }

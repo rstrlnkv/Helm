@@ -45,6 +45,17 @@ final class ASavedFileCannotTrapTheSumsTests: XCTestCase {
         return store.load()
     }
 
+    /// A negative count and a duration of 1e300 are read as 0 and one day, the
+    /// bound every other figure in the file already has.
+    func testTheCountAndTheDurationDecodedFromAFileAreBounded() throws {
+        let json = saved(root: entry("/v", bytes: "1"))
+            .replacingOccurrences(of: #""filesScanned":1,"seconds":1"#,
+                                  with: #""filesScanned":-5,"seconds":1e300"#)
+        let result = try XCTUnwrap(try load(json), "precondition: the planted file did not decode").result
+        XCTAssertEqual(result.filesScanned, 0, "a negative count is read as 0")
+        XCTAssertEqual(result.seconds, 86_400, "a duration of 1e300 is read as one day")
+    }
+
     /// One target at `Int.max` is held to the ceiling every other figure in the file
     /// is held to; unbounded, a basket holding two such rows sums past an integer.
     func testATargetFigureDecodedFromAFileIsBounded() throws {
