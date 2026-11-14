@@ -33,10 +33,11 @@ private func frame(_ e: AXUIElement) -> String {
     return "\(Int(p.x.rounded())),\(Int(p.y.rounded())),\(Int(s.width.rounded())),\(Int(s.height.rounded()))"
 }
 
-private func walk(_ e: AXUIElement, _ depth: Int, _ visit: (AXUIElement, Int) -> Void) {
+private func walk(_ e: AXUIElement, _ depth: Int, skipMenuBar: Bool = false, _ visit: (AXUIElement, Int) -> Void) {
     visit(e, depth)
     guard depth < 25 else { return }
-    for c in attribute(e, kAXChildrenAttribute) as? [AXUIElement] ?? [] { walk(c, depth + 1, visit) }
+    if skipMenuBar, text(e, kAXRoleAttribute) == kAXMenuBarRole as String { return }
+    for c in attribute(e, kAXChildrenAttribute) as? [AXUIElement] ?? [] { walk(c, depth + 1, skipMenuBar: skipMenuBar, visit) }
 }
 
 private func describe(_ e: AXUIElement) -> String {
@@ -55,7 +56,12 @@ enum Accessibility {
 
     static func tree(_ args: [String]) throws {
         guard args.count == 1 else { throw Failure.usage("ax <pid>") }
-        walk(try application(args), 0) { e, d in print(String(repeating: "  ", count: d) + describe(e)) }
+        // The menu bar's children are skipped: the Apple menu lists recent files and servers of this Mac,
+        // names that must not reach a proof file. `press` and `statusitem` still walk it.
+        walk(try application(args), 0, skipMenuBar: true) { e, d in
+            let skipped = text(e, kAXRoleAttribute) == kAXMenuBarRole as String ? " (children skipped)" : ""
+            print(String(repeating: "  ", count: d) + describe(e) + skipped)
+        }
     }
 
     /// Presses the one control of that name that has a press action. More than one: refuses and lists them,

@@ -157,7 +157,7 @@ dependency on any other target; `swift build --target HelmReadout` builds it, `s
 never does. A capture carries the display's profile, so `point` prints the file's own
 values with the profile name beside the sRGB ones; the other subcommands read sRGB.
 Its subcommands: `point`, `bands`, `contrast`, `diff` over two captures of one size,
-`window <pid>` with the windows in front of each, `exe <pid>`, `scale <x> <y>`, `ax <pid>`,
+`window <pid>` with the windows in front of each, `exe <pid>`, `scale <x> <y>`, `ax <pid>` (the menu bar's line is printed, its children are not: the Apple menu lists this Mac's recent files),
 `press <pid> <name> [<role>] [--nth <n>]`, `scroll <pid> <fraction>`, `statusitem <pid> <host-pid>`, and `session`, which says whether the screen is
 locked and which grants this chain has.
 
