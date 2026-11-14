@@ -30,9 +30,10 @@ A MINOR bump resets PATCH to zero, a MAJOR bump resets both. What makes a line a
 rather than a licence to call any feature a patch is that the whole series — which
 releases, in what order, where it ends — is written down before the first of them ships.
 `CHANGELOG.md` names the line in one italic line under the first section heading it
-ships; that italic line is the only prose a section there gets, and
-`command grep -c '^\*[^*]' CHANGELOG.md` counts them against
-`command grep -c '^## ' CHANGELOG.md` version headings.
+ships, and uses the same single italic line where a version never shipped a build, to say
+where its work went out (`0.11.0`, `0.10.0` and `0.8.0` do); that italic line is the only
+prose a section there gets, and `command grep -c '^\*[^*]' CHANGELOG.md` counts both uses
+against `command grep -c '^## ' CHANGELOG.md` version headings.
 
 While the number is `0.x`, MINOR is the lane the work runs in. `1.0.0` is reserved for a
 Developer ID and notarization — the build opening without `xattr` — plus a settled module

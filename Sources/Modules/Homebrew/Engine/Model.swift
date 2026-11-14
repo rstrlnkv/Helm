@@ -55,7 +55,7 @@ public enum HomebrewNews: Equatable, Sendable {
     /// takes nothing off the marker (`HomebrewEngine.status`). It exists so the page's
     /// first frame can be the right page, not the install screen until `readStatus`
     /// has answered; whether it lands in time in the app is unproved
-    /// (`Architecture/Homebrew.md` § The model).
+    /// (ARCHITECTURE.md § The model).
     case brew(path: String?)
 }
 

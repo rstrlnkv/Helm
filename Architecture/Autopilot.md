@@ -45,6 +45,8 @@ permission and not from the switch. A module-wide suppression marked on every sw
 rule says "paused" about rules that are merely waiting, and a page reading its own enabled
 flag shows "Active" for a module that has been inert all session.
 
+The device id of a stored file identity keeps its unsigned bit pattern on purpose (ARCHITECTURE.md § Bulk reads).
+
 ## How Autopilot's model reaches its engine
 
 `AutopilotViewModel` is built with the engine by the descriptor's `makeModule` and held by

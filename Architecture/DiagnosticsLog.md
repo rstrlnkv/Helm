@@ -52,7 +52,8 @@ cancellation. `begin`/`end` is the pair for a body the closure cannot take. It i
 only with a `defer` on the very next line, and only where the phase is the whole body of
 an asynchronous function, because a `defer` ends at the end of the function and so is the
 end of the phase only there; the balance-by-hand the phase call replaces caused
-cancel-path defects. The label goes on the shared path rather than at each call site, as
+cancel-path defects. One documented exception: Homebrew's `homebrew.operation` is begun in `beginBusy` and ended in `endBusy`,
+because the operation outlives one async body. The label goes on the shared path rather than at each call site, as
 `HelmTrash` does with `"\(module).trash"` (ARCHITECTURE.md § Removal), so every module
 deleting through `HelmTrash` carries the name and a new one cannot forget to.
 `HelmActivity.sweep(module:)` is called from `ModuleHost.shutdown` and

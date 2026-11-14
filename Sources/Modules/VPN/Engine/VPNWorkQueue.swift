@@ -23,7 +23,7 @@ import Foundation
 /// which compares and stamps `_lastEmitted` under the lock and emits outside
 /// it, so one payload was swallowed as a duplicate of the other and the
 /// survivor was emitted from a thread the test had already run past — a fake
-/// freer than the port it stands for (CLAUDE.md), and every test in this module
+/// freer than the port it stands for (ARCHITECTURE.md § Fakes), and every test in this module
 /// written against it.
 public enum VPNWorkQueue: Sendable {
     case background

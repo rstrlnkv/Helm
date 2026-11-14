@@ -33,7 +33,7 @@ order it was said.
 
 The host calls the descriptor's `stop(_:)` before the engine's `deactivate()`. A closed
 model hears nothing and asks nothing, so an install that `deactivate()` ends is not
-followed by a re-read of a module going off. `deactivate()` shuts the gate to every operation until `activate()` and ends the install of Homebrew as Stop does (one SIGTERM, the exit read as the person's stop). A package operation or a doctor fix is not terminated, because a half-built `brew` run can leave the Cellar broken: it finishes on its own, `busy` stays true and the quit marker stays until its exit, which the engine still hears (it is held strongly by the exit), and then the marker is cleared. The busy gate is shared by every engine of the process (`OperationGate`, passed as `.process` by the descriptor, a fresh one per engine elsewhere): the host builds a new engine on every enable, so a fresh engine beside one still running is refused like a second press, and its `status()` takes no marker while any engine holds the gate. An operation clears its marker before it gives the gate back, so a late exit cannot delete a newer marker; the marker file keeps its format (a label), and one left by a real quit is read by the next launch's first `status()` as before. The page's Stop button is
+followed by a re-read of a module going off. `deactivate()` shuts the gate to every operation until `activate()` and ends the install of Homebrew as Stop does (one SIGTERM, the exit read as the person's stop). A package operation or a doctor fix is not terminated, because a half-built `brew` run can leave the Cellar broken: it finishes on its own, `busy` stays true and the quit marker stays until its exit, which the engine still hears (it is held strongly by the exit), and then the marker is cleared. `deinit` gives the shared gate back, and only if this engine holds it: `OperationGate.release` is owner-checked, which is what keeps a dropped idle engine from opening the gate under a running one. The busy gate is shared by every engine of the process (`OperationGate`, passed as `.process` by the descriptor, a fresh one per engine elsewhere): the host builds a new engine on every enable, so a fresh engine beside one still running is refused like a second press, and its `status()` takes no marker while any engine holds the gate. An operation clears its marker before it gives the gate back, so a late exit cannot delete a newer marker; the marker file keeps its format (a label), and one left by a real quit is read by the next launch's first `status()` as before. The page's Stop button is
 `stopOperation()`; `stop()` is the seam's.
 
 Where brew is arrives first: `activate()` files it from the locator (`HomebrewNews.brew`; no
@@ -56,7 +56,8 @@ file, so it survives the quit it exists to report and the next launch's first
 `status()` answers `interruptedOp`.
 
 One phase (`HomebrewEngine.operationPhase`) covers the long operations, opened
-in `beginBusy` and closed in `endBusy`. The queries that sweep the whole Cellar or
+in `beginBusy` and closed in `endBusy`: a documented exception to the
+rule of bare begin only with `defer` on the next line (ARCHITECTURE.md § The activity registry), because the operation outlives one async body. The queries that sweep the whole Cellar or
 catalogue hold scoped phases of their own; `dependents` holds none, deliberately (its
 doc comment). Package names
 travel as array elements after `--` (the engine's doc comment) and reach the log
@@ -126,7 +127,7 @@ screen, and `DoctorParser` why a warning keeps its whole block. The verdict is t
 from the *unfiltered* reading, so a word typed into the field cannot make a Mac look
 clean. The gate under a fix button is unchanged: the page's view model judges each
 fix through `DoctorFixCandidate.judging` (which calls `DoctorFix.judge`) before it is
-drawn, and the engine's `runDoctorFix` judges again against a list read at the press.
+drawn, and the engine's `runDoctorFix` judges again against a list read at the press. `cleanup` stays in `DoctorFix.Allowed`, argument-exact (`DoctorFix.swift`'s doc comment says why only the bare command is admitted), by the owner's decision.
 
 ## The states of the Homebrew page
 

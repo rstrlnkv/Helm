@@ -599,8 +599,7 @@ public final class TraceExit: VPNExitPort {
 
     /// The phase is named here rather than by the caller: this is the shared path
     /// every exit check goes through, and a wait of up to eight seconds should say
-    /// what it is while it runs (CLAUDE.md § What not to do, and what breaks if you
-    /// do).
+    /// what it is while it runs (ARCHITECTURE.md § The activity registry).
     public func regionCode() async -> String? {
         await HelmActivity.phase("vpn.exit") {
             guard let (data, response) = try? await session.data(from: url),

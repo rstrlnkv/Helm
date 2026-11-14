@@ -27,3 +27,7 @@ is no second machine to prove that path on.
 **No page bar of Helm's own.** A bar drawn by the shell (`ShellPageBar`) and a hybrid that drew only
 the tabs were both replaced by the system `NSToolbar`, now `Sources/HelmUI/DesignSystem/HelmWindowToolbar.swift`,
 on the owner's feedback about the look, so nobody puts a custom bar back.
+
+**Not in Screenshots' first version.** Video, a long screenshot, a history of shots, Beautify, a real window editor, Save As, Pin, a "Start with" choice and a panel place per display are not here and are not proposed as gaps; the owner left them out, and `Architecture/Screenshots.md` and `Architecture/ScreenshotsEditor.md` describe what is. Copy All names a shot that is gone by its position in the pile ("Screenshot 2"), by the owner's choice.
+
+**Not one list of protected prefixes.** `StaleItemRules.protectedPrefixes` (what Leftovers offers) and `UserFileScope.protectedPrefixes` (what any removal may touch) are two lists on purpose: they answer two questions, and merging them would let the offer's list loosen the gate or the gate's list narrow the offer.

@@ -36,13 +36,15 @@ a new keychain account, because Autopilot's item exists on every Mac that has ru
 module and moving it would read there as "somebody rewrote your rules".
 
 The reads of the rules come from the sweep timer, from file-system events, from the
-model's calls and from the watch refresh. One lock covers reading, judging against the seal
-and recording the judgement; another covers saving payload and seal. Without the second,
-a read landing between the two writes judges new rules against an old seal and calls
+model's calls and from the watch refresh. In Autopilot's rules one lock, `decisionLock`
+(`Sources/Modules/Autopilot/Engine/SealedRules.swift`), covers both reading, judging against the
+seal and recording the judgement, and saving payload and seal, on purpose: it is not split. Without
+that, a read landing between the two writes judges new rules against an old seal and calls
 Helm's own work tampering, and unordered, "these are Helm's own rules" lands on top of
 "something else wrote these"
-(`Tests/Modules/Autopilot/EngineTests/AutopilotSealRaceTests.swift` holds both). Each
-lock is taken on both sides of a field, in a synchronous property that returns the value
+(`Tests/Modules/Autopilot/EngineTests/AutopilotSealRaceTests.swift` holds both orderings). `keyLock` is
+held only around the two keychain ports and `trustLock` only around the field access, each on
+both sides of a field, in a synchronous property that returns the value
 rather than holding it across a suspension.
 
 What is *not* sealed is as much a part of the shape: `KeepAwakeSettings.clamshellEnabled`

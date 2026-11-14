@@ -197,7 +197,7 @@ public protocol NetworkWatchPort: AnyObject {
 /// the lookup answered nil, so the tile strip was absent on every Mac. The question
 /// is `scutil`'s now, asked by name through `VPNRunnerPort` and read by
 /// `VPNStatusParser` — and a fake can no longer be planted with a pair the system
-/// cannot produce (CLAUDE.md § What not to do, and what breaks if you do).
+/// cannot produce.
 public protocol VPNInterfacePort: AnyObject {
     /// The interface carrying the default route, or nil when the machine has
     /// none — which is the honest answer for a Mac with no network at all — or
@@ -220,8 +220,7 @@ public protocol VPNInterfacePort: AnyObject {
 /// when nothing could be read.
 ///
 /// **The address itself never leaves this port.** The verdict on screen names a
-/// country and the log names neither (CLAUDE.md § What not to do, and what breaks
-/// if you do), so there is nowhere for an address to be kept — and a port that
+/// country and the log names neither, so there is nowhere for an address to be kept — and a port that
 /// never returns one cannot leak one later.
 public protocol VPNExitPort: AnyObject {
     func regionCode() async -> String?

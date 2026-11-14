@@ -66,6 +66,11 @@ public enum PathCanonical {
     /// thing I acted on". A move *across* volumes changes the inode, and the
     /// two callers here fail in the same direction when it does: a mark stops
     /// matching, and a return refuses rather than moving a stranger's file.
+    ///
+    /// The device is `UInt64(bitPattern: st_dev)` and stays so. It is lossless;
+    /// it is deployed in `ActionRecord.device` (`ActionHistory.swift`) and in the
+    /// stamp MAC (`StampMark.of(rule:device:inode:key:)`); and converting it would
+    /// read every stamped file on a volume with a negative `st_dev` as unstamped.
     public struct FileIdentity: Equatable, Sendable {
         public let device: UInt64
         public let inode: UInt64

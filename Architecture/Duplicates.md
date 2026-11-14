@@ -61,6 +61,29 @@ keychain answer cannot re-order the groups either. `basketExtras` and
 afterwards is filtered out of the basket.
 
 
+## Keys, phases, guards and files
+
+The module stores two keys in its namespace, `keepPolicy` and `folder`, both sealed with the one guard over the scan settings (`DuplicatesSettings.guardOfScanSettings`); the seal and its rules are in ARCHITECTURE.md § Sealed settings. `DuplicatesSettings` is the only writer of the sealed pair (`setKeepPolicy` and `setFolder`, both through the private `setSealed`), and the reader the engine uses for both keys and the page uses for the policy (the page reads the remembered `folder` once, directly, at start), so a screen cannot say `by date` while a search runs `by place`. A broken seal on the policy is the default; on the folder it stops the unattended walk.
+
+The scan's phases are `duplicates.walk` and `duplicates.hash`, the acting step's is `duplicates.verify`. The walk and the hashing throttle their progress by the one `BulkWalk.progressInterval`, the same interval Disk's partial snapshots use.
+
+Kept tests, one per guarantee:
+
+| guarantee | test |
+|---|---|
+| the survivor is not chosen by walk order | `TheSurvivorDoesNotDependOnWalkOrderTests` |
+| the copy that stays is never also taken | `TheCopyThatStaysIsNeverAlsoTakenTests` |
+| the pair is re-read before a removal | `StaleRemovalIsRefusedTests`, `AnUnreadablePairIsItsOwnRefusalTests` |
+| the survivor is read once per batch | `SurvivorReadOncePerBatchTests` |
+| the removal passes the gate | `DuplicatesRemovalGateTests` |
+| the keep policy is sealed where stored | `TheKeepPolicyIsSealedWhereStoredTests`, `TheScanSettingsSealDoesNotMoveTests` |
+| a folder from the open panel is sealed | `AFolderTheOpenPanelGivesIsSealedTests` |
+| the unattended walk stays out of the Library | `TheTimersWalkStaysOutOfTheLibraryTests` |
+| a scan that could not look is not "all clear" | `AScanThatCouldNotLookIsNotAllClearTests` (optional, run by filter) |
+| a stopped model reaches no work | `AStoppedDuplicatesModelReachesNoWorkTests` |
+
+The tests live in `Tests/Modules/Duplicates/EngineTests` and `Tests/Modules/Duplicates/UITests`.
+
 ## The states of the Duplicates page
 
 The page id is the module id, `duplicates`, and a state is shot with its file `duplicates-<state>-<light|dark>[-<fr|de|ru>].png`:

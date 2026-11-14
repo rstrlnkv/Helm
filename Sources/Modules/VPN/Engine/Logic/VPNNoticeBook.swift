@@ -48,7 +48,7 @@ public struct VPNNoticeBook: Equatable, Codable {
         /// optional property, so a book written before these two fields existed
         /// reads back with them `nil` — which means inherit. A non-optional
         /// field with a default would have thrown instead, and `JSONDecoder`
-        /// gives up on the whole document rather than the one key (CLAUDE.md).
+        /// gives up on the whole document rather than the one key (ARCHITECTURE.md § A value read back whole).
         var isEmpty: Bool {
             notice == nil && drop == nil && spin == nil
                 && tintUp == nil && tintDown == nil

@@ -41,6 +41,30 @@ round them. On the person's switch the host calls the descriptor's `stop(_:)` af
 `willDisable()` has given the switches back, so a press that late writes nothing nobody gives back.
 «Reset all settings» runs `willDisable()` on every live module too, and its `stop(_:)` waits for `shutdown()` on the way out of the relaunch, so the page takes a press in between.
 
+## Reads, predicates, guards and files
+
+The engine asks whether a path is there through the port's `exists`, which is `DirectoryListing.exists(atPath:)` (`Sources/HelmRuntime/DirectoryListing.swift`): `nil` for a path it could not answer for, never `false`, so a folder that went unread is not a missing one.
+
+`LeftoverActions.isApplesOrProtected` is the one Apple-or-protected predicate, and both `available(for:)` and `whyDeleteIsWithheld(from:)` stand on it, so the page cannot offer what the reason says is withheld.
+
+`StaleItemRules.protectedPrefixes` is a second protected-prefix list, kept on purpose beside `UserFileScope.protectedPrefixes`: the first judges what the scan offers, the second is the gate every removal passes, and each stays authoritative for its own question (Architecture/WhatIsDeliberatelyNotHere.md, "Not one list of protected prefixes").
+
+Kept tests, one per guarantee:
+
+| guarantee | test |
+|---|---|
+| a folder that went unread is not a file | `AFolderThatWentUnreadIsNotAFileTests` |
+| a source nobody walked is not a clean Mac | `ASourceNobodyWalkedIsNotACleanMacTests` |
+| the rules keep what they name | `StaleItemRulesTests` |
+| a switch the engine turned off is given back | `ALeftoverSwitchIsGivenBackTests`, `TheEngineRefusesASharedSwitchTests` |
+| a hidden tick never reaches the Trash | `AHiddenTickNeverReachesTheTrashTests` |
+| the removal passes the gate | `LeftoversRemovalTests` |
+| one removal at a time | `OneRemovalAtATimeTests` |
+| the log does not name the software | `TheLogDoesNotNameTheSoftwareTests` |
+| a stopped model reaches no work | `AStoppedModelReachesNoWorkTests` |
+
+The tests live in `Tests/Modules/Leftovers/EngineTests` and `Tests/Modules/Leftovers/UITests`.
+
 ## The states of the Leftovers page
 
 Leftovers has no tile of its own: the descriptor answers `.utility` for the menu bar, so its panel entry is a row

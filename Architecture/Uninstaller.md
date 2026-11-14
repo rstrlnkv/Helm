@@ -63,6 +63,29 @@ page draws a spinner and the footer says "Counting apps…" (`AppsEmpty.status(a
 
 Words: `Sources/Modules/Uninstaller/UI/Localizable.xcstrings`; shared words through `HelmWord`, and the removal's sentence through `HelmBasket` in `Sources/HelmUI/BasketStrings.swift`.
 
+## Keys, gates, guards and files
+
+The engine stores three keys of its own in its `NamespacedStore`, under the module id `uninstaller` (`UninstallerEngine.moduleID`, the only place it is spelled): `watchTrash` (the Trash offer's switch), `sortOrder` and `trashOfferDismissed`. The module id also names the scan-journal directory `ScanJournal` keeps for it (a `uninstaller` folder under Helm's `Scans` directory in Application Support) and the removal attributed to it in the log; none of these spellings changes.
+
+The gate order of a removal is fixed: `trashPaths` asks who is up (`UninstallPlan.verdict(running:mayQuit:)`), quits, asks again, partitions through `RemovableScope.partition`, and only then hands each path to `HelmTrash.remove`. The Leftovers tab's state lives in `OrphansModel` (the scan's groups, the selection, the failures and the banner), which reaches the engine through the view model's `scanOrphans` and `trashPaths`; the unattended scan is `backgroundScan()`.
+
+The Apps tab's failure list is today's `failureReport` (`UninstallerSettingsPage.swift`); changing it is owner decision 22, in the post-programme queue.
+
+Kept tests, one per guarantee:
+
+| guarantee | test |
+|---|---|
+| a name is a guess, an id is not | `ANameIsAGuessNotAnOwnershipQuestionTests` |
+| the app is asked again at removal | `TheAppIsAskedAgainAtRemovalTests`, `TheRunningQuestionIsAskedAtRemovalTests` |
+| the quit is waited for, and its deadline ends the wait | `TheQuitIsWaitedForTests` |
+| a refusal is not a decline at the Trash window's close | `ARefusalIsNotADeclineAtTheCloseTests` (optional, run by filter) |
+| the removal report is not the last word | `TheReviewIsNotTheLastWordTests` |
+| a second press on the Leftovers tab is refused | `TheOrphansTabRefusesASecondPressTests` |
+| a stopped model reaches no work | `AStoppedUninstallerModelReachesNoWorkTests` |
+| the log does not name the app | `TheLogDoesNotNameTheAppTests` |
+
+The tests live in `Tests/Modules/Uninstaller/EngineTests` and `Tests/Modules/Uninstaller/UITests`.
+
 ## The states of the Uninstaller page
 
 The page id is the module id, `uninstaller`, and a state is shot with its file `uninstaller-<state>-<light|dark>[-<ru|de>].png`:

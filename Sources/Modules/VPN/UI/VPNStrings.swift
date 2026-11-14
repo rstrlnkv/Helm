@@ -113,7 +113,7 @@ enum VPNStr {
     ///
     /// **The button's own word is interpolated, not spelled again.** A sentence
     /// naming a control the app does not draw has already shipped in eight
-    /// languages once (CLAUDE.md § Shipping — what a person does, not a role), and
+    /// languages once, and
     /// `cardWord` is where that word is decided.
     static func secretNeedsAPress(_ name: String,
                                   language: AppLanguage = AppLanguage.current) -> String {

@@ -83,7 +83,7 @@ and the rules (`VPNAutoConnectCore`) stay inside the engine, which calls `connec
 `activate()` emits and the stream's replay delivers.
 
 The one thing the engine says to its model is `VPNEngine.StatePayload`, level-triggered,
-through `VPNEngine.stream()` in the shape of Keep Awake's (Architecture/KeepAwake.md § How
+through `VPNEngine.stream()` in the shape of Keep Awake's (ARCHITECTURE.md § How
 the model reaches the engine): the latest state first, the subscriber registered in the
 one hold of `EngineNews`'s lock that replays it (`EngineNews.stream`), one task in the model. The stream adds
 no dedup of its own, so the forced re-emission of a refused measurement (`emitState(force:)`,

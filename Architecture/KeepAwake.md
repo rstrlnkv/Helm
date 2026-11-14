@@ -6,6 +6,13 @@ engine is the orchestration between them and the ports:
 `KeepAwakeEngine` names the units it drives and says that the module lifecycle
 (`activate()`/`deactivate()`) and the session are separate axes.
 
+The engine's `recompute` runs once per event: the power callback, the display
+notification and a launch or quit each call it once, and the clock's tick comes from
+`DispatchClock`, which hands out the shared `DelayedWork` token
+(`Sources/HelmRuntime/DelayedWork.swift`): the engine drops it in `stop()`,
+`deactivate()` or `deinit`, and no tick lands afterwards. The conditions the engine
+publishes are a `Set<ActiveCondition>`, the engine's own cases, not strings.
+
 ## How the model reaches the engine
 
 `KeepAwakeViewModel` is built with the engine by the descriptor's `makeModule` and

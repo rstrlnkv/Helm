@@ -234,7 +234,7 @@ fi
 echo "==> Build number: $BUILD_NO"
 # The bundle is assembled and signed OUTSIDE the repo.
 #
-# This checkout is meant to stay out from under a file provider (CLAUDE.md); one that
+# This checkout is meant to stay out from under a file provider (Architecture/Release.md § Signing and grants); one that
 # syncs it stamps com.apple.FinderInfo onto directories it manages faster than
 # `xattr -c` removes it. codesign refuses a bundle carrying it ("resource fork,
 # Finder information, or similar detritus not allowed"), so signing in place

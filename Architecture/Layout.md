@@ -46,6 +46,26 @@ coming to the front (the layout bound to it) both go through `AppActivationPort`
 `deactivate()` is one `stopObserving()` call, and a second `startObserving` replaces the
 first (`TheEngineLetsGoOfItsObserversTests`, `TheActivationPortKeepsOneWatchTests`).
 
+## Keys, waits, guards and files
+
+The page and the engine spell each stored name once, in `LayoutKey` (`Sources/Modules/Layout/Engine/Logic/SettingsKeys.swift`): a setting added there first, its default read where the engine reads it, and a fresh store holds the deployed defaults (`AFreshStoreHoldsTheDeployedDefaultsTests`). The convert hotkey's three keys are `<prefix>KeyCode`, `<prefix>Modifiers` and `<prefix>Label` under `LayoutHotkey.storePrefix`, spelled only by `HotkeyStoreKeys` (`Sources/HelmRuntime/HotkeyFallback.swift`) and never moved.
+
+The selection is read through the accessibility API alone: there is no ⌘C route, and ⌘V is kept only for an app that refuses the write (owner decision 3). The 120 ms wait between that ⌘V and the clipboard's restore stays on main (owner decision Q14; the reason is in `pasteSelection`'s comment). The second `isSecure()` ask in `convertSelection` also stays on main: that ask is the gate, and moving it off main would read a secure field before it is judged.
+
+Kept tests, one per guarantee:
+
+| guarantee | test |
+|---|---|
+| Helm's own keystrokes are not read as typing | `HelmsOwnKeystrokesAreNotReadAsTypingTests` |
+| a secure field is asked before it is read | `ASecureFieldIsAskedBeforeItIsReadTests`, `ASlipIsNotFixedInAPasswordFieldTests` |
+| the clipboard is left alone when it cannot be given back | `TheClipboardIsLeftAloneWhenItCannotBeGivenBackTests` |
+| the selection is written where it was read | `TheSelectionIsWrittenWhereItWasReadTests` |
+| the log carries neither what is typed nor what is selected | `TheLogDoesNotCarryWhatYouTypeTests`, `TheLogDoesNotCarryWhatYouSelectTests` |
+| a fresh store holds the deployed defaults | `AFreshStoreHoldsTheDeployedDefaultsTests` |
+| a stopped model reaches no work | `AStoppedLayoutModelReachesNoWorkTests` |
+
+The tests live in `Tests/Modules/Layout/EngineTests` and `Tests/Modules/Layout/UITests`.
+
 ## The states of the Layout page
 
 The page id is the module id, `layout`, and a state is shot with its file `layout-<state>-<light|dark>[-<ru|de>].png` (the language is always passed: without it Helm Dev speaks the Mac's language):
