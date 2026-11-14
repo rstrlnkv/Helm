@@ -132,10 +132,22 @@ public enum DuplicatesSettings {
         setSealed(path, for: folderKey, in: store, guardedBy: settings)
     }
 
+    /// **One lock over read-judge-adopt and over saving**
+    /// (ARCHITECTURE.md § Sealed settings). `stored` reads a value and its MAC as
+    /// a pair and may write a MAC for the value it read; a save that lands
+    /// between that read and that write would leave the new value beside a MAC
+    /// sealed over the old one, which the next reader refuses. So `stored` holds
+    /// this lock from the read of the pair to the adopting write, and a save
+    /// holds it for both its writes; readers exclude one another the same way.
+    /// It is synchronous and never held across a suspension, and no verdict is cached.
+    private static let saving = NSLock()
+
     private static func setSealed(_ value: String, for key: String, in store: NamespacedStore,
                                   guardedBy settings: SettingGuard) {
-        store.set(value, for: key)
-        store.set(settings.seal(Data(value.utf8)) ?? "", for: SettingGuard.macKey(for: key))
+        saving.withLock {
+            store.set(value, for: key)
+            store.set(settings.seal(Data(value.utf8)) ?? "", for: SettingGuard.macKey(for: key))
+        }
     }
 
     /// A stored setting, read back through the seal.
@@ -162,21 +174,23 @@ public enum DuplicatesSettings {
     static func stored(_ key: String, in store: NamespacedStore?,
                        guardedBy settings: SettingGuard) -> Stored {
         guard let store else { return .unset }
-        let stored = store.string(key, default: "")
-        guard !stored.isEmpty else { return .unset }
-        let payload = Data(stored.utf8)
-        switch settings.verdict(payload: payload,
-                                mac: store.string(SettingGuard.macKey(for: key), default: "")) {
-        case .sealed:
-            return .mine(stored)
-        case .adopt:
-            // Chosen before this setting was sealed, on an installation that has
-            // never sealed anything: accepted once and sealed, so tomorrow's run
-            // does not have to trust anything.
-            store.set(settings.seal(payload) ?? "", for: SettingGuard.macKey(for: key))
-            return .mine(stored)
-        case .broken:
-            return .notHelmsOwn
+        return saving.withLock {
+            let stored = store.string(key, default: "")
+            guard !stored.isEmpty else { return .unset }
+            let payload = Data(stored.utf8)
+            switch settings.verdict(payload: payload,
+                                    mac: store.string(SettingGuard.macKey(for: key), default: "")) {
+            case .sealed:
+                return .mine(stored)
+            case .adopt:
+                // Chosen before this setting was sealed, on an installation that has
+                // never sealed anything: accepted once and sealed, so tomorrow's run
+                // does not have to trust anything.
+                store.set(settings.seal(payload) ?? "", for: SettingGuard.macKey(for: key))
+                return .mine(stored)
+            case .broken:
+                return .notHelmsOwn
+            }
         }
     }
 }
