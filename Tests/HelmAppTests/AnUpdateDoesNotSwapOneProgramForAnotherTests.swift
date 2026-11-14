@@ -57,6 +57,27 @@ final class AnUpdateDoesNotSwapOneProgramForAnotherTests: XCTestCase {
         XCTAssertFalse(Installer.isSameProgram(try bundle(id: nil), as: "com.helm.app"))
     }
 
+    /// A refusal that sends the browser to the release page must also say so on
+    /// the card: `decline(` clears the offer and sets the note, and a branch that
+    /// opened the page without it left «Update & Relaunch» on screen beside a
+    /// browser that had opened by itself. Read from the source because each
+    /// branch is reached by a release, a download or a digest this suite will
+    /// not fetch. Each branch is the text from its `guard` to its `return`.
+    func testEveryRefusalThatOpensTheReleasePageDeclines() throws {
+        let source = SwiftSource.uncommented(try RepoSource.text(of: "Sources/HelmApp/UpdateService.swift"))
+        let body = try XCTUnwrap(SwiftSource.body(of: "downloadAndInstall", in: source))
+        let refusals = ["guard AppBuild.takesPublishedBuilds else",
+                        "guard let zip = rel.zipURL else",
+                        "guard let expected = ReleaseDigest.parse(notes: rel.notes, asset: asset) else"]
+        for refusal in refusals {
+            let start = try XCTUnwrap(body.range(of: refusal), "\(refusal) is no longer in downloadAndInstall")
+            let rest = body[start.upperBound...]
+            let branch = try XCTUnwrap(rest.range(of: "return")).lowerBound
+            XCTAssertTrue(rest[..<branch].contains("decline("),
+                          "\(refusal): the branch opens the release page and does not decline()")
+        }
+    }
+
     // Only the release's own identifier takes a published bundle, and that
     // identifier is the one the plist declares.
 

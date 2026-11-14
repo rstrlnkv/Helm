@@ -9,7 +9,7 @@ import XCTest
 /// `launchctl disable` is a change to the user's own launchd domain that
 /// survives a reboot and survives deleting Helm — and for a year nothing put it
 /// back, while the reset's first step was `handBackWhatIsOutsideHelm`
-/// (`Sources/HelmRuntime/ResetPlan.swift:38`). The give-back is one port call; what was missing was the
+/// (`ResetPlan.Step.handBackWhatIsOutsideHelm`). The give-back is one port call; what was missing was the
 /// record of which labels were ours to give back.
 ///
 /// **Why the record and not the system's list.** `disabledLabels()` answers what

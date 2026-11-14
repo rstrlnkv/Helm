@@ -9,8 +9,9 @@ import XCTest
 /// real files". `HelmSupport` is the one place that resolves Application
 /// Support, and it asks; `ScreenshotsState` (Documents) and Autopilot's
 /// `SystemPorts` (Downloads) ask too. Duplicates' `KeepPolicy` (Downloads,
-/// Desktop) does not ask: it only names `TestProcess` in a doc comment saying
-/// so, and the per-file mention check below passes on that. A store that
+/// Desktop) does not ask: it names `TestProcess` only in a doc comment saying
+/// so, and is the one named exemption (`answeredNotAsked`) from the per-file
+/// check below, which reads code. A store that
 /// skipped the question would read — and could delete — the person's own files
 /// in a suite run, which is what `TheSuiteDoesNotReadTheUsersLastScanTests`
 /// measured for the last Disk scan. That one names the file and the
@@ -23,8 +24,8 @@ import XCTest
 /// The rule is one line of source per site, so the source is where it can be
 /// held for the whole tree at once.
 ///
-/// The rule is coarse on purpose: it asks that the file *mentions* the question,
-/// not that it answers it correctly. A file that names `TestProcess` and ignores
+/// The rule is coarse on purpose: it asks that the file's *code* mentions the
+/// question, not that it answers it correctly. A file that names `TestProcess` and ignores
 /// what it says is a defect this cannot see, and the two behaviour guards —
 /// here and in Disk's engine tests — are what cover that.
 final class StoresOfTheirsAskIfThisIsATestTests: XCTestCase {
@@ -38,6 +39,10 @@ final class StoresOfTheirsAskIfThisIsATestTests: XCTestCase {
         ".documentDirectory", ".libraryDirectory", ".downloadsDirectory",
     ]
 
+    /// The one file whose doc comment explains why it does not ask: it resolves
+    /// the folders only to compare a path as a string, and writes nothing.
+    private static let answeredNotAsked = "Sources/Modules/Duplicates/Engine/Logic/KeepPolicy.swift"
+
     private struct Site {
         let file: String
         let line: Int
@@ -49,7 +54,8 @@ final class StoresOfTheirsAskIfThisIsATestTests: XCTestCase {
     func testEverySiteThatResolvesOneOfTheirFoldersNamesTestProcess() throws {
         let sites = try self.sites()
         let unguarded = try sites.filter { site in
-            try !RepoSource.text(of: site.file).contains("TestProcess")
+            if site.file == Self.answeredNotAsked { return false }
+            return try !RepoSource.lines(of: site.file).contains { RepoSource.code($0).contains("TestProcess") }
         }
         XCTAssertEqual(unguarded.map { "\($0.file):\($0.line) \($0.folder)" }, [], """
             these resolve a folder of the person's without asking TestProcess.isRunning, so a \
@@ -58,9 +64,9 @@ final class StoresOfTheirsAskIfThisIsATestTests: XCTestCase {
             """)
     }
 
-    /// The rule above passes on a file that names `TestProcess` anywhere, a
-    /// doc comment included, so `HelmSupport` and `ScanJournal` could lose the
-    /// branch and keep the comment that explains it. These two are held in code.
+    /// The rule above reads a file's code, but any other line of it would do, so
+    /// `HelmSupport` and `ScanJournal` could lose the branch and keep another
+    /// mention. These two are held on the asking line itself.
     func testTheTwoFoldersTheSuiteWouldOtherwiseWriteIntoAskInCode() throws {
         for file in ["Sources/HelmRuntime/HelmSupport.swift", "Sources/HelmRuntime/ScanJournal.swift"] {
             let asks = try RepoSource.lines(of: file).contains {

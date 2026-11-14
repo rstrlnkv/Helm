@@ -100,7 +100,7 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     /// **The give-back.** Reached when the person switches the module off, and for
     /// every live module on «Reset all settings» (`ModuleHost.handBackSystemState`),
     /// while the record is still there — `ResetPlan.order`
-    /// (`Sources/HelmRuntime/ResetPlan.swift:64`) asks the engines before it
+    /// (`Sources/HelmRuntime/ResetPlan.swift`) asks the engines before it
     /// forgets preferences, and that order is why this can read anything at all.
     ///
     /// One ambiguity stays and is written down rather than solved: a label the
