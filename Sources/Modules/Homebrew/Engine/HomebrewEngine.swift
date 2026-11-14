@@ -960,8 +960,19 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     private func brewOrRefuse(verb: String, label: String) -> String? {
         if let brew = locator.brewPath() { return brew }
         HelmLog.shared.warn(Self.moduleID, "\(verb) refused: brew is no longer installed")
-        emitState(OpState(phase: .failed, label: label, reason: .brewMissing))
+        refuseInsideGate(verb: verb, label: label, reason: .brewMissing)
         return nil
+    }
+
+    /// A refused press writes `.failed` only while it holds the gate. Outside
+    /// it, the state belongs to the operation that does hold it, and a second
+    /// press would overwrite its `.running`: Stop gone, gates open, a child
+    /// still alive. The gate is released after the emit, so no press slips in
+    /// between. A press that cannot take the gate says so in the console.
+    private func refuseInsideGate(verb: String, label: String, reason: OpFailureReason) {
+        guard beginBusy() else { refuseLaunch(verb); return }
+        defer { endBusy() }
+        emitState(OpState(phase: .failed, label: label, reason: reason))
     }
 
     /// The refusal and the run both name the operation's label, so it is said
@@ -1023,7 +1034,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             HelmLog.shared.warn(Self.moduleID,
                                 "doctor fix refused: \(Redact.pkg(label)) is not runnable "
                                 + "against the Cellar as it is now")
-            emitState(OpState(phase: .failed, label: label, reason: .fixRefused))
+            refuseInsideGate(verb: "doctor fix", label: label, reason: .fixRefused)
             return
         }
         let operands = Array(argv.dropFirst())
