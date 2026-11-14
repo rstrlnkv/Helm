@@ -13,7 +13,8 @@ final class Inert: SleepAssertions, DisplayInfoPort, PowerInfoPort, LidInfoPort,
                             Clock, @unchecked Sendable {
     var running: Set<String> = []
     var flatBattery = false
-    func preventSleep(display: Bool) -> Bool { true }
+    var refusesSleepAssertion = false
+    func preventSleep(display: Bool) -> Bool { !refusesSleepAssertion }
     func release() {}
     func builtInFlags() -> [Bool] { [] }
     func snapshot() -> (onBattery: Bool, percent: Int)? {
@@ -97,15 +98,31 @@ final class TheModelDrawsWhatTheEnginePublishedTests: XCTestCase {
         await waitUntil("the model drew the pause", within: .seconds(5)) { model.suppressed }
         XCTAssertEqual(model.notice, .paused)
     }
+
+    func testTheModelsNoticeIsTheRefusalWhenMacOSRefusedTheAssertion() async {
+        let ports = Inert()
+        ports.refusesSleepAssertion = true
+        let (_, model) = modelHoldingAnAppRule(ports)
+        defer { model.stop() }
+        await waitUntil("the model drew the refusal", within: .seconds(5)) { model.assertionRefused }
+        XCTAssertEqual(model.notice, .assertionRefused)
+    }
 }
 
-/// The slot under the buttons holds one sentence; when two facts could fill it
-/// the battery guard wins, then a paused rule.
+/// The slot under the buttons holds one sentence; when facts compete the
+/// battery guard wins, then a refused sleep assertion, then a paused rule.
 final class TheNoticeSlotHoldsOneSentenceTests: XCTestCase {
-    func testTheBatteryGuardBeatsAPausedRuleAndEachAloneSaysItself() {
-        XCTAssertEqual(KeepAwakeNotice.of(batteryStopped: true, suppressed: true), .battery)
-        XCTAssertEqual(KeepAwakeNotice.of(batteryStopped: true, suppressed: false), .battery)
-        XCTAssertEqual(KeepAwakeNotice.of(batteryStopped: false, suppressed: true), .paused)
-        XCTAssertEqual(KeepAwakeNotice.of(batteryStopped: false, suppressed: false), .none)
+    func testTheBatteryGuardBeatsARefusalAndARefusalBeatsAPausedRule() {
+        func notice(_ battery: Bool, _ refused: Bool, _ paused: Bool) -> KeepAwakeNotice {
+            KeepAwakeNotice.of(batteryStopped: battery, assertionRefused: refused, suppressed: paused)
+        }
+        XCTAssertEqual(notice(true, true, true), .battery)
+        XCTAssertEqual(notice(true, false, true), .battery)
+        XCTAssertEqual(notice(true, true, false), .battery)
+        XCTAssertEqual(notice(true, false, false), .battery)
+        XCTAssertEqual(notice(false, true, true), .assertionRefused)
+        XCTAssertEqual(notice(false, true, false), .assertionRefused)
+        XCTAssertEqual(notice(false, false, true), .paused)
+        XCTAssertEqual(notice(false, false, false), .none)
     }
 }

@@ -453,6 +453,9 @@ struct KeepAwakeHero: View {
             case .battery:
                 HelmBanner(KAStr.stoppedByBattery(batteryFloor), symbol: "battery.25",
                            fillsWidth: false)
+            case .assertionRefused:
+                HelmBanner(KAStr.assertionRefused, symbol: "exclamationmark.triangle.fill",
+                           fillsWidth: false)
             case .paused, .none:
                 HelmBanner(KAStr.automationPaused, symbol: "pause.circle.fill",
                            fillsWidth: false) {

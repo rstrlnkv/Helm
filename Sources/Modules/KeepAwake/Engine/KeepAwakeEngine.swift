@@ -42,7 +42,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     private(set) var isActive = false
     private(set) var activeConditions: Set<ActiveCondition> = []
     /// IOKit refused the sleep assertion the session asked for. Cleared by the
-    /// next one it takes and by the release.
+    /// next one it takes and by every release, the battery guard's included.
     private(set) var assertionRefused = false
     /// Forwarded, because the state and the panel have always called it this.
     var clamshellActive: Bool { lid.active }
@@ -489,11 +489,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// IOKit would not take the assertion, so the Mac will sleep on schedule
     /// while every surface here says it is being held.
     ///
-    /// The trail and `StatePayload.assertionRefused` are where this lands and
-    /// **the screen is not, yet**: saying it on the page is a sentence in eight
-    /// languages in the module's own catalog. Written beside
-    /// «holding sleep» rather than instead of it, because both are true — the
-    /// session is running, and it is not holding what it says.
+    /// The trail and `StatePayload.assertionRefused` are where this lands, and
+    /// the hero and the panel tile draw it from the payload as a notice. Written
+    /// beside «holding sleep» rather than instead of it, because both are true —
+    /// the session is running, and it is not holding what it says.
     private func noteIfTheAssertionWasRefused(_ held: Bool) {
         assertionRefused = !held
         guard !held else { return }
@@ -642,6 +641,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         HelmLog.shared.info(Self.moduleID, "battery guard stopped the session at "
                             + "\(charge) (floor \(settings.batteryGuardPercent)%)")
         assertions.release()
+        assertionRefused = false
         if lid.active { lid.disengage() }
         cancelTimers()
         isActive = false

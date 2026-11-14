@@ -1591,6 +1591,59 @@
         }
       }
     },
+    "macOSRefusedToKeepAwake": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS hat abgelehnt, den Mac wach zu halten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS refused to keep the Mac awake"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS rechazó mantener el Mac despierto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS a refusé de maintenir le Mac éveillé"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS が Mac を起こしておくことを拒否しました"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O macOS recusou manter o Mac acordado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS не разрешила держать Mac без сна"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS 拒绝让 Mac 保持唤醒"
+          }
+        }
+      }
+    },
     "macSleepsAsUsual": {
       "extractionState": "manual",
       "localizations": {

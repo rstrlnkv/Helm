@@ -26,6 +26,7 @@ final class TheModuleWordsReachEveryLanguageTests: XCTestCase {
             ("customDuration", { KAStr.customTimeTitle }),
             ("other", { KAStr.customTime }),
             ("done", { KAStr.done }),
+            ("macOSRefusedToKeepAwake", { KAStr.assertionRefused }),
         ]
         var differs = 0
         AppLanguage.each { language in

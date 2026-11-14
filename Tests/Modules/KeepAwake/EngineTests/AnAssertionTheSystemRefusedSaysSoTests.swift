@@ -114,6 +114,32 @@ final class AnAssertionTheSystemRefusedSaysSoTests: XCTestCase {
         XCTAssertEqual(latest?.assertionRefused, false)
     }
 
+    /// The battery guard ends a session by its own road, not through the branch
+    /// that `stopSession` reaches, and it takes the refusal with it too.
+    func testTheBatteryGuardStoppingARefusedSessionTakesTheRefusalAway() async {
+        assertions.succeeds = false
+        let power = FakePower()
+        let engine = KeepAwakeEngine(settings: KeepAwakeSettings(store: store), store: store,
+                                     assertions: assertions,
+                                     displayInfo: FakeDisplayInfo(),
+                                     displayObserver: FakeDisplayObserver(),
+                                     power: power, apps: FakeApps(),
+                                     pointer: FakePointer(), clamshell: FakeClamshell(),
+                                     clock: FakeClock(), lidInfo: FakeLidInfo())
+        engine.activate()
+        engine.startSession(minutes: 0)
+        var latest = await engine.stream().first { _ in true }
+        XCTAssertEqual(latest?.assertionRefused, true, "precondition: the refusal was published")
+
+        power.snap = (onBattery: true, percent: 5)
+        power.says(.battery)
+        power.fire()
+        latest = await engine.stream().first { _ in true }
+        XCTAssertEqual(latest?.batteryStopped, true, "precondition: the guard stopped it")
+        XCTAssertEqual(latest?.isActive, false, "precondition: the session ended")
+        XCTAssertEqual(latest?.assertionRefused, false)
+    }
+
     private func entries(containing text: String) -> [LogEntry] {
         HelmLog.shared.recentEntries()
             .filter { $0.category == KeepAwakeEngine.moduleID && $0.message.contains(text) }

@@ -253,6 +253,10 @@ struct KeepAwakePanelTile: View {
                 HelmBanner(KAStr.stoppedByBatteryShort(batteryFloor), symbol: "battery.25", compact: true) {
                     EmptyView()
                 }
+            case .assertionRefused:
+                HelmBanner(KAStr.assertionRefused, symbol: "exclamationmark.triangle.fill", compact: true) {
+                    EmptyView()
+                }
             case .paused, .none:
                 // The short form. In a 320 pt card beside a button the long
                 // sentence wraps to four lines — a paragraph where everything

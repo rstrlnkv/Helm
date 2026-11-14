@@ -526,6 +526,11 @@ enum KAStr {
     /// settings page has room to add; here the word «paused» is the whole of
     /// what has to arrive, and the button beside it says what to do about it.
     static var automationPausedShort: String { L(.rulePaused) }
+    /// macOS said no to the sleep assertion, so the Mac sleeps on its own
+    /// schedule while the session believes it is holding. One sentence for the hero
+    /// and the panel: it is short enough for the 320 pt card, and there is no way
+    /// out to add — a refusal is not something a person can lift.
+    static var assertionRefused: String { L(.macOSRefusedToKeepAwake) }
     /// The boundary itself, mid-sentence: «при 20 % и ниже», «bei 20 % oder
     /// weniger», «20% 以下».
     ///
