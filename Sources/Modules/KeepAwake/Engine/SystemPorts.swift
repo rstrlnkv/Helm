@@ -111,6 +111,7 @@ final class CGDisplayInfo: DisplayInfoPort {
 final class MacLidInfo: LidInfoPort {
     init() {}
     func hasLid() -> Bool { MacHardware.hasLid }
+    func hasBattery() -> Bool { MacHardware.hasBattery }
 }
 
 // MARK: - IOPSPowerInfo
@@ -216,13 +217,11 @@ final class WorkspaceAppPort: AppRunningPort {
     /// Held so the observers can be taken back out. Without this, switching
     /// the module off and on stacked another pair each time — the same defect
     /// `LayoutEngine.deactivate` documents.
-    private var tokens: [NSObjectProtocol] = []
+    private(set) var tokens: [NSObjectProtocol] = []
 
     init() {}
 
-    deinit {
-        for token in tokens { NSWorkspace.shared.notificationCenter.removeObserver(token) }
-    }
+    deinit { stopObserving() }
 
     /// Through `RunningApps` for the same reason the VPN port is: this one is
     /// only ever reached from the main thread today, and "only ever, today" is
@@ -238,6 +237,11 @@ final class WorkspaceAppPort: AppRunningPort {
                 RunningApps.shared.refreshOnMain(then: onChange)
             }
         }
+    }
+
+    func stopObserving() {
+        for token in tokens { NSWorkspace.shared.notificationCenter.removeObserver(token) }
+        tokens = []
     }
 }
 
@@ -295,18 +299,22 @@ final class PmsetClamshellPort: ClamshellPort {
 
     private let sudoersPath: String
     private let privileged: @Sendable (String) -> PrivilegedOutcome
+    private let pmset: @Sendable () -> HelmProcess.Result
 
     /// The two arguments are the seam a test reads the port through: which
     /// command each half sends to root and how the outcome is read cannot be
     /// seen from outside otherwise, and swapping them stayed green.
     init(sudoersPath: String = SudoersRule.installedPath,
-                privileged: @escaping @Sendable (String) -> PrivilegedOutcome = { PrivilegedRun.run($0) }) {
+                privileged: @escaping @Sendable (String) -> PrivilegedOutcome = { PrivilegedRun.run($0) },
+                pmset: @escaping @Sendable () -> HelmProcess.Result = { HelmProcess.run(PmsetClamshellPort.pmsetPath, ["-g"]) }) {
         self.sudoersPath = sudoersPath
         self.privileged = privileged
+        self.pmset = pmset
     }
 
-    func pmsetReport() -> String {
-        HelmProcess.run(Self.pmsetPath, ["-g"]).output
+    func pmsetReport() -> String? {
+        let result = pmset()
+        return result.status == 0 ? result.output : nil
     }
 
     /// The words come from `SudoersRule`, because the rule has to spell the same

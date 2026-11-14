@@ -51,7 +51,9 @@ final class FakeDisplayInfo: DisplayInfoPort {
 
 final class FakeLidInfo: LidInfoPort {
     var lid = true
+    var battery = true
     func hasLid() -> Bool { lid }
+    func hasBattery() -> Bool { battery }
 }
 
 final class FakeDisplayObserver: DisplayObserverPort {
@@ -101,8 +103,10 @@ final class FakeApps: AppRunningPort {
     var ids: Set<String> = []
     private var onChange: (@Sendable () -> Void)?
     func runningBundleIDs() -> Set<String> { ids }
-    func startObserving(_ onChange: @escaping @Sendable () -> Void) { self.onChange = onChange }
+    private(set) var observing = false
+    func startObserving(_ onChange: @escaping @Sendable () -> Void) { self.onChange = onChange; observing = true }
     func fire() { onChange?() }
+    func stopObserving() { onChange = nil; observing = false }
 }
 
 final class FakePointer: PointerPort {
@@ -116,7 +120,7 @@ final class FakePointer: PointerPort {
 
 final class FakeClamshell: ClamshellPort {
     var sudoersInstalled = false
-    var pmset = ""
+    var pmset: String? = ""
     var disableSleepCalls: [Bool] = []
     var installCompletion: ((Bool) -> Void)?
     var installCalls = 0
@@ -124,9 +128,20 @@ final class FakeClamshell: ClamshellPort {
     /// nothing back» — has to be read *after* the launch looked, or it is green
     /// because nothing has run yet.
     private(set) var installedChecks = 0
+    /// Set to hold the next look at the file until the test signals it, which
+    /// is what a look still out looks like to a setting changed meanwhile;
+    /// `lookBegan` is fulfilled when the look has read the file and is parked.
+    var holdNextLook: DispatchSemaphore?
+    var lookBegan: XCTestExpectation?
     func isSudoersInstalled() -> Bool {
         installedChecks += 1
-        return sudoersInstalled
+        let answer = sudoersInstalled
+        if let gate = holdNextLook {
+            holdNextLook = nil
+            lookBegan?.fulfill()
+            gate.wait()
+        }
+        return answer
     }
     func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
         installCalls += 1
@@ -195,8 +210,14 @@ final class FakeClamshell: ClamshellPort {
     /// read *after* the question was answered, or it is green because nobody has
     /// asked yet, which is the vacuous absence (ARCHITECTURE.md § What makes a check) warns about.
     private(set) var grantChecks = 0
+    /// Set to hold the next probe on the lid's queue until the test signals it,
+    /// which is what a probe still out looks like to the next edit.
+    var holdNextProbe: DispatchSemaphore?
     func canDisableSleepWithoutPassword() -> Bool {
         grantChecks += 1
+        let gate = holdNextProbe
+        holdNextProbe = nil
+        gate?.wait()
         return passwordlessGrantExists ?? sudoersInstalled
     }
     func setDisableSleep(_ on: Bool) -> Bool {
@@ -214,8 +235,12 @@ final class FakeClamshell: ClamshellPort {
     /// `pmset` at all» is a question about every launch on every Mac: the
     /// recovery's anchors exist to keep that read off the ordinary path.
     private(set) var pmsetReads = 0
-    func pmsetReport() -> String {
+    /// Signalled on entry: the next call the launch look makes on `shell` after
+    /// the file read and the verdict's hop, so a test can know both have happened.
+    var pmsetEntered: DispatchSemaphore?
+    func pmsetReport() -> String? {
         pmsetReads += 1
+        pmsetEntered?.signal()
         return pmset
     }
 }

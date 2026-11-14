@@ -130,10 +130,10 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// nothing else.
     private func lookForTheRule() -> Bool {
         let installed = clamshell.isSudoersInstalled()
-        let optionOn = settings.clamshellEnabled
         // The complaint is only about a rule nobody is using: while the option
-        // is on, the same file is the feature working.
-        onMain { [self] in noteGrantRemains(installed && !optionOn) }
+        // is on, the same file is the feature working. The option is read in
+        // the block, on main, so the verdict uses the value current when it lands.
+        onMain { [self] in noteGrantRemains(installed && !settings.clamshellEnabled) }
         return installed
     }
 
@@ -149,6 +149,10 @@ final class ClamshellCoordinator: @unchecked Sendable {
     /// — which the settings page sends on every control it draws. Five ordinary
     /// edits with the lid option off produced five password prompts.
     private var removalInFlight = false
+    /// A `canDisableSleepWithoutPassword()` probe is out on `shell`, and the
+    /// OR of every `mayPrompt` asked while it was. Both are written on main.
+    private var probeInFlight = false
+    private var pendingMayPrompt = false
     /// The last value of `clamshellEnabled` acted on, so the switch's rising
     /// edge can be told from the setting merely being true. Seeded from the
     /// store: a launch with the setting already on is not somebody switching it
@@ -198,9 +202,23 @@ final class ClamshellCoordinator: @unchecked Sendable {
             // the reading the lid row draws, and short-circuiting it left the
             // page with nothing to say until the first settings edit.
             let ruleOnDisk = lookForTheRule()
-            guard noted || ruleOnDisk,
-                  ClamshellRecovery.sleepDisabled(inPmsetOutput: clamshell.pmsetReport())
-            else { return }
+            guard noted || ruleOnDisk else { return }
+            guard let report = clamshell.pmsetReport() else {
+                // Not an empty report: nothing was read. With Helm's note set,
+                // sleep may be off and putting it back is idempotent; with only
+                // the rule on disk the person may have set the block themselves.
+                if noted {
+                    HelmLog.shared.warn(KeepAwakeEngine.moduleID,
+                                        "pmset -g could not be read; restoring sleep because Helm's note says it may have disabled it")
+                    restoreSleep(refused: "closed-lid sleep could not be restored at launch",
+                                 restored: "closed-lid sleep restored at launch")
+                } else {
+                    HelmLog.shared.info(KeepAwakeEngine.moduleID,
+                                        "pmset -g could not be read; leaving system sleep as it is")
+                }
+                return
+            }
+            guard ClamshellRecovery.sleepDisabled(inPmsetOutput: report) else { return }
             restoreSleep(refused: "closed-lid sleep could not be restored at launch",
                          restored: "closed-lid sleep restored at launch")
         }
@@ -369,9 +387,23 @@ final class ClamshellCoordinator: @unchecked Sendable {
         // *before* anything about a gesture is decided, from a recompute a
         // watched app launching causes. So it is asked on `shell` and every
         // decision that follows is made on main with the answer in hand.
+        //
+        // One probe at a time, because `releaseIfUnneeded` and `recompute` run on
+        // every `settingsChanged`, which the settings page sends on every control
+        // it draws: six edits was six `sudo` launches. A call while one is out
+        // adds its `mayPrompt` to what is pending and returns, so a gesture's
+        // prompt is never dropped by the probe a rule started.
+        pendingMayPrompt = pendingMayPrompt || mayPrompt
+        guard !probeInFlight else { return }
+        probeInFlight = true
         shell.async { [self] in
             let alreadyGranted = clamshell.canDisableSleepWithoutPassword()
-            onMain { self.engage(mayPrompt: mayPrompt, alreadyGranted: alreadyGranted) }
+            onMain {
+                let pending = self.pendingMayPrompt
+                self.probeInFlight = false
+                self.pendingMayPrompt = false
+                self.engage(mayPrompt: pending, alreadyGranted: alreadyGranted)
+            }
         }
     }
 

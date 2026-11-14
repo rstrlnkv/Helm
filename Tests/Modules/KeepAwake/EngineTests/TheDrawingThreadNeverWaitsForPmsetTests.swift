@@ -100,7 +100,7 @@ final class TheDrawingThreadNeverWaitsForPmsetTests: XCTestCase {
             return true
         }
         func setDisableSleep(_ on: Bool) -> Bool { record("setDisableSleep"); return grantExists }
-        func pmsetReport() -> String { record("pmsetReport"); return pmset }
+        func pmsetReport() -> String? { record("pmsetReport"); return pmset }
     }
 
     private var backing: InMemoryKeyValueStore!
@@ -219,8 +219,6 @@ final class TheDrawingThreadNeverWaitsForPmsetTests: XCTestCase {
     /// `engage` asks `sudo -n` whether it may disable sleep. Nobody pressed
     /// anything; the person is looking at some other app.
     func testARuleTakingHoldDoesNotAskSudoOnTheDrawingThread() throws {
-        try XCTSkipUnless(MacHardware.hasLid,
-                          "this Mac has no lid, so the lid is never engaged")
         store.set(true, for: KeepAwakeSettings.Key.clamshellEnabled)
         store.set(AppTriggerRules.encode([AppTrigger(bundleID: "com.example.render")]),
                   for: KeepAwakeSettings.Key.autoAppRules)

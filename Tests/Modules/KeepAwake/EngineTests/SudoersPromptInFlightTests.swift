@@ -66,7 +66,7 @@ private final class PromptClamshell: ClamshellPort {
     }
 
     func setDisableSleep(_ on: Bool) -> Bool { disableSleepCalls.append(on); return true }
-    func pmsetReport() -> String { pmset }
+    func pmsetReport() -> String? { pmset }
 }
 
 /// What happens to the sudoers rule while the password prompt is on screen.

@@ -67,7 +67,7 @@ no grant only the lid switch's own gesture does (`lidSwitchTurned`, its rising e
 `PmsetClamshellPort` is the only code that runs the grant's privileged commands. Its two administrator-dialog halves take an injected
 `privileged` runner (default `PrivilegedRun.run`) and the rule's path, and `PmsetClamshellPortPrivilegedTests` records which command
 `installSudoers` (`installCommand(user:)`) and `removeSudoers` (`removeCommand()`) send and reads `.done`, `.declined` and `.failed` for each, so a swap or an
-inverted outcome goes red. Not covered: the `sudo -n` halves (`setDisableSleep`, `canDisableSleepWithoutPassword`, `removeSudoersWithoutPassword`) call
+inverted outcome goes red. A third injected `pmset` runner lets `PmsetReportIsNilWhenPmsetFailsTests` pin that a non-zero `pmset -g` has no report; `WorkspaceAppPortForgetsItsTokensTests` pins that `stopObserving` clears the tokens. Not covered: the `sudo -n` halves (`setDisableSleep`, `canDisableSleepWithoutPassword`, `removeSudoersWithoutPassword`) call
 `HelmProcess.run` directly. Held by reading only: every call against the grant goes through `withoutPassword` (`sudo -n`, or a dialog-less caller blocks on a
 prompt no window owns), and the argv words come from `SudoersRule` (`disableSleepArguments`, `removeArguments`), never typed here. A change to this class is read
 against `SudoersRule` line by line and run once by hand on Helm Dev (switch the closed-lid option on, then off, and look for the file at
@@ -90,6 +90,8 @@ one notice slot when both it and a pause are true, since only one of the two exp
 why nothing at all is running; the slot is gated on "there is something to say"
 (`KeepAwakePanelTile.hasNotice`) rather than on the pause flag; and the notice
 carries no button, because a control that cannot do what it says is worse than none.
+
+Hardware facts reach the engine through `LidInfoPort` (`hasLid()`, `hasBattery()`): `batteryVetoes` opens on `lidInfo.hasBattery()`, so a test stands up a Mac with or without a battery with `FakeLidInfo`. Every port observer, `AppRunningPort` included, is stopped in `deactivate`. `ClamshellPort.pmsetReport()` is nil when `pmset -g` did not answer (non-zero status), which is not an empty report: launch recovery with Helm's note set restores sleep on nil, with only the rule on disk it leaves sleep alone. `ClamshellCoordinator.engage` keeps one `canDisableSleepWithoutPassword()` probe (a write: `sudo -n pmset disablesleep 0`) in flight and ORs the `mayPrompt` of calls made meanwhile into the answer, so a gesture's prompt is never dropped. `lookForTheRule` reads `clamshellEnabled` inside the block that lands on main, not before the hop, and `ALookThatWasOutReadsTheOptionWhenItLandsTests` holds the look on a semaphore, switches the option on, and reads the notice follow the later value.
 
 The battery floor is inclusive: `BatteryGuard.shouldDeactivate` is `percent <= threshold`, so the session ends *at* the figure. Every sentence that names
 it says "or less" (the slider's note, the hero's and the panel's notice, the system notification), in all eight languages; ja and zh also have a strict

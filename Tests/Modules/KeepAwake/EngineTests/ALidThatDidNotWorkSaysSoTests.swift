@@ -52,7 +52,6 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
     // MARK: - macOS refused
 
     func testARefusalIsPublishedRatherThanLookingLikeNothingHappened() async throws {
-        try XCTSkipUnless(MacHardware.hasLid, "this Mac has no lid, so the lid is never engaged")
         clamshell.disableSleepSucceeds = false
 
         engine.startSession(minutes: 0)
@@ -72,7 +71,6 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
     /// And it leaves when a later attempt works, so the row reports the state of
     /// the last answer rather than the worst answer it ever had.
     func testARefusalClearsWhenTheNextAttemptWorks() async throws {
-        try XCTSkipUnless(MacHardware.hasLid, "this Mac has no lid, so the lid is never engaged")
         clamshell.disableSleepSucceeds = false
         engine.startSession(minutes: 0)
         await waitUntil("the lid was refused") { engine.lidRefused }
@@ -99,7 +97,6 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
     /// It has to reach the payload, or the fact exists only inside the engine — the
     /// defect `StatePayload`'s own doc comment records.
     func testTheRefusalReachesThePayload() async throws {
-        try XCTSkipUnless(MacHardware.hasLid, "this Mac has no lid, so the lid is never engaged")
         clamshell.disableSleepSucceeds = false
         engine.startSession(minutes: 0)
 

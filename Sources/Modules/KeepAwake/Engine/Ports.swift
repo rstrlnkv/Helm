@@ -23,7 +23,11 @@ public protocol SleepAssertions: AnyObject {   // IOKit
     func release()
 }
 
-public protocol DisplayInfoPort: AnyObject { func builtInFlags() -> [Bool] }
+public protocol DisplayInfoPort: AnyObject {
+    /// One flag per online display. `[]` also means `CGGetOnlineDisplayList`
+    /// failed, which fails toward sleep: no external display is seen.
+    func builtInFlags() -> [Bool]
+}
 
 public protocol PowerInfoPort: AnyObject {
     func snapshot() -> (onBattery: Bool, percent: Int)?
@@ -60,7 +64,12 @@ public protocol PowerInfoPort: AnyObject {
 /// use. `MacHardware.hasLid` (a battery is present) in production; a port so a
 /// Mac with no lid can be stood up in a test. Not a reading that can fail: the
 /// system answer is a plain yes or no, so there is no third state to name.
-public protocol LidInfoPort: AnyObject { func hasLid() -> Bool }
+public protocol LidInfoPort: AnyObject {
+    func hasLid() -> Bool
+    /// Whether this Mac has a battery, `MacHardware.hasBattery` in production.
+    /// A hardware fact asked at each use, like `hasLid`: yes or no, no third state.
+    func hasBattery() -> Bool
+}
 
 public protocol DisplayObserverPort: AnyObject {
     func startObserving(_ onChange: @escaping @Sendable () -> Void)
@@ -70,6 +79,9 @@ public protocol DisplayObserverPort: AnyObject {
 public protocol AppRunningPort: AnyObject {
     func runningBundleIDs() -> Set<String>
     func startObserving(_ onChange: @escaping @Sendable () -> Void)
+    /// Every observer this module starts has to be stoppable; see
+    /// `PowerInfoPort.stopObserving` for why there is no exemption.
+    func stopObserving()
 }
 
 public protocol PointerPort: AnyObject {
@@ -91,6 +103,9 @@ public protocol ClamshellPort: AnyObject {
     /// while any process running as this user still had passwordless
     /// `pmset disablesleep`. A revocation that revokes nothing is worse than
     /// none, because it is reported as done.
+    ///
+    /// **The probe is a write.** It runs `sudo -n pmset disablesleep 0`, a real
+    /// child process that changes system state, so it is not asked casually.
     func canDisableSleepWithoutPassword() -> Bool
     func installSudoers(_ done: @escaping @Sendable (Bool) -> Void)   // admin prompt once
     /// Takes the rule back out when the feature is switched off. Raises the
@@ -108,7 +123,9 @@ public protocol ClamshellPort: AnyObject {
     /// withdrawal line existed, or by something else, does not permit it.
     func removeSudoersWithoutPassword() -> Bool
     func setDisableSleep(_ on: Bool) -> Bool                // pmset (passwordless)
-    func pmsetReport() -> String
+    /// `pmset -g`'s output; nil when it did not answer (non-zero status), which
+    /// is not the same as an empty report that says sleep is enabled.
+    func pmsetReport() -> String?
 }
 
 public protocol Clock: AnyObject {

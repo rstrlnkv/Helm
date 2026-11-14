@@ -71,3 +71,28 @@ final class PmsetClamshellPortPrivilegedTests: XCTestCase {
         XCTAssertEqual(recorder.commands, [])
     }
 }
+
+/// `pmset -g` that did not succeed has no report: its output is whatever the
+/// failing tool printed, and reading that as the lid state is a guess.
+final class PmsetReportIsNilWhenPmsetFailsTests: XCTestCase {
+
+    func test_a_failed_pmset_has_no_report_and_a_good_one_is_passed_through() {
+        let failed = PmsetClamshellPort(pmset: { HelmProcess.Result(status: 1, output: "not a report") })
+        XCTAssertNil(failed.pmsetReport())
+        let good = PmsetClamshellPort(pmset: { HelmProcess.Result(status: 0, output: "SleepDisabled 1") })
+        XCTAssertEqual(good.pmsetReport(), "SleepDisabled 1")
+    }
+}
+
+/// Stopping takes the tokens back out and forgets them, so a second stop (the
+/// `deinit` one) has nothing left to remove.
+final class WorkspaceAppPortForgetsItsTokensTests: XCTestCase {
+
+    func test_stop_clears_the_observers_start_registered() {
+        let port = WorkspaceAppPort()
+        port.startObserving {}
+        XCTAssertEqual(port.tokens.count, 2)
+        port.stopObserving()
+        XCTAssertEqual(port.tokens.count, 0)
+    }
+}

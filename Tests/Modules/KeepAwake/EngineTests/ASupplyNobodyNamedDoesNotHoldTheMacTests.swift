@@ -34,6 +34,7 @@ final class ASupplyNobodyNamedDoesNotHoldTheMacTests: XCTestCase {
     private var power: FakePower!
     private var apps: FakeApps!
     private var displayInfo: FakeDisplayInfo!
+    private var lidInfo: FakeLidInfo!
     private var engine: KeepAwakeEngine!
 
     private let render = "com.example.render"
@@ -46,11 +47,12 @@ final class ASupplyNobodyNamedDoesNotHoldTheMacTests: XCTestCase {
         apps = FakeApps()
         apps.ids = [render]
         displayInfo = FakeDisplayInfo()
+        lidInfo = FakeLidInfo()
         engine = KeepAwakeEngine(settings: settings, store: store,
                                  assertions: FakeAssertions(), displayInfo: displayInfo,
                                  displayObserver: FakeDisplayObserver(),
                                  power: power, apps: apps, pointer: FakePointer(),
-                                 clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
+                                 clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: lidInfo)
     }
 
     /// IOKit answered, and what it said was not a supply this app knows: a UPS,
@@ -144,11 +146,8 @@ final class ASupplyNobodyNamedDoesNotHoldTheMacTests: XCTestCase {
     /// `true`.
     ///
     /// A Mac with a battery is the precondition (`batteryVetoes` opens on
-    /// `MacHardware.hasBattery`), as it is for the two files this one sits
-    /// beside.
-    func testAnIndefiniteSessionEndsWhenNothingCanNameTheSupply() throws {
-        try XCTSkipUnless(MacHardware.hasBattery,
-                          "the veto is gated on this machine having a battery")
+    /// `lidInfo.hasBattery()`, which `FakeLidInfo` answers yes).
+    func testAnIndefiniteSessionEndsWhenNothingCanNameTheSupply() {
         engine.activate()
         engine.startSession(minutes: 0)
         XCTAssertTrue(engine.isActive, "precondition: the Mac is being held awake")
@@ -161,6 +160,22 @@ final class ASupplyNobodyNamedDoesNotHoldTheMacTests: XCTestCase {
                        + "the only thing that ever ends one, and the fold to «on mains» is what "
                        + "switched it off")
         XCTAssertTrue(engine.batteryStopped, "and the screens say why")
+    }
+
+    /// A Mac with no battery has no charge to be under the floor: whatever the
+    /// power source says, the guard does not end a session.
+    func testAMacWithNoBatteryIsNotVetoedByAChargeReading() {
+        lidInfo.battery = false
+        engine.activate()
+        engine.startSession(minutes: 0)
+        XCTAssertTrue(engine.isActive, "precondition: the Mac is being held awake")
+
+        power.snap = (onBattery: true, percent: 5)
+        power.fire()
+
+        XCTAssertTrue(engine.isActive,
+                      "5 % on battery on a Mac that says it has no battery is not a veto")
+        XCTAssertFalse(engine.batteryStopped)
     }
 
     /// The other side of the same guard, which the fold got right by accident: a

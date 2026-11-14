@@ -252,6 +252,33 @@ final class PowerObserverTeardownTests: XCTestCase {
                        "the run loop still holds a source pointing at a port that is about "
                        + "to be freed")
     }
+
+    func testDeactivateStopsWatchingRunningApps() {
+        let apps = FakeApps()
+        let assertions = FakeAssertions()
+        let store = NamespacedStore(namespace: "keep-awake",
+                                    backing: InMemoryKeyValueStore())
+        let settings = KeepAwakeSettings(store: store)
+        settings.setAppTriggers([AppTrigger(bundleID: "com.example.render")])
+        let engine = KeepAwakeEngine(settings: settings, store: store,
+                                     assertions: assertions,
+                                     displayInfo: FakeDisplayInfo(),
+                                     displayObserver: FakeDisplayObserver(),
+                                     power: FakePower(), apps: apps,
+                                     pointer: FakePointer(), clamshell: FakeClamshell(),
+                                     clock: FakeClock(), lidInfo: FakeLidInfo())
+        engine.activate()
+        XCTAssertTrue(apps.observing, "the engine watches launches while it is on")
+        let before = assertions.preventCount
+
+        engine.deactivate()
+        apps.ids = ["com.example.render"]
+        apps.fire()
+
+        XCTAssertFalse(apps.observing)
+        XCTAssertFalse(assertions.held, "a launch after deactivation took a hold")
+        XCTAssertEqual(assertions.preventCount, before)
+    }
 }
 
 /// An observer started twice is not two observers.

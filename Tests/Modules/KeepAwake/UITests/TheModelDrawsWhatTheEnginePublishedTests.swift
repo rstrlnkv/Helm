@@ -18,6 +18,7 @@ private final class Inert: SleepAssertions, DisplayInfoPort, PowerInfoPort, LidI
     func snapshot() -> (onBattery: Bool, percent: Int)? { (onBattery: false, percent: 100) }
     func supply() -> PowerSource.Supply? { .mains }
     func hasLid() -> Bool { false }
+    func hasBattery() -> Bool { false }
     func startObserving(_ onChange: @escaping @Sendable () -> Void) {}
     func stopObserving() {}
     func runningBundleIDs() -> Set<String> { running }
@@ -30,7 +31,7 @@ private final class Inert: SleepAssertions, DisplayInfoPort, PowerInfoPort, LidI
     func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) { done(true) }
     func removeSudoersWithoutPassword() -> Bool { true }
     func setDisableSleep(_ on: Bool) -> Bool { true }
-    func pmsetReport() -> String { "" }
+    func pmsetReport() -> String? { "" }
     func schedule(after: TimeInterval, _ block: @escaping @Sendable () -> Void) -> AnyObject { NSObject() }
     func now() -> Date { Date() }
 }

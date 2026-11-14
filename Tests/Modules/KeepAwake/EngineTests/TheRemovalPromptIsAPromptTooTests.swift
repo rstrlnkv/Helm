@@ -81,7 +81,7 @@ private final class RemovalPromptClamshell: ClamshellPort, @unchecked Sendable {
     }
 
     func setDisableSleep(_ on: Bool) -> Bool { true }
-    func pmsetReport() -> String { locked { report } }
+    func pmsetReport() -> String? { locked { report } }
 }
 
 /// Switching «stay awake with the lid closed» off takes the passwordless-sudo

@@ -205,12 +205,9 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         // reference goes, and this is the moment it is meant to happen. The
         // method was on the port and called by nobody for exactly as long as
         // that reasoning stood in for calling it.
-        //
-        // `WorkspaceAppPort` has no `stopObserving` to call and clears its
-        // token the same way. That is the remaining asymmetry, and it is named
-        // here rather than left to be rediscovered.
         power.stopObserving()
         displayObserver.stopObserving()
+        apps.stopObserving()
         if isActive { assertions.release() }
         // Sleep back, and the grant with it where it has nothing left to do.
         // `manualOn` is read here rather than after the reset below: a session
@@ -601,7 +598,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
 
     /// True while the charge is at or under the floor the person set.
     private func batteryVetoes() -> Bool {
-        guard MacHardware.hasBattery else { return false }
+        guard lidInfo.hasBattery() else { return false }
         // No reading is two states and `isOnMains` tells them apart, the same
         // split `powerCondition` above was corrected for. «No veto» for both
         // switched the guard off exactly where it matters: a laptop on battery

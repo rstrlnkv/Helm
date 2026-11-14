@@ -60,6 +60,10 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
         await waitUntil("the lid ask whether it needs a password", file: file, line: line) {
             clamshell.grantChecks > asked
         }
+        // The probe's answer lands on main after the count moves, and a probe
+        // still out swallows the next ask by design, so let this one land.
+        await engine.drainClamshellForTests()
+        drainMain()
     }
 
     /// Decision A. A Start press is not the lid switch: with the option stored
@@ -165,6 +169,29 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
 
         XCTAssertEqual(clamshell.installCalls, 1,
                        "three unrelated edits produced three administrator dialogs")
+    }
+
+    /// One probe at a time: a probe a rule started is still out when the switch
+    /// is turned on, and the switch's gesture is not dropped with it.
+    @MainActor
+    func testAProbeInFlightDoesNotSwallowTheSwitchsGesture() async {
+        let gate = DispatchSemaphore(value: 0)
+        clamshell.holdNextProbe = gate
+        engine.startSession(minutes: 0)
+        await waitUntil("a non-gesture probe is out") { clamshell.grantChecks == 1 }
+
+        engine.lidSwitchTurned(false)
+        engine.lidSwitchTurned(true)
+        engine.settingsChanged()
+        gate.signal()
+
+        await waitUntil("the lid asked for the rule") { clamshell.installCalls == 1 }
+        await engine.drainClamshellForTests()
+        drainMain()
+        XCTAssertEqual(clamshell.installCalls, 1,
+                       "the probe a rule started answered for the switch too, and the "
+                       + "gesture's prompt was dropped or raised twice")
+        XCTAssertEqual(clamshell.grantChecks, 1, "one probe was out, so the edits did not start more")
     }
 
     /// …and switching the setting off and on again is a fresh decision, so it

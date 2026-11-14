@@ -27,8 +27,7 @@ import HelmRuntime
 ///
 /// A Mac with a battery is a precondition of the engine-level checks, as it is
 /// for `TheBatteryGuardIsNotAPersonTests`: `batteryVetoes` opens on
-/// `MacHardware.hasBattery`, which is a fact about this machine. The pure
-/// decision below is asked of `BatteryGuard` directly and holds on any hardware.
+/// `lidInfo.hasBattery()`, which `FakeLidInfo` answers yes on any host.
 final class AChargeNobodyCanReadIsNotZeroTests: XCTestCase {
 
     private var store: NamespacedStore!
