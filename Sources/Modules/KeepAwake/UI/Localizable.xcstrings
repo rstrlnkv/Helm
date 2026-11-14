@@ -3605,55 +3605,55 @@
         }
       }
     },
-    "timerColourHint": {
+    "timerColourNote": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Solange keine gewählt ist, dieselbe wie die aktive"
+            "value": "Orange, bis du eine wählst. Die aktive Farbe zu ändern ändert sie nicht."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Until you pick one, the same as the active colour"
+            "value": "Orange until you pick one. Changing the active colour does not change it."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mientras no elijas uno, el mismo que el activo"
+            "value": "Naranja hasta que elijas uno. Cambiar el color activo no lo cambia."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tant que vous n’en choisissez pas, la même que l’active"
+            "value": "Orange tant que vous n’en choisissez pas. Changer la couleur active ne la change pas."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "選ぶまでは、アクティブの色と同じです"
+            "value": "選ぶまではオレンジです。アクティブの色を変えても変わりません。"
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Enquanto você não escolher, a mesma da cor ativa"
+            "value": "Laranja até você escolher. Mudar a cor ativa não a muda."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Пока свой не выбран — тот же, что и активный"
+            "value": "Оранжевый, пока свой не выбран. Смена активного цвета его не меняет."
           }
         },
         "zh": {
           "stringUnit": {
             "state": "translated",
-            "value": "未选择前，与激活时的颜色相同"
+            "value": "选择前为橙色。更改激活时的颜色不会改变它。"
           }
         }
       }

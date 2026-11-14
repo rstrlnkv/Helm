@@ -27,6 +27,7 @@ final class TheModuleWordsReachEveryLanguageTests: XCTestCase {
             ("other", { KAStr.customTime }),
             ("done", { KAStr.done }),
             ("macOSRefusedToKeepAwake", { KAStr.assertionRefused }),
+            ("timerColourNote", { KAStr.timerColorNote }),
         ]
         var differs = 0
         AppLanguage.each { language in
@@ -37,6 +38,18 @@ final class TheModuleWordsReachEveryLanguageTests: XCTestCase {
             }
         }
         XCTAssertGreaterThan(differs, 0, "no word differs from its English, so a fallback to English would pass")
+    }
+
+    /// Q7b: the note under the timer colour names what the default does, in the words of the
+    /// language; it used to say "the same as the active colour", which the default is not.
+    func testTheTimerColourNoteNamesTheOrangeDefault() {
+        let orange = ["en": "Orange", "ru": "Оранжевый", "de": "Orange"]
+        for (code, word) in orange {
+            let language = AppLanguage(rawValue: code)!
+            AppLanguage.only(language) {
+                XCTAssertTrue(KAStr.timerColorNote.hasPrefix(word), "\(code): \(KAStr.timerColorNote)")
+            }
+        }
     }
 
     /// A word other modules draw too stays in the kit and `KAStr` reads it through `L()`.

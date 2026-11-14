@@ -625,7 +625,7 @@ enum KAStr {
     static var ringTimerNote: String { L(.countdownRingHint) }
     static var showTimerText: String { L(.showRemainingTime) }
     static var timerColor: String { L(.timerColour) }
-    static var timerColorNote: String { L(.timerColourHint) }
+    static var timerColorNote: String { L(.timerColourNote) }
     static var movePointerNote: String { L(.movePointerHint) }
     /// **Names the two controls that actually use it.** It used to say «the
     /// menu-bar switch», and there is no switch in the menu bar: the status
