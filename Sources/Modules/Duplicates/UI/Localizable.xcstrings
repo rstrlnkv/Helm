@@ -1438,49 +1438,49 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entfernen gestoppt – nichts Weiteres wurde verschoben."
+            "value": "Entfernen gestoppt – nichts wurde verschoben."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Removal stopped — nothing more was moved."
+            "value": "Removal stopped — nothing was moved."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Eliminación detenida — no se movió nada más."
+            "value": "Eliminación detenida — no se movió nada."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Suppression arrêtée — plus rien n’a été déplacé."
+            "value": "Suppression arrêtée — rien n’a été déplacé."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "削除を停止しました — これ以上は移動されていません。"
+            "value": "削除を停止しました — 何も移動されていません。"
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remoção interrompida — nada mais foi movido."
+            "value": "Remoção interrompida — nada foi movido."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Удаление остановлено — больше ничего не перемещалось."
+            "value": "Удаление остановлено — ничего не перемещалось."
           }
         },
         "zh": {
           "stringUnit": {
             "state": "translated",
-            "value": "移除已停止 — 未再移动任何内容。"
+            "value": "移除已停止 — 未移动任何内容。"
           }
         }
       }
