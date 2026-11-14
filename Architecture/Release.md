@@ -144,7 +144,9 @@ and the unpacked bundle's own version is re-read as well, so a mislabelled asset
 be swapped in either. A build whose bundle identifier is not the release's
 (`AppBuild.takesPublishedBuilds`) is sent to the release page before any download, and
 `Installer.installZip` throws `identityMismatch` unless the unpacked bundle's identifier
-is the installed one's.
+is the installed one's. The unzip and the digest run off the main actor
+(`offTheCooperativePool`), and every way out of the download and the install that does not
+hand the files to the swap script removes them.
 
 `UpdateService` takes the two things outside the process as ports, a feed that answers one
 GitHub request and the store the `updateChannel` key is kept in (still the bare key in

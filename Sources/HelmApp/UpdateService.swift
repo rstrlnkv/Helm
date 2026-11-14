@@ -227,7 +227,16 @@ import HelmAppStrings
                 var req = URLRequest(url: zip)
                 req.setValue("Helm", forHTTPHeaderField: "User-Agent")
                 let (tmp, resp) = try await URLSession.shared.download(for: req)
-                guard (resp as? HTTPURLResponse)?.statusCode == 200 else { installState = .failed; return }
+                // `download` leaves the file in the temporary directory for the
+                // caller to remove, so every way out removes it (the installer
+                // has usually done so already; a second removal is harmless).
+                defer { try? FileManager.default.removeItem(at: tmp) }
+                let status = (resp as? HTTPURLResponse)?.statusCode
+                guard status == 200 else {
+                    HelmLog.shared.warn("update", "download answered HTTP \(status.map(String.init) ?? "none") for \(zip.lastPathComponent)")
+                    installState = .failed
+                    return
+                }
                 // Nothing is swapped in silently without the digest the release
                 // published for this exact asset. No digest, or the wrong one,
                 // and the user gets the release page instead — the updater
@@ -251,8 +260,9 @@ import HelmAppStrings
                 // § Module pattern) — and until now it ran unattended with no label, so a
                 // silent update check could only ever appear in the trail as
                 // growth between two `idle` readings.
-                let digestMatches = HelmActivity.phase("update.digest") {
-                    ReleaseDigest.matches(fileAt: tmp, expected: expected)
+                // Off the main actor: hashing a whole file is a blocking read.
+                let digestMatches = await HelmActivity.phase("update.digest") { @Sendable in
+                    await offTheCooperativePool { ReleaseDigest.matches(fileAt: tmp, expected: expected) }
                 }
                 HelmLog.shared.memory("update.digest")
                 guard digestMatches else {
@@ -261,7 +271,7 @@ import HelmAppStrings
                     return
                 }
                 installState = .installing
-                try Installer.installZip(at: tmp, expectedVersion: rel.version)  // terminates on success
+                try await Installer.installZip(at: tmp, expectedVersion: rel.version)  // terminates on success
             } catch {
                 HelmLog.shared.failure("update", "install failed", error)
                 installState = .failed
@@ -304,7 +314,10 @@ import HelmAppStrings
 
         do {
             let (data, resp) = try await feed(req)
-            guard let http = resp as? HTTPURLResponse else { return }
+            guard let http = resp as? HTTPURLResponse else {
+                HelmLog.shared.warn("update", "check got no HTTP answer (\(channel.rawValue))")
+                return
+            }
             // The channel was switched while this was in flight: the answer is
             // for the channel left, and `setChannel` has already dropped its offer.
             guard channel == self.channel else {
@@ -358,6 +371,7 @@ import HelmAppStrings
                 tellSomebodyAboutIt(r.version, startedByHand: manual)
             }
         } catch {
+            HelmLog.shared.failure("update", "check failed (\(channel.rawValue))", error)
             if manual, channel == self.channel { note = .checkFailed }
         }
     }

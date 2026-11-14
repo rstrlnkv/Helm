@@ -28,17 +28,29 @@ enum Installer {
     }
 
     /// Unzips `zipURL`, validates the bundle, then swaps + relaunches (terminates the app).
-    /// Runs on the main actor; the work is quick for a ~2 MB archive.
+    /// Runs on the main actor, but the unzip does not: `ditto` on the 7.4 MB asset
+    /// is a blocking child process, and holding the main thread through it froze
+    /// the Installing line. Everything that touches `Bundle.main`, `NSApp` or the
+    /// swap stays on main.
+    ///
+    /// The unzipped payload is removed on every way out that does not hand it to
+    /// the swap script; once handed over, the script owns it (and keeps it on a
+    /// failed copy, `UpdateSwap`).
     @MainActor
-    static func installZip(at zipURL: URL, expectedVersion: String) throws {
+    static func installZip(at zipURL: URL, expectedVersion: String) async throws {
         let fm = FileManager.default
         let work = fm.temporaryDirectory
             .appendingPathComponent("HelmUpdate-\(UUID().uuidString)", isDirectory: true)
         try fm.createDirectory(at: work, withIntermediateDirectories: true)
+        var handedOver = false
+        defer { if !handedOver { try? fm.removeItem(at: work) } }
 
         // Unzip with ditto (handles the ditto-produced archive + preserves the signature).
-        guard HelmProcess.run("/usr/bin/ditto", ["-x", "-k", zipURL.path, work.path]).status == 0
-        else { throw InstallError.unzipFailed }
+        let zipPath = zipURL.path, workPath = work.path
+        let unzipped = await offTheCooperativePool {
+            HelmProcess.run("/usr/bin/ditto", ["-x", "-k", zipPath, workPath]).status
+        }
+        guard unzipped == 0 else { throw InstallError.unzipFailed }
 
         // The downloaded archive is consumed — drop it now so it never lingers.
         try? fm.removeItem(at: zipURL)
@@ -68,6 +80,7 @@ enum Installer {
 
         try launchSwapScript(newApp: newApp.path, installPath: installPath,
                              workDir: work.path, version: expectedVersion)
+        handedOver = true
         NSApp.terminate(nil)
     }
 
