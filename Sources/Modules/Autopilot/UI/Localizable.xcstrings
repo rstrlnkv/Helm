@@ -973,7 +973,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "¿Borrar el registro de lo que hizo Autopilot? Los archivos que movió ya no se podrán devolver desde aquí."
+            "value": "¿Borrar el registro de lo que hizo el piloto automático? Los archivos que movió ya no se podrán devolver desde aquí."
           }
         },
         "fr": {
@@ -991,7 +991,7 @@
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Limpar o registro do que o Autopilot fez? Os arquivos que moveu já não poderão ser recolocados a partir daqui."
+            "value": "Limpar o registro do que o piloto automático fez? Os arquivos que moveu já não poderão ser recolocados a partir daqui."
           }
         },
         "ru": {
@@ -1397,7 +1397,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "¿Borrar el registro ilegible de lo que hizo Autopilot? Los archivos que movió ya no se podrán devolver desde aquí."
+            "value": "¿Borrar el registro ilegible de lo que hizo el piloto automático? Los archivos que movió ya no se podrán devolver desde aquí."
           }
         },
         "fr": {
@@ -1415,7 +1415,7 @@
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Limpar o registro ilegível do que o Autopilot fez? Os arquivos que moveu já não poderão ser recolocados a partir daqui."
+            "value": "Limpar o registro ilegível do que o piloto automático fez? Os arquivos que moveu já não poderão ser recolocados a partir daqui."
           }
         },
         "ru": {
