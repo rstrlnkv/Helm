@@ -210,8 +210,9 @@ public func Bytes(_ count: Int) -> String {
 /// A number in the user's language: "1,5" where the language writes a comma.
 /// The rule summary printed `String(format: "%.1f", …)` beside sizes that
 /// `Bytes` had already written with a comma, so one line read "1.5 МБ" next to
-/// "1,5 ГБ". Not named `Decimal`: a free function of that name shadows
-/// `Foundation.Decimal`, and `Decimal(10000)` then binds to this one.
+/// "1,5 ГБ". Not named `Decimal`: a free function of that name shares its
+/// call spelling with `Foundation.Decimal`, and `Decimal(anInt)` binds to
+/// Foundation's initialiser, not to this one (VPN's speed tile drew «10000»).
 public func Fractional(_ value: Double, decimals: Int = 1) -> String {
     HelmBytes.decimal(value, decimals: decimals, language: AppLanguage.current.rawValue)
 }

@@ -80,7 +80,7 @@ final class ConditionsInvariantTests: XCTestCase {
 /// pinning what it promises, because `IOPSPowerInfo.snapshot()` upstream turns
 /// an unreadable capacity into `percent: 0` while still reporting `onBattery`.
 ///
-/// Guards: 5f196564 (filtered list deleted elsewhere; one switch, two returns).
+/// Guards: 5f196564 (an unreadable charge is nil, not 0%).
 final class BatteryGuardInvariantTests: XCTestCase {
 
     /// Monotone in the reading and in the threshold: a lower charge can never

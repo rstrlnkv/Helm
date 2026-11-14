@@ -100,7 +100,8 @@ language it asks in.
 condition every few milliseconds until a wall-clock deadline and then fails naming what
 never happened, and `waitUntilWithin(_:_:)` is the same wait for a helper that is a free
 function; the older `waitUntil(_:)` is a yield loop, kept until its last caller
-moves to the bounded one, and then deleted.
+moves to the bounded one, and then deleted. `grace()` is the wait before asserting an
+absence, paired with a control that proves the same path still speaks.
 
 ## Harnesses
 

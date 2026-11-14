@@ -2,16 +2,20 @@ import HelmTestSupport
 import XCTest
 
 /// A file that resolves one of the person's own folders has to ask whether this
-/// is a test run — and one of the two that do it does not ask.
+/// is a test run.
 ///
 /// `TestProcess` exists for exactly this question and says so at its
 /// declaration: "asked by anything that would otherwise write into somebody's
-/// real files". Two places in `Sources/` name a `SearchPathDirectory` of the
-/// person's. `ScanJournal` asks and lands in `$TMPDIR`; `ScanStore` does not, so
-/// a suite run reads — and can delete — their last Disk scan, which is
-/// `TheSuiteDoesNotReadTheUsersLastScanTests`, next door to the store itself.
-/// That one names the file and the measurement; this one is the family, so the
-/// third store to be written arrives with the question already asked of it.
+/// real files". `HelmSupport` is the one place that resolves Application
+/// Support, and it asks; `ScreenshotsState` (Documents) and Autopilot's
+/// `SystemPorts` (Downloads) ask too. Duplicates' `KeepPolicy` (Downloads,
+/// Desktop) does not ask: it only names `TestProcess` in a doc comment saying
+/// so, and the per-file mention check below passes on that. A store that
+/// skipped the question would read — and could delete — the person's own files
+/// in a suite run, which is what `TheSuiteDoesNotReadTheUsersLastScanTests`
+/// measured for the last Disk scan. That one names the file and the
+/// measurement; this one is the family, so the next store to be written arrives
+/// with the question already asked of it.
 ///
 /// **Why the source and not the behaviour.** The behaviour can only be asked of
 /// a store that already exists, from a target that can see it — nine engine

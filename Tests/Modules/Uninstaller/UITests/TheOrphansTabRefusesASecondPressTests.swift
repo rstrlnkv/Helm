@@ -39,9 +39,10 @@ final class TheOrphansTabRefusesASecondPressTests: XCTestCase {
         XCTAssertEqual(work.trashRequests, 1, "precondition: the first batch is in flight")
         XCTAssertTrue(model.busy, "nothing on the tab can tell that a removal is running")
 
-        // A task as well: without the guard the second press reaches the held
-        // work and stays there, so awaiting it here would hang the test
-        // rather than fail it.
+        // A task as well, so the second press is not awaited inline: the count
+        // below is what fails when the guard is gone. A second request would
+        // wait on `HeldWork`'s one `released` stream, which is shared by every
+        // call; what that does to the run was not tried.
         let second = Task { await model.trashSelected() }
         for _ in 0..<50 { await Task.yield() }
 
