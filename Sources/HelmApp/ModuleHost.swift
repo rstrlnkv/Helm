@@ -96,6 +96,9 @@ import SwiftUI
     /// post, and the next `bootstrap()` builds the same set again. `disable`
     /// stays the route for the person's own switch, with the persistence and
     /// the notification that act carries.
+    ///
+    /// Safe to run twice: the reset calls it before it trashes and forgets
+    /// (`ResetPlan.Step.stopEveryModule`), and the quit calls it again.
     func shutdown() {
         for key in live.keys.sorted() {
             live[key]?.stop()
@@ -229,9 +232,10 @@ import SwiftUI
     /// guarantees is that the ask happens, first, and with the person there —
     /// not that the machine is clean afterwards.
     ///
-    /// No store write, no `.helmModuleDisabled`, no teardown: the reset ends in
-    /// a relaunch, and `applicationWillTerminate` runs `shutdown()` on the way
-    /// out as it does for every quit.
+    /// No store write, no `.helmModuleDisabled`, no teardown here: the reset's
+    /// next steps are `.giveBackTheLoginItem` and then `.stopEveryModule`,
+    /// which calls `shutdown()` before anything is trashed or forgotten, so
+    /// `applicationWillTerminate`'s `shutdown()` finds nothing live.
     func handBackSystemState() {
         for key in live.keys.sorted() { live[key]?.engine.willDisable() }
     }

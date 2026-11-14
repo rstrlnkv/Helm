@@ -49,6 +49,13 @@ public enum ResetPlan {
         /// `Bundle.main` and reports through the log, and after the engines,
         /// because their dialog is the step that needs the person.
         case giveBackTheLoginItem
+
+        /// Every live module stopped, deactivated and its menu-bar item taken
+        /// away, **before** the folders go to the Trash and the preferences are
+        /// forgotten. A model stopping writes (the Screenshots bar's place), and
+        /// a write after `.forgetPreferences` survives the reset: the quit's
+        /// `shutdown()` used to be the one that ran it, too late.
+        case stopEveryModule
         case trashHelmsOwnFolders
 
         /// The trash took the log folder, and the latch that says its purge
@@ -64,6 +71,7 @@ public enum ResetPlan {
     public static let order: [Step] = [
         .handBackWhatIsOutsideHelm,
         .giveBackTheLoginItem,
+        .stopEveryModule,
         .trashHelmsOwnFolders,
         .relatchTheLogPurge,
         .forgetPreferences,

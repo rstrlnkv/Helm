@@ -56,6 +56,13 @@ final class AResetGoesThroughTheEnginesTests: XCTestCase {
                       + "write it again: the next launch purges the log holding the reset's line")
     }
 
+    func testTheResetStopsEveryModuleItself() throws {
+        let reset = try source("Sources/HelmApp/ResetEverything.swift")
+        XCTAssertTrue(reset.contains("case .stopEveryModule: ModuleHost.shared.shutdown()"),
+                      "the order test pins the step's place, not what the step does: an "
+                      + "emptied arm leaves the modules running while the reset deletes")
+    }
+
     /// The contract carries the default, so a module that holds nothing outside
     /// Helm answers this without writing a line — and the reset can ask all of
     /// them without knowing which is which.

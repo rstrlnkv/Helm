@@ -44,6 +44,7 @@ import HelmRuntime
             switch step {
             case .handBackWhatIsOutsideHelm: ModuleHost.shared.handBackSystemState()
             case .giveBackTheLoginItem: LoginItem.setEnabled(false)
+            case .stopEveryModule: ModuleHost.shared.shutdown()
             case .trashHelmsOwnFolders: trashHelmsOwnFolders()
             case .relatchTheLogPurge: HelmLog.shared.rewritePurgeLatch()
             case .forgetPreferences: forgetPreferences()
