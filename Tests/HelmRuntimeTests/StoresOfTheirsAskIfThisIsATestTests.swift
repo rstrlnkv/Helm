@@ -58,6 +58,18 @@ final class StoresOfTheirsAskIfThisIsATestTests: XCTestCase {
             """)
     }
 
+    /// The rule above passes on a file that names `TestProcess` anywhere, a
+    /// doc comment included, so `HelmSupport` and `ScanJournal` could lose the
+    /// branch and keep the comment that explains it. These two are held in code.
+    func testTheTwoFoldersTheSuiteWouldOtherwiseWriteIntoAskInCode() throws {
+        for file in ["Sources/HelmRuntime/HelmSupport.swift", "Sources/HelmRuntime/ScanJournal.swift"] {
+            let asks = try RepoSource.lines(of: file).contains {
+                RepoSource.code($0).contains("TestProcess.isRunning")
+            }
+            XCTAssertTrue(asks, "\(file) no longer asks TestProcess.isRunning in code")
+        }
+    }
+
     // MARK: - The scan itself, which is the half that goes quiet
 
     /// A `grep` that has stopped matching is a green test about nothing. The two

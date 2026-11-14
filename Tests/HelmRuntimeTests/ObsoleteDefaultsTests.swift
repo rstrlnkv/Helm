@@ -59,6 +59,11 @@ final class ObsoleteDefaultsTests: XCTestCase {
     /// is also the stronger rule: a key whose feature is gone has no reason to
     /// keep a constant.
     ///
+    /// **Spelled as a literal counts too.** Most live keys have no constant at all:
+    /// `store.string("menuBarIconSize", default: "")` is the whole declaration, so
+    /// looking only for `= "name"` let `module.app.menuBarIconSize` join the list
+    /// unnoticed (a mutation said so).
+    ///
     /// The exception is a key still read *once* by the migration that carries
     /// its value somewhere new before the purge takes it. There is one, it is
     /// named here with its reason, and adding a second should be an argument
@@ -88,7 +93,7 @@ final class ObsoleteDefaultsTests: XCTestCase {
                 let code = SwiftSource.uncommented(
                     try String(contentsOf: RepoSource.root.appendingPathComponent(path),
                                encoding: .utf8))
-                XCTAssertFalse(code.contains("= \"\(name)\""),
+                XCTAssertFalse(code.contains("\"\(name)\""),
                                "\(key) is on the retired list — the purge deletes it at every "
                                + "launch — and \(path) still declares `\(name)` as a key. Either "
                                + "the constant is dead and should go, or the setting is live and "
