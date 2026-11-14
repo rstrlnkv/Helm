@@ -16,9 +16,9 @@ import HelmRuntime
 /// word for, so no test of it could exist whatever anybody wrote.
 ///
 /// What is fixed here is that: the port answers, the engine reads the answer,
-/// and the trail carries it. The screen still says «holding», and deliberately
-/// so for now — saying otherwise is a new field on the payload and a sentence in
-/// eight languages, which is `HelmUI`'s tree.
+/// and the trail and the payload carry it. The screen still says «holding», and
+/// deliberately so for now — saying otherwise is a sentence in eight languages,
+/// which is `HelmUI`'s tree.
 ///
 /// Guards: bf6c973b (a refused IOKit assertion counted as held).
 final class AnAssertionTheSystemRefusedSaysSoTests: XCTestCase {
@@ -79,6 +79,39 @@ final class AnAssertionTheSystemRefusedSaysSoTests: XCTestCase {
         XCTAssertEqual(lines(containing: "could not").count, 0)
         XCTAssertEqual(lines(containing: "holding sleep").count, 1,
                        "…and the ordinary line is still written")
+    }
+
+    /// The payload is what the screen reads: a refusal reaches it, and the
+    /// next assertion the system grants takes it away again.
+    func testARefusedAssertionIsInThePayloadUntilALaterOneSucceeds() async {
+        assertions.succeeds = false
+        let engine = engine()
+
+        engine.startSession(minutes: 0)
+        XCTAssertEqual(assertions.preventCount, 1, "precondition: the assertion was asked for")
+        var latest = await engine.stream().first { _ in true }
+        XCTAssertEqual(latest?.assertionRefused, true)
+
+        assertions.succeeds = true
+        engine.settingsChanged()
+        XCTAssertEqual(assertions.preventCount, 2, "precondition: it was asked for again")
+        latest = await engine.stream().first { _ in true }
+        XCTAssertEqual(latest?.assertionRefused, false)
+    }
+
+    /// Stopping the session that was refused takes the refusal with it: the
+    /// next payload is about a Mac that is no longer being asked to stay awake.
+    func testStoppingARefusedSessionTakesTheRefusalAwayFromThePayload() async {
+        assertions.succeeds = false
+        let engine = engine()
+        engine.startSession(minutes: 0)
+        var latest = await engine.stream().first { _ in true }
+        XCTAssertEqual(latest?.assertionRefused, true, "precondition: the refusal was published")
+
+        engine.stopSession()
+        latest = await engine.stream().first { _ in true }
+        XCTAssertEqual(latest?.isActive, false, "precondition: the session ended")
+        XCTAssertEqual(latest?.assertionRefused, false)
     }
 
     private func entries(containing text: String) -> [LogEntry] {

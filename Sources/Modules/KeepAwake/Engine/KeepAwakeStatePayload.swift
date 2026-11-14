@@ -33,12 +33,15 @@ extension KeepAwakeEngine {
         public var lidRefused: Bool = false
         /// The lid option is off and the rule it needed is still on disk.
         public var lidGrantRemains: Bool = false
+        /// IOKit refused the sleep assertion, so the Mac sleeps on schedule while
+        /// the session runs. The default says nothing is wrong.
+        public var assertionRefused: Bool = false
 
         init(isActive: Bool, conditions: Set<ActiveCondition>, clamshellActive: Bool,
                     endDate: Date?, startDate: Date?, suppressed: Bool,
                     triggeredConditions: Set<ActiveCondition> = [], holdingApps: [String] = [],
                     batteryStopped: Bool = false, lidRefused: Bool = false,
-                    lidGrantRemains: Bool = false) {
+                    lidGrantRemains: Bool = false, assertionRefused: Bool = false) {
             self.isActive = isActive
             self.conditions = conditions
             self.clamshellActive = clamshellActive
@@ -50,6 +53,7 @@ extension KeepAwakeEngine {
             self.batteryStopped = batteryStopped
             self.lidRefused = lidRefused
             self.lidGrantRemains = lidGrantRemains
+            self.assertionRefused = assertionRefused
         }
     }
 }

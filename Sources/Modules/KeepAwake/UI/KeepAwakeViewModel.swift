@@ -2,6 +2,19 @@ import SwiftUI
 import HelmRuntime
 import Module_KeepAwake_Engine
 
+/// What the slot under the presets says, in today's precedence: the battery
+/// guard first, then a paused rule.
+enum KeepAwakeNotice: Equatable {
+    case none, battery, paused
+
+    /// The battery wins: both facts can be true, and of the two only the guard
+    /// explains why nothing at all is happening.
+    static func of(batteryStopped: Bool, suppressed: Bool) -> KeepAwakeNotice {
+        if batteryStopped { return .battery }
+        return suppressed ? .paused : .none
+    }
+}
+
 /// Keep Awake's own view state, and the module's only door to its engine.
 ///
 /// Built with the engine by the descriptor's `makeModule` and held by the host
@@ -51,6 +64,12 @@ import Module_KeepAwake_Engine
     var lidRowNote: LidRowNote {
         LidRowNote.of(refused: lidRefused, grantRemains: lidGrantRemains,
                       holding: clamshellActive)
+    }
+
+    /// The one thing the slot under the buttons says, from the two facts that
+    /// can fill it.
+    var notice: KeepAwakeNotice {
+        KeepAwakeNotice.of(batteryStopped: batteryStopped, suppressed: suppressed)
     }
 
     private let engine: KeepAwakeEngine

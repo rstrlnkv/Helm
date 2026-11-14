@@ -93,9 +93,9 @@ final class PanelTimerFromAnUntrustedPlistTests: XCTestCase {
         defer { model.stop() }
         let tile = KeepAwakePanelTile(vm: model, store: store)
         let hero = KeepAwakeHero(state: .idle, now: Date(), anyRuleOn: false,
-                                 defaultDurationMinutes: 30, suppressed: false,
+                                 defaultDurationMinutes: 30, notice: .none,
                                  ruleHolds: false, timerEndsAutomation: false,
-                                 batteryStopped: false, batteryFloor: 20,
+                                 batteryFloor: 20,
                                  timedNote: { _ in "" }, start: { _ in }, stop: {}, resume: {})
         for editor in [tile.customTimeEditor, hero.customTimeEditor] {
             let given = Mirror(reflecting: editor.prompt).children.first { $0.label == "ceiling" }?.value as? Int

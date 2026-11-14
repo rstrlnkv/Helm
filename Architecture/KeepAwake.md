@@ -88,8 +88,9 @@ outranks the pause and `triggerHolds` is per-rule rather than the module's own f
 When a guard has stopped everything, that is said in the state. The guard takes the
 one notice slot when both it and a pause are true, since only one of the two explains
 why nothing at all is running; the slot is gated on "there is something to say"
-(`KeepAwakePanelTile.hasNotice`) rather than on the pause flag; and the notice
+(the model's `notice`, which the hero and the panel both read) rather than on the pause flag; and the notice
 carries no button, because a control that cannot do what it says is worse than none.
+A sleep assertion IOKit refused is in the payload as `assertionRefused` (set on refusal, cleared by the next one that succeeds and by the release); nothing draws it yet.
 
 Hardware facts reach the engine through `LidInfoPort` (`hasLid()`, `hasBattery()`): `batteryVetoes` opens on `lidInfo.hasBattery()`, so a test stands up a Mac with or without a battery with `FakeLidInfo`. Every port observer, `AppRunningPort` included, is stopped in `deactivate`. `ClamshellPort.pmsetReport()` is nil when `pmset -g` did not answer (non-zero status), which is not an empty report: launch recovery with Helm's note set restores sleep on nil, with only the rule on disk it leaves sleep alone. `ClamshellCoordinator.engage` keeps one `canDisableSleepWithoutPassword()` probe (a write: `sudo -n pmset disablesleep 0`) in flight and ORs the `mayPrompt` of calls made meanwhile into the answer, so a gesture's prompt is never dropped. `lookForTheRule` reads `clamshellEnabled` inside the block that lands on main, not before the hop, and `ALookThatWasOutReadsTheOptionWhenItLandsTests` holds the look on a semaphore, switches the option on, and reads the notice follow the later value.
 

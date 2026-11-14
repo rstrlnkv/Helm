@@ -12,13 +12,16 @@ final class Inert: SleepAssertions, DisplayInfoPort, PowerInfoPort, LidInfoPort,
                             DisplayObserverPort, AppRunningPort, PointerPort, ClamshellPort,
                             Clock, @unchecked Sendable {
     var running: Set<String> = []
+    var flatBattery = false
     func preventSleep(display: Bool) -> Bool { true }
     func release() {}
     func builtInFlags() -> [Bool] { [] }
-    func snapshot() -> (onBattery: Bool, percent: Int)? { (onBattery: false, percent: 100) }
-    func supply() -> PowerSource.Supply? { .mains }
+    func snapshot() -> (onBattery: Bool, percent: Int)? {
+        flatBattery ? (onBattery: true, percent: 5) : (onBattery: false, percent: 100)
+    }
+    func supply() -> PowerSource.Supply? { flatBattery ? .battery : .mains }
     func hasLid() -> Bool { false }
-    func hasBattery() -> Bool { false }
+    func hasBattery() -> Bool { flatBattery }
     func startObserving(_ onChange: @escaping @Sendable () -> Void) {}
     func stopObserving() {}
     func runningBundleIDs() -> Set<String> { running }
@@ -58,5 +61,51 @@ final class TheModelDrawsWhatTheEnginePublishedTests: XCTestCase {
         }
         XCTAssertEqual(model.activeConditions, [.app])
         XCTAssertTrue(model.ruleHolds)
+    }
+
+    private func modelHoldingAnAppRule(_ ports: Inert) -> (KeepAwakeEngine, KeepAwakeViewModel) {
+        let store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
+        let settings = KeepAwakeSettings(store: store)
+        settings.setAppTriggers([AppTrigger(bundleID: "com.example.render")])
+        ports.running = ["com.example.render"]
+        let engine = KeepAwakeEngine(settings: settings, store: store, assertions: ports,
+                                     displayInfo: ports, displayObserver: ports,
+                                     power: ports, apps: ports, pointer: ports,
+                                     clamshell: ports, clock: ports, lidInfo: ports)
+        engine.activate()
+        return (engine, KeepAwakeViewModel(engine: engine))
+    }
+
+    /// `notice` hands the model's two published facts to `KeepAwakeNotice.of`;
+    /// a model that passed either one wrong would draw the wrong sentence.
+    func testTheModelsNoticeIsTheBatteryGuardWhenTheGuardStoppedEverything() async {
+        let ports = Inert()
+        ports.flatBattery = true
+        let (_, model) = modelHoldingAnAppRule(ports)
+        defer { model.stop() }
+        await waitUntil("the model drew the guard", within: .seconds(5)) { model.batteryStopped }
+        XCTAssertEqual(model.notice, .battery)
+    }
+
+    func testTheModelsNoticeIsPausedWhenARuleWasStoppedByHand() async {
+        let ports = Inert()
+        let (engine, model) = modelHoldingAnAppRule(ports)
+        defer { model.stop() }
+        await waitUntil("the rule held", within: .seconds(5)) { model.ruleHolds }
+        XCTAssertEqual(model.notice, .none)
+        engine.stopSession()
+        await waitUntil("the model drew the pause", within: .seconds(5)) { model.suppressed }
+        XCTAssertEqual(model.notice, .paused)
+    }
+}
+
+/// The slot under the buttons holds one sentence; when two facts could fill it
+/// the battery guard wins, then a paused rule.
+final class TheNoticeSlotHoldsOneSentenceTests: XCTestCase {
+    func testTheBatteryGuardBeatsAPausedRuleAndEachAloneSaysItself() {
+        XCTAssertEqual(KeepAwakeNotice.of(batteryStopped: true, suppressed: true), .battery)
+        XCTAssertEqual(KeepAwakeNotice.of(batteryStopped: true, suppressed: false), .battery)
+        XCTAssertEqual(KeepAwakeNotice.of(batteryStopped: false, suppressed: true), .paused)
+        XCTAssertEqual(KeepAwakeNotice.of(batteryStopped: false, suppressed: false), .none)
     }
 }

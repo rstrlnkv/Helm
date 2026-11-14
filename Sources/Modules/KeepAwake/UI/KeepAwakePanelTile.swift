@@ -50,7 +50,7 @@ struct KeepAwakePanelTile: View {
         _autoPower = State(initialValue: settings.autoPower)
         _customMinutes = State(initialValue: Self.openingMinutes(store))
         _shownActive = State(initialValue: vm.isActive)
-        _shownSuppressed = State(initialValue: vm.suppressed || vm.batteryStopped)
+        _shownSuppressed = State(initialValue: vm.notice != .none)
         _batteryFloor = State(initialValue: settings.batteryGuardPercent)
     }
 
@@ -96,8 +96,8 @@ struct KeepAwakePanelTile: View {
         .onChange(of: vm.isActive) { _, running in
             withAnimation(HelmMotion.disclosure) { shownActive = running }
         }
-        .onChange(of: hasNotice) { _, notice in
-            withAnimation(HelmMotion.disclosure) { shownSuppressed = notice }
+        .onChange(of: vm.notice) { _, arrived in
+            withAnimation(HelmMotion.disclosure) { shownSuppressed = arrived != .none }
         }
         // The store isn't observable, so these mirrored values would otherwise
         // drift once the same settings are changed in the Settings window.
@@ -220,13 +220,6 @@ struct KeepAwakePanelTile: View {
             .contentShape(Capsule())
     }
 
-    /// Whether the slot under the presets has anything in it at all. Either
-    /// notice fills the same slot, so this is «there is something to say» rather
-    /// than «a rule is paused»: the battery guard sets no `suppressed` of its own,
-    /// and gating on that one would leave its banner collapsed to nothing. The
-    /// hero keeps the same pair.
-    private var hasNotice: Bool { vm.suppressed || vm.batteryStopped }
-
     /// A rule applies, and the Mac is asleep anyway.
     ///
     /// Stopping a session while a rule still holds silences that rule until it
@@ -247,13 +240,12 @@ struct KeepAwakePanelTile: View {
     /// needs are in the component.
     @ViewBuilder private var suppressedRow: some View {
         Group {
-            // The battery wins. Both can be true — a rule is paused *and* the
-            // charge is at or under the floor — and of the two only one explains why
-            // nothing at all is happening. No button beside it either:
+            // `vm.notice` has the battery first. No button beside it:
             // «Resume» while the guard is in force is a control that cannot do
             // what it says, and the notice goes by itself when the charger goes
             // in. The settings page draws the same pair the same way round.
-            if vm.batteryStopped {
+            switch vm.notice {
+            case .battery:
                 // The short form. The hero says «— plug in» after it, which is
                 // the way out; here there is no room for a second clause beside a
                 // symbol in a 320 pt card, and the presets going grey above it
@@ -261,7 +253,7 @@ struct KeepAwakePanelTile: View {
                 HelmBanner(KAStr.stoppedByBatteryShort(batteryFloor), symbol: "battery.25", compact: true) {
                     EmptyView()
                 }
-            } else {
+            case .paused, .none:
                 // The short form. In a 320 pt card beside a button the long
                 // sentence wraps to four lines — a paragraph where everything
                 // else is a row.
