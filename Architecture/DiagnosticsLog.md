@@ -123,6 +123,9 @@ says so in its own first line: a seed has no parts to hold, so it parses — onc
 type whose name says so, as the exact inverse of the format, and reading a stamp once a
 minute rather than once a line. It seeds from this process's log files and their
 predecessor on disk, so the pane is not limited to what this process happened to write.
+It decodes the bytes it read rather than validating them: a window that starts inside a
+multi-byte character leaves bytes that are not UTF-8 only in the first fragment, which is
+dropped, and a last line torn inside one is kept, so one cut character never costs the file.
 The launch words («Helm … started», «logging enabled», «logging disabled», «terminating») are
 spelled once, in `LogLine` (`HelmLog.swift`), which `HelmLog.start`, `setEnabled` and
 `terminating()` write through; `LogSeed` recognises them from the same words, and

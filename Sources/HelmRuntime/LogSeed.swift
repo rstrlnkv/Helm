@@ -201,9 +201,13 @@ public enum LogSeed {
                 let size = (try? handle.seekToEnd()).map(Int.init) ?? 0
                 let offset = max(0, size - bytes)
                 try? handle.seek(toOffset: UInt64(offset))
-                guard let data = try? handle.readToEnd(),
-                      let text = String(data: data, encoding: .utf8)
-                else { return }
+                guard let data = try? handle.readToEnd() else { return }
+                // Decoded, not validated: a read cut inside a multi-byte character
+                // leaves bytes that are not UTF-8 in the first fragment (dropped
+                // below) and a tear in the last line (kept), and 0x0A never occurs
+                // inside a sequence, so no other line is touched. `String(data:)`
+                // would answer nil for the whole file.
+                let text = String(decoding: data, as: UTF8.self)
                 let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
                 let modified = attributes?[.modificationDate] as? Date
                 out += entries(from: text, startedMidFile: offset > 0,
