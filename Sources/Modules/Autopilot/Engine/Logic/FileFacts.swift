@@ -10,16 +10,16 @@ import Foundation
 /// `now` travels with the facts for the same reason: a rule that says "older
 /// than 30 days" is a comparison between two dates, and a comparison against
 /// `Date()` inside the matcher is a test that passes today.
-public struct FileFacts: Equatable, Sendable {
-    public let name: String
+struct FileFacts: Equatable, Sendable {
+    let name: String
     /// Where the file is. A rule is *decided* from the facts and *performed* on
     /// this: without it the runner rebuilt the path as folder + name, which
     /// names a different file for anything below the top level. At depth 2 a
     /// plan about `sub/big.bin` was executed against `big.bin` — and where no
     /// such twin existed, nothing below the top level ran at all while the dry
     /// run promised it would.
-    public let path: String
-    public let kind: FileKind
+    let path: String
+    let kind: FileKind
     let bytes: Int
     let added: Date
     let modified: Date
