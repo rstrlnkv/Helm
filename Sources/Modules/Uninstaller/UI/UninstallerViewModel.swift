@@ -93,6 +93,9 @@ extension UninstallerEngine: UninstallerWork {}
     /// True while the names are being fetched. Sizes land afterwards and do not
     /// hold the list back — the names are what somebody is looking for.
     @Published private(set) var loadingApps = false
+    /// Which reload of the list is the newest, so an older answer does not land
+    /// on a newer list.
+    private var latestList = LatestRequest()
     /// Whether the list has ever been **answered**, which is not the same as
     /// having been asked for: before the page's first `.task` there is no list
     /// and no reason to say «0 apps».
@@ -182,8 +185,12 @@ extension UninstallerEngine: UninstallerWork {}
     /// has changed the list.
     func reloadApps() async {
         guard !closed else { return }
+        let mine = latestList.take()
         loadingApps = true
         let list = await work.listApps()
+        // An older answer is dropped whole, `loadingApps` included: the newer
+        // reload is still out and clears it when it lands.
+        guard latestList.isLatest(mine) else { return }
         loadingApps = false
         guard !closed else { return }
         apps = list
@@ -195,16 +202,16 @@ extension UninstallerEngine: UninstallerWork {}
         // Independent: the dates take milliseconds and must not wait behind sizes
         // that take seconds, nor the other way round.
         await withTaskGroup(of: Void.self) { group in
-            group.addTask { await self.fillInSizes() }
-            group.addTask { await self.fillInDates() }
+            group.addTask { await self.fillInSizes(for: mine) }
+            group.addTask { await self.fillInDates(for: mine) }
         }
     }
 
-    private func fillInDates() async {
+    private func fillInDates(for token: Int) async {
         let reading = await work.lastOpened(apps, deadline: UninstallerEngine.lastOpenedDeadline,
                                             ceiling: UninstallerEngine.lastOpenedCeiling,
                                             now: Date())
-        guard !closed else { return }
+        guard !closed, latestList.isLatest(token) else { return }
         lastOpened = reading.opened
         lastOpenedUnread = Set(reading.unread)
     }
@@ -224,9 +231,9 @@ extension UninstallerEngine: UninstallerWork {}
     }
 
     /// The list is drawn from names alone and the numbers land a moment later.
-    private func fillInSizes() async {
+    private func fillInSizes(for token: Int) async {
         let sizes = await work.appSizes(apps)
-        guard !closed, !sizes.isEmpty else { return }
+        guard !closed, latestList.isLatest(token), !sizes.isEmpty else { return }
         // By path: two copies of one app share a bundle id and each has its own size.
         measuredSizes = sizes
     }
@@ -280,7 +287,7 @@ extension UninstallerEngine: UninstallerWork {}
 
     /// Scans every ticked app, then shows the review screen.
     func prepareReview() async {
-        guard !closed else { return }
+        guard !closed, !scanning else { return }
         scanning = true
         resultBanner = nil
         defer { scanning = false }
