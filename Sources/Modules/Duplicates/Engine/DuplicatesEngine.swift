@@ -263,11 +263,21 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         // returns nothing. Not the page's fold (`DuplicateBasket.wasted`): that
         // one counts a clone family once over all the groups and leaves out what
         // `UserFileScope` refuses, while this sums group by group and lists
-        // every extra. Each item carries its copy's own size, so a figure summed
-        // from the items (`ScanChange.appearedBytes`, the notification's) counts
-        // a clone in full.
-        let items = groups.flatMap { group in
-            group.copies.dropFirst().map { ScanItem(path: $0.path, bytes: $0.bytes) }
+        // every extra.
+        //
+        // **Each item carries what removing its copy adds**, the same rule
+        // (`CloneShare.reclaimable`) taken one extra further each time, so a
+        // figure summed from the items (`ScanChange.appearedBytes`, the
+        // notification's) is the group's `wasted` and a clone is not counted in
+        // full. The journal's lists from before this carry each copy's own size.
+        let items = groups.flatMap { group -> [ScanItem] in
+            var freed = 0
+            return group.copies.dropFirst().enumerated().map { index, copy in
+                let upTo = Set(group.copies.dropFirst().prefix(index + 1).map(\.path))
+                let total = DuplicateGroup.reclaimable(marking: upTo, in: [group])
+                defer { freed = total }
+                return ScanItem(path: copy.path, bytes: total - freed)
+            }
         }
         return ScanReport(bytes: groups.reduce(0) { $0 + $1.wasted },
                           count: items.count, items: items)

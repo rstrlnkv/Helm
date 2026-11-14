@@ -6,7 +6,9 @@ beliefs, `byPlace` (the default) and `byDate`, are `KeepPolicy.swift`; one ladde
 answers both what stays and why (its doc comment, read by `SurvivingCopy.swift`).
 
 A group's size is what `CloneShare.reclaimable` (`Sources/HelmRuntime/CloneShare.swift`)
-says removing it returns, not the sum of its files.
+says removing it returns, not the sum of its files. The same holds for the background scan:
+each item it journals carries what removing its copy adds, so the notification's sum is the
+group's figure (`ABackgroundFindingCountsAClonesOnceTests`).
 
 Acting on a finding re-reads the pair: `DuplicateVerification` is its own phase
 beside the removal. `DuplicateVerification.Batch` memoises the survivor's reading
