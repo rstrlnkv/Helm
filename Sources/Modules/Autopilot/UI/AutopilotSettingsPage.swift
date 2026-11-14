@@ -75,6 +75,18 @@ struct AutopilotSettingsPage: View {
         // A sweep's report and a return's report grow into the banner without
         // moving focus, so they are silent to VoiceOver unless said.
         .helmAnnounces(rvm.banner)
+        // Discard rules, Clear and Discard history delete a record, so each asks
+        // first; the press only sets `pendingDiscard`.
+        .confirmationDialog(rvm.pendingDiscard.map { ApStr.discardQuestion($0) } ?? "",
+                            isPresented: Binding(get: { rvm.pendingDiscard != nil },
+                                                 set: { if !$0 { rvm.pendingDiscard = nil } }),
+                            titleVisibility: .visible) {
+            Button(rvm.pendingDiscard.map { ApStr.discardVerb($0) } ?? "", role: .destructive) {
+                let asked = rvm.pendingDiscard
+                Task { await rvm.confirmDiscard(asked) }
+            }
+            Button(HelmWord.cancel, role: .cancel) { rvm.pendingDiscard = nil }
+        }
         .sheet(item: $editing) { context in
             RuleEditor(rvm: rvm, folder: context.folder, rule: context.rule,
                        preset: context.preset)
@@ -196,7 +208,7 @@ struct AutopilotSettingsPage: View {
                     Section {
                         HistorySection(history: rvm.history, runs: rvm.runs,
                                        empty: rvm.historyEmpty,
-                                       clear: { rvm.clearHistory() },
+                                       clear: { rvm.ask($0) },
                                        refused: rvm.historyRefused,
                                        canPutBack: rvm.canPutBack,
                                        canPutBackRun: rvm.canPutBack,
@@ -246,7 +258,7 @@ struct AutopilotSettingsPage: View {
             HelmBanner(reason.sentence) {
                 if reason.offersDiscard {
                     Button(ApStr.discardRules, role: .destructive) {
-                        Task { await rvm.discardRefusedRules() }
+                        rvm.ask(.rules)
                     }
                     .controlSize(.small)
                 }

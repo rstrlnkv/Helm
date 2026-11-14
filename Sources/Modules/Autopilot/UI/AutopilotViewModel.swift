@@ -271,11 +271,41 @@ extension AutopilotEngine: AutopilotWork {}
         !runs.isEmpty || historyEmpty != nil || historyRefused
     }
 
-    func clearHistory() {
+    func clearHistory() async {
         guard !closed else { return }
-        Task {
-            await work.dropHistory()
-            await load()
+        await work.dropHistory()
+        await load()
+    }
+
+    // MARK: - Throwing a record away
+
+    /// The three gestures that delete a record, each asked about first.
+    enum Discard: Equatable {
+        /// A rule set that is not Helm's: the whole record goes, unapplied rules
+        /// and the rules of removed folders included.
+        case rules
+        case history
+        /// A history that is not Helm's.
+        case refusedHistory
+    }
+
+    /// The gesture waiting for an answer. The buttons call `ask` and never reach
+    /// the work; only `confirmDiscard()` does.
+    @Published var pendingDiscard: Discard?
+
+    func ask(_ what: Discard) {
+        guard !closed else { return }
+        pendingDiscard = what
+    }
+
+    /// `answered` is what the dialog's button read when it was pressed: the dialog
+    /// may clear `pendingDiscard` before the button's task runs.
+    func confirmDiscard(_ answered: Discard? = nil) async {
+        guard let asked = answered ?? pendingDiscard else { return }
+        pendingDiscard = nil
+        switch asked {
+        case .rules: await discardRefusedRules()
+        case .history, .refusedHistory: await clearHistory()
         }
     }
 

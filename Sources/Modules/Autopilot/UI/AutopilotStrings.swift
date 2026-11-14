@@ -34,6 +34,24 @@ enum ApStr {
     /// again — rather than «OK».
     static var discardRules: String { L(.discardAndStartAgain) }
 
+    /// What each of the three deleting gestures asks before it acts, and the verb
+    /// its destructive button carries — the words the gesture already wears.
+    static func discardQuestion(_ what: AutopilotViewModel.Discard) -> String {
+        switch what {
+        case .rules: L(.discardTheStoredRulesIncludingAny)
+        case .history: L(.clearTheRecordOfWhatAutopilot)
+        case .refusedHistory: L(.clearTheUnreadableRecordOfWhat)
+        }
+    }
+
+    static func discardVerb(_ what: AutopilotViewModel.Discard) -> String {
+        switch what {
+        case .rules: discardRules
+        case .history: historyClear
+        case .refusedHistory: discardHistory
+        }
+    }
+
     // MARK: - Folders
 
     static var addFolder: String { L(.addFolder) }

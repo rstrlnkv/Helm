@@ -955,6 +955,59 @@
         }
       }
     },
+    "clearTheRecordOfWhatAutopilot": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protokoll der Autopilot-Aktionen löschen? Verschobene Dateien lassen sich von hier aus nicht mehr zurücklegen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear the record of what Autopilot did? Files it moved can no longer be put back from here."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Borrar el registro de lo que hizo Autopilot? Los archivos que movió ya no se podrán devolver desde aquí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effacer le relevé de ce que le pilote automatique a fait\u00a0? Les fichiers qu’il a déplacés ne pourront plus être remis en place d’ici."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オートパイロットの実行記録を消去しますか？移動したファイルは、ここから元に戻せなくなります。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limpar o registro do que o Autopilot fez? Os arquivos que moveu já não poderão ser recolocados a partir daqui."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Очистить историю действий Автопилота? Перемещенные им файлы больше нельзя будет вернуть отсюда."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要清除自动整理的操作记录吗？它移动过的文件将无法再从这里放回。"
+          }
+        }
+      }
+    },
     "contains": {
       "extractionState": "manual",
       "localizations": {
@@ -1322,6 +1375,112 @@
           "stringUnit": {
             "state": "translated",
             "value": "放弃并重新开始"
+          }
+        }
+      }
+    },
+    "clearTheUnreadableRecordOfWhat": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das nicht lesbare Protokoll der Autopilot-Aktionen löschen? Verschobene Dateien lassen sich von hier aus nicht mehr zurücklegen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear the unreadable record of what Autopilot did? Files it moved can no longer be put back from here."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Borrar el registro ilegible de lo que hizo Autopilot? Los archivos que movió ya no se podrán devolver desde aquí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effacer le relevé illisible de ce que le pilote automatique a fait\u00a0? Les fichiers qu’il a déplacés ne pourront plus être remis en place d’ici."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み取れないオートパイロットの実行記録を消去しますか？移動したファイルは、ここから元に戻せなくなります。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limpar o registro ilegível do que o Autopilot fez? Os arquivos que moveu já não poderão ser recolocados a partir daqui."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Очистить нечитаемую историю действий Автопилота? Перемещенные им файлы больше нельзя будет вернуть отсюда."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要清除无法读取的自动整理操作记录吗？它移动过的文件将无法再从这里放回。"
+          }
+        }
+      }
+    },
+    "discardTheStoredRulesIncludingAny": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gespeicherte Regeln verwerfen? Der ganze Datensatz geht verloren, auch Regeln, die diese Version nicht anwenden kann, und Regeln entfernter Ordner."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discard the stored rules? The whole record goes, including rules this version cannot apply and rules of folders that were removed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Descartar las reglas guardadas? Se pierde todo el registro, incluidas las reglas que esta versión no puede aplicar y las de carpetas eliminadas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer les règles enregistrées\u00a0? Tout l’enregistrement disparaît, y compris les règles que cette version ne peut pas appliquer et celles des dossiers retirés."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存されているルールを破棄しますか？この版で適用できないルールや、削除されたフォルダのルールを含め、記録全体が失われます。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar as regras salvas? Todo o registro é perdido, incluindo regras que esta versão não consegue aplicar e regras de pastas removidas."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить сохраненные правила? Пропадет вся запись, включая правила, которые эта версия не может применить, и правила удаленных папок."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要放弃已存储的规则吗？整条记录都会被删除，包括此版本无法应用的规则和已移除文件夹的规则。"
           }
         }
       }

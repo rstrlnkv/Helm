@@ -22,6 +22,13 @@ over. Its banner has no button. The way out is Reset, or a newer Helm that reads
 record; Discard stays `tampered`'s alone, so nothing in this build deletes a record
 it cannot read.
 
+Discard rules, Clear and Discard history each ask first (owner decision 13): the button calls
+`ask`, which sets `pendingDiscard` (`.rules`, `.history`, `.refusedHistory`), a `confirmationDialog`
+on the page puts the question with the button's own verb and Cancel, and only `confirmDiscard()` (given what the
+button read on the press, since the dialog may clear `pendingDiscard` first)
+reaches `dropRefusedRules` or `dropHistory`. The rules question says the whole record goes, unapplied
+rules and rules of removed folders included. `DiscardingAsksFirstTests` holds it.
+
 The page draws the unapplied rules apart (owner decision 4), from the `status.unapplied` the
 model reads in the same turn as the folders: under each live folder's rules, and, for a folder
 the person removed, in one group after the folder list headed by the stub's `path`

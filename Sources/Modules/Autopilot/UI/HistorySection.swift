@@ -27,7 +27,7 @@ struct HistorySection: View {
     /// are about the rules, which this view has never been given and should not
     /// be.
     let empty: HistoryEmpty.Reason?
-    let clear: () -> Void
+    let clear: (AutopilotViewModel.Discard) -> Void
 
     /// Whether the stored history is not Helm's, and the two gestures. Passed
     /// in rather than reached for, like `clear`: this view draws and asks, and
@@ -95,7 +95,7 @@ struct HistorySection: View {
             // Not while the card below is showing, which carries the same
             // gesture under a label that says what it does.
             if !history.isEmpty, !refused {
-                Button(ApStr.historyClear, action: clear)
+                Button(ApStr.historyClear) { clear(.history) }
                     .controlSize(.small)
             }
         }
@@ -106,7 +106,7 @@ struct HistorySection: View {
     /// it, the way a refused rule set has one.
     private var refusedCard: some View {
         HelmBanner(ApStr.historyTampered) {
-            Button(ApStr.discardHistory, action: clear)
+            Button(ApStr.discardHistory) { clear(.refusedHistory) }
                 .controlSize(.small)
         }
     }

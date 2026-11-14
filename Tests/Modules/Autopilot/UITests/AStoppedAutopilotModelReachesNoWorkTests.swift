@@ -92,7 +92,7 @@ final class AStoppedAutopilotModelReachesNoWorkTests: XCTestCase {
         await rvm.runNow(held)
         await rvm.undo(one)
         await rvm.undoRun(pass)
-        rvm.clearHistory()
+        await rvm.clearHistory()
         await rvm.discardRefusedRules()
         await waitUntil("the control presses reach the work") {
             ["save", "dryRun", "sweepNow", "putBack(record:)", "putBack(run:)",
@@ -108,7 +108,7 @@ final class AStoppedAutopilotModelReachesNoWorkTests: XCTestCase {
         await rvm.runNow(held)
         await rvm.undo(one)
         await rvm.undoRun(pass)
-        rvm.clearHistory()
+        await rvm.clearHistory()
         await rvm.discardRefusedRules()
         await rvm.loadHistory()
         await rvm.load()
