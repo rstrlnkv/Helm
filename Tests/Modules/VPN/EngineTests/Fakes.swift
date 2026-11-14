@@ -25,6 +25,9 @@ final class FakeRunner: VPNRunnerPort {
     /// answering the same thing. Empty means «use `listOutput`», so every test
     /// written before this stays exactly as it was.
     var listScript: [String] = []
+    /// How many of the first `--nc list` reads exit non-zero, as a tool that was
+    /// not ready does; the later ones answer from `listOutput`/`listScript`.
+    var failingListReads = 0
     private var listReads = 0
 
     /// What `--nc status <name>` answers, per configuration name.
@@ -103,6 +106,7 @@ final class FakeRunner: VPNRunnerPort {
         issued.append(args)
         if args == ["--nc", "list"] {
             defer { listReads += 1 }
+            if listReads < failingListReads { return HelmProcess.Result(status: 1, output: "") }
             guard !listScript.isEmpty else { return answer(listOutput) }
             return answer(listScript[min(listReads, listScript.count - 1)])
         }
@@ -245,12 +249,19 @@ final class FakeApps: AppObserverPort {
     /// instance whose signature could not be read at all — a real state, and the
     /// one a forged bundle in a place the reader cannot follow would produce.
     var identities: [String: CodeIdentity] = [:]
+    private(set) var starts = 0
+    private(set) var stops = 0
     private(set) var onChange: (@Sendable () -> Void)?
 
     func runningBundleIDs() -> Set<String> { bundleIDs }
     func identity(of bundleID: String) -> CodeIdentity? { identities[bundleID] }
     func startObserving(_ onChange: @escaping @Sendable () -> Void) {
+        starts += 1
         self.onChange = onChange
+    }
+    func stopObserving() {
+        stops += 1
+        onChange = nil
     }
     func fire() { onChange?() }
 

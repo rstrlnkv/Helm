@@ -10,8 +10,8 @@ import HelmRuntime
 /// auto-connect (VPNAutoConnectCore) against the injected ports. `activate()`/
 /// `deactivate()` are the MODULE lifecycle (host enables/disables the module);
 /// `activate()` also starts the auto-connect app observation; `deactivate()`
-/// stops only the network watch (`AppObserverPort` has no stop), so
-/// `appsChangedNow` answers nothing while the engine is not running. Blocking
+/// stops it and the network watch, and `appsChangedNow` answers nothing while
+/// the engine is not running. Blocking
 /// work runs on `VPNWorkQueue`, which says why it exists.
 ///
 /// **This file is over `file_length` and `type_body_length` by design, and the
@@ -128,6 +128,10 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// Whether `--nc list` has ever been read successfully in this process: what
     /// separates «this tunnel is down» from «nobody has looked». Work queue only.
     private var hasReadTheList = false
+    /// The rules as saved, held while the list has never been read: filtering them
+    /// against no connections would drop every one of them for good. `refreshNow`
+    /// applies them at the first good read. Work queue only.
+    private var rulesAwaitingTheList: [String: VPNAppRule]?
     /// Where this Mac appears to be, from outside. **A fact about the machine's
     /// exit, not about a tunnel**, so one value however many are up: dropped when
     /// a tunnel Helm stamped falls (`stampWhatCameUp`) or when the route moves
@@ -278,6 +282,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
 
     public func deactivate() {
         running = false
+        apps.stopObserving()
         network?.stopObserving()
         cancelWorkThatLeftTheQueue()
     }
@@ -285,6 +290,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// The backstop for the routes that do not go through `deactivate()`.
     /// ARCHITECTURE.md § "An observer outlives the thing it points at".
     deinit {
+        apps.stopObserving()
         network?.stopObserving()
         cancelWorkThatLeftTheQueue()
     }
@@ -333,6 +339,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         }
         let parsed = VPNListParser.parseList(output)
         // Only past the guard above: a failed read is not a reading.
+        let firstRead = !hasReadTheList
         hasReadTheList = true
         lock.lock()
         _connections = parsed
@@ -393,6 +400,15 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // After `readInterfaces`, never before: the gate asks whether a tunnel
         // has an interface, and that book is filled a line above.
         noticeTheRouteAndAskWhereWeAre(primary)
+        // The rules a reload could not filter come back with the first list, and
+        // the apps already running are replayed through the same identity gate
+        // as in `activate()`; without it a rule for an app running since before
+        // never fires.
+        if firstRead, let saved = rulesAwaitingTheList {
+            rulesAwaitingTheList = nil
+            applyRules(saved)
+            if running { for id in knownBundleIDs { launchIfTrusted(id) } }
+        }
         emitState()
     }
 
@@ -639,12 +655,33 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     }
 
     private func reloadRulesNow() {
+        // Superseded by the rules read below, so the read inside `refreshNow` has
+        // nothing stale to apply.
+        rulesAwaitingTheList = nil
         refreshNow()
-        core.rules = VPNRules.valid(VPNRules.decode(settings.rulesJSON), against: connections)
+        let saved = VPNRules.decode(settings.rulesJSON)
+        if hasReadTheList {
+            applyRules(saved)
+        } else {
+            // **No list, no filter**: against an empty one every rule is "for a
+            // VPN that is gone". The first good read applies them and replays the
+            // apps already running, as `activate()` does.
+            rulesAwaitingTheList = saved
+            applyRules([:])
+        }
+        emitState()
+    }
+
+    /// Keeps the rules whose VPN is in the list and records which of them cannot
+    /// fire. Each rule the filter drops is logged here, once per filter.
+    private func applyRules(_ saved: [String: VPNAppRule]) {
+        core.rules = VPNRules.valid(saved, against: connections)
+        for id in saved.keys.sorted() where core.rules[id] == nil {
+            HelmLog.shared.info(Self.moduleID, "rule for \(Redact.app(id)) dropped: its connection is not in the list")
+        }
         lock.lock()
         _ruleRefusals = core.rules.compactMapValues(VPNRuleTrust.refusal(of:))
         lock.unlock()
-        emitState()
     }
 
     private func appsChanged() {

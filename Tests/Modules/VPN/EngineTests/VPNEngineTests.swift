@@ -30,6 +30,40 @@ final class VPNEngineTests: XCTestCase {
         XCTAssertTrue(engine.autoConnected.contains("A"))
     }
 
+    /// M106: deactivation stops the app observation too, and activating again
+    /// arms it once.
+    func test_deactivate_stops_the_app_observation() {
+        let apps = FakeApps.trustingA()
+        let engine = VPNEngine(settings: makeSettings(), runner: FakeRunner(), apps: apps,
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
+
+        engine.activate()
+        XCTAssertEqual(apps.starts, 1)
+        engine.deactivate()
+        XCTAssertEqual(apps.stops, 1)
+        XCTAssertNil(apps.onChange)
+
+        engine.activate()
+        XCTAssertEqual(apps.starts, 2)
+        XCTAssertNotNil(apps.onChange)
+    }
+
+    /// M106: an engine released without `deactivate()` still stops the app observation.
+    func test_deinit_stops_the_app_observation() {
+        let apps = FakeApps.trustingA()
+        var engine: VPNEngine? = VPNEngine(settings: makeSettings(), runner: FakeRunner(), apps: apps,
+                                           interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                                           work: .inline)
+        engine?.activate()
+        XCTAssertNotNil(apps.onChange)
+
+        engine = nil
+
+        XCTAssertEqual(apps.stops, 1)
+        XCTAssertNil(apps.onChange)
+    }
+
     func test_auto_disconnect_on_app_quit() {
         let runner = FakeRunner()
         runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""

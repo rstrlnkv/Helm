@@ -85,12 +85,18 @@ public final class WorkspaceAppObserver: AppObserverPort {
     public func startObserving(_ onChange: @escaping @Sendable () -> Void) {
         // No .initial: the engine seeds already-running apps itself, so firing
         // on registration would just cause a redundant full app-list scan.
+        observation?.invalidate()
         observation = NSWorkspace.shared.observe(\.runningApplications) { _, _ in
             // KVO arrives on the thread that changed the list — the main one.
             // The snapshot is taken here, while it is safe to read, so that the
             // engine's queue has something correct to read a moment later.
             RunningApps.shared.refreshOnMain(then: onChange)
         }
+    }
+
+    public func stopObserving() {
+        observation?.invalidate()
+        observation = nil
     }
 }
 

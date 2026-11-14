@@ -164,6 +164,10 @@ public protocol AppObserverPort: AnyObject {
     /// treated as no rule rather than as permission.
     func identity(of bundleID: String) -> CodeIdentity?
     func startObserving(_ onChange: @escaping @Sendable () -> Void)
+    /// Ends the observation, so no further change is reported. The engine calls it
+    /// from `deactivate()` and `deinit`; a second `startObserving` after it arms
+    /// the observer once, it never stacks.
+    func stopObserving()
 }
 
 /// Notifies when the machine's network configuration or state changes.

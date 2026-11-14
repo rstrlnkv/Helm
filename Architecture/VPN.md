@@ -23,6 +23,12 @@ that need nothing running (`VPNRuleTrust.refusal(of:)`, which `judge` asks first
 are also published per rule (`StatePayload.ruleRefusals`) and drawn as a note under
 that rule's row in the rules popover; the two that need a running app stay in the log.
 
+The rules are filtered against the list of connections, so a reload while that list has never been read
+holds the saved rules instead (`rulesAwaitingTheList`) and filters nothing; the first good read applies them
+and replays every app already running through the same `launchIfTrusted` as `activate()`, so a rule fires
+after a late read (`VPNEngineRuleReloadTests`). `deactivate()` and `deinit` stop the app observation as
+well as the network watch (`AppObserverPort.stopObserving`).
+
 The tool is asked before the app announces. `scutil --nc start`/`stop` exit `0`
 whatever happens and put their answer on stdout, so the port hands back the whole
 process result and `Sources/Modules/VPN/Engine/Logic/VPNCommandReply.swift` reads the
