@@ -354,7 +354,10 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
                       deadline: TimeInterval = 5,
                       poll: TimeInterval = 0.05) async {
         let until = Date().addingTimeInterval(deadline)
-        while running.isRunning(bundleID: bundleID), Date() < until {
+        // Each poll is a blocking AppKit read: off the cooperative pool, the sleep
+        // between polls stays a suspension (ARCHITECTURE.md § Running applications).
+        while await offTheCooperativePool({ self.running.isRunning(bundleID: bundleID) }),
+              Date() < until {
             try? await Task.sleep(nanoseconds: UInt64(poll * 1_000_000_000))
         }
     }
@@ -471,7 +474,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         HelmLog.shared.info(UninstallerEngine.moduleID, "trash offer switched \(on ? "on" : "off")")
         startWatchingTrashIfAsked()
         guard on else { return }
-        recordTrashReadable(apps.trashedApps() != nil)
+        recordTrashReadable(apps.trashIsReadable())
         trashChanged()
     }
 
@@ -602,7 +605,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         case .quitFirst(let apps):
             for app in apps {
                 HelmLog.shared.info(UninstallerEngine.moduleID, "force quit \(Redact.app(app.bundleID))")
-                quit(bundleID: app.bundleID, force: true)
+                await offTheCooperativePool { self.quit(bundleID: app.bundleID, force: true) }
                 // Returns when the app is actually gone. It used to be the view
                 // model's business, decided there from the same stale flag.
                 await waitUntilGone(bundleID: app.bundleID)

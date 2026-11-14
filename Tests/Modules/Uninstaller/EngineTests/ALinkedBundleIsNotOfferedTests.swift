@@ -190,4 +190,50 @@ final class ALinkedBundleIsNotOfferedTests: XCTestCase {
         XCTAssertTrue(lister().installedBundleIDs().contains("com.acme.target"),
                       "the files of an app that is installed became orphans")
     }
+
+    // MARK: - The name a row carries
+
+    private func writeBundle(_ name: String, plist: [String: Any]) throws {
+        let contents = apps.appendingPathComponent("\(name).app/Contents")
+        try FileManager.default.createDirectory(at: contents, withIntermediateDirectories: true)
+        try (plist as NSDictionary).write(to: contents.appendingPathComponent("Info.plist"))
+    }
+
+    /// The display name beats the bundle name, and a plist with neither falls back
+    /// to the folder's name rather than to an empty row.
+    func test_the_row_name_is_display_name_then_bundle_name_then_folder_name() throws {
+        try writeBundle("Folder1", plist: ["CFBundleIdentifier": "com.acme.one",
+                                           "CFBundleDisplayName": "Shown", "CFBundleName": "Short"])
+        try writeBundle("Folder2", plist: ["CFBundleIdentifier": "com.acme.two", "CFBundleName": "Short"])
+        try writeBundle("Folder3", plist: ["CFBundleIdentifier": "com.acme.three"])
+
+        let names = Dictionary(uniqueKeysWithValues: listedHere().map { ($0.bundleID, $0.name) })
+
+        XCTAssertEqual(names["com.acme.one"], "Shown")
+        XCTAssertEqual(names["com.acme.two"], "Short")
+        XCTAssertEqual(names["com.acme.three"], "Folder3")
+    }
+
+    /// A bundle whose plist has no identifier, or an empty one, is not a row: an
+    /// app without an id cannot be told from another by anything the engine keeps.
+    func test_a_bundle_without_an_identifier_is_not_listed() throws {
+        try writeBundle("NoId", plist: ["CFBundleName": "NoId"])
+        try writeBundle("EmptyId", plist: ["CFBundleIdentifier": "", "CFBundleName": "EmptyId"])
+        try writeBundle("Fine", plist: ["CFBundleIdentifier": "com.acme.fine"])
+
+        XCTAssertEqual(listedHere().map(\.bundleID), ["com.acme.fine"])
+    }
+
+    // MARK: - The Trash's readability
+
+    /// A missing and an empty Trash are readable; one that will not open is not.
+    func test_the_trash_is_readable_when_missing_or_empty_and_not_when_it_will_not_open() throws {
+        XCTAssertTrue(lister().trashIsReadable(), "a missing Trash is a Trash with nothing in it")
+        let trash = home.appendingPathComponent(".Trash", isDirectory: true)
+        try FileManager.default.createDirectory(at: trash, withIntermediateDirectories: true)
+        XCTAssertTrue(lister().trashIsReadable())
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: trash.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: trash.path) }
+        XCTAssertFalse(lister().trashIsReadable(), "an unopenable Trash was reported readable")
+    }
 }
