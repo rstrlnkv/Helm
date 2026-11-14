@@ -40,4 +40,17 @@ final class TheDaySpanNamesBothDaysInTheLanguageAndZoneTests: XCTestCase {
         let english = HelmDates.daySpan(from: first, to: last, language: "en", zone: utc)
         XCTAssertTrue(english.contains("September"), english)
     }
+
+    /// A span is spelled like the day headings of its language: in Chinese and
+    /// Japanese with the 年 and 月 of `HelmDates.day`, not in numerals.
+    ///
+    /// Past defect: backlog #26, the interval formatter wrote `2026/9/22 – 2026/9/23`.
+    func testTheSpanInChineseAndJapaneseIsSpelledLikeTheDayHeadings() {
+        for language in ["zh", "ja"] {
+            let heading = HelmDates.day(first, language: language)
+            let span = HelmDates.daySpan(from: first, to: last, language: language, zone: utc)
+            XCTAssertTrue(heading.contains("年") && heading.contains("月"), heading)
+            XCTAssertTrue(span.hasPrefix(heading), "\(language): the span «\(span)» does not open as the heading «\(heading)»")
+        }
+    }
 }

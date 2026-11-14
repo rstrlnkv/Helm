@@ -423,9 +423,10 @@ public enum HelmDates {
     /// writes «～», and a day that shares its month or year with the other is
     /// written once). The long date style `day` uses, which makes a span and a
     /// heading one family in six of the eight languages; in Chinese and Japanese
-    /// the interval formatter answers in numerals (`2026/9/22 – 2026/9/23`)
-    /// beside a heading spelled `2026年9月22日`. That is a known defect,
-    /// `log-span-zh-ja` in the defect log.
+    /// the interval formatter answers that style in numerals
+    /// (`2026/9/22 – 2026/9/23`) beside a heading spelled `2026年9月22日`, so
+    /// those two ask for the day by a template (`2026年9月22日 – 23日` in
+    /// Chinese, `2026年9月22日～23日` in Japanese).
     ///
     /// The formatter is kept per language and zone, never in one constant: the
     /// app's language changes while it runs, and a formatter built per call is
@@ -483,8 +484,15 @@ public enum HelmDates {
                 let formatter = DateIntervalFormatter()
                 formatter.locale = Locale(identifier: language)
                 formatter.timeZone = zone
-                formatter.dateStyle = .long
-                formatter.timeStyle = .none
+                // The long style answers numerals in Chinese and Japanese, beside
+                // headings spelled `2026年9月22日`; the template spells the day
+                // as they do. «MMMM» would be `九月` in Chinese, so «MMM».
+                if language.hasPrefix("zh") || language.hasPrefix("ja") {
+                    formatter.dateTemplate = "yMMMd"
+                } else {
+                    formatter.dateStyle = .long
+                    formatter.timeStyle = .none
+                }
                 return formatter
             }
         }

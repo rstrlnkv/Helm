@@ -4,6 +4,7 @@
 import Foundation
 import HelmRuntime
 import HelmUI
+import HelmAppStrings
 
 // **What the Log page draws, derived from the lines and from nothing else.**
 //
@@ -253,8 +254,9 @@ enum LogSearch {
     /// «Helm» on the owner's log, all of them for «PM»). The query must be the
     /// version, «Helm <version>», or the day and minute as drawn, case and
     /// accents aside; a card whose lines match is drawn for its lines. The head of
-    /// the tail also draws «Earlier launch», and no query finds a card by that
-    /// word — a known defect, `log-earlier-launch-search` in the defect log.
+    /// the tail also draws «Earlier launch», in the page's language, and a query
+    /// that is a part of those words finds that card (`LogCardTitle.earlierLaunch`):
+    /// it is the one card that draws them, so a short query cannot draw every card.
     static func matches(header session: LogSession, _ query: String,
                         drawnTime: (Date) -> String) -> Bool {
         let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -262,8 +264,13 @@ enum LogSearch {
         // A card with no version still draws its day and time.
         let drawn = [session.version, session.version.map { "Helm \($0)" }, drawnTime(session.lines[0].date)]
         let typed = plainBlanks(needle)
+        let options: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive]
+        if session.title == .earlierLaunch,
+           plainBlanks(AppStr.logEarlierLaunch).range(of: typed, options: options) != nil {
+            return true
+        }
         return drawn.compactMap { $0 }.contains {
-            plainBlanks($0).compare(typed, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
+            plainBlanks($0).compare(typed, options: options) == .orderedSame
         }
     }
 

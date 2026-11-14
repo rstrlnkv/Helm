@@ -655,6 +655,29 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
         }
     }
 
+    /// **The head of the tail is found by the word it draws.** Its start line
+    /// scrolled out of the tail, so its header says «Earlier launch» in the
+    /// page's language (backlog #27, `log-earlier-launch-search`); a query that
+    /// is a part of those words finds that card and no other.
+    ///
+    /// Past defect: backlog #27, no query found the head-of-tail card by its word.
+    func testTheEarlierLaunchCardIsFoundByItsWord() {
+        let lines = [networkLine(0), networkLine(10), networkStart(100, "0.11.1-dev.14"), networkLine(110)]
+        let split = LogSessions.split(lines)
+        guard split.count == 2, split[0].title == .earlierLaunch else {
+            return XCTFail("the fixture's first card is not the head of the tail")
+        }
+        AppLanguage.each { language in
+            let word = AppStr.logEarlierLaunch
+            let queries = [word, word.lowercased(), "  \(word) ", language == .en ? "earlier" : nil,
+                           language == .ru ? "ранн" : nil].compactMap { $0 }
+            for query in queries {
+                XCTAssertEqual(buildInLanguage(lines, query: query, language: language).cards.map(\.id),
+                               [split[0].id], "\(language.rawValue): «\(query)» did not find the earlier-launch card")
+            }
+        }
+    }
+
     // MARK: - The split
 
     /// **Three «terminating» in a row stay with the launch they end**, and the

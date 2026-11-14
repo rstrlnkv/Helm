@@ -111,10 +111,9 @@ Each launch is **a card** (under a filter, one with nothing to show has none), a
 launch is comes out of the lines themselves, in pure functions in
 `Sources/HelmApp/LogSessions.swift` and not in the view, so a fixture can be handed to them.
 Nothing is dropped or reordered on the way: the cards joined are the tail. Which of them the
-page draws is a separate matter, below. Two known defects are in the defect log:
-`log-earlier-launch-search`, no query finds a card by «Earlier launch», and
-`log-span-zh-ja`, a day span across midnight is written by the system's interval
-formatter, which in Chinese and Japanese is numerals beside long-form day headings.
+page draws is a separate matter, below. The head of the tail, which draws «Earlier launch»,
+is found by a part of those words in the page's language, and a day span across midnight is
+written like the day headings in Chinese and Japanese too (a template, not the long style).
 
 `Sources/HelmRuntime/LogTail.swift` is the in-memory tail, bounded by `LogTail.standardLimit` and trimmed
 from the front. It is filled from the parts a file line is spelled from rather than by
