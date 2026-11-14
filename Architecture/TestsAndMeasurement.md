@@ -71,7 +71,9 @@ restores to HEAD and discards every uncommitted edit in the file, and has destro
 way. Committing before mutating is better
 still, and the mutant is read back out of the file before its outcome is believed,
 because a "0 failures" result has more than once been a substitution that never
-applied.
+applied. The copy a mutant is restored from is kept inside the chain's own folder and not
+under a temp path, which a cleanup can empty before the restore. A guard inside a locked block is
+never mutated into a second lock: it deadlocks the run and shows nothing.
 
 ## Fakes
 

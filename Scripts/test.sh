@@ -45,7 +45,10 @@ set -euo pipefail
 # Usage: Scripts/test.sh [swift test arguments...]
 # Without a --filter every class `Tests/optional-tests.txt` names is skipped;
 # HELM_FULL_SUITE=1 runs them too, as a release does (ARCHITECTURE.md § What
-# proves what).
+# proves what). A class gated on HELM_BENCH=1 keeps its body skipped even then,
+# because the body is a benchmark or report (it writes and hashes over a
+# gigabyte, mounts a volume, or builds a very large fixture); a release does
+# not run those bodies.
 # A listed name no `class <Name>:` under Tests/ declares refuses the run before
 # swift test, naming it.
 # The log path is $HELM_TEST_LOG if set, otherwise a fresh file under

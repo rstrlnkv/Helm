@@ -54,3 +54,10 @@ re-asked: a flag is the wrong question, and a reading that was true when taken i
 evidence at the moment of the act. A screenshot's file carries the reading its writer
 took of it, and the path is asked again when the editor opens on it and inside the move
 that sends it to the Trash (ARCHITECTURE.md § Screenshots).
+
+Reading a path by opening it and asking the descriptor (`open` and `F_GETPATH`, the way
+`Sources/Modules/Autopilot/Engine/FolderReader.swift` reads a level it already holds
+open) was rejected as the *shared* reading of a path: it is refused where only a
+lookup is answered, and it costs 9.4 µs against 1.1 µs for the string form (DEC-1a).
+Nobody needs to propose it again. A `GatedPath` type, a path that carries the proof
+of the gate it passed, is deferred by the owner until the first removal defect.

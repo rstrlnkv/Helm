@@ -18,6 +18,10 @@ The panel is drawn from the kit's tokens (`HelmSpace`, `HelmRadius`, `HelmSurfac
   `PanelFooterSetting.swift`.
 - **The tiles** — each module's own.
 
+A tab's menu keeps its "Icon" item and the glyph picker it opens (`pickingGlyph` in `PanelBars.swift`, `HelmGlyphPicker`), by
+the owner's choice. The archive's acceptance of their removal is superseded; `pickingGlyph` reads as unused to a
+periphery scan and is not.
+
 Why the window is built as it is — no window shadow, a strip wider than the card by
 `helmPanelShadowMargin`, one size per opening, a plain `NSHostingView`, `makeKey()`
 after `orderFrontRegardless()` — is written where each is set: the doc comments of

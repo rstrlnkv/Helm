@@ -60,7 +60,12 @@ deleting through `HelmTrash` carries the name and a new one cannot forget to.
 been dropped.
 
 The labels are not listed in prose. What exists is what
-`command grep -rhoE 'HelmActivity\.(phase|begin)\("[^"]+"' Sources | sort -u` prints.
+`command grep -rnE 'HelmActivity\.(phase|begin)\(|(operationPhase|phaseLabel) =|\.trash"' Sources`
+finds: the literal labels, and the three held as values (`"\(module).trash"` in
+`HelmTrash`, `operationPhase` in `HomebrewEngine`, `phaseLabel` in Homebrew's
+`SystemPorts`). The host's `scan.<id>` phase (`ScanCoordinator`) is outside
+`sweep(module:)`, which matches the module id and a dot; the phase call closes it when
+the walk returns, so no sweep is needed for it.
 An empty registry renders as `no phases running`, which is what the registry knows and no
 statement about the app: the SwiftUI render, a VPN refresh, the update check and the trash
 sweep all run outside it (`HelmActivity.describe`).

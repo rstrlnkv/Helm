@@ -44,6 +44,11 @@ keychain again.
 Helm Dev keeps its own cache under `com.helm.vpn.dev` and never runs that purge, so its
 items stay until the cache itself replaces them; the real Helm's `com.helm.vpn` is untouched by Dev.
 
+That the reset's ask reaches every live engine, and tears nothing down and writes no enabled flag, is
+driven for real: `AModuleOwnsItsModelTests.testHandingBackSystemStateAsksEveryLiveEngineAndTearsNothingDown` enables two
+fakes and calls `ModuleHost.handBackSystemState()`. `AResetGoesThroughTheEnginesTests` still reads the source for the
+rest, because running `ResetEverything.run()` would move this Mac's own folders.
+
 The steps are `ResetPlan.Step` — `handBackWhatIsOutsideHelm`, `giveBackTheLoginItem`,
 `trashHelmsOwnFolders`, `forgetPreferences`, `relaunch` — and `ResetPlan.order` is that
 order as a value; the doc comments on the first two steps say why they sit where they do,

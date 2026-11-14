@@ -23,6 +23,13 @@ Each target and what it holds:
 - `HelmAppStrings` — `Sources/HelmAppStrings`: the host's words (`AppStrings.swift`, `LogStrings.swift`), the changelog (`ChangelogData.swift`) and their two catalogs; depends on `HelmRuntime` and `HelmUI`, never on a module or an engine, and `HelmApp` and `HelmAppTests` depend on it. A library, because an executable's catalogs do not reach its test build (below).
 - `HelmApp` — the executable.
 
+Beside `DesignSystem/`, `HelmUI` holds by role (the reason is on each file's doc comment, not here): the kit's
+words (`ControlStrings.swift`, `SectionStrings.swift`, `BasketStrings.swift`, `ConfirmStrings.swift`,
+`HelmWord.swift`, `L10n.swift`); the stored layouts and their drags (`PanelLayout.swift`, `PanelGrid.swift`,
+`PanelDrag.swift`, `SidebarLayout.swift`, `SidebarLayoutDrag.swift`); the module contract
+(`ModuleDescriptor.swift`, `MenuBarContribution.swift`); the pickers (`AppPicker.swift`, `FolderPicker.swift`);
+`HostWindow.swift`; and `Welcome/`.
+
 The declarations in the contract are what this prints:
 
 ```bash
@@ -38,6 +45,8 @@ other way: `Sources/HelmRuntime/StatusPlan.swift` chooses among the contract's
 test plumbing. A shared helper is no simpler than the thing it stands in for
 (the reason is on the doc comment of `Tests/Support/SealKeyProbe.swift`), and
 a local helper that does more keeps its own body and calls the shared one.
+No file in `Sources/HelmRuntime` serves one module: a helper that only one module reads lives in
+that module's engine (`MacHardware` is in `Sources/Modules/KeepAwake/Engine`).
 
 `public` means "another target uses this" and nothing else. Every module is several
 targets (`Package.swift`'s first doc comment counts them), so `public` is the only way across a

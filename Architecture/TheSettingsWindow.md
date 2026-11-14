@@ -33,6 +33,10 @@ own are flattened (`Sources/Modules/KeepAwake/UI/KeepAwakeAppRules.swift`, file 
 comment). A grouped `Form` groups by what its direct children are, so rows wrapped
 in a view change the card they are drawn in.
 
+Every place that turns a module id into its descriptor — the sidebar, the panel, the launch page, the scan coordinator —
+asks `ModuleRegistry.descriptor(_:)`; none searches `ModuleRegistry.all` by hand. The host's scan of a module runs inside
+`HelmActivity.phase("scan.<id>")` (`ScanCoordinator`), so the interval closes on every way out (ARCHITECTURE.md § The activity registry).
+
 `SettingsSelection` has one case that is a module, `.module(String)`; `.general`,
 `.about` and `.log` are not, which keeps their pages out of `ModuleRegistry.all`.
 Why the Log row ships on every build is written on the `.log` case itself.

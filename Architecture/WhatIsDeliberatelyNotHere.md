@@ -23,3 +23,7 @@ nothing reaches a socket, a pipe or a second binary.
 **No back-deployment.** The package declares `.macOS("26.0")` and the shipped
 bundle is arm64 only. Supporting an older system means the ports grow a second path each, and there
 is no second machine to prove that path on.
+
+**No page bar of Helm's own.** A bar drawn by the shell (`ShellPageBar`) and a hybrid that drew only
+the tabs were both replaced by the system `NSToolbar`, now `Sources/HelmUI/DesignSystem/HelmWindowToolbar.swift`,
+on the owner's feedback about the look, so nobody puts a custom bar back.

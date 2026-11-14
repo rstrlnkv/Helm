@@ -3,8 +3,9 @@
 ## Catalogs and the words kept in Swift
 
 A target that draws words keeps them in its own `Localizable.xcstrings`: all eight languages in one file,
-and the key is an identifier, not the English. Three places keep words in Swift. Layout's `wordsCounted` and
-Autopilot's `DayUnit.afterComparison` compose theirs in code. `HelmRuntime` does too: `Sources/HelmRuntime/Plural.swift`
+and the key is an identifier, not the English. Four places keep words in Swift. Layout's `wordsCounted` and
+Autopilot's `DayUnit.afterComparison` compose theirs in code, and so does `AppStr.tabTitle`
+(`Sources/HelmAppStrings/AppStrings.swift`: the tab's label, a space and its number). `HelmRuntime` does too: `Sources/HelmRuntime/Plural.swift`
 holds its counted nouns in eight languages in a `switch` in code, because `L` lives in `HelmUI`, which depends on
 `HelmRuntime` (`Package.swift`), so `HelmRuntime` cannot import the reader of a catalog. SwiftPM generates an internal `LocalizedStringResource`
 symbol from it, so a mistyped key is a build error (measured: a key deleted from a copy of
@@ -20,7 +21,8 @@ The helper is `L(_ resource:language:remembered:)` in `Sources/HelmUI/L10n.swift
 process, not the one the person picked in Helm, and the resource carries its own target's bundle. It
 keeps a bounded memo of its answers, because `String(localized:)` with a locale costs by the size of
 the table, measured in a release build: about 57 us at 11 keys, 1 ms at the changelog's keys
-(323 KB), against 0.8 us for a held dictionary. A word in a view body is drawn per frame, and a
+(323 KB when it was measured; the file is 1 209 188 bytes and 414 keys now, and the cost was not
+measured again), against 0.8 us for a held dictionary. A word in a view body is drawn per frame, and a
 changelog read through it was 436 ms. The changelog reads its language's sub-bundle once, in
 `Sources/HelmAppStrings/ChangelogData.swift`. The memo's reason is in the doc comment of
 `L(_ resource:language:remembered:)`, its limits in that of `ResourceAnswers` (`Sources/HelmUI/L10n.swift`).
@@ -67,15 +69,20 @@ Each guard faces a direction the others are blind to; each file's header, or the
 - `Tests/HelmUITests/StringsCoverageTests.swift` — a catalog symbol missing a language or not marked
   `translated`, a placeholder a translation lost, a `%` rule judged on each value alone (a bare `%` beside a placeholder, `%%` beside none; a lost `%%` is not compared with the English), an inline table at a call site, an English value posing as a translation.
 - `Tests/HelmUITests/NoOrphanTranslationsTests.swift` — a catalog symbol nothing asks for, a word asked
-  by its English spelling.
+  by its English spelling. This and `OneEntryPerKeyTests` are optional (`Tests/optional-tests.txt`): after touching
+  any `Localizable.xcstrings`, the catalog filter in `CLAUDE.local.md` runs them with the other two.
 - `Tests/HelmUITests/OneEntryPerKeyTests.swift` — a key written twice in one catalog, which the build
-  passes (measured, exit 0), and one English text written under two symbols across the catalogs.
+  passes (measured, exit 0), and one English text written under two symbols across the catalogs (the meaning checks live here).
 - `Tests/HelmUITests/PunctuationIsTerminologyTests.swift` — a mark or a space a language
   does not use, in every catalog, and an «ё» in every catalog but the changelog's.
 
 `Tests/Support/ModuleCatalogs.swift` reads the catalogs as data for these guards (it throws when the kit's, the host's or the changelog's catalog is missing, and each guard's floor is the 13 it finds), and
 `Tests/Modules/KeepAwake/UITests/TheModuleWordsReachEveryLanguageTests.swift` shows the words
 come out of the built target in the language asked.
+
+Two languages have no catalog of their own and fall back (owner decision 19): Traditional Chinese
+(`zh-Hant`) reads the Simplified one, and European Portuguese (`pt-PT`) the Brazilian. A
+`zh-Hant` translation is a chain of its own, after the refactor.
 
 ## One English text means one thing
 

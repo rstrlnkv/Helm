@@ -297,7 +297,7 @@ public struct HelmPageHeader<Trailing: View>: View {
 
     let symbol: String
     let tint: Color
-    public let title: String
+    let title: String
     /// True for a page whose content spans the pane rather than sitting in the
     /// 744 pt form column. Which pages those are is a command and not a list
     /// here, because a list written into prose is wrong from the next commit:
@@ -361,7 +361,7 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// stays the scroll view's to report. `standsOnStillContent` is public
     /// above because a page that draws this header as a view — the log — has
     /// no `helmPageHeader` to declare it through.
-    public init(symbol: String, tint: Color, title: String, bleeds: Bool,
+    init(symbol: String, tint: Color, title: String, bleeds: Bool,
          overContent: Bool, scrolled: Bool, standsOnStillContent: Bool, status: HelmHeaderStatus? = nil,
          dimmed: Bool = false,
          @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
