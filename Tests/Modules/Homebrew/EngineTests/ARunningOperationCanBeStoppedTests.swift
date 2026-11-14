@@ -17,9 +17,6 @@ final class ARunningOperationCanBeStoppedTests: XCTestCase {
     private struct FixedLocator: BrewLocator {
         func brewPath() -> String? { "/opt/homebrew/bin/brew" }
     }
-    private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-    }
 
     /// A handle the way the real one is: terminating it does not finish the
     /// stream by itself — the child dies, *then* EOF and the exit arrive.

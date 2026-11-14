@@ -47,10 +47,6 @@ final class ADescriptionBatchCannotCostMoreThanItsNamesTests: XCTestCase {
         func brewPath() -> String? { "/opt/homebrew/bin/brew" }
     }
 
-    private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-    }
-
     /// A brew that resolves the names in `known` and refuses any call carrying
     /// a name it does not know — validating the whole call before printing
     /// anything, which is what `brew desc` does (observed: exit 1, message on

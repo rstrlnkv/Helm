@@ -16,32 +16,6 @@ final class AQuitMidOperationIsReportedTests: XCTestCase {
     private struct FixedLocator: BrewLocator {
         func brewPath() -> String? { "/opt/homebrew/bin/brew" }
     }
-    private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-    }
-
-    /// Never finishes unless told to — a quit happens *during* an operation.
-    private final class HangingRunner: ProcessRunner, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _exits: [@Sendable (Int32) -> Void] = []
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-        /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            lock.lock(); _exits.append(onExit); lock.unlock()
-            return NoProcess()
-        }
-        func finishAll(code: Int32 = 0) {
-            lock.lock(); let exits = _exits; _exits = []; lock.unlock()
-            for exit in exits { exit(code) }
-        }
-    }
 
     private func engine(_ runner: ProcessRunner, marker: OpMarker) -> HomebrewEngine {
         HomebrewEngine(locator: FixedLocator(), runner: runner,

@@ -272,10 +272,6 @@ final class AStopBeforeTheChildExistsTests: XCTestCase {
 /// carefully it was written.
 final class AStopDuringTheLaunchItselfIsNotLostTests: XCTestCase {
 
-    private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-    }
-
     /// A runner that lets the test act *while the launch is happening*.
     private final class RunnerThatIsInterrupted: ProcessRunner, @unchecked Sendable {
         private let lock = NSLock()

@@ -63,10 +63,6 @@ private struct NoBrew: BrewLocator {
     func brewPath() -> String? { nil }
 }
 
-private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-}
-
 final class AnInfoQueryIsAboutOnePackageTests: XCTestCase {
 
     private func engine(_ runner: ProcessRunner) -> HomebrewEngine {

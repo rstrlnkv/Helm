@@ -15,13 +15,6 @@ import HelmRuntime
 /// keeps the last event per name and replays it to a new subscriber, so what a
 /// test sees is exactly what a page opened after the fact would see — the
 /// final `opState` and the final console line.
-/// One recorded `stream` invocation: what would have been launched, with what.
-private struct StreamCall {
-    let launch: String
-    let args: [String]
-    let env: [String: String]
-}
-
 final class InstallBrewTests: XCTestCase {
 
     // MARK: - Fakes
@@ -42,44 +35,6 @@ final class InstallBrewTests: XCTestCase {
         func runAdmin(_ script: String) -> PrivilegedOutcome {
             lock.lock(); _scripts.append(script); lock.unlock()
             return answer
-        }
-    }
-
-    /// Records what it was asked to stream — launch path, arguments and
-    /// environment — and does not finish until the test says so. A runner that
-    /// answered synchronously would release the busy gate before the first call
-    /// returned, and every gate assertion below would pass with the gate
-    /// deleted.
-    private final class HangingRunner: ProcessRunner, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _streamCalls: [StreamCall] = []
-        private var _exits: [@Sendable (Int32) -> Void] = []
-
-        var streamCalls: [StreamCall] { lock.lock(); defer { lock.unlock() }; return _streamCalls }
-
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) {
-            (0, "")
-        }
-
-        /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            lock.lock()
-            _streamCalls.append(StreamCall(launch: launchPath, args: args, env: env))
-            _exits.append(onExit)
-            lock.unlock()
-            return NoProcess()
-        }
-
-        func finishAll(code: Int32 = 0) {
-            lock.lock(); let exits = _exits; _exits = []; lock.unlock()
-            for exit in exits { exit(code) }
         }
     }
 

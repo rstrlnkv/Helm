@@ -8,10 +8,6 @@ private struct FixedLocator: BrewLocator {
     func brewPath() -> String? { "/opt/homebrew/bin/brew" }
 }
 
-private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-}
-
 @MainActor
 private func pair(_ runner: ProcessRunner) -> (HomebrewEngine, HomebrewViewModel) {
     let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,

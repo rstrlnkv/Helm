@@ -12,7 +12,7 @@ final class ThePressOnUpdateBeforeCheckingIsStoredTests: XCTestCase {
 
     private func model(_ backing: InMemoryKeyValueStore) -> HomebrewViewModel {
         let setting = UpdateBeforeChecking(store: NamespacedStore(namespace: HomebrewEngine.moduleID, backing: backing))
-        let engine = HomebrewEngine(locator: FixedLocator(), runner: NoRunner(), privileged: NoPrivileges(),
+        let engine = HomebrewEngine(locator: FixedLocator(), runner: IdleRunner(), privileged: NoPrivileges(),
                                     user: "tester", marker: InMemoryOpMarker(), updateBeforeChecking: setting)
         return HomebrewViewModel(work: engine, updateBeforeChecking: setting)
     }
@@ -76,12 +76,4 @@ final class ThePressOnUpdateBeforeCheckingIsStoredTests: XCTestCase {
     }
 
     private struct FixedLocator: BrewLocator { func brewPath() -> String? { "/opt/homebrew/bin/brew" } }
-    private struct NoPrivileges: PrivilegedRunner { func runAdmin(_ script: String) -> PrivilegedOutcome { .declined } }
-    private struct NoRunner: ProcessRunner {
-        func run(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) { (0, "") }
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess { onExit(0); return NoProcess() }
-    }
 }

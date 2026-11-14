@@ -15,9 +15,6 @@ final class APressAfterBrewVanishedNamesItsOperationTests: XCTestCase {
     private struct GoneBrew: BrewLocator {
         func brewPath() -> String? { nil }
     }
-    private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-    }
     private final class CountingRunner: ProcessRunner, @unchecked Sendable {
         private let lock = NSLock()
         private var n = 0

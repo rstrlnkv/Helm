@@ -26,44 +26,6 @@ final class OneOperationAtATimeTests: XCTestCase {
         func brewPath() -> String? { "/opt/homebrew/bin/brew" }
     }
 
-    private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-    }
-
-    /// Records what it was asked to run and never finishes it, until a test
-    /// says so.
-    private final class HangingRunner: ProcessRunner, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _calls: [[String]] = []
-        private var _exits: [@Sendable (Int32) -> Void] = []
-
-        var calls: [[String]] { lock.lock(); defer { lock.unlock() }; return _calls }
-
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) {
-            (0, "")
-        }
-
-        /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            lock.lock(); _calls.append(args); _exits.append(onExit); lock.unlock()
-            return NoProcess()
-        }
-
-        /// Lets the operation that is in flight finish, the way a `brew` that
-        /// has run to completion would.
-        func finishAll(code: Int32 = 0) {
-            lock.lock(); let exits = _exits; _exits = []; lock.unlock()
-            for exit in exits { exit(code) }
-        }
-    }
-
     private func engine(_ runner: ProcessRunner) -> HomebrewEngine {
         HomebrewEngine(locator: FixedLocator(), runner: runner,
                        privileged: NoPrivileges(), user: "tester")

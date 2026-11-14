@@ -63,10 +63,6 @@ private struct FixedLocator: BrewLocator {
     func brewPath() -> String? { "/opt/homebrew/bin/brew" }
 }
 
-private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-}
-
 final class ADoctorReadingIsNotGatedOnExitStatusTests: XCTestCase {
 
     /// Captured independently of `DoctorParserTests`' copy — see the file's

@@ -40,26 +40,6 @@ private struct NoBrew: BrewLocator {
     func brewPath() -> String? { nil }
 }
 
-private struct IdleRunner: ProcessRunner, @unchecked Sendable {
-    func run(_ launchPath: String, _ args: [String],
-             env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-    /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-        (0, "")
-    }
-
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        onExit(0)
-        return NoProcess()
-    }
-}
-
-private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-}
-
 /// **The other half of the refresh's lifecycle, which nothing held.**
 ///
 /// `ActivationIsWhatStartsTheRefreshTests` holds the line that *starts* the

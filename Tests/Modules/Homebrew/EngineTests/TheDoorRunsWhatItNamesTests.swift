@@ -66,9 +66,6 @@ private final class DoorRunner: ProcessRunner, @unchecked Sendable {
 private struct FixtureBrew: BrewLocator {
     func brewPath() -> String? { "/opt/fixture/bin/brew" }
 }
-private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-}
 
 final class TheDoorRunsWhatItNamesTests: XCTestCase {
 

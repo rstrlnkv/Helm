@@ -54,9 +54,6 @@ final class OutdatedQueryAllocationBenchmark: XCTestCase {
     private struct FixedLocator: BrewLocator {
         func brewPath() -> String? { "/opt/homebrew/bin/brew" }
     }
-    private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-    }
 
     /// Hands its bytes over the port the way the real runner does — without
     /// building a fresh copy per call, so whatever the engine asks for during
