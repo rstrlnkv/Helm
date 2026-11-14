@@ -52,8 +52,6 @@ They are taken from the Figma file **PencilKit for figma (Copy)**
 a community recreation of Apple's iPadOS 13 PencilKit picker.
 
 - Source: <https://www.figma.com/design/33IGj6K24Gp1BJIpWmHZJs/PencilKit-for-figma--Copy->
-- Author: (to be filled in by the owner)
-- Licence: (to be filled in by the owner)
 - Use in Helm: the owner checked the file's licence on 2026-10-02 and decided
   the objects may be used.
 - Modified for Helm: SVG filters removed (macOS drops them silently), the Pen, Marker and
