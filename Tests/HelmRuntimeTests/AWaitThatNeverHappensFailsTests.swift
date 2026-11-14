@@ -36,3 +36,23 @@ final class AWaitThatNeverHappensFailsTests: XCTestCase {
         XCTAssertTrue(flag.value)
     }
 }
+
+/// `waitUntilReached` is the free-function twin for cases that are **not**
+/// `@MainActor`; its own assertion is guarded here, not through its callers.
+/// The failing half runs on the main actor because `XCTExpectFailure` does not
+/// reliably match an issue recorded on another thread after an `await`.
+final class AFreeWaitThatNeverHappensFailsTests: XCTestCase {
+    @MainActor
+    func testTheFreeFunctionFailsWhenTheConditionNeverHolds() async {
+        let started = ContinuousClock.now
+        XCTExpectFailure("the condition never holds")
+        await waitUntilReached("a thing that never happens", within: .milliseconds(200)) { false }
+        XCTAssertLessThan(ContinuousClock.now - started, .seconds(2))
+    }
+
+    func testTheFreeFunctionReturnsPromptlyForAConditionThatHolds() async {
+        let started = ContinuousClock.now
+        await waitUntilReached("a thing that already holds", within: .seconds(5)) { true }
+        XCTAssertLessThan(ContinuousClock.now - started, .seconds(1))
+    }
+}

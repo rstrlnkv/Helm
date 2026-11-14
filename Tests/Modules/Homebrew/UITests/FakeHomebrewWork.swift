@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Helm
 
 import Foundation
+import HelmTestSupport
 import XCTest
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
@@ -181,10 +182,6 @@ extension XCTestCase {
     func eventually(_ what: String, timeout: TimeInterval = 5,
                     file: StaticString = #filePath, line: UInt = #line,
                     _ condition: () -> Bool) async {
-        let deadline = Date().addingTimeInterval(timeout)
-        while !condition(), Date() < deadline {
-            try? await Task.sleep(for: .milliseconds(10))
-        }
-        XCTAssertTrue(condition(), "never reached: \(what)", file: file, line: line)
+        await waitUntil(what, within: .seconds(timeout), file: file, line: line, condition)
     }
 }

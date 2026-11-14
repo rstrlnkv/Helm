@@ -4,6 +4,7 @@
 import Foundation
 import HelmContract
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_VPN_Engine
 
@@ -121,7 +122,7 @@ final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
         // Long enough for the request to have come back empty: the assertion below
         // is an absence, and an absence also holds while the first attempt is still
         // out — which would make this pass with the gate deleted (ARCHITECTURE.md § What makes a check).
-        await waitUntil("the first attempt came back") { exit.asks == 1 }
+        await waitUntilReached("the first attempt came back", within: .seconds(5)) { exit.asks == 1 }
         for _ in 0..<3 {
             await refreshed(engine, on: news) { _ in true }
         }
@@ -236,7 +237,7 @@ final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
             "* (Connected) 11111111-1111-1111-1111-111111111111 VPN (com.x.work) \"work\" [VPN:com.x.work]"
         interfaces.primary = "utun4"
         await refreshed(engine, on: news) { $0.tunnels.count == 1 }
-        await waitUntil("the first request left") { exit.asks >= 1 }
+        await waitUntilReached("the first request left", within: .seconds(5)) { exit.asks >= 1 }
 
         // It drops and comes back, which forces a second check while the first
         // is still out.
@@ -263,18 +264,5 @@ final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
         XCTAssertEqual(drawn, .throughTunnel(countryCode: "DE"), """
         a superseded answer was written over a newer one. Cancelling a URL load         does not silence its completion, so the run that comes back last wins         unless something tells the two apart.
         """)
-    }
-
-    // MARK: - Plumbing
-
-    /// Waits for a condition the module reaches on its own thread, with a
-    /// deadline so a failure is a failure rather than a hung suite.
-    private func waitUntil(_ what: String, timeout: TimeInterval = 5,
-                           _ condition: @escaping () -> Bool) async {
-        let deadline = Date().addingTimeInterval(timeout)
-        while !condition(), Date() < deadline {
-            try? await Task.sleep(nanoseconds: 5_000_000)
-        }
-        XCTAssertTrue(condition(), "timed out waiting for: \(what)")
     }
 }

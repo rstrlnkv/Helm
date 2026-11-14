@@ -1,4 +1,5 @@
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Duplicates_Engine
 @testable import Module_Duplicates_UI
@@ -16,7 +17,7 @@ import XCTest
 final class ThePolicyOnScreenIsTheOneInForceTests: XCTestCase {
 
     private var store: NamespacedStore!
-    private var keys: PlantedSealKey!
+    private var keys: SealKeyProbe!
     /// The page's guard, wired the way the module wires it: behind
     /// `SealKeyCache`, because what the page reads it reads only once the key is
     /// in hand and a port that keeps nothing is never in hand
@@ -25,7 +26,7 @@ final class ThePolicyOnScreenIsTheOneInForceTests: XCTestCase {
 
     override func setUp() async throws {
         store = duplicatesStore(folder: "\(home)/Downloads")
-        keys = PlantedSealKey()
+        keys = SealKeyProbe(firstUse: false)
         settings = SettingGuard(keys: SealKeyCache(keys))
     }
 

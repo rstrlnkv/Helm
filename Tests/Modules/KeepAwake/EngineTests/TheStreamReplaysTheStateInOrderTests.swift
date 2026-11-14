@@ -1,6 +1,7 @@
 import XCTest
 import HelmContract
 import HelmRuntime
+import HelmTestSupport
 @testable import Module_KeepAwake_Engine
 
 /// `KeepAwakeEngine.stream()` hands a late subscriber the latest state and then
@@ -229,10 +230,7 @@ final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
     }
 
     private func waitFor(_ seen: Seen, count: Int) async {
-        let deadline = Date().addingTimeInterval(2)
-        while seen.all.count < count, Date() < deadline {
-            try? await Task.sleep(nanoseconds: 1_000_000)
-        }
+        await waitUntilReached("\(count) state(s) read") { seen.all.count >= count }
     }
 
     private func makeRaced() -> KeepAwakeEngine {

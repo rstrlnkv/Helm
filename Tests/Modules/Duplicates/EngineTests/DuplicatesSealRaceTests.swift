@@ -1,14 +1,8 @@
 import Foundation
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Duplicates_Engine
-
-private struct PlantedSealKey: SealKeyPort {
-    let firstUse: Bool
-    func key() -> SealKey? {
-        SealKey(material: Data(repeating: 0x11, count: 32), firstUse: firstUse)
-    }
-}
 
 /// A save racing a read of the same sealed setting.
 ///
@@ -25,7 +19,7 @@ final class DuplicatesSealRaceTests: XCTestCase {
 
     private func fresh(firstUse: Bool) -> (NamespacedStore, SettingGuard) {
         (NamespacedStore(namespace: "duplicates", backing: InMemoryKeyValueStore()),
-         SettingGuard(keys: PlantedSealKey(firstUse: firstUse)))
+         SettingGuard(keys: SealKeyProbe(firstUse: firstUse)))
     }
 
     /// A sealed folder being replaced is never read as somebody else's.
@@ -55,7 +49,7 @@ final class DuplicatesSealRaceTests: XCTestCase {
     /// a value beside a MAC sealed over the other value.
     func testAnAdoptionRacingASaveNeverSealsTheOtherValue() {
         let (store, settings) = fresh(firstUse: true)
-        let reference = SettingGuard(keys: PlantedSealKey(firstUse: false))
+        let reference = SettingGuard(keys: SealKeyProbe(firstUse: false))
         var torn = 0
         for _ in 0..<rounds {
             store.set("/A", for: folder)

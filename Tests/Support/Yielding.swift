@@ -38,7 +38,9 @@ public extension XCTestCase {
 }
 
 /// `waitUntil(_:within:)` for the helpers that are free functions and have no
-/// test case to call it on. The method above is this, so there is one wait.
+/// test case to call it on. The method above calls it, so those two are one
+/// wait; `waitUntilReached` below is the same loop again, because it must not be
+/// `@MainActor`.
 @MainActor
 public func waitUntilWithin(_ what: String, _ limit: Duration, file: StaticString = #filePath,
                             line: UInt = #line, _ condition: () -> Bool) async {
@@ -46,6 +48,24 @@ public func waitUntilWithin(_ what: String, _ limit: Duration, file: StaticStrin
     let deadline = clock.now + limit
     while !condition(), clock.now < deadline {
         try? await Task.sleep(for: .milliseconds(5))
+    }
+    XCTAssertTrue(condition(), "never reached: \(what)", file: file, line: line)
+}
+
+/// `waitUntil(_:within:)` for a test case that is **not** `@MainActor`: the
+/// method above takes the case's isolation with it, and calling it from a case
+/// without one sends `self` across an isolation boundary. A free function with
+/// no isolation of its own is called from either, so this is the wait for the
+/// engine tests whose fakes are read from the test's own thread.
+///
+/// Same deadline, same assertion naming what never happened.
+public nonisolated(nonsending) func waitUntilReached(_ what: String, within limit: Duration = .seconds(2),
+                             file: StaticString = #filePath, line: UInt = #line,
+                             _ condition: () -> Bool) async {
+    let clock = ContinuousClock()
+    let deadline = clock.now + limit
+    while !condition(), clock.now < deadline {
+        try? await Task.sleep(for: .milliseconds(1))
     }
     XCTAssertTrue(condition(), "never reached: \(what)", file: file, line: line)
 }

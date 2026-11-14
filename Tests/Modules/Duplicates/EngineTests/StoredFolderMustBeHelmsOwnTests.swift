@@ -1,4 +1,5 @@
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Duplicates_Engine
 
@@ -37,12 +38,12 @@ final class StoredFolderMustBeHelmsOwnTests: XCTestCase {
 
     private func engine(firstUse: Bool = false) -> DuplicatesEngine {
         DuplicatesEngine(store: store,
-                         settings: SettingGuard(keys: TestKey(firstUse: firstUse)),
+                         settings: SettingGuard(keys: SealKeyProbe(firstUse: firstUse)),
                          trashing: neverTrashes)
     }
 
     func testASealedFolderIsScanned() async throws {
-        let sealed = SettingGuard(keys: TestKey(firstUse: false))
+        let sealed = SettingGuard(keys: SealKeyProbe(firstUse: false))
         store.set(sealed.seal(Data(fixture.path.utf8)) ?? "",
                   for: SettingGuard.macKey(for: "folder"))
         let answer = await engine().backgroundScan()
@@ -53,7 +54,7 @@ final class StoredFolderMustBeHelmsOwnTests: XCTestCase {
     /// The whole point: the value changed and the seal did not, because whoever
     /// wrote it does not have the key.
     func testAFolderSomethingElseWroteIsRefused() async {
-        let sealed = SettingGuard(keys: TestKey(firstUse: false))
+        let sealed = SettingGuard(keys: SealKeyProbe(firstUse: false))
         store.set(sealed.seal(Data("/somewhere/else".utf8)) ?? "",
                   for: SettingGuard.macKey(for: "folder"))
         let report = await engine().backgroundScan()

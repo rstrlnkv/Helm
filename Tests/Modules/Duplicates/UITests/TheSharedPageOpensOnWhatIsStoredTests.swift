@@ -1,11 +1,12 @@
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 import Module_Duplicates_Engine
 @testable import Module_Duplicates_UI
 
 /// The fixture every page test in this target is built on can finish its read.
 ///
-/// `duplicatesModel` handed the page a bare `PlantedSealKey`, which takes
+/// `duplicatesModel` handed the page a bare `SealKeyProbe`, which takes
 /// `SealKeyPort`'s default `keyIfWarm() -> nil` — so `SettingGuard.isWarm` was
 /// false for ever, `DuplicatesSettings.keepPolicyIfWarm` answered «not yet»
 /// whatever was stored, and the popup sat on the default however long a test
@@ -24,13 +25,13 @@ import Module_Duplicates_Engine
 final class TheSharedPageOpensOnWhatIsStoredTests: XCTestCase {
 
     /// A store as an earlier run of the app would have left it: the policy the
-    /// person chose, sealed. `PlantedSealKey`'s material is fixed, so the seal
+    /// person chose, sealed. `SealKeyProbe`'s material is fixed, so the seal
     /// written here is one the page's own guard accepts — the same key, not the
     /// same object.
     private func storeHolding(_ policy: KeepPolicy) -> NamespacedStore {
         let store = duplicatesStore(folder: "\(home)/Downloads")
         DuplicatesSettings.setKeepPolicy(policy, in: store,
-                                         guardedBy: SettingGuard(keys: PlantedSealKey()))
+                                         guardedBy: SettingGuard(keys: SealKeyProbe(firstUse: false)))
         return store
     }
 

@@ -3,6 +3,7 @@
 
 import Combine
 import HelmContract
+import HelmTestSupport
 import XCTest
 @testable import Module_VPN_Engine
 @testable import Module_VPN_UI
@@ -110,7 +111,7 @@ final class VPNStatusAppearanceTests: XCTestCase {
     /// keeps this honest: the assertion is only reached once the very payload
     /// carrying the firing has been handled.
     private func settle(_ model: VPNViewModel) async {
-        for _ in 0..<500 where model.connections.isEmpty { await Task.yield() }
+        await waitUntil("the payload handled", within: .seconds(5)) { !model.connections.isEmpty }
     }
 
     private func emit(_ automation: VPNAutomation, on work: FakeVPNWork) {
