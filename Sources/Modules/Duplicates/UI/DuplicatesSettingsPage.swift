@@ -133,6 +133,7 @@ struct DuplicatesSettingsPage: View {
                 }
                 .controlSize(.small)
                 .fixedSize()
+                .disabled(dvm.busy)
                 if dvm.folder != nil {
                     let title = dvm.groups.isEmpty ? DupStr.search : DupStr.searchAgain
                     // Dimmed while a removal runs, for the reason the clear
@@ -250,9 +251,11 @@ struct DuplicatesSettingsPage: View {
                         .contentTransition(.numericText())
                         .animation(HelmMotion.interface, value: dvm.progress?.hashed)
                     Spacer(minLength: HelmSpace.s4)
-                    Button(DupStr.stopRemoval) { dvm.stopRemoval() }
-                        .controlSize(.small)
-                        .fixedSize()
+                    if dvm.offersStop {
+                        Button(DupStr.stopRemoval) { dvm.stopRemoval() }
+                            .controlSize(.small)
+                            .fixedSize()
+                    }
                 }
             }
             // What the last press did to the marks, above the count it changed:

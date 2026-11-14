@@ -58,6 +58,7 @@ final class AnsweringWork: DuplicatesWork, @unchecked Sendable {
     private let removal: DuplicateRemoval
     private let ticks: [DuplicateProgress]
     private let removalTicks: [DuplicateProgress]
+    private let movingWhileParked: Bool
     private var answer: Answer
     /// What one call gets, where that differs from what the work is doing — the
     /// removal that is parked while the search answers.
@@ -78,17 +79,21 @@ final class AnsweringWork: DuplicatesWork, @unchecked Sendable {
     ///   - ticks: the progress a search reports before it answers.
     ///   - removalTicks: the progress a removal reports before it answers. Its own
     ///     list, so a test can tell whose tick is on the bar.
+    ///   - movingWhileParked: the removal reports `.moving` — the Trash has the
+    ///     batch — before it parks.
     init(groups: [DuplicateGroup],
          librariesSkipped: Int = 0,
          removal: DuplicateRemoval = DuplicateRemoval(removed: [], refused: [], freedBytes: 0),
          ticks: [DuplicateProgress] = [],
          removalTicks: [DuplicateProgress] = [],
+         movingWhileParked: Bool = false,
          answering answer: Answer = .reply) {
         self.groups = groups
         self.librariesSkipped = librariesSkipped
         self.removal = removal
         self.ticks = ticks
         self.removalTicks = removalTicks
+        self.movingWhileParked = movingWhileParked
         self.answer = answer
     }
 
@@ -138,12 +143,13 @@ final class AnsweringWork: DuplicatesWork, @unchecked Sendable {
     func cancel() { lock.withLock { seen.append(.cancel) } }
 
     func trash(_ plans: [DuplicatePlan], staying: [String],
-               progress: (@Sendable (DuplicateProgress) -> Void)?) async -> DuplicateRemoval {
+               progress: (@Sendable (RemovalTick) -> Void)?) async -> DuplicateRemoval {
         lock.withLock {
             seen.append(.trash)
             planned.append((plans, staying))
         }
-        for tick in removalTicks { progress?(tick) }
+        for tick in removalTicks { progress?(.verified(tick)) }
+        if movingWhileParked { progress?(.moving) }
         await parkIfAsked(.trash)
         return removal
     }
@@ -196,7 +202,7 @@ final class HeldWork: DuplicatesWork, @unchecked Sendable {
 
     func cancel() {}
     func trash(_ plans: [DuplicatePlan], staying: [String],
-               progress: (@Sendable (DuplicateProgress) -> Void)?) async -> DuplicateRemoval {
+               progress: (@Sendable (RemovalTick) -> Void)?) async -> DuplicateRemoval {
         DuplicateRemoval(removed: [], refused: [], freedBytes: 0)
     }
     func stopRemoval() {}

@@ -2,13 +2,6 @@ import HelmRuntime
 import XCTest
 @testable import Module_Duplicates_Engine
 
-private struct TestKey: SealKeyPort {
-    let firstUse: Bool
-    func key() -> SealKey? {
-        SealKey(material: Data(repeating: 0x11, count: 32), firstUse: firstUse)
-    }
-}
-
 /// A background scan starts from a folder nobody re-chose, so the folder has to
 /// be the one Helm stored.
 ///

@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 import XCTest
 @testable import Module_Duplicates_Engine
 
@@ -51,3 +52,12 @@ final class TrashRecorder: @unchecked Sendable {
 /// For a construction whose test reaches no removal: a move through it is a
 /// failure, not a file in the Trash.
 let neverTrashes: @Sendable (URL) throws -> Void = { _ in XCTFail("a test that removes nothing moved a file") }
+
+/// The seal key every engine test hands its `SettingGuard`: fixed material, and
+/// whether the guard sees the key as new.
+struct TestKey: SealKeyPort {
+    var firstUse = true
+    func key() -> SealKey? {
+        SealKey(material: Data(repeating: 0x11, count: 32), firstUse: firstUse)
+    }
+}

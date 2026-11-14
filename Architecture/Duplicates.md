@@ -6,7 +6,9 @@ beliefs, `byPlace` (the default) and `byDate`, are `KeepPolicy.swift`; one ladde
 answers both what stays and why (its doc comment, read by `SurvivingCopy.swift`).
 
 A group's size is what `CloneShare.reclaimable` (`Sources/HelmRuntime/CloneShare.swift`)
-says removing it returns, not the sum of its files.
+says removing it returns, not the sum of its files. The same holds for the background scan:
+each item it journals carries what removing its copy adds, so the notification's sum is the
+group's figure (`ABackgroundFindingCountsAClonesOnceTests`).
 
 Acting on a finding re-reads the pair: `DuplicateVerification` is its own phase
 beside the removal. `DuplicateVerification.Batch` memoises the survivor's reading
@@ -48,10 +50,15 @@ pairs, which a stop ends with nothing moved. The model keeps no state for a repl
 arrives: an answer is always a return.
 
 A background scan and a search the person started share the engine's one finder slot, so
-one begins by cancelling the other.
+one begins by cancelling the other. The model keeps the person's side of that: while a
+search or a removal runs, the timer's scan answers nil without reaching the engine, logs
+that it waits, and the retry gap applies. A search the person starts during a background
+scan still supersedes it.
 
 While a removal runs, the marks (`toggleBasket`), Keep this copy, Restore the
-recommendation and the policy popup are refused by the model and their controls dim,
+recommendation, the policy popup and Choose another folder (`chooseFolder`,
+`use(folder:)`; the latter ends in `search()` and would save a folder under a
+running request) are refused by the model and their controls dim,
 as Disk's `toggleBasket` declines (ARCHITECTURE.md § One removal at a time):
 `emptyBasket` captures the plans and the staying copies at the press, so a mark or a
 re-ordering made afterwards would draw «stays» on a copy the engine still sends to the
@@ -95,7 +102,7 @@ The page id is the module id, `duplicates`, and a state is shot with its file `d
       --name <state>-<light|dark>[-<fr|de|ru>] --out <dir>
 
 A scratch tree of planted duplicates is enough for every state that shows a result. Nothing is removed to reach a state:
-`confirm`, `removing` and `removal-report` are not shot; `removing` is held by `AStopDuringARemovalReachesTheEngineTests` and `ATickReachesOnlyItsOwnBarTests` (optional), the question is held by no test; the copies the press then names as staying, by `ThePageNamesEveryCopyItKeepsTests` (optional), and the figure the outcome banner counts as freed — a clone of the copy that stays is not counted — by `TheBannerCountsWhatTheDiskGivesBackTests` (optional, engine).
+`confirm`, `removing` and `removal-report` are not shot; `removing` is held by `AStopDuringARemovalReachesTheEngineTests` and `ATickReachesOnlyItsOwnBarTests` (optional), Stop removal's disappearance for the Trash phase by `AStopIsNotOfferedOnceTheTrashHasTheBatchTests` and the engine's `.moving` tick by `ARemovalCanBeWatchedAndStoppedTests`, the question is held by no test; the copies the press then names as staying, by `ThePageNamesEveryCopyItKeepsTests` (optional), and the figure the outcome banner counts as freed — a clone of the copy that stays is not counted — by `TheBannerCountsWhatTheDiskGivesBackTests` (optional, engine).
 
 | state | the page shows | reached by |
 |---|---|---|
@@ -110,7 +117,7 @@ A scratch tree of planted duplicates is enough for every state that shows a resu
 | `preview` | the Quick Look sheet over the list | Space on a selected row, or Quick Look in the row's menu: reached only through AXShowMenu or Space, which `--press` (AXPress only) cannot do; by hand |
 | `basket` | the bar with the marked count and size, Clear the marks, Move to Trash | `--press "Mark every extra copy"` on `result` |
 | `marks-note` | «Skipped: N files — Helm may not remove those» or «Unmarked: N — those copies stay now» above the count | a mark that passes over a system item, or a policy change or Restore the recommendation that makes a marked copy the one that stays |
-| `confirm`, `removing`, `removal-report` | the question, the progress with Stop removal, the outcome | a removal: not shot |
+| `confirm`, `removing`, `removal-report` | the question, the progress with Stop removal (gone once the engine's `.moving` tick says the Trash has the batch), the outcome | a removal: not shot |
 | `worst` | fr, de and ru at the minimum window with the sidebar at its widest: the toolbar and the basket row keep every label | `--arg module.app.interfaceLanguage fr`, `de` or `ru`, with `basket` pressed; not rendered — the instrument sets no window size, and the sidebar width only as `--arg module.app.sidebarWidth '<real>320</real>'`: an untyped `320` is ignored (`AppSettings.sidebarWidth(in:)`) — and checked by arithmetic: `DuplicatesLayout.swift`'s doc comment, the widest row under 772 pt |
 
 The two Search now buttons share one name: `--nth 2` is the empty state's, the toolbar's is the first in `HelmReadout ax` order.

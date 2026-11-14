@@ -104,4 +104,40 @@ final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
                        "a stop pressed before the removal cancelled the removal after it")
         XCTAssertEqual(result.removed.count, 1)
     }
+
+    /// `.moving` says the Trash has the batch: after the last `.verified`, once,
+    /// and never on a stopped removal.
+    private final class Ticks: @unchecked Sendable {
+        private let lock = NSLock()
+        private var all: [String] = []
+        func add(_ tick: RemovalTick) {
+            lock.withLock {
+                switch tick {
+                case .verified: all.append("verified")
+                case .moving: all.append("moving")
+                }
+            }
+        }
+        var seen: [String] { lock.withLock { all } }
+    }
+
+    func testMovingArrivesOnceAfterTheLastPairAndNeverOnAStop() async throws {
+        let ran = Ticks()
+        let ranEngine = DuplicatesEngine(settings: suiteSealGuard(),
+                                         trashing: { try FileManager.default.removeItem(at: $0) })
+        _ = await ranEngine.trash(try plans(2), progress: { ran.add($0) })
+        XCTAssertEqual(ran.seen, ["verified", "verified", "moving"])
+
+        let parked = ParkedVerify()
+        let stopped = Ticks()
+        let engine = DuplicatesEngine(settings: suiteSealGuard(), trashing: neverTrashes,
+                                      verifying: { { parked.check($0, $1) } })
+        let plans = try plans(3)
+        let removal = Task { await engine.trash(plans, progress: { stopped.add($0) }) }
+        for _ in 0..<20_000 where parked.calls < 1 { await Task.yield() }
+        stopRemoval(of: engine)
+        parked.release(3)
+        _ = await removal.value
+        XCTAssertFalse(stopped.seen.contains("moving"), "a stopped removal said the Trash had the batch")
+    }
 }

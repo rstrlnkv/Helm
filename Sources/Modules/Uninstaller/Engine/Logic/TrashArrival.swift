@@ -26,9 +26,9 @@ enum TrashArrival {
             // see — `trashedApps()` reads the top level and no deeper — so a
             // bundle inside a folder in the Trash is a scan that finds nothing.
             guard let top = rest.split(separator: "/").first else { return false }
-            // Case-insensitive because the volume is. `trashedApps()` filters on
-            // `app` as spelled, so a `.App` passes here and the sweep lists none.
-            return top.lowercased().hasSuffix(".app")
+            // As spelled, the rule `trashedApps()` filters on: a `.App` would wake
+            // a sweep that lists nothing.
+            return (String(top) as NSString).pathExtension == "app"
         }
     }
 }

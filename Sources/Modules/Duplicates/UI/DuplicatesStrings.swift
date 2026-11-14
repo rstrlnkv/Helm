@@ -260,10 +260,11 @@ enum DupStr {
     /// отметок: 2» makes the number a count rather than the subject of a verb,
     /// and the agreement question every Slavic and Romance language would
     /// otherwise ask disappears. No noun after the colon for the same reason —
-    /// what was unmarked is on the screen the sentence is under.
+    /// what was unmarked is on the screen the sentence is under. The count goes
+    /// through `Count`, as every count in this file does.
     static func unmarkedSurvivors(_ count: Int,
                                   language: AppLanguage = AppLanguage.current) -> String {
-        L(.unmarkedSurvivors(String(count)), language: language)
+        L(.unmarkedSurvivors(Count(count, language: language)), language: language)
     }
 
     /// Copies «Mark every extra copy» passed over: paths outside what Helm may

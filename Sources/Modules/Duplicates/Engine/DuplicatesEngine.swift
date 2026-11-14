@@ -263,11 +263,21 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
         // returns nothing. Not the page's fold (`DuplicateBasket.wasted`): that
         // one counts a clone family once over all the groups and leaves out what
         // `UserFileScope` refuses, while this sums group by group and lists
-        // every extra. Each item carries its copy's own size, so a figure summed
-        // from the items (`ScanChange.appearedBytes`, the notification's) counts
-        // a clone in full.
-        let items = groups.flatMap { group in
-            group.copies.dropFirst().map { ScanItem(path: $0.path, bytes: $0.bytes) }
+        // every extra.
+        //
+        // **Each item carries what removing its copy adds**, the same rule
+        // (`CloneShare.reclaimable`) taken one extra further each time, so a
+        // figure summed from the items (`ScanChange.appearedBytes`, the
+        // notification's) is the group's `wasted` and a clone is not counted in
+        // full. The journal's lists from before this carry each copy's own size.
+        let items = groups.flatMap { group -> [ScanItem] in
+            var freed = 0
+            return group.copies.dropFirst().enumerated().map { index, copy in
+                let upTo = Set(group.copies.dropFirst().prefix(index + 1).map(\.path))
+                let total = DuplicateGroup.reclaimable(marking: upTo, in: [group])
+                defer { freed = total }
+                return ScanItem(path: copy.path, bytes: total - freed)
+            }
         }
         return ScanReport(bytes: groups.reduce(0) { $0 + $1.wasted },
                           count: items.count, items: items)
@@ -299,10 +309,11 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     ///   is the direction that **over-reports**: a batch that names nothing gets
     ///   its families charged in full. Only a caller that can see the whole list
     ///   can fill it.
-    /// - Parameter progress: how far the re-reading has got, one tick per pair.
+    /// - Parameter progress: how far the re-reading has got, one `.verified`
+    ///   tick per pair, then `.moving` once when the Trash has the batch.
     public func trash(_ plans: [DuplicatePlan],
                       staying: [String] = [],
-                      progress: (@Sendable (DuplicateProgress) -> Void)? = nil)
+                      progress: (@Sendable (RemovalTick) -> Void)? = nil)
     async -> DuplicateRemoval {
         let trashing = self.trashing
         let verify = verifying()
@@ -356,9 +367,9 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                     // answered, so the ticks are already paced by the disk — no
                     // throttle needed where the search needs one per 128 KB
                     // prefix.
-                    progress?(DuplicateProgress(candidates: inScope.count,
-                                                hashed: allowed.count + stale.count
-                                                    + unreadable.count))
+                    progress?(.verified(DuplicateProgress(
+                        candidates: inScope.count,
+                        hashed: allowed.count + stale.count + unreadable.count)))
                 }
                 return stop.isStopped
             }
@@ -402,6 +413,8 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
             // adds them itself rather than trusting the caller to have.
             let staysBehind = Set(staying + honoured.map(\.keep)
                                   + outOfScope + stale + unreadable + contradicted)
+            // From here a stop is too late: the Trash has the batch.
+            progress?(.moving)
             let result = HelmTrash.remove(allowed: allowed, outOfScope: outOfScope,
                                           sharedWith: Array(staysBehind),
                                           module: Self.moduleID, trashing: trashing)

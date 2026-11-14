@@ -23,9 +23,13 @@ final class WorkspaceAppLister: AppLister {
             guard let items = try? FileManager.default.contentsOfDirectory(
                 at: dir, includingPropertiesForKeys: nil) else { continue }
             for app in items where app.pathExtension == "app" {
-                let info = app.appendingPathComponent("Contents/Info.plist")
-                if let id = NSDictionary(contentsOf: info)?["CFBundleIdentifier"] as? String,
-                   !id.isEmpty { ids.insert(id) }
+                // A bulk read of file contents: the pool goes inside the iteration
+                // (ARCHITECTURE.md § Module pattern).
+                autoreleasepool {
+                    let info = app.appendingPathComponent("Contents/Info.plist")
+                    if let id = NSDictionary(contentsOf: info)?["CFBundleIdentifier"] as? String,
+                       !id.isEmpty { ids.insert(id) }
+                }
             }
         }
         return ids
@@ -115,10 +119,20 @@ final class WorkspaceAppLister: AppLister {
         return items
             .filter { $0.pathExtension == "app" }
             .compactMap { app in
-                let info = app.appendingPathComponent("Contents/Info.plist")
-                return TrashedAppIdentity.of(path: app.path,
-                                             info: NSDictionary(contentsOf: info) as? [String: Any])
+                // Inside the iteration, and only the extracted identity leaves it
+                // (ARCHITECTURE.md § Module pattern).
+                autoreleasepool {
+                    let info = app.appendingPathComponent("Contents/Info.plist")
+                    return TrashedAppIdentity.of(path: app.path,
+                                                 info: NSDictionary(contentsOf: info) as? [String: Any])
+                }
             }
+    }
+
+    /// One `opendir`, so the press that asks reads no `Info.plist` on main. A
+    /// missing Trash lists as empty and stays readable, as in `trashedApps()`.
+    func trashIsReadable() -> Bool {
+        DirectoryListing.contents(of: home.appendingPathComponent(".Trash", isDirectory: true)) != .refused
     }
 
     func installedApps() -> [InstalledApp] {
@@ -138,16 +152,21 @@ final class WorkspaceAppLister: AppLister {
             for app in items where app.pathExtension == "app" {
                 guard !seen.contains(app.path) else { continue }
                 seen.insert(app.path)
-                let info = app.appendingPathComponent("Contents/Info.plist")
-                let dict = NSDictionary(contentsOf: info)
-                guard let bundleID = dict?["CFBundleIdentifier"] as? String, !bundleID.isEmpty else { continue }
+                // One `Info.plist` per bundle: the pool goes inside the iteration and
+                // only the two Strings leave it (ARCHITECTURE.md § Module pattern).
+                let plist: (bundleID: String, name: String?)? = autoreleasepool {
+                    let info = app.appendingPathComponent("Contents/Info.plist")
+                    let dict = NSDictionary(contentsOf: info)
+                    guard let bundleID = dict?["CFBundleIdentifier"] as? String, !bundleID.isEmpty else { return nil }
+                    return (bundleID, (dict?["CFBundleDisplayName"] as? String)
+                        ?? (dict?["CFBundleName"] as? String))
+                }
+                guard let bundleID = plist?.bundleID else { continue }
                 if !SystemApp.isSystem(bundleID: bundleID), Self.leadsElsewhere(app, inside: folder) {
                     linked += 1
                     continue
                 }
-                let name = (dict?["CFBundleDisplayName"] as? String)
-                    ?? (dict?["CFBundleName"] as? String)
-                    ?? app.deletingPathExtension().lastPathComponent
+                let name = plist?.name ?? app.deletingPathExtension().lastPathComponent
                 // Size 0: `appSizes()` fills these in afterwards, so the list
                 // appears at once instead of after a walk of every bundle.
                 out.append(InstalledApp(name: name, bundleID: bundleID,
@@ -270,9 +289,9 @@ public struct WorkspaceRunningApps: RunningAppsPort {
     /// `runningApplications(withBundleIdentifier:)` reads AppKit's own mutable
     /// list of running applications, and reading it off the main thread is what
     /// killed the VPN engine over four releases (ARCHITECTURE.md § Running
-    /// applications). Both callers here are off it: the scan runs inside
-    /// `offTheCooperativePool`, and `quit` arrives from the batch on the cooperative pool —
-    /// while this very type is terminating applications, which is to say while
+    /// applications). All callers here are off it: the scan, each
+    /// quit and each poll of `waitUntilGone` run inside `offTheCooperativePool`
+    /// — while this very type is terminating applications, which is to say while
     /// that list is being mutated.
     ///
     /// The hop lives here rather than at the call sites because this is the

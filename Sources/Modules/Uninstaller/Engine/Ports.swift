@@ -58,6 +58,12 @@ public protocol AppLister: Sendable {
     /// deleted — is `[]` and not nil: nothing in it is the true answer for that
     /// one, and it must not be reported as a missing permission.
     func trashedApps() -> [TrashedApp]?
+
+    /// Whether the Trash can be read at all — the one question the switch asks on
+    /// a press, answered without opening a single bundle. Not readable is a refused
+    /// read (Full Disk Access); a Trash that is not there is readable and empty,
+    /// the same split `trashedApps()` makes.
+    func trashIsReadable() -> Bool
 }
 
 extension AppLister {
@@ -70,6 +76,9 @@ extension AppLister {
     /// Nothing, for a lister that only knows what is installed — an answer, since
     /// such a lister is not the one being refused a read.
     func trashedApps() -> [TrashedApp]? { [] }
+
+    /// What `trashedApps()` says, so a lister that only lists keeps its answer.
+    func trashIsReadable() -> Bool { trashedApps() != nil }
 
     /// No dates, for a lister that only lists — an answer, "no record".
     func lastOpened(path: String) -> Date? { nil }

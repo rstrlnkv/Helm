@@ -69,11 +69,17 @@ final class TrashArrivalTests: XCTestCase {
         XCTAssertFalse(TrashArrival.namesAnApp([], trash: trash))
     }
 
-    /// The volume is case-insensitive by default, so `.App` names the same
-    /// bundle `.app` does and the arrival wakes the sweep, which filters on
-    /// `app` as spelled and lists none.
-    func testExtensionCaseDoesNotDecide() {
-        XCTAssertTrue(TrashArrival.namesAnApp(["/Users/ann/.Trash/Notes Pro.App"], trash: trash))
+    /// The sweep filters on `app` as spelled and lists no `.App`, so waking it
+    /// for one is a scan that finds nothing.
+    func testExtensionIsComparedAsSpelled() {
+        XCTAssertFalse(TrashArrival.namesAnApp(["/Users/ann/.Trash/Notes Pro.App"], trash: trash))
+    }
+
+    /// Only the extension `app` names a bundle: a name that merely ends in the
+    /// letters, or starts its extension with them, is an ordinary file.
+    func testOnlyTheExtensionAppNamesABundle() {
+        XCTAssertFalse(TrashArrival.namesAnApp(["/Users/ann/.Trash/myapp"], trash: trash))
+        XCTAssertFalse(TrashArrival.namesAnApp(["/Users/ann/.Trash/Notes Pro.application"], trash: trash))
     }
 
     /// A trailing slash is how a directory path arrives from some APIs, and it

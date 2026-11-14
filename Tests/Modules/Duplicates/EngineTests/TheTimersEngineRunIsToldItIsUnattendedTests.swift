@@ -2,10 +2,6 @@ import HelmRuntime
 import XCTest
 @testable import Module_Duplicates_Engine
 
-private struct TestKey: SealKeyPort {
-    func key() -> SealKey? { SealKey(material: Data(repeating: 0x11, count: 32), firstUse: true) }
-}
-
 /// `TheTimersWalkStaysOutOfTheLibraryTests` drives the scanner, so it is green
 /// whatever the engine tells the scanner. This one goes through `backgroundScan`
 /// and asks what the engine asked for: a walk nobody watches stops at the
