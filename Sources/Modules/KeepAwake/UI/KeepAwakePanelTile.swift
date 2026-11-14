@@ -387,24 +387,18 @@ struct KeepAwakePanelTile: View {
     /// for: one number, so the two cannot drift apart.
     private static let extraMinutes = 15
 
-    /// The longest timer this tile offers, for the typed entry and for the
-    /// stored choice alike. Neither needs a floor: both are read behind a
-    /// `> 0`, where anything smaller already means "nothing chosen" rather
-    /// than a duration.
-    private static let maxCustomMinutes = 720
-
     /// The duration the tile opens on: the last panel choice, otherwise the
     /// module's default duration (0 = indefinite, which isn't a timer value)
     /// and finally 30.
     ///
     /// The remembered value is capped here, where it is read, to what the tile
-    /// itself can produce (`maxCustomMinutes`), so a hand-edited `Int.max` in
+    /// itself can produce (`TimerPolicy.longestSessionMinutes`), so a hand-edited `Int.max` in
     /// the plist reaches the engine as that; `startSession` clamps again before
     /// its `minutes * 60`. It goes straight into `vm.start(minutes:)`. The key is the tile's own and the engine never reads it, which is why it
     /// stays out of the settings type; that is about who reads it, not about
     /// whether the file can be trusted.
     ///
-    /// The ceiling is this tile's, not the settings type's day: the entry below
+    /// The ceiling is the one the page and `startSession` use: the entry below
     /// caps at the same number, so nothing that can be typed here is above it.
     /// The module's default arrives already clamped by `KeepAwakeSettings` and
     /// is taken as it comes — narrowing it again here would be the tile
@@ -413,7 +407,7 @@ struct KeepAwakePanelTile: View {
         let remembered = store.int(panelTimerMinutes, default: 0)
         let fallback = KeepAwakeSettings(store: store).defaultDurationMinutes
         return remembered > 0
-            ? min(remembered, maxCustomMinutes)
+            ? min(remembered, TimerPolicy.longestSessionMinutes)
             : (fallback > 0 ? fallback : 30)
     }
 
@@ -424,16 +418,13 @@ struct KeepAwakePanelTile: View {
 
     /// Free-form duration entry, opened from the menu's «Other…» entry: the
     /// field the settings page draws, in the prompt both surfaces share.
-    private var customTimeEditor: some View {
+    var customTimeEditor: KeepAwakeCustomDuration {
         // Unlike the page's, this number is a *setting* — what the Start
         // button starts next time — so zero is not «Indefinite» here, it is a
         // duration the tile could not act on; the prompt disables its verb at 0,
         // so `applyCustomTime` is never reached with it.
-        HelmDurationPrompt(KAStr.customTimeTitle, minutes: $editedMinutes,
-                           ceiling: Self.maxCustomMinutes,
-                           hourLabel: KAStr.hoursUnitShort,
-                           minuteLabel: KAStr.minutesUnitShort,
-                           verb: KAStr.done, apply: applyCustomTime)
+        KeepAwakeCustomDuration(minutes: $editedMinutes, verb: KAStr.done,
+                                apply: applyCustomTime)
     }
 
     private func applyCustomTime() {

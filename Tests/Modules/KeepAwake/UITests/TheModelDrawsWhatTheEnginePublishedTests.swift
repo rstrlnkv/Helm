@@ -8,7 +8,7 @@ import HelmRuntime
 /// are; a model that dropped either would draw every rule as «Not applying».
 /// One inert stand-in for every port: the engine under test only has to hold
 /// the Mac for an app rule, which needs a running app and nothing else.
-private final class Inert: SleepAssertions, DisplayInfoPort, PowerInfoPort, LidInfoPort,
+final class Inert: SleepAssertions, DisplayInfoPort, PowerInfoPort, LidInfoPort,
                             DisplayObserverPort, AppRunningPort, PointerPort, ClamshellPort,
                             Clock, @unchecked Sendable {
     var running: Set<String> = []

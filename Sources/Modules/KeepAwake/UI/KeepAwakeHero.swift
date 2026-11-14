@@ -630,16 +630,13 @@ struct KeepAwakeHero: View {
     /// One box asking for minutes would make «two hours» a sum the person has
     /// to do — and a box holding `120` reads the same as one holding `12`. `HelmDurationField` is the Clock shape: a column per unit, the
     /// abbreviation above the figure.
-    private var customTimeEditor: some View {
+    var customTimeEditor: KeepAwakeCustomDuration {
         // Zero minutes is «Indefinite», and that word is the button beside
         // «Other…». A field showing 00:00 offering to start something would
         // be this screen giving one choice two names; the prompt disables its
         // verb at 0.
-        HelmDurationPrompt(KAStr.customTimeTitle, minutes: $customMinutes,
-                           ceiling: TimerPolicy.longestSessionMinutes,
-                           hourLabel: KAStr.hoursUnitShort,
-                           minuteLabel: KAStr.minutesUnitShort,
-                           verb: KAStr.start, apply: applyCustomTime)
+        KeepAwakeCustomDuration(minutes: $customMinutes, verb: KAStr.start,
+                                apply: applyCustomTime)
     }
 
     /// `HelmDurationField` has already clamped to the same ceiling
