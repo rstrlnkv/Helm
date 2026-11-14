@@ -75,7 +75,7 @@ public struct HelmAppRuleRow<Controls: View, Note: View>: View {
 /// under a list — the button that removes the *selected* row — and there is one of these per row, which is the other
 /// gesture entirely. `label` is what VoiceOver reads, as given.
 public struct HelmRemoveButton: View {
-    let label: String
+    public let label: String
     let target: CGFloat?
     let action: () -> Void
     /// `target` is the side of a square hit area round the cross, for a page whose pointer has to hit a glyph a few

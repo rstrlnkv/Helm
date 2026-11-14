@@ -1,6 +1,6 @@
 import HelmContract
 import HelmRuntime
-import HelmUI
+@testable import HelmUI
 import SwiftUI
 import XCTest
 @testable import HelmApp

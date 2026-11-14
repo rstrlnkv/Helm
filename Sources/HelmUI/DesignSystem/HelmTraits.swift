@@ -31,9 +31,9 @@ import SwiftUI
 public struct HelmAccessibility: Equatable, Sendable {
     public var increasedContrast: Bool
     public var reducedTransparency: Bool
-    public var reducedMotion: Bool
+    var reducedMotion: Bool
 
-    public init(increasedContrast: Bool, reducedTransparency: Bool, reducedMotion: Bool) {
+    init(increasedContrast: Bool, reducedTransparency: Bool, reducedMotion: Bool) {
         self.increasedContrast = increasedContrast
         self.reducedTransparency = reducedTransparency
         self.reducedMotion = reducedMotion
@@ -60,17 +60,17 @@ public struct HelmAccessibility: Equatable, Sendable {
 /// What a kit view needs to know to pick a token: light or dark, and the three
 /// accessibility settings. Read from `\.helmTraits`.
 public struct HelmTraits: Equatable, Sendable {
-    public let scheme: ColorScheme
-    public let accessibility: HelmAccessibility
+    let scheme: ColorScheme
+    let accessibility: HelmAccessibility
 
     public var increasedContrast: Bool { accessibility.increasedContrast }
-    public var reducedMotion: Bool { accessibility.reducedMotion }
+    var reducedMotion: Bool { accessibility.reducedMotion }
 }
 
-public extension EnvironmentValues {
-    @Entry var helmAccessibility: HelmAccessibility = .system
+extension EnvironmentValues {
+    @Entry public var helmAccessibility: HelmAccessibility = .system
 
-    var helmTraits: HelmTraits { HelmTraits(scheme: colorScheme, accessibility: helmAccessibility) }
+    public var helmTraits: HelmTraits { HelmTraits(scheme: colorScheme, accessibility: helmAccessibility) }
 }
 
 extension View {

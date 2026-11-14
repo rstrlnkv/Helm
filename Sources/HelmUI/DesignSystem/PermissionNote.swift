@@ -50,10 +50,10 @@ public struct HelmPermissionNote: View {
     }
 }
 
-public extension View {
+extension View {
     /// Runs when Helm comes back to the front — the moment to re-read anything
     /// the user may have changed in System Settings while away.
-    func helmOnAppActive(_ action: @escaping () -> Void) -> some View {
+    public func helmOnAppActive(_ action: @escaping () -> Void) -> some View {
         onReceive(NotificationCenter.default.publisher(
             for: NSApplication.didBecomeActiveNotification)) { _ in action() }
     }
@@ -70,7 +70,7 @@ public extension View {
     /// Synchronous, unlike the disk probe: `AXIsProcessTrusted()` is one
     /// non-blocking call and needs no hop, so the answer is there on the first
     /// frame rather than one later.
-    func helmTracksAccessibility(_ state: Binding<PermissionState>,
+    public func helmTracksAccessibility(_ state: Binding<PermissionState>,
                                  alsoOn extra: Notification.Name? = nil) -> some View {
         modifier(HelmAccessibilityTracker(state: state, extra: extra))
     }
@@ -87,7 +87,7 @@ public extension View {
     /// The probe is `PermissionCheck.fullDiskAccess()`, which is four blocking
     /// file reads and says at its own declaration why it does them off the
     /// cooperative pool.
-    func helmTracksFullDiskAccess(_ state: Binding<PermissionState>,
+    public func helmTracksFullDiskAccess(_ state: Binding<PermissionState>,
                                   alsoOn extra: Notification.Name? = nil) -> some View {
         modifier(HelmFullDiskTracker(state: state, extra: extra))
     }
@@ -100,7 +100,7 @@ public extension View {
     /// Synchronous like Accessibility's, for the same reason: the probe is
     /// `CGPreflightScreenCaptureAccess`, one non-blocking call that answers from
     /// the process's own grant and raises no dialog.
-    func helmTracksScreenRecording(_ state: Binding<PermissionState>,
+    public func helmTracksScreenRecording(_ state: Binding<PermissionState>,
                                    alsoOn extra: Notification.Name? = nil) -> some View {
         modifier(HelmScreenRecordingTracker(state: state, extra: extra))
     }

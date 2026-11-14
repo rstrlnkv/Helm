@@ -55,8 +55,8 @@ import SwiftUI
 /// the list and the rows above it drift apart the day one of them moves. Nothing is measured
 /// at run time: the number is declared, so there is no reading that can be
 /// stale and no second view to keep in step with the list.
-public extension View {
-    func helmStripedList(rowPitch: CGFloat) -> some View {
+extension View {
+    public func helmStripedList(rowPitch: CGFloat) -> some View {
         modifier(HelmStripedListModifier(rowPitch: rowPitch))
     }
 }

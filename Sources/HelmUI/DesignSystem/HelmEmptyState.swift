@@ -100,14 +100,14 @@ public struct HelmEmptyState<Actions: View>: View {
     private static var textWidth: CGFloat { 380 }
 }
 
-public extension HelmEmptyState where Actions == EmptyView {
+extension HelmEmptyState where Actions == EmptyView {
     /// A statement: nothing matched, nothing is left. No button — one here
     /// would invite somebody to repeat what just came back empty.
     ///
     /// The symbol is optional even so: "nothing was found" after a scan has
     /// earned a green check, while "type to search" is a caption and drawing a
     /// plate above it would announce an outcome where none happened yet.
-    init(symbol: String? = nil, tint: Color = .secondary,
+    public init(symbol: String? = nil, tint: Color = .secondary,
          title: String? = nil, message: String, note: String? = nil) {
         self.init(symbol: symbol, tint: tint, title: title,
                   message: message, note: note) { EmptyView() }
@@ -156,10 +156,10 @@ public struct HelmBusyState<Actions: View>: View {
     }
 }
 
-public extension HelmBusyState where Actions == EmptyView {
+extension HelmBusyState where Actions == EmptyView {
     /// Waiting with nothing to be done about it — a spinner, or a spinner and a
     /// line saying what is being waited for.
-    init(_ message: String? = nil) {
+    public init(_ message: String? = nil) {
         self.init(message) { EmptyView() }
     }
 }

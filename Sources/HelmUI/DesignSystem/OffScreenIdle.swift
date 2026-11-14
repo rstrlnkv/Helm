@@ -62,21 +62,21 @@ private struct OffScreenIdle: ViewModifier {
     }
 }
 
-public extension View {
+extension View {
     /// The subtree is unmounted while its window is off screen, and rebuilt
     /// from current state when the window returns. See `OffScreenIdle`.
-    func helmIdlesOffScreen() -> some View {
+    public func helmIdlesOffScreen() -> some View {
         modifier(OffScreenIdle())
     }
 }
 
-public extension EnvironmentValues {
+extension EnvironmentValues {
     /// A window that never orders in but must draw anyway — a render harness's
     /// declaration, never set in the app.
     @Entry var helmTreatsWindowAsSeen: Bool = false
 }
 
-public extension View {
+extension View {
     /// The declaration every render harness makes, in one spelling: this
     /// subtree sits on a measuring bench whose window never orders in, and it
     /// must draw anyway. Also what keeps `ImageRenderer` benches working — a

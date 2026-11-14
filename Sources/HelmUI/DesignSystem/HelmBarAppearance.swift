@@ -45,20 +45,20 @@ public enum HelmBarAppearance: String, CaseIterable, Sendable {
     }
 }
 
-public extension Notification.Name {
-    static let helmBarAppearanceChanged = Notification.Name("helmBarAppearanceChanged")
+extension Notification.Name {
+    public static let helmBarAppearanceChanged = Notification.Name("helmBarAppearanceChanged")
 }
 
-public extension EnvironmentValues {
+extension EnvironmentValues {
     /// `liquidGlass`, not the stored default: see `HelmBarAppearance`.
-    @Entry var helmBarAppearance: HelmBarAppearance = .liquidGlass
+    @Entry public var helmBarAppearance: HelmBarAppearance = .liquidGlass
 }
 
-public extension View {
+extension View {
     /// Sets `helmBarAppearance` from `current` and again whenever `.helmBarAppearanceChanged` is posted. It is
     /// set only at the settings pane's root. No new identity: the page below is not
     /// rebuilt for a look it does not draw.
-    func helmTracksBarAppearance(_ current: @escaping () -> HelmBarAppearance) -> some View {
+    public func helmTracksBarAppearance(_ current: @escaping () -> HelmBarAppearance) -> some View {
         modifier(HelmBarAppearanceTracker(current: current))
     }
 }

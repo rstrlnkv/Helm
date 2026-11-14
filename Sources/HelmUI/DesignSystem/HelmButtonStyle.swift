@@ -80,14 +80,14 @@ struct HelmButtonStyle: ButtonStyle {
 }
 
 private extension EnvironmentValues {
-    @Entry var helmCapsuleButtons = false
-    @Entry var helmChosen = false
+    @Entry public var helmCapsuleButtons = false
+    @Entry public var helmChosen = false
 }
 
-public extension View {
+extension View {
     /// Plain buttons inside this view are capsules instead of rounded wells — `HelmButtonStyle` → the capsule variant.
-    func helmCapsuleButtons() -> some View { environment(\.helmCapsuleButtons, true) }
+    public func helmCapsuleButtons() -> some View { environment(\.helmCapsuleButtons, true) }
 
     /// This button is the chosen one of its row: the accent wash for its well — `HelmButtonStyle` → the chosen well.
-    func helmChosen(_ chosen: Bool) -> some View { environment(\.helmChosen, chosen) }
+    public func helmChosen(_ chosen: Bool) -> some View { environment(\.helmChosen, chosen) }
 }

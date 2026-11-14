@@ -3,7 +3,7 @@ import CoreGraphics
 import Foundation
 import HelmRuntime
 import HelmTestSupport
-import HelmUI
+@testable import HelmUI
 import ImageIO
 import SwiftUI
 import XCTest

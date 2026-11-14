@@ -1,6 +1,6 @@
 import SwiftUI
 
-public extension View {
+extension View {
     /// The kit's part of a hosting root: the roots of the Settings window, `HostWindow.present`, the
     /// menu-bar panel and Screenshots' after-shot window carry it. The environment stops at each root (an `NSHostingView` or
     /// `NSHostingController` starts a fresh one), so a root that lacks it draws its plain `Button`s and
@@ -10,7 +10,7 @@ public extension View {
     ///
     /// - the accessibility tracker (`helmTracksAccessibilityDisplay()`), which keeps `\.helmTraits` current;
     /// - `HelmButtonStyle` and `HelmToggleStyle`. A style set on the control itself wins over these.
-    func helmRoot() -> some View {
+    public func helmRoot() -> some View {
         helmTracksAccessibilityDisplay()
             .buttonStyle(HelmButtonStyle())
             .toggleStyle(HelmToggleStyle())

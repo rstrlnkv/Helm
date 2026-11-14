@@ -3,9 +3,9 @@ import AppKit
 import Carbon.HIToolbox
 import HelmRuntime
 
-public extension Notification.Name {
+extension Notification.Name {
     /// Posted when any global shortcut changes, so the host re-registers.
-    static let helmHotkeyChanged = Notification.Name("helmHotkeyChanged")
+    public static let helmHotkeyChanged = Notification.Name("helmHotkeyChanged")
 }
 
 /// Records one global shortcut into a module's store.
@@ -15,7 +15,7 @@ public extension Notification.Name {
 /// The three keys are `<prefix>KeyCode`, `<prefix>Modifiers`, `<prefix>Label`.
 @MainActor public final class HelmHotkeyRecorder: ObservableObject {
     @Published public private(set) var label: String
-    @Published public private(set) var recording = false
+    @Published private(set) var recording = false
 
     private let store: NamespacedStore
     private let prefix: String
@@ -138,10 +138,10 @@ public extension Notification.Name {
     }
 }
 
-public extension HelmHotkeyRecorder {
+extension HelmHotkeyRecorder {
     /// A recorder over a store that dies with it, for a view that shows the row and keeps nothing: the showcase
     /// stores nothing and cannot name `HelmRuntime`'s store. Nothing in the product calls it.
-    static func unsaved(label: String?) -> HelmHotkeyRecorder {
+    public static func unsaved(label: String?) -> HelmHotkeyRecorder {
         HelmHotkeyRecorder(store: NamespacedStore(namespace: "app", backing: InMemoryKeyValueStore()),
                            prefix: "row", fallbackLabel: label)
     }

@@ -23,7 +23,7 @@ import SwiftUI
 /// one reading and a band drawn from another is a page with two bands or none.
 public struct HelmBandChoice: Equatable, Sendable {
     /// Helm's own light on the header row (`HelmPageHeader`).
-    public let pageHeaderBand: Bool
+    let pageHeaderBand: Bool
 
     /// **The owner's answer (2026-09-27): on macOS 26 the system's edge
     /// everywhere** — the header drawn in the page gives up Helm's band there
@@ -42,9 +42,9 @@ public struct HelmBandChoice: Equatable, Sendable {
     public static let running = onMacOS(ProcessInfo.processInfo.operatingSystemVersion.majorVersion)
 }
 
-public extension EnvironmentValues {
+extension EnvironmentValues {
     /// The band decision the views below draw by. `SettingsWindow` sets its
     /// own; a view outside it — a sheet, another window — reads the running
     /// system's.
-    @Entry var helmBandChoice: HelmBandChoice = .running
+    @Entry public var helmBandChoice: HelmBandChoice = .running
 }

@@ -56,7 +56,7 @@ public struct HelmExplainer: View {
     /// without a name that can drift from the control it explains.
     public struct Content: Equatable {
         public let title: String
-        public let blocks: [Block]
+        let blocks: [Block]
 
         public init(title: String, blocks: [Block]) {
             self.title = title
@@ -82,7 +82,7 @@ public struct HelmExplainer: View {
     /// show and hide answers its own press with silence otherwise.
     @State private var open = false
 
-    public init(_ content: Content) {
+    init(_ content: Content) {
         self.content = content
     }
 

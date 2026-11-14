@@ -15,7 +15,7 @@ import SwiftUI
 public struct HelmToolbarTab {
     /// Stable, and the value a segment's selection is compared against — not
     /// an index, which a tab list that ever reorders would silently mis-read.
-    public let id: String
+    let id: String
     /// Localised already: every string that reaches a person in this app is
     /// looked up once, at the page; `HelmHeaderTabs` draws `title` and speaks it to
     /// VoiceOver as it is given and looks nothing up.
@@ -23,9 +23,9 @@ public struct HelmToolbarTab {
     /// **A dot on the tab: this tab has something to say that the page below it does not shout.** False for every
     /// tab that has nothing, so the pages that never say it draw as before. The tabs draw the dot beside the word
     /// (`HelmHeaderTabs`). The page switches it by the same reading its own rows say the thing from, or the dot and the tab say different things.
-    public let needsAttention: Bool
+    let needsAttention: Bool
     /// What the dot says, localised already, for VoiceOver (the tab's accessibility value); nil is the dot alone.
-    public let attentionNote: String?
+    let attentionNote: String?
 
     public init(id: String, title: String, needsAttention: Bool = false, attentionNote: String? = nil) {
         self.id = id
@@ -40,11 +40,11 @@ public struct HelmToolbarTab {
 /// `perform`: Leftovers' kind filter is the first caller, one checkmark per
 /// `StaleKind`.
 public struct HelmToolbarMenuItem {
-    public let id: String
+    let id: String
     public let title: String
-    public let isOn: Bool
-    public let isEnabled: Bool
-    public let perform: () -> Void
+    let isOn: Bool
+    let isEnabled: Bool
+    let perform: () -> Void
 
     public init(id: String, title: String, isOn: Bool, isEnabled: Bool = true,
                 perform: @escaping () -> Void) {
@@ -63,9 +63,9 @@ public struct HelmToolbarMenuItem {
 /// accessibility value, which a glyph swap alone does not say to VoiceOver.
 /// Closure-free on purpose, so it stays `Equatable`.
 public struct HelmToolbarToggleFace: Equatable, Sendable {
-    public let offSymbol: String
-    public let onValue: String
-    public let offValue: String
+    let offSymbol: String
+    let onValue: String
+    let offValue: String
 
     public init(offSymbol: String, onValue: String, offValue: String) {
         self.offSymbol = offSymbol
@@ -89,30 +89,30 @@ public struct HelmToolbarAction {
     /// `perform` at all, only the items inside it, each with its own — so a
     /// menu that is also a toggle, or a toggle with a submenu, cannot be
     /// written down.
-    public enum Kind {
+    enum Kind {
         case button(() -> Void)
         case toggle(isOn: Bool, () -> Void)
         case menu([HelmToolbarMenuItem])
     }
 
-    public let id: String
+    let id: String
     /// Said in the tooltip and in the accessibility label — a glyph-only
     /// control has no other name.
     public let title: String
-    public let symbol: String
+    let symbol: String
     /// **Dimmed while it stays in the row, and inapplicable *there* rather
     /// than inapplicable everywhere.** An action a page shows on only some of
     /// its own tabs is out of the row's visible set on the rest
     /// (`isVisible`), and on the tab where it belongs it is dimmed
     /// until it can act.
-    public let isEnabled: Bool
+    let isEnabled: Bool
     /// **Whether this action belongs on the tab currently showing at all.**
     /// `true` for an action every tab offers (Homebrew's Refresh); `false`
     /// does not draw a button for it — the row still
     /// reserves its width from the *declared* set regardless, which is
     /// what keeps every other button still when this one appears or
     /// disappears (`HelmHeaderActions`).
-    public let isVisible: Bool
+    let isVisible: Bool
     /// Spinning in the row while `true` — `.helmSteadySpin`, which
     /// already honours Reduce Motion (`HelmMotion.swift`). Only the plain
     /// `.button` initializer below takes this as a parameter: a toggle's own
@@ -120,11 +120,11 @@ public struct HelmToolbarAction {
     /// whose state a spin would report on either, so both initializers below
     /// leave it `false` and there is no way to write a spinning toggle or
     /// menu down at all.
-    public let isBusy: Bool
-    public let kind: Kind
+    let isBusy: Bool
+    let kind: Kind
     /// Set only by the toggle initializer that takes one; nil for every other
     /// action, which draws exactly as it did before there was a face.
-    public let toggleFace: HelmToolbarToggleFace?
+    let toggleFace: HelmToolbarToggleFace?
 
     /// A plain button: a `perform` and nothing else. A toggle and a menu take the initializers below.
     public init(id: String, title: String, symbol: String, isEnabled: Bool = true,
@@ -176,9 +176,9 @@ public struct HelmToolbarAction {
 /// is what makes that true on the AppKit side, so nothing here has to filter
 /// keystrokes itself.
 public struct HelmToolbarSearch {
-    public let prompt: String
-    public var text: Binding<String>
-    public let onSubmit: (() -> Void)?
+    let prompt: String
+    var text: Binding<String>
+    let onSubmit: (() -> Void)?
 
     public init(prompt: String, text: Binding<String>, onSubmit: (() -> Void)? = nil) {
         self.prompt = prompt
@@ -224,9 +224,9 @@ public struct HelmPageToolbarContent {
     /// **Dims the whole tab strip** — Uninstaller's during its review step, so
     /// far the one caller — rather than any one tab: per-tab disabling was
     /// never asked for, so there is nothing here to disable a tab by.
-    public var tabsEnabled: Bool
+    var tabsEnabled: Bool
     public var actions: [HelmToolbarAction]
-    public var search: HelmToolbarSearch?
+    var search: HelmToolbarSearch?
     /// **Set only by a tab strip's owner, for pages that share one strip and put different things beside it**
     /// (the settings window's three): the widest run any of them declares. The row keeps at least that much
     /// room for the actions and the search, so the strip does not move from one page to the next. Nil for a
@@ -258,14 +258,14 @@ struct HelmPageToolbarKey: PreferenceKey {
     }
 }
 
-public extension View {
+extension View {
     /// **The one way a page's toolbar content reaches the window.**
     ///
     /// **Now a preference, read by the header row in the card** (`helmCardHeader`, `HelmPageHeader.swift`):
     /// the page sits in the same hosting view as the row, so what it declares travels up the tree and the row
     /// reads it with `overlayPreferenceValue`, which asks nothing of the value — a `perform` closure is never
     /// `Equatable`.
-    func helmWindowToolbar(_ content: HelmPageToolbarContent?) -> some View {
+    public func helmWindowToolbar(_ content: HelmPageToolbarContent?) -> some View {
         preference(key: HelmPageToolbarKey.self, value: content)
     }
 }

@@ -33,7 +33,7 @@ public enum HelmA11y {
     /// for this control, read out of its tables rather than translated: «More
     /// Info» is «Подробнее», «Weitere Infos», «En savoir plus», «Más
     /// información», «Mais informações», 「詳しい情報」, 「更多信息」.
-    public static var moreInfo: String {
+    static var moreInfo: String {
         L(.moreInfo)
     }
 
@@ -52,7 +52,7 @@ public enum HelmA11y {
     /// refused: `testOneEnglishTextIsOneWordAcrossEveryCatalog` fails on
     /// one English text under two symbols, and the eight translations of that
     /// one word are the word macOS itself uses for this control in each of them.
-    public static var searchField: String {
+    static var searchField: String {
         L(.search)
     }
 
@@ -63,13 +63,13 @@ public enum HelmA11y {
     /// entry of `SCRGeneral.loctable` in VoiceOver's ScreenReader.framework; zh is `zh_CN`, pt is `pt_BR`.
     /// The note variant below is not the system's `%@, %ld of %ld` (note first; ja `%1$@、%2$ld / %3$ld`):
     /// it keeps the position first, as the plain form does.
-    public static func position(_ n: Int, of m: Int,
+    static func position(_ n: Int, of m: Int,
                                 language: AppLanguage = AppLanguage.current) -> String {
         L(.rowPosition(String(n), String(m)), language: language)
     }
 
     /// The same with a note after it — a row that cannot act says why. `note` arrives already localized.
-    public static func position(_ n: Int, of m: Int, after note: String,
+    static func position(_ n: Int, of m: Int, after note: String,
                                 language: AppLanguage = AppLanguage.current) -> String {
         L(.rowPositionAfter(String(n), String(m), note), language: language)
     }
@@ -144,7 +144,7 @@ public enum HelmA11y {
     }
 }
 
-public extension View {
+extension View {
     /// Speaks `text` once, each time it becomes a new non-nil value.
     ///
     /// For a verdict that grows into a banner without moving focus or changing
@@ -152,7 +152,7 @@ public extension View {
     /// return's report — so it is not silent to them. Disk and Autopilot each
     /// spelled the same `onChange` around `HelmA11y.announce`; this is the one
     /// place it lives now.
-    func helmAnnounces(_ text: String?) -> some View {
+    public func helmAnnounces(_ text: String?) -> some View {
         onChange(of: text) { _, new in
             if let new { HelmA11y.announce(new) }
         }

@@ -180,8 +180,8 @@ struct HeaderEdgeLight: ViewModifier {
 /// What the module is doing, as the header row says it after the name: `word` is localised already,
 /// `active` picks the badge over the quiet word.
 public struct HelmHeaderStatus: Equatable, Sendable {
-    public let word: String
-    public let active: Bool
+    let word: String
+    let active: Bool
 
     public init(word: String, active: Bool) {
         self.word = word
@@ -297,7 +297,7 @@ public struct HelmPageHeader<Trailing: View>: View {
 
     let symbol: String
     let tint: Color
-    let title: String
+    public let title: String
     /// True for a page whose content spans the pane rather than sitting in the
     /// 744 pt form column. Which pages those are is a command and not a list
     /// here, because a list written into prose is wrong from the next commit:
@@ -361,7 +361,7 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// stays the scroll view's to report. `standsOnStillContent` is public
     /// above because a page that draws this header as a view — the log — has
     /// no `helmPageHeader` to declare it through.
-    init(symbol: String, tint: Color, title: String, bleeds: Bool,
+    public init(symbol: String, tint: Color, title: String, bleeds: Bool,
          overContent: Bool, scrolled: Bool, standsOnStillContent: Bool, status: HelmHeaderStatus? = nil,
          dimmed: Bool = false,
          @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
@@ -461,7 +461,7 @@ public struct HelmPageHeader<Trailing: View>: View {
     }
 }
 
-public extension View {
+extension View {
     /// Lays the page header **over** this page, and lets the page scroll under
     /// it.
     ///
@@ -486,7 +486,7 @@ public extension View {
     /// whether the page has scrolled under the row.
     /// A page mounted without it (a sheet, a page on its own) draws `HelmPageHeader` directly, which
     /// takes a `trailing` view of its own for that case (`AboutPage`'s `WhatsNewView`, its one caller today).
-    func helmPageHeader(
+    public func helmPageHeader(
         symbol: String, tint: Color, title: String, bleeds: Bool = false
     ) -> some View {
         modifier(PageHeaderPlacement(symbol: symbol, tint: tint, title: title,
@@ -575,7 +575,7 @@ private struct PageHeaderOverContent: ViewModifier {
     }
 }
 
-public extension View {
+extension View {
     /// **The header row in the card, over this page.** One row for every page of the settings window, drawn
     /// at the root of the detail pane so it keeps its identity across a page switch: the page's name and
     /// status on the left, on the right what the page declared through `helmWindowToolbar` — tabs, actions,
@@ -587,7 +587,7 @@ public extension View {
     /// (`LogView`'s Copy captures `page.lines`).
     ///
     /// The empty part of the row drags the window, since there is no title bar under it any more.
-    func helmCardHeader(symbol: String, tint: Color, title: String, status: HelmHeaderStatus?) -> some View {
+    public func helmCardHeader(symbol: String, tint: Color, title: String, status: HelmHeaderStatus?) -> some View {
         modifier(CardHeader(symbol: symbol, tint: tint, title: title, status: status))
     }
 }
@@ -654,26 +654,26 @@ private struct HelmHeaderControls: View {
     }
 }
 
-public extension EnvironmentValues {
+extension EnvironmentValues {
     /// Whether the window draws its chrome active — the window's own reading (`SettingsWindow`'s header above
     /// `windowDidBecomeKey`), not `\.controlActiveState`, which reads `.inactive` under a sheet where the
     /// window is still the active one. The header row and the sidebar's rows dim by it; a view outside the settings window reads true.
-    @Entry var helmWindowAppearsActive = true
+    @Entry public var helmWindowAppearsActive = true
 }
 
-public extension EnvironmentValues {
+extension EnvironmentValues {
     /// **True where the window's card draws the page's header row** — the settings window sets it; a sheet or a
     /// test mounting a page on its own leaves it false. Then `helmPageHeader` draws the page's own header
     /// row in the page (`PageHeaderPlacement`), `helmPageBar` is inert, and a page that draws its own row
     /// reads this itself (`LogView`).
-    @Entry var helmHeaderInCard: Bool = false
+    @Entry public var helmHeaderInCard: Bool = false
 }
 
 /// What the page asks the window to call it. The window, not the page, owns its title: the settings window
 /// reads this and sets it on the `NSWindow` itself.
 public struct HelmPageTitle: Equatable, Sendable {
     public let title: String
-    public init(title: String) { self.title = title }
+    init(title: String) { self.title = title }
 }
 
 public struct HelmPageTitleKey: PreferenceKey {
@@ -700,16 +700,16 @@ struct HelmPageStandsOnStillContentKey: PreferenceKey {
     static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
 }
 
-public extension View {
+extension View {
     /// Declares that this page's content under the header row is still, not a scroll view
     /// (`HelmPageStandsOnStillContentKey`).
-    func helmPageStandsOnStillContent() -> some View {
+    public func helmPageStandsOnStillContent() -> some View {
         preference(key: HelmPageStandsOnStillContentKey.self, value: true)
     }
 
     /// What the page says to the window's card: its name, and whether its scroll view has moved. Inert where no
     /// card draws the header (`helmHeaderInCard`).
-    func helmPageBar(title: String) -> some View {
+    public func helmPageBar(title: String) -> some View {
         modifier(PageBarContent(title: title))
     }
 }

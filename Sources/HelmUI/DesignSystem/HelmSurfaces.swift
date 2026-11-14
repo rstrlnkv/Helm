@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-public extension View {
+extension View {
     /// The edge of a **preview picture** — a drawn thumbnail of what a setting
     /// does: clipped to the control corner, with a hairline all round.
     ///
@@ -12,7 +12,7 @@ public extension View {
     /// between the two places these are drawn: a row of them to choose from
     /// (`HelmChoiceCards`) and a single one beside the control that sets it
     /// (VPN's notices popover).
-    func helmPreviewEdge(chosen: Bool = false) -> some View {
+    public func helmPreviewEdge(chosen: Bool = false) -> some View {
         clipShape(RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
@@ -27,7 +27,7 @@ public extension View {
     /// sections, which the system draws as a plain fill and which we cannot
     /// restyle — so an outlined card of our own would read as a different kind
     /// of box on the next page over. The system's treatment is the anchor.
-    func helmCard(padding: CGFloat = 14) -> some View {
+    public func helmCard(padding: CGFloat = 14) -> some View {
         self
             .padding(padding)
             .background(
@@ -242,9 +242,9 @@ public struct HelmMetricStrip: View {
         /// model state, and a new identity on every publish made `ForEach` tear
         /// down and re-create every cell instead of updating it.
         public var id: String { label }
-        public let value: String
+        let value: String
         public let label: String
-        public let tint: Color?
+        let tint: Color?
 
         public init(_ value: String, _ label: String, tint: Color? = nil) {
             self.value = value

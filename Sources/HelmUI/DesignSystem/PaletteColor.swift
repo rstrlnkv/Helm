@@ -55,7 +55,7 @@ public enum PaletteColor: String, CaseIterable, Sendable {
         }
     }
 
-    public var color: Color {
+    var color: Color {
         // Not `.white`: on a light card that is 1.06:1 against the paper, held
         // apart only by a hairline ring. The lightest *grey*, `#f1f1f7`, the same
         // in both appearances because it stands for «no tint» rather than for a colour.

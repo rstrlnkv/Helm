@@ -45,13 +45,13 @@ public struct HelmSettingsSection<Content: View>: View {
     }
 }
 
-public extension View {
+extension View {
     /// A `.menu` `Picker` outside a grouped `Form`, borderless: the value and a bare chevron, 16 pt tall, the
     /// chevron's ink ending 7.5 pt inside the frame. The Form draws a 24 pt control with a round chevron well;
     /// that well has no public spelling, so this is an approximation, not the system's own. For a picker inside
     /// `HelmSettingsSection`, which cannot do it itself: a style set on the section does not reach a `Picker`
     /// (`.menuStyle(.borderlessButton)` and a custom `MenuStyle` do nothing on one), so each picker asks.
-    func helmSectionMenu() -> some View {
+    public func helmSectionMenu() -> some View {
         buttonStyle(.borderless)
     }
 }

@@ -10,9 +10,9 @@ import HelmRuntime
 /// work. This says what stayed, and why, in the module's own words.
 public struct HelmRemovalFailure: Identifiable, Equatable, Sendable {
     public var id: String { path }
-    public let path: String
+    let path: String
     /// The reason in the user's language, supplied by the module.
-    public let reason: String
+    let reason: String
 
     public init(path: String, reason: String) {
         self.path = path

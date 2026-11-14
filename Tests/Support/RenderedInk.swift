@@ -1,6 +1,6 @@
 import AppKit
 import SwiftUI
-import HelmUI
+@testable import HelmUI
 
 /// A view mounted the way AppKit needs it before it will draw anything, in a
 /// named appearance.

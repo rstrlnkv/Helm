@@ -7,10 +7,10 @@ import Foundation
 /// `SidebarLayout` speaks in sections and knows nothing about rows. Everything
 /// that translates between the two lives here — the list itself only reports
 /// *which row* and *which index*.
-public extension SidebarLayout {
+extension SidebarLayout {
 
     /// One line of the list: a section's heading, or a module inside one.
-    enum Row: Equatable, Identifiable, Sendable {
+    public enum Row: Equatable, Identifiable, Sendable {
         case section(String)
         case module(String, in: String)
 
@@ -27,7 +27,7 @@ public extension SidebarLayout {
     /// An empty section is still one row. It has to be: without a heading there
     /// is nothing to drop the first module onto, and a section somebody just
     /// made is empty by definition.
-    var flattened: [Row] {
+    public var flattened: [Row] {
         sections.flatMap { section in
             [Row.section(section.id)] + section.modules.map { Row.module($0, in: section.id) }
         }
@@ -35,7 +35,7 @@ public extension SidebarLayout {
 
     /// The layout after `row` is dropped with the insertion indicator above
     /// `flatIndex`. `flatIndex == flattened.count` is a drop past the last row.
-    func applyingDrag(of row: Row, toFlatIndex flatIndex: Int) -> SidebarLayout {
+    public func applyingDrag(of row: Row, toFlatIndex flatIndex: Int) -> SidebarLayout {
         switch row {
         case .module(let module, _): return droppingModule(module, at: flatIndex)
         case .section(let section): return droppingSection(section, at: flatIndex)

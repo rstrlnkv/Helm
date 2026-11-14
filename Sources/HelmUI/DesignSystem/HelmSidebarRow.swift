@@ -18,7 +18,7 @@ public struct HelmSidebarRow: View {
     /// read after the row's position, which names no subject of its own.
     public struct Warning {
         public let mark: String
-        public let spoken: String
+        let spoken: String
 
         public init(mark: String, spoken: String) {
             self.mark = mark
@@ -28,8 +28,8 @@ public struct HelmSidebarRow: View {
 
     /// Where the row stands among the rows of the column, `index` from 1.
     public struct Position {
-        public let index: Int
-        public let count: Int
+        let index: Int
+        let count: Int
 
         public init(index: Int, count: Int) {
             self.index = index

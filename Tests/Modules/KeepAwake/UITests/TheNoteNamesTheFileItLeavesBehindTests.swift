@@ -1,5 +1,5 @@
 import HelmTestSupport
-import HelmUI
+@testable import HelmUI
 import XCTest
 @testable import Module_KeepAwake_Engine
 @testable import Module_KeepAwake_UI

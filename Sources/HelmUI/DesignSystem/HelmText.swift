@@ -52,7 +52,7 @@ public enum HelmText {
     /// What a window that is not the active one draws its text and glyphs at (`\.helmWindowAppearsActive`):
     /// the header row and the sidebar's rows. Not a reading floor — it says "this window is not in
     /// front", as System Settings' sidebar does; the fill under it stays.
-    public static let inactiveOpacity = 0.6
+    static let inactiveOpacity = 0.6
     /// Captions that must recede and stay readable — short, and never the only
     /// place a fact appears. 4.77:1 / 5.92:1.
     ///
@@ -185,9 +185,9 @@ public enum HelmText {
     public static let code = Font.system(.subheadline, design: .monospaced)
 }
 
-public extension View {
+extension View {
     /// A figure, in the one face figures are set in. See `HelmText.figureFont`.
-    func helmFigure() -> some View {
+    public func helmFigure() -> some View {
         font(HelmText.figureFont)
             // Digits that change in place must not shift the ones beside them:
             // a size in a list is refreshed while the pointer is over it.
@@ -200,7 +200,7 @@ public extension View {
     /// column that a language widens — «1,2 ГБ» against "1.2 GB" — and one
     /// that wrapped instead of shrinking would take the tile beside it down
     /// with it.
-    func helmMetricFigure() -> some View {
+    public func helmMetricFigure() -> some View {
         font(HelmText.metricFont)
             .lineLimit(1)
             .minimumScaleFactor(0.6)

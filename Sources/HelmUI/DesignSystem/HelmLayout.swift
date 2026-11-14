@@ -19,12 +19,12 @@ import SwiftUI
 /// other half of the lesson is that *widening* the scroller is not the repair:
 /// SwiftUI hit-tests a scroll view's content region, so `safeAreaPadding`
 /// leaves the sides as dead.
-public extension View {
+extension View {
     /// …and the content idles while its window is off screen, wherever it is
     /// mounted (`OffScreenIdle` has the numbers). A page whose root is a `Form`
     /// calls `helmIdlesOffScreen()` on its own, for the same reason and without
     /// the column.
-    func helmSettingsColumn() -> some View {
+    public func helmSettingsColumn() -> some View {
         frame(maxWidth: HelmLayout.settingsColumn)
             .frame(maxWidth: .infinity)
             .helmIdlesOffScreen()
@@ -32,14 +32,14 @@ public extension View {
 
     /// A full-width strip of a page that bleeds across the pane: the form inset
     /// across, one `s5` step down.
-    func helmPageStrip() -> some View {
+    public func helmPageStrip() -> some View {
         padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
     }
 }
 
 public enum HelmLayout {
     /// 704 of content plus the form's own inset on each side.
-    public static let settingsColumn: CGFloat = 744
+    static let settingsColumn: CGFloat = 744
 
     /// What a grouped `Form` insets its section cards by, each side. Spelled
     /// out because two numbers on this page are derived from it rather than

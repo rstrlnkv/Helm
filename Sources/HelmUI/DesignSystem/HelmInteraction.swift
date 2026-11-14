@@ -11,6 +11,6 @@ public enum HelmInteraction: Sendable {
     case live, hover, pressed
 }
 
-public extension EnvironmentValues {
-    @Entry var helmShownInteraction: HelmInteraction = .live
+extension EnvironmentValues {
+    @Entry public var helmShownInteraction: HelmInteraction = .live
 }

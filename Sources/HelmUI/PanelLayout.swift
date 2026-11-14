@@ -18,7 +18,7 @@ public struct PanelLayout: Equatable, Codable, Sendable {
         /// The picker's first category rather than a list of its own: two lists
         /// of symbols is two lists to keep in step, and the one somebody sees
         /// when they go looking should be the one they were given from.
-        public static var glyphs: [String] { HelmGlyphCatalogue.categories[0].symbols }
+        static var glyphs: [String] { HelmGlyphCatalogue.categories[0].symbols }
 
         public var id: String
         /// Set on the tab Helm seeds, so a rename can be undone and a fresh
@@ -32,7 +32,7 @@ public struct PanelLayout: Equatable, Codable, Sendable {
         /// has none.
         public var glyph: String?
 
-        public init(id: String, seed: String? = nil, name: String? = nil,
+        init(id: String, seed: String? = nil, name: String? = nil,
                     widgets: [Slot], glyph: String? = nil) {
             self.id = id; self.seed = seed; self.name = name
             self.widgets = widgets; self.glyph = glyph
@@ -96,11 +96,11 @@ public struct PanelLayout: Equatable, Codable, Sendable {
     /// hold — which is how a module that arrives with an update joins the panel
     /// — and a widget somebody has just removed is exactly that. So it came
     /// back on the next launch, and the panel looked like it had forgotten.
-    public var dismissed: [String]
+    var dismissed: [String]
 
     /// Modules the person does not want in the panel **at all** — no tile, no
     /// row in the drawer. Only the gallery offers them back.
-    public var hidden: [String]
+    var hidden: [String]
 
     public init(tabs: [Tab], dismissed: [String] = [], hidden: [String] = []) {
         self.tabs = tabs

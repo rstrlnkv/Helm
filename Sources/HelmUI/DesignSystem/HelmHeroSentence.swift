@@ -3,7 +3,7 @@
 
 import SwiftUI
 
-public extension View {
+extension View {
     /// **A line of a hero: centred on its column, and allowed the second line it
     /// needs.**
     ///
@@ -27,7 +27,7 @@ public extension View {
     ///
     /// A file of its own rather than a member of `HelmSurfaces`, which
     /// holds components and not text treatments.
-    func helmHeroSentence() -> some View {
+    public func helmHeroSentence() -> some View {
         multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
     }

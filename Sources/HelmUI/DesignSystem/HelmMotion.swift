@@ -123,7 +123,7 @@ public enum HelmMotion {
     /// One name rather than two tokens, because it is one behaviour with two
     /// halves; `.smooth` is a spring with the bounce set to zero, which is what
     /// "monotonic, no overshoot" means in this vocabulary.
-    public static func hover(entering: Bool) -> Animation {
+    static func hover(entering: Bool) -> Animation {
         reduced ? instant : .smooth(duration: entering ? 0.19 : 0.33)
     }
 
@@ -221,7 +221,7 @@ public enum HelmMotion {
     /// visibly *un*-spun, with a snappy spring's overshoot at the end. A thing
     /// with momentum does not do that. Two dozen degrees is enough to read as
     /// deceleration and short enough that the check still feels finished.
-    public static var spinDown: Animation {
+    static var spinDown: Animation {
         reduced ? instant : .easeOut(duration: 0.55)
     }
 
@@ -230,7 +230,7 @@ public enum HelmMotion {
     /// Both facts are arguments rather than one being read from the system, so
     /// the rule can be tested at all: a check that consults `NSWorkspace` only
     /// proves the machine it ran on was set the way the test assumed.
-    public static func spins(requested: Bool, reduceMotion: Bool) -> Bool {
+    static func spins(requested: Bool, reduceMotion: Bool) -> Bool {
         requested && !reduceMotion
     }
 
@@ -241,7 +241,7 @@ public enum HelmMotion {
     /// be asserted about the machine it ran on. There is no `requested:` half
     /// — a glyph that changes what it says always wants to be seen changing;
     /// the only question is whether the person has asked for stillness.
-    public static func swaps(reduceMotion: Bool) -> Bool {
+    static func swaps(reduceMotion: Bool) -> Bool {
         !reduceMotion
     }
 
@@ -278,13 +278,13 @@ public enum HelmMotion {
     }
 }
 
-public extension View {
+extension View {
     /// The one way a glyph turns forever — the refresh buttons on the list
     /// screens while their list reloads.
     ///
     /// `.symbolEffect(.rotate, options: .repeating)` on its own does not honour
     /// Reduce Motion; SwiftUI leaves that to us, and these two spun regardless.
-    func helmSteadySpin(_ active: Bool) -> some View {
+    public func helmSteadySpin(_ active: Bool) -> some View {
         modifier(SteadySpin(active: active))
     }
 
@@ -308,7 +308,7 @@ public extension View {
     /// Reduce Motion cuts twice over. `HelmMotion.interface` collapses to a
     /// 0.01 s cut on its own, and the transition goes to `.identity` as well,
     /// so the glyph changes without the layers being taken apart first.
-    func helmSymbolSwap(_ symbol: String) -> some View {
+    public func helmSymbolSwap(_ symbol: String) -> some View {
         modifier(SymbolSwap(symbol: symbol))
     }
 }

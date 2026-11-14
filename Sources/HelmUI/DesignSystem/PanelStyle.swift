@@ -20,9 +20,9 @@ struct HelmIconBadge: View {
     }
 }
 
-public extension View {
+extension View {
     /// Wrap a module tile in the shared panel card.
-    func helmPanelCard() -> some View {
+    public func helmPanelCard() -> some View {
         self
             // The ladder's own «a card's inner padding», not a 12 of this file's:
             // it is what a 1×1 tile has left over for its words.

@@ -60,11 +60,11 @@ import SwiftUI
 /// demotion still happens, and `HelmMotion.disclosure` collapses it to a cut on
 /// its own. Nothing is lost except the movement, which is the thing that was
 /// asked to go.
-public extension View {
+extension View {
     /// `measuring` is the engine's own fact — a run is in flight for this
     /// tunnel — and `false` is completely inert: no border, full ink, and a
     /// paused schedule that wakes nothing.
-    func helmMeasuringSlot(_ measuring: Bool) -> some View {
+    public func helmMeasuringSlot(_ measuring: Bool) -> some View {
         modifier(HelmMeasuringSlot(measuring: measuring, lap: HelmMeasuringSlot.lap))
     }
 }
