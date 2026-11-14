@@ -259,18 +259,18 @@ final class WaitRig {
     /// The latest `opState` and `opLog` the news would replay to a page
     /// opened now. A sentinel emitted before subscribing marks where the replay
     /// ends, so the read is deterministic.
-    func replayed() async -> (state: OpState?, log: String?) {
+    func replayed() async -> (state: OpState?, busy: Bool) {
         news.say(.line("test.sentinel"), slot: "test.sentinel")
         var state: OpState?
-        var log: String?
+        var busy = false
         for await item in news.stream() {
             if case .line("test.sentinel") = item { break }
             switch item {
             case .state(let s): state = s
-            case .line(let l): log = l
-            case .brew: break
+            case .busy: busy = true
+            case .line, .brew: break
             }
         }
-        return (state, log)
+        return (state, busy)
     }
 }

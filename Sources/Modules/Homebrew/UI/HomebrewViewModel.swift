@@ -776,6 +776,8 @@ enum DependentsReading: Equatable {
             // the truth, `interruptedOp` included. A seed that came after it
             // would wipe it.
             if !statusRead { status = BrewStatus(installed: path != nil, brewPath: path) }
+        case .busy:
+            say(HbStr.anotherOperationRunning())
         case .state(let s):
             // Before `op` changes, because the line is about the step between
             // the two states.

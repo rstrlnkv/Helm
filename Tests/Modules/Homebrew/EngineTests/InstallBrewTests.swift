@@ -99,19 +99,19 @@ final class InstallBrewTests: XCTestCase {
     /// the latest `.line`. A sentinel emitted *before* subscribing marks
     /// where the replay ends, so the read is deterministic — everything the
     /// engine emitted happened synchronously before this call.
-    private func replayed(_ news: EngineNews<HomebrewNews>) async -> (state: OpState?, log: String?) {
+    private func replayed(_ news: EngineNews<HomebrewNews>) async -> (state: OpState?, busy: Bool) {
         news.say(.line("test.sentinel"), slot: "test.sentinel")
         var state: OpState?
-        var log: String?
+        var busy = false
         for await item in news.stream() {
             if case .line("test.sentinel") = item { break }
             switch item {
             case .state(let s): state = s
-            case .line(let l): log = l
-            case .brew: break
+            case .busy: busy = true
+            case .line, .brew: break
             }
         }
-        return (state, log)
+        return (state, busy)
     }
 
     // MARK: - The account name gate
@@ -136,6 +136,8 @@ final class InstallBrewTests: XCTestCase {
         let (state, _) = await replayed(news)
         XCTAssertEqual(state?.phase, .failed,
                        "the refusal is invisible: the page shows a spinner or nothing at all")
+        XCTAssertEqual(state?.reason, .unsupportedAccount,
+                       "the refusal ends with a bare Failed pill and no sentence")
 
         // And the gate is released — a refusal that wedges `busy` kills the
         // module until relaunch.
@@ -354,10 +356,10 @@ final class InstallBrewTests: XCTestCase {
         engine.install(name: "wget", isCask: false)
         engine.upgradeAll()   // refused: the install is still streaming
 
-        let (state, log) = await replayed(news)
+        let (state, busy) = await replayed(news)
         XCTAssertEqual(state?.phase, .running,
                        "the refusal overwrote the running state — a reopened page shows "
                        + "the live install as over")
-        XCTAssertNotNil(log, "the refusal left no console line: the press did nothing visibly")
+        XCTAssertTrue(busy, "the refusal left no console line: the press did nothing visibly")
     }
 }

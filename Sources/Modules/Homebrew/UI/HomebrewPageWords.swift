@@ -63,6 +63,7 @@ extension HomebrewSettingsPage {
         case .authorizationDeclined: return HbStr.authorizationDeclined(language: language)
         case .prefixNotPrepared: return HbStr.prefixNotPrepared(language: language)
         case .installerFailed: return HbStr.installerFailed(code: op.exitCode, language: language)
+        case .unsupportedAccount: return HbStr.unsupportedAccountName(language: language)
         }
     }
 

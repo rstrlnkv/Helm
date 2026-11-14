@@ -329,14 +329,21 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// Whether the runner's deadline passed — with the outcome named in the
     /// log, because "brew is hung" shown as an empty list is a lie about the
     /// machine (`ATimedOutQueryIsANamedRefusalTests`). The line says "keeping
-    /// the last answer" for every query that comes through here; the callers
-    /// that keep one are the installed, outdated and configuration readings, and
-    /// the descriptions: the model keeps what it held, because `load` writes
-    /// only the keys found.
+    /// the last answer" only for the queries whose caller keeps one — the
+    /// installed, outdated, configuration and descriptions readings: the model
+    /// keeps what it held, because `load` writes only the keys found. The others
+    /// (`info`, `doctor`, `search` and the dependents) say "no answer", because
+    /// nothing is kept and the log is triaged for what happened.
     private func timedOut(_ status: Int32, query: String) -> Bool {
         guard status == HelmProcess.timedOutStatus else { return false }
-        HelmLog.shared.warn(Self.moduleID, "\(query) timed out — keeping the last answer")
+        HelmLog.shared.warn(Self.moduleID, "\(query) timed out — \(Self.outcome(of: query))")
         return true
+    }
+
+    /// What became of a query's absent answer, for the log line.
+    private static func outcome(of query: String) -> String {
+        ["list formulae", "list casks", "outdated", "config", "descriptions"].contains(query)
+            ? "keeping the last answer" : "no answer"
     }
 
     /// The tool's answer, or nil past the runner's deadline.
@@ -372,7 +379,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         if timedOut(status, query: query) { return true }
         guard status != 0 else { return false }
         HelmLog.shared.warn(Self.moduleID,
-                            "\(query) refused by brew, exit \(status) — keeping the last answer")
+                            "\(query) refused by brew, exit \(status) — \(Self.outcome(of: query))")
         return true
     }
 
@@ -398,10 +405,10 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     /// as a clean machine.
     func listInstalled() -> [BrewPackage]? {
         guard let brew = locator.brewPath() else {
-            // The module's whole surface is empty in this case, and until now
-            // nothing said why: a person reads "no packages" as a clean machine.
+            // nil, not an empty list: a person reads "no packages" as a clean
+            // machine, and the model draws brew-missing on nil.
             HelmLog.shared.warn(Self.moduleID, "brew is not installed — nothing to list")
-            return []
+            return nil
         }
         let packages = HelmActivity.phase("homebrew.listInstalled") { () -> [BrewPackage]? in
             // Both halves or neither: a refusal of the cask half alone kept the
@@ -424,7 +431,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     }
 
     func outdated() -> [OutdatedPackage]? {
-        guard let brew = locator.brewPath() else { return [] }
+        guard let brew = locator.brewPath() else { return nil }
         let parsed = HelmActivity.phase("homebrew.outdated") { () -> [OutdatedPackage]? in
             // `runData`, because the parser wants bytes: routing them through a
             // String held a second copy of the whole payload for the parse
@@ -499,7 +506,8 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
     }
 
     func search(_ query: String) -> [SearchHit]? {
-        guard let brew = locator.brewPath(), !query.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
+        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
+        guard let brew = locator.brewPath() else { return nil }
         let hits = HelmActivity.phase("homebrew.search") { () -> [SearchHit]? in
             // One call per kind: brew no longer labels a flat result list, and
             // the kind decides whether the install is `brew install` or `brew
@@ -785,7 +793,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
             return
         }
         HelmLog.shared.warn(Self.moduleID, "\(verb) refused: another operation is running")
-        emitLog("⚠︎ Another operation is already running.")
+        news.say(.busy, slot: HomebrewSlot.opLog.rawValue)
     }
     private func endBusy() {
         lock.lock(); busy = false; installing = false; current = nil; lock.unlock()
@@ -1069,8 +1077,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // quotes stop expansion, and the name is checked before it gets there.
         guard AccountName.isPlausible(user) else {
             HelmLog.shared.warn(Self.moduleID, "\(label) failed: unsupported account name")
-            concludeOp(code: 1, label: label)
-            emitLog("Unsupported account name.")
+            concludeOp(code: 1, label: label, reason: .unsupportedAccount)
             return
         }
         if toolsPresent() { prepareAndRun(label); return }

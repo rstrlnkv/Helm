@@ -147,8 +147,8 @@ final class OneOperationAtATimeTests: XCTestCase {
 
         let drained = await drain(news)
         let after = drained.state
-        XCTAssertTrue(drained.lines.contains("⚠︎ Another operation is already running."),
-                      "the refused press did not say so in the console: \(drained.lines)")
+        XCTAssertTrue(drained.busy,
+                      "the refused press did not say so in the console")
         XCTAssertEqual(after?.phase, .running, "the refused press overwrote the running fix: \(String(describing: after))")
         XCTAssertEqual(after?.label, "cleanup")
         engine.install(name: "wget", isCask: false)
@@ -183,8 +183,8 @@ final class OneOperationAtATimeTests: XCTestCase {
         engine.install(name: "jq", isCask: false)
         let drained = await drain(news)
         let during = drained.state
-        XCTAssertTrue(drained.lines.contains("⚠︎ Another operation is already running."),
-                      "the refused press did not say so in the console: \(drained.lines)")
+        XCTAssertTrue(drained.busy,
+                      "the refused press did not say so in the console")
         XCTAssertEqual(during?.phase, .running, "a brew-missing press overwrote the running install: \(String(describing: during))")
         XCTAssertEqual(during?.label, first?.label)
 
@@ -203,18 +203,18 @@ final class OneOperationAtATimeTests: XCTestCase {
         await drain(news).state
     }
 
-    private func drain(_ news: EngineNews<HomebrewNews>) async -> (state: OpState?, lines: [String]) {
+    private func drain(_ news: EngineNews<HomebrewNews>) async -> (state: OpState?, busy: Bool) {
         // A slot of its own each time: an earlier call's sentinel is still in
         // the replay, and only this call's ends the read.
         let sentinel = "test.sentinel.\(UUID().uuidString)"
         news.say(.line(sentinel), slot: sentinel)
         var last: OpState?
-        var lines: [String] = []
+        var busy = false
         for await item in news.stream() {
             if case .line(sentinel) = item { break }
-            if case .line(let l) = item, !l.hasPrefix("test.sentinel.") { lines.append(l) }
+            if case .busy = item { busy = true }
             if case .state(let s) = item { last = s }
         }
-        return (last, lines)
+        return (last, busy)
     }
 }

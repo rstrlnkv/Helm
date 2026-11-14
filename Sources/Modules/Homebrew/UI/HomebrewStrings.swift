@@ -219,6 +219,14 @@ enum HbStr {
         let code = code.map(String.init) ?? "?"
         return L(.installerFailed(code), language: language)
     }
+    /// Beside «Failed» when the account name was refused before any dialog.
+    static func unsupportedAccountName(language: AppLanguage = AppLanguage.current) -> String {
+        L(.unsupportedAccountName, language: language)
+    }
+    /// The console's line for a press refused while another operation runs.
+    static func anotherOperationRunning(language: AppLanguage = AppLanguage.current) -> String {
+        "⚠︎ " + L(.anotherOperationRunning, language: language)
+    }
     /// Why the operation failed before it could start: brew vanished between
     /// the page's status and the press — its own uninstaller in a terminal.
     static func brewGone(language: AppLanguage = AppLanguage.current) -> String {
