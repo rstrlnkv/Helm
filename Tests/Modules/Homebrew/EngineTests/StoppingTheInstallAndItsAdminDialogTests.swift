@@ -847,10 +847,10 @@ final class InstallWaitsForApplesToolsTests: XCTestCase {
         XCTAssertEqual(rig.tools.requestCount, 1, "a second press filed a second request")
         XCTAssertTrue(rig.privileged.scripts.isEmpty)
         XCTAssertEqual(rig.ticker.live, 1, "a second wait was armed beside the first")
-        let (state, log) = await rig.replayed()
+        let (state, busy) = await rig.replayed()
         XCTAssertEqual(state?.waiting, .commandLineTools,
                        "the refusal overwrote the waiting state")
-        XCTAssertNotNil(log, "the refused press left no line")
+        XCTAssertTrue(busy, "the refused press left no line")
     }
 
     /// A tick that finds the window open and no tools keeps waiting: one

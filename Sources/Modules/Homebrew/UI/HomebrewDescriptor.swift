@@ -35,21 +35,30 @@ import Module_Homebrew_Engine
     /// descriptions cost to read. Its init asks the engine for nothing but its
     /// stream.
     public func makeModule(store: NamespacedStore) -> ModuleParts<HomebrewViewModel> {
-        let engine = productionEngine()
-        return ModuleParts(engine: engine, model: HomebrewViewModel(work: engine))
+        makeModule(store: store, locator: nil, runner: nil)
+    }
+
+    /// The test seam: the one place the host's wiring is built, with the two ports a test
+    /// replaces so it can read what the engine ran after a press on the toggle.
+    func makeModule(store: NamespacedStore, locator: BrewLocator?, runner: ProcessRunner?)
+        -> ModuleParts<HomebrewViewModel> {
+        let setting = UpdateBeforeChecking(store: store)
+        let engine = productionEngine(updateBeforeChecking: setting, locator: locator, runner: runner)
+        return ModuleParts(engine: engine, model: HomebrewViewModel(work: engine, updateBeforeChecking: setting))
     }
 
     /// The host closes the model before the engine goes: its stream task ends
     /// and nothing it was asked after that reaches the engine.
     public func stop(_ model: HomebrewViewModel) { model.stop() }
 
-    private func productionEngine() -> HomebrewEngine {
+    private func productionEngine(updateBeforeChecking: UpdateBeforeChecking,
+                                  locator: BrewLocator?, runner: ProcessRunner?) -> HomebrewEngine {
         let ports = HomebrewSystemPorts()
-        return HomebrewEngine(locator: ports.locator, runner: ports.runner,
+        return HomebrewEngine(locator: locator ?? ports.locator, runner: runner ?? ports.runner,
                               privileged: ports.privileged, user: NSUserName(),
                               marker: ports.marker, popularity: ports.popularity,
                               weight: ports.weight, tools: ports.tools, ticker: ports.ticker,
-                              gate: .process)
+                              gate: .process, updateBeforeChecking: updateBeforeChecking)
     }
 
     public func menuBar(_ model: HomebrewViewModel) -> MenuBarContribution? { .utility }

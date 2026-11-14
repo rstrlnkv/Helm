@@ -34,6 +34,14 @@ protocol HomebrewWork: AnyObject, Sendable {
 
 extension HomebrewEngine: HomebrewWork {}
 
+/// What the dependents read of the pending uninstall came to. `.read([])` is
+/// an answer, «nothing needs it»; `.unread` is a query that gave none.
+enum DependentsReading: Equatable {
+    case notAsked
+    case read([String])
+    case unread
+}
+
 @MainActor public final class HomebrewViewModel: ObservableObject {
     private let work: any HomebrewWork
     private var eventsTask: Task<Void, Never>?
@@ -42,6 +50,15 @@ extension HomebrewEngine: HomebrewWork {}
     private(set) var closed = false
     /// The one way to the engine. A closed model has none, so no call site can forget.
     private var door: (any HomebrewWork)? { closed ? nil : work }
+
+    private let updateBeforeChecking: UpdateBeforeChecking
+    /// What the Updates tab's row shows: whether the next `brew outdated` may refresh the catalogue first.
+    @Published private(set) var refreshesBeforeChecking: Bool
+
+    func setRefreshesBeforeChecking(_ on: Bool) {
+        updateBeforeChecking.isOn = on
+        refreshesBeforeChecking = on
+    }
 
     @Published private(set) var status = BrewStatus(installed: false, brewPath: nil)
     /// Whether `status` is an answer of the engine's and not the seed of
@@ -103,7 +120,7 @@ extension HomebrewEngine: HomebrewWork {}
     /// one's answer. It lives here rather than in the page's `@State` because
     /// the reading is asked of the engine and arrives after the press.
     @Published private(set) var pendingUninstall: BrewPackage?
-    @Published private(set) var dependentsOfPending: [String] = []
+    @Published private(set) var dependentsOfPending: DependentsReading = .notAsked
     /// Package descriptions keyed by "f:name" / "c:name", fetched in batches
     /// after a list or search loads.
     @Published private(set) var descriptions: [String: String] = [:]
@@ -679,8 +696,14 @@ extension HomebrewEngine: HomebrewWork {}
     /// Built once by `HomebrewDescriptor.makeModule`, so it lives as long as the
     /// module is switched on and the page reads it instead of owning it. Its init
     /// asks the engine for nothing but its stream.
-    init(work: any HomebrewWork) {
+    ///
+    /// - Parameter updateBeforeChecking: the setting the Updates tab's row shows and
+    ///   writes; the engine of the same module reads it at each `outdated`. Read here,
+    ///   so a model built at activation shows what is stored now.
+    init(work: any HomebrewWork, updateBeforeChecking: UpdateBeforeChecking = .inMemory) {
         self.work = work
+        self.updateBeforeChecking = updateBeforeChecking
+        refreshesBeforeChecking = updateBeforeChecking.isOn
         let news = work.stream()
         eventsTask = Task { [weak self] in
             for await item in news {
@@ -768,6 +791,8 @@ extension HomebrewEngine: HomebrewWork {}
             // the truth, `interruptedOp` included. A seed that came after it
             // would wipe it.
             if !statusRead { status = BrewStatus(installed: path != nil, brewPath: path) }
+        case .busy:
+            say(HbStr.anotherOperationRunning())
         case .state(let s):
             // Before `op` changes, because the line is about the step between
             // the two states.
@@ -956,7 +981,25 @@ extension HomebrewEngine: HomebrewWork {}
     /// Internal, not `public`: nothing outside `Module_Homebrew_UI` calls it,
     /// and `public` in this tree means "another target uses this". Its public
     /// neighbours predate that rule being applied to this file.
+    ///
+    /// **One reading is out at a time.** A press while one is out asks for one more
+    /// when it lands and returns: ten presses are at most two `brew doctor` children,
+    /// and the second starts after the first has answered, so the reading after an
+    /// operation is never answered by one that began before the operation ended.
     func refreshDoctor() async {
+        if doctorInFlight { doctorAgain = true; return }
+        doctorInFlight = true
+        defer { doctorInFlight = false; doctorAgain = false }
+        repeat {
+            doctorAgain = false
+            await readDoctorOnce()
+        } while doctorAgain && !closed
+    }
+
+    private var doctorInFlight = false
+    private var doctorAgain = false
+
+    private func readDoctorOnce() async {
         // **The installed list first, because the verdict is about it.**
         // `DoctorFixCandidate.judging` decides `.runnable` against what is on
         // this Mac, and opening this segment on a fresh launch finds that list
@@ -1016,7 +1059,7 @@ extension HomebrewEngine: HomebrewWork {}
     func cancelFix() {
         _ = uninstallAsks.take()
         pendingFix = nil
-        dependentsOfPending = []
+        dependentsOfPending = .notAsked
     }
 
     /// The press on the dialog Run raised. The only door to a destructive fix.
@@ -1172,7 +1215,7 @@ extension HomebrewEngine: HomebrewWork {}
     /// The reading is taken here, one press before the act, because that is the
     /// last moment at which it is true: the answer is about a Cellar that a
     /// terminal beside this window can change. A refusal — brew hung, brew gone
-    /// — leaves the list empty and the dialog says only what it always said;
+    /// — reads `.unread` and the dialog says so;
     /// it must not invent a reassurance out of a query that never answered.
     func askToUninstall(_ pkg: BrewPackage) async {
         await askAboutRemoving(PackageRef(name: pkg.name, isCask: pkg.isCask)) { self.pendingUninstall = pkg }
@@ -1191,7 +1234,7 @@ extension HomebrewEngine: HomebrewWork {}
         // of one Cellar, and a dialog carrying two presses' worth is a sentence
         // about a package that is not the one about to be deleted.
         guard uninstallAsks.isLatest(mine) else { return }
-        dependentsOfPending = answer ?? []
+        dependentsOfPending = answer.map(DependentsReading.read) ?? .unread
         raise()
     }
 
@@ -1202,7 +1245,7 @@ extension HomebrewEngine: HomebrewWork {}
     func cancelUninstall() {
         _ = uninstallAsks.take()
         pendingUninstall = nil
-        dependentsOfPending = []
+        dependentsOfPending = .notAsked
     }
 
     /// Sends the uninstall the dialog was raised for, and clears the reading

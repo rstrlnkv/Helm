@@ -155,6 +155,20 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
         XCTAssertEqual(answer?.count, 0)
     }
 
+    /// A brew that vanished between the locator and the ask is no machine with
+    /// nothing on it: each reading says it could not answer.
+    func testAMissingBrewIsNotACleanMachine() {
+        struct MissingLocator: BrewLocator { func brewPath() -> String? { nil } }
+        let runner = CannedBrew([])
+        let e = HomebrewEngine(locator: MissingLocator(), runner: runner,
+                               privileged: NoPrivileges(), user: "tester",
+                               news: EngineNews(), marker: InMemoryOpMarker())
+        XCTAssertNil(e.listInstalled(), "a missing brew answered \"No packages installed.\"")
+        XCTAssertNil(e.outdated(), "a missing brew answered an up-to-date machine")
+        XCTAssertNil(e.search("wget"), "a missing brew answered \"no results\"")
+        XCTAssertTrue(runner.calls.isEmpty, "brew was asked although it is missing")
+    }
+
     // MARK: - The outdated list
 
     func testAnOutdatedCheckBrewRefusedIsNotAnUpToDateMachine() {

@@ -60,7 +60,7 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
                 \(language.rawValue): the question a press on Run raises is not the one the \
                 Uninstall button asks about the same act
                 """)
-            XCTAssertEqual(HomebrewSettingsPage.fixQuestionNote(uninstall, dependents: []),
+            XCTAssertEqual(HomebrewSettingsPage.fixQuestionNote(uninstall, dependents: .read([])),
                            HbStr.uninstallIsPermanent,
                            "\(language.rawValue): the dialog does not say the removal is permanent")
             XCTAssertNil(HomebrewSettingsPage.fixQuestion(cleanup), """
@@ -144,20 +144,21 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
         XCTAssertEqual(work.dependentsAsked, [PackageRef(name: "openssl@3", isCask: false)],
                        "the fix's question did not read the dependents")
         XCTAssertEqual(model.pendingFix, fix, "the control: the question was not raised")
-        XCTAssertEqual(model.dependentsOfPending, ["aria2", "node"])
+        XCTAssertEqual(model.dependentsOfPending, .read(["aria2", "node"]))
         XCTAssertEqual(HomebrewSettingsPage.fixQuestionNote(fix, dependents: model.dependentsOfPending),
-                       HomebrewSettingsPage.uninstallNote(dependents: ["aria2", "node"]))
-        XCTAssertTrue(HomebrewSettingsPage.uninstallNote(dependents: ["aria2", "node"])
+                       HomebrewSettingsPage.uninstallNote(dependents: .read(["aria2", "node"])))
+        XCTAssertTrue(HomebrewSettingsPage.uninstallNote(dependents: .read(["aria2", "node"]))
                         .hasSuffix(HbStr.stillNeededBy + "\naria2, node"))
         XCTAssertEqual(fired(work), [], "`brew uninstall` was sent before the question was answered")
 
         model.confirmFix()
         XCTAssertEqual(fired(work), [["uninstall", "openssl@3"]])
-        XCTAssertEqual(model.dependentsOfPending, [], "the reading outlived its question")
+        XCTAssertEqual(model.dependentsOfPending, .notAsked, "the reading outlived its question")
     }
 
     /// A reading that did not answer is not «nothing depends on it»: the
-    /// question is still asked, with no list and no reassurance.
+    /// question is still asked, with no list and no reassurance, and one
+    /// sentence that the reading failed (decision 20).
     func testAFailedDependentsReadIsNotAReassuranceInTheFixDialog() async {
         let work = FakeHomebrewWork()
         work.dependents = nil
@@ -167,10 +168,14 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
         await model.askToRunFix(fix)
         XCTAssertEqual(work.dependentsAsked.count, 1, "control: nothing was read")
         XCTAssertEqual(model.pendingFix, fix)
-        XCTAssertEqual(model.dependentsOfPending, [])
+        XCTAssertEqual(model.dependentsOfPending, .unread)
         let note = HomebrewSettingsPage.fixQuestionNote(fix, dependents: model.dependentsOfPending)
-        XCTAssertEqual(note, HbStr.uninstallIsPermanent)
+        XCTAssertEqual(note, HbStr.uninstallIsPermanent + "\n\n" + HbStr.dependentsUnread)
         XCTAssertFalse(note?.contains(HbStr.stillNeededBy) ?? true)
+        AppLanguage.each { language in
+            let said = HomebrewSettingsPage.uninstallNote(dependents: .unread)
+            XCTAssertTrue(said.hasSuffix(HbStr.dependentsUnread), "\(language): the unread sentence is missing")
+        }
         XCTAssertEqual(fired(work), [])
     }
 
@@ -186,7 +191,7 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
         work.release("readDependents")
         await ask.value
         XCTAssertNil(model.pendingFix, "a cancelled ask raised its dialog")
-        XCTAssertEqual(model.dependentsOfPending, [])
+        XCTAssertEqual(model.dependentsOfPending, .notAsked)
     }
 
     /// A fix that is not an uninstall has no package to ask about: `cleanup`
@@ -199,7 +204,7 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
         await model.askToRunFix(DoctorFix(argv: ["cleanup"], kind: .runnable))
         XCTAssertEqual(fired(work), [["cleanup"]], "control: the cleanup press did not reach the engine")
         XCTAssertEqual(work.dependentsAsked, [], "a cleanup press read what depends on a package")
-        XCTAssertEqual(model.dependentsOfPending, [])
+        XCTAssertEqual(model.dependentsOfPending, .notAsked)
 
         let unrecognised = DoctorFix(argv: ["foo"], kind: .runnable)
         await model.askToRunFix(unrecognised)
@@ -224,12 +229,12 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
         XCTAssertEqual(work.dependentsAsked, [PackageRef(name: "openssl@3", isCask: false)],
                        "control: the read is not out")
         XCTAssertNil(model.pendingFix, "the fix's dialog was raised before the dependents came back")
-        XCTAssertEqual(model.dependentsOfPending, [])
+        XCTAssertEqual(model.dependentsOfPending, .notAsked)
 
         work.release("readDependents")
         await ask.value
         XCTAssertEqual(model.pendingFix, fix, "the answer did not raise the question")
-        XCTAssertEqual(model.dependentsOfPending, ["aria2", "node"])
+        XCTAssertEqual(model.dependentsOfPending, .read(["aria2", "node"]))
         XCTAssertEqual(fired(work), [])
     }
 
@@ -245,11 +250,11 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
         XCTAssertEqual(work.dependentsAsked, [PackageRef(name: "wget", isCask: false)],
                        "control: the read is not out")
         XCTAssertNil(model.pendingUninstall, "the uninstall dialog was raised before the dependents came back")
-        XCTAssertEqual(model.dependentsOfPending, [])
+        XCTAssertEqual(model.dependentsOfPending, .notAsked)
 
         work.release("readDependents")
         await ask.value
         XCTAssertEqual(model.pendingUninstall, wget, "the answer did not raise the question")
-        XCTAssertEqual(model.dependentsOfPending, ["aria2", "node"])
+        XCTAssertEqual(model.dependentsOfPending, .read(["aria2", "node"]))
     }
 }

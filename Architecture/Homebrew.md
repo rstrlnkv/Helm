@@ -14,6 +14,18 @@ hits of a search and the `info` of a package were cleared before they were asked
 The one query that retries halves its
 batch rather than its timeout.
 
+## The one setting
+
+`module.homebrew.updateBeforeChecking` (a Bool, `UpdateBeforeChecking`) is the module's only
+stored setting: whether `brew outdated` may refresh the catalogue first. ON is the default and
+what an absent key or a value that is not a Bool reads as: the query runs with no
+environment, as before. OFF runs it with `HomebrewEngine.queryEnvironment`
+(`HOMEBREW_NO_AUTO_UPDATE=1`), so it answers from the catalogue brew holds and cannot be cut
+short by the 90 s query deadline in the middle of a `brew update`. The engine reads it at each
+`outdated()`; the model reads it when it is built at activation, and the Updates tab's row
+(`HelmSettingRow` and a switch) writes it. Not sealed: `outdated` has no unattended caller.
+Guarded by `AnAbsentUpdateSettingUpdatesAsBeforeTests`.
+
 ## The model
 
 `HomebrewViewModel` is built once per enable by `HomebrewDescriptor.makeModule`, so
@@ -125,7 +137,7 @@ split is asked anything, so nothing on it is ever selected). Its doc comment hol
 reading order (verdict, findings, configuration), `HealthScreen` what is put on
 screen, and `DoctorParser` why a warning keeps its whole block. The verdict is taken
 from the *unfiltered* reading, so a word typed into the field cannot make a Mac look
-clean. The gate under a fix button is unchanged: the page's view model judges each
+clean. One `brew doctor` reading is out at a time: a press while it is out asks for one more behind it, so a run of presses is at most two children (`refreshDoctor`). The gate under a fix button is unchanged: the page's view model judges each
 fix through `DoctorFixCandidate.judging` (which calls `DoctorFix.judge`) before it is
 drawn, and the engine's `runDoctorFix` judges again against a list read at the press. `cleanup` stays in `DoctorFix.Allowed`, argument-exact (`DoctorFix.swift`'s doc comment says why only the bare command is admitted), by the owner's decision.
 

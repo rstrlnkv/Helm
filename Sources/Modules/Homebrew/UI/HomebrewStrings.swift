@@ -42,6 +42,8 @@ enum HbStr {
 
     static var segInstalled: String { L(.segInstalled) }
     static var segUpdates: String { L(.segUpdates) }
+    static var updateBeforeChecking: String { L(.updateBeforeChecking) }
+    static var updateBeforeCheckingNote: String { L(.updateBeforeCheckingNote) }
     /// What `brew doctor` found. Not "Doctor" — that is Homebrew's own name for
     /// the subcommand and names a tool rather than a question; the segment
     /// beside two lists of packages is about the state of the machine.
@@ -69,8 +71,11 @@ enum HbStr {
     }
     /// What the removal takes with it. Drawn only when the Cellar named
     /// something: an empty line under a question is a reassurance nobody
-    /// checked, and a refused query answers with nothing to say.
+    /// checked. A refused query draws `dependentsUnread` instead.
     static var stillNeededBy: String { L(.stillNeededBy) }
+    /// Said instead of that list when the query did not answer: a refusal is
+    /// not «nothing depends on it», and the dialog says so.
+    static var dependentsUnread: String { L(.dependentsUnread) }
     static var cancel: String { HelmWord.cancel }
     static var uninstall: String { L(.uninstall) }
     /// **The Uninstall button, as opposed to the dialog's own Uninstall.**
@@ -215,6 +220,14 @@ enum HbStr {
     static func installerFailed(code: Int?, language: AppLanguage = AppLanguage.current) -> String {
         let code = code.map(String.init) ?? "?"
         return L(.installerFailed(code), language: language)
+    }
+    /// Beside «Failed» when the account name was refused before any dialog.
+    static func unsupportedAccountName(language: AppLanguage = AppLanguage.current) -> String {
+        L(.unsupportedAccountName, language: language)
+    }
+    /// The console's line for a press refused while another operation runs.
+    static func anotherOperationRunning(language: AppLanguage = AppLanguage.current) -> String {
+        "⚠︎ " + L(.anotherOperationRunning, language: language)
     }
     /// Why the operation failed before it could start: brew vanished between
     /// the page's status and the press — its own uninstaller in a terminal.

@@ -68,7 +68,7 @@ final class FakeHomebrewWork: HomebrewWork, @unchecked Sendable {
     func say(_ news: HomebrewNews) {
         let open = lock.withLock { () -> [AsyncStream<HomebrewNews>.Continuation] in
             switch news {
-            case .line:
+            case .line, .busy:
                 if lastLine == nil { order.append(true) }
                 lastLine = news
             case .state:

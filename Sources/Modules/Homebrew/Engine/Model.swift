@@ -48,6 +48,9 @@ public enum HomebrewAct: Equatable, Sendable {
 public enum HomebrewNews: Equatable, Sendable {
     /// One line of the tool's output, as it arrives.
     case line(String)
+    /// A press refused because another operation holds the gate. A fact, not a
+    /// state: the running operation's state is not written over.
+    case busy
     /// Where the operation is now: running, done or failed.
     case state(OpState)
     /// Where brew is, said once when the module is switched on: `nil` is no brew.
@@ -172,10 +175,7 @@ public enum OpPhase: String, Sendable { case idle, running, done, failed }
 /// A named outcome, never silence: each of these used to be a bare `return` (a
 /// press that did nothing, visibly forever) or an exit code indistinguishable
 /// from a build failure. The engine names the reason; the UI owns the words, so
-/// the eight languages live where `L()` can reach them. Two console lines are
-/// the exception, written by the engine in English: `runOp` and `installBrew`
-/// refusing a press while another operation runs, and `installBrew` refusing
-/// an account name, which concludes with no reason.
+/// the eight languages live where `L()` can reach them.
 public enum OpFailureReason: String, Sendable, CaseIterable {
     /// brew vanished between `status()` and the press — Homebrew's own
     /// uninstaller ran in a terminal while Helm's window sat open.
@@ -212,6 +212,9 @@ public enum OpFailureReason: String, Sendable, CaseIterable {
     /// Homebrew's own `install.sh` ended non-zero. The exit code is on the
     /// state; the last lines of its output are in the console.
     case installerFailed
+    /// `installBrew` refused the account name before any dialog: it is not a
+    /// plausible short name, and a root shell would evaluate it.
+    case unsupportedAccount
 }
 
 /// What a running operation is waiting for, when it is waiting and not working.
