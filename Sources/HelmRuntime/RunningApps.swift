@@ -61,7 +61,7 @@ public final class RunningApps: @unchecked Sendable {
     /// report a mistake. Debug and test builds do trap, deliberately: a
     /// wrong-thread caller should be found here rather than in a crash log.
     @discardableResult
-    public func refresh() -> Set<String> {
+    func refresh() -> Set<String> {
         guard Thread.isMainThread else {
             assertionFailure("RunningApps.refresh() off the main thread")
             lock.lock(); defer { lock.unlock() }
@@ -105,7 +105,7 @@ public final class RunningApps: @unchecked Sendable {
     /// Whether the snapshot has ever been filled. A background caller reading
     /// before the first refresh gets an empty set, which reads as "nothing is
     /// running" — worth being able to tell apart in a test.
-    public var hasSnapshot: Bool {
+    var hasSnapshot: Bool {
         lock.lock(); defer { lock.unlock() }
         return seeded
     }

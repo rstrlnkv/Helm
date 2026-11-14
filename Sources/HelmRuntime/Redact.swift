@@ -107,13 +107,13 @@ public enum Redact {
     /// property this was chosen for — a line from yesterday still compares
     /// equal to a line from today — is untouched, while a tag copied into a bug
     /// report no longer means anything on anyone else's machine.
-    public static func tag(_ value: String, prefix: String) -> String {
+    static func tag(_ value: String, prefix: String) -> String {
         tag(value, prefix: prefix, salt: salt)
     }
 
     /// The same digest over a salt named outright.
     ///
-    /// The public call above reads a `static let` that is decided once per
+    /// The two-argument call above reads a `static let` that is decided once per
     /// process, which is right for the app and leaves a test no way to ask what
     /// a *different* salt would give — and «the same name tags the same way in
     /// two launches that could not save the salt» is a question about two

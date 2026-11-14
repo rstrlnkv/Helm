@@ -41,8 +41,8 @@ public enum ScanRunner {
         public var personSeconds: TimeInterval
         /// What the counter said at this reading, so the next one can tell a
         /// reset from a climb.
-        public var systemSeconds: TimeInterval
-        public var readAt: Date
+        var systemSeconds: TimeInterval
+        var readAt: Date
 
         public init(personSeconds: TimeInterval, systemSeconds: TimeInterval, readAt: Date) {
             self.personSeconds = personSeconds

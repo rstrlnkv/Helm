@@ -15,13 +15,13 @@
 /// bounds are computed raises the upper to the lower before the range is formed
 /// rather than relying on which of `min` and `max` happens to win — that used to
 /// be silent, and which one wins depends on the spelling.
-public extension Comparable {
-    func clamped(to range: ClosedRange<Self>) -> Self {
+extension Comparable {
+    public func clamped(to range: ClosedRange<Self>) -> Self {
         min(max(self, range.lowerBound), range.upperBound)
     }
 }
 
-public extension FloatingPoint {
+extension FloatingPoint {
     /// The same clamp for a number that came from somewhere untrusted — a
     /// `plist`, a JSON payload, a file — where the answer for a value that is
     /// not a number has to be the reader's and not this helper's.
@@ -34,7 +34,7 @@ public extension FloatingPoint {
     /// proof that sending a non-finite value to *a* bound is safe under one
     /// comparison and catastrophic under the other, so the choice belongs to
     /// whoever knows what the number means.
-    func clampedIfFinite(to range: ClosedRange<Self>) -> Self? {
+    public func clampedIfFinite(to range: ClosedRange<Self>) -> Self? {
         isFinite ? clamped(to: range) : nil
     }
 
@@ -51,27 +51,27 @@ public extension FloatingPoint {
     /// infinity as well, and infinity *has* a place on the number line — it is
     /// precisely the value a bound knows what to do with, and collapsing both
     /// ends onto one fallback is a second wrong answer beside the first.
-    func clamped(to range: ClosedRange<Self>, whenNotANumber fallback: Self) -> Self {
+    public func clamped(to range: ClosedRange<Self>, whenNotANumber fallback: Self) -> Self {
         isNaN ? fallback : clamped(to: range)
     }
 }
 
-public extension Int {
+extension Int {
     /// The sum, held at `Int.max` or `Int.min` instead of trapping.
     ///
     /// For figures that came out of a file or a scan, where one bound on
     /// each figure does not bound a sum of thousands of them: an integer add traps
     /// in release as well as debug, and a figure that is only large is a better
     /// answer than a process that is gone. `RingLayout` calls this for both its sums.
-    func saturatingAdding(_ other: Int) -> Int {
+    public func saturatingAdding(_ other: Int) -> Int {
         let (sum, overflowed) = addingReportingOverflow(other)
         return overflowed ? (other < 0 ? .min : .max) : sum
     }
 }
 
-public extension Sequence where Element == Int {
+extension Sequence where Element == Int {
     /// `reduce(0, +)` that saturates, see `Int.saturatingAdding(_:)`.
-    func saturatingSum() -> Int {
+    public func saturatingSum() -> Int {
         reduce(0) { $0.saturatingAdding($1) }
     }
 }

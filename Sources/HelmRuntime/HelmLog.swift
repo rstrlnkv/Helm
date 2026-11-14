@@ -47,19 +47,19 @@ public enum LogPolicy {
 /// test rather than going dark, and nothing accumulates. `ScanJournal` takes one
 /// per process and has to sweep after the processes that died; a log has no
 /// reason to tell two runs apart, so it does not buy that problem.
-public enum LogDestination {
+enum LogDestination {
 
     /// The folder under the home directory, spelled from the build's data folder:
     /// Helm Dev logs in `Library/Logs/Helm Dev`, so it neither writes the real
     /// Helm's log nor has its salt, rollover and purge latch beside it.
     /// `ResetPlan` names the same folder.
-    public static func relativePath(folder: DataFolder) -> String {
+    static func relativePath(folder: DataFolder) -> String {
         "Library/Logs/\(folder.rawValue)"
     }
 
     /// `bundleIdentifier` is the process's own; every identifier but Helm Dev's,
     /// nil included, keeps `Library/Logs/Helm`.
-    public static func directory(home: URL, temporary: URL, underTest: Bool,
+    static func directory(home: URL, temporary: URL, underTest: Bool,
                                  bundleIdentifier: String? = Bundle.main.bundleIdentifier) -> URL {
         underTest
             ? temporary.appendingPathComponent("helm-test-logs", isDirectory: true)
@@ -89,17 +89,17 @@ public enum LogDestination {
 public enum LogLine {
     /// **The launch words, spelled once.** `HelmLog` writes them and `LogSeed`
     /// recognises them from these, so the two sides cannot drift apart.
-    public static let appCategory = "app"
+    static let appCategory = "app"
     static let startedPrefix = "Helm "
     static let startedSuffix = " started"
     static let loggingEnabledWord = "logging enabled"
-    public static let loggingDisabled = "logging disabled"
-    public static let terminating = "terminating"
+    static let loggingDisabled = "logging disabled"
+    static let terminating = "terminating"
 
-    public static func started(version: String) -> String { startedPrefix + version + startedSuffix }
+    static func started(version: String) -> String { startedPrefix + version + startedSuffix }
 
     /// Bare for a build that knows no version, «logging enabled (version)» otherwise.
-    public static func loggingEnabled(version: String?) -> String {
+    static func loggingEnabled(version: String?) -> String {
         version.map { "\(loggingEnabledWord) (\($0))" } ?? loggingEnabledWord
     }
 
@@ -108,7 +108,7 @@ public enum LogLine {
     /// and what it puts on the pasteboard is the line the file carries rather
     /// than a second format invented at the button. The one that shipped dropped
     /// the level, the date and the source site.
-    public static func line(_ entry: LogEntry, timeZone: TimeZone = .current) -> String {
+    static func line(_ entry: LogEntry, timeZone: TimeZone = .current) -> String {
         line(entry, using: stamper(timeZone))
     }
 
@@ -180,7 +180,7 @@ public final class HelmLog: @unchecked Sendable {
     ///
     /// Resolved once. Every appended line asks for this folder, and none of the
     /// three answers it is built from can change while the process lives.
-    public static let directory: URL =
+    static let directory: URL =
         LogDestination.directory(home: FileManager.default.homeDirectoryForCurrentUser,
                                  temporary: FileManager.default.temporaryDirectory,
                                  underTest: TestProcess.isRunning)
@@ -192,12 +192,12 @@ public final class HelmLog: @unchecked Sendable {
     /// `helm.log.1`, a name rotation has never written. The half of the log that
     /// most needed destroying — VPN names, application names, home paths —
     /// survived both the purge and the Clear button.
-    public static var previousFileURL: URL {
+    static var previousFileURL: URL {
         directory.appendingPathComponent("helm.previous.log")
     }
     /// Everything the log can leave on disk. Anything that clears the log
     /// clears all of it.
-    public static var allFileURLs: [URL] { [fileURL, previousFileURL] }
+    static var allFileURLs: [URL] { [fileURL, previousFileURL] }
     /// The same two, oldest half first, and none of them under test — the reason
     /// is on `LogDestination.seedSources`.
     static var seedSources: [URL] {
@@ -210,7 +210,7 @@ public final class HelmLog: @unchecked Sendable {
     /// happened, so a purge that removed it would be able to run again. Named
     /// here rather than inside the purge because a file name invented in a
     /// second place is a defect nothing in the suite catches now.
-    public static var resetMarkerURL: URL {
+    static var resetMarkerURL: URL {
         directory.appendingPathComponent(".redaction-reset")
     }
     private static let sizeLimit = 2 * 1024 * 1024   // 2 MB, then one rollover
@@ -368,7 +368,7 @@ public final class HelmLog: @unchecked Sendable {
         queue.async { self.tail.clear() }
     }
 
-    public func write(_ level: LogLevel, _ category: String, _ message: String,
+    func write(_ level: LogLevel, _ category: String, _ message: String,
                       site: LogSite? = nil) {
         // The timestamp is taken here, where the event happened; the line is
         // built on the queue, after the check. Formatting allocates a

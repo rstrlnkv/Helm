@@ -43,7 +43,7 @@ public final class FrontmostApp: @unchecked Sendable {
     /// perform one to report that a wrong-thread read happened. Debug builds
     /// trap so the caller is found here rather than in a crash log.
     @discardableResult
-    public func refresh() -> String {
+    func refresh() -> String {
         guard Thread.isMainThread else {
             assertionFailure("FrontmostApp.refresh() off the main thread")
             lock.lock(); defer { lock.unlock() }

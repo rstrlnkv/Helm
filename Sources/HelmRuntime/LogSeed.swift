@@ -220,7 +220,7 @@ public enum LogSeed {
 /// `TheLogSplitsIntoLaunchesTests`, which has a real `HelmLog` write each and
 /// asks this to read it — a reworded line otherwise turns every card into one
 /// long "earlier launch" and nothing says so.
-public extension LogSeed {
+extension LogSeed {
 
     /// The version a start line names, or nil for any other line.
     ///
@@ -231,28 +231,28 @@ public extension LogSeed {
     /// whose message is the start line's own «[app] Helm … started». The launch
     /// after a crash is the one somebody opened the page for, so it is read here
     /// as the launch it is; the entry stays one line, in the place it was.
-    static func version(of entry: LogEntry) -> String? {
+    public static func version(of entry: LogEntry) -> String? {
         if entry.category == LogLine.appCategory, let version = version(inMessage: entry.message) {
             return version
         }
         return versionOfGluedStart(entry)
     }
 
-    static func isTerminating(_ entry: LogEntry) -> Bool {
+    public static func isTerminating(_ entry: LogEntry) -> Bool {
         entry.category == LogLine.appCategory && entry.message == LogLine.terminating
     }
 
-    static func isLoggingDisabled(_ entry: LogEntry) -> Bool {
+    public static func isLoggingDisabled(_ entry: LogEntry) -> Bool {
         entry.category == LogLine.appCategory && entry.message == LogLine.loggingDisabled
     }
 
-    static func isBareLoggingEnabled(_ entry: LogEntry) -> Bool {
+    public static func isBareLoggingEnabled(_ entry: LogEntry) -> Bool {
         entry.category == LogLine.appCategory && entry.message == LogLine.loggingEnabledWord
     }
 
     /// `.some(nil)` for a bare «logging enabled» (older builds wrote no version),
     /// `.some(version)` for «logging enabled (version)», nil for any other line.
-    static func loggingEnabled(_ entry: LogEntry) -> String?? {
+    public static func loggingEnabled(_ entry: LogEntry) -> String?? {
         guard entry.category == LogLine.appCategory else { return nil }
         let word = LogLine.loggingEnabledWord
         if entry.message == word { return .some(nil) }

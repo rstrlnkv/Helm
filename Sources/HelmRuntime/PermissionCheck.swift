@@ -14,7 +14,7 @@ public enum PermissionState: String, Sendable, Equatable {
 public enum PermissionCheck {
     /// Full Disk Access is the gate on `~/Library/Containers` and
     /// `~/Library/Group Containers`; without it those leftovers cannot move.
-    public static func state(canReadProtectedPath: Bool) -> PermissionState {
+    static func state(canReadProtectedPath: Bool) -> PermissionState {
         canReadProtectedPath ? .granted : .denied
     }
 
@@ -118,7 +118,7 @@ public enum PermissionCheck {
     }
 }
 
-public extension PermissionCheck {
+extension PermissionCheck {
     /// Screen Recording, read without asking.
     ///
     /// `CGPreflightScreenCaptureAccess` answers from the process's own grant and
@@ -126,25 +126,25 @@ public extension PermissionCheck {
     /// do. It is not the request: a process that has been refused is not shown
     /// the system prompt again (`CGWindow.h`), so asking is a separate act, made
     /// once by the capture port, and the person is sent to the pane from then on.
-    static func currentScreenRecording() -> PermissionState {
+    public static func currentScreenRecording() -> PermissionState {
         CGPreflightScreenCaptureAccess() ? .granted : .denied
     }
 
     /// Opens the exact pane the user needs; deep links are the documented way
     /// to send someone to a privacy setting.
-    static func openFullDiskAccessSettings() {
+    public static func openFullDiskAccessSettings() {
         open("x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AllFiles")
     }
 
     /// System Settings → Keyboard, where Keyboard Shortcuts → Screenshots holds the
     /// boxes Helm asks a person to untick. The pane is the extension's own
     /// identifier; nothing deeper is addressable.
-    static func openKeyboardSettings() {
+    public static func openKeyboardSettings() {
         open("x-apple.systempreferences:com.apple.Keyboard-Settings.extension")
     }
 
     /// System Settings → Network, the extension's own identifier.
-    static func openNetworkSettings() {
+    public static func openNetworkSettings() {
         open("x-apple.systempreferences:com.apple.Network-Settings.extension")
     }
 
@@ -160,11 +160,11 @@ public extension PermissionCheck {
     /// — macOS answers for this grant through its own API — so it is only ever
     /// a destination. The identifier is the settings extension's own
     /// (`NotificationsSettings.appex`), not the legacy prefPane's.
-    static func openNotificationSettings() {
+    public static func openNotificationSettings() {
         open("x-apple.systempreferences:com.apple.Notifications-Settings.extension")
     }
 
-    static func openExtensionSettings() {
+    public static func openExtensionSettings() {
         open("x-apple.systempreferences:com.apple.ExtensionsPreferences")
     }
 

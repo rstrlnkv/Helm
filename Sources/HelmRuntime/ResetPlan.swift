@@ -69,7 +69,7 @@ public enum ResetPlan {
     /// before Application Support.
     /// `folder` is the build's own (`AppBuild.dataFolder`), so Helm Dev's reset
     /// can only reach Helm Dev's folders and never the real Helm's.
-    public static func removablePaths(home: String, folder: DataFolder) -> [String] {
+    static func removablePaths(home: String, folder: DataFolder) -> [String] {
         [HelmSupport.path(home: home, folder: folder),
          "\(home)/\(LogDestination.relativePath(folder: folder))"]
     }
@@ -84,7 +84,7 @@ public enum ResetPlan {
     }
 
     /// Whether a reset may touch this path at all.
-    public static func mayRemove(_ path: String, home: String, folder: DataFolder) -> Bool {
+    static func mayRemove(_ path: String, home: String, folder: DataFolder) -> Bool {
         let standardized = (path as NSString).standardizingPath
         return removablePaths(home: home, folder: folder).contains {
             standardized == $0 || standardized.hasPrefix($0 + "/")

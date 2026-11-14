@@ -53,7 +53,7 @@ public enum HelmTrash {
             self.freedBytes = freedBytes
         }
 
-        public var failed: [String] { refused.map(\.path) }
+        var failed: [String] { refused.map(\.path) }
     }
 
     /// The move as macOS makes it: what an engine passes as `trashing` in the app, and what a test replaces.

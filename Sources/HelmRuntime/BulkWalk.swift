@@ -7,7 +7,7 @@ import Foundation
 /// a `resourceValues` per entry, and that is the difference measured below.
 public struct BulkEntry: Sendable {
     public let path: String
-    public let isDirectory: Bool
+    let isDirectory: Bool
     /// A plain file, as opposed to a socket, a fifo or a device node. The clone
     /// question is asked of regular files only, so the answer has to come out of
     /// the walk rather than be inferred from "not a directory".
@@ -24,7 +24,7 @@ public struct BulkEntry: Sendable {
     /// How many names this allocation wears. `FileWeight`'s ledger charges it
     /// once however many that is, so a walk that answered 1 for everything would
     /// make every size in the app wrong in the same direction and say nothing.
-    public let linkCount: Int
+    let linkCount: Int
     public let modified: TimeInterval
     /// Finder's «Date Added» — the date the copy arrived in this directory,
     /// which is not the date it was made and is not carried along when a file is
@@ -92,12 +92,12 @@ public enum BulkWalk {
     /// runtime — that is what crashed a whole-disk scan while a home-directory
     /// scan, whose ids happen to be positive, passed.
     public struct DeviceID: Equatable, Sendable {
-        public let raw: dev_t
-        public let known: Bool
+        let raw: dev_t
+        let known: Bool
 
-        public init(raw: dev_t) { self.raw = raw; self.known = true }
+        init(raw: dev_t) { self.raw = raw; self.known = true }
         private init() { self.raw = 0; self.known = false }
-        public static let unknown = DeviceID()
+        static let unknown = DeviceID()
 
         /// An unknown device is never assumed to match: better to skip a
         /// directory than to wander onto another filesystem.

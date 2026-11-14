@@ -69,7 +69,7 @@ public enum PermissionNeed: String, CaseIterable, Sendable {
     /// case to its localized strings. Stated here so a permission cannot be
     /// added without saying what it is and why Helm wants it — an unexplained
     /// request is one people deny.
-    public var title: String {
+    var title: String {
         switch self {
         case .fullDiskAccess: "Full Disk Access"
         case .accessibility: "Accessibility"
@@ -77,7 +77,7 @@ public enum PermissionNeed: String, CaseIterable, Sendable {
         }
     }
 
-    public var why: String {
+    var why: String {
         switch self {
         case .fullDiskAccess:
             "Needed to remove app containers and to read every folder when scanning the disk."

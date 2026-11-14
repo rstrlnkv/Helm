@@ -3,10 +3,10 @@ import Foundation
 public struct SystemExtensionInfo: Equatable, Sendable, Identifiable, Codable {
     public var id: String { identifier }
     public let identifier: String
-    public let teamID: String
-    public let name: String
+    let teamID: String
+    let name: String
     public let version: String
-    public let state: String
+    let state: String
     public let enabled: Bool
 
     public init(identifier: String, teamID: String, name: String,
@@ -64,7 +64,7 @@ public enum SystemExtensionCLI {
     /// dropped here, so a `systemextensionsctl` that could not run read as «nothing
     /// is loaded on this Mac» — and «nothing is loaded» is what stops a launch agent
     /// whose label is a live system extension from being called a leftover.
-    public static func listing() -> String? {
+    static func listing() -> String? {
         // This used to wait before reading, which is the deadlock order, and
         // paid 67 ms in the run-loop poll on every call.
         let result = HelmProcess.run("/usr/bin/systemextensionsctl", ["list"])

@@ -86,7 +86,7 @@ public enum PrivilegedRun {
     }
 
     /// Split out so the reading is testable without a password dialog.
-    public static func outcome(status: Int32, output: String) -> PrivilegedOutcome {
+    static func outcome(status: Int32, output: String) -> PrivilegedOutcome {
         guard status != 0 else { return .done }
         if output.contains(userCancelled) { return .declined }
         return .failed(status)

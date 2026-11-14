@@ -46,7 +46,7 @@ public enum PathCanonical {
     /// (the scan and the click are minutes apart), which is a steady state, not a
     /// change, so two `nil`s compare equal.
     public struct AncestryIdentity: Equatable, Sendable {
-        public let device: UInt64
+        let device: UInt64
         public let inode: UInt64
         public init(device: UInt64, inode: UInt64) {
             self.device = device
@@ -195,7 +195,7 @@ public enum PathCanonical {
     /// A path that does not exist yet is still answered — the scan and the
     /// click are separated by however long the user takes — by resolving the
     /// deepest ancestor that does exist and re-appending the missing tail.
-    public static func resolvingAncestors(_ path: String) -> String {
+    static func resolvingAncestors(_ path: String) -> String {
         // A relative path is handed back untouched. `URL(fileURLWithPath:)`
         // resolves one against the process's working directory, so resolving
         // first and validating afterwards silently promotes `""` and

@@ -41,7 +41,7 @@ public enum PrivateFile {
     ///   reason to fail the work that asked for it — so the caller is told and
     ///   decides, rather than being thrown at. Deciding is not optional: see the
     ///   type's own note above.
-    public static func write<T: Encodable>(_ value: T, to url: URL) -> Bool {
+    static func write<T: Encodable>(_ value: T, to url: URL) -> Bool {
         guard let data = try? JSONEncoder().encode(value) else { return false }
         return write(data, to: url)
     }
@@ -73,7 +73,7 @@ public enum PrivateFile {
     }
 
     /// The same for bytes that are not JSON — the log's redaction salt among them.
-    public static func write(_ data: Data, to url: URL) -> Bool {
+    static func write(_ data: Data, to url: URL) -> Bool {
         let path = url.path
         guard let scratch = bornPrivate(beside: path) else { return false }
         do {
@@ -147,7 +147,7 @@ public enum PrivateFile {
     ///
     /// - Returns: whether there was a file to tighten. Absent is not a failure —
     ///   the log is hardened before anything has been written to it.
-    public static func harden(at url: URL) -> Bool {
+    static func harden(at url: URL) -> Bool {
         let fm = FileManager.default
         var isDirectory: ObjCBool = false
         guard fm.fileExists(atPath: url.path, isDirectory: &isDirectory),
@@ -163,7 +163,7 @@ public enum PrivateFile {
     ///   is about to write into it usually spends this on the write's own answer
     ///   — a folder that could not be made is a write that cannot land — which
     ///   is why so many sites read `directory(at:) && write(…)`.
-    public static func directory(at url: URL) -> Bool {
+    static func directory(at url: URL) -> Bool {
         let fm = FileManager.default
         try? fm.createDirectory(at: url, withIntermediateDirectories: true,
                                 attributes: [.posixPermissions: 0o700])

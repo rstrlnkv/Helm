@@ -40,7 +40,7 @@ final class ARefusalFromTheDiskIsNotASuccessTests: XCTestCase {
         var names: Set<String> = []
         for statement in try statements(of: Self.privateFile) {
             guard statement.text.contains("-> Bool"),
-                  let range = statement.text.range(of: "public static func ") else { continue }
+                  let range = statement.text.range(of: "static func ") else { continue }
             let rest = statement.text[range.upperBound...]
             names.insert(String(rest.prefix { $0.isLetter || $0.isNumber }))
         }

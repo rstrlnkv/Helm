@@ -56,7 +56,7 @@ public enum HelmProcess {
     /// waiting on a network or a disk, so the useful number is not the core
     /// count; what matters is that it is small, fixed, and far below the point
     /// where a page can exhaust anything.
-    public static let launchCeiling = 8
+    static let launchCeiling = 8
 
     /// The slots, and the count for a test to read.
     ///

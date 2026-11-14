@@ -136,7 +136,7 @@ public enum DataFolder: String {
 
     /// Helm Dev's own folder for its identifier and `Helm` for every other one:
     /// the release, a test runner and nil keep the path that is deployed.
-    public static func of(identifier: String?) -> DataFolder {
+    static func of(identifier: String?) -> DataFolder {
         AppBuild.isDevIdentifier(identifier) ? .helmDev : .helm
     }
 }

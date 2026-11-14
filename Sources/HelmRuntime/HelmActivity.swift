@@ -22,7 +22,7 @@ public enum HelmActivity {
 
     public struct Running: Sendable, Equatable {
         public let label: String
-        public let started: Date
+        let started: Date
         public init(label: String, started: Date) {
             self.label = label
             self.started = started
@@ -32,7 +32,7 @@ public enum HelmActivity {
     /// A leaked interval must not grow without bound: this is the mechanism for
     /// finding memory bugs and must not become one. Past the limit a phase runs
     /// unregistered rather than failing — the work matters more than the record.
-    public static let liveLimit = 64
+    static let liveLimit = 64
 
     private static let lock = NSLock()
     nonisolated(unsafe) private static var live: [String: Running] = [:]
@@ -115,7 +115,7 @@ public enum HelmActivity {
     /// VPN refresh, the Layout tap, the update check and the trash sweep all
     /// run outside this registry — a reading taken beside any of them is not a
     /// reading of an idle app, and the line must not say it is.
-    public static func describe(_ running: [Running], now: Date = Date(),
+    static func describe(_ running: [Running], now: Date = Date(),
                                 excluding label: String? = nil) -> String {
         let running = running.filter { $0.label != label }
         guard !running.isEmpty else { return label == nil ? "no phases running" : "" }

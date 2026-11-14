@@ -19,16 +19,16 @@ public struct ScanItem: Codable, Equatable, Hashable, Sendable {
 /// What changed between two scans of the same module.
 public struct ScanChange: Equatable, Sendable {
     /// In the newer list and not the older one, in the newer list's order.
-    public let appeared: [ScanItem]
+    let appeared: [ScanItem]
     /// In the older list and not the newer one.
-    public let went: [ScanItem]
+    let went: [ScanItem]
     /// In both, unchanged.
-    public let stayed: [ScanItem]
+    let stayed: [ScanItem]
     /// False when this is the first scan the module ever ran. A page must not
     /// draw "since last time" against a previous scan that does not exist.
-    public let hadPrevious: Bool
+    let hadPrevious: Bool
 
-    public var appearedBytes: Int { appeared.reduce(0) { $0 + $1.bytes } }
+    var appearedBytes: Int { appeared.reduce(0) { $0 + $1.bytes } }
 }
 
 /// Comparing two lists of what a scan found.

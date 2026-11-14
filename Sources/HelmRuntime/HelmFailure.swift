@@ -19,13 +19,13 @@ public struct LogSite: Sendable, Equatable {
 
     /// `#fileID` is "ModuleName/File.swift". The module is already the log's
     /// category, so only the filename is kept.
-    public init(fileID: String, line: Int, function: String) {
+    init(fileID: String, line: Int, function: String) {
         self.file = fileID.split(separator: "/").last.map(String.init) ?? fileID
         self.line = line
         self.function = function
     }
 
-    public var description: String { "\(file):\(line) \(function)" }
+    var description: String { "\(file):\(line) \(function)" }
 }
 
 /// Turns a failure into something worth writing down.

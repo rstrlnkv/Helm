@@ -18,12 +18,12 @@ import Foundation
 /// them, and the duplicate walk skips them so it does not read every user file
 /// twice. Two modules needing it is what moved it out of Disk.
 public enum FirmlinkMap {
-    public static let tablePath = "/usr/share/firmlinks"
-    public static let dataMount = "/System/Volumes/Data"
+    static let tablePath = "/usr/share/firmlinks"
+    static let dataMount = "/System/Volumes/Data"
 
     /// Data-side paths that duplicate something already reachable from `/`.
     /// Each table line is `<root path>\t<data-relative path>`.
-    public static func duplicatePaths(firmlinks text: String, dataMount: String) -> Set<String> {
+    static func duplicatePaths(firmlinks text: String, dataMount: String) -> Set<String> {
         var paths: Set<String> = []
         for line in text.split(separator: "\n") {
             let fields = line.split(separator: "\t")
@@ -37,7 +37,7 @@ public enum FirmlinkMap {
 
     /// True when the scan would descend into the Data mount from above.
     /// Scanning the Data volume directly duplicates nothing.
-    public static func applies(scanRoot: String, dataMount: String) -> Bool {
+    static func applies(scanRoot: String, dataMount: String) -> Bool {
         guard scanRoot != dataMount else { return false }
         let prefix = scanRoot.hasSuffix("/") ? scanRoot : scanRoot + "/"
         return dataMount.hasPrefix(prefix)

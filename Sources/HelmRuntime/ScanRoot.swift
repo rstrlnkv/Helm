@@ -128,7 +128,7 @@ public enum ScanRoot {
     /// Finder draws each of these as one item because that is what it is: a
     /// database an application owns, not a folder of somebody's files. Several
     /// are TCC-protected as well.
-    public static let applicationLibraryExtensions: Set<String> = [
+    static let applicationLibraryExtensions: Set<String> = [
         "photoslibrary", "photolibrary", "migratedphotolibrary", "aplibrary",
         "musiclibrary", "tvlibrary", "imovielibrary", "theater", "fcpbundle",
     ]
