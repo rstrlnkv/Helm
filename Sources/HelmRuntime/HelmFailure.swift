@@ -147,6 +147,30 @@ public enum HelmFailure {
     /// message field.
     private static let messageLimit = 800
 
+    /// `spelling` becomes `~` only where the path component ends: at the end of
+    /// the text, at a `/`, or at a character a name does not contain. Home
+    /// `/Users/anna` stays out of `/Users/annabelle/x` and `/Users/anna.smith`,
+    /// which are another account's.
+    private static func replacingHome(_ spelling: String, in text: String) -> String {
+        var result = ""
+        var rest = Substring(text)
+        while let found = rest.range(of: spelling) {
+            result += rest[..<found.lowerBound]
+            let after = rest[found.upperBound...]
+            let continuesName: Bool
+            if let next = after.first {
+                let isNameCharacter = next.isLetter || next.isNumber || next == "_" || next == "-"
+                let dotInName = next == "." && (after.dropFirst().first.map { $0.isLetter || $0.isNumber } ?? false)
+                continuesName = isNameCharacter || dotInName
+            } else {
+                continuesName = false
+            }
+            result += continuesName ? Substring(spelling) : "~"
+            rest = after
+        }
+        return result + rest
+    }
+
     /// One event is one line, and the reader is not to be lied to.
     ///
     /// The home path is stripped here rather than at the call sites, because
@@ -175,7 +199,7 @@ public enum HelmFailure {
         let home = NSHomeDirectory()
         if !home.isEmpty {
             for spelling in [Redact.FirmlinkTwin.dataMount + home, home] {
-                flat = flat.replacingOccurrences(of: spelling, with: "~")
+                flat = replacingHome(spelling, in: flat)
             }
         }
         flat = flat.trimmingCharacters(in: .whitespacesAndNewlines)

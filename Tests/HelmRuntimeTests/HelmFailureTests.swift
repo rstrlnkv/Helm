@@ -159,6 +159,29 @@ extension HelmFailureTests {
         XCTAssertTrue(described.contains("~/Desktop/secret.txt"), described)
     }
 
+    /// Another account whose name starts with this one's is not this home: the
+    /// replacement stops at the end of a path component.
+    func testANeighbourSharingTheHomePrefixIsLeftAlone() {
+        let home = NSHomeDirectory()
+        for neighbour in ["\(home)belle/x", "\(home).smith/x", "\(home)-2/x"] {
+            let error = NSError(domain: "D", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "could not read \(neighbour)",
+            ])
+            let described = HelmFailure.describe(error)
+            XCTAssertTrue(described.contains(neighbour), described)
+        }
+    }
+
+    func testTheHomeAtTheEndOfTheMessageOrBeforeASlashBecomesATilde() {
+        let home = NSHomeDirectory()
+        let error = NSError(domain: "D", code: 1, userInfo: [
+            NSLocalizedDescriptionKey: "moved \(home)/a to \(home)",
+        ])
+        let described = HelmFailure.describe(error)
+        XCTAssertTrue(described.contains("moved ~/a to ~"), described)
+        XCTAssertFalse(described.contains(home), described)
+    }
+
     /// Trashing is a move, and a move failure names its source and destination
     /// in keys the describer did not read.
     func testAMoveFailureNamesTheFileItWasMoving() {

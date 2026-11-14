@@ -525,7 +525,7 @@ public final class HelmLog: @unchecked Sendable {
                 if !PrivateFile.write(data, to: url) { Self.sayOutOfBand() }
                 return
             }
-            try? handle.write(contentsOf: data)
+            do { try handle.write(contentsOf: data) } catch { Self.sayOutOfBand() }
         } else if !PrivateFile.write(data, to: url) {
             Self.sayOutOfBand()
         }
