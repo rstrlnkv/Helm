@@ -27,9 +27,14 @@ public struct AutopilotStatus: Equatable, Sendable {
     /// it may be put back, so the page draws the warning and its one way out
     /// instead of offering returns that would all refuse.
     public let historyRefused: Bool
+    /// The rules in the record that this build could not read, of live folders
+    /// and of removed ones. They are kept as they were and run nowhere.
+    let unapplied: [UnappliedRule]
 
     init(refusal: RuleRefusal?, folders: [String: FolderState] = [:],
-                watching: Bool? = nil, historyRefused: Bool = false) {
+                watching: Bool? = nil, historyRefused: Bool = false,
+                unapplied: [UnappliedRule] = []) {
+        self.unapplied = unapplied
         self.refusal = refusal
         self.folders = folders
         self.watching = watching

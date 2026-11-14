@@ -233,16 +233,16 @@ struct AutopilotSettingsPage: View {
     /// to delete somebody's rules over it would be the worst button in the app.
     @ViewBuilder private func refused(_ reason: RuleRefusal) -> some View {
         VStack(alignment: .leading, spacing: HelmSpace.s5) {
-            switch reason {
-            case .tampered:
-                HelmBanner(ApStr.rulesTampered) {
+            // One banner, one place that says whether it carries Discard:
+            // `RuleRefusal.offersDiscard`, which a test reads. The way out of
+            // `.unreadable` is Reset, or a newer Helm that reads the record.
+            HelmBanner(reason.sentence) {
+                if reason.offersDiscard {
                     Button(ApStr.discardRules, role: .destructive) {
                         Task { await rvm.discardRefusedRules() }
                     }
                     .controlSize(.small)
                 }
-            case .noKey:
-                HelmBanner(ApStr.rulesUnreadable)
             }
             Spacer(minLength: 0)
         }

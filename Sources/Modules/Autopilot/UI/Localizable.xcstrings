@@ -1909,6 +1909,59 @@
         }
       }
     },
+    "helmCouldNotReadTheStored": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm konnte die gespeicherten Regeln nicht lesen, daher wird keine davon ausgeführt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm could not read the stored rules, so none of them are running."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm no pudo leer las reglas guardadas, así que ninguna se está ejecutando."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm n’a pas pu lire les règles enregistrées\u00a0: aucune ne s’exécute."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存されているルールを読み取れませんでした。どのルールも実行されません。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Helm não conseguiu ler as regras guardadas, por isso nenhuma está a ser executada."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm не смог прочитать сохраненные правила — ни одно из них не выполняется."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helm 无法读取已保存的规则，因此没有任何规则在运行。"
+          }
+        }
+      }
+    },
     "helmDidNotRecordEnoughTo": {
       "extractionState": "manual",
       "localizations": {

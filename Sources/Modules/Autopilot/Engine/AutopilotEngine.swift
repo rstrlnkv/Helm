@@ -109,7 +109,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
     /// side effect of judging the rules — the model asks this and `folders` in
     /// the same breath.
     var status: AutopilotStatus {
-        let (watched, reason) = rules.decision()
+        let (watched, reason, unapplied) = rules.decision()
         // One question per folder, asked outside that decision: a page opening
         // is not a reason to hold every other reader of the rule set behind a
         // filesystem call, and `state(of:)` never touches the rules.
@@ -123,7 +123,7 @@ public final class AutopilotEngine: ModuleEngine, @unchecked Sendable {
         }
         return AutopilotStatus(refusal: reason, folders: states,
                                watching: watchLock.withLock { watching },
-                               historyRefused: historyRefused)
+                               historyRefused: historyRefused, unapplied: unapplied)
     }
 
     public func activate() {

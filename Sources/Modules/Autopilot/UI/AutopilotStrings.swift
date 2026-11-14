@@ -26,6 +26,9 @@ enum ApStr {
     /// a locked keychain is waited out, a rewritten plist is not.
     static var rulesTampered: String { L(.theRulesStoredOnThisMac) }
     static var rulesUnreadable: String { L(.helmCannotReadTheKeyIts) }
+    /// A record that is not a rule list at all, with the seal fitting: not the key
+    /// (`rulesUnreadable`) and not somebody else's (`rulesTampered`).
+    static var rulesNotRead: String { L(.helmCouldNotReadTheStored) }
     /// The verb beside the first of those, and the only thing a refused page may
     /// send. It says what it does — the rules go, and the folder list starts
     /// again — rather than «OK».
@@ -502,4 +505,20 @@ enum ApStr {
                                 language: AppLanguage = AppLanguage.current) -> String {
         L(.sweepNotActedOn(Plural.files(count, language: language.rawValue)), language: language)
     }
+}
+
+extension RuleRefusal {
+    /// The sentence the refused page says for this reason.
+    var sentence: String {
+        switch self {
+        case .tampered: ApStr.rulesTampered
+        case .noKey: ApStr.rulesUnreadable
+        case .unreadable: ApStr.rulesNotRead
+        }
+    }
+
+    /// Only a rule set somebody else wrote can be answered by throwing it away: a
+    /// locked keychain is answered by waiting, and a record this build cannot
+    /// read is not this build's to delete.
+    var offersDiscard: Bool { self == .tampered }
 }

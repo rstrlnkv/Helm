@@ -10,6 +10,18 @@ seal disagrees decodes to `[]`, so none of its rules runs, and `AutopilotEngine.
 carries the verdict as `refusal`, which the page reads to draw a card saying the
 rules could not be read.
 
+`SealedRules` reads the record through `StoredRuleSet`, rule by rule. A rule this
+build cannot decode (a newer Helm wrote it) is not applied and is kept as the bytes it
+was: `status.unapplied` carries it, the log says once per change of count how many,
+with no names, and the readable rules run. A save re-reads the stored record under
+`decisionLock` and writes the new folders with those unapplied rules, removed-folder
+stubs and unknown members put back, so a Dev, Beta, Dev round trip loses nothing.
+A record that cannot be parsed at all, with the seal fitting, is the refusal
+`unreadable`: nothing runs, and a save is refused so that the record is not written
+over. Its banner has no button. The way out is Reset, or a newer Helm that reads the
+record; Discard stays `tampered`'s alone, so nothing in this build deletes a record
+it cannot read.
+
 `WatchScope` bounds what even a rule Helm itself sealed may reach, and the action
 set is closed: there is no script action, and `command grep -rn 'case script\|runScript\|shellAction' Sources/Modules/Autopilot/`
 prints nothing. The reasons are on the doc comments of `RuleAction.swift` and
@@ -100,6 +112,7 @@ No state is shot from Helm Dev with a saved rule: Helm Dev keeps its own account
 | `no-disk-access` | `HelmPermissionNote` over the page; the starting-rules menu disabled | Helm Dev without Full Disk Access (the crew changes no grant) |
 | `rules-tampered` | `HelmBanner` "The rules stored on this Mac…" with Discard and start again | the banner bench's `tampered`, which needs no forged plist; `ARefusedRuleSetIsNotAnEmptyPageTests` |
 | `rules-unreadable` | `HelmBanner` "Helm cannot read the key…", no button | not shot; same test |
+| `rules-not-read` | `HelmBanner` "Helm could not read the stored rules…", no button | not shot; `AnUnreadableRuleSetIsRefusedNotEmptiedTests` holds the engine half, `ARefusedRuleSetIsNotAnEmptyPageTests` the screen |
 | `folders` | toolbar (first-match note, Add folder…, the menu while offered); per folder: switch, path, Run now, "…"; rule rows (switch, name, one-line summary, edit, up, down); "No rules yet"; New rule; the history card | the bench's `folders` |
 | `folder-missing` / `folder-unreadable` / `not-watching` | a `HelmBanner` under the folder's header | not shot: the bench scripts `empty`, `folders`, `report` and `history` only |
 | `report` | the report at the foot: the sentence, Put back N, Turn off "…", Done | the bench's `report` |

@@ -73,6 +73,26 @@ final class ARefusedRuleSetIsNotAnEmptyPageTests: XCTestCase {
                           "one sentence for two states the person can do different things about")
     }
 
+    /// A record that is not a rule list at all is its own screen with its own sentence.
+    func testARecordThatCannotBeReadIsItsOwnScreen() async {
+        let work = FakeAutopilotWork(status: AutopilotStatus(refusal: .unreadable))
+        let model = model(on: work)
+
+        await model.load()
+
+        XCTAssertEqual(model.screen, .rulesRefused(.unreadable))
+        XCTAssertNotEqual(ApStr.rulesNotRead, ApStr.rulesUnreadable)
+        XCTAssertNotEqual(ApStr.rulesNotRead, ApStr.rulesTampered)
+    }
+
+    /// Discard deletes rules; the page's banner reads this one answer for it.
+    func testOnlyATamperedRuleSetOffersDiscard() {
+        XCTAssertTrue(RuleRefusal.tampered.offersDiscard, "precondition: the one that may")
+        XCTAssertFalse(RuleRefusal.noKey.offersDiscard)
+        XCTAssertFalse(RuleRefusal.unreadable.offersDiscard,
+                       "a record this build cannot read must not be offered for deletion")
+    }
+
     // MARK: - What the page may send
 
     /// A refused page must not be able to save. The engine refuses the write as

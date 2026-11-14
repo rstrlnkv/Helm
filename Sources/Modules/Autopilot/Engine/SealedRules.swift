@@ -64,6 +64,10 @@ final class SealedRules: @unchecked Sendable {
     /// lock. Nil until something has asked.
     private var mark: RuleSequence?
     private var refusalReason: RuleRefusal?
+    /// The rules the last read found and could not apply, kept beside the
+    /// verdict they were read with, and how many the log last said so about.
+    private var unappliedRules: [UnappliedRule] = []
+    private var unappliedLogged = 0
     /// Whether the one trust-on-first-use adoption is still unspent. See
     /// `takeTheOneAdoption`.
     private var adoptable = false
@@ -98,10 +102,10 @@ final class SealedRules: @unchecked Sendable {
     /// Both halves together because the verdict is a *side effect* of judging the
     /// stored rules: a caller that asked for the list and then asked for the
     /// refusal could be told about two different readings of the file.
-    func decision() -> (folders: [WatchedFolder], refusal: RuleRefusal?) {
+    func decision() -> (folders: [WatchedFolder], refusal: RuleRefusal?, unapplied: [UnappliedRule]) {
         decisionLock.withLock {
             let list = decided()
-            return (list, trustLock.withLock { refusalReason })
+            return trustLock.withLock { (list, refusalReason, unappliedRules) }
         }
     }
 
@@ -120,6 +124,9 @@ final class SealedRules: @unchecked Sendable {
     /// Whose rules the plist holds, and the ones that may run. Behind
     /// `decisionLock`, with the `refusing` calls it makes.
     private func decided() -> [WatchedFolder] {
+        // Only the list is cleared: the count the log last said stays, or every
+        // read would say it again.
+        trustLock.withLock { unappliedRules = [] }
         // Unverifiable is refused, not assumed. Without a key there is no
         // way to tell the person's rules from anyone else's, and this
         // module moves files with nobody watching.
@@ -155,13 +162,31 @@ final class SealedRules: @unchecked Sendable {
             return []
         }
         refusing(nil)
-        guard let list = try? JSONDecoder().decode([WatchedFolder].self, from: data)
-        else { return [] }
-        // On the way out as well as in. The setter has always brought
-        // numbers into range, and a plist somebody edited by hand — or one
-        // written by an older build — never went through the setter. It
-        // reaches the engine here.
-        return list.map(\.storable)
+        // Rule by rule: one a newer Helm wrote runs nowhere and is kept, the rest
+        // run. A record that cannot be parsed at all is refused, not read as empty.
+        // The folders come back through `storable`: the setter has always brought
+        // numbers into range, and a plist somebody edited by hand — or one written
+        // by an older build — never went through the setter. It reaches the engine here.
+        guard case let .read(list, unapplied, _, _) = StoredRuleSet.read(data) else {
+            refusing(.unreadable)
+            return []
+        }
+        noting(unapplied)
+        return list
+    }
+
+    /// Records the rules this read could not apply. The log says it once per
+    /// change of count, with no names: reads come with every sweep and event.
+    private func noting(_ unapplied: [UnappliedRule]) {
+        trustLock.lock()
+        defer { trustLock.unlock() }
+        unappliedRules = unapplied
+        guard unapplied.count != unappliedLogged else { return }
+        unappliedLogged = unapplied.count
+        if !unapplied.isEmpty {
+            HelmLog.shared.warn(AutopilotEngine.moduleID,
+                                "\(unapplied.count) rules were written by a newer Helm and are not applied")
+        }
     }
 
     /// The rule set on its way to the plist, sealed. Behind `decisionLock` for
@@ -190,13 +215,28 @@ final class SealedRules: @unchecked Sendable {
                                  "folders were not saved over them")
             return false
         }
+        // What the stored record holds that this build could not read goes back
+        // with the new list. A record that cannot be parsed at all is not
+        // written over: nothing here deletes what it cannot read.
+        var unapplied: [UnappliedRule] = [], stubs: [RemovedFolder] = [], extras = KeptMembers()
+        if let stored = store.data(Self.storeKey), !stored.isEmpty {
+            guard case let .read(_, u, s, e) = StoredRuleSet.read(stored) else {
+                refusing(.unreadable)
+                HelmLog.shared.error(AutopilotEngine.moduleID,
+                                     "the stored rules could not be read, so \(folders.count) " +
+                                     "folders were not saved over them")
+                return false
+            }
+            (unapplied, stubs, extras) = (u, s, e)
+        }
         // Encoding a rule list can genuinely fail — `JSONEncoder` refuses a
         // non-finite `Double`, which a condition can hold — and returning
         // quietly discarded every folder and every rule while the screen
         // went on showing the new state. The old list survives instead, and
         // the failure is in the log.
         do {
-            let data = try JSONEncoder().encode(folders.map(\.storable))
+            guard let data = StoredRuleSet.compose(folders, unapplied: unapplied, stubs: stubs, extras: extras)
+            else { throw CocoaError(.coderInvalidValue) }
             // Rules first, seal second. Interrupted between the two, the
             // plist holds a rule set whose seal does not fit it — which is
             // refused, and refusing rules the person did save is the
@@ -398,6 +438,10 @@ final class SealedRules: @unchecked Sendable {
             HelmLog.shared.error(AutopilotEngine.moduleID,
                                  "the key the rules are sealed with is unavailable; " +
                                  "no rules will run until it can be read")
+        case .unreadable:
+            HelmLog.shared.error(AutopilotEngine.moduleID,
+                                 "the stored rules could not be read; none of them will run " +
+                                 "and nothing will be saved over them")
         case .none:
             break
         }
