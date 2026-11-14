@@ -54,6 +54,9 @@ private let helmPanelShadowMargin: CGFloat = 28
 @MainActor final class HelmPanel: NSObject {
     private let panel: NSPanel
     private var dismissMonitor: Any?
+    /// The global monitor never sees a click into Helm's own windows (Settings);
+    /// this one does.
+    private var localDismissMonitor: Any?
     private var dismissObserver: NSObjectProtocol?
     private var statusButtonScreenFrame: NSRect = .zero
     /// Screen the panel was opened on; clamping target for repositioning.
@@ -166,12 +169,22 @@ private let helmPanelShadowMargin: CGFloat = 28
             if self.statusButtonScreenFrame.contains(loc) { return }
             self.hide()
         }
+        localDismissMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+            guard let self, event.window !== self.panel else { return event }
+            if self.statusButtonScreenFrame.contains(NSEvent.mouseLocation) { return event }
+            self.hide()
+            return event
+        }
     }
 
     private func removeDismissMonitor() {
         if let dismissMonitor {
             NSEvent.removeMonitor(dismissMonitor)
             self.dismissMonitor = nil
+        }
+        if let localDismissMonitor {
+            NSEvent.removeMonitor(localDismissMonitor)
+            self.localDismissMonitor = nil
         }
     }
 }
