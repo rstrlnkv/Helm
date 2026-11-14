@@ -702,8 +702,18 @@ enum KeepGrounds: Equatable, Sendable {
     /// The unattended scan, asked of the model and not of the engine through a
     /// cast: a model that is stopped answers nil, and a cast that missed would
     /// too, unseen.
+    ///
+    /// It waits while the person's search or removal runs: both live here, on
+    /// the main actor, and the engine's one finder slot would otherwise end the
+    /// search for the timer's sake. Nil is no completion for the coordinator,
+    /// so the retry gap applies.
     func backgroundScan() async -> ScanReport? {
         guard !closed else { return nil }
+        guard phase != .searching, !busy else {
+            HelmLog.shared.info("scan", "duplicates: a search or a removal is running; "
+                                + "the timer's scan waits for its next turn")
+            return nil
+        }
         return await work.backgroundScan()
     }
 }

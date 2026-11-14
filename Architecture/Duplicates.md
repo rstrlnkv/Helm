@@ -48,7 +48,10 @@ pairs, which a stop ends with nothing moved. The model keeps no state for a repl
 arrives: an answer is always a return.
 
 A background scan and a search the person started share the engine's one finder slot, so
-one begins by cancelling the other.
+one begins by cancelling the other. The model keeps the person's side of that: while a
+search or a removal runs, the timer's scan answers nil without reaching the engine, logs
+that it waits, and the retry gap applies. A search the person starts during a background
+scan still supersedes it.
 
 While a removal runs, the marks (`toggleBasket`), Keep this copy, Restore the
 recommendation and the policy popup are refused by the model and their controls dim,
