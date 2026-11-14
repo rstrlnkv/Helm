@@ -120,21 +120,52 @@ public struct ActiveExtensions: LoadedItemsPort, LoginItemSwitchPort {
         return LaunchctlDisabled.parse(result.output)
     }
 
-    public func setDisabled(_ disabled: Bool, label: String) {
+    /// **How long one `launchctl` call may take: ten seconds.** `willDisable()` calls
+    /// the port on the main thread through a synchronous contract
+    /// (`HelmContract/ModuleEngine.swift`), and the reset's order leaves no room to
+    /// hop off it, so this deadline is what bounds main. Owner decision Q9a.
+    static let launchctlDeadline: TimeInterval = 10
+
+    public func setDisabled(_ disabled: Bool, label: String) -> SwitchAnswer {
         // The label comes from a plist on disk, and `LaunchLabel` is the rule
         // about which of those launchctl can be asked about — the same one
         // `LeftoverActions.available` reads before offering the switch, so the
         // page and the port cannot come to disagree about a row.
-        guard LaunchLabel.isSwitchable(label) else { return }
+        guard LaunchLabel.isSwitchable(label) else { return .refused }
         let domain = "gui/\(getuid())"
-        _ = run([disabled ? "disable" : "enable", "\(domain)/\(label)"])
+        let first = run([disabled ? "disable" : "enable", "\(domain)/\(label)"])
+        let answer = Self.answer(status: first.status, disabled: disabled, label: label,
+                                 listed: disabledLabelsWithinDeadline)
         // `disable` only stops it from loading next time; boot it out so the
         // switch means something now. Failure is fine — it may not be running.
         _ = run([disabled ? "bootout" : "kickstart", "\(domain)/\(label)"])
+        return answer
     }
 
-    private func run(_ arguments: [String]) -> String {
-        HelmProcess.run("/bin/launchctl", arguments).output
+    /// The status of the first `launchctl` call as launchd's answer. `listed` is asked
+    /// only for a non-zero status that is not a timeout.
+    static func answer(status: Int32, disabled: Bool, label: String,
+                       listed: () -> Set<String>?) -> SwitchAnswer {
+        switch status {
+        case 0:
+            return .accepted
+        case HelmProcess.timedOutStatus, -1:
+            return .unknown
+        default:
+            // launchd may have applied it and still answered non-zero, so the
+            // refusal is only believed when its own list agrees.
+            guard let listed = listed() else { return .unknown }
+            return listed.contains(label) == disabled ? .accepted : .refused
+        }
     }
 
+    private func run(_ arguments: [String]) -> HelmProcess.Result {
+        HelmProcess.run("/bin/launchctl", arguments, timeout: Self.launchctlDeadline)
+    }
+
+    private func disabledLabelsWithinDeadline() -> Set<String>? {
+        let result = run(["print-disabled", "gui/\(getuid())"])
+        guard result.status == 0 else { return nil }
+        return LaunchctlDisabled.parse(result.output)
+    }
 }

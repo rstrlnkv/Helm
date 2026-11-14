@@ -60,8 +60,7 @@ final class WalkFootprintTests: XCTestCase {
 
         // The allocator's books, not `phys_footprint`: a walk of this size
         // retaining every entry grows `size_in_use` by 190 bytes an entry and
-        // grows the footprint by nothing at all — the reading was taken, and it
-        // is the same instrument failure (ARCHITECTURE.md § The memory trail) records for a cache fill.
+        // grows the footprint by nothing at all — the reading was taken.
         let before = AllocatorBooks.allocatedBytes()
         let files = DuplicateScanner().walk(root.path, onProgress: nil)
         let after = AllocatorBooks.allocatedBytes()

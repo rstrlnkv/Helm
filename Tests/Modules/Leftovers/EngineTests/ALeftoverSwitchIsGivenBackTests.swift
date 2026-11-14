@@ -116,3 +116,24 @@ final class ALeftoverSwitchIsGivenBackTests: XCTestCase {
         XCTAssertEqual(switcher.calls.map(\.label), ["com.example.a"])
     }
 }
+
+extension ALeftoverSwitchIsGivenBackTests {
+    /// A hand enable leaves the record unless launchd accepted it: a refused or an
+    /// unknown answer means the label may still be disabled, and only the record
+    /// gets it back at the give-back.
+    func testAHandEnableThatLaunchdDidNotAcceptKeepsTheLabelRecorded() async throws {
+        for notAccepted in [SwitchAnswer.refused, .unknown] {
+            let switcher = LeftoversFakeSwitcher()
+            let store = NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)",
+                                        backing: InMemoryKeyValueStore())
+            let e = engine(switcher, store)
+            await e.setDisabled(true, label: "com.example.agent.one")
+            switcher.answer = notAccepted
+
+            await e.setDisabled(false, label: "com.example.agent.one")
+
+            XCTAssertEqual(store.stringArray("disabledByHelm"), ["com.example.agent.one"],
+                           "a hand enable answered \(notAccepted) must keep the record")
+        }
+    }
+}

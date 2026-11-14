@@ -38,8 +38,10 @@ label stays in the engine: `trash` partitions through `RemovableScope` before
 `HelmTrash.remove`, and `setDisabled(_:)` asks `LaunchLabel.mayBeSwitched` and the
 two agent folders before it reaches the switch, so a caller of the model cannot go
 round them. On the person's switch the host calls the descriptor's `stop(_:)` after
-`willDisable()` has given the switches back, so a press that late writes nothing nobody gives back.
-«Reset all settings» runs `willDisable()` on every live module too, and its `stop(_:)` waits for `shutdown()` on the way out of the relaunch, so the page takes a press in between.
+`willDisable()` has given the switches back, and the model stops sending presses.
+«Reset all settings» runs `willDisable()` on every live module too, and its `stop(_:)` waits for `shutdown()` on the way out of the relaunch. A press in that window, and a press already in flight when `willDisable()` runs, are refused by the engine's latch: `willDisable()` sets `handedBack` under `switchLock` before it reads the record, and every press checks it under the same lock, so no switch lands and no record is written after the give-back. The same lock makes two presses one at a time, so neither loses the other's label.
+
+The port answers with a `SwitchAnswer`, read from launchd: a label is left out of the record only on `.refused`, and a label whose enable did not answer `.accepted` stays in it, so a timed-out call neither records a switch launchd refused nor forgets one it may have applied. Each `launchctl` call runs under a ten-second deadline (`ActiveExtensions.launchctlDeadline`), which is what bounds the main thread when `willDisable()` runs there.
 
 ## Reads, predicates, guards and files
 
@@ -57,6 +59,9 @@ Kept tests, one per guarantee:
 | a source nobody walked is not a clean Mac | `ASourceNobodyWalkedIsNotACleanMacTests` |
 | the rules keep what they name | `StaleItemRulesTests` |
 | a switch the engine turned off is given back | `ALeftoverSwitchIsGivenBackTests`, `TheEngineRefusesASharedSwitchTests` |
+| a switch launchd refused is not recorded, one it may have applied is | `AFailedSwitchIsNotRecordedTests` |
+| no switch lands after the hand-back | `ASwitchInFlightIsGivenBackTests`, `APressAfterTheHandBackIsRefusedTests` |
+| two presses lose no label | `TwoPressesLoseNoLabelTests` |
 | a hidden tick never reaches the Trash | `AHiddenTickNeverReachesTheTrashTests` |
 | the removal passes the gate | `LeftoversRemovalTests` |
 | one removal at a time | `OneRemovalAtATimeTests` |

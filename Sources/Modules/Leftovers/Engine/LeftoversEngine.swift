@@ -60,11 +60,41 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     /// never Helm's.
     private static let recordKey = "disabledByHelm"
 
+    /// One lock over a press and over the give-back, so that a switch never lands
+    /// after `willDisable()` has read the record, and two presses cannot read the
+    /// record and write it over each other. Never held across a suspension: the
+    /// press takes it inside one hop off the cooperative pool.
+    private let switchLock = NSLock()
+    /// Set by `willDisable()` and read and written only under `switchLock`. It lives
+    /// as long as the engine, and the host builds a new engine on each enable
+    /// (`ModuleHost`), so it is the engine's last word where `stopped` in the
+    /// model is the page's.
+    private var handedBack = false
+
+    /// A label is left out of the record only when launchd refused the switch. An
+    /// `.unknown` answer is recorded: enabling at give-back a label that was never
+    /// disabled is harmless, and a disabled label with no record is never given
+    /// back. A hand-switch back on leaves the record unless launchd accepted it.
     func setDisabled(_ disabled: Bool, label: String) async {
-        await offTheCooperativePool { self.switcher.setDisabled(disabled, label: label) }
-        var recorded = Set(store.stringArray(Self.recordKey))
-        if disabled { recorded.insert(label) } else { recorded.remove(label) }
-        store.set(Array(recorded).sorted(), for: Self.recordKey)
+        await offTheCooperativePool {
+            self.switchLock.withLock {
+                guard !self.handedBack else {
+                    HelmLog.shared.warn(Self.moduleID,
+                                        "refused a switch: the module was already switched off")
+                    return
+                }
+                let answer = self.switcher.setDisabled(disabled, label: label)
+                var recorded = Set(self.store.stringArray(Self.recordKey))
+                if disabled {
+                    guard answer != .refused else { return }
+                    recorded.insert(label)
+                } else {
+                    guard answer == .accepted else { return }
+                    recorded.remove(label)
+                }
+                self.store.set(Array(recorded).sorted(), for: Self.recordKey)
+            }
+        }
     }
 
     /// **The give-back.** Reached when the person switches the module off, and for
@@ -78,10 +108,19 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     /// Helm's own, so it is given back too. It is described in
     /// ARCHITECTURE.md § Giving everything back.
     public func willDisable() {
-        let recorded = store.stringArray(Self.recordKey)
-        guard !recorded.isEmpty else { return }
-        for label in recorded { switcher.setDisabled(false, label: label) }
-        store.set([String](), for: Self.recordKey)
+        switchLock.withLock {
+            handedBack = true
+            let recorded = store.stringArray(Self.recordKey)
+            guard !recorded.isEmpty else { return }
+            // What launchd did not accept stays in the record: it may still be
+            // disabled, and the next give-back is the only one it will get.
+            let kept = recorded.filter { switcher.setDisabled(false, label: $0) != .accepted }
+            if !kept.isEmpty {
+                HelmLog.shared.warn(Self.moduleID,
+                                    "\(kept.count) switch(es) could not be given back")
+            }
+            store.set(kept, for: Self.recordKey)
+        }
     }
 
     public func deactivate() {}

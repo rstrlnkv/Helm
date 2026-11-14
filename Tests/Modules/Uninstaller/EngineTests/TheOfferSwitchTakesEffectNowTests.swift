@@ -8,8 +8,9 @@ import XCTest
 /// `setWatchingTrash` writes the setting, starts the watcher, and calls
 /// `trashChanged` — which is what makes the host sweep. Its own doc comment says
 /// why: "the person just asked to be told about apps in the Trash, and the ones
-/// already sitting there are the first thing they meant". the house rules put the
-/// general form of it more bluntly — a setting that only takes effect at the
+/// already sitting there are the first thing they meant". The general
+/// form of it is the rule that an engine reloads its settings in its activation
+/// (ARCHITECTURE.md § Ports and logic): a setting that only takes effect at the
 /// next launch is one people report as broken.
 ///
 /// The failure is silent and looks like nothing at all. The switch goes on, the

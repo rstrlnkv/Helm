@@ -130,19 +130,72 @@ struct LeftoversFakeLoaded: LoadedItemsPort {
 /// `switcher:` — the real one holds `launchctl disable gui/<uid>/<label>` against
 /// the login items of whoever runs the suite.
 ///
-/// `setDisabled` returns nothing in the port, so there is no refusal for this to
-/// be freer or poorer about; what it records is the whole of the observable act,
-/// the direction included: a give-back is `disabled == false`.
+/// What it records is the observable act, the direction included: a give-back is
+/// `disabled == false`. The `answer` it gives back is launchd's, one value for
+/// every call unless a test sets `answers` for a label.
 final class LeftoversFakeSwitcher: LoginItemSwitchPort, @unchecked Sendable {
     private let lock = NSLock()
     private var seen: [(label: String, disabled: Bool)] = []
-    func setDisabled(_ disabled: Bool, label: String) {
-        lock.lock(); defer { lock.unlock() }
+    var answer: SwitchAnswer = .accepted
+    var answers: [String: SwitchAnswer] = [:]
+    /// Held by the first call when set: the fake blocks inside the port, the way a
+    /// `launchctl` that is slow to answer does.
+    var gate: LeftoversGate?
+    private var inside = 0
+    private var mostInside = 0
+    func setDisabled(_ disabled: Bool, label: String) -> SwitchAnswer {
+        lock.lock()
         seen.append((label, disabled))
+        inside += 1
+        mostInside = max(mostInside, inside)
+        let result = answers[label] ?? answer
+        lock.unlock()
+        gate?.passThrough()
+        lock.lock(); inside -= 1; lock.unlock()
+        return result
+    }
+    /// The most calls that were inside the port at once.
+    var mostConcurrent: Int {
+        lock.lock(); defer { lock.unlock() }
+        return mostInside
     }
     var calls: [(label: String, disabled: Bool)] {
         lock.lock(); defer { lock.unlock() }
         return seen
     }
     var labels: [String] { calls.map(\.label) }
+}
+
+/// A one-shot stop for a fake: the first caller of `passThrough` blocks until the
+/// test calls `release`, and the test can wait, within a wall-clock bound, for that
+/// caller to have arrived. Every wait is bounded, so a defect that never reaches the
+/// gate fails the test instead of hanging the suite.
+final class LeftoversGate: @unchecked Sendable {
+    private let entered = DispatchSemaphore(value: 0)
+    private let released = DispatchSemaphore(value: 0)
+    private let lock = NSLock()
+    private var used = false
+
+    func passThrough() {
+        let first = lock.withLock { () -> Bool in defer { used = true }; return !used }
+        guard first else { return }
+        entered.signal()
+        _ = released.wait(timeout: .now() + 10)
+    }
+    func waitUntilEntered() -> Bool { entered.wait(timeout: .now() + 5) == .success }
+    func release() { released.signal() }
+}
+
+/// The folders, with the first read of a directory held at the gate: the press is
+/// then inside `LaunchClaims.onDisk`, past the page's guard and before the switch.
+final class LeftoversGatedFiles: LeftoversFilePort, @unchecked Sendable {
+    let inner: LeftoversFakeFiles
+    let gate: LeftoversGate
+    init(_ inner: LeftoversFakeFiles, gate: LeftoversGate) { self.inner = inner; self.gate = gate }
+    func isWritableDirectory(_ url: URL) -> Bool { inner.isWritableDirectory(url) }
+    func contents(of url: URL) -> DirectoryListing.Contents { gate.passThrough(); return inner.contents(of: url) }
+    func exists(_ path: String) -> Bool? { inner.exists(path) }
+    func size(_ url: URL) -> Int { inner.size(url) }
+    func readPlist(_ url: URL) -> PlistData? { inner.readPlist(url) }
+    func resolvingSymlinks(_ url: URL) -> URL { inner.resolvingSymlinks(url) }
 }

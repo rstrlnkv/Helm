@@ -109,6 +109,21 @@ public protocol LoadedItemsPort: Sendable {
 /// the scanner took the whole of it to read two. The cost was visible in the
 /// tests: five fakes carried an empty `setDisabled` to satisfy a protocol they
 /// only ever read from — five stubs for a method no scan calls.
+///
+/// **The answer is launchd's, not the call's returning.** `.accepted` means launchd
+/// accepted the `disable` or `enable`; `.refused` is a definite refusal, a label
+/// `LaunchLabel.isSwitchable` turns away included; `.unknown` is a tool that timed
+/// out or did not launch, so the switch may or may not have landed. A `bootout` or
+/// `kickstart` that fails is not an answer: the job may simply not be running.
 public protocol LoginItemSwitchPort: Sendable {
-    func setDisabled(_ disabled: Bool, label: String)
+    func setDisabled(_ disabled: Bool, label: String) -> SwitchAnswer
+}
+
+/// What `LoginItemSwitchPort.setDisabled` heard back. Three, because the engine's
+/// record needs the third: a label whose `disable` timed out may be disabled, and a
+/// disabled label nobody recorded is one nobody gives back.
+public enum SwitchAnswer: Sendable, Equatable {
+    case accepted
+    case refused
+    case unknown
 }

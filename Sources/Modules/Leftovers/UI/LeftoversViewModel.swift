@@ -44,10 +44,10 @@ extension LeftoversEngine: LeftoversWork {}
     @Published private(set) var busy = false
 
     private let work: any LeftoversWork
-    /// Set when the module is switched off: the engine is held strongly here, so a
-    /// press after `willDisable` would still write a `launchctl disable` and its
-    /// record; nothing gives that back until the next time the module is
-    /// switched off, when `willDisable` reads the record.
+    /// Set when the module is switched off: the page's guard, so a press after
+    /// `willDisable` is not even sent. The engine's `handedBack` latch is the last
+    /// word: a press already past this guard, or one during Reset's window, is
+    /// refused there and writes neither a `launchctl disable` nor a record.
     private var stopped = false
 
     init(work: any LeftoversWork) {
