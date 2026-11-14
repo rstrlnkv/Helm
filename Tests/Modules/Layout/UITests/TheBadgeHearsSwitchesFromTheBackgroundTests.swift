@@ -76,4 +76,18 @@ final class TheBadgeHearsSwitchesFromTheBackgroundTests: XCTestCase {
                       "the watch outlives the status item: FrontmostApp keeps its watchers for "
                       + "the life of the app and prunes none")
     }
+
+    /// A dropped indicator lets go of both observers. Source scan, not a build:
+    /// building one puts a status item in the menu bar of the Mac running the suite.
+    func testADroppedIndicatorLetsGoOfBothObservers() throws {
+        let text = try indicator
+        guard let at = text.range(of: "deinit {") else { return XCTFail("no deinit in LanguageIndicator") }
+        let rest = text[at.lowerBound...]
+        guard let end = rest.range(of: "\n    }\n") else { return XCTFail("deinit has no closing brace") }
+        let body = String(rest[..<end.upperBound])
+        XCTAssertTrue(body.contains("DistributedNotificationCenter.default().removeObserver(self)"),
+                      "deinit leaves the distributed observers registered")
+        XCTAssertTrue(body.contains("FrontmostApp.shared.stopWatching(frontmostWatch)"),
+                      "deinit leaves the FrontmostApp watcher registered")
+    }
 }

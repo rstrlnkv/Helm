@@ -15,8 +15,10 @@ import Module_Layout_Engine
     private let store: NamespacedStore
     /// Whether this object is registered with the distributed centre. See `build()`
     /// for why the observer is `self`.
-    private var observing = false
-    private var frontmostWatch: UUID?
+    /// Held in `nonisolated(unsafe)` fields so `deinit`, which Swift 6 treats as
+    /// nonisolated, can let go of both observers of a dropped indicator.
+    nonisolated(unsafe) private var observing = false
+    nonisolated(unsafe) private var frontmostWatch: UUID?
     /// The source id `redraw` last put on the button. Read by
     /// `menuNeedsUpdate` to catch a badge that has fallen behind the keyboard.
     private var drawn: String?
@@ -86,6 +88,11 @@ import Module_Layout_Engine
         frontmostWatch = FrontmostApp.shared.onChange { [weak self] _ in
             Task { @MainActor in self?.redraw() }
         }
+    }
+
+    deinit {
+        if observing { DistributedNotificationCenter.default().removeObserver(self) }
+        if let frontmostWatch { FrontmostApp.shared.stopWatching(frontmostWatch) }
     }
 
     @objc private func inputSourceChanged() { redraw() }

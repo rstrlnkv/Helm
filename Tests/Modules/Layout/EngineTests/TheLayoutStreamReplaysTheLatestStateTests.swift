@@ -89,4 +89,25 @@ final class TheLayoutStreamReplaysTheLatestStateTests: XCTestCase {
         await waitUntil("the stream is given back") { news.subscriberCount == 0 }
         engine.deactivate()
     }
+
+    /// A re-read that changes nothing the page draws says nothing: a state equal
+    /// to the last one said is not said again.
+    func testAReReadThatChangesNothingSaysNothing() async {
+        let engine = engine(FakeTap(), news: EngineNews())
+        engine.activate()
+        let reader = Reader(engine.stream())
+        await waitUntil("the replay") { !reader.states.isEmpty }
+        // Settle: one re-read waited for, so whatever it says is in before the count.
+        await withCheckedContinuation { c in engine.settingsChanged(then: { c.resume() }) }
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        let before = reader.states.count
+        for _ in 0..<2 {
+            await withCheckedContinuation { c in engine.settingsChanged(then: { c.resume() }) }
+        }
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(reader.states.count, before,
+                       "an unchanged state was said again: \(reader.states.count - before) extra")
+        reader.task?.cancel()
+        engine.deactivate()
+    }
 }

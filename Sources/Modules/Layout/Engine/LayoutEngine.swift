@@ -35,6 +35,9 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// The tap delivers on its own run-loop source, the gesture on a global
     /// queue and the settings re-read on `reloads`; all touch everything below.
     private let lock = NSLock()
+    /// Guards `lastEmitted` and the `say` that follows its comparison.
+    private let emitLock = NSLock()
+    private var lastEmitted: LayoutState?
     private var buffer = TypingBuffer()
     /// The word that most recently ended, kept so "convert the last word" has
     /// something to work with: the shortcut is itself a chord, and a chord ends
@@ -1038,6 +1041,14 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                                 totals: counted,
                                 noDictionary: noDictionary)
         lock.unlock()
+        // Compared, recorded and said under one lock of its own — not `lock`,
+        // which the tap callback takes, and not across `isSecure` or the
+        // ledger read above — so the state recorded as last is the one said
+        // last, and a state equal to it is not said again.
+        emitLock.lock()
+        defer { emitLock.unlock() }
+        guard state != lastEmitted else { return }
+        lastEmitted = state
         news.say(state)
     }
 }
