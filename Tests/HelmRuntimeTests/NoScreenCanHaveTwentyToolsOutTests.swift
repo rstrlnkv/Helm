@@ -27,6 +27,13 @@ final class NoScreenCanHaveTwentyToolsOutTests: XCTestCase {
         _ = HelmProcess.peakLaunchesForTesting()
     }
 
+    /// The two cases below measure against `launchCeiling`, so a ceiling raised
+    /// to any number would pass them; the number itself is what the name of this
+    /// class promises to keep under twenty.
+    func testTheCeilingIsBelowTwenty() {
+        XCTAssertLessThan(HelmProcess.launchCeiling, 20)
+    }
+
     /// Twice the ceiling asked for at once, each holding its slot long enough
     /// that they would overlap if nothing stopped them.
     ///
