@@ -447,7 +447,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // it would cut characters out of the middle of the sentence that
         // replaced it.
         let done = perform(plan)
-        if done, audible { sound?.playSwitch() }
+        lock.lock(); let announce = audible; lock.unlock()
+        if done, announce { sound?.playSwitch() }
         return done
     }
 
@@ -557,7 +558,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             HelmLog.shared.warn(Self.moduleID, "selection refused by \(Redact.app(bundleID))")
             return
         }
-        if audible { sound?.playSwitch() }
+        lock.lock(); let announce = audible; lock.unlock()
+        if announce { sound?.playSwitch() }
         // A selection put right is words fixed today: this door used to fix
         // words without telling the page's one figure about them. Counted as
         // the words it actually holds — a sentence put right in one gesture is
@@ -907,10 +909,12 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         let readExceptions = Exceptions(words: settings.stringArray(LayoutKey.exceptions))
         let readAudible = settings.layoutAudible
         let readFixCapitals = settings.layoutFixCapitals
-        // -1 is the recorder's own «nothing bound», not a keycode. Read out here
-        // with its neighbours, before the lock.
+        // -1 is the recorder's own «nothing bound», not a keycode, and a value
+        // past 16 bits (a hand-edited property list) binds nothing too, as it
+        // would trap the narrowing. Read out here with its neighbours, before
+        // the lock.
         let recorded = settings.int(HotkeyStoreKeys(prefix: LayoutHotkey.storePrefix).keyCode, default: -1)
-        let readHotkey: UInt16? = recorded >= 0 ? UInt16(recorded) : nil
+        let readHotkey: UInt16? = recorded >= 0 ? UInt16(exactly: recorded) : nil
         let readTapKey = ModifierTap(
             key: settings.layoutTapKey)
         lock.lock()

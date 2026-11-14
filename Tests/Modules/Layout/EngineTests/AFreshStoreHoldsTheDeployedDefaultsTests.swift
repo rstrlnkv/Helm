@@ -38,6 +38,11 @@ private final class DefaultsSound: SoundPort, @unchecked Sendable {
     func playSwitch() { played += 1 }
 }
 
+private final class DefaultsSelection: SelectionPort, @unchecked Sendable {
+    func selectedTextWithoutClipboard() -> String? { "ghbdtn" }
+    func replaceSelection(with text: String) -> Bool { true }
+}
+
 /// Before anyone has chosen, each setting reads as it did when the defaults were
 /// spelled inline in the engine and the pages. Moving them into one table must
 /// not move a value: a changed default silently changes what every new install
@@ -111,6 +116,28 @@ final class AFreshStoreHoldsTheDeployedDefaultsTests: XCTestCase {
         tap.handler?(.space)
         XCTAssertEqual(typing.performed, 1, "the capital was left alone on a fresh store")
         withExtendedLifetime(engine) {}
+    }
+
+    /// The two doors that are not the typed space — a corrected capital and a
+    /// converted selection — announce through the same setting, read under the
+    /// lock: each sounds when it is on and stays silent when it is not.
+    func testTheCapitalFixAndTheSelectionDoorsHonourTheSoundSetting() {
+        for (audible, expected) in [(false, 0), (true, 1)] {
+            let store = store()
+            store.set(audible, for: LayoutKey.audible)
+            let tap = DefaultsTap(), sound = DefaultsSound()
+            let engine = LayoutEngine(tap: tap, typing: DefaultsTyping(), sources: DefaultsSources(),
+                                      translation: DefaultsTranslation(), spell: DefaultsSpell(),
+                                      secure: DefaultsContext(), activation: FakeActivation(),
+                                      sound: sound, selection: DefaultsSelection(), settings: store)
+            engine.activate()
+            for c in "ПРивет" { tap.handler?(.character(c)) }
+            tap.handler?(.space)
+            XCTAssertEqual(sound.played, expected, "capital fix, audible \(audible)")
+            engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Notes")
+            XCTAssertEqual(sound.played, expected * 2, "selection, audible \(audible)")
+            withExtendedLifetime(engine) {}
+        }
     }
 
     func testAnEmptyStoreReadsTheHeroOnToday() {
