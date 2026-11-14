@@ -94,6 +94,14 @@ final class ResetRemovesOnlyItsOwnTests: XCTestCase {
         let paths = ResetPlan.removablePaths(home: home, folder: .helm)
             .filter { ResetPlan.mayRemove($0, home: home, folder: .helm) }
         XCTAssertEqual(paths.count, 2, "the plan and its own gate disagree")
+        // The gate itself, asked about the neighbours and the containers: a gate
+        // widened to the parent of Helm's folders still passes its own two paths.
+        for path in ["\(home!)/Library/Application Support/Sketch",
+                     "\(home!)/Library/Logs/DiagnosticReports",
+                     "\(home!)/Library/Application Support/Helmet",
+                     "\(home!)/Library/Application Support", "\(home!)/Library/Logs"] {
+            XCTAssertFalse(ResetPlan.mayRemove(path, home: home, folder: .helm), path)
+        }
 
         let taken = try XCTUnwrap(paths.first { $0.contains("Application Support") })
         let result = HelmTrash.remove(allowed: [taken], module: "reset-test")
