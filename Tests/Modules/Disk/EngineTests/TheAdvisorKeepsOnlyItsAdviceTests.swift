@@ -9,8 +9,9 @@ import XCTest
 /// (ARCHITECTURE.md § Module pattern) puts a pool inside a bulk read of file
 /// contents and names `resourceValues` loops as the measured exception.
 /// `DiskAdvisor.sweep` is neither a read of file contents nor a `resourceValues`
-/// loop, yet it had no pool: it visits every file node in the finished tree and
-/// asks `UserFileScope.isRemovable` about each one — which is
+/// loop, yet it had no pool: it visits every node in the finished tree and asks
+/// `UserFileScope.isRemovable` about each file of at least 50 MB and over 30
+/// days old (the cheap floors are judged first) — which is
 /// `NSString.standardizingPath`, a `FileManager.fileExists` walk up the parent
 /// chain and `URL.resolvingSymlinksInPath`, all of it Foundation handing back
 /// autoreleased objects. The sweep runs inside `offTheCooperativePool` on
@@ -28,15 +29,16 @@ final class TheAdvisorKeepsOnlyItsAdviceTests: XCTestCase {
 
     /// A flat tree of files the advisor will judge and decline to advise.
     ///
-    /// Old enough to reach the age test and small enough to fail both size
-    /// floors, which is the ordinary case on a real volume: the sweep asks the
-    /// removal gate about every one of them and produces nothing.
+    /// Big and old enough to pass the cheap size and age floors the sweep judges
+    /// before the gate, outside Downloads and under the large-file floor, so
+    /// the sweep asks the removal gate about every one of them and produces
+    /// nothing.
     private func judgedTree() -> DiskNode {
         let children = (0..<Self.files).map {
-            DiskNode(name: "f\($0).bin", bytes: 1_000, isDirectory: false,
-                     modified: 1_000_000)
+            DiskNode(name: "f\($0).bin", bytes: 100_000_000, isDirectory: false,
+                     modified: Date().timeIntervalSince1970 - 400 * 86_400)
         }
-        return DiskNode(name: "r", bytes: 1_000 * Self.files, isDirectory: true,
+        return DiskNode(name: "r", bytes: 100_000_000 * Self.files, isDirectory: true,
                         children: children)
     }
 
@@ -78,7 +80,7 @@ final class TheAdvisorKeepsOnlyItsAdviceTests: XCTestCase {
         // rather than guarded it.
         XCTAssertLessThan(perNode, 25, """
             the advisor is keeping every path it judged rather than the advice it produced. \
-            `DiskAdvisor.sweep` asks `UserFileScope.isRemovable` per file node, and nothing \
+            `DiskAdvisor.sweep` asks `UserFileScope.isRemovable` for each file that passes the size and age floors, and nothing \
             drains what Foundation hands back until the whole scan returns — the pool goes \
             inside the sweep.
             """)
