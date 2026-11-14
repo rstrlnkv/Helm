@@ -8746,6 +8746,59 @@
         }
       }
     },
+    "updateNotInstalled": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das letzte Update konnte nicht installiert werden. Dies ist weiterhin Version %@."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The last update could not be installed. This is still version %@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo instalar la última actualización. Esta sigue siendo la versión %@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La dernière mise à jour n’a pas pu être installée. Il s’agit toujours de la version %@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前回のアップデートをインストールできませんでした。現在もバージョン %@ です。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível instalar a última atualização. Esta continua sendo a versão %@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось установить последнее обновление. Это по-прежнему версия %@."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上次更新未能安装。当前仍是版本 %@。"
+          }
+        }
+      }
+    },
     "updateReady": {
       "extractionState": "manual",
       "localizations": {

@@ -135,14 +135,18 @@ enum UpdateHandoff {
         return String(bytes: data, encoding: .utf8) ?? ""
     }
 
-    /// Said out loud at launch, once. There is no sentence on screen for this
-    /// yet — writing one is the localizer's, in all eight languages — and a log
-    /// line is what the app can honestly offer today: the person has the version
-    /// they already had, and the trail says which one did not go in.
-    static func reportAtLaunch() {
-        guard let version = take() else { return }
+    /// Said out loud at launch, once: the person has the version they already
+    /// had, and the trail says which one did not go in.
+    ///
+    /// - Returns: the version that did not go in, for `UpdateService` to
+    ///   publish to the updates card. **Returned whether or not logging is on**:
+    ///   the line is the log's to drop, the sentence on the card is not.
+    @discardableResult
+    static func reportAtLaunch() -> String? {
+        guard let version = take() else { return nil }
         HelmLog.shared.error("update",
                              "the update to \(version) did not finish; this copy is the "
                              + "one that was already installed")
+        return version
     }
 }

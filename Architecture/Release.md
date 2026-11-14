@@ -131,7 +131,9 @@ an `SMAppService` helper and notarization each need.
 `Sources/HelmApp/UpdateService.swift` carries the networking and the published state;
 `UpdateCheck.evaluate` is pure and tested; `Installer.installZip` does the install, and
 `UpdateSwap` and `UpdateHandoff` (`Sources/HelmApp/UpdateSwap.swift`) are the detached
-swap and the note a failure is reported by at the next launch. Their doc comments hold
+swap and the note a failure is reported by at the next launch, in the log and, whether
+logging is on or off, as a sentence on the About page's updates card
+(`UpdateService.unfinishedUpdate`). Their doc comments hold
 the reasons: why the app downloads the zip itself, why the old bundle is moved aside
 before the copy, and why the note is written before the app quits.
 

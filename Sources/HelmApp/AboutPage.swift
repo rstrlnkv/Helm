@@ -272,7 +272,8 @@ struct AboutHelmView: View {
     private var card: UpdateCard {
         UpdateCard.drawn(installState: updater.installState, checking: updater.checking,
                          hasRelease: updater.available != nil,
-                         hasAhead: updater.aheadOfChannel != nil, note: updater.note)
+                         hasAhead: updater.aheadOfChannel != nil, note: updater.note,
+                         hasUnfinishedUpdate: updater.unfinishedUpdate != nil)
     }
 
     @ViewBuilder
@@ -386,6 +387,14 @@ struct AboutHelmView: View {
                 // neighbour is a number about nothing.
                 Text(AppStr.upToDate)
                     .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
+                Button(AppStr.checkNow) { updater.checkNow() }
+            }
+        case .unfinishedUpdate:
+            HStack(spacing: HelmSpace.s5) {
+                statusIcon("exclamationmark.triangle.fill", HelmSignal.warning)
+                Text(AppStr.updateNotInstalled(AppBuild.shortVersion ?? ""))
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer()
                 Button(AppStr.checkNow) { updater.checkNow() }

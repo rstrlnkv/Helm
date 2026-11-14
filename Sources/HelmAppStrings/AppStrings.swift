@@ -372,6 +372,8 @@ public enum AppStr {
     /// refuses to swap a bundle it cannot check, and hands the user the page.
     public static var updateManualInstall: String { L(.updateManualInstall) }
     public static var updateCannotReplaceItself: String { L(.updateCannotReplaceItself) }
+    /// The last self-update did not finish; names the version still running.
+    public static func updateNotInstalled(_ version: String) -> String { L(.updateNotInstalled(version)) }
     public static var updateCheckFailed: String { L(.updateCheckFailed) }
     public static func lastChecked(_ when: String) -> String { L(.lastChecked(when)) }
     public static var neverChecked: String { L(.neverChecked) }

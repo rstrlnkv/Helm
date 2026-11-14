@@ -61,6 +61,11 @@ import HelmAppStrings
     @Published private(set) var aheadOfChannel: String?
     @Published private(set) var checking = false
     @Published private(set) var installState: InstallState = .idle
+    /// The version the last self-update was reaching for when it did not finish,
+    /// read from the handoff note at launch (`UpdateHandoff.reportAtLaunch`).
+    /// Kept apart from `note`: every check clears that, and this is true of the
+    /// whole launch. Nil when the last update, or none, finished.
+    @Published var unfinishedUpdate: String?
     /// A short status for the settings row after a manual check (nil = idle).
     @Published private(set) var note: Note?
 
