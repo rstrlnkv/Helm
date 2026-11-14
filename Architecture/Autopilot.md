@@ -22,6 +22,13 @@ over. Its banner has no button. The way out is Reset, or a newer Helm that reads
 record; Discard stays `tampered`'s alone, so nothing in this build deletes a record
 it cannot read.
 
+The page draws the unapplied rules apart (owner decision 4), from the `status.unapplied` the
+model reads in the same turn as the folders: under each live folder's rules, and, for a folder
+the person removed, in one group after the folder list headed by the stub's `path`
+(`UnappliedRule.removedFolderPath`) and "Folder removed". Each shows its name when it could be
+read, else "Untitled rule", and "Created in a newer version of Helm; this version cannot apply
+it." No switch, edit, move or delete.
+
 `WatchScope` bounds what even a rule Helm itself sealed may reach, and the action
 set is closed: there is no script action, and `command grep -rn 'case script\|runScript\|shellAction' Sources/Modules/Autopilot/`
 prints nothing. The reasons are on the doc comments of `RuleAction.swift` and
@@ -113,6 +120,7 @@ No state is shot from Helm Dev with a saved rule: Helm Dev keeps its own account
 | `rules-tampered` | `HelmBanner` "The rules stored on this Mac…" with Discard and start again | the banner bench's `tampered`, which needs no forged plist; `ARefusedRuleSetIsNotAnEmptyPageTests` |
 | `rules-unreadable` | `HelmBanner` "Helm cannot read the key…", no button | not shot; same test |
 | `rules-not-read` | `HelmBanner` "Helm could not read the stored rules…", no button | not shot; `AnUnreadableRuleSetIsRefusedNotEmptiedTests` holds the engine half, `ARefusedRuleSetIsNotAnEmptyPageTests` the screen |
+| `rules-newer-helm` | under a folder's rules, and in a group headed by a removed folder's path and "Folder removed": each unapplied rule's name and "Created in a newer version of Helm; this version cannot apply it.", no controls | not shot: the bench scripts `empty`, `folders`, `report` and `history` only |
 | `folders` | toolbar (first-match note, Add folder…, the menu while offered); per folder: switch, path, Run now, "…"; rule rows (switch, name, one-line summary, edit, up, down); "No rules yet"; New rule; the history card | the bench's `folders` |
 | `folder-missing` / `folder-unreadable` / `not-watching` | a `HelmBanner` under the folder's header | not shot: the bench scripts `empty`, `folders`, `report` and `history` only |
 | `report` | the report at the foot: the sentence, Put back N, Turn off "…", Done | the bench's `report` |

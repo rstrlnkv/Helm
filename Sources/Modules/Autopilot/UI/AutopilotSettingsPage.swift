@@ -185,6 +185,13 @@ struct AutopilotSettingsPage: View {
                         folderHeader(folder)
                     }
                 }
+                ForEach(rvm.removedFolderRules) { group in
+                    Section {
+                        ForEach(group.rules, id: \.index) { unappliedRow($0) }
+                    } header: {
+                        removedFolderHeader(group)
+                    }
+                }
                 if rvm.drawsHistory {
                     Section {
                         HistorySection(history: rvm.history, runs: rvm.runs,
@@ -306,6 +313,32 @@ struct AutopilotSettingsPage: View {
             editing = EditingRule(folder: folder, rule: rvm.addRule(to: folder))
         }
         .controlSize(.small)
+        ForEach(rvm.unapplied(in: folder), id: \.index) { unappliedRow($0) }
+    }
+
+    /// A rule this build cannot read: its name when that could be read, and the
+    /// sentence. No switch, no edit, no move, no delete: it is kept as it was and
+    /// a newer Helm reads it.
+    private func unappliedRow(_ rule: UnappliedRule) -> some View {
+        VStack(alignment: .leading, spacing: HelmSpace.s1) {
+            Text(rule.name ?? ApStr.untitledRule).lineLimit(1)
+            Text(ApStr.newerHelmRule)
+                .font(HelmText.smallPrint).foregroundStyle(HelmText.faint)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func removedFolderHeader(_ group: RemovedFolderRules) -> some View {
+        VStack(alignment: .leading, spacing: HelmSpace.s2) {
+            if let path = group.path {
+                Text(Redact.path(path))
+                    .font(HelmText.sectionHeading)
+                    .lineLimit(1).truncationMode(.middle)
+            }
+            Text(ApStr.folderRemoved)
+                .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
+        }
     }
 
     private func ruleRow(_ rule: Rule, in folder: WatchedFolder) -> some View {

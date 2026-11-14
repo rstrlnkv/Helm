@@ -28,6 +28,10 @@ extension AutopilotEngine: AutopilotWork {}
 /// what a rule would do before it is allowed to do it.
 @MainActor public final class AutopilotViewModel: ObservableObject {
     @Published private(set) var folders: [WatchedFolder] = []
+    /// The rules in the record this build cannot read, of live folders and of
+    /// removed ones, as `readStatus` gave them with the folders. Drawn apart,
+    /// never edited.
+    @Published private(set) var unapplied: [UnappliedRule] = []
     /// The dry run currently on screen, keyed by rule id so a stale answer for
     /// a rule nobody is looking at cannot land in the open editor.
     @Published private(set) var preview: [PreviewRow] = []
@@ -121,6 +125,7 @@ extension AutopilotEngine: AutopilotWork {}
         folderStates = status.folders
         watching = status.watching
         historyRefused = status.historyRefused
+        unapplied = status.unapplied
         refreshPresets()
         await loadHistory()
     }
@@ -185,7 +190,27 @@ extension AutopilotEngine: AutopilotWork {}
     /// page switches over without a `default`.
     var screen: AutopilotScreen {
         if let refusal { return .rulesRefused(refusal) }
-        return folders.isEmpty ? .noFolders : .folders
+        return folders.isEmpty && removedFolderRules.isEmpty ? .noFolders : .folders
+    }
+
+    /// The unapplied rules of a live folder, in the order stored.
+    func unapplied(in folder: WatchedFolder) -> [UnappliedRule] {
+        unapplied.filter { $0.folderID == folder.id }
+    }
+
+    /// The unapplied rules of folders the person removed, one group per folder,
+    /// in the order stored. A folder whose record names no path has the group's
+    /// word alone.
+    var removedFolderRules: [RemovedFolderRules] {
+        var groups: [RemovedFolderRules] = []
+        for rule in unapplied where !folders.contains(where: { $0.id == rule.folderID }) {
+            if let at = groups.firstIndex(where: { $0.id == rule.folderID }) {
+                groups[at].rules.append(rule)
+            } else {
+                groups.append(RemovedFolderRules(id: rule.folderID, path: rule.removedFolderPath, rules: [rule]))
+            }
+        }
+        return groups
     }
 
     /// Throw away a rule set that was not written by Helm.
@@ -773,4 +798,11 @@ enum AutopilotScreen: Equatable {
     case rulesRefused(RuleRefusal)
     case noFolders
     case folders
+}
+
+/// A removed folder that still holds rules this build cannot apply.
+struct RemovedFolderRules: Identifiable {
+    let id: String
+    let path: String?
+    var rules: [UnappliedRule]
 }

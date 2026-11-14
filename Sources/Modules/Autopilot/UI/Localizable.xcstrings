@@ -1008,6 +1008,59 @@
         }
       }
     },
+    "createdInANewerVersionOf": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In einer neueren Version von Helm erstellt; diese Version kann sie nicht anwenden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Created in a newer version of Helm; this version cannot apply it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Creada en una versión más reciente de Helm; esta versión no puede aplicarla."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Créée dans une version plus récente de Helm\u00a0; cette version ne peut pas l’appliquer."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいバージョンの Helm で作成されました。このバージョンでは適用できません。"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Criada numa versão mais recente do Helm; esta versão não a pode aplicar."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Создано в более новой версии Helm; эта версия не может его применить."
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "由更新版本的 Helm 创建；此版本无法应用。"
+          }
+        }
+      }
+    },
     "dateAdded": {
       "extractionState": "manual",
       "localizations": {
@@ -1746,6 +1799,59 @@
           "stringUnit": {
             "state": "translated",
             "value": "文件夹"
+          }
+        }
+      }
+    },
+    "folderRemoved": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ordner entfernt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder removed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carpeta eliminada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dossier supprimé"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォルダは削除されました"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pasta removida"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Папка удалена"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文件夹已移除"
           }
         }
       }

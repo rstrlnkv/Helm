@@ -29,7 +29,7 @@ public struct AutopilotStatus: Equatable, Sendable {
     public let historyRefused: Bool
     /// The rules in the record that this build could not read, of live folders
     /// and of removed ones. They are kept as they were and run nowhere.
-    let unapplied: [UnappliedRule]
+    public let unapplied: [UnappliedRule]
 
     init(refusal: RuleRefusal?, folders: [String: FolderState] = [:],
                 watching: Bool? = nil, historyRefused: Bool = false,

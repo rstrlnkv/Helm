@@ -43,6 +43,12 @@ enum ApStr {
     static var removeFolder: String { L(.stopWatching) }
     static var runNow: String { L(.runNow) }
     static var noRules: String { L(.noRulesYet) }
+    /// Under a rule this build cannot read, which a newer Helm wrote: said beside it
+    /// because the rule runs nowhere and has no switch to say so.
+    static var newerHelmRule: String { L(.createdInANewerVersionOf) }
+    /// Beside the path of a folder that is gone from the list but whose unapplied
+    /// rules are kept.
+    static var folderRemoved: String { L(.folderRemoved) }
     static var depth: String { L(.includeSubfolders) }
 
     /// **What a switch that says «on» is not saying.** A folder that was renamed,

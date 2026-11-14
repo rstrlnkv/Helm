@@ -146,6 +146,8 @@ final class StoredRuleSetTests: XCTestCase {
         XCTAssertEqual(again.stubs.map(\.id), ["f"])
         XCTAssertEqual(again.unapplied.map(\.raw), [Data(future.utf8)])
         XCTAssertEqual(again.unapplied.first?.folderID, "f")
+        XCTAssertEqual(again.unapplied.first?.removedFolderPath, "/p/f", "the page heads the group with the stub's path")
+        XCTAssertNil(p.unapplied.first?.removedFolderPath, "a live folder's rule names no removed folder")
         XCTAssertTrue(String(decoding: data, as: UTF8.self).contains(#""helmRemovedFolder":true"#))
         XCTAssertEqual(StoredRuleSet.compose(again.folders, unapplied: again.unapplied, stubs: again.stubs, extras: again.extras), data)
     }
@@ -154,6 +156,13 @@ final class StoredRuleSetTests: XCTestCase {
         let p = try XCTUnwrap(parts(read(#"[{"id":"f","path":"/p","rules":[],"helmRemovedFolder":true}]"#)))
         XCTAssertTrue(p.folders.isEmpty)
         XCTAssertEqual(p.stubs.map(\.id), ["f"])
+    }
+
+    func testAStubThatNamesNoPathHasNoneToShow() throws {
+        let future = #"{"id":"b","name":"nb","futureCase":1}"#
+        let p = try XCTUnwrap(parts(read(#"[{"id":"f","rules":["#  + future + #"],"helmRemovedFolder":true}]"#)))
+        XCTAssertEqual(p.unapplied.map(\.folderID), ["f"])
+        XCTAssertNil(p.unapplied.first?.removedFolderPath)
     }
 
     func testANonStubFolderWhoseFieldsDoNotDecodeIsUnreadable() {

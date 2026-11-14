@@ -3,18 +3,22 @@ import Foundation
 /// A rule the stored record holds and this build cannot decode — one a newer
 /// Helm wrote, or one nobody can read any more. Kept as the bytes it was, so a
 /// save puts it back where it was.
-struct UnappliedRule: Equatable, Sendable {
-    let folderID: String
+public struct UnappliedRule: Equatable, Sendable {
+    public let folderID: String
     /// Its place in the folder's rule list as stored.
-    let index: Int
+    public let index: Int
     /// A lenient read of `name` alone, for the page; nil when even that fails.
-    let name: String?
+    public let name: String?
     let raw: Data
+    /// The `path` of the removed folder that holds it, for the page; nil when it
+    /// sits in a live folder, and for a removed one whose stub names no path.
+    public var removedFolderPath: String? = nil
 }
 
 /// A folder the person removed that still held an unapplied rule, kept in the
 /// record as an object marked `"helmRemovedFolder": true` with its `id`, `path`
-/// and the raw rules, so a newer Helm finds them. Never watched, never shown.
+/// and the raw rules, so a newer Helm finds them. Never watched; its rules are
+/// drawn apart on the page, never applied.
 struct RemovedFolder: Equatable, Sendable {
     let id: String
     /// The folder before it in the record, nil when it was first, so a save
@@ -99,8 +103,11 @@ enum StoredRuleSet {
                 let id = members.first { $0.key == "id" }
                     .flatMap { try? JSONDecoder().decode(String.self, from: Data(b[$0.value])) } ?? ""
                 stubs.append(RemovedFolder(id: id, after: folders.last?.id, raw: raw))
+                let path = members.first { $0.key == "path" }
+                    .flatMap { try? JSONDecoder().decode(String.self, from: Data(b[$0.value])) }
                 for (index, r) in (ruleRanges ?? []).enumerated() {
-                    unapplied.append(UnappliedRule(folderID: id, index: index, name: name(Data(b[r])), raw: Data(b[r])))
+                    unapplied.append(UnappliedRule(folderID: id, index: index, name: name(Data(b[r])),
+                                                   raw: Data(b[r]), removedFolderPath: path))
                 }
                 continue
             }
