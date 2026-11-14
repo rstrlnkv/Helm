@@ -338,3 +338,9 @@ public struct SystemExtensionLister: SystemExtensionPort {
         SystemExtensionCLI.hostIdentifiersIfAnswered()
     }
 }
+
+/// The file probe `PermissionCheck` reads for the settings pages.
+public struct FullDiskAccessProbe: FullDiskAccessPort {
+    public init() {}
+    public func fullDiskAccess() -> PermissionState? { PermissionCheck.currentFullDiskAccess() }
+}

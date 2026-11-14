@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 public protocol AppLister: Sendable {
     /// Apps from /Applications, ~/Applications, and any Setapp folder, with
@@ -136,6 +137,16 @@ public protocol SystemExtensionPort: Sendable {
     func activeExtensionHosts() -> Set<String>?
 }
 
+/// Whether Helm may read what only Full Disk Access opens. The unattended orphan
+/// scan asks it before it lists anything.
+public protocol FullDiskAccessPort: Sendable {
+    /// `.granted` only when a protected file was actually read. `nil` is a probe
+    /// that could not be answered at all, and it is **not** granted: with nobody
+    /// watching, a grant nobody could confirm is not one to scan under, because
+    /// the listing below it answers empty for what it could not open.
+    func fullDiskAccess() -> PermissionState?
+}
+
 public protocol RunningAppsPort: Sendable {
     func isRunning(bundleID: String) -> Bool
     /// `force` skips the app's save/confirm dialogs — needed when the user
@@ -154,4 +165,10 @@ public protocol RunningAppsPort: Sendable {
 public struct NoSystemExtensions: SystemExtensionPort {
     public init() {}
     public func activeExtensionHosts() -> Set<String>? { [] }
+}
+
+/// Default when no probe is injected (tests, previews): a Mac that granted it.
+public struct GrantedFullDiskAccess: FullDiskAccessPort {
+    public init() {}
+    public func fullDiskAccess() -> PermissionState? { .granted }
 }

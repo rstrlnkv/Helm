@@ -1,4 +1,5 @@
 import XCTest
+import HelmRuntime
 @testable import Module_Uninstaller_Engine
 
 // MARK: - Fakes
@@ -25,6 +26,26 @@ private struct StubApps: AppLister {
     func isKnownToSystem(bundleID: String) -> Bool { known.contains(bundleID) }
     func installedApps() -> [InstalledApp] { [] }
     func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
+}
+
+/// The grant's three answers, named at every construction that cares.
+private struct FakeAccess: FullDiskAccessPort {
+    var answer: PermissionState?
+    func fullDiskAccess() -> PermissionState? { answer }
+}
+
+/// Counts every question put to it, so "no read" is a number.
+private final class CountingFS: FileSystemPort, @unchecked Sendable {
+    private let lock = NSLock()
+    private var reads = 0
+    var count: Int { lock.withLock { reads } }
+    func exists(_ url: URL) -> Bool { lock.withLock { reads += 1 }; return true }
+    func size(_ url: URL) -> Int { lock.withLock { reads += 1 }; return 1 }
+    func glob(_ pattern: URL) -> [URL] { lock.withLock { reads += 1 }; return [] }
+    func children(of url: URL) -> [URL] {
+        lock.withLock { reads += 1 }
+        return url.path == "/Users/x/Library" ? [url.appendingPathComponent("Caches")] : []
+    }
 }
 
 // MARK: - Tests
@@ -85,5 +106,37 @@ final class UninstallerBackgroundScanHonestyTests: XCTestCase {
         XCTAssertNil(report,
                           "an empty installed-apps set turned every entry in ~/Library "
                           + "into a removal candidate")
+    }
+
+    // MARK: Full Disk Access gate (Q10b)
+
+    private func gated(_ fs: FileSystemPort, _ answer: PermissionState?) -> UninstallerEngine {
+        UninstallerEngine(home: home, apps: StubApps(installed: ["com.acme.tool"]), fs: fs,
+                          trash: NoTrash(), running: NoRunning(),
+                          fullDiskAccess: FakeAccess(answer: answer))
+    }
+
+    /// Without the grant nothing is listed and nothing is reported.
+    func testADeniedGrantAnswersNilAndReadsNothing() async {
+        let fs = CountingFS()
+        let report = await gated(fs, .denied).backgroundScan()
+        XCTAssertNil(report)
+        XCTAssertEqual(fs.count, 0, "a scan without the grant still read the disk")
+    }
+
+    /// A probe that could not answer is not a grant.
+    func testAnUnreadableGrantAnswersNil() async {
+        let fs = CountingFS()
+        let report = await gated(fs, nil).backgroundScan()
+        XCTAssertNil(report)
+        XCTAssertEqual(fs.count, 0)
+    }
+
+    /// Control: the same Mac with the grant is scanned, and a listing Library gives a report.
+    func testAGrantedGrantWithAListingLibraryAnswersAReport() async {
+        let fs = CountingFS()
+        let report = await gated(fs, .granted).backgroundScan()
+        XCTAssertNotNil(report)
+        XCTAssertGreaterThan(fs.count, 0)
     }
 }

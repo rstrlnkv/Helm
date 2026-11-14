@@ -51,6 +51,7 @@ import Module_Uninstaller_Engine
         return UninstallerEngine(home: home, apps: ports.apps, fs: ports.fs,
                                  trash: ports.trash, running: ports.running,
                                  extensions: SystemExtensionLister(),
+                                 fullDiskAccess: FullDiskAccessProbe(),
                                  store: store, trashChanged: trashChanged)
     }
 

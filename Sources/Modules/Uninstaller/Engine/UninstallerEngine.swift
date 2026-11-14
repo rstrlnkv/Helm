@@ -23,6 +23,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     private let trash: TrashPort
     private let running: RunningAppsPort
     private let extensions: SystemExtensionPort
+    private let fullDiskAccess: FullDiskAccessPort
     private let store: NamespacedStore
     /// The one mutable field without a lock, and main-actor confinement is what
     /// makes the `@unchecked Sendable` above true of it; the others are under
@@ -38,6 +39,9 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     private let watchLock = NSLock()
     private var watcherStarted: Bool?
     private var trashReadable: Bool?
+    /// Whether the last unattended scan was refused for want of the grant, so the
+    /// refusal is logged when it begins and not on every wake-up.
+    private var refusedForAccess = false
     /// Told that something reached the Trash that could have been an app, or
     /// that the offer was switched on: "look again". May be called from any queue.
     private let trashChanged: @Sendable () -> Void
@@ -51,6 +55,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     public init(home: URL, apps: AppLister, fs: FileSystemPort, trash: TrashPort,
                 running: RunningAppsPort,
                 extensions: SystemExtensionPort = NoSystemExtensions(),
+                fullDiskAccess: FullDiskAccessPort = GrantedFullDiskAccess(),
                 store: NamespacedStore = NamespacedStore(namespace: UninstallerEngine.moduleID,
                                                         backing: InMemoryKeyValueStore()),
                 trashChanged: @escaping @Sendable () -> Void = {}) {
@@ -60,6 +65,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         self.trash = trash
         self.running = running
         self.extensions = extensions
+        self.fullDiskAccess = fullDiskAccess
         self.store = store
         self.trashChanged = trashChanged
     }
@@ -523,6 +529,24 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         // A local install drops (ARCHITECTURE.md § Signing and grants) the Full Disk Access
         // grant **every time**, so an unreadable Library is the ordinary state
         // after an update, not an exotic one.
+        //
+        // So the grant is asked first, before a single listing. Without it the
+        // leftovers under `~/Library/Containers` cannot be read, and a Library
+        // that lists at the top can still be missing the folders that matter;
+        // only `.granted` goes on, and no answer is not one.
+        let access = await offTheCooperativePool { [fullDiskAccess] in fullDiskAccess.fullDiskAccess() }
+        let refused = access != .granted
+        let wasRefused = watchLock.withLock { () -> Bool in
+            defer { refusedForAccess = refused }
+            return refusedForAccess
+        }
+        guard !refused else {
+            if !wasRefused {
+                HelmLog.shared.warn("scan", "uninstaller: Full Disk Access not confirmed — "
+                                    + "no unattended leftovers scan")
+            }
+            return nil
+        }
         let checks = await offTheCooperativePool { [apps, fs, library] in
             (installed: apps.installedBundleIDs(),
              library: fs.children(of: library).count)
