@@ -85,6 +85,30 @@ final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
             """)
     }
 
+    /// The tick: two installed copies share an id, and ticking one reviews
+    /// exactly that copy and sends only its bundle path to the Trash.
+    func testTickingOneOfTwoCopiesReviewsAndRemovesOnlyThatCopy() async throws {
+        let direct = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
+                                  path: "/Applications/Tool.app", sizeBytes: 40_000)
+        let setapp = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
+                                  path: "/Users/ann/Applications/Setapp/Tool.app", sizeBytes: 900_000)
+        let work = AnsweringWork(apps: [direct, setapp],
+                                 scans: ["com.acme.tool": ScanResult(leftovers: [], runningNow: false)],
+                                 removal: UninstallResult(trashed: [setapp.path], freedBytes: 1))
+        let uvm = modelOver(work)
+        await uvm.loadAppsIfNeeded()
+
+        uvm.setChecked(setapp, true)
+        XCTAssertTrue(uvm.isChecked(setapp), "the ticked copy is not ticked")
+        XCTAssertFalse(uvm.isChecked(direct), "ticking one copy ticked the other, which shares its id")
+        await uvm.prepareReview()
+        XCTAssertEqual(uvm.groups.map(\.app.path), [setapp.path])
+
+        await uvm.removeSelection()
+        let batch = try XCTUnwrap(work.batches.last, "the removal was never sent")
+        XCTAssertEqual(batch.paths, [setapp.path])
+    }
+
     /// The control. Two different apps were always two rows, so the assertion
     /// above, and the picker's in `TheAppPickerGivesEachCopyItsOwnIdentityTests`,
     /// cannot pass by identifying everything as itself.

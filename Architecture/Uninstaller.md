@@ -28,6 +28,8 @@ deadline, and the deadline ends the *wait* rather than the question:
 The quit is by bundle identifier and reaches every copy of the app that is running;
 `RunningAppsPort.quit(bundleID:force:)` says what that costs the fakes.
 
+The picker's ticks are bundle paths, not bundle ids: two installed copies of one app (a Setapp copy beside a direct download) are two rows and ticking one reviews and removes only that copy. A twice-installed id's id-derived leftovers are already refused as contested (`LeftoverOwnership.idIsContested`), so removing one copy takes its bundle and any ticked name guesses.
+
 ## How the Uninstaller's model reaches its engine
 
 `UninstallerViewModel` is built with the engine by the descriptor's `makeModule` and held

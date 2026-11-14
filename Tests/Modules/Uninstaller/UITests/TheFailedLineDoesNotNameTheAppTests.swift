@@ -41,7 +41,7 @@ final class TheFailedLineDoesNotNameTheAppTests: XCTestCase {
                                                                  message: "denied")]))
         let model = modelOver(work)
         await model.loadAppsIfNeeded()
-        model.setChecked(app.bundleID, true)
+        model.setChecked(app, true)
         await model.prepareReview()
         await model.removeSelection()
 

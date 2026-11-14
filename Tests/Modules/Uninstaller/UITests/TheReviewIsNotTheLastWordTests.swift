@@ -27,7 +27,7 @@ final class TheReviewIsNotTheLastWordTests: XCTestCase {
     private func reviewed(_ work: AnsweringWork) async -> UninstallerViewModel {
         let model = modelOver(work)
         await model.loadAppsIfNeeded()
-        model.setChecked(tool.bundleID, true)
+        model.setChecked(tool, true)
         await model.prepareReview()
         return model
     }

@@ -64,8 +64,8 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
         XCTAssertEqual(uvm.sortedApps.map(\.name), ["Gamma", "Beta", "Delta", "Alpha"],
                        "precondition: the size order is not the name order")
         // The two the person sees at the top.
-        for app in uvm.sortedApps.prefix(2) { uvm.toggleChecked(app.bundleID) }
-        let ticked: Set<String> = [Self.gamma.bundleID, Self.beta.bundleID]
+        for app in uvm.sortedApps.prefix(2) { uvm.toggleChecked(app) }
+        let ticked: Set<String> = [Self.gamma.path, Self.beta.path]
         XCTAssertEqual(uvm.checked, ticked)
 
         for order in [AppSortOrder.dateLastOpened, .name, .size, .name] {
@@ -77,9 +77,9 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
 
         await uvm.prepareReview()
         XCTAssertEqual(uvm.step, .review, "the review never opened")
-        XCTAssertEqual(Set(uvm.groups.map(\.app.bundleID)), ticked)
+        XCTAssertEqual(Set(uvm.groups.map(\.app.path)), ticked)
         XCTAssertEqual(uvm.groups.count, 2)
-        XCTAssertEqual(Set(work.scanned), ticked, "the scans asked about other apps than the ticked")
+        XCTAssertEqual(Set(work.scanned), [Self.gamma.bundleID, Self.beta.bundleID], "the scans asked about other apps than the ticked")
 
         await uvm.removeSelection()
         let batch = try XCTUnwrap(work.batches.last, "the removal was never sent")
@@ -109,9 +109,9 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
             XCTAssertTrue(uvm.measuredSizes.isEmpty, "\(order): precondition — the sizes are still being measured")
             let shown = uvm.sortedApps
             let picked = [shown[1], shown[3]]
-            for app in picked { uvm.toggleChecked(app.bundleID) }
-            let ticked = Set(picked.map(\.bundleID))
-            XCTAssertNotEqual(Set(uvm.apps.prefix(2).map(\.bundleID)), ticked,
+            for app in picked { uvm.toggleChecked(app) }
+            let ticked = Set(picked.map(\.path))
+            XCTAssertNotEqual(Set(uvm.apps.prefix(2).map(\.path)), ticked,
                               "\(order): precondition — the ticked are not the first two by name")
 
             work.holdScans()
@@ -129,9 +129,9 @@ final class TheSortedListUnderOddInputsTests: XCTestCase {
             await review.value
 
             XCTAssertEqual(uvm.step, .review, "\(order): the review never opened")
-            XCTAssertEqual(uvm.groups.map(\.app.bundleID).sorted(), ticked.sorted(),
+            XCTAssertEqual(uvm.groups.map(\.app.path).sorted(), ticked.sorted(),
                            "\(order): the review lists other apps than the ticked")
-            XCTAssertEqual(work.scanned.sorted(), ticked.sorted(), "\(order): the scans asked about other apps than the ticked")
+            XCTAssertEqual(work.scanned.sorted(), picked.map(\.bundleID).sorted(), "\(order): the scans asked about other apps than the ticked")
 
             await uvm.removeSelection()
             let batch = try XCTUnwrap(work.batches.last, "\(order): the removal was never sent")

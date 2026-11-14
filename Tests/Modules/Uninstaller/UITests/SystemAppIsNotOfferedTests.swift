@@ -26,14 +26,16 @@ final class SystemAppIsNotOfferedTests: XCTestCase {
         func isKnownToSystem(bundleID: String) -> Bool { false }
     }
 
+    private let safari = InstalledApp(name: "Safari", bundleID: "com.apple.Safari",
+                                      path: "/Applications/Safari.app", sizeBytes: 0)
+    private let tool = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
+                                    path: "/Applications/Tool.app", sizeBytes: 10)
+
     private func viewModel() -> UninstallerViewModel {
         let engine = UninstallerEngine(
             home: URL(fileURLWithPath: "/Users/x"),
             apps: FixedLister(apps: [
-                InstalledApp(name: "Safari", bundleID: "com.apple.Safari",
-                             path: "/Applications/Safari.app", sizeBytes: 0),
-                InstalledApp(name: "Tool", bundleID: "com.acme.tool",
-                             path: "/Applications/Tool.app", sizeBytes: 10),
+                safari, tool,
             ]),
             fs: SilentFS(), trash: NoTrash(), running: NoRunning())
         return modelOver(engine)
@@ -42,7 +44,7 @@ final class SystemAppIsNotOfferedTests: XCTestCase {
     func testASystemAppCannotBeTicked() {
         let uvm = viewModel()
 
-        uvm.setChecked("com.apple.Safari", true)
+        uvm.setChecked(safari, true)
 
         XCTAssertEqual(uvm.checked, [], "macOS will refuse it, after the scan and the click")
     }
@@ -51,7 +53,7 @@ final class SystemAppIsNotOfferedTests: XCTestCase {
     func testTappingTheRowDoesNotTickItEither() {
         let uvm = viewModel()
 
-        uvm.toggleChecked("com.apple.Safari")
+        uvm.toggleChecked(safari)
 
         XCTAssertEqual(uvm.checked, [])
     }
@@ -60,8 +62,8 @@ final class SystemAppIsNotOfferedTests: XCTestCase {
     func testAnOrdinaryAppStillTicks() {
         let uvm = viewModel()
 
-        uvm.toggleChecked("com.acme.tool")
+        uvm.toggleChecked(tool)
 
-        XCTAssertEqual(uvm.checked, ["com.acme.tool"])
+        XCTAssertEqual(uvm.checked, [tool.path])
     }
 }

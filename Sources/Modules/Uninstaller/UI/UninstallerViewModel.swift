@@ -118,7 +118,8 @@ extension UninstallerEngine: UninstallerWork {}
     /// failure report threw away the only record of what macOS refused and why,
     /// which nothing in the app can produce a second time.
     @Published private(set) var step: UninstallStep = .pick
-    /// Bundle ids ticked on the picker.
+    /// Bundle paths ticked on the picker: two copies of one app share an id and
+    /// are two rows, so a tick belongs to the copy on disk.
     @Published private(set) var checked: Set<String> = []
     @Published private(set) var groups: [UninstallGroup] = []
     @Published private(set) var selectedLeftovers: Set<String> = []
@@ -240,18 +241,18 @@ extension UninstallerEngine: UninstallerWork {}
 
     // MARK: - Picking
 
-    func isChecked(_ bundleID: String) -> Bool { checked.contains(bundleID) }
+    func isChecked(_ app: InstalledApp) -> Bool { checked.contains(app.path) }
 
     /// A `com.apple.` app is refused rather than merely undrawn. The row leaves
     /// the checkbox out (`SystemApp.isSystem`), and this is the same rule at the
-    /// only place that can put an id into the set — a tick macOS will refuse
+    /// only place that can put a path into the set — a tick macOS will refuse
     /// costs the person a scan, a click and a failure report to find that out.
-    func setChecked(_ bundleID: String, _ on: Bool) {
-        guard !SystemApp.isSystem(bundleID: bundleID) else { return }
-        if on { checked.insert(bundleID) } else { checked.remove(bundleID) }
+    func setChecked(_ app: InstalledApp, _ on: Bool) {
+        guard !SystemApp.isSystem(bundleID: app.bundleID) else { return }
+        if on { checked.insert(app.path) } else { checked.remove(app.path) }
     }
 
-    func toggleChecked(_ bundleID: String) { setChecked(bundleID, !isChecked(bundleID)) }
+    func toggleChecked(_ app: InstalledApp) { setChecked(app, !isChecked(app)) }
 
     func clearChecked() { checked.removeAll() }
 
@@ -291,7 +292,7 @@ extension UninstallerEngine: UninstallerWork {}
         scanning = true
         resultBanner = nil
         defer { scanning = false }
-        let chosen = apps.filter { checked.contains($0.bundleID) }
+        let chosen = apps.filter { checked.contains($0.path) }
         let built = await scanned(chosen)
         guard !closed else { return }
         groups = built

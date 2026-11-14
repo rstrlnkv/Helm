@@ -18,7 +18,7 @@ final class TheReviewTotalIsTheMeasuredSizeTests: XCTestCase {
     private func review(_ work: AnsweringWork) async -> UninstallerViewModel {
         let model = modelOver(work)
         await model.loadAppsIfNeeded()
-        model.setChecked(tool.bundleID, true)
+        model.setChecked(tool, true)
         await model.prepareReview()
         return model
     }
@@ -41,7 +41,7 @@ final class TheReviewTotalIsTheMeasuredSizeTests: XCTestCase {
                                  sizes: ["/Applications/Other.app": 9])
         let model = modelOver(work)
         await model.loadAppsIfNeeded()
-        model.setChecked(tool.bundleID, true)
+        model.setChecked(tool, true)
         await model.prepareReview()
         XCTAssertNil(model.reviewBytes, "a sum with the bundle missing is a number nobody measured")
     }

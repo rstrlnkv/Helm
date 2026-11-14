@@ -198,7 +198,7 @@ struct UninstallerSettingsPage: View {
         if step == .review {
             bytes = uvm.reviewBytes ?? 0
         } else {
-            bytes = apps.filter { checked.contains($0.bundleID) }.reduce(0) { $0 + (uvm.measuredSizes[$1.path] ?? 0) }
+            bytes = apps.filter { checked.contains($0.path) }.reduce(0) { $0 + (uvm.measuredSizes[$1.path] ?? 0) }
         }
         guard bytes > 0 else { return "—" }
         return Bytes(bytes)
@@ -283,8 +283,8 @@ struct UninstallerSettingsPage: View {
                 // leaves nothing to keep — a list of 250 rows read as "checkbox,
                 // unchecked" 250 times.
                 Toggle(app.name, isOn: Binding(
-                    get: { uvm.isChecked(app.bundleID) },
-                    set: { on in uvm.setChecked(app.bundleID, on) }
+                    get: { uvm.isChecked(app) },
+                    set: { on in uvm.setChecked(app, on) }
                 ))
                 .toggleStyle(.checkbox)
                 .labelsHidden()
@@ -332,7 +332,7 @@ struct UninstallerSettingsPage: View {
             }
         }
         .contentShape(Rectangle())
-        .onTapGesture { uvm.toggleChecked(app.bundleID) }
+        .onTapGesture { uvm.toggleChecked(app) }
     }
 
     /// When the app was last opened, on every row in every order — the fact the
