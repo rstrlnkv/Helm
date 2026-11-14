@@ -37,7 +37,8 @@ final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
     func testTheDescriptorPassesTheScanOn() async {
         let work = AnsweringWork(groups: [])
         let parts = ModuleParts(engine: NoEngine(), model: DuplicatesViewModel(work: work, store: duplicatesStore(folder: "\(home)/Downloads"),
-                                                                               settings: SettingGuard(keys: SealKeyCache(SealKeyProbe()))))
+                                                                               settings: SettingGuard(keys: SealKeyCache(SealKeyProbe())),
+                                                                               chooseFolder: { nil }))
         let report = await DuplicatesDescriptor().backgroundScan(parts)
         XCTAssertNotNil(report, "the descriptor fell to the default: «no answer» every tick")
         XCTAssertEqual(count(.backgroundScan, in: work), 1)
@@ -102,6 +103,24 @@ final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
         XCTAssertNotEqual(dvm.phase, .result)
     }
 
+    /// The search `stop()` drops can never answer, so nothing else would take
+    /// the phase off «Searching»: a model stopped mid-search kept saying so, and
+    /// a page that outlived the stop (or a switch back on, which builds a new
+    /// model but not a new page) drew a search nobody was running. Nothing
+    /// visible changes today, because a stopped model is never drawn.
+    func testAStoppedModelIsNotLeftSearching() async {
+        let work = AnsweringWork(groups: [group], answering: .park)
+        let dvm = duplicatesModel(over: work)
+        dvm.search()
+        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
+        XCTAssertEqual(dvm.phase, .searching, "precondition: the search is really in flight")
+
+        dvm.stop()
+        work.releaseParked()
+
+        XCTAssertEqual(dvm.phase, .start, "a stopped model still says it is searching")
+    }
+
     /// `makeModule` builds the model when the module starts and the page asks the
     /// keychain when it first appears; a model that was stopped before that asks
     /// it nothing.
@@ -109,7 +128,8 @@ final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
         let probe = SealKeyProbe()
         let dvm = DuplicatesViewModel(work: AnsweringWork(groups: []),
                                       store: duplicatesStore(folder: "\(home)/Downloads"),
-                                      settings: SettingGuard(keys: SealKeyCache(probe)))
+                                      settings: SettingGuard(keys: SealKeyCache(probe)),
+                                      chooseFolder: { nil })
         dvm.stop()
         dvm.appear()
         await dvm.firstLoad?.value
@@ -119,7 +139,8 @@ final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
         let live = SealKeyProbe()
         let page = DuplicatesViewModel(work: AnsweringWork(groups: []),
                                        store: duplicatesStore(folder: "\(home)/Downloads"),
-                                       settings: SettingGuard(keys: SealKeyCache(live)))
+                                       settings: SettingGuard(keys: SealKeyCache(live)),
+                                       chooseFolder: { nil })
         XCTAssertEqual(live.reads, 0, "building the model asked the keychain")
         page.appear()
         await page.firstLoad?.value

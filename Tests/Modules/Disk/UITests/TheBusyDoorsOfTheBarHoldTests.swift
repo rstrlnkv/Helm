@@ -29,7 +29,7 @@ final class TheBusyDoorsOfTheBarHoldTests: XCTestCase {
         Task { await dvm.scan(path: "/Volumes/Big") }
         await untilParked(work, count: 1)
         work.release(0, with: tree())
-        await settle()
+        await waitUntil("the result is shown") { dvm.phase == .result }
         return dvm
     }
 
@@ -55,7 +55,7 @@ final class TheBusyDoorsOfTheBarHoldTests: XCTestCase {
 
         work.release(0, with: ScanResult(root: folder(sub, bytes: 600), freeBytes: 100,
                                          filesScanned: 1, seconds: 1))
-        await settle()
+        await waitUntil("the measurement landed") { !dvm.measuring }
         XCTAssertFalse(dvm.measuring, "the measurement flag stayed set after its answer")
     }
 
@@ -72,7 +72,7 @@ final class TheBusyDoorsOfTheBarHoldTests: XCTestCase {
         XCTAssertEqual(work.parkedCount, 0, "a scan started under a removal")
         XCTAssertEqual(dvm.phase, .result)
         work.releaseTrash()
-        await settle()
+        await waitUntil("the removal is over") { !dvm.busy }
     }
 
     func testChooseAnotherUnderARemovalKeepsTheTree() async {
@@ -88,6 +88,6 @@ final class TheBusyDoorsOfTheBarHoldTests: XCTestCase {
         XCTAssertEqual(dvm.phase, .result, "the volume picker replaced the tree under a removal")
         XCTAssertNotNil(dvm.result)
         work.releaseTrash()
-        await settle()
+        await waitUntil("the removal is over") { !dvm.busy }
     }
 }

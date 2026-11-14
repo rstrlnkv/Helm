@@ -59,4 +59,36 @@ final class AFolderChangeIsNotAWayOutOfARemovalTests: XCTestCase {
         XCTAssertEqual(store.string("folder", default: ""), chosen.path)
         XCTAssertGreaterThan(work.calls.filter { $0 == .find }.count, findsBefore)
     }
+
+    /// The press itself, not only what it ends in: `chooseFolder()` is the
+    /// button's action, and during a removal it must not put the panel up at all
+    /// (a panel answered after the removal began is a folder the guard in
+    /// `use(folder:)` then refuses, after the person has been asked).
+    func testTheFolderPanelIsNotOpenedDuringARemoval() async {
+        let work = AnsweringWork(groups: [group],
+                                  removal: DuplicateRemoval(removed: [extra], refused: [],
+                                                            freedBytes: 9_000_000))
+        var asked = 0
+        let dvm = duplicatesModel(over: work, chooseFolder: { asked += 1; return nil })
+        dvm.search()
+        for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
+        dvm.toggleBasket(extra)
+        work.answers(.park, to: .trash)
+        Task { await dvm.emptyBasket() }
+        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
+        XCTAssertTrue(dvm.busy, "precondition: the removal is really in flight")
+
+        dvm.chooseFolder()
+
+        XCTAssertEqual(asked, 0, "the folder panel was put up during a removal")
+
+        work.answers(.reply)
+        work.releaseParked()
+        for _ in 0..<1000 where dvm.busy { await Task.yield() }
+        XCTAssertFalse(dvm.busy, "precondition: the removal answered")
+
+        dvm.chooseFolder()
+
+        XCTAssertEqual(asked, 1, "control: once the removal is over the press asks")
+    }
 }

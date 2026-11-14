@@ -279,10 +279,12 @@ func duplicatesStore(folder: String = "/some/folder") -> NamespacedStore {
 @MainActor
 func duplicatesModel(over work: any DuplicatesWork,
                      folder: String = "\(home)/Downloads",
-                     store: NamespacedStore? = nil) -> DuplicatesViewModel {
+                     store: NamespacedStore? = nil,
+                     chooseFolder: @escaping @MainActor () -> URL? = { nil }) -> DuplicatesViewModel {
     let dvm = DuplicatesViewModel(work: work,
                                   store: store ?? duplicatesStore(folder: folder),
-                                  settings: SettingGuard(keys: SealKeyCache(PlantedSealKey())))
+                                  settings: SettingGuard(keys: SealKeyCache(PlantedSealKey())),
+                                  chooseFolder: chooseFolder)
     dvm.appear()
     return dvm
 }

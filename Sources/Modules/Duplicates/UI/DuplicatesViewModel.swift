@@ -133,6 +133,10 @@ enum KeepGrounds: Equatable, Sendable {
     /// every port here is one: the production answer is the login keychain, and
     /// a test must not write to the person's.
     private let settings: SettingGuard
+    /// The system's folder chooser, nil when cancelled. A port because the
+    /// default runs a modal panel: a test that must prove the press reaches no
+    /// chooser during a removal cannot put one up to prove it.
+    private let chooseFolderPanel: @MainActor () -> URL?
     /// The keychain round trip `appear()` owes, and the read after it; why it is
     /// held is told there.
     private(set) var firstLoad: Task<Void, Never>?
@@ -141,10 +145,15 @@ enum KeepGrounds: Equatable, Sendable {
     /// `ATestNamesTheKeychainPortsItBuildsOverTests` gives: the default is the
     /// login keychain, and a test names a double wherever it can reach a read.
     init(work: any DuplicatesWork, store: NamespacedStore,
-         settings: SettingGuard = DuplicatesSettings.guardOfScanSettings) {
+         settings: SettingGuard = DuplicatesSettings.guardOfScanSettings,
+         chooseFolder: @escaping @MainActor () -> URL? = {
+             FolderPicker.choose(prompt: DupStr.chooseFolder, startingAt: nil,
+                                 canCreate: false, activate: false)
+         }) {
         self.work = work
         self.store = store
         self.settings = settings
+        self.chooseFolderPanel = chooseFolder
         let remembered = store.string(DuplicatesSettings.folderKey, default: "")
         if !remembered.isEmpty { folder = URL(fileURLWithPath: remembered) }
     }
@@ -162,6 +171,9 @@ enum KeepGrounds: Equatable, Sendable {
         closed = true
         _ = searches.take()
         firstLoad?.cancel()
+        // The search just dropped can no longer answer, so nothing would ever
+        // take the phase off `.searching`.
+        if phase == .searching { phase = .start }
     }
 
     /// What the model does when the page is first drawn: ask the keychain for
@@ -261,8 +273,7 @@ enum KeepGrounds: Equatable, Sendable {
     /// ring, which meant it could only look where a ring had already been
     /// drawn; on its own it asks.
     func chooseFolder() {
-        guard !busy, let url = FolderPicker.choose(prompt: DupStr.chooseFolder, startingAt: nil,
-                                            canCreate: false, activate: false) else { return }
+        guard !busy, let url = chooseFolderPanel() else { return }
         use(folder: url)
     }
 
@@ -429,7 +440,7 @@ enum KeepGrounds: Equatable, Sendable {
     /// inside the bar those three bring up, so one press took every control that
     /// reaches a running removal off the screen. The window is minutes, because
     /// `trash` verifies every pair before anything moves. The page
-    /// dims the control too; both, or neither is reliable (ARCHITECTURE.md
+    /// dims the control too; both, or neither is reliable (Architecture/Removal.md
     /// § One removal at a time).
     func search() {
         guard !closed, let folder, phase != .searching, !busy else { return }

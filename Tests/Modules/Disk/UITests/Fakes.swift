@@ -260,12 +260,3 @@ func untilTrashing(_ work: HeldWork, count: Int = 1, file: StaticString = #fileP
         work.trashRequests.count >= count
     }
 }
-
-/// Room for the tasks already scheduled to land. The two copies of this yielded
-/// 20 times and 50; the longer one is kept, because every use is either waiting
-/// for something to appear or asserting that it did not, and both are stronger
-/// the longer they wait.
-@MainActor
-func settle() async {
-    for _ in 0..<50 { await Task.yield() }
-}

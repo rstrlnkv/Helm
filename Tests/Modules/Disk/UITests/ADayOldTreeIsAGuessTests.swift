@@ -33,7 +33,7 @@ final class ADayOldTreeIsAGuessTests: XCTestCase {
         Task { await dvm.scan(path: "/Volumes/Big") }
         await untilParked(work, count: 1)
         work.release(0, with: result())
-        await settle()
+        await waitUntil("the result is shown") { dvm.phase == .result }
         XCTAssertEqual(dvm.phase, .result, "precondition: a tree is on screen")
         XCTAssertNotNil(dvm.completedAt, "precondition: it is dated")
         return (dvm, store)
@@ -82,7 +82,7 @@ final class ADayOldTreeIsAGuessTests: XCTestCase {
         Task { await dvm.scan(path: "/Volumes/Big") }
         await untilParked(work, count: 1)
         work.emitPartial(0, result: result())
-        await settle()
+        await waitUntil("the snapshot is drawn") { dvm.phase == .result }
         XCTAssertTrue(dvm.live, "precondition: the walk is running and the ring is drawn")
 
         dvm.expireIfStale(now: Date() + 10 * DiskViewModel.cacheLifetime)

@@ -44,7 +44,7 @@ final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
         Task { await dvm.scan(path: "/Volumes/Big") }
         await untilParked(work, count: 1)
         work.release(0, with: tree())
-        await settle()
+        await waitUntil("the walk answered") { !dvm.live }
         dvm.toggleBasket(folder(sub, bytes: 600))
         XCTAssertEqual(dvm.basket.map(\.path), [sub], "precondition: one folder is ticked")
 
@@ -71,7 +71,7 @@ final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
             so this folder is dropped without being sent and without being mentioned.
             """)
         work.releaseTrash()
-        await settle()
+        await waitUntil("the removal is over") { !dvm.busy }
     }
 
     /// The same guard from the other side, and it is not a lesser case: the bar's
@@ -86,7 +86,7 @@ final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
         XCTAssertEqual(dvm.basket.map(\.path), [sub],
                        "the basket lost the row the removal in flight is about")
         work.releaseTrash()
-        await settle()
+        await waitUntil("the removal is over") { !dvm.busy }
     }
 
     /// The control, and the reason the two above are about a removal rather than
@@ -96,7 +96,7 @@ final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
         let work = HeldWork()
         let dvm = await removing(work)
         work.releaseTrash()
-        await settle()
+        await waitUntil("the removal is over") { !dvm.busy }
         XCTAssertFalse(dvm.busy, "precondition: the removal is over")
 
         dvm.toggleBasket(folder(other, bytes: 200))
@@ -113,7 +113,7 @@ final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
         let dvm = await removing(work)
         dvm.toggleBasket(folder(other, bytes: 200))
         work.releaseTrash()
-        await settle()
+        await waitUntil("the removal is over") { !dvm.busy }
 
         XCTAssertEqual(work.trashRequests, [[sub]],
                        "the engine was handed a different batch from the one consented to")

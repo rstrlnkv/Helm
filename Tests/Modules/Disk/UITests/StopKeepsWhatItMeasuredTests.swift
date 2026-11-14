@@ -34,7 +34,7 @@ private extension XCTestCase {
         Task { await dvm.scan(path: "/Volumes/Big") }
         await untilParked(work, count: 1)
         work.emitPartial(0, result: partOfBig())
-        await settle()
+        await waitUntil("the snapshot is drawn") { dvm.phase == .result }
         XCTAssertEqual(dvm.phase, .result, "precondition: the ring is drawn from the snapshot")
         XCTAssertTrue(dvm.live, "precondition: the walk is still running")
     }
@@ -145,7 +145,7 @@ final class StopKeepsWhatItMeasuredTests: XCTestCase {
         Task { await dvm.scan(path: "/Volumes/Big") }
         await untilParked(work, count: 1)
         work.release(0, with: partOfBig())
-        await settle()
+        await waitUntil("the walk answered") { !dvm.live }
         XCTAssertFalse(dvm.stopped, "precondition: a finished measurement")
         dvm.toggleBasket(folder("/Volumes/Big/Sub", bytes: 600))
 
@@ -192,7 +192,7 @@ final class StopKeepsTheTreeOnScreenTests: XCTestCase {
         Task { await dvm.scan(path: "/Volumes/Big") }
         await untilParked(work, count: 1)
         work.emitPartial(0, result: partOfBig(files: 4_242))
-        await settle()
+        await waitUntil("the snapshot is drawn") { dvm.result?.filesScanned == 4_242 }
 
         dvm.cancel()
 
@@ -225,7 +225,7 @@ final class StopKeepsTheTreeOnScreenTests: XCTestCase {
         Task { await dvm.scan(path: "/Volumes/Big") }
         await untilParked(work, count: 1)
         work.release(0, with: partOfBig())
-        await settle()
+        await waitUntil("the walk answered") { !dvm.live }
         XCTAssertFalse(dvm.live, "precondition: the walk answered")
 
         dvm.cancel()

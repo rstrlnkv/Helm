@@ -37,7 +37,7 @@ final class ThePolicyOnScreenIsTheOneInForceTests: XCTestCase {
     /// asserting about a page mid-load rather than about what is in force.
     private func model(_ work: any DuplicatesWork = AnsweringWork(groups: [])) async
     -> DuplicatesViewModel {
-        let dvm = DuplicatesViewModel(work: work, store: store, settings: settings)
+        let dvm = DuplicatesViewModel(work: work, store: store, settings: settings, chooseFolder: { nil })
         dvm.appear()
         await dvm.firstLoad?.value
         return dvm

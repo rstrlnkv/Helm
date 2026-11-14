@@ -73,7 +73,7 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
         Task { await dvm.scan(path: "/Volumes/Big") }
         await untilParked(work, count: 1)
         work.emitPartial(0, result: partOfBig())
-        await settle()
+        await waitUntil("the snapshot is drawn") { dvm.phase == .result }
         XCTAssertEqual(dvm.phase, .result, "precondition: the ring is drawn from the snapshot")
         XCTAssertTrue(dvm.live, "precondition: the walk is still running")
     }
@@ -121,7 +121,7 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
         Task { await dvm.scan(path: "/Volumes/Big") }
         await untilParked(work, count: 1)
         work.release(0, with: partOfBig())
-        await settle()
+        await waitUntil("the walk answered") { !dvm.live }
         XCTAssertFalse(dvm.live, "precondition: the walk answered")
         dvm.toggleBasket(folder("/Volumes/Big/Sub", bytes: 600))
 
@@ -147,7 +147,7 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
         dvm.drill(into: "/Volumes/Big/Sub")
         await untilParked(work, count: 2)
         work.release(1, with: measuredSub())
-        await settle()
+        await waitUntil("the measurement is opened") { dvm.focusPath.count == 2 }
 
         XCTAssertEqual(dvm.focusPath.map(\.path), ["/Volumes/Big", "/Volumes/Big/Sub"],
                        "precondition: the measurement was grafted in and opened")
@@ -169,7 +169,7 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
         Task { await dvm.scan(path: "/Volumes/Big") }
         await untilParked(work, count: 1)
         work.release(0, with: partOfBig())
-        await settle()
+        await waitUntil("the walk answered") { !dvm.live }
         XCTAssertFalse(dvm.stopped, "precondition: a finished measurement")
 
         // The volume walk's own request was released above and is no longer
@@ -177,7 +177,7 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
         dvm.drill(into: "/Volumes/Big/Sub")
         await untilParked(work, count: 1)
         work.release(0, with: measuredSub())
-        await settle()
+        await waitUntil("the measurement landed") { !dvm.measuring }
 
         // The grafted child, not merely the file: `scan(path:)` has already
         // written a tree of its own, so the file existing says nothing about

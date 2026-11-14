@@ -33,7 +33,7 @@ final class ThePageNeverWaitsForTheKeychainTests: XCTestCase {
     /// of it, so «warm» here means what it means in the app.
     private func model(over keys: SealKeyPort) -> DuplicatesViewModel {
         DuplicatesViewModel(work: AnsweringWork(groups: []),
-                            store: store, settings: SettingGuard(keys: keys))
+                            store: store, settings: SettingGuard(keys: keys), chooseFolder: { nil })
     }
 
     // MARK: - Cold

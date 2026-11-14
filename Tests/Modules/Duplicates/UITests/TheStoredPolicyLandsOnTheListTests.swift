@@ -77,7 +77,8 @@ final class TheStoredPolicyLandsOnTheListTests: XCTestCase {
         gate.signal()
         DuplicatesSettings.setKeepPolicy(.byDate, in: store, guardedBy: SettingGuard(keys: probe))
         let dvm = DuplicatesViewModel(work: work, store: store,
-                                      settings: SettingGuard(keys: SealKeyCache(probe)))
+                                      settings: SettingGuard(keys: SealKeyCache(probe)),
+                                      chooseFolder: { nil })
         dvm.appear()
         return dvm
     }

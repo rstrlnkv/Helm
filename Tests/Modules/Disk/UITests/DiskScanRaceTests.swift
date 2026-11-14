@@ -49,11 +49,11 @@ final class DiskScanRaceTests: XCTestCase {
         await untilParked(work, count: 2)
 
         work.emitPartial(1, result: result(folder("/Volumes/Big", bytes: 900)))
-        await settle()
+        await waitUntil("the Big snapshot is drawn") { dvm.result?.root.path == "/Volumes/Big" }
         XCTAssertEqual(dvm.result?.root.path, "/Volumes/Big")
 
         work.emitPartial(0, result: result(folder("/Volumes/Old", bytes: 20)))
-        await settle()
+        await grace()
 
         XCTAssertEqual(dvm.result?.root.path, "/Volumes/Big",
                        "a withdrawn scan's snapshot repainted the ring as the volume")
@@ -61,7 +61,7 @@ final class DiskScanRaceTests: XCTestCase {
                        "the focus collapsed onto a tree the screen was not showing")
         work.release(0, with: nil)
         work.release(0, with: nil)
-        await settle()
+        await grace()
     }
 
     /// A folder measurement wants its final tree and nothing on the way: asked
@@ -75,14 +75,37 @@ final class DiskScanRaceTests: XCTestCase {
         XCTAssertTrue(work.asksForUpdates(0), "control: the volume walk asks for updates")
         work.release(0, with: result(folder("/Volumes/Big", bytes: 900,
                                           children: [folder("/Volumes/Big/Sub", bytes: 20)])))
-        await settle()
+        await waitUntil("the volume scan answered") { dvm.result != nil && !dvm.live }
 
         dvm.drill(into: "/Volumes/Big/Sub")
         await untilParked(work, count: 1)
 
         XCTAssertFalse(work.asksForUpdates(0), "the folder measurement asked for updates")
         work.release(0, with: nil)
-        await settle()
+        await grace()
+    }
+
+    /// A folder measurement the person withdrew (Stop) and whose answer arrives
+    /// afterwards must not be grafted into the tree that stayed on screen.
+    func testAFolderMeasurementAnsweringAfterStopIsNotGrafted() async {
+        let work = HeldWork()
+        let dvm = model(work)
+        Task { await dvm.scan(path: "/Volumes/Big") }
+        await untilParked(work, count: 1)
+        work.release(0, with: result(folder("/Volumes/Big", bytes: 900,
+                                          children: [folder("/Volumes/Big/Sub", bytes: 20)])))
+        await waitUntil("the volume scan answered") { dvm.result != nil && !dvm.live }
+        dvm.drill(into: "/Volumes/Big/Sub")
+        await untilParked(work, count: 1)
+
+        dvm.cancel()
+        work.release(0, with: result(folder("/Volumes/Big/Sub", bytes: 20,
+                                          children: [folder("/Volumes/Big/Sub/Deep", bytes: 20)])))
+        await grace()
+
+        let sub = dvm.result?.root.children.first { $0.path == "/Volumes/Big/Sub" }
+        XCTAssertEqual(sub?.children.count, 0,
+                       "a withdrawn measurement's answer was grafted into the tree on screen")
     }
 
     /// And its own scan's snapshots still arrive — the gate must not close the
@@ -96,17 +119,17 @@ final class DiskScanRaceTests: XCTestCase {
         work.emitPartial(0,
                          result: result(folder("/Volumes/Big", bytes: 100,
                                                   children: [folder("/Volumes/Big/One", bytes: 60)])))
-        await settle()
+        await waitUntil("the first snapshot is drawn") { dvm.result?.root.children.count == 1 }
         XCTAssertEqual(dvm.result?.root.children.count, 1)
 
         work.emitPartial(0,
                          result: result(folder("/Volumes/Big", bytes: 300,
                                                   children: [folder("/Volumes/Big/One", bytes: 60),
                                                              folder("/Volumes/Big/Two", bytes: 240)])))
-        await settle()
+        await waitUntil("the second snapshot is drawn") { dvm.result?.root.children.count == 2 }
         XCTAssertEqual(dvm.result?.root.children.count, 2, "the ring stopped growing")
         work.release(0, with: nil)
-        await settle()
+        await grace()
     }
 
     /// The gesture the whole tangle starts from: an arc at the rim of a tree
@@ -124,16 +147,16 @@ final class DiskScanRaceTests: XCTestCase {
         work.emitPartial(0,
                          result: result(folder("/Volumes/Big", bytes: 100,
                                                   children: [folder("/Volumes/Big/Rim", bytes: 60)])))
-        await settle()
+        await waitUntil("the snapshot is drawn") { dvm.result != nil }
         XCTAssertTrue(dvm.live)
 
         dvm.drill(into: "/Volumes/Big/Rim")
-        await settle()
+        await grace()
 
         XCTAssertEqual(work.parkedCount, 1,
                        "a rim click started a second walk of the same volume")
         work.release(0, with: nil)
-        await settle()
+        await grace()
     }
 
     // MARK: - An answer to a withdrawn question
@@ -150,7 +173,7 @@ final class DiskScanRaceTests: XCTestCase {
         XCTAssertEqual(dvm.phase, .start)
 
         work.release(0, with: result(folder("/Volumes/Big", bytes: 900)))
-        await settle()
+        await grace()
 
         XCTAssertEqual(dvm.phase, .start, "the discarded scan replaced the volume picker")
         XCTAssertNil(dvm.result)
@@ -169,7 +192,7 @@ final class DiskScanRaceTests: XCTestCase {
         XCTAssertEqual(dvm.phase, .start)
 
         work.release(0, with: result(folder("/Volumes/Big", bytes: 900)))
-        await settle()
+        await grace()
 
         XCTAssertEqual(dvm.phase, .start, "a stopped scan showed its result anyway")
         XCTAssertNil(dvm.result)
@@ -184,7 +207,7 @@ final class DiskScanRaceTests: XCTestCase {
         await untilParked(work, count: 1)
 
         work.release(0, with: result(folder("/Volumes/Big", bytes: 900)))
-        await settle()
+        await waitUntil("the result is shown") { dvm.phase == .result }
 
         XCTAssertEqual(dvm.phase, .result)
         XCTAssertEqual(dvm.result?.root.path, "/Volumes/Big")

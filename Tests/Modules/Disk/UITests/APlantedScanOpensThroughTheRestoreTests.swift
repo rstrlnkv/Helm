@@ -67,7 +67,7 @@ final class APlantedScanOpensThroughTheRestoreTests: XCTestCase {
         while !dvm.restored, Date().timeIntervalSince(start) < 10 {
             try await Task.sleep(nanoseconds: 20_000_000)
         }
-        await settle()
+        await waitUntil("the restored tree is drawn") { dvm.result != nil }
 
         // The subject happened: the file was restored, whole, and drawn.
         XCTAssertTrue(dvm.restored, "precondition: the planted file was never restored")

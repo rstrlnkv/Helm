@@ -104,7 +104,7 @@ final class AStoppedDiskModelReachesNoWorkTests: XCTestCase {
         // A folder with no children is the depth the scan stopped at: drilling
         // into it measures it, which is a second scan.
         dvm.drill(into: "/Volumes/Big/Sub")
-        await settle()
+        await waitUntil("the folder measurement reached the work") { work.scans == 2 }
         XCTAssertEqual(work.scans, 2, "control: the folder measurement reaches the work before stop()")
         XCTAssertEqual(work.volumes, 1, "control: the volume read reaches the work before stop()")
         XCTAssertEqual(work.trashes, 1, "control: the removal reaches the work before stop()")
@@ -116,7 +116,7 @@ final class AStoppedDiskModelReachesNoWorkTests: XCTestCase {
         await dvm.loadVolumes()
         await dvm.scan(path: "/Volumes/Big")
         dvm.drill(into: "/Volumes/Big/Sub/Sub")   // the measured folder's own bottom
-        await settle()
+        await grace()
         // After the scan: a scan that got as far as its own bookkeeping would
         // have emptied the basket, and the press below would have nothing to send.
         dvm.toggleBasket(folder("/Volumes/Big/Sub", bytes: 600))
@@ -146,7 +146,7 @@ final class AStoppedDiskModelReachesNoWorkTests: XCTestCase {
             await dvm.appear()
             dvm.stop()
         }
-        await settle()
+        await waitUntil("the stopped model is released") { released == nil }
         XCTAssertNil(released, "a stopped model is still held after its owner let go")
     }
 
