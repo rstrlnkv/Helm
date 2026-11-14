@@ -2,7 +2,7 @@ import HelmTestSupport
 import XCTest
 
 /// `Scripts/test.sh` promises that a `--filter` alternative it cannot count is
-/// named and failed (CLAUDE.md, the first lines of Commands). An alternative
+/// named and failed (`Scripts/test.sh`, its header). An alternative
 /// that is *empty* is the one that cannot be counted at all: `swift test`
 /// reads it as a pattern that matches every test (measured for a trailing `|`
 /// only: the whole suite; the rest follow from the regex), so a trailing `|` turns a

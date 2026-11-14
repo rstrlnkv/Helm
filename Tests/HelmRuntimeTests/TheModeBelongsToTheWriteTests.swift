@@ -19,7 +19,7 @@ import HelmTestSupport
 /// window — a second defence standing in for the first one, and the day a
 /// caller writes into a folder it did not make, nothing is left.
 ///
-/// CLAUDE.md § What not to do, and what breaks if you do: «files naming
+/// The house rule (Architecture/DiagnosticsLog.md, `PrivateFile`): «files naming
 /// somebody's files via `PrivateFile.swift`, not atomic write plus mode
 /// change». The rule had one exception left, and it was `PrivateFile` itself.
 ///

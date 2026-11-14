@@ -152,15 +152,15 @@ extension DiskEngine: DiskWork {}
             if !closed { Task { [weak self] in await self?.restoreLastScan() } }
             // **A disk arriving or leaving is a fact only macOS knows.** Without
             // this the volume list is a local copy of a live external fact with no
-            // channel from the port that knows — the family CLAUDE.md names. The
+            // channel from the port that knows — the family (ARCHITECTURE.md § Ports and logic). The
             // page re-asked on every appearance and so covered it up; the panel
             // tile is rebuilt rather than reappearing, and a drive plugged in
             // while the page is open never showed up in the picker at all.
             //
             // `loadVolumes` is one call and returns, so the strong hold the task
             // takes on `self` once it starts lasts as long as a volume-attributes
-            // read — not the trap CLAUDE.md records for a `for await` over a
-            // stream nothing finishes.
+            // read — not the trap of a `for await` over a
+            // stream nothing finishes (ARCHITECTURE.md § State that outlives a page and ends with its module).
             mounts = closed ? nil : MountWatch { [weak self] in
                 Task { @MainActor in await self?.loadVolumes() }
             }

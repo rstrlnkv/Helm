@@ -52,7 +52,7 @@ struct ConversionLedger: Codable, Equatable, Sendable {
         /// written before this change would have thrown, `LedgerStore` would have
         /// read nil, and somebody's whole count would have been replaced by an
         /// empty file without a word. `PanelLayout.Tab` is the same repair for the same
-        /// reason (CLAUDE.md § What not to do, and what breaks if you do).
+        /// reason (ARCHITECTURE.md § A value read back whole).
         ///
         /// The old instant is converted in the current zone. A row written far
         /// from here may land a day out — once, on the rows that already exist,

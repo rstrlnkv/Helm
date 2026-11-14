@@ -213,7 +213,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // can cancel it. Add a `self` capture — even a weak one, which the body
         // would then hold strongly for as long as it runs — and `deinit` can no
         // longer run while the task is alive, so the cancel below it becomes
-        // unreachable (CLAUDE.md § What not to do, and what breaks if you do).
+        // unreachable (ARCHITECTURE.md § State that outlives a page and ends with its module).
         //
         // **Started under the lock, not before it.** Creating the task outside
         // and assigning it inside leaves a window in which the fetch is running
@@ -519,7 +519,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         // measures. Taken one line earlier, the figure was read *before* the
         // largest allocation this search makes, so the search that paid for it
         // looked free and the next one inherited the whole of it — which is
-        // the mis-attribution CLAUDE.md names, arriving from the other side.
+        // the mis-attribution (ARCHITECTURE.md § The memory trail) arriving from the other side.
         defer { HelmLog.shared.memory("homebrew.search") }
         // Behind the guard: a search brew refused has nothing to rank, and
         // there is no reason for it to pay for a reading.

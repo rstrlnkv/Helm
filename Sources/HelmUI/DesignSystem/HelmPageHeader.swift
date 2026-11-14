@@ -105,7 +105,7 @@ struct HeaderEdgeLight: ViewModifier {
     /// the settled value (this Mac,
     /// dark, three runs each).
     ///
-    /// CLAUDE.md states the rule for a measured height — **do not animate the
+    /// The rule for a measured height (ARCHITECTURE.md § Motion) — **do not animate the
     /// first measurement** — because nil means nothing has measured this yet
     /// and animating up from it plays the view arriving from a state it was
     /// never in. This was that defect with a `Bool` in place of a `CGFloat`,
@@ -254,8 +254,8 @@ public struct HelmPageHeader<Trailing: View>: View {
     /// (`onHover` does not reliably send `false` when a window loses key under
     /// a stationary pointer), so it is never trusted alone; `controlActiveState`
     /// is the live fact beside it, and the `&&` is the reverse channel
-    /// CLAUDE.md's rule about a local flag standing in for an external one asks
-    /// for.
+    /// that a local flag standing in for an external one asks for
+    /// (ARCHITECTURE.md § Ports and logic).
     ///
     /// `scrolled` carries **no** key gate, and that is not an oversight. Hover
     /// being ignored in a background window is a fact about the pointer; content

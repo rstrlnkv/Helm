@@ -15,8 +15,7 @@ import XCTest
 /// The second point is not benign anywhere. A build that comes back empty is a port
 /// answering «not now» — a keyboard layout the system has not published yet — and a
 /// memo that stored that would answer «absent» for the life of the process, with no
-/// channel to say otherwise (CLAUDE.md § What not to do, and what breaks if you
-/// do).
+/// channel to say otherwise (ARCHITECTURE.md § Ports and logic).
 final class OneBuildPerKeyTests: XCTestCase {
 
     /// How many times a build ran. `ProgressBox` next door records a *last*

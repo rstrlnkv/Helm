@@ -2,7 +2,7 @@ import Foundation
 
 /// Reading the log back — **the one place in this app a log line is parsed.**
 ///
-/// CLAUDE.md's rule is that the tail is filled from the same parts the file line
+/// The rule (ARCHITECTURE.md § The log pane) is that the tail is filled from the same parts the file line
 /// is spelled from, never by parsing the line back apart, and that rule stands
 /// for `write`: the live path holds the parts and hands them over. A *seed* has
 /// no parts to hold. The file is all there is, so it parses — here, once, in a

@@ -82,7 +82,7 @@ final class WorkspaceAppLister: AppLister {
     /// offer, and the answer is no.
     ///
     /// **A read Helm was not allowed to make is `nil`, not empty.** That is the
-    /// Full Disk Access case, which is every install (CLAUDE.md), and folded into
+    /// Full Disk Access case, which is every local install (ARCHITECTURE.md § Signing and grants), and folded into
     /// `[]` it made the switch on the Leftovers tab say on over a Trash nothing
     /// could see. A Trash that is simply *not there* — a fresh account has none
     /// until something is deleted — is empty rather than nil, or the page would

@@ -72,7 +72,7 @@ public enum DuplicatesSettings {
             return .standard
         case .notHelmsOwn:
             // The engine's constant, not the word again: a module's id is written
-            // down once (CLAUDE.md § What not to do, and what breaks if you do),
+            // down once (ARCHITECTURE.md § The boundaries),
             // and this file is in the engine's target.
             HelmLog.shared.warn(DuplicatesEngine.moduleID,
                                 "the stored keep policy is not Helm's own; "
@@ -95,7 +95,7 @@ public enum DuplicatesSettings {
     /// settings window that could not answer a mouse-up. `DuplicatesViewModel` is
     /// `@MainActor` and read the policy inside its own `init`, which is the same
     /// door: a `@State` initial value, a window's construction and a page's view
-    /// model are all «an `init`», and CLAUDE.md's rule names the first of them.
+    /// model are all «an `init`», and the first of them is named (ARCHITECTURE.md § Sealed settings).
     ///
     /// Nil is **«not yet»**, a third answer beside the two the seal gives, and it
     /// is deliberately not `.standard`: a caller that folded it into the default
@@ -119,7 +119,7 @@ public enum DuplicatesSettings {
     /// The seal can come back nil — a keychain that cannot be reached — and the
     /// value is written anyway. Refusing to save what somebody asked for because a
     /// background reader might distrust it later is failing at the wrong end
-    /// (CLAUDE.md § What not to do, and what breaks if you do).
+    /// (ARCHITECTURE.md § Sealed settings).
     public static func setKeepPolicy(_ policy: KeepPolicy, in store: NamespacedStore,
                                      guardedBy settings: SettingGuard) {
         setSealed(policy.rawValue, for: keepPolicyKey, in: store, guardedBy: settings)

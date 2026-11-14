@@ -174,8 +174,8 @@ private struct HelmFullDiskTracker: ViewModifier {
 /// takes key focus without activating the app on purpose, so a panel opened
 /// from the menu-bar icon never sees `didBecomeActive`. Without a moment of its
 /// own the panel would read the grants once, at launch, and go on drawing that
-/// answer for the life of the process — which is the reading older than the act
-/// CLAUDE.md names, in the surface most exposed to it.
+/// answer for the life of the process — which is a reading older than the act
+/// (ARCHITECTURE.md § The gates), in the surface most exposed to it.
 ///
 /// A publisher rather than an `if` around `onReceive`: a `ViewModifier` cannot
 /// branch on the shape of its body without changing the view's identity, and a

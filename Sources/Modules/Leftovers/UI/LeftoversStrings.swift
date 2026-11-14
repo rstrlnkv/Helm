@@ -126,7 +126,7 @@ enum LfStr {
     /// It **asks** that control for its word rather than spelling it again
     /// (`VPNStr.secretNeedsAPress` is the same construction), so renaming the
     /// button carries the sentence with it in all eight instead of leaving it
-    /// behind — the 0.9.0 defect CLAUDE.md records. `Quoted` puts it in each
+    /// behind — the defect of a sentence that spells a control's name a second time (ARCHITECTURE.md § One English text means one thing). `Quoted` puts it in each
     /// language's own marks.
     static func confirmDeleteInUse(_ name: String,
                                    language: AppLanguage = AppLanguage.current) -> String {
@@ -350,7 +350,7 @@ enum LfStr {
     /// **The kind, not its `rawValue`.** This took a `String` and ended in a
     /// `default` that answered "Plug-ins" — so a sixth `StaleKind` would have
     /// been drawn under the wrong heading, silently, and the `default` is
-    /// exactly the shape CLAUDE.md keeps out of the engines for the same reason:
+    /// exactly the shape kept out of the engines for the same reason:
     /// it makes an unhandled case look like an answer. Over the enum the switch
     /// is exhaustive and a new case is a build error.
     static func kindName(_ kind: StaleKind) -> String {

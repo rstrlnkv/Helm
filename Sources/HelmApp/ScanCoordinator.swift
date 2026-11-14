@@ -158,8 +158,8 @@ final class ScanCoordinator {
     /// - Parameter idleSeconds: sampled once per tick by the caller, not read
     ///   per module. `effectiveIdleSeconds` folds a reading into an estimate it
     ///   keeps, so asking it three times a tick would be three folds of the same
-    ///   minute — the shape CLAUDE.md's rule about getters with side effects is
-    ///   about, and cheaper to avoid than to serialise.
+    ///   minute — the shape of a getter with a side effect, which
+    ///   is wrong, and cheaper to avoid than to serialise.
     func conditions(idleSeconds: TimeInterval, now: Date = Date()) -> Conditions {
         Conditions(now: now,
                    idleSeconds: idleSeconds,

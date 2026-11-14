@@ -287,7 +287,7 @@ extension HomebrewEngine: HomebrewWork {}
     /// keystroke, by Return, and by the query going empty.
     private var pause: Task<Void, Never>?
 
-    /// At most one `brew search` chain out at a time: CLAUDE.md's "never an
+    /// At most one `brew search` chain out at a time: the rule (ARCHITECTURE.md § Running other programs) of "never an
     /// unbounded launch behind a control pressable repeatedly", and
     /// typing is such a control. `queuedSearch` holds only the latest word
     /// typed while a chain is out; an older one in between is never asked.
@@ -341,8 +341,8 @@ extension HomebrewEngine: HomebrewWork {}
 
     /// Fires when the pause elapses. `q` is the payload — the word that was
     /// in the field when the pause started — and the reading is re-read here
-    /// rather than trusted from before the sleep (CLAUDE.md: a reading taken
-    /// before an `await` is not the reading to act on): the list may have
+    /// rather than trusted from before the sleep (a reading taken
+    /// before an `await` is not the reading to act on, ARCHITECTURE.md § The gates): the list may have
     /// loaded, or a description may have arrived, during those 700 ms.
     private func searchAfterPause(_ q: String) {
         guard ListFilter.needle(query) == q, ownListShowsNothing(for: q) else { return }

@@ -329,8 +329,8 @@ public struct SystemCommandLineTools: CommandLineToolsPort {
 
     /// The snapshot `RunningApps` keeps is refreshed on the main thread and
     /// nowhere else, and nothing in this module refreshes it — so the reading
-    /// hops there, which is the door CLAUDE.md names for the running-application
-    /// list. AppKit itself does not come into this module.
+    /// hops there, which is the door for the running-application
+    /// list (ARCHITECTURE.md § Running applications). AppKit itself does not come into this module.
     public func installerIsRunning() -> Bool {
         let ids = Thread.isMainThread
             ? RunningApps.shared.bundleIDs()
@@ -463,7 +463,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// in `PopularityRefresh` cannot help either, because it is consulted once
     /// `URLSession` has already buffered the body. This is the one thing that
     /// ends such a transfer, which is what lets the store claim a bound on the
-    /// wire at all (CLAUDE.md § What not to do, and what breaks if you do).
+    /// wire at all.
     ///
     /// Two minutes for the larger document, 453,903 bytes on 2026-09-13, is a
     /// floor of about 30 kbit/s — slower than any link this app is usable over,
@@ -478,8 +478,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     ///
     /// **What this costs while it is held: 2.84 MiB.** Measured on 2026-09-14
     /// against the allocator's own books rather than the process footprint,
-    /// because it is a per-object cost (CLAUDE.md § What not to do, and what
-    /// breaks if you do) — `malloc_zone_statistics(malloc_default_zone(),)`,
+    /// because it is a per-object cost (ARCHITECTURE.md § The memory trail) — `malloc_zone_statistics(malloc_default_zone(),)`,
     /// `size_in_use` across parsing both of this Mac's cached documents:
     /// 2,976,224 / 2,975,696 / 2,975,696 bytes over 15,270 entries, three
     /// consecutive readings. That is the module's largest standing allocation,
@@ -528,8 +527,8 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// What this store's work is called in the activity trail, and the label
     /// its memory reading is filed under.
     ///
-    /// **A bulk phase carries both or neither** (CLAUDE.md § What not to do,
-    /// and what breaks if you do). Every synchronous hop in this store can
+    /// **A bulk phase carries both or neither** (ARCHITECTURE.md § The memory trail).
+    /// Every synchronous hop in this store can
     /// reach `InstallCounts.parse`: the ETag gate through `readings()`, `adopt`
     /// through `PopularityRefresh.answer`, and each replace through `load`.
     /// That parse is the module's largest standing allocation — 2.84 MiB, see
@@ -581,7 +580,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
 
     /// The two writers, synchronous and one line each, because a lock may not
     /// be held across a suspension and an `async` body may not take one at all
-    /// (CLAUDE.md § What not to do, and what breaks if you do).
+    /// (ARCHITECTURE.md § Sealed settings).
     ///
     /// **Only the other half is read.** These used to call
     /// `loadedUnderTheLock()`, which on the first ask — the ordinary case on a
@@ -714,8 +713,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
     /// `PrivateFile` and set an attribute on it — and this runs inside a bare
     /// `Task`, which is the shared pool with one thread per core, the same
     /// shape every `brew` call in this module already goes through
-    /// `offTheCooperativePool` for (CLAUDE.md § What not to do, and what breaks
-    /// if you do). The wire itself stays *on* the pool: an `await` on a
+    /// `offTheCooperativePool` for (ARCHITECTURE.md § Running other programs). The wire itself stays *on* the pool: an `await` on a
     /// transfer holds no thread.
     private func fetchIfDue(_ endpoint: Endpoint) async -> InstallCounts? {
         guard let request = await offThePoolInThePhase({ [self] in requestIfDue(endpoint) })
@@ -724,8 +722,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
         // cancellation that arrives at quit all land here. None of them is
         // worth a line in somebody's log — an offline laptop is an ordinary
         // state, and a line that is printed on an ordinary day sends an
-        // investigation after nothing (CLAUDE.md § What not to do, and what
-        // breaks if you do).
+        // investigation after nothing (ARCHITECTURE.md § Diagnostics log).
         guard let (data, http) = try? await transfer(request) else { return nil }
         return await offThePoolInThePhase { [self] in adopt(data, http, from: endpoint) }
     }
@@ -858,7 +855,7 @@ public struct CellarWeight: PackageWeight {
             // keg is the ordinary answer for half the questions this port is
             // asked, and a line about one would send a reading after something
             // that has not happened — a refusal is logged, an absence is not
-            // (CLAUDE.md § What not to do, and what breaks if you do).
+            // (ARCHITECTURE.md § Diagnostics log).
             HelmLog.shared.warn(HomebrewEngine.moduleID,
                                 "the Cellar directory of \(Redact.pkg(name)) measured nothing "
                                 + "— it is there and could not be read")

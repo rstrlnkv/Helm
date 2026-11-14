@@ -42,13 +42,12 @@ comment, not on a page.
 | the kit's components in every state, to look at | `Sources/HelmShowcase/` |
 | build, sign, package, disk image, screen stills (`shoot.sh`) | `Scripts/` |
 
-## Shape
+## The map
 
-- [Targets](Architecture/Targets.md) — the package's targets, what each one holds and which may see which, as the manifest declares them.
-- [What is deliberately not here](Architecture/WhatIsDeliberatelyNotHere.md) — what Helm omits on purpose — an external dependency, a sandbox and privileged helper, a transport between host and modules, back-deployment — and why.
-- [Module pattern](Architecture/ModulePattern.md) — how a module is built from two source directories and the test directories it keeps, and what holds its parts apart; § The boundaries, § Ports and logic, § The stream and the store, § Bulk reads, § A value crossing to the main thread.
+Six hubs follow, each a list of pages, and two tables after them that cross the modules.
+A page lists its own headings on the line below its link.
 
-## UI shell
+### The shell
 
 - [The menu-bar panel](Architecture/TheMenuBarPanel.md) — the window, chrome and card of the panel, and the pure grid and drag rules beneath them.
 - [The status item](Architecture/TheStatusItem.md) — the rule that picks what the menu-bar item shows: a countdown, a spin, a tint or a title.
@@ -58,7 +57,32 @@ comment, not on a page.
 - [A window a module needs and the host owns](Architecture/AWindowAModuleNeedsAndTheHostOwns.md) — the base class for a host-owned window: activation policy, the closed flag and release on close.
 - [Revealing a path](Architecture/RevealingAPath.md) — how a path is shown in Finder without launching or mounting a bundle.
 
-## Subsystems
+### The shared layers
+
+- [Targets](Architecture/Targets.md) — the package's targets, what each one holds and which may see which, as the manifest declares them.
+- [What is deliberately not here](Architecture/WhatIsDeliberatelyNotHere.md) — what Helm omits on purpose — an external dependency, a sandbox and privileged helper, a transport between host and modules, back-deployment — and why.
+- [Localization](Architecture/Localization.md) — each catalog and its keys (`HelmRuntime`'s counted nouns stay in Swift), the shared words, the lookup and its memo, the guards that watch them, and the helpers that keep the language the app's own; § Catalogs and the words kept in Swift, § The lookup and its memo, § Arguments and numbers, § Words two parts draw, § The changelog's key and a missing language, § The guards, § One English text means one thing, § Formatters and the app's language, § Terminology from the system's own tables, § Russian values, § The French pass.
+- [Design system](Architecture/DesignSystem.md) — what `Sources/HelmUI/DesignSystem/` holds and the rules for its tokens, surfaces, ladders, type, ink, motion and the showcase; § Tokens, § Surfaces, § Ladders, § Type, § Ink and contrast, § Own look over system behaviour, § What a page may use, § Motion, § The visual language, § Widths, § The showcase, § Apple's rules in three grades.
+- [Stored settings](Architecture/StoredSettings.md) — a stored value nobody else may write, and a number that came from a file; § Sealed settings, § A number that came from a file.
+- [State and lifetime](Architecture/StateAndLifetime.md) — what outlives a page or a thing it points at, and a value read back whole; § State that outlives a page and ends with its module, § An observer outlives the thing it points at, § A value read back whole.
+- [Diagnostics log](Architecture/DiagnosticsLog.md) — the log file and its policy, the activity registry, the memory trail and the log pane; § The activity registry, § The memory trail, § The log pane.
+
+### Gates and removal
+
+- [The gates](Architecture/TheGates.md) — the four types that answer where a path may be reached, and how a walk asks them.
+- [Removal](Architecture/Removal.md) — the one batch every removal goes through and the refusals it reports; § One removal at a time.
+- [Permissions](Architecture/Permissions.md) — how Full Disk Access is probed.
+- [Background scans](Architecture/BackgroundScans.md) — the modules that can measure unattended and how the list and the capability are tied together.
+- [Giving everything back](Architecture/GivingEverythingBack.md) — what a reset hands back outside Helm's own folders, what it cannot, and the order of its steps.
+
+### Running things
+
+- [Running other programs](Architecture/RunningOtherPrograms.md) — launching a tool, bounding how many are out, reading what it prints, and running one as root.
+- [Running applications](Architecture/RunningApplications.md) — why the running and frontmost applications are read on the main thread only, and the snapshot every other thread gets.
+
+### The modules
+
+- [Module pattern](Architecture/ModulePattern.md) — how a module is built from two source directories and the test directories it keeps, and what holds its parts apart; § The boundaries, § Ports and logic, § The stream and the store, § Bulk reads, § A value crossing to the main thread.
 
 One page per module, in the order `ls Sources/Modules` prints.
 
@@ -74,25 +98,44 @@ One page per module, in the order `ls Sources/Modules` prints.
 - [Uninstaller](Architecture/Uninstaller.md) — deciding whether a path belongs to the application being removed; its model calls the engine directly (Architecture/Uninstaller.md § How the Uninstaller's model reaches its engine, § Keys, gates, guards and files, § The states of the Uninstaller page).
 - [VPN](Architecture/VPN.md) — raising and dropping tunnels from rules, and the books it keeps, keyed by configuration id or, where `scutil` takes a name, by name; its model calls the engine directly (Architecture/VPN.md § How VPN's model reaches its engine), and every state of its page has a row in Architecture/VPN.md § The states of the VPN page.
 
-## Across modules
-
-- [Permissions](Architecture/Permissions.md) — how Full Disk Access is probed.
-- [The gates](Architecture/TheGates.md) — the four types that answer where a path may be reached, and how a walk asks them.
-- [Removal](Architecture/Removal.md) — the one batch every removal goes through and the refusals it reports; § One removal at a time.
-- [Giving everything back](Architecture/GivingEverythingBack.md) — what a reset hands back outside Helm's own folders, what it cannot, and the order of its steps.
-- [Running other programs](Architecture/RunningOtherPrograms.md) — launching a tool, bounding how many are out, reading what it prints, and running one as root.
-- [Running applications](Architecture/RunningApplications.md) — why the running and frontmost applications are read on the main thread only, and the snapshot every other thread gets.
-- [Background scans](Architecture/BackgroundScans.md) — the modules that can measure unattended and how the list and the capability are tied together.
-- [Diagnostics log](Architecture/DiagnosticsLog.md) — the log file and its policy, the activity registry, the memory trail and the log pane; § The activity registry, § The memory trail, § The log pane.
-- [Localization](Architecture/Localization.md) — each catalog and its keys (`HelmRuntime`'s counted nouns stay in Swift), the shared words, the lookup and its memo, the guards that watch them, and the helpers that keep the language the app's own; § Catalogs and the words kept in Swift, § The lookup and its memo, § Arguments and numbers, § Words two parts draw, § The changelog's key and a missing language, § The guards, § One English text means one thing, § Formatters and the app's language, § Terminology from the system's own tables, § Russian values, § The French pass.
-- [State and lifetime](Architecture/StateAndLifetime.md) — what outlives a page or a thing it points at, and a value read back whole; § State that outlives a page and ends with its module, § An observer outlives the thing it points at, § A value read back whole.
-- [Stored settings](Architecture/StoredSettings.md) — a stored value nobody else may write, and a number that came from a file; § Sealed settings, § A number that came from a file.
-- [Design system](Architecture/DesignSystem.md) — what `Sources/HelmUI/DesignSystem/` holds and the rules for its tokens, surfaces, ladders, type, ink, motion and the showcase; § Tokens, § Surfaces, § Ladders, § Type, § Ink and contrast, § Own look over system behaviour, § What a page may use, § Motion, § The visual language, § Widths, § The showcase, § Apple's rules in three grades.
-
-## Shipping and checking
+### Tests and release
 
 - [Release](Architecture/Release.md) — where the version lives, how a build is numbered, signed and shipped, the updater and the disk image window; § Channels and publishing, § Signing and grants, § The updater, § What shipped, § The disk image window.
 - [Tests and measurement](Architecture/TestsAndMeasurement.md) — what makes a check a check, what proves which defect, what a removal takes with it, and how measuring tests are written; § What makes a check, § What proves what, § Removal takes its traces, § Readings and mutants, § Fakes, § Shared test plumbing, § Harnesses, § Two screen instruments, § Snapshot rules, § Measuring motion, § Why the commands are run.
+
+### Who stores what
+
+What each module keeps between launches, and where. A setting that steers unattended work is
+sealed (§ Sealed settings); a number read from a file is bounded (§ A number that came from a file).
+
+| Module | What it keeps | Where |
+|---|---|---|
+| Autopilot | its rules and their seal, the history of what it did | the property list and two keychain items (`Sources/Modules/Autopilot/Engine/RuleKeychain.swift`); `Sources/Modules/Autopilot/Engine/Logic/ActionHistory.swift` |
+| Disk | the last scan, one slot | `Sources/Modules/Disk/Engine/ScanStore.swift` |
+| Duplicates | its sealed settings, the digests of files it has read | `Sources/Modules/Duplicates/Engine/Logic/DuplicatesSettings.swift`, `Sources/Modules/Duplicates/Engine/HashCache.swift` |
+| Homebrew | the install-count documents it downloads, each with its `.etag` file, and a file for the operation in progress; nothing about packages themselves, which are read from `brew` | `Sources/Modules/Homebrew/Engine/SystemPorts.swift`; Architecture/Homebrew.md § Install counts |
+| KeepAwake | its settings, and a session a person started, which outlives the process | `Sources/Modules/KeepAwake/Engine/KeepAwakeSettings.swift`, `Sources/Modules/KeepAwake/Engine/Logic/SessionRestore.swift` |
+| Layout | its ledger of words put right | `Sources/Modules/Layout/Engine/LedgerStore.swift` |
+| Leftovers | the login items Helm switched off, so a reset can give them back | a `NamespacedStore` over the property list (`Sources/Modules/Leftovers/Engine/LeftoversEngine.swift`) |
+| Screenshots | where a capture goes, and the other settings of the page | `Sources/Modules/Screenshots/Engine/Logic/ScreenshotsSettings.swift` |
+| Uninstaller | its settings | `Architecture/Uninstaller.md` § Keys, gates, guards and files |
+| VPN | its rules, and the credentials it caches for a tunnel | `Sources/Modules/VPN/Engine/VPNSettings.swift`, `Sources/Modules/VPN/Engine/SystemPorts.swift` |
+| the scan settings of every scannable module | one sealed value | `Sources/HelmRuntime/SettingGuard.swift` |
+
+### Who runs what
+
+Which program each module launches, through `Sources/HelmRuntime/HelmProcess.swift`; a command run
+as root goes through `Sources/HelmRuntime/PrivilegedRun.swift`. How they are bounded and read is
+Architecture/RunningOtherPrograms.md.
+
+| Module | Launches |
+|---|---|
+| Homebrew | `/opt/homebrew/bin/brew`, `/usr/bin/git`, `/usr/bin/xcode-select`, `/bin/bash` (the installer) |
+| KeepAwake | `/usr/bin/pmset`, and `/usr/bin/sudo` with `/bin/rm` for its one sudoers rule |
+| Leftovers | `/bin/launchctl` |
+| VPN | `/usr/sbin/scutil`, `/usr/bin/security`, `/usr/bin/networkQuality` |
+| the host and the runtime | `/usr/bin/osascript` (`Sources/HelmRuntime/PrivilegedRun.swift`), `/usr/bin/systemextensionsctl` (`Sources/HelmRuntime/SystemExtensionParser.swift`), `/usr/bin/ditto` and `/bin/bash` (`Sources/HelmApp/Installer.swift`) |
+| Autopilot, Disk, Duplicates, Layout, Screenshots, Uninstaller | no tool of their own; the Uninstaller reads the applications through `Sources/HelmRuntime/RunningApps.swift` |
 
 ## What else to read
 

@@ -508,7 +508,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         // bundle-id-shaped folder under `~/Library` becomes a removal candidate,
         // unattended.
         //
-        // CLAUDE.md records that a local install drops the Full Disk Access
+        // A local install drops (ARCHITECTURE.md § Signing and grants) the Full Disk Access
         // grant **every time**, so an unreadable Library is the ordinary state
         // after an update, not an exotic one.
         let checks = await offTheCooperativePool { [apps, fs, library] in
@@ -563,8 +563,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// as running, and an app started since then does not, so on the flag alone
     /// its bundle would be moved out from under a live process — which then
     /// writes its preferences on exit and puts back the leftovers this batch has
-    /// just taken. That is the family CLAUDE.md
-    /// names: a local flag standing in for a live external fact. The flag is not
+    /// just taken. That is the family
+    /// (ARCHITECTURE.md § The gates) of a local flag standing in for a live external fact. The flag is not
     /// made fresher; the question is asked where the answer is used, and again
     /// after the quitting — which is itself long enough to have changed it.
     ///

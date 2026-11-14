@@ -36,7 +36,7 @@ private func helmEventSource() -> CGEventSource? {
 /// one below, and a silent one.
 ///
 /// So the pointer stays unretained, and the object gets a `deinit` — which is
-/// reachable precisely *because* nothing retains `self` (CLAUDE.md's note on
+/// reachable precisely *because* nothing retains `self` (ARCHITECTURE.md § State that outlives a page and ends with its module, on
 /// `deinit` not running while something holds the object is the same fact from
 /// the other side). Without it, `stop()` had exactly one caller and any path
 /// that dropped the engine another way — `bootstrap()` replacing it, the module

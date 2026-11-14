@@ -62,7 +62,7 @@ enum LyStr {
     /// through `wordsIn(_:count:)`. Takes a language rather
     /// than reading `AppLanguage.current`, so a guard can ask it about German. This
     /// machine runs in Russian, so a test that reads `.current` exercises exactly
-    /// one of eight — CLAUDE.md § What not to do, and what breaks if you do.
+    /// one of eight — ARCHITECTURE.md § Catalogs and the words kept in Swift.
     static func notSpentTypingAgain(language: AppLanguage = AppLanguage.current) -> String {
         L(.notSpentTypingAgain, language: language)
     }

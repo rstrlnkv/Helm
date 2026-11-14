@@ -6,7 +6,7 @@ import Foundation
 /// make that false.** `FolderWatcher.start` discarded `FSEventStreamStart`'s
 /// return and gave up silently when `FSEventStreamCreate` answered nil, and the
 /// feature needs Full Disk Access to see anything at all — which every local
-/// install takes away again (CLAUDE.md). So «trash offer switched on» reached the
+/// install takes away again (ARCHITECTURE.md § Signing and grants). So «trash offer switched on» reached the
 /// log, and the row said on, whether or not anything was watching a Trash Helm
 /// could read. That is the family named on 2026-08-12: a local flag standing in
 /// for a live external fact, with no reverse channel from the port that knows.
