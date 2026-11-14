@@ -9,6 +9,7 @@ import XCTest
 /// package name — so `run` pointed at `doctor` comes back empty. This is the
 /// one query whose whole answer is on the wrong stream, and the one method
 /// that goes and gets it.
+/// Guards: a58fb9bf (brew doctor answers on standard error); with `runCapturingDiagnostics` reading `.discarded` instead of `.merged` the class goes red.
 final class ADiagnosticOnStandardErrorIsNotSilenceTests: XCTestCase {
 
     private let script = "echo out; echo err 1>&2"
