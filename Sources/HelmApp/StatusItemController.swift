@@ -90,8 +90,8 @@ import HelmAppStrings
     }
 
     private var lastIconKey: String?
-    /// Drives the countdown ring: modules only emit on state changes, so the
-    /// arc needs its own tick while a timer is running.
+    /// Drives the countdown ring and its text: modules only emit on state
+    /// changes, so both need their own tick while a timer is running.
     private lazy var timerTick = RepeatingTick(interval: 1) { [weak self] in self?.refreshIcon() }
     /// Drives a spin, which is thirty frames a second for about a second — far
     /// faster than the countdown, and armed only while a spin is live. It stops
@@ -118,11 +118,11 @@ import HelmAppStrings
         let spinning = StatusPlan.spins(appearance, now: now, reduceMotion: HelmMotion.reduceMotion)
         let frame = spinning ? StatusPlan.frame(spinUntil: appearance.spinUntil, now: now,
                                                 frameCount: MenuBarIcon.frameCount) : nil
-        timerTick.set(active: progress != nil)
+        timerTick.set(active: StatusPlan.wantsSecondTick(appearance))
         // Tied to the frame rather than to `spinning`: what keeps the tick alive
         // is exactly what it has left to draw.
         spinTick.set(active: frame != nil)
-        // Modules emit state on every tick; only redraw when the glyph changes.
+        // A module says nothing for an unchanged payload; redraw only when the glyph or title changes.
         let title = appearance.title
         // The spin's own colour when it has one, and the module's tint
         // otherwise — which is what Keep Awake has always drawn with.

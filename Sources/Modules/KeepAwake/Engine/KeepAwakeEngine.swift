@@ -38,6 +38,10 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     private let lid: ClamshellCoordinator
     private let clock: Clock
     private let news: EngineNews<StatePayload>
+    /// Guards `lastEmitted` and the `say` that follows its comparison: an emit
+    /// comes from the lid's callback and from every observer, on any thread.
+    private let emitLock = NSLock()
+    private var lastEmitted: StatePayload?
 
     private(set) var isActive = false
     private(set) var activeConditions: Set<ActiveCondition> = []
@@ -751,6 +755,14 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                     lidRefused: lidRefused,
                                     lidGrantRemains: lidGrantRemains,
                                     assertionRefused: assertionRefused)
+        // Compared, recorded and said under one lock, so the payload recorded
+        // as last is the one said last, and one equal to it is not said again.
+        // The menu bar's countdown does not depend on this stream: the host
+        // ticks it once a second (`StatusItemController.timerTick`).
+        emitLock.lock()
+        defer { emitLock.unlock() }
+        guard payload != lastEmitted else { return }
+        lastEmitted = payload
         news.say(payload)
     }
 }

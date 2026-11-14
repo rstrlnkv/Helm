@@ -179,6 +179,23 @@ final class KeepAwakeEngineTests: KeepAwakeEngineRig {
         clock.fire(after: 600)
         XCTAssertFalse(engine.isActive)
     }
+
+    /// Past defect: every recompute said its payload, equal to the last or not.
+    /// Two identical recomputes after a start are one emit; the stop behind them
+    /// is the second, and ends what is counted.
+    func test_a_recompute_that_changes_nothing_says_nothing() async {
+        let stream = engine.stream()
+        engine.startSession(minutes: 0)
+        engine.settingsChanged()
+        engine.settingsChanged()
+        engine.stopSession()
+        var said: [Bool] = []
+        for await payload in stream {
+            said.append(payload.isActive)
+            if !payload.isActive { break }
+        }
+        XCTAssertEqual(said, [true, false])
+    }
 }
 
 /// Guards: bbbb2e84 (toggleSession had no test; every other caller ignores the default duration, mutant green).

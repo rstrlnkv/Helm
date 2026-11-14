@@ -35,6 +35,11 @@ subscription and asserts the order is kept, and
 `ASwitchedOffModuleLetsItsSubscriberGoTests` that stopping the model returns the
 subscriber.
 
+`emitState()` compares each payload with the last one said, under one lock, and says
+nothing for an equal one (`test_a_recompute_that_changes_nothing_says_nothing`). The menu
+bar's countdown does not ride on this stream: the host ticks it once a second while the
+appearance has a ring or a title (`StatusItemController.timerTick`).
+
 ## The closed lid
 
 A permanent passwordless root grant is paid for only where the thing is otherwise

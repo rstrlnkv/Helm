@@ -179,4 +179,11 @@ public enum StatusPlan {
         guard appearance.timerProgress == nil else { return false }
         return (appearance.spinUntil ?? .distantPast) > now
     }
+
+    /// Whether the once-a-second tick must run: a ring counts down, or a title
+    /// carries text drawn from the clock. Modules emit only on a change, so
+    /// neither moves without it.
+    public static func wantsSecondTick(_ appearance: StatusAppearance) -> Bool {
+        appearance.timerProgress != nil || appearance.title != nil
+    }
 }
