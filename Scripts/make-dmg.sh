@@ -52,11 +52,17 @@ TOOLS="$REPO_ROOT/build/dmg-tools"
 # `bad interpreter: No such file or directory` after the app was already
 # packaged. `--help` costs one process and answers the question that matters —
 # it, and not `--version`: dmgbuild has no such flag and exits 2 on it when whole.
-if ! "$TOOLS/bin/dmgbuild" --help >/dev/null 2>&1; then
-  echo "==> Setting up dmgbuild (first run, or its interpreter moved)"
+# The environment is also rebuilt when the pinned requirements change, so a venv
+# made before they existed (unpinned) is not reused. The hash is kept beside it.
+REQUIREMENTS="$SCRIPT_DIR/dmg-requirements.txt"
+REQUIREMENTS_SHA="$(/usr/bin/shasum -a 256 "$REQUIREMENTS" | cut -d" " -f1)"
+if ! "$TOOLS/bin/dmgbuild" --help >/dev/null 2>&1 \
+   || [ "$(cat "$TOOLS/requirements.sha256" 2>/dev/null)" != "$REQUIREMENTS_SHA" ]; then
+  echo "==> Setting up dmgbuild (first run, its interpreter moved, or the pins changed)"
   rm -rf "$TOOLS"
   python3 -m venv "$TOOLS"
-  "$TOOLS/bin/pip" install --quiet dmgbuild
+  "$TOOLS/bin/pip" install --quiet --require-hashes -r "$REQUIREMENTS"
+  echo "$REQUIREMENTS_SHA" > "$TOOLS/requirements.sha256"
 fi
 
 echo "==> Building $DMG"

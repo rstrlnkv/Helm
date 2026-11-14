@@ -181,7 +181,9 @@ lives in `Scripts/dmg-settings.py`; the two hold the same slot coordinates seen 
 opposite sides, and each says so in its own comment. The reasons for the three drawings,
 the ring radius and the chevron's place, the dev mark, and why `dmgbuild` writes the
 window instead of Finder are in those two files and the header comments of
-`Scripts/make-dmg.sh`.
+`Scripts/make-dmg.sh`. `dmgbuild` is installed from `Scripts/dmg-requirements.txt`, every
+version pinned with its hashes, and the environment is rebuilt when that file's sha256
+changes.
 
 Two numbers there announce nothing when wrong, and `Scripts/dmg-settings.py` says why at
 each: `window_rect` is the *window's*, so it is the background's height plus the title bar,
