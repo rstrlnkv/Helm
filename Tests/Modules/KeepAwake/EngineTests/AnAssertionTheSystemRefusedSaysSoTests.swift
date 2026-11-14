@@ -16,9 +16,8 @@ import HelmRuntime
 /// word for, so no test of it could exist whatever anybody wrote.
 ///
 /// What is fixed here is that: the port answers, the engine reads the answer,
-/// and the trail and the payload carry it. The screen still says «holding», and
-/// deliberately so for now — saying otherwise is a sentence in eight languages,
-/// which is `HelmUI`'s tree.
+/// and the trail and the payload carry it. The hero and the panel tile draw the
+/// payload's flag as a notice (`KeepAwakeNotice.assertionRefused`).
 ///
 /// Guards: bf6c973b (a refused IOKit assertion counted as held).
 final class AnAssertionTheSystemRefusedSaysSoTests: XCTestCase {
