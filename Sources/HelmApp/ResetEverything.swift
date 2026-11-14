@@ -17,6 +17,8 @@ import HelmRuntime
 /// leaves its reason in a surviving file; it does not: `HelmTrash.remove` takes
 /// the shortest path first, the log folder before Application Support, and while
 /// logging is on the next line is written to a log folder the logger makes again.
+/// That log survives the next launch: the purge latch inside the trashed folder
+/// is written again (`.relatchTheLogPurge`) before the relaunch.
 ///
 /// **To the Trash, not to `unlink`.** Everywhere else in Helm removal is
 /// recoverable, and somebody who presses this by accident must be able to get
@@ -43,6 +45,7 @@ import HelmRuntime
             case .handBackWhatIsOutsideHelm: ModuleHost.shared.handBackSystemState()
             case .giveBackTheLoginItem: LoginItem.setEnabled(false)
             case .trashHelmsOwnFolders: trashHelmsOwnFolders()
+            case .relatchTheLogPurge: HelmLog.shared.rewritePurgeLatch()
             case .forgetPreferences: forgetPreferences()
             case .relaunch: relaunch()
             }

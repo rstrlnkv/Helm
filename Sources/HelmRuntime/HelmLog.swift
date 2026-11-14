@@ -273,14 +273,27 @@ public final class HelmLog: @unchecked Sendable {
         guard !fm.fileExists(atPath: marker.path) else { return }
         queue.async {
             for url in Self.allFileURLs { try? FileManager.default.removeItem(at: url) }
-            // Discarded: the `createFile` below is what this block is for and it
-            // has its own answer; a folder that could not be made is a marker
-            // that cannot land, and an unlanded marker retries at the next
-            // launch — which is a repeated deletion of a log that is already
-            // empty. See `append` for why nothing here can be logged.
-            _ = PrivateFile.directory(at: Self.directory)
-            FileManager.default.createFile(atPath: marker.path, contents: Data())
+            Self.writePurgeLatch()
         }
+    }
+
+    /// Writes the latch again, after the reset has trashed the log folder with
+    /// the latch in it: the next launch would otherwise take the folder's
+    /// absence for a log written before `Redact` and purge the file holding the
+    /// reset's own refusals. Queued behind any pending append.
+    public func rewritePurgeLatch() {
+        queue.async { Self.writePurgeLatch() }
+    }
+
+    /// On the log queue only.
+    private static func writePurgeLatch() {
+        // Discarded: the `createFile` below is what this is for and it
+        // has its own answer; a folder that could not be made is a marker
+        // that cannot land, and an unlanded marker retries at the next
+        // launch — which is a repeated deletion of a log that is already
+        // empty. See `append` for why nothing here can be logged.
+        _ = PrivateFile.directory(at: directory)
+        FileManager.default.createFile(atPath: resetMarkerURL.path, contents: Data())
     }
 
     /// Both edges are written, and the off edge is written **before** the flag

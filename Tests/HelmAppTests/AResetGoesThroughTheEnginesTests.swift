@@ -49,6 +49,13 @@ final class AResetGoesThroughTheEnginesTests: XCTestCase {
                       + "after installing")
     }
 
+    func testTheResetWritesTheLogPurgeLatchAgain() throws {
+        let reset = try source("Sources/HelmApp/ResetEverything.swift")
+        XCTAssertTrue(reset.contains("case .relatchTheLogPurge: HelmLog.shared.rewritePurgeLatch()"),
+                      "the reset trashes the log folder and the latch with it, and does not "
+                      + "write it again: the next launch purges the log holding the reset's line")
+    }
+
     /// The contract carries the default, so a module that holds nothing outside
     /// Helm answers this without writing a line — and the reset can ask all of
     /// them without knowing which is which.

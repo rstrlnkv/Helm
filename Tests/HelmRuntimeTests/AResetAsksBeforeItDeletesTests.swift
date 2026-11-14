@@ -53,4 +53,17 @@ final class AResetAsksBeforeItDeletesTests: XCTestCase {
         }
         XCTAssertEqual(ResetPlan.order.count, ResetPlan.Step.allCases.count)
     }
+
+    /// The trash takes the log folder and the latch with it; the latch is written
+    /// again after the trash and before the preferences go and the process ends.
+    func testTheLogPurgeIsLatchedAgainAfterTheTrashAndBeforeTheRelaunch() throws {
+        let trash = try XCTUnwrap(ResetPlan.order.firstIndex(of: .trashHelmsOwnFolders))
+        let latch = try XCTUnwrap(ResetPlan.order.firstIndex(of: .relatchTheLogPurge),
+                                  "the reset never writes the purge latch again")
+        let forget = try XCTUnwrap(ResetPlan.order.firstIndex(of: .forgetPreferences))
+        let relaunch = try XCTUnwrap(ResetPlan.order.firstIndex(of: .relaunch))
+        XCTAssertLessThan(trash, latch, "the trash removes the latch, so it is written after the trash")
+        XCTAssertLessThan(latch, forget)
+        XCTAssertLessThan(latch, relaunch)
+    }
 }

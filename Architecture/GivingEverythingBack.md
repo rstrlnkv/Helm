@@ -50,11 +50,11 @@ fakes and calls `ModuleHost.handBackSystemState()`. `AResetGoesThroughTheEngines
 rest, because running `ResetEverything.run()` would move this Mac's own folders.
 
 The steps are `ResetPlan.Step` — `handBackWhatIsOutsideHelm`, `giveBackTheLoginItem`,
-`trashHelmsOwnFolders`, `forgetPreferences`, `relaunch` — and `ResetPlan.order` is that
+`trashHelmsOwnFolders`, `relatchTheLogPurge`, `forgetPreferences`, `relaunch` — and `ResetPlan.order` is that
 order as a value; the doc comments on the first two steps say why they sit where they do,
 and `Sources/HelmApp/ResetEverything.swift` carries them out. `ResetPlan.removablePaths` names the
 two folders of the running build (`AppBuild.dataFolder`): its Application Support directory
 (`HelmSupport.path`) and its logs folder (`LogDestination.relativePath`) — `Helm` for the release,
-`Helm Dev` for Helm Dev, whose reset never names the real Helm's folders. `ResetEverything.run` does nothing, and logs why, while an engine says
+`Helm Dev` for Helm Dev, whose reset never names the real Helm's folders. `relatchTheLogPurge` writes `.redaction-reset` in the logs folder again after the trash took it, so the next launch's one-time purge does not delete the log holding the reset's own line. `ResetEverything.run` does nothing, and logs why, while an engine says
 `standsIn` (`ModuleEngine`): a stand-in has nothing to hand back, and the reset would forget the
 settings that say the real module ran.

@@ -50,6 +50,11 @@ public enum ResetPlan {
         /// because their dialog is the step that needs the person.
         case giveBackTheLoginItem
         case trashHelmsOwnFolders
+
+        /// The trash took the log folder, and the latch that says its purge
+        /// already ran went with it. Written again before the relaunch so the
+        /// next launch does not delete the log holding this reset's own line.
+        case relatchTheLogPurge
         case forgetPreferences
         case relaunch
     }
@@ -60,6 +65,7 @@ public enum ResetPlan {
         .handBackWhatIsOutsideHelm,
         .giveBackTheLoginItem,
         .trashHelmsOwnFolders,
+        .relatchTheLogPurge,
         .forgetPreferences,
         .relaunch,
     ]
