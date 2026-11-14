@@ -313,6 +313,9 @@ extension DiskEngine: DiskWork {}
         // of what follows is about it.
         guard mine == showingScan else { return }
         live = false
+        // The count is the walk's; a folder measured after this one must not
+        // draw it beside its own spinner.
+        tick = nil
         guard let scan else {                    // cancelled
             phase = .start
             return
@@ -377,6 +380,7 @@ extension DiskEngine: DiskWork {}
         let wasMeasuring = measuring
         live = false
         measuring = false
+        tick = nil
         // There is a tree worth keeping only when a walk was actually running and
         // had reported at least one snapshot. Two other callers arrive here:
         // `newScan()`, which wants the screen emptied, and Stop pressed inside

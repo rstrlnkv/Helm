@@ -194,9 +194,8 @@ private struct BreadcrumbBar: View {
             // under the person when it landed, and there was nothing to press to
             // stop it. The file count belongs to the volume walk: a folder
             // measurement asks for no updates (`measureAndDrill` passes no sink), so
-            // nothing of it reaches `tick`. But `tick` is cleared only when the next
-            // `scan(path:)` starts, so a folder measured after a finished scan still
-            // shows that scan's last count where the bar has room for it.
+            // nothing of it reaches `tick`, which the view model clears when a scan
+            // ends or is stopped, so there is no count left over to draw here.
             if dvm.walking {
                 HStack(spacing: HelmSpace.s3) {
                     ProgressView().controlSize(.small)
