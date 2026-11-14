@@ -14,7 +14,7 @@ the method then holds `self` for as long as it runs — which, over a stream tha
 not finish, is the life of the app. The tasks are therefore held and
 cancelled from the class's own teardown rather than from `deinit`.
 `EngineNews.subscriberCount` makes the guard a count that stays put rather than a
-memory figure: `Tests/HelmContractTests/SubscriberPruningTests.swift` and
+memory figure: `Tests/HelmContractTests/EngineNewsReplayTests.swift` (`testACancelledConsumerLeavesTheCountAndOnlyIt`) and
 `Tests/HelmAppTests/ASwitchedOffModuleLetsItsSubscriberGoTests.swift`.
 
 A mounted SwiftUI tree is billed whether or not anybody can see it, and the numbers are

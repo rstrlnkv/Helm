@@ -15,6 +15,8 @@ import XCTest
 /// Values are `Int`, and the number carries the slot, because a stream hands
 /// out values and not slot names: `state` holds a counter that only grows
 /// (positive), filler slots hold negative numbers, `marker` ends a read.
+///
+/// Guards: 3cb37fc5 (a replay arrived behind the event that replaced it).
 final class EngineNewsReplayTests: XCTestCase {
 
     private static let marker = Int.max

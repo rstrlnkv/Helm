@@ -18,6 +18,8 @@ import HelmTestSupport
 /// It is the ordinary refusal in Disk, not an exotic one: that module acts on a
 /// tree up to 24 h old, and the folders it is interesting about — Caches,
 /// DerivedData, Downloads — are exactly the ones that change under it.
+///
+/// Guards: b1afbb57 (a path gone since the scan was reported as macOS refusing it).
 final class AFileThatIsGoneIsNotARefusalTests: XCTestCase {
 
     /// End to end: the loop every deleting module goes through, handed a path

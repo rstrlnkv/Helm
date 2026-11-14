@@ -13,6 +13,8 @@ import HelmTestSupport
 /// Autopilot's `folders` getter, which reads a keychain item. A `queue.sync` here
 /// would park whoever asked, up to and including the thread that draws, waiting
 /// for a change notification to finish.
+///
+/// Guards: f710c8f9 (FolderWatcher discarded whether its stream started).
 final class AWatcherSaysWhetherItStartedTests: XCTestCase {
 
     /// The answer, waited for rather than assumed: it comes back on the watcher's

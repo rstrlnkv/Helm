@@ -10,6 +10,8 @@ import XCTest
 /// `stat` reported the same allocated size for both. So the size of a file is
 /// not what removing it returns, and a duplicates screen that adds those sizes
 /// up is promising space the disk will not give back.
+///
+/// Guards: 134128dd (a clone's size was counted as space that comes back).
 final class CloneShareTests: XCTestCase {
 
     func testAnOrdinaryCopyGivesBackItsWholeSize() {
