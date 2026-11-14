@@ -20,7 +20,7 @@ import Module_Duplicates_Engine
 /// external drive.
 ///
 /// The guard is on the model *and* the page dims the button — both, or neither is
-/// reliable (ARCHITECTURE.md § One removal at a time). And it is on the press,
+/// reliable (Architecture/Removal.md § One removal at a time). And it is on the press,
 /// not on the reading: `LeftoversViewModel.dropHiddenSelections` records what the
 /// naive version costs, where a removal holds `busy` across its own rescan.
 @MainActor

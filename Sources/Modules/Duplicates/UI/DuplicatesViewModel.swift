@@ -602,7 +602,7 @@ enum KeepGrounds: Equatable, Sendable {
     /// about a selection the person had just cleared — measured, with `trash`
     /// parked. The only control on this page that looks like a way out of a
     /// destructive act was not one. The page dims the button as well; both, or
-    /// neither is reliable (ARCHITECTURE.md § One removal at a time).
+    /// neither is reliable (Architecture/Removal.md § One removal at a time).
     ///
     /// The guard is on this press and not on the reading, which is the trap
     /// `LeftoversViewModel.dropHiddenSelections` records: a removal holding

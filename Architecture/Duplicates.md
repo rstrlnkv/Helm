@@ -59,7 +59,7 @@ While a removal runs, the marks (`toggleBasket`), Keep this copy, Restore the
 recommendation, the policy popup and Choose another folder (`chooseFolder`,
 `use(folder:)`; the latter ends in `search()` and would save a folder under a
 running request) are refused by the model and their controls dim,
-as Disk's `toggleBasket` declines (ARCHITECTURE.md § One removal at a time):
+as Disk's `toggleBasket` declines (Architecture/Removal.md § One removal at a time):
 `emptyBasket` captures the plans and the staying copies at the press, so a mark or a
 re-ordering made afterwards would draw «stays» on a copy the engine still sends to the
 Trash. The refusal sits in `apply`, which the stored-policy reading shares, so a late

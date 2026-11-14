@@ -338,7 +338,13 @@ extension DiskEngine: DiskWork {}
     ///
     /// A restored tree carries its root but not the path it was scanned from,
     /// so that is the fallback: the same place, either way.
+    ///
+    /// Refused while a walk or a removal is running, as the button is dimmed:
+    /// under a folder measurement it started a second scan that left
+    /// `measuring` set for good, under a removal it replaced the tree the reply
+    /// is about to land on.
     func rescan() async {
+        guard !walking, !busy else { return }
         guard let path = scannedPath ?? result?.root.path else { newScan(); return }
         await scan(path: path)
     }
@@ -398,7 +404,10 @@ extension DiskEngine: DiskWork {}
         removedCount = 0
     }
 
+    /// Refused while a removal runs, like the button: the volume picker would
+    /// replace the tree the reply is about to land on.
     func newScan() {
+        guard !busy else { return }
         cancel()
         store.clear()
         phase = .start

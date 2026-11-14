@@ -234,12 +234,13 @@ private struct BreadcrumbBar: View {
 
             HStack(spacing: HelmSpace.s4) {
                 Button(DkStr.scanAgain) { Task { await dvm.rescan() } }
-                    .disabled(dvm.live)
+                    .disabled(dvm.walking || dvm.busy)
                 // The way out. "Scan again" measures the same place forever, so
                 // a scan of the wrong thing — or of a folder that was only ever
                 // meant to be looked at once — had no exit at all: the module
                 // reopened on it at every launch.
                 Button(DkStr.chooseAnother) { dvm.newScan() }
+                    .disabled(dvm.busy)
             }
             .controlSize(.small)
         }
@@ -356,7 +357,7 @@ private struct BreadcrumbBar: View {
 /// doors into the basket, so anything true of the control has to be remembered
 /// at both, and `.disabled` while a removal runs was remembered at neither.
 ///
-/// **Dim, because the model refuses.** ARCHITECTURE.md § One removal at a time:
+/// **Dim, because the model refuses.** Architecture/Removal.md § One removal at a time:
 /// the basket is what the reply in flight is about, so `DiskViewModel.toggleBasket`
 /// declines while `busy` — and a button that is live over a refusal is a press
 /// that does nothing, which is worse than the discard it replaced.
