@@ -656,14 +656,15 @@ struct LogView: View {
         storedLog && entryCount >= HelmLog.tailLimit
     }
 
-    /// **Counts, and where the tail begins** — «3 of 12 launches · 17 of 46
-    /// lines · since 29.09.2026, 23:41 · older lines are in the file». Empty
-    /// for an empty tail: there is nothing to count and nothing to date.
+    /// **Counts, and where the tail begins** — «3 of 12 launches · Showing 17
+    /// of the last 46 lines · since 29.09.2026, 23:41 · older lines are in the
+    /// file». Empty for an empty tail: there is nothing to count and nothing to
+    /// date.
     static func footerCounts(_ page: LogPresentation, entries: [LogEntry],
                              storedLog: Bool) -> String {
         guard let oldest = entries.first else { return "" }
         var parts = [AppStr.logLaunches(page.cards.count, page.launchCount),
-                     AppStr.logCount(page.shown, entries.count),
+                     AppStr.logShowingLast(page.shown, entries.count),
                      AppStr.logSince(HelmDates.dayAndMinute(oldest.date))]
         if olderLinesExist(entryCount: entries.count, storedLog: storedLog) {
             parts.append(AppStr.logOlderInFile)

@@ -99,7 +99,7 @@ struct LayoutHero: View {
             default: return LyStr.heroNotWatching
             }
         }
-        return Fractional(Double(figures.words), decimals: 0)
+        return Count(figures.words)
     }
 
     private var figure: some View {

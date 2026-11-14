@@ -1301,9 +1301,29 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
 
         AppLanguage.only(.en) {
             let footer = LogView.footerCounts(page, entries: lines, storedLog: false)
-            XCTAssertTrue(footer.contains(AppStr.logCount(badged, lines.count)), """
+            XCTAssertTrue(footer.contains(AppStr.logShowingLast(badged, lines.count)), """
                 the card says «\(AppStr.logWarningCount(badged))» and the footer says «\(footer)»
                 """)
+        }
+    }
+
+    /// **The footer's words are pinned as text.** Both forms (unfiltered and
+    /// filtered), the Russian noun following the total, and a grouped number are
+    /// read as literals, not against the function's own output.
+    func testTheFooterCountReadsAsLiteralText() {
+        AppLanguage.only(.en) {
+            XCTAssertEqual(AppStr.logShowingLast(1, 1), "Showing the last 1 line")
+            XCTAssertEqual(AppStr.logShowingLast(46, 46), "Showing the last 46 lines")
+            XCTAssertEqual(AppStr.logShowingLast(17, 46), "Showing 17 of the last 46 lines")
+            XCTAssertEqual(AppStr.logShowingLast(1, 1_234), "Showing 1 of the last 1,234 lines")
+        }
+        AppLanguage.only(.ru) {
+            XCTAssertEqual(AppStr.logShowingLast(1, 1), "Показана последняя 1 строка")
+            XCTAssertEqual(AppStr.logShowingLast(3, 3), "Показаны последние 3 строки")
+            XCTAssertEqual(AppStr.logShowingLast(5, 5), "Показаны последние 5 строк")
+            XCTAssertEqual(AppStr.logShowingLast(1, 21), "Показано 1 из последней 21 строки")
+            XCTAssertEqual(AppStr.logShowingLast(2, 22), "Показано 2 из последних 22 строк")
+            XCTAssertEqual(AppStr.logShowingLast(17, 46), "Показано 17 из последних 46 строк")
         }
     }
 

@@ -9,7 +9,7 @@ import HelmUI
 ///
 /// **Two kinds.** A string with no number in it is a catalog word in
 /// `Localizable.xcstrings`. A counted one is a template there, the number a `%@`,
-/// the way `logSomeModules` and `logCount` do, with the noun's form chosen
+/// the way `logSomeModules` and `logShowingLast` do, with the noun's form chosen
 /// by the key: one key per form (`Plural.form` says which: errors and warnings
 /// have three forms in Russian, the other counts two; Japanese and Chinese
 /// write the same in all). Nothing

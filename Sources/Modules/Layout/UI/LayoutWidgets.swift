@@ -238,7 +238,7 @@ private func count(_ state: LayoutState, _ period: ConversionPeriod) -> Int {
 private func figure(_ state: LayoutState, _ period: ConversionPeriod) -> String {
     let words = count(state, period)
     guard words > 0 else { return "—" }
-    return Fractional(Double(words), decimals: 0)
+    return Count(words)
 }
 
 /// Nil rather than «0 min» when nothing has been put right: an estimate of a saving

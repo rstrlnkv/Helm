@@ -453,15 +453,26 @@ public enum AppStr {
     public static var logFollow: String { L(.logFollow) }
     public static var logEmpty: String { L(.logEmpty) }
     public static var logNothingMatches: String { L(.logNothingMatches) }
-    /// **This sentence is owed a rewrite, and it is a localizer's.** It was
-    /// written when `total` was everything this process had logged, so «45 of 45
-    /// lines» was true twice over. The tail is seeded from the file now, so
-    /// `total` is the last thousand lines of a log that may hold five thousand,
-    /// and the same words read as «the log is 1 000 lines long». Eight languages
-    /// say it, and the fix is the English text — «Showing the last N lines», or a
-    /// count of the file — not seven corrections underneath the wrong one.
-    public static func logCount(_ shown: Int, _ total: Int) -> String {
-        L(.logCount(String(shown), String(total)))
+    /// The footer's line count. The tail is the last thousand lines of a log that
+    /// may hold more, so `total` is the tail and not the file: with no filter
+    /// (`shown == total`) it says «Showing the last N lines», with one «Showing
+    /// 17 of the last 46 lines». The noun follows `total`, the number the
+    /// sentence is about; one key per form, as `logErrorCount` has.
+    public static func logShowingLast(_ shown: Int, _ total: Int) -> String {
+        let (a, b) = (Count(shown), Count(total))
+        let form = Plural.form(total, language: AppLanguage.current.rawValue)
+        if shown == total {
+            switch form {
+            case .one: return L(.logShowingLastOne(b))
+            case .few: return L(.logShowingLastFew(b))
+            case .many: return L(.logShowingLastMany(b))
+            }
+        }
+        switch form {
+        case .one: return L(.logShowingOfLastOne(a, b))
+        case .few: return L(.logShowingOfLastFew(a, b))
+        case .many: return L(.logShowingOfLastMany(a, b))
+        }
     }
 
     public static var aboutHelm: String { L(.aboutHelm) }
