@@ -24,6 +24,8 @@ import XCTest
 /// This is a coverage test, not a measurement: it asserts the labels exist in the
 /// source, so removing one is visible. It cannot tell whether a label sits in the
 /// right place — only that the operation is still able to name itself.
+///
+/// Guards: 2d1eae5b (a 75 MB to 1338 MB spike with no operation named in the trail).
 final class MemoryTrailCoverageTests: XCTestCase {
 
     private var sources: URL {

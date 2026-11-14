@@ -4,6 +4,8 @@ import XCTest
 /// Finder shows "Программы", not "Applications". The names come from macOS's
 /// own SystemFolderLocalizations table; only the folders macOS itself
 /// localizes are eligible.
+///
+/// Guards: 9e9734fb (Chinese never reached the system folder table).
 final class SystemFolderNamesTests: XCTestCase {
     private let home = "/Users/me"
 

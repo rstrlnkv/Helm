@@ -14,6 +14,8 @@ import XCTest
 /// sat last in the list, so the only run that ever opened it was the run where
 /// the answer was already going to be "denied" — while being the one entry
 /// pointed at a Contacts-gated subtree rather than a Full-Disk-gated file.
+///
+/// Guards: f914152e (a probe path that was a directory could only answer denied).
 final class TheProbeAsksPathsItCanAnswerFromTests: XCTestCase {
 
     /// The control, and the whole reason the test below is worth writing: the

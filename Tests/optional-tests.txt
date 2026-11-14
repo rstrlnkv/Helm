@@ -82,7 +82,6 @@ HashCacheScaleBenchmark
 HashCacheTests
 HelmActivityTests
 HelmFailureTests
-InMemoryKeyValueStoreThreadingTests
 InspectorStateDecisionsTests
 KeepAwakeAtRestBenchmark
 LaunchAgentReaderTests
@@ -93,7 +92,6 @@ LayoutVerdictTests
 LeftTapKeyTests
 LeftoverMatcherTests
 LeftoversPageContractTests
-MemoryTrailCoverageTests
 ModifierMaskTableTests
 ModifierTapTests
 NoOrphanTranslationsTests
@@ -105,7 +103,6 @@ OutdatedQueryAllocationBenchmark
 PanelBarsCarryNoLifetimeTests
 PanelLayoutArithmeticTests
 PanelLayoutStoreRoundTripTests
-PermissionAuditPlanTests
 PermissionCheckTests
 PermissionNeedTests
 PmsetClamshellPortPrivilegedTests
@@ -117,7 +114,6 @@ ReviewRowsOrderTests
 RuleMatcherConditionTests
 SaturatingSumUnderOddInputsTests
 SavedScanRestoreCostBenchmark
-ScanComparisonRepeatedEntryTests
 ScanComparisonTests
 ScanFootprintTests
 ScanJournalOrderAndBoundTests
@@ -138,8 +134,6 @@ SidebarLayoutTests
 StopKeepsTheTreeOnScreenTests
 StreamTailTests
 SwitchingRememberOffErasesTheSelectionTests
-SystemExtensionHostTests
-SystemFolderNamesTests
 TheAdvisorKeepsOnlyItsAdviceTests
 TheAppPickerGivesEachCopyItsOwnIdentityTests
 TheBannerAndTheRulesAreOneReadingTests
@@ -183,7 +177,6 @@ ThePageNamesEveryCopyItKeepsTests
 ThePageNeverWaitsForTheKeychainTests
 ThePageShowsTheLogAndNotTheSessionTests
 ThePlatesAfterBlurringNeverSayItIsSafeTests
-TheProbeAsksPathsItCanAnswerFromTests
 TheRealPortOnEveryFileSystemTests
 TheRealReaderThroughTheSessionBlursWhatItFindsBenchmark
 TheRealTrashTakesTheEditedShotsOriginalTests
