@@ -4,59 +4,6 @@ import HelmContract
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-private final class LaunchTyping: TypingPort, @unchecked Sendable {
-    var performed: [SwitchPlan] = []
-    func perform(_ plan: SwitchPlan) -> Bool { performed.append(plan); return true }
-}
-
-private final class LaunchContext: SecureContextPort, @unchecked Sendable {
-    var bundle = "com.apple.Notes"
-    func isSecureInput() -> Bool { false }
-    func isSecure() -> Bool { false }
-    func frontmostBundleID() -> String { bundle }
-}
-
-private struct LaunchTranslation: TranslationPort {
-    func translate(_ word: String, from: String, to: String) -> String? {
-        guard !word.isEmpty else { return nil }
-        return String(repeating: "п", count: word.count)
-    }
-}
-
-private struct LaunchSpell: SpellPort {
-    /// Cyrillic reads as a word, and Latin only when it is one.
-    ///
-    /// **The second half is new and the fake could not answer without it.** The
-    /// layout path asks whether a *Cyrillic* translation is a word; the capital
-    /// fix asks whether a *Latin* correction is one, which is a question this
-    /// fake used to answer «no» to unconditionally. A fake that cannot be in a
-    /// state the port can be in cannot fail the way the port can.
-    private static let latinWords: Set<String> = ["Hello"]
-    func isWord(_ word: String, sourceID: String) -> Bool? {
-        word.unicodeScalars.allSatisfy { $0.value > 0x400 } || Self.latinWords.contains(word)
-    }
-}
-
-private final class LaunchTap: KeyTapPort, @unchecked Sendable {
-    var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-    func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-               died: @escaping @Sendable () -> Void) -> Bool {
-        handler = onEvent
-        return true
-    }
-    func stop() { handler = nil }
-    func type(_ text: String) { for character in text { handler?(.character(character)) } }
-    func send(_ event: TypingBuffer.Event) { handler?(event) }
-}
-
-private final class LaunchSources: LayoutSourcePort, @unchecked Sendable {
-    var selected: [String] = []
-    func installed() -> [String] { ["en", "ru"] }
-    func current() -> String? { "en" }
-    func select(_ sourceID: String) { selected.append(sourceID) }
-}
-
 private final class LaunchSound: SoundPort, @unchecked Sendable {
     func playSwitch() {}
 }
@@ -76,10 +23,10 @@ private final class LaunchSound: SoundPort, @unchecked Sendable {
 /// right thing is a test that would have passed while the bug shipped. No
 /// `settingsChanged` is sent anywhere in this file — a launch does not send one.
 final class LayoutEngineLaunchTests: XCTestCase {
-    private var typing = LaunchTyping()
-    private var context = LaunchContext()
-    private var tap = LaunchTap()
-    private var sources = LaunchSources()
+    private var typing = FakeTyping()
+    private var context = FakeSecure()
+    private var tap = FakeTap()
+    private var sources = StuckSources()
     private var sound = LaunchSound()
 
     private func store(_ write: (NamespacedStore) -> Void = { _ in }) -> NamespacedStore {
@@ -96,10 +43,10 @@ final class LayoutEngineLaunchTests: XCTestCase {
                         exceptions: [String] = [],
                         automatic: Bool = true,
                         audible: Bool = false) -> LayoutEngine {
-        typing = LaunchTyping(); context = LaunchContext()
-        tap = LaunchTap(); sources = LaunchSources(); sound = LaunchSound()
+        typing = FakeTyping(); context = FakeSecure()
+        tap = FakeTap(); sources = StuckSources(); sound = LaunchSound()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
-                                  translation: LaunchTranslation(), spell: LaunchSpell(),
+                                  translation: SameLengthTranslation(), spell: CyrillicSpell(latin: ["Hello"]),
                                   secure: context, activation: FakeActivation(), sound: sound,
  fixCapitals: fixCapitals,
                                   rules: rules, exceptions: exceptions,

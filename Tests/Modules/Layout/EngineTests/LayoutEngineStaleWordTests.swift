@@ -4,14 +4,6 @@ import HelmContract
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-// The fakes are per-file, as in the other engine suites: a shared set tempts
-// the next person to change one suite's world to suit another's.
-
-private final class StaleTyping: TypingPort, @unchecked Sendable {
-    var performed: [SwitchPlan] = []
-    func perform(_ plan: SwitchPlan) -> Bool { performed.append(plan); return true }
-}
-
 /// The two halves of the secure check are separate on purpose, and the gap
 /// between them is where this suite lives. `isSecureInput` is the cheap syscall
 /// asked on every key; it only knows about *system-wide* secure input.
@@ -25,50 +17,6 @@ private final class StaleContext: SecureContextPort, @unchecked Sendable {
     func isSecureInput() -> Bool { systemWideSecure }
     func isSecure() -> Bool { systemWideSecure || passwordField }
     func frontmostBundleID() -> String { bundle }
-}
-
-/// Translates anything Latin into Cyrillic of the same length. This suite is
-/// about which word the engine reaches for, not about which words a dictionary
-/// knows.
-private struct StaleTranslation: TranslationPort {
-    func translate(_ word: String, from: String, to: String) -> String? {
-        guard !word.isEmpty else { return nil }
-        return String(repeating: "п", count: word.count)
-    }
-}
-
-private struct StaleSpell: SpellPort {
-    /// Cyrillic reads as a word, and Latin only when it is one.
-    ///
-    /// **The second half is new and the fake could not answer without it.** The
-    /// layout path asks whether a *Cyrillic* translation is a word; the capital
-    /// fix asks whether a *Latin* correction is one, which is a question this
-    /// fake used to answer «no» to unconditionally. A fake that cannot be in a
-    /// state the port can be in cannot fail the way the port can.
-    private static let latinWords: Set<String> = ["Hello"]
-    func isWord(_ word: String, sourceID: String) -> Bool? {
-        word.unicodeScalars.allSatisfy { $0.value > 0x400 } || Self.latinWords.contains(word)
-    }
-}
-
-private final class StaleTap: KeyTapPort, @unchecked Sendable {
-    var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-    func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-               died: @escaping @Sendable () -> Void) -> Bool {
-        handler = onEvent
-        return true
-    }
-    func stop() { handler = nil }
-    func type(_ text: String) { for character in text { handler?(.character(character)) } }
-    func send(_ event: TypingBuffer.Event) { handler?(event) }
-}
-
-private final class StaleSources: LayoutSourcePort, @unchecked Sendable {
-    var selected: [String] = []
-    func installed() -> [String] { ["en", "ru"] }
-    func current() -> String? { "en" }
-    func select(_ sourceID: String) { selected.append(sourceID) }
 }
 
 private final class StaleSelection: SelectionPort, @unchecked Sendable {
@@ -97,10 +45,10 @@ private final class StaleSelection: SelectionPort, @unchecked Sendable {
 /// backspaces at whatever has the keyboard now, counted from a word that is no
 /// longer there.
 final class LayoutEngineStaleWordTests: XCTestCase {
-    private var typing = StaleTyping()
+    private var typing = FakeTyping()
     private var context = StaleContext()
-    private var tap = StaleTap()
-    private var sources = StaleSources()
+    private var tap = FakeTap()
+    private var sources = StuckSources()
     private var selection = StaleSelection()
 
     /// The chord bound as «fix». Only the recorded one ends a word and leaves
@@ -126,10 +74,10 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     }
 
     private func engine(                        fixCapitals: Bool = false) -> LayoutEngine {
-        typing = StaleTyping(); context = StaleContext()
-        tap = StaleTap(); sources = StaleSources(); selection = StaleSelection()
+        typing = FakeTyping(); context = StaleContext()
+        tap = FakeTap(); sources = StuckSources(); selection = StaleSelection()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
-                                  translation: StaleTranslation(), spell: StaleSpell(),
+                                  translation: SameLengthTranslation(), spell: CyrillicSpell(latin: ["Hello"]),
                                   secure: context, activation: FakeActivation(), selection: selection,
  fixCapitals: fixCapitals,
                                   settings: Self.boundStore(fixCapitals: fixCapitals))

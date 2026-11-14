@@ -4,51 +4,6 @@ import HelmContract
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-// Fakes are per-file in this suite by the same convention the others follow.
-
-private final class NavTyping: TypingPort, @unchecked Sendable {
-    var performed: [SwitchPlan] = []
-    func perform(_ plan: SwitchPlan) -> Bool { performed.append(plan); return true }
-}
-
-private final class NavContext: SecureContextPort, @unchecked Sendable {
-    var bundle = "com.apple.Notes"
-    func isSecureInput() -> Bool { false }
-    func isSecure() -> Bool { false }
-    func frontmostBundleID() -> String { bundle }
-}
-
-private struct NavTranslation: TranslationPort {
-    func translate(_ word: String, from: String, to: String) -> String? {
-        word == "ghbdtn" ? "привет" : nil
-    }
-}
-
-private struct NavSpell: SpellPort {
-    func isWord(_ word: String, sourceID: String) -> Bool? {
-        word.unicodeScalars.allSatisfy { $0.value > 0x400 }
-    }
-}
-
-private final class NavTap: KeyTapPort, @unchecked Sendable {
-    var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-    func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-               died: @escaping @Sendable () -> Void) -> Bool {
-        handler = onEvent
-        return true
-    }
-    func stop() { handler = nil }
-    func type(_ text: String) { for character in text { handler?(.character(character)) } }
-    func send(_ event: TypingBuffer.Event) { handler?(event) }
-}
-
-private final class NavSources: LayoutSourcePort, @unchecked Sendable {
-    func installed() -> [String] { ["en", "ru"] }
-    func current() -> String? { "en" }
-    func select(_ sourceID: String) {}
-}
-
 /// Which keys are allowed to spend the undo's one forgiveness.
 ///
 /// An undo is a blind edit: so many backspaces, then a replacement, at
@@ -71,9 +26,9 @@ private final class NavSources: LayoutSourcePort, @unchecked Sendable {
 /// still true → backspaces and a retype at the new caret, in the middle of the
 /// sentence, and the action the person actually wanted was eaten.
 final class UndoAfterNavigationTests: XCTestCase {
-    private var typing = NavTyping()
-    private var context = NavContext()
-    private var tap = NavTap()
+    private var typing = FakeTyping()
+    private var context = FakeSecure()
+    private var tap = FakeTap()
 
     /// The keycode this suite's «shortcut» is bound to. Any code will do; what
     /// matters is that the engine has one recorded, because the forgiveness
@@ -86,14 +41,14 @@ final class UndoAfterNavigationTests: XCTestCase {
     /// no chord is forgiven at all, and this suite would be asserting about a
     /// budget that no longer exists.
     private func engine(shortcutBound: Bool = true) -> LayoutEngine {
-        typing = NavTyping(); context = NavContext(); tap = NavTap()
+        typing = FakeTyping(); context = FakeSecure(); tap = FakeTap()
         let store = NamespacedStore(namespace: LayoutEngine.moduleID,
                                     backing: InMemoryKeyValueStore())
         if shortcutBound {
             store.set(Int(Self.shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
         }
-        let engine = LayoutEngine(tap: tap, typing: typing, sources: NavSources(),
-                                  translation: NavTranslation(), spell: NavSpell(),
+        let engine = LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
+                                  translation: FakeTranslation(table: ["ghbdtn": "привет"]), spell: CyrillicSpell(),
                                   secure: context, activation: FakeActivation(), settings: store)
         engine.activate()
         return engine

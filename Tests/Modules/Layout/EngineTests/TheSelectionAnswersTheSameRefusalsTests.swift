@@ -28,12 +28,6 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
 
     // MARK: - Ports
 
-    private final class Typing: TypingPort, @unchecked Sendable {
-        var performed: [SwitchPlan] = []
-        var succeeds = true
-        func perform(_ plan: SwitchPlan) -> Bool { performed.append(plan); return succeeds }
-    }
-
     /// Both halves of the secure check, kept apart the way the port keeps them:
     /// `isSecureInput` is the system-wide syscall, `isSecure` also recognises an
     /// app's own password field. Neither is on in this suite — they are here so
@@ -66,17 +60,6 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
         func isWord(_ word: String, sourceID: String) -> Bool? {
             noDictionary.contains(sourceID) ? nil : valid.contains(word)
         }
-    }
-
-    private final class Tap: KeyTapPort, @unchecked Sendable {
-        var grant = true
-        func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-                   onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-                   died: @escaping @Sendable () -> Void) -> Bool {
-            guard grant else { return false }
-            return true
-        }
-        func stop() {}
     }
 
     private final class Sources: LayoutSourcePort, @unchecked Sendable {
@@ -117,11 +100,11 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
     ]
 
     private func engine(exceptions: [String],
-                        typing: Typing,
+                        typing: FakeTyping,
                         selection: Selection,
                         sources: Sources) -> LayoutEngine {
         let engine = LayoutEngine(
-            tap: Tap(), typing: typing, sources: sources,
+            tap: FakeTap(), typing: typing, sources: sources,
             translation: Translation(table: table),
             spell: Spell(valid: ["привет", "las["], noDictionary: []),
             secure: Context(), activation: FakeActivation(),
@@ -139,7 +122,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
     /// when the subject never happened, and «the selection was not replaced» is
     /// green in a world where no selection is ever replaced.
     func testASelectedWordIsConvertedWhenItIsOnNoList() async throws {
-        let typing = Typing()
+        let typing = FakeTyping()
         let selection = Selection()
         selection.treeText = "ghbdtn"
         let engine = engine(exceptions: [], typing: typing,
@@ -158,7 +141,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
     /// select the word — which is what somebody does when the module has been
     /// refusing to touch it — and press the same key. It is rewritten.
     func testANeverListedWordIsNotConvertedBecauseItWasSelected() async throws {
-        let typing = Typing()
+        let typing = FakeTyping()
         let selection = Selection()
         selection.treeText = "ghbdtn"
         let engine = engine(exceptions: ["ghbdtn"], typing: typing,
@@ -178,7 +161,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
     /// tired of seeing `привет` appear writes down the word they keep *seeing*,
     /// not the one they typed.
     func testTheConvertedFormOnTheListCountsForASelectionToo() async throws {
-        let typing = Typing()
+        let typing = FakeTyping()
         let selection = Selection()
         selection.treeText = "ghbdtn"
         let engine = engine(exceptions: ["привет"], typing: typing,
@@ -204,7 +187,7 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
     /// stops it. The word path refuses it even when the person asked by name,
     /// because a bracket where a letter was is not the word they asked for.
     func testASelectionIsNotConvertedIntoAWordWithAMarkWhereALetterWas() async throws {
-        let typing = Typing()
+        let typing = FakeTyping()
         let selection = Selection()
         selection.treeText = "дфых"
         let engine = engine(exceptions: [], typing: typing,
