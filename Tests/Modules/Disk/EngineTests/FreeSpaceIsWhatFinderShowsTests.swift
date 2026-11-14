@@ -61,4 +61,5 @@ private struct FakeCapacity: VolumeCapacityPort {
     let volumes: [VolumeReadout]
     func mounted() -> [VolumeReadout] { volumes }
     func readout(at path: String) -> VolumeReadout? { volumes.first { $0.path == path } }
+    func observeChanges(_ onChange: @escaping @Sendable () -> Void) -> AnyObject { NSObject() }
 }

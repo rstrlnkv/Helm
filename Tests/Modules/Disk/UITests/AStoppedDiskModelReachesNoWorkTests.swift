@@ -23,6 +23,8 @@ final class AStoppedDiskModelReachesNoWorkTests: XCTestCase {
     private final class CountingWork: DiskWork, @unchecked Sendable {
         private let lock = NSLock()
         private var counts = (volumes: 0, scans: 0, cancels: 0, trashes: 0, background: 0)
+        let mountChannel = MountChannel()
+        func watchMounts(_ onChange: @escaping @Sendable () -> Void) -> AnyObject { mountChannel.watch(onChange) }
         var volumes: Int { lock.withLock { counts.volumes } }
         var scans: Int { lock.withLock { counts.scans } }
         var cancels: Int { lock.withLock { counts.cancels } }
@@ -64,6 +66,26 @@ final class AStoppedDiskModelReachesNoWorkTests: XCTestCase {
         let report = await DiskDescriptor().backgroundScan(parts)
         XCTAssertNotNil(report, "the descriptor fell to the default: «no answer» every tick")
         XCTAssertEqual(work.background, 1)
+    }
+
+    /// A disk arriving after `stop()` reaches no volume read: the model let go of
+    /// the channel's token. The control is the same post on a live model.
+    func testAMountAfterStopReachesNoWork() async {
+        let work = CountingWork()
+        let dvm = model(work)
+        await dvm.appear()
+        XCTAssertEqual(work.mountChannel.watchers, 1, "precondition: the model watches mounts once it appears")
+        let before = work.volumes
+        work.mountChannel.post()
+        await waitUntil("control: a mount on a live model reloads the volume list",
+                        within: .seconds(5)) { work.volumes > before }
+
+        dvm.stop()
+        XCTAssertEqual(work.mountChannel.watchers, 0, "stop() kept the mount token")
+        let after = work.volumes
+        work.mountChannel.post()
+        await grace()
+        XCTAssertEqual(work.volumes, after, "a mount after stop() reached the volume read")
     }
 
     private final class NoEngine: ModuleEngine { func activate() {}; func deactivate() {} }

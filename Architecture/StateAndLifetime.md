@@ -52,7 +52,8 @@ holding it pointing at freed memory the moment the port fires again;
 port's caller is never guaranteed to be the only thing that can reach it before it is
 gone. `Tests/Modules/VPN/EngineTests/VPNNetworkWatchTests.swift` guards both halves. A
 missing `deinit` does not fail loudly: it fails as a crash on whichever call happens to
-land on the freed object next. `DiskViewModel` keeps its mount-watch observer in a
+land on the freed object next. `DiskViewModel` keeps the token of the capacity port's change channel
+(`VolumeCapacityPort.observeChanges`, answered in `Sources/Modules/Disk/Engine/SystemPorts.swift`) in a
 property whose own lifetime ends it, so a view model dropped when the module is switched
 off is not woken by the next disk somebody plugs in.
 

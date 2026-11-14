@@ -18,7 +18,7 @@ Words: `Sources/Modules/Disk/UI/Localizable.xcstrings`; shared words through `He
 ## How Disk's model reaches its engine
 
 `DiskViewModel` is built with the engine by the descriptor's `makeModule` and held by
-the host. It calls `mountedVolumes`, `scan`, `cancel`, `trash` and `backgroundScan`
+the host. It calls `mountedVolumes`, `watchMounts`, `scan`, `cancel`, `trash` and `backgroundScan`
 through its `DiskWork` port, which the engine conforms to, and each is answered by
 return. A scan's progress and partial snapshots go to a sink the model hands over with
 that call, an `AsyncStream` it drains while it awaits the answer, so they are applied on
@@ -32,7 +32,7 @@ no snapshots for it. The gates stay in the engine: `trash` partitions through
 `UserFileScope.isRemovable` as well.
 
 The model starts nothing in `init`: `makeModule` runs when the module starts, and the
-saved scan (an index of every file on the volume; `ScanStore.loadDetached` says what reading it cost) and the mount observers wait for `appear()`, which the page and
+saved scan (an index of every file on the volume; `ScanStore.loadDetached` says what reading it cost) and the mount observers (`watchMounts`, answered by `VolumeCapacityPort.observeChanges`; the model holds the token it returns and `stop()` drops it) wait for `appear()`, which the page and
 the tile call from their `.task`. On the person's switch and on quit the host calls the
 descriptor's `stop(_:)`, after which the model reaches no work.
 

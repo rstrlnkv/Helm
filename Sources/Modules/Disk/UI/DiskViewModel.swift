@@ -11,6 +11,8 @@ import Module_Disk_Engine
 /// to subscribe to and no reply that can be lost.
 protocol DiskWork: AnyObject, Sendable {
     func mountedVolumes() async -> [VolumeInfo]
+    /// Calls back when a disk comes or goes, until the returned token is dropped.
+    func watchMounts(_ onChange: @escaping @Sendable () -> Void) -> AnyObject
     func scan(path: String, unattended: Bool,
               updates: (@Sendable (DiskScanUpdate) -> Void)?) async -> ScanResult?
     func cancel()
@@ -74,7 +76,7 @@ extension DiskEngine: DiskWork {}
     /// Held so the observers can be taken back out: a view model dropped when
     /// the module is switched off must not be woken by the next disk somebody
     /// plugs in (ARCHITECTURE.md § An observer outlives the thing it points at).
-    private var mounts: MountWatch?
+    private var mounts: AnyObject?
     private var appeared = false
     /// Injectable so a test does not read — and overwrite — the person's own
     /// last scan.
@@ -161,7 +163,7 @@ extension DiskEngine: DiskWork {}
             // takes on `self` once it starts lasts as long as a volume-attributes
             // read — not the trap of a `for await` over a
             // stream nothing finishes (ARCHITECTURE.md § State that outlives a page and ends with its module).
-            mounts = closed ? nil : MountWatch { [weak self] in
+            mounts = closed ? nil : work.watchMounts { [weak self] in
                 Task { @MainActor in await self?.loadVolumes() }
             }
         }
