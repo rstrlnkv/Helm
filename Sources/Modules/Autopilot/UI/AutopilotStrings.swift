@@ -344,6 +344,29 @@ enum ApStr {
         }
     }
 
+    /// One history row's second half: the verb and its detail as one key per
+    /// kind, so each language places the detail itself. "trashed" and an empty
+    /// detail stay the bare verb. A refusal is the exception: its detail is the
+    /// reason's rawValue — stored data, not words — so it is read back into the
+    /// enum and spoken whole; a detail no current reason claims (a record a
+    /// newer Helm wrote) keeps the verb and the value rather than falling silent.
+    static func historyDetail(_ record: ActionRecord) -> String {
+        if record.kind == .refused,
+           let reason = RuleOutcome.Refusal(rawValue: record.detail) {
+            return historyRefusal(reason)
+        }
+        let detail = record.detail
+        guard !detail.isEmpty else { return historyVerb(record.kind) }
+        switch record.kind {
+        case .moved: return L(.historyMovedTo(detail))
+        case .renamed: return L(.historyRenamedTo(detail))
+        case .tagged: return L(.historyTagged(detail))
+        case .failed: return L(.historyFailed(detail))
+        case .refused: return L(.historyRefused(detail))
+        case .trashed: return historyVerb(.trashed)
+        }
+    }
+
     // MARK: - Putting it back
 
     /// The item on a row and the button on a pass's header.
@@ -353,11 +376,9 @@ enum ApStr {
     /// is what makes it a promise rather than an intention.
     static func putBackFiles(_ count: Int,
                              language: AppLanguage = AppLanguage.current) -> String {
-        // English counts bare, as it always has; the other seven say the files
-        // in their own plural, so the argument is chosen for `language` here.
-        let files = language == .en ? String(count)
-            : Plural.files(count, language: language.rawValue)
-        return L(.putBackFiles(files), language: language)
+        // The counted noun comes from `Plural`, so "Put back 1 file" and
+        // "Put back 5 files" are one key in every language.
+        L(.putBackFiles(Plural.files(count, language: language.rawValue)), language: language)
     }
 
     /// The word on a row that has already gone back. The row stays — a history
