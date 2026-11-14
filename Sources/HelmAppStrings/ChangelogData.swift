@@ -54,8 +54,7 @@ public enum ChangeKind {
     }
 }
 
-public struct ChangeItem: Identifiable {
-    public let id = UUID()
+public struct ChangeItem {
     public let kind: ChangeKind
     public let text: String
 }
@@ -78,8 +77,9 @@ public enum Changelog {
     /// symbol is still what makes a mistyped sentence a build error; a language the
     /// catalog lacks answers with the English that is the key.
     private static func line(_ sentence: LocalizedStringResource) -> String {
-        let bundle = bundles.value(for: AppLanguage.current) {
-            Bundle.module.url(forResource: AppLanguage.current.rawValue, withExtension: "lproj")
+        let language = AppLanguage.current
+        let bundle = bundles.value(for: language) {
+            Bundle.module.url(forResource: language.rawValue, withExtension: "lproj")
                 .flatMap(Bundle.init(url:)) ?? Bundle.module
         }
         return bundle.localizedString(forKey: sentence.key, value: sentence.key, table: sentence.table)

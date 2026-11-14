@@ -1,6 +1,7 @@
 import HelmTestSupport
 import XCTest
 import HelmAppStrings
+import HelmUI
 
 /// (ARCHITECTURE.md § What shipped) orders one `CHANGELOG.md` section and the same entries in
 /// `Sources/HelmAppStrings/ChangelogData.swift` for every release, and records that the two have drifted about which versions exist before. Nothing in `Tests/` held
@@ -150,5 +151,22 @@ final class TheChangelogAndTheAppsListAgreeTests: XCTestCase {
 
         assertDescending(try recorded().map(\.version), source: "CHANGELOG.md")
         assertDescending(drawn().map(\.version), source: "ChangelogData.swift")
+    }
+    /// `Changelog.line` memoises one sub-bundle per language, keyed by the language it
+    /// read. A key that is not the language read (or two reads that disagree) hands every
+    /// language the first one's bundle for the process's life: the sentences then come back
+    /// identical in every language. English and Russian must differ somewhere in the list,
+    /// and the list must be the same length in both.
+    @MainActor
+    func testTheSentencesFollowTheLanguageAskedFor() {
+        var english: [String] = []
+        var russian: [String] = []
+        AppLanguage.only(.ru) { russian = Changelog.entries.flatMap { $0.items.map(\.text) } }
+        AppLanguage.only(.en) { english = Changelog.entries.flatMap { $0.items.map(\.text) } }
+        AppLanguage.only(.ru) { XCTAssertEqual(russian, Changelog.entries.flatMap { $0.items.map(\.text) }) }
+        XCTAssertFalse(english.isEmpty)
+        XCTAssertEqual(english.count, russian.count)
+        XCTAssertNotEqual(english, russian, "the Russian changelog reads as the English one")
+        XCTAssertTrue(zip(english, russian).contains { $0 != $1 })
     }
 }

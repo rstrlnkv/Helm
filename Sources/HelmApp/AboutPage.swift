@@ -470,7 +470,7 @@ private struct WhatsNewView: View {
                                 Text(HelmDates.day(entry.date))
                                     .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
                             }
-                            ForEach(entry.items) { item in
+                            ForEach(Array(entry.items.enumerated()), id: \.offset) { _, item in
                                 HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s4) {
                                     badge(item.kind)
                                     Text(item.text).font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
