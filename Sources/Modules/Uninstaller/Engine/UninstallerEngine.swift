@@ -377,6 +377,11 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
 
     private static let dismissedKey = "trashOfferDismissed"
 
+    /// One lock over read-judge-record of the dismissed set: the sweep's prune and
+    /// a cancel both read it, change it and write it back, and without this one
+    /// overwrites the other's change. Neither path suspends while holding it.
+    private let dismissedLock = NSLock()
+
     /// What is sitting in the Trash that left something behind, minus what has
     /// already been declined.
     ///
@@ -407,6 +412,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
         // copy is still installed, or it left nothing behind. Counts only; a
         // bundle id names somebody's habits.
         var stillInstalled = 0, nothingLeft = 0
+        dismissedLock.lock()
         var dismissed = Set(store.stringArray(Self.dismissedKey))
         // Swept before it is read: an app that has left the Trash — restored, or
         // finally deleted — takes its "no" with it, so removing the same app later
@@ -416,6 +422,7 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
             store.set(Array(kept), for: Self.dismissedKey)
             dismissed = kept
         }
+        dismissedLock.unlock()
 
         let offerable = TrashOfferMemory.toOffer(found: found, dismissed: dismissed)
         let groups = offerable
@@ -471,6 +478,8 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
     /// Cancel. Remembered so the window does not return for this app at the next
     /// launch, and forgotten when the app leaves the Trash.
     public func dismissTrashedApp(bundleID: String) {
+        dismissedLock.lock()
+        defer { dismissedLock.unlock() }
         var dismissed = Set(store.stringArray(Self.dismissedKey))
         dismissed.insert(bundleID)
         store.set(Array(dismissed), for: Self.dismissedKey)
@@ -537,12 +546,18 @@ public final class UninstallerEngine: ModuleEngine, BackgroundScanning, @uncheck
 
     private func scanOrphansSync() -> [OrphanGroup] {
         let installedIDs = apps.installedBundleIDs()
+        var known: [String: Bool] = [:]
         var byID: [String: [Leftover]] = [:]
         for (dir, kind) in Self.orphanScanDirs {
             for url in fs.children(of: library.appendingPathComponent(dir)) {
                 let name = url.lastPathComponent
                 guard OrphanDetector.isOrphan(name: name, installedBundleIDs: installedIDs,
-                                              knownToSystem: { self.apps.isKnownToSystem(bundleID: $0) })
+                                              knownToSystem: { id in
+                                                  if let remembered = known[id] { return remembered }
+                                                  let answer = self.apps.isKnownToSystem(bundleID: id)
+                                                  known[id] = answer
+                                                  return answer
+                                              })
                 else { continue }
                 let id = OrphanDetector.bundleID(from: name)
                 byID[id, default: []].append(

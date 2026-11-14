@@ -79,4 +79,26 @@ final class UninstallerOrphanScanTests: XCTestCase {
                         "/Users/x/Library/Preferences/com.gone.app.plist"])
     }
 
+    /// One id found in several folders is asked about once: each question is a
+    /// LaunchServices lookup, and a scan over thousands of entries repeats ids.
+    func testAnIdFoundInSeveralFoldersIsAskedAboutOnce() async {
+        final class Counting: AppLister, @unchecked Sendable {
+            var asked: [String] = []
+            func installedBundleIDs() -> Set<String> { [] }
+            func isKnownToSystem(bundleID: String) -> Bool { asked.append(bundleID); return false }
+            func installedApps() -> [InstalledApp] { [] }
+            func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
+        }
+        var fs = FakeFS(existing: [:])
+        fs.listings = [
+            "/Users/x/Library/Caches": ["com.gone.app"],
+            "/Users/x/Library/Preferences": ["com.gone.app.plist"],
+            "/Users/x/Library/Application Support": ["com.gone.app"],
+        ]
+        let apps = Counting()
+        let e = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"), apps: apps,
+                                  fs: fs, trash: FakeTrash(), running: FakeRunning(running: []))
+        _ = await e.scanOrphans()
+        XCTAssertEqual(apps.asked, ["com.gone.app"], "the same id was put to LaunchServices more than once")
+    }
 }

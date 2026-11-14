@@ -72,6 +72,14 @@ final class WorkspaceAppLister: AppLister {
         return MDItemCopyAttribute(item, kMDItemLastUsedDate) as? Date
     }
 
+    /// What a failed read of the Trash means: no Trash at all is an empty one and
+    /// says nothing, anything else is a refusal that is logged and answered `nil`.
+    static func trashReadFailure(code: Int) -> (warning: String?, apps: [TrashedApp]?) {
+        code == NSFileReadNoSuchFileError
+            ? (nil, [])
+            : ("the Trash could not be read: \(code)", nil)
+    }
+
     /// The user's own Trash only. Per-volume `/Volumes/*/.Trashes/<uid>` is left
     /// alone: an app is rarely installed on and deleted from an external disk, and
     /// each of those is a separate protected read.
@@ -98,10 +106,11 @@ final class WorkspaceAppLister: AppLister {
             // silence to whoever opens the log, and they want different answers:
             // the first is usually Full Disk Access, which every install takes
             // away again. The path is the user's home and is not written.
-            let code = (error as NSError).code
-            HelmLog.shared.warn(UninstallerEngine.moduleID,
-                                "the Trash could not be read: \(code)")
-            return code == NSFileReadNoSuchFileError ? [] : nil
+            let refusal = Self.trashReadFailure(code: (error as NSError).code)
+            if let warning = refusal.warning {
+                HelmLog.shared.warn(UninstallerEngine.moduleID, warning)
+            }
+            return refusal.apps
         }
         return items
             .filter { $0.pathExtension == "app" }

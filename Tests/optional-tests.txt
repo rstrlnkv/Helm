@@ -205,7 +205,6 @@ TypingBufferTests
 UninstallPlanFiguresTests
 UninstallerDuplicateBundleIDTests
 UninstallerEngineTests
-UninstallerOrphanScanTests
 UninstallerSizeArithmeticTests
 UpdateChannelSelectionTests
 UpdateCheckTests

@@ -160,6 +160,66 @@ final class TrashSweepTests: XCTestCase {
                       "the window will reappear for an app already declined")
     }
 
+    /// A record in the current format is a plain `[String]` under the
+    /// `trashOfferDismissed` key: it must still silence the offer, and the prune must keep it a
+    /// `[String]` while the app is still in the Trash.
+    func testARecordInTheCurrentFormatStillSilencesTheOffer() async {
+        let backing = InMemoryKeyValueStore()
+        let store = NamespacedStore(namespace: "uninstaller", backing: backing)
+        store.set(["com.acme.tool"], for: "trashOfferDismissed")
+        let lister = Lister(trashed: [trashed("com.acme.tool", "Tool")])
+
+        let offered = await engine(lister, store: store).trashedAppLeftovers()
+
+        XCTAssertTrue(offered.isEmpty, "an app already declined, in the current format, was offered again")
+        XCTAssertEqual(store.stringArray("trashOfferDismissed"), ["com.acme.tool"],
+                       "the pruned record no longer reads as the [String] it was")
+    }
+
+    /// A store that holds the sweep between its read of the dismissed set and its
+    /// write, so a cancel can arrive in the gap: the lost update is then certain
+    /// rather than a matter of timing.
+    private final class HoldingStore: KeyValueStore, @unchecked Sendable {
+        let inner = InMemoryKeyValueStore()
+        let firstRead = DispatchSemaphore(value: 0)
+        private let lock = NSLock()
+        private var reads = 0
+        func object(forKey k: String) -> Any? {
+            let value = inner.object(forKey: k)
+            guard k.hasSuffix("trashOfferDismissed") else { return value }
+            let first = lock.withLock { reads += 1; return reads == 1 }
+            if first {
+                firstRead.signal()
+                Thread.sleep(forTimeInterval: 0.3)
+            }
+            return value
+        }
+        func set(_ v: Any?, forKey k: String) { inner.set(v, forKey: k) }
+    }
+
+    /// The sweep's prune and a cancel each read the dismissed set, change it and
+    /// write it back; run together, one wrote over the other's change.
+    func testACancelDuringTheSweepIsNotLostToItsPrune() {
+        let backing = HoldingStore()
+        let store = NamespacedStore(namespace: "uninstaller", backing: backing)
+        // "com.gone" left the Trash, so the prune drops it; "com.kept" stays.
+        store.set(["com.gone", "com.kept"], for: "trashOfferDismissed")
+        let uninstaller = engine(Lister(trashed: [trashed("com.kept", "Kept")]), store: store)
+
+        let swept = expectation(description: "the sweep finished")
+        Task {
+            _ = await uninstaller.trashedAppLeftovers()
+            swept.fulfill()
+        }
+        XCTAssertEqual(backing.firstRead.wait(timeout: .now() + 5), .success,
+                       "the sweep never read the dismissed set under its key")
+        uninstaller.dismissTrashedApp(bundleID: "com.new")
+        wait(for: [swept], timeout: 10)
+
+        XCTAssertEqual(Set(store.stringArray("trashOfferDismissed")), ["com.kept", "com.new"],
+                       "the prune wrote over a cancel made while it ran")
+    }
+
     /// And it stops meaning anything once the app leaves the Trash: restored or
     /// finally deleted, a later removal is a question nobody has answered.
     func testTheNoIsForgottenWhenTheAppLeavesTheTrash() async {
