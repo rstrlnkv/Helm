@@ -177,7 +177,8 @@ enum DiskAdvisor {
             // Foundation handing back autoreleased objects — and this runs inside
             // `offTheCooperativePool`, where the only pool that would ever drain
             // is the one closing when the whole scan returns. Measured over
-            // 20 000 file nodes: 56 bytes a node kept without this, 0 with it
+            // 20 000 file nodes that all pass the size and age floors and reach
+            // the gate: 88 bytes a node kept without this, 0 with it
             // (`TheAdvisorKeepsOnlyItsAdviceTests`, against the allocator's own
             // books). ARCHITECTURE.md § Module pattern.
             autoreleasepool {
