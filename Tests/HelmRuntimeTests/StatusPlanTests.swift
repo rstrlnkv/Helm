@@ -1,4 +1,5 @@
 import XCTest
+import HelmContract
 @testable import HelmRuntime
 
 final class StatusPlanTests: XCTestCase {
@@ -45,5 +46,14 @@ final class StatusPlanTests: XCTestCase {
                      "there is no still to draw, and -1 is not one")
         XCTAssertNil(StatusPlan.frame(spinUntil: Date(timeIntervalSinceReferenceDate: .infinity),
                                       now: now, frameCount: 0))
+    }
+
+    /// Keep Awake's text countdown is drawn from the clock at draw time and the
+    /// engine emits only on a change, so the host's one-second tick is all that
+    /// moves it: a title with no ring must still arm it.
+    func testATitleAloneArmsTheSecondTick() {
+        XCTAssertTrue(StatusPlan.wantsSecondTick(StatusAppearance(title: "12:00")))
+        XCTAssertTrue(StatusPlan.wantsSecondTick(StatusAppearance(timerProgress: 0.5)))
+        XCTAssertFalse(StatusPlan.wantsSecondTick(StatusAppearance()))
     }
 }

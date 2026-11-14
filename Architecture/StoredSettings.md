@@ -56,7 +56,7 @@ is not, for a reason that lives in that property's doc comment.
 well as debug. The single ceiling for the durations is `TimerPolicy.longestSessionMinutes`
 (`Sources/Modules/KeepAwake/Engine/Logic/TimerPolicy.swift`), read by every reader of
 the number — the settings (`KeepAwakeSettings`), the engine's session start, the extend
-button (`TimerPolicy.extendedMinutes`) and the drawn label — so the multiply is
+button (`TimerPolicy.extendedMinutes`), the panel tile's stored length (`panelTimerMinutes`, read as written up to the ceiling, so 721 to 1440 minutes come back unchanged) and the drawn label — so the multiply is
 unreachable by construction rather than guarded at each call site. A value read at
 launch is bounded as strictly as one read from a window, because a trap during launch is
 the app terminating with no window left to undo the bad value from. `SessionRestore.decide`

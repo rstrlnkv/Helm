@@ -1,3 +1,4 @@
+import SwiftUI
 import XCTest
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
@@ -55,20 +56,58 @@ final class PanelTimerFromAnUntrustedPlistTests: XCTestCase {
         }
     }
 
-    /// The ceiling is the one this tile's own typed entry enforces, not the
-    /// settings type's day: nothing a person can do here produces more than 720.
+    /// The ceiling is the one the typed entry enforces, shared with the page:
+    /// nothing a person can do here produces more than a day.
     func testAStoredPanelDurationIsHeldToWhatTheTileItselfCanProduce() {
+        plant(KeepAwakePanelTile.panelTimerMinutes, Int.max)
+        XCTAssertEqual(opening, TimerPolicy.longestSessionMinutes, "Int.max reads as the day")
         plant(KeepAwakePanelTile.panelTimerMinutes, 100_000)
-        XCTAssertLessThanOrEqual(opening, 720,
-                                 "the panel's own entry clamps to 1…720, so \(opening) "
-                                 + "cannot have been typed here")
+        XCTAssertEqual(opening, TimerPolicy.longestSessionMinutes,
+                       "the entry clamps to 1…\(TimerPolicy.longestSessionMinutes), so \(opening) "
+                       + "cannot have been typed here")
+    }
+
+    /// Both surfaces build their editor through `KeepAwakeCustomDuration`, so its
+    /// ceiling is the one a person can type; it must be what `startSession` accepts.
+    func testTheTypedEntryCeilingIsTheLongestSession() {
+        XCTAssertEqual(KeepAwakeCustomDuration.ceiling, TimerPolicy.longestSessionMinutes)
+        XCTAssertEqual(KeepAwakeCustomDuration.ceiling, 1440)
+        // The value that reaches the control, not only the constant.
+        var minutes = 5
+        let view = KeepAwakeCustomDuration(minutes: Binding(get: { minutes }, set: { minutes = $0 }),
+                                           verb: "x", apply: {})
+        let given = Mirror(reflecting: view.prompt).children.first { $0.label == "ceiling" }?.value as? Int
+        XCTAssertEqual(given, TimerPolicy.longestSessionMinutes)
+    }
+
+    /// The ceiling constant alone does not say the surfaces use it: each one's
+    /// own editor must carry the ceiling a person can type, so a call site that
+    /// goes back to its own prompt goes red here.
+    func testTheTileAndThePageBuildTheirEditorsWithTheLongestSession() {
+        let ports = Inert()
+        let engine = KeepAwakeEngine(settings: settings, store: store, assertions: ports,
+                                     displayInfo: ports, displayObserver: ports,
+                                     power: ports, apps: ports, pointer: ports,
+                                     clamshell: ports, clock: ports, lidInfo: ports)
+        let model = KeepAwakeViewModel(engine: engine)
+        defer { model.stop() }
+        let tile = KeepAwakePanelTile(vm: model, store: store)
+        let hero = KeepAwakeHero(state: .idle, now: Date(), anyRuleOn: false,
+                                 defaultDurationMinutes: 30, notice: .none,
+                                 ruleHolds: false, timerEndsAutomation: false,
+                                 batteryFloor: 20,
+                                 timedNote: { _ in "" }, start: { _ in }, stop: {}, resume: {})
+        for editor in [tile.customTimeEditor, hero.customTimeEditor] {
+            let given = Mirror(reflecting: editor.prompt).children.first { $0.label == "ceiling" }?.value as? Int
+            XCTAssertEqual(given, TimerPolicy.longestSessionMinutes)
+        }
     }
 
     /// What must keep working once the ceiling goes in: every duration the tile
     /// can actually store comes back untouched — the menu's longest, the typed
-    /// entry's highest, and the shortest.
+    /// entry's highest (a day), and the shortest.
     func testTheDurationsTheTileCanStoreComeBackUnchanged() {
-        for minutes in [1, 15, 30, 240, 720] {
+        for minutes in [1, 15, 30, 240, 720, 721, 1000, 1440] {
             plant(KeepAwakePanelTile.panelTimerMinutes, minutes)
             XCTAssertEqual(opening, minutes)
         }

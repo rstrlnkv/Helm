@@ -38,9 +38,16 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     private let lid: ClamshellCoordinator
     private let clock: Clock
     private let news: EngineNews<StatePayload>
+    /// Guards `lastEmitted` and the `say` that follows its comparison: an emit
+    /// comes from the lid's callback and from every observer, on any thread.
+    private let emitLock = NSLock()
+    private var lastEmitted: StatePayload?
 
     private(set) var isActive = false
     private(set) var activeConditions: Set<ActiveCondition> = []
+    /// IOKit refused the sleep assertion the session asked for. Cleared by the
+    /// next one it takes and by every release, the battery guard's included.
+    private(set) var assertionRefused = false
     /// Forwarded, because the state and the panel have always called it this.
     var clamshellActive: Bool { lid.active }
     /// macOS was asked to turn sleep off and refused, and the lid row says so —
@@ -434,6 +441,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
             scheduleBatteryWatch()
         } else if !r.isActive && isActive {
             assertions.release()
+            assertionRefused = false
             HelmLog.shared.info(Self.moduleID, "released")
             if lid.active { lid.disengage() }
             cancelTimers()
@@ -485,12 +493,12 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
     /// IOKit would not take the assertion, so the Mac will sleep on schedule
     /// while every surface here says it is being held.
     ///
-    /// The trail is where this lands and **the screen is not, yet**: saying it
-    /// on the page is a field on `StatePayload` and a sentence in eight
-    /// languages in the module's own catalog. Written beside
-    /// «holding sleep» rather than instead of it, because both are true — the
-    /// session is running, and it is not holding what it says.
+    /// The trail and `StatePayload.assertionRefused` are where this lands, and
+    /// the hero and the panel tile draw it from the payload as a notice. Written
+    /// beside «holding sleep» rather than instead of it, because both are true —
+    /// the session is running, and it is not holding what it says.
     private func noteIfTheAssertionWasRefused(_ held: Bool) {
+        assertionRefused = !held
         guard !held else { return }
         HelmLog.shared.warn(Self.moduleID, "the sleep assertion could not be taken; "
                             + "this Mac will sleep on its own schedule")
@@ -637,6 +645,7 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
         HelmLog.shared.info(Self.moduleID, "battery guard stopped the session at "
                             + "\(charge) (floor \(settings.batteryGuardPercent)%)")
         assertions.release()
+        assertionRefused = false
         if lid.active { lid.disengage() }
         cancelTimers()
         isActive = false
@@ -744,7 +753,16 @@ public final class KeepAwakeEngine: ModuleEngine, @unchecked Sendable {
                                     holdingApps: holdingApps,
                                     batteryStopped: batteryStopped,
                                     lidRefused: lidRefused,
-                                    lidGrantRemains: lidGrantRemains)
+                                    lidGrantRemains: lidGrantRemains,
+                                    assertionRefused: assertionRefused)
+        // Compared, recorded and said under one lock, so the payload recorded
+        // as last is the one said last, and one equal to it is not said again.
+        // The menu bar's countdown does not depend on this stream: the host
+        // ticks it once a second (`StatusItemController.timerTick`).
+        emitLock.lock()
+        defer { emitLock.unlock() }
+        guard payload != lastEmitted else { return }
+        lastEmitted = payload
         news.say(payload)
     }
 }

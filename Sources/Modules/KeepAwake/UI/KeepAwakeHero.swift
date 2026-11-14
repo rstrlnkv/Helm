@@ -83,7 +83,9 @@ struct KeepAwakeHero: View {
     let now: Date
     let anyRuleOn: Bool
     let defaultDurationMinutes: Int
-    let suppressed: Bool
+    /// What the slot under the buttons says: the battery guard, a paused rule or
+    /// nothing — the view model's `notice`.
+    let notice: KeepAwakeNotice
     /// A rule's trigger is true right now, whatever state the figure is in.
     /// The view model's `ruleHolds`, which is the input `StopPress` weighs when
     /// it decides whether Stop silences the rule as well as ending the session.
@@ -98,7 +100,7 @@ struct KeepAwakeHero: View {
     /// The battery guard is holding everything down. When it is, it is the
     /// only thing worth saying: a paused rule is a detail beside «nothing this
     /// module does will run until you plug in».
-    let batteryStopped: Bool
+    private var batteryStopped: Bool { notice == .battery }
     /// The floor it stopped at, for the sentence.
     let batteryFloor: Int
     /// The names of the apps holding the Mac, already resolved. The hero is
@@ -151,19 +153,19 @@ struct KeepAwakeHero: View {
     /// at 00:00 with the verb disabled.
     @State private var customMinutes = 0
 
-    /// **The two battery inputs carry no defaults, deliberately.** With `= false`
-    /// and `= 0` a call site that forgets them compiles everywhere and gives a
-    /// hero that can never draw the notice. Of every input here they are the two whose default *looks like* «nothing is
-    /// wrong», so the compiler is the only reader that can catch a call site
-    /// dropping them.
+    /// **The notice and the battery floor carry no defaults, deliberately.** With
+    /// `.none` and `0` a call site that forgets them compiles everywhere and gives
+    /// a hero that can never draw the notice. Of every input here they are the two
+    /// whose default *looks like* «nothing is wrong», so the compiler is the only
+    /// reader that can catch a call site dropping them.
     ///
     /// `timerEndsAutomation` is a third of the same kind and carries none for the
     /// same reason: `false` is today's one-press Stop, so a call site forgetting
     /// it would leave the two-step switched off with everything still compiling.
     init(state: SessionHero, now: Date, anyRuleOn: Bool, defaultDurationMinutes: Int,
-         suppressed: Bool, ruleHolds: Bool, timerEndsAutomation: Bool,
+         notice: KeepAwakeNotice, ruleHolds: Bool, timerEndsAutomation: Bool,
          appNames: [String] = [],
-         batteryStopped: Bool, batteryFloor: Int,
+         batteryFloor: Int,
          timedNote: @escaping (Date) -> String,
          start: @escaping (Int) -> Void, stop: @escaping () -> Void,
          resume: @escaping () -> Void) {
@@ -171,18 +173,17 @@ struct KeepAwakeHero: View {
         self.now = now
         self.anyRuleOn = anyRuleOn
         self.defaultDurationMinutes = defaultDurationMinutes
-        self.suppressed = suppressed
+        self.notice = notice
         self.ruleHolds = ruleHolds
         self.timerEndsAutomation = timerEndsAutomation
         self.appNames = appNames
-        self.batteryStopped = batteryStopped
         self.batteryFloor = batteryFloor
         self.timedNote = timedNote
         self.start = start
         self.stop = stop
         self.resume = resume
         _shownState = State(initialValue: state)
-        _shownSuppressed = State(initialValue: suppressed || batteryStopped)
+        _shownSuppressed = State(initialValue: notice != .none)
     }
 
     var body: some View {
@@ -239,8 +240,8 @@ struct KeepAwakeHero: View {
         // something to say» rather than «a rule is paused» — the battery guard
         // sets no `suppressed` of its own, and gating on that one left its
         // banner permanently collapsed to nothing.
-        .onChange(of: hasNotice) { _, notice in
-            withAnimation(HelmMotion.disclosure) { shownSuppressed = notice }
+        .onChange(of: notice) { _, arrived in
+            withAnimation(HelmMotion.disclosure) { shownSuppressed = arrived != .none }
         }
         // **The one change on this page that nobody caused.** Every other state
         // here follows a press: the reader has just pressed Stop, or a preset, and
@@ -445,15 +446,17 @@ struct KeepAwakeHero: View {
     /// hierarchical style resolves again when that layer is dropped — which
     /// reads as a blink.
     @ViewBuilder private var suppressionRow: some View {
-        // The battery wins. Both can be true — a rule is paused *and* the
-        // charge is at or under the floor — and of the two only one explains why
-        // nothing at all is happening; «resume» would be a button that cannot
+        // `notice` has the battery first: «resume» would be a button that cannot
         // do what it says while the guard is in force.
         Group {
-            if batteryStopped {
+            switch notice {
+            case .battery:
                 HelmBanner(KAStr.stoppedByBattery(batteryFloor), symbol: "battery.25",
                            fillsWidth: false)
-            } else {
+            case .assertionRefused:
+                HelmBanner(KAStr.assertionRefused, symbol: "exclamationmark.triangle.fill",
+                           fillsWidth: false)
+            case .paused, .none:
                 HelmBanner(KAStr.automationPaused, symbol: "pause.circle.fill",
                            fillsWidth: false) {
                     Button(KAStr.resume, action: resume)
@@ -465,9 +468,6 @@ struct KeepAwakeHero: View {
         // has to be part of what collapses to zero.
         .padding(.top, HelmSpace.s5)
     }
-
-    /// Whether the slot under the buttons has anything in it at all.
-    private var hasNotice: Bool { suppressed || batteryStopped }
 
     /// Stop does not only end a session — while a rule's trigger is true it
     /// silences the rule as well, so the Mac does not simply take itself back.
@@ -501,7 +501,7 @@ struct KeepAwakeHero: View {
     /// redundant on the second, where the button has stopped saying «Stop» and
     /// says what it does instead.
     var saysWhatStopWouldDo: Bool {
-        stopPress == .stopEverything && ruleHolds && !suppressed && !batteryStopped
+        stopPress == .stopEverything && ruleHolds && notice == .none
     }
 
     /// What the next press of the stopping button does, from what is true right
@@ -630,16 +630,13 @@ struct KeepAwakeHero: View {
     /// One box asking for minutes would make «two hours» a sum the person has
     /// to do — and a box holding `120` reads the same as one holding `12`. `HelmDurationField` is the Clock shape: a column per unit, the
     /// abbreviation above the figure.
-    private var customTimeEditor: some View {
+    var customTimeEditor: KeepAwakeCustomDuration {
         // Zero minutes is «Indefinite», and that word is the button beside
         // «Other…». A field showing 00:00 offering to start something would
         // be this screen giving one choice two names; the prompt disables its
         // verb at 0.
-        HelmDurationPrompt(KAStr.customTimeTitle, minutes: $customMinutes,
-                           ceiling: TimerPolicy.longestSessionMinutes,
-                           hourLabel: KAStr.hoursUnitShort,
-                           minuteLabel: KAStr.minutesUnitShort,
-                           verb: KAStr.start, apply: applyCustomTime)
+        KeepAwakeCustomDuration(minutes: $customMinutes, verb: KAStr.start,
+                                apply: applyCustomTime)
     }
 
     /// `HelmDurationField` has already clamped to the same ceiling

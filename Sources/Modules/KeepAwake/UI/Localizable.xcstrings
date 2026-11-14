@@ -1591,6 +1591,59 @@
         }
       }
     },
+    "macOSRefusedToKeepAwake": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS hat abgelehnt, den Mac wach zu halten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS refused to keep the Mac awake"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS rechazó mantener el Mac despierto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS a refusé de maintenir le Mac éveillé"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS が Mac を起こしておくことを拒否しました"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O macOS recusou manter o Mac acordado"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS не разрешила держать Mac без сна"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS 拒绝让 Mac 保持唤醒"
+          }
+        }
+      }
+    },
     "macSleepsAsUsual": {
       "extractionState": "manual",
       "localizations": {
@@ -3446,55 +3499,55 @@
         }
       }
     },
-    "timeRemaining": {
+    "timeRemainingFigure": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Verbleibende Zeit"
+            "value": "Verbleibende Zeit: %@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Time remaining"
+            "value": "Time remaining: %@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tiempo restante"
+            "value": "Tiempo restante: %@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Temps restant"
+            "value": "Temps restant : %@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "残り時間"
+            "value": "残り時間：%@"
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tempo restante"
+            "value": "Tempo restante: %@"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Осталось"
+            "value": "Осталось: %@"
           }
         },
         "zh": {
           "stringUnit": {
             "state": "translated",
-            "value": "剩余时间"
+            "value": "剩余时间：%@"
           }
         }
       }
@@ -3552,55 +3605,55 @@
         }
       }
     },
-    "timerColourHint": {
+    "timerColourNote": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Solange keine gewählt ist, dieselbe wie die aktive"
+            "value": "Orange, bis du eine wählst. Die aktive Farbe zu ändern ändert sie nicht."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Until you pick one, the same as the active colour"
+            "value": "Orange until you pick one. Changing the active colour does not change it."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mientras no elijas uno, el mismo que el activo"
+            "value": "Naranja hasta que elijas uno. Cambiar el color activo no lo cambia."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tant que vous n’en choisissez pas, la même que l’active"
+            "value": "Orange tant que vous n’en choisissez pas. Changer la couleur active ne la change pas."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "選ぶまでは、アクティブの色と同じです"
+            "value": "選ぶまではオレンジです。アクティブの色を変えても変わりません。"
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Enquanto você não escolher, a mesma da cor ativa"
+            "value": "Laranja até você escolher. Mudar a cor ativa não a muda."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Пока свой не выбран — тот же, что и активный"
+            "value": "Оранжевый, пока свой не выбран. Смена активного цвета его не меняет."
           }
         },
         "zh": {
           "stringUnit": {
             "state": "translated",
-            "value": "未选择前，与激活时的颜色相同"
+            "value": "选择前为橙色。更改激活时的颜色不会改变它。"
           }
         }
       }

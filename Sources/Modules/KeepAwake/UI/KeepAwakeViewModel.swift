@@ -2,6 +2,22 @@ import SwiftUI
 import HelmRuntime
 import Module_KeepAwake_Engine
 
+/// What the slot under the presets says: the battery guard first, then a
+/// sleep assertion macOS refused, then a paused rule.
+enum KeepAwakeNotice: Equatable {
+    case none, battery, assertionRefused, paused
+
+    /// The battery wins: the facts can all be true, and of them only the guard
+    /// explains why nothing at all is happening. A refusal comes before a pause
+    /// because it says the Mac is not held while a pause says only that a rule waits.
+    static func of(batteryStopped: Bool, assertionRefused: Bool,
+                   suppressed: Bool) -> KeepAwakeNotice {
+        if batteryStopped { return .battery }
+        if assertionRefused { return .assertionRefused }
+        return suppressed ? .paused : .none
+    }
+}
+
 /// Keep Awake's own view state, and the module's only door to its engine.
 ///
 /// Built with the engine by the descriptor's `makeModule` and held by the host
@@ -37,6 +53,9 @@ import Module_KeepAwake_Engine
     /// The battery guard has everything stopped, and nothing will run until
     /// the charge comes back or the charger goes in.
     @Published private(set) var batteryStopped = false
+    /// macOS refused the sleep assertion the session asked for; the engine clears
+    /// it with the session.
+    @Published private(set) var assertionRefused = false
     /// macOS was asked to turn sleep off for the whole Mac and refused. The one
     /// state in which the lid switch says one thing and the machine does another.
     @Published private(set) var lidRefused = false
@@ -51,6 +70,13 @@ import Module_KeepAwake_Engine
     var lidRowNote: LidRowNote {
         LidRowNote.of(refused: lidRefused, grantRemains: lidGrantRemains,
                       holding: clamshellActive)
+    }
+
+    /// The one thing the slot under the buttons says, from the three facts that
+    /// can fill it.
+    var notice: KeepAwakeNotice {
+        KeepAwakeNotice.of(batteryStopped: batteryStopped,
+                           assertionRefused: assertionRefused, suppressed: suppressed)
     }
 
     private let engine: KeepAwakeEngine
@@ -92,6 +118,7 @@ import Module_KeepAwake_Engine
         triggeredConditions = p.triggeredConditions
         holdingApps = p.holdingApps
         batteryStopped = p.batteryStopped
+        assertionRefused = p.assertionRefused
         lidRefused = p.lidRefused
         lidGrantRemains = p.lidGrantRemains
     }

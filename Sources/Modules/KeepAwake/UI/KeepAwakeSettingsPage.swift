@@ -176,7 +176,7 @@ struct KeepAwakeSettingsPage: View {
                 now: timeline.date,
                 anyRuleOn: anyRuleOn,
                 defaultDurationMinutes: defaultDurationMinutes,
-                suppressed: vm.suppressed,
+                notice: vm.notice,
                 ruleHolds: vm.ruleHolds,
                 // The switch in the Automation card, because the same setting decides
                 // what pressing Stop does — see `StopPress`. The mirrored
@@ -192,7 +192,6 @@ struct KeepAwakeSettingsPage: View {
                 // nothing can reach: pressing «15 min» at 5 % would be silence
                 // here while the panel said why. The floor is the drawn one, so
                 // the sentence names the number the row below shows.
-                batteryStopped: vm.batteryStopped,
                 batteryFloor: batteryGuardPercent,
                 timedNote: timedNote,
                 start: start,

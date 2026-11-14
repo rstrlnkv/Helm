@@ -288,12 +288,13 @@ enum KAStr {
 
     /// What VoiceOver says for the countdown, once, when asked.
     ///
-    /// Interpolated, so it composes from a localized word rather than from a
-    /// table of its own — the same shape `duration` uses. The figure on screen
-    /// is `1:23:45` and is announced as it reads; the word in front is what
-    /// makes it a duration rather than a time of day.
+    /// One key with the figure inside it, not a word and a literal colon: the
+    /// colon and the space before it are the language's, French and Japanese
+    /// write them differently. The figure on screen is `1:23:45` and is
+    /// announced as it reads; the words in front make it a duration rather
+    /// than a time of day.
     static func a11yRemaining(_ label: String) -> String {
-        "\(L(.timeRemaining)): \(label)"
+        L(.timeRemainingFigure(label))
     }
     /// «Таймер до 15:42» — the deadline as a clock, which is what a person
     /// checks against. `HelmDates.timeOfDay` writes it in the app's language,
@@ -525,6 +526,11 @@ enum KAStr {
     /// settings page has room to add; here the word «paused» is the whole of
     /// what has to arrive, and the button beside it says what to do about it.
     static var automationPausedShort: String { L(.rulePaused) }
+    /// macOS said no to the sleep assertion, so the Mac sleeps on its own
+    /// schedule while the session believes it is holding. One sentence for the hero
+    /// and the panel: it is short enough for the 320 pt card, and there is no way
+    /// out to add — a refusal is not something a person can lift.
+    static var assertionRefused: String { L(.macOSRefusedToKeepAwake) }
     /// The boundary itself, mid-sentence: «при 20 % и ниже», «bei 20 % oder
     /// weniger», «20% 以下».
     ///
@@ -619,7 +625,7 @@ enum KAStr {
     static var ringTimerNote: String { L(.countdownRingHint) }
     static var showTimerText: String { L(.showRemainingTime) }
     static var timerColor: String { L(.timerColour) }
-    static var timerColorNote: String { L(.timerColourHint) }
+    static var timerColorNote: String { L(.timerColourNote) }
     static var movePointerNote: String { L(.movePointerHint) }
     /// **Names the two controls that actually use it.** It used to say «the
     /// menu-bar switch», and there is no switch in the menu bar: the status

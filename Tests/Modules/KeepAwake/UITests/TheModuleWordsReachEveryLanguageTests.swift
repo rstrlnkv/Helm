@@ -26,6 +26,8 @@ final class TheModuleWordsReachEveryLanguageTests: XCTestCase {
             ("customDuration", { KAStr.customTimeTitle }),
             ("other", { KAStr.customTime }),
             ("done", { KAStr.done }),
+            ("macOSRefusedToKeepAwake", { KAStr.assertionRefused }),
+            ("timerColourNote", { KAStr.timerColorNote }),
         ]
         var differs = 0
         AppLanguage.each { language in
@@ -38,8 +40,37 @@ final class TheModuleWordsReachEveryLanguageTests: XCTestCase {
         XCTAssertGreaterThan(differs, 0, "no word differs from its English, so a fallback to English would pass")
     }
 
+    /// Q7b: the note under the timer colour names what the default does, in the words of the
+    /// language; it used to say "the same as the active colour", which the default is not.
+    func testTheTimerColourNoteNamesTheOrangeDefault() {
+        let orange = ["en": "Orange", "ru": "Оранжевый", "de": "Orange"]
+        for (code, word) in orange {
+            let language = AppLanguage(rawValue: code)!
+            AppLanguage.only(language) {
+                XCTAssertTrue(KAStr.timerColorNote.hasPrefix(word), "\(code): \(KAStr.timerColorNote)")
+            }
+        }
+    }
+
     /// A word other modules draw too stays in the kit and `KAStr` reads it through `L()`.
     func testASharedWordStillComesFromTheKit() {
         AppLanguage.only(.ru) { XCTAssertEqual(KAStr.timer, "Таймер") }
+    }
+
+    /// VoiceOver's countdown carries the figure in every language, with no placeholder left over.
+    func testTheSpokenCountdownCarriesTheFigure() {
+        AppLanguage.each { language in
+            let spoken = KAStr.a11yRemaining("1:23:45")
+            XCTAssertTrue(spoken.contains("1:23:45"), "figure missing in \(language.rawValue): \(spoken)")
+            XCTAssertFalse(spoken.contains("%"), "placeholder left in \(language.rawValue): \(spoken)")
+            switch language.rawValue {
+            case "ja", "zh":
+                XCTAssertTrue(spoken.contains("：1:23:45"), "fullwidth colon missing in \(language.rawValue): \(spoken)")
+            case "fr":
+                XCTAssertTrue(spoken.contains("\u{00A0}: 1:23:45"), "no-break space before colon missing in fr: \(spoken)")
+            default:
+                break
+            }
+        }
     }
 }
