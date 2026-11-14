@@ -45,16 +45,6 @@ final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
         func trashedApps() -> [TrashedApp]? { trashed }
     }
 
-    /// Every candidate exists, so the sweep has something to offer whatever the
-    /// id. What a scan decides is `LeftoverMatcher`'s business and is tested
-    /// there.
-    private struct Everything: FileSystemPort {
-        func exists(_ url: URL) -> Bool { true }
-        func size(_ url: URL) -> Int { 4_096 }
-        func glob(_ pattern: URL) -> [URL] { [] }
-        func children(of url: URL) -> [URL] { [] }
-    }
-
     // MARK: -
 
     /// The unprompted window, end to end: the engine really does hand back two
@@ -70,7 +60,7 @@ final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
             TrashedApp(bundleID: "com.acme.tool", name: "Tool", path: "/Users/ann/.Trash/Tool.app"),
             TrashedApp(bundleID: "com.acme.tool", name: "Tool", path: "/Users/ann/.Trash/Tool 2.app"),
         ])
-        let engine = UninstallerEngine(home: home, apps: lister, fs: Everything(),
+        let engine = UninstallerEngine(home: home, apps: lister, fs: EveryPathExists(size: 4_096),
                                        trash: NoTrash(), running: NoRunning(), store: store)
 
         let groups = await engine.trashedAppLeftovers()
@@ -130,6 +120,7 @@ final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
 /// The picker's half of the same rule: two installed copies of one app share a
 /// bundle id, and the picker still has to tell them apart.
 @MainActor
+/// Past defect: backlog uninstaller-U20 (C139).
 final class TheAppPickerGivesEachCopyItsOwnIdentityTests: XCTestCase {
 
     /// The picker. Two installed copies, one row.

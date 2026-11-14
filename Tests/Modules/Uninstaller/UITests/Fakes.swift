@@ -10,6 +10,23 @@ import HelmRuntime
 // `EngineTests/Fakes.swift`; the duplication that was here was five copies
 // under two names across three files.
 
+/// A Mac with none of the files a test asks about, and one where every path exists
+/// at `size` bytes: the two answers the view-model tests give the engine's
+/// `FileSystemPort`.
+struct NoFiles: FileSystemPort {
+    func exists(_ url: URL) -> Bool { false }
+    func size(_ url: URL) -> Int { 0 }
+    func glob(_ pattern: URL) -> [URL] { [] }
+    func children(of url: URL) -> [URL] { [] }
+}
+struct EveryPathExists: FileSystemPort {
+    var size = 0
+    func exists(_ url: URL) -> Bool { true }
+    func size(_ url: URL) -> Int { size }
+    func glob(_ pattern: URL) -> [URL] { [] }
+    func children(of url: URL) -> [URL] { [] }
+}
+
 /// **Nothing here removes anything.** These tests are about what the view model
 /// shows, and the engine behind it takes a `TrashPort` whether or not anybody
 /// is going to remove something.

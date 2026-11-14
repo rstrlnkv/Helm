@@ -80,7 +80,7 @@ Kept tests, one per guarantee:
 | a name is a guess, an id is not | `ANameIsAGuessNotAnOwnershipQuestionTests` |
 | the app is asked again at removal | `TheAppIsAskedAgainAtRemovalTests`, `TheRunningQuestionIsAskedAtRemovalTests` |
 | the quit is waited for, and its deadline ends the wait | `TheQuitIsWaitedForTests` |
-| a refusal is not a decline at the Trash window's close | `ARefusalIsNotADeclineAtTheCloseTests` (optional, run by filter) |
+| a refusal is not a decline at the Trash window's close | `ARefusalIsNotADeclineAtTheCloseTests` |
 | the removal report is not the last word | `TheReviewIsNotTheLastWordTests` |
 | a second press on the Leftovers tab is refused | `TheOrphansTabRefusesASecondPressTests` |
 | a stopped model reaches no work | `AStoppedUninstallerModelReachesNoWorkTests` |
@@ -98,7 +98,7 @@ The page id is the module id, `uninstaller`, and a state is shot with its file `
       [--arg module.app.interfaceLanguage <ru|de>] \
       --name <state>-<light|dark>[-<ru|de>] --out <dir>
 
-Nothing is removed or quit to reach a state: the presses only tick, open the review and scan. `confirm`, `removing`, `removal-report` and the failure list are not shot. The removal report on the review is held by `TheReviewIsNotTheLastWordTests`, its verdict by `RemovalOutcomeTests` (optional); the Trash window's busy flag by `TheTrashOfferSendsOneBatchTests`, its refusal at the close by `ARefusalIsNotADeclineAtTheCloseTests` (optional); a second press on the Leftovers tab by `TheOrphansTabRefusesASecondPressTests`, which drives `OrphansModel` against a work that does not answer until released. The confirmation, the page's "Removing…" and the failure list have no guard.
+Nothing is removed or quit to reach a state: the presses only tick, open the review and scan. `confirm`, `removing`, `removal-report` and the failure list are not shot. The removal report on the review is held by `TheReviewIsNotTheLastWordTests`, its verdict by `RemovalOutcomeTests` (optional); the Trash window's busy flag by `TheTrashOfferSendsOneBatchTests`, its refusal at the close by `ARefusalIsNotADeclineAtTheCloseTests`; a second press on the Leftovers tab by `TheOrphansTabRefusesASecondPressTests`, which drives `OrphansModel` against a work that does not answer until released. The confirmation, the page's "Removing…" and the failure list have no guard.
 
 | state | the page shows | reached by |
 |---|---|---|

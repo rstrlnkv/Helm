@@ -21,9 +21,9 @@ final class FileWeightTests: XCTestCase {
 
     // MARK: - The walk counts everything, once
 
-    /// `UninstallerSizeArithmeticTests.testAHardLinkedFileIsMeasuredOnce`
-    /// asserts `whole == one` over a folder holding exactly one allocation
-    /// under two names. That equality is also what a walk which stopped after
+    /// The Uninstaller's `testAHardLinkedFileIsMeasuredOnce` (removed; this class
+    /// is its survivor) asserted `whole == one` over a folder holding exactly one
+    /// allocation under two names. That equality is also what a walk which stopped after
     /// its first entry would produce. A third file, on its own inode, is what
     /// tells "counted once" from "counted one".
     func testAHardLinkIsCountedOnceAndTheOtherFilesAreStillCounted() throws {

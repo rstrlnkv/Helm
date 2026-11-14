@@ -2,46 +2,12 @@ import XCTest
 import HelmTestSupport
 @testable import Module_Uninstaller_Engine
 
-/// The two numbers the uninstaller puts on screen — how big an app is, and how
-/// much removing it freed — measured against a tree built here.
-final class UninstallerSizeArithmeticTests: XCTestCase {
-
-    private var root: URL!
-
-    override func setUpWithError() throws {
-        root = scratchDirectory("un-size")
-    }
-
-    /// One 400 KB allocation under two names. `FMFileSystem.size` walks names,
-    /// so it charges the allocation twice — and `trashSync` adds exactly this
-    /// figure to `freedBytes`, which is what the banner says was freed.
-    ///
-    /// The Disk module's scanner already decided the other way, on purpose:
-    /// `TreeBuilder.addFile` dedupes by file id, "a hard link's target is one
-    /// allocation however many names it has". Two answers to one question, in
-    /// one app.
-    func testAHardLinkedFileIsMeasuredOnce() throws {
-        let folder = root.appendingPathComponent("Support")
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let file = folder.appendingPathComponent("payload.bin")
-        try Data(repeating: 0x41, count: 400_000).write(to: file)
-        try FileManager.default.linkItem(at: file,
-                                         to: folder.appendingPathComponent("payload-alias.bin"))
-
-        let one = FMFileSystem().size(file)
-        let whole = FMFileSystem().size(folder)
-
-        XCTAssertGreaterThanOrEqual(one, 400_000)
-        XCTAssertEqual(whole, one,
-                       "the folder holds one allocation under two names, not two allocations")
-    }
-}
-
 /// Two copies of one app, which /Applications and ~/Applications hold at once
 /// often enough — a Setapp build beside a direct download, an old version kept
 /// on purpose. `installedApps()` deduplicates by *path*, so both are listed.
 /// Everything downstream keys off the bundle id, which is the one thing the two
 /// copies share.
+/// Past defect: fix commit 6dec5f2f.
 final class UninstallerDuplicateBundleIDTests: XCTestCase {
 
     private var home: URL!

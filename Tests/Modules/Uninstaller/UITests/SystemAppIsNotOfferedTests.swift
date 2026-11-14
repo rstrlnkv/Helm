@@ -12,12 +12,6 @@ import XCTest
 @MainActor
 final class SystemAppIsNotOfferedTests: XCTestCase {
 
-    private struct SilentFS: FileSystemPort {
-        func exists(_ url: URL) -> Bool { false }
-        func size(_ url: URL) -> Int { 0 }
-        func glob(_ pattern: URL) -> [URL] { [] }
-        func children(of url: URL) -> [URL] { [] }
-    }
     private struct FixedLister: AppLister {
         let apps: [InstalledApp]
         func installedApps() -> [InstalledApp] { apps }
@@ -37,7 +31,7 @@ final class SystemAppIsNotOfferedTests: XCTestCase {
             apps: FixedLister(apps: [
                 safari, tool,
             ]),
-            fs: SilentFS(), trash: NoTrash(), running: NoRunning())
+            fs: NoFiles(), trash: NoTrash(), running: NoRunning())
         return modelOver(engine)
     }
 

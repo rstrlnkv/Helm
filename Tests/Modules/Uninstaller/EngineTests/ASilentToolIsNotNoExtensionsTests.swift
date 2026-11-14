@@ -41,20 +41,6 @@ private final class ToolThatMaySayNothing: SystemExtensionPort, @unchecked Senda
 
 }
 
-/// Refuses every bundle, so the classification is what the test is about.
-private struct RefusingTrash: TrashPort {
-    func trashItem(_ url: URL) -> TrashOutcome {
-        // 513 = NSFileWriteNoPermissionError, what macOS answers for a bundle it
-        // will not move.
-        TrashOutcome(succeeded: false, errorCode: 513, message: "denied")
-    }
-}
-private struct AnyFS: FileSystemPort {
-    func exists(_ url: URL) -> Bool { true }
-    func size(_ url: URL) -> Int { 0 }
-    func glob(_ pattern: URL) -> [URL] { [] }
-    func children(of url: URL) -> [URL] { [] }
-}
 private struct NoLister: AppLister {
     func installedApps() -> [InstalledApp] { [] }
     func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
@@ -62,6 +48,7 @@ private struct NoLister: AppLister {
     func isKnownToSystem(bundleID: String) -> Bool { false }
 }
 
+/// Past defect: fix commit f710c8f9.
 final class ASilentToolIsNotNoExtensionsTests: XCTestCase {
     private var root: URL!
 
@@ -95,8 +82,8 @@ final class ASilentToolIsNotNoExtensionsTests: XCTestCase {
     }
 
     private func engine(_ tool: ToolThatMaySayNothing) -> UninstallerEngine {
-        UninstallerEngine(home: root, apps: NoLister(), fs: AnyFS(),
-                          trash: RefusingTrash(), running: NoRunning(), extensions: tool)
+        UninstallerEngine(home: root, apps: NoLister(), fs: EveryPathExists(),
+                          trash: RefusesEverything(), running: NoRunning(), extensions: tool)
     }
 
     // MARK: -

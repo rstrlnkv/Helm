@@ -12,6 +12,7 @@ import HelmTestSupport
 /// one, which the old assertion would have caught — keyed by path but measured
 /// from the wrong app it is still two, and the banner still says the wrong
 /// number about a removal it is about to perform.
+/// Past defect: fix commit 51247cad.
 final class AppSizeIdentityTests: XCTestCase {
 
     private var home: URL!

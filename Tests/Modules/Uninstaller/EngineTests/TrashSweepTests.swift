@@ -26,17 +26,6 @@ final class TrashSweepTests: XCTestCase {
         func trashedApps() -> [TrashedApp]? { trashed }
     }
 
-    /// Reports every candidate path as present and non-empty, so the leftover scan
-    /// finds something for any bundle id. What the scan itself decides is
-    /// `LeftoverMatcher`'s business and has its own tests; this file is about which
-    /// apps reach it.
-    private struct Everything: FileSystemPort {
-        func exists(_ url: URL) -> Bool { true }
-        func size(_ url: URL) -> Int { 4096 }
-        func glob(_ pattern: URL) -> [URL] { [] }
-        func children(of url: URL) -> [URL] { [] }
-    }
-
     private let home = URL(fileURLWithPath: "/Users/ann")
 
     /// `watching: true` unless a test says otherwise, because the offer is off
@@ -48,7 +37,7 @@ final class TrashSweepTests: XCTestCase {
         let store = store ?? NamespacedStore(namespace: "uninstaller",
                                              backing: InMemoryKeyValueStore())
         store.set(watching, for: "watchTrash")
-        return UninstallerEngine(home: home, apps: lister, fs: Everything(),
+        return UninstallerEngine(home: home, apps: lister, fs: EveryPathExists(size: 4096),
                                  trash: NoTrash(), running: NoRunning(),
                                  store: store)
     }
@@ -113,15 +102,9 @@ final class TrashSweepTests: XCTestCase {
     /// An app that left nothing behind is not worth a window. Reported as empty
     /// rather than as a group with no rows, which the host would have to special-case.
     func testAnAppWithNoLeftoversIsNotAGroup() async {
-        struct Nothing: FileSystemPort {
-            func exists(_ url: URL) -> Bool { false }
-            func size(_ url: URL) -> Int { 0 }
-            func glob(_ pattern: URL) -> [URL] { [] }
-            func children(of url: URL) -> [URL] { [] }
-        }
         let uninstaller = UninstallerEngine(home: home,
                                   apps: Lister(trashed: [trashed("com.example.clean", "Clean")]),
-                                  fs: Nothing(), trash: NoTrash(), running: NoRunning())
+                                  fs: NoFiles(), trash: NoTrash(), running: NoRunning())
 
         let groups = await uninstaller.trashedAppLeftovers()
         XCTAssertTrue(groups.isEmpty)
