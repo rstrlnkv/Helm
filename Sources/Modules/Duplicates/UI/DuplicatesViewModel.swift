@@ -15,7 +15,7 @@ protocol DuplicatesWork: AnyObject, Sendable {
               progress: (@Sendable (DuplicateProgress) -> Void)?) async -> DuplicateFindings?
     func cancel()
     func trash(_ plans: [DuplicatePlan], staying: [String],
-               progress: (@Sendable (DuplicateProgress) -> Void)?) async -> DuplicateRemoval
+               progress: (@Sendable (RemovalTick) -> Void)?) async -> DuplicateRemoval
     func stopRemoval()
     func backgroundScan() async -> ScanReport?
 }
@@ -51,6 +51,9 @@ enum KeepGrounds: Equatable, Sendable {
     /// Application libraries the last walk stepped over rather than opened.
     @Published private(set) var librariesSkipped = 0
     @Published private(set) var progress: DuplicateProgress?
+    /// The removal has passed its last stop: the Trash has the batch, so the
+    /// page offers no Stop and `stopRemoval` reaches no work.
+    @Published private(set) var moving = false
     @Published var basket: [String] = []
     @Published private(set) var banner: String?
     /// Paths macOS refused, with their own reasons — see `DiskViewModel`. A
@@ -634,21 +637,28 @@ enum KeepGrounds: Equatable, Sendable {
         // in so the busy row cannot open on the last press's «N of M», and on
         // the way out so the next one cannot.
         progress = nil
+        moving = false
         defer {
             busy = false
             progress = nil
+            moving = false
         }
         // Drained as the search's are: newest tick only. The removal has no
         // token of its own — `busy` is the one-at-a-time gate, and `search()`
         // refuses while it is set.
         let (ticks, sink) = AsyncStream.makeStream(
-            of: DuplicateProgress.self, bufferingPolicy: .bufferingNewest(1))
+            of: RemovalTick.self, bufferingPolicy: .bufferingNewest(1))
         let work = self.work
         async let answer: DuplicateRemoval = {
             defer { sink.finish() }
             return await work.trash(plans, staying: staying, progress: { sink.yield($0) })
         }()
-        for await tick in ticks { progress = tick }
+        for await tick in ticks {
+            switch tick {
+            case .verified(let reading): progress = reading
+            case .moving: moving = true
+            }
+        }
         let removal = await answer
         // Off the reply, not off the press: the engine says whether the stop
         // landed in time, and a removal that ran to the end never says stopped.
@@ -689,6 +699,10 @@ enum KeepGrounds: Equatable, Sendable {
         removalStopped = false
     }
 
+    /// Whether the page draws the Stop button: one spelling for the button and
+    /// the press below, so they cannot disagree.
+    var offersStop: Bool { busy && !moving }
+
     /// Asks the engine to stop the removal in flight, between files of the
     /// verification.
     ///
@@ -698,7 +712,7 @@ enum KeepGrounds: Equatable, Sendable {
     /// all stand until the reply says what actually happened, because a stop
     /// that lands once the Trash has the batch is a removal that ran to the end.
     func stopRemoval() {
-        guard busy, !closed else { return }
+        guard offersStop, !closed else { return }
         work.stopRemoval()
     }
 

@@ -100,7 +100,7 @@ The page id is the module id, `duplicates`, and a state is shot with its file `d
       --name <state>-<light|dark>[-<fr|de|ru>] --out <dir>
 
 A scratch tree of planted duplicates is enough for every state that shows a result. Nothing is removed to reach a state:
-`confirm`, `removing` and `removal-report` are not shot; `removing` is held by `AStopDuringARemovalReachesTheEngineTests` and `ATickReachesOnlyItsOwnBarTests` (optional), the question is held by no test; the copies the press then names as staying, by `ThePageNamesEveryCopyItKeepsTests` (optional), and the figure the outcome banner counts as freed — a clone of the copy that stays is not counted — by `TheBannerCountsWhatTheDiskGivesBackTests` (optional, engine).
+`confirm`, `removing` and `removal-report` are not shot; `removing` is held by `AStopDuringARemovalReachesTheEngineTests` and `ATickReachesOnlyItsOwnBarTests` (optional), Stop removal's disappearance for the Trash phase by `AStopIsNotOfferedOnceTheTrashHasTheBatchTests` and the engine's `.moving` tick by `ARemovalCanBeWatchedAndStoppedTests`, the question is held by no test; the copies the press then names as staying, by `ThePageNamesEveryCopyItKeepsTests` (optional), and the figure the outcome banner counts as freed — a clone of the copy that stays is not counted — by `TheBannerCountsWhatTheDiskGivesBackTests` (optional, engine).
 
 | state | the page shows | reached by |
 |---|---|---|
@@ -115,7 +115,7 @@ A scratch tree of planted duplicates is enough for every state that shows a resu
 | `preview` | the Quick Look sheet over the list | Space on a selected row, or Quick Look in the row's menu: reached only through AXShowMenu or Space, which `--press` (AXPress only) cannot do; by hand |
 | `basket` | the bar with the marked count and size, Clear the marks, Move to Trash | `--press "Mark every extra copy"` on `result` |
 | `marks-note` | «Skipped: N files — Helm may not remove those» or «Unmarked: N — those copies stay now» above the count | a mark that passes over a system item, or a policy change or Restore the recommendation that makes a marked copy the one that stays |
-| `confirm`, `removing`, `removal-report` | the question, the progress with Stop removal, the outcome | a removal: not shot |
+| `confirm`, `removing`, `removal-report` | the question, the progress with Stop removal (gone once the engine's `.moving` tick says the Trash has the batch), the outcome | a removal: not shot |
 | `worst` | fr, de and ru at the minimum window with the sidebar at its widest: the toolbar and the basket row keep every label | `--arg module.app.interfaceLanguage fr`, `de` or `ru`, with `basket` pressed; not rendered — the instrument sets no window size, and the sidebar width only as `--arg module.app.sidebarWidth '<real>320</real>'`: an untyped `320` is ignored (`AppSettings.sidebarWidth(in:)`) — and checked by arithmetic: `DuplicatesLayout.swift`'s doc comment, the widest row under 772 pt |
 
 The two Search now buttons share one name: `--nth 2` is the empty state's, the toolbar's is the first in `HelmReadout ax` order.

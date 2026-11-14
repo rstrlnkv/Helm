@@ -44,7 +44,7 @@ final class ATickReachesOnlyItsOwnBarTests: XCTestCase {
         }
         func cancel() {}
         func trash(_ plans: [DuplicatePlan], staying: [String],
-                   progress: (@Sendable (DuplicateProgress) -> Void)?) async -> DuplicateRemoval {
+                   progress: (@Sendable (RemovalTick) -> Void)?) async -> DuplicateRemoval {
             DuplicateRemoval(removed: [], refused: [], freedBytes: 0)
         }
         func stopRemoval() {}

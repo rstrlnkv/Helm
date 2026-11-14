@@ -299,10 +299,11 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
     ///   is the direction that **over-reports**: a batch that names nothing gets
     ///   its families charged in full. Only a caller that can see the whole list
     ///   can fill it.
-    /// - Parameter progress: how far the re-reading has got, one tick per pair.
+    /// - Parameter progress: how far the re-reading has got, one `.verified`
+    ///   tick per pair, then `.moving` once when the Trash has the batch.
     public func trash(_ plans: [DuplicatePlan],
                       staying: [String] = [],
-                      progress: (@Sendable (DuplicateProgress) -> Void)? = nil)
+                      progress: (@Sendable (RemovalTick) -> Void)? = nil)
     async -> DuplicateRemoval {
         let trashing = self.trashing
         let verify = verifying()
@@ -356,9 +357,9 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
                     // answered, so the ticks are already paced by the disk — no
                     // throttle needed where the search needs one per 128 KB
                     // prefix.
-                    progress?(DuplicateProgress(candidates: inScope.count,
-                                                hashed: allowed.count + stale.count
-                                                    + unreadable.count))
+                    progress?(.verified(DuplicateProgress(
+                        candidates: inScope.count,
+                        hashed: allowed.count + stale.count + unreadable.count)))
                 }
                 return stop.isStopped
             }
@@ -402,6 +403,8 @@ public final class DuplicatesEngine: ModuleEngine, BackgroundScanning, @unchecke
             // adds them itself rather than trusting the caller to have.
             let staysBehind = Set(staying + honoured.map(\.keep)
                                   + outOfScope + stale + unreadable + contradicted)
+            // From here a stop is too late: the Trash has the batch.
+            progress?(.moving)
             let result = HelmTrash.remove(allowed: allowed, outOfScope: outOfScope,
                                           sharedWith: Array(staysBehind),
                                           module: Self.moduleID, trashing: trashing)

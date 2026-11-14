@@ -19,6 +19,13 @@ public struct DuplicateProgress: Sendable {
     }
 }
 
+/// What a removal reports while it runs: a pair re-read from disk, then — once —
+/// that the Trash has the batch, from which a stop is too late.
+public enum RemovalTick: Sendable {
+    case verified(DuplicateProgress)
+    case moving
+}
+
 /// Finds files with identical content under one folder.
 ///
 /// The decisions live in `Duplicates` (pure, tested); this class supplies the
