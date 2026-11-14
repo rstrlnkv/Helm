@@ -133,6 +133,7 @@ struct DuplicatesSettingsPage: View {
                 }
                 .controlSize(.small)
                 .fixedSize()
+                .disabled(dvm.busy)
                 if dvm.folder != nil {
                     let title = dvm.groups.isEmpty ? DupStr.search : DupStr.searchAgain
                     // Dimmed while a removal runs, for the reason the clear

@@ -258,12 +258,15 @@ enum KeepGrounds: Equatable, Sendable {
     /// ring, which meant it could only look where a ring had already been
     /// drawn; on its own it asks.
     func chooseFolder() {
-        guard let url = FolderPicker.choose(prompt: DupStr.chooseFolder, startingAt: nil,
+        guard !busy, let url = FolderPicker.choose(prompt: DupStr.chooseFolder, startingAt: nil,
                                             canCreate: false, activate: false) else { return }
         use(folder: url)
     }
 
+    /// Refused while a removal runs, like `search()` it ends in: a folder change
+    /// is a second way out of the removal's basket (`stop` still saves one).
     func use(folder url: URL) {
+        guard !busy else { return }
         folder = url
         // Sealed here because here is where the authority is: an open panel the
         // person just used. The background scan reads this value with nobody
