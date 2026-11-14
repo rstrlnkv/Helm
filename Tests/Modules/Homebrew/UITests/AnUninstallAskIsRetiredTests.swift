@@ -101,7 +101,7 @@ final class ALateReadingCannotRaiseADialogTests: XCTestCase {
         await first.value
         XCTAssertEqual(vm.pendingUninstall?.name, "yt-dlp",
                        "a late answer moved the dialog onto a package nobody is being asked about")
-        XCTAssertEqual(vm.dependentsOfPending, [],
+        XCTAssertEqual(vm.dependentsOfPending, .read([]),
                        "the dialog on screen drew another package's dependents")
         withExtendedLifetime(engine) {}
     }
@@ -122,7 +122,7 @@ final class ALateReadingCannotRaiseADialogTests: XCTestCase {
         await first.value
         XCTAssertNil(vm.pendingUninstall,
                      "a query nobody was waiting for raised a confirmation dialog by itself")
-        XCTAssertEqual(vm.dependentsOfPending, [])
+        XCTAssertEqual(vm.dependentsOfPending, .notAsked)
         withExtendedLifetime(engine) {}
     }
 }
@@ -177,7 +177,7 @@ final class LeavingThePageRetiresAnUninstallAskTests: XCTestCase {
         XCTAssertNil(vm.pendingUninstall,
                      "an answer to a press whose page has gone raised a confirmation for the "
                      + "app's only irreversible deletion, on the next visit to Homebrew")
-        XCTAssertEqual(vm.dependentsOfPending, [],
+        XCTAssertEqual(vm.dependentsOfPending, .notAsked,
                        "the names read for a press nobody is waiting on were kept")
         withExtendedLifetime(engine) {}
     }
@@ -254,7 +254,7 @@ final class MovingOffThePackageRetiresAnUninstallAskTests: XCTestCase {
         XCTAssertEqual(vm.pendingUninstall?.name, "openssl@3",
                        "the confirmation this file is about never opens — the three cases below "
                        + "would then prove nothing")
-        XCTAssertEqual(vm.dependentsOfPending, ["aria2", "node"])
+        XCTAssertEqual(vm.dependentsOfPending, .read(["aria2", "node"]))
         withExtendedLifetime(engine) {}
     }
 
@@ -275,7 +275,7 @@ final class MovingOffThePackageRetiresAnUninstallAskTests: XCTestCase {
         XCTAssertNil(vm.pendingUninstall,
                      "pressing Back left the query out, and its answer raised a confirmation for "
                      + "the app's only irreversible deletion over the package list")
-        XCTAssertEqual(vm.dependentsOfPending, [])
+        XCTAssertEqual(vm.dependentsOfPending, .notAsked)
         withExtendedLifetime(engine) {}
     }
 
@@ -293,7 +293,7 @@ final class MovingOffThePackageRetiresAnUninstallAskTests: XCTestCase {
         await ask.value
         XCTAssertNil(vm.pendingUninstall,
                      "a confirmation for openssl@3 opened over a page describing yt-dlp")
-        XCTAssertEqual(vm.dependentsOfPending, [])
+        XCTAssertEqual(vm.dependentsOfPending, .notAsked)
         withExtendedLifetime(engine) {}
     }
 
@@ -311,7 +311,7 @@ final class MovingOffThePackageRetiresAnUninstallAskTests: XCTestCase {
         await ask.value
         XCTAssertNil(vm.pendingUninstall,
                      "a confirmation for a package in Installed opened over the Updates segment")
-        XCTAssertEqual(vm.dependentsOfPending, [])
+        XCTAssertEqual(vm.dependentsOfPending, .notAsked)
         withExtendedLifetime(engine) {}
     }
 
@@ -377,7 +377,7 @@ final class UninstallNamesWhatStillNeedsItTests: XCTestCase {
         let (engine, vm) = pair(runner)
         await vm.askToUninstall(BrewPackage(name: "openssl@3", version: "3.5.0", isCask: false))
         XCTAssertEqual(vm.pendingUninstall?.name, "openssl@3")
-        XCTAssertEqual(vm.dependentsOfPending, ["aria2", "node"])
+        XCTAssertEqual(vm.dependentsOfPending, .read(["aria2", "node"]))
         // Last, not first: it keeps the engine alive up to here, and the
         // statement form guarantees nothing past its own return.
         withExtendedLifetime(engine) {}
@@ -391,7 +391,7 @@ final class UninstallNamesWhatStillNeedsItTests: XCTestCase {
         vm.cancelUninstall()
         await vm.askToUninstall(BrewPackage(name: "yt-dlp", version: "2026.9.1", isCask: false))
         XCTAssertEqual(vm.pendingUninstall?.name, "yt-dlp")
-        XCTAssertEqual(vm.dependentsOfPending, [],
+        XCTAssertEqual(vm.dependentsOfPending, .read([]),
                        "the second dialog offered the first package's dependents")
         withExtendedLifetime(engine) {}
     }
@@ -403,7 +403,7 @@ final class UninstallNamesWhatStillNeedsItTests: XCTestCase {
         await vm.askToUninstall(BrewPackage(name: "openssl@3", version: "3.5.0", isCask: false))
         vm.cancelUninstall()
         XCTAssertNil(vm.pendingUninstall)
-        XCTAssertEqual(vm.dependentsOfPending, [])
+        XCTAssertEqual(vm.dependentsOfPending, .notAsked)
         withExtendedLifetime(engine) {}
     }
 }

@@ -189,7 +189,7 @@ final class AStoppedHomebrewModelReachesNoWorkTests: XCTestCase {
         let liveModel = HomebrewViewModel(work: live)
         await liveModel.askToUninstall(wget)
         XCTAssertEqual(liveModel.pendingUninstall, wget, "control: the ask raised nothing")
-        XCTAssertEqual(liveModel.dependentsOfPending, ["aria2"])
+        XCTAssertEqual(liveModel.dependentsOfPending, .read(["aria2"]))
         liveModel.stop()
 
         let work = FakeHomebrewWork()
@@ -204,6 +204,6 @@ final class AStoppedHomebrewModelReachesNoWorkTests: XCTestCase {
         XCTAssertTrue(work.completed.contains("readDependents wget"), "the read never answered")
         XCTAssertNil(model.pendingUninstall,
                      "an answer that landed after the stop raised the uninstall question")
-        XCTAssertEqual(model.dependentsOfPending, [])
+        XCTAssertEqual(model.dependentsOfPending, .notAsked)
     }
 }

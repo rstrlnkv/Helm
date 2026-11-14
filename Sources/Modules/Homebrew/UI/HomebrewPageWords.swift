@@ -120,17 +120,20 @@ extension HomebrewSettingsPage {
     /// What both uninstall dialogs say under the title. Two sentences, and the
     /// second only when there is something to say: a heading over an empty list
     /// reads as a reassurance that nothing depends on this, which a refused
-    /// query has not earned.
-    static func uninstallNote(dependents: [String]) -> String {
-        dependents.isEmpty
-            ? HbStr.uninstallIsPermanent
-            : HbStr.uninstallIsPermanent + "\n\n" + HbStr.stillNeededBy + "\n"
-                + dependents.joined(separator: ", ")
+    /// query has not earned, so a refusal says that it was one.
+    static func uninstallNote(dependents: DependentsReading) -> String {
+        switch dependents {
+        case .notAsked, .read([]): return HbStr.uninstallIsPermanent
+        case .read(let names):
+            return HbStr.uninstallIsPermanent + "\n\n" + HbStr.stillNeededBy + "\n"
+                + names.joined(separator: ", ")
+        case .unread: return HbStr.uninstallIsPermanent + "\n\n" + HbStr.dependentsUnread
+        }
     }
 
     /// The second sentence, and only where there is one to say: a heading over
     /// a reassurance nobody checked is `stillNeededBy`'s own lesson.
-    static func fixQuestionNote(_ fix: DoctorFix, dependents: [String]) -> String? {
+    static func fixQuestionNote(_ fix: DoctorFix, dependents: DependentsReading) -> String? {
         switch FixAsk.of(fix.argv) {
         case .uninstalls: return uninstallNote(dependents: dependents)
         case .runsOnThePress, .unrecognised: return nil

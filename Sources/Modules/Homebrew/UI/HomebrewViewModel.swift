@@ -34,6 +34,14 @@ protocol HomebrewWork: AnyObject, Sendable {
 
 extension HomebrewEngine: HomebrewWork {}
 
+/// What the dependents read of the pending uninstall came to. `.read([])` is
+/// an answer, «nothing needs it»; `.unread` is a query that gave none.
+enum DependentsReading: Equatable {
+    case notAsked
+    case read([String])
+    case unread
+}
+
 @MainActor public final class HomebrewViewModel: ObservableObject {
     private let work: any HomebrewWork
     private var eventsTask: Task<Void, Never>?
@@ -103,7 +111,7 @@ extension HomebrewEngine: HomebrewWork {}
     /// one's answer. It lives here rather than in the page's `@State` because
     /// the reading is asked of the engine and arrives after the press.
     @Published private(set) var pendingUninstall: BrewPackage?
-    @Published private(set) var dependentsOfPending: [String] = []
+    @Published private(set) var dependentsOfPending: DependentsReading = .notAsked
     /// Package descriptions keyed by "f:name" / "c:name", fetched in batches
     /// after a list or search loads.
     @Published private(set) var descriptions: [String: String] = [:]
@@ -1034,7 +1042,7 @@ extension HomebrewEngine: HomebrewWork {}
     func cancelFix() {
         _ = uninstallAsks.take()
         pendingFix = nil
-        dependentsOfPending = []
+        dependentsOfPending = .notAsked
     }
 
     /// The press on the dialog Run raised. The only door to a destructive fix.
@@ -1190,7 +1198,7 @@ extension HomebrewEngine: HomebrewWork {}
     /// The reading is taken here, one press before the act, because that is the
     /// last moment at which it is true: the answer is about a Cellar that a
     /// terminal beside this window can change. A refusal — brew hung, brew gone
-    /// — leaves the list empty and the dialog says only what it always said;
+    /// — reads `.unread` and the dialog says so;
     /// it must not invent a reassurance out of a query that never answered.
     func askToUninstall(_ pkg: BrewPackage) async {
         await askAboutRemoving(PackageRef(name: pkg.name, isCask: pkg.isCask)) { self.pendingUninstall = pkg }
@@ -1209,7 +1217,7 @@ extension HomebrewEngine: HomebrewWork {}
         // of one Cellar, and a dialog carrying two presses' worth is a sentence
         // about a package that is not the one about to be deleted.
         guard uninstallAsks.isLatest(mine) else { return }
-        dependentsOfPending = answer ?? []
+        dependentsOfPending = answer.map(DependentsReading.read) ?? .unread
         raise()
     }
 
@@ -1220,7 +1228,7 @@ extension HomebrewEngine: HomebrewWork {}
     func cancelUninstall() {
         _ = uninstallAsks.take()
         pendingUninstall = nil
-        dependentsOfPending = []
+        dependentsOfPending = .notAsked
     }
 
     /// Sends the uninstall the dialog was raised for, and clears the reading

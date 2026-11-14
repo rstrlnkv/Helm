@@ -69,8 +69,11 @@ enum HbStr {
     }
     /// What the removal takes with it. Drawn only when the Cellar named
     /// something: an empty line under a question is a reassurance nobody
-    /// checked, and a refused query answers with nothing to say.
+    /// checked. A refused query draws `dependentsUnread` instead.
     static var stillNeededBy: String { L(.stillNeededBy) }
+    /// Said instead of that list when the query did not answer: a refusal is
+    /// not «nothing depends on it», and the dialog says so.
+    static var dependentsUnread: String { L(.dependentsUnread) }
     static var cancel: String { HelmWord.cancel }
     static var uninstall: String { L(.uninstall) }
     /// **The Uninstall button, as opposed to the dialog's own Uninstall.**
