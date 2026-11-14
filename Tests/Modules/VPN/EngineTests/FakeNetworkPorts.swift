@@ -48,8 +48,21 @@ final class FakeInterfaces: VPNInterfacePort, @unchecked Sendable {
         set { lock.lock(); _carriesPerRead = newValue; lock.unlock() }
     }
 
+    /// How often the engine asked, and — when set — the answers it gets in turn
+    /// (the last repeats); otherwise `primary` answers every time.
+    var primaryCalls: Int { lock.lock(); defer { lock.unlock() }; return _primaryCalls }
+    var primaryScript: [String?]? {
+        get { lock.lock(); defer { lock.unlock() }; return _primaryScript }
+        set { lock.lock(); _primaryScript = newValue; lock.unlock() }
+    }
+    private var _primaryCalls = 0
+    private var _primaryScript: [String?]?
+
     func primaryInterface() -> String? {
-        lock.lock(); defer { lock.unlock() }; return _primary
+        lock.lock(); defer { lock.unlock() }
+        _primaryCalls += 1
+        guard let script = _primaryScript, !script.isEmpty else { return _primary }
+        return script[min(_primaryCalls - 1, script.count - 1)]
     }
     func bytes(on interface: String) -> (in: UInt64, out: UInt64)? {
         lock.lock(); defer { lock.unlock() }

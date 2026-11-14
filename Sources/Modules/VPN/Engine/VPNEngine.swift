@@ -393,8 +393,9 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         // After the lock, because it asks what the page was last told — and the
         // question has to be asked before this reading is emitted over it.
         stampWhatCameUp(parsed)
-        // **One question about this Mac, asked once for the whole refresh**: both
-        // calls below need it, and two answers can disagree inside one reading.
+        // **One question about this Mac, asked once for the whole refresh**: the
+        // two calls below and the final `emitState` need it, and two answers can
+        // disagree inside one reading.
         let primary = interfaces.primaryInterface()
         readInterfaces(parsed, whileStoreSays: primary)
         // After `readInterfaces`, never before: the gate asks whether a tunnel
@@ -409,7 +410,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             applyRules(saved)
             if running { for id in knownBundleIDs { launchIfTrusted(id) } }
         }
-        emitState()
+        emitState(primary: .some(primary))
     }
 
     /// The person's door: a press is never an automatic act, so a caller cannot
@@ -879,8 +880,11 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     ///
     /// One `sysctl` per tunnel per emission (0.03 ms) is affordable; the 16 ms
     /// subprocess is what `interfaceOf` caches.
-    private func tunnelStates() -> [VPNTunnelState] {
-        let primary = interfaces.primaryInterface()
+    ///
+    /// `primary` is the reading a refresh already took, passed on so the tunnels
+    /// are judged by the answer the rest of that refresh used; nil asks afresh.
+    private func tunnelStates(primary reading: String?? = nil) -> [VPNTunnelState] {
+        let primary = reading ?? interfaces.primaryInterface()
         return VPNTunnelChoice.primaryFirst(connections.filter(\.status.isConnected)
             .compactMap { connection in
                 interfaceOf[connection.id].map {
@@ -1021,14 +1025,14 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     /// **`force` is for news the payload has no field for.** A refused
     /// measurement (`measureSpeed`) changes nothing, so the guard below would
     /// withhold it. The stamp is taken either way.
-    private func emitState(force: Bool = false) {
+    private func emitState(force: Bool = false, primary: String?? = nil) {
         let payload = StatePayload(connections: connections,
                                     autoConnected: autoConnected.sorted(),
                                     lastAutomation: lastAutomation,
                                     lastFailure: lastFailure,
                                     secretsBehindAPrompt: secretsBehindAPrompt,
                                     ruleRefusals: ruleRefusals,
-                                    tunnels: tunnelStates())
+                                    tunnels: tunnelStates(primary: primary))
         lock.lock(); let isDuplicate = payload == _lastEmitted
         _lastEmitted = payload; lock.unlock()
         guard force || !isDuplicate else { return }

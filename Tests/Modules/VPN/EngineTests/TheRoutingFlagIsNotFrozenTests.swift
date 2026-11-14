@@ -60,9 +60,8 @@ final class TheRoutingFlagIsNotFrozenTests: XCTestCase {
 
     /// **The store answers nil**, which is the state the connection's own flag
     /// is consulted for. Every port named.
-    private func engine(_ runner: FakeRunner)
+    private func engine(_ runner: FakeRunner, interfaces: FakeInterfaces = FakeInterfaces())
         -> (engine: VPNEngine, news: EngineNews<VPNEngine.StatePayload>) {
-        let interfaces = FakeInterfaces()
         interfaces.primary = nil
         interfaces.counters = ["utun4": (in: 1_000, out: 2_000)]
         // Held open, the way the real port is for up to eight seconds — and so
@@ -160,5 +159,23 @@ final class TheRoutingFlagIsNotFrozenTests: XCTestCase {
             the one sentence this feature exists to get right is a reassurance \
             nobody checked
             """)
+    }
+
+    /// **One reading of the primary interface per refresh reaches the tunnels.**
+    /// The store answers `en0` to the refresh's own question and nil to any
+    /// later one; the tunnel is judged by the first, as `readInterfaces` was.
+    func testTheTunnelsAreJudgedByTheRefreshsOwnReading() async {
+        let runner = FakeRunner()
+        runner.listOutput = list
+        runner.statusOutput["work"] = status(primary: true)
+        let interfaces = FakeInterfaces()
+        interfaces.primaryScript = ["en0", nil]
+        let (engine, news) = self.engine(runner, interfaces: interfaces)
+        defer { engine.deactivate() }
+
+        engine.refresh()
+        let seen = await verdict(on: news)
+        XCTAssertEqual(seen, .besideTunnel, "the tunnel was judged by a second answer from the store, not the refresh's own")
+        XCTAssertEqual(interfaces.primaryCalls, 1, "one primary-interface reading per refresh")
     }
 }
