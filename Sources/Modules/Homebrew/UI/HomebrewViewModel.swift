@@ -956,7 +956,25 @@ extension HomebrewEngine: HomebrewWork {}
     /// Internal, not `public`: nothing outside `Module_Homebrew_UI` calls it,
     /// and `public` in this tree means "another target uses this". Its public
     /// neighbours predate that rule being applied to this file.
+    ///
+    /// **One reading is out at a time.** A press while one is out asks for one more
+    /// when it lands and returns: ten presses are at most two `brew doctor` children,
+    /// and the second starts after the first has answered, so the reading after an
+    /// operation is never answered by one that began before the operation ended.
     func refreshDoctor() async {
+        if doctorInFlight { doctorAgain = true; return }
+        doctorInFlight = true
+        defer { doctorInFlight = false; doctorAgain = false }
+        repeat {
+            doctorAgain = false
+            await readDoctorOnce()
+        } while doctorAgain && !closed
+    }
+
+    private var doctorInFlight = false
+    private var doctorAgain = false
+
+    private func readDoctorOnce() async {
         // **The installed list first, because the verdict is about it.**
         // `DoctorFixCandidate.judging` decides `.runnable` against what is on
         // this Mac, and opening this segment on a fresh launch finds that list

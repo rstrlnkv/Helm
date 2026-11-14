@@ -125,7 +125,7 @@ split is asked anything, so nothing on it is ever selected). Its doc comment hol
 reading order (verdict, findings, configuration), `HealthScreen` what is put on
 screen, and `DoctorParser` why a warning keeps its whole block. The verdict is taken
 from the *unfiltered* reading, so a word typed into the field cannot make a Mac look
-clean. The gate under a fix button is unchanged: the page's view model judges each
+clean. One `brew doctor` reading is out at a time: a press while it is out asks for one more behind it, so a run of presses is at most two children (`refreshDoctor`). The gate under a fix button is unchanged: the page's view model judges each
 fix through `DoctorFixCandidate.judging` (which calls `DoctorFix.judge`) before it is
 drawn, and the engine's `runDoctorFix` judges again against a list read at the press. `cleanup` stays in `DoctorFix.Allowed`, argument-exact (`DoctorFix.swift`'s doc comment says why only the bare command is admitted), by the owner's decision.
 
