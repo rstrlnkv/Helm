@@ -288,12 +288,13 @@ enum KAStr {
 
     /// What VoiceOver says for the countdown, once, when asked.
     ///
-    /// Interpolated, so it composes from a localized word rather than from a
-    /// table of its own — the same shape `duration` uses. The figure on screen
-    /// is `1:23:45` and is announced as it reads; the word in front is what
-    /// makes it a duration rather than a time of day.
+    /// One key with the figure inside it, not a word and a literal colon: the
+    /// colon and the space before it are the language's, French and Japanese
+    /// write them differently. The figure on screen is `1:23:45` and is
+    /// announced as it reads; the words in front make it a duration rather
+    /// than a time of day.
     static func a11yRemaining(_ label: String) -> String {
-        "\(L(.timeRemaining)): \(label)"
+        L(.timeRemainingFigure(label))
     }
     /// «Таймер до 15:42» — the deadline as a clock, which is what a person
     /// checks against. `HelmDates.timeOfDay` writes it in the app's language,

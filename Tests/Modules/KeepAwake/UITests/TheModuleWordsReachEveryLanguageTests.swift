@@ -42,4 +42,21 @@ final class TheModuleWordsReachEveryLanguageTests: XCTestCase {
     func testASharedWordStillComesFromTheKit() {
         AppLanguage.only(.ru) { XCTAssertEqual(KAStr.timer, "Таймер") }
     }
+
+    /// VoiceOver's countdown carries the figure in every language, with no placeholder left over.
+    func testTheSpokenCountdownCarriesTheFigure() {
+        AppLanguage.each { language in
+            let spoken = KAStr.a11yRemaining("1:23:45")
+            XCTAssertTrue(spoken.contains("1:23:45"), "figure missing in \(language.rawValue): \(spoken)")
+            XCTAssertFalse(spoken.contains("%"), "placeholder left in \(language.rawValue): \(spoken)")
+            switch language.rawValue {
+            case "ja", "zh":
+                XCTAssertTrue(spoken.contains("：1:23:45"), "fullwidth colon missing in \(language.rawValue): \(spoken)")
+            case "fr":
+                XCTAssertTrue(spoken.contains("\u{00A0}: 1:23:45"), "no-break space before colon missing in fr: \(spoken)")
+            default:
+                break
+            }
+        }
+    }
 }

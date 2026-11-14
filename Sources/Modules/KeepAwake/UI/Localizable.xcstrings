@@ -3446,55 +3446,55 @@
         }
       }
     },
-    "timeRemaining": {
+    "timeRemainingFigure": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Verbleibende Zeit"
+            "value": "Verbleibende Zeit: %@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Time remaining"
+            "value": "Time remaining: %@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tiempo restante"
+            "value": "Tiempo restante: %@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Temps restant"
+            "value": "Temps restant : %@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "残り時間"
+            "value": "残り時間：%@"
           }
         },
         "pt": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tempo restante"
+            "value": "Tempo restante: %@"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Осталось"
+            "value": "Осталось: %@"
           }
         },
         "zh": {
           "stringUnit": {
             "state": "translated",
-            "value": "剩余时间"
+            "value": "剩余时间：%@"
           }
         }
       }
