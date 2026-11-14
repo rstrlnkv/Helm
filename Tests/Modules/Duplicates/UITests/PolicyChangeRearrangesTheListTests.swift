@@ -112,6 +112,25 @@ final class PolicyChangeRearrangesTheListTests: XCTestCase {
         XCTAssertEqual(dvm.marksNote, DupStr.unmarkedSurvivors(1))
     }
 
+    /// The count is grouped as every other count on the page is, in each language.
+    func testTheUnmarkedCountIsGroupedInTheLanguage() {
+        AppLanguage.each { language in
+            XCTAssertTrue(DupStr.unmarkedSurvivors(12_345, language: language)
+                .contains(Count(12_345, language: language)), "\(language)")
+        }
+        XCTAssertFalse(DupStr.unmarkedSurvivors(12_345, language: .ru).contains("12345"))
+        XCTAssertFalse(DupStr.unmarkedSurvivors(12_345, language: .fr).contains("12345"))
+    }
+
+    /// The language named in the call groups the count, not the app's current one.
+    func testTheCountFollowsTheLanguageNamedNotTheCurrentOne() {
+        AppLanguage.only(.en) {
+            let russian = Count(12_345, language: .ru)
+            XCTAssertNotEqual(russian, Count(12_345, language: .en))
+            XCTAssertTrue(DupStr.unmarkedSurvivors(12_345, language: .ru).contains(russian))
+        }
+    }
+
     func testAPolicyChangeThatMovesNoMarkSaysNothing() async {
         let dvm = await searched(AnsweringWork(groups: [group()]))
         dvm.choose(.byDate)
