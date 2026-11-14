@@ -181,11 +181,15 @@ enum DiskAdvisor {
             // (`TheAdvisorKeepsOnlyItsAdviceTests`, against the allocator's own
             // books). ARCHITECTURE.md § Module pattern.
             autoreleasepool {
+                // Size and age first: they cost a comparison, the gate costs
+                // filesystem calls, and most nodes of a volume fail them. The
+                // download floor and age are the weaker of the two verdicts'.
+                let age = now.timeIntervalSince1970 - node.modified
                 if !node.isDirectory, !node.isFolded, node.modified > 0,
+                   node.bytes >= downloadFloor, age > downloadAge,
                    UserFileScope.isRemovable(path),
                    !cachePrefixes.contains(where: { path.hasPrefix($0) }) {
-                    let age = now.timeIntervalSince1970 - node.modified
-                    if path.hasPrefix(downloads), node.bytes >= downloadFloor, age > downloadAge {
+                    if path.hasPrefix(downloads) {
                         advice.append(DiskAdvice(name: node.name, path: path,
                                                  bytes: node.bytes, kind: .oldDownload,
                                                  modified: node.modified))

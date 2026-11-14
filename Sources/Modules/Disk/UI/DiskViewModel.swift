@@ -11,6 +11,8 @@ import Module_Disk_Engine
 /// to subscribe to and no reply that can be lost.
 protocol DiskWork: AnyObject, Sendable {
     func mountedVolumes() async -> [VolumeInfo]
+    /// Calls back when a disk comes or goes, until the returned token is dropped.
+    func watchMounts(_ onChange: @escaping @Sendable () -> Void) -> AnyObject
     func scan(path: String, unattended: Bool,
               updates: (@Sendable (DiskScanUpdate) -> Void)?) async -> ScanResult?
     func cancel()
@@ -74,7 +76,7 @@ extension DiskEngine: DiskWork {}
     /// Held so the observers can be taken back out: a view model dropped when
     /// the module is switched off must not be woken by the next disk somebody
     /// plugs in (ARCHITECTURE.md § An observer outlives the thing it points at).
-    private var mounts: MountWatch?
+    private var mounts: AnyObject?
     private var appeared = false
     /// Injectable so a test does not read — and overwrite — the person's own
     /// last scan.
@@ -161,7 +163,7 @@ extension DiskEngine: DiskWork {}
             // takes on `self` once it starts lasts as long as a volume-attributes
             // read — not the trap of a `for await` over a
             // stream nothing finishes (ARCHITECTURE.md § State that outlives a page and ends with its module).
-            mounts = closed ? nil : MountWatch { [weak self] in
+            mounts = closed ? nil : work.watchMounts { [weak self] in
                 Task { @MainActor in await self?.loadVolumes() }
             }
         }
@@ -313,6 +315,9 @@ extension DiskEngine: DiskWork {}
         // of what follows is about it.
         guard mine == showingScan else { return }
         live = false
+        // The count is the walk's; a folder measured after this one must not
+        // draw it beside its own spinner.
+        tick = nil
         guard let scan else {                    // cancelled
             phase = .start
             return
@@ -338,7 +343,13 @@ extension DiskEngine: DiskWork {}
     ///
     /// A restored tree carries its root but not the path it was scanned from,
     /// so that is the fallback: the same place, either way.
+    ///
+    /// Refused while a walk or a removal is running, as the button is dimmed:
+    /// under a folder measurement it started a second scan that left
+    /// `measuring` set for good, under a removal it replaced the tree the reply
+    /// is about to land on.
     func rescan() async {
+        guard !walking, !busy else { return }
         guard let path = scannedPath ?? result?.root.path else { newScan(); return }
         await scan(path: path)
     }
@@ -371,6 +382,7 @@ extension DiskEngine: DiskWork {}
         let wasMeasuring = measuring
         live = false
         measuring = false
+        tick = nil
         // There is a tree worth keeping only when a walk was actually running and
         // had reported at least one snapshot. Two other callers arrive here:
         // `newScan()`, which wants the screen emptied, and Stop pressed inside
@@ -398,7 +410,10 @@ extension DiskEngine: DiskWork {}
         removedCount = 0
     }
 
+    /// Refused while a removal runs, like the button: the volume picker would
+    /// replace the tree the reply is about to land on.
     func newScan() {
+        guard !busy else { return }
         cancel()
         store.clear()
         phase = .start

@@ -16,6 +16,35 @@ import XCTest
 // and cannot be served by the immediate one. Merging them would take the
 // mid-walk state out of the language these tests are written in.
 
+// MARK: - A mount somebody can post
+
+/// The volume list's reverse channel, for a fake: `watch` hands out a token, and
+/// `post()` calls every handler whose token is still held, as a disk arriving
+/// would.
+final class MountChannel: @unchecked Sendable {
+    private final class Token {
+        let end: () -> Void
+        init(_ end: @escaping () -> Void) { self.end = end }
+        deinit { end() }
+    }
+
+    private let lock = NSLock()
+    private var handlers: [UUID: @Sendable () -> Void] = [:]
+
+    func watch(_ onChange: @escaping @Sendable () -> Void) -> AnyObject {
+        let id = UUID()
+        lock.withLock { handlers[id] = onChange }
+        return Token { [weak self] in self?.lock.withLock { _ = self?.handlers.removeValue(forKey: id) } }
+    }
+
+    var watchers: Int { lock.withLock { handlers.count } }
+
+    func post() {
+        let all = lock.withLock { Array(handlers.values) }
+        for handler in all { handler() }
+    }
+}
+
 // MARK: - Answers on the spot
 
 /// Volumes, scans and removals, all returned without suspending. For tests
@@ -49,6 +78,9 @@ final class AnsweringWork: DiskWork, @unchecked Sendable {
     private var requestedTrash: [[String]] = []
 
     func mountedVolumes() async -> [VolumeInfo] { volumes }
+
+    let mountChannel = MountChannel()
+    func watchMounts(_ onChange: @escaping @Sendable () -> Void) -> AnyObject { mountChannel.watch(onChange) }
 
     func scan(path: String, unattended: Bool,
               updates: (@Sendable (DiskScanUpdate) -> Void)?) async -> ScanResult? {
@@ -93,6 +125,9 @@ final class HeldWork: DiskWork, @unchecked Sendable {
     private var holdsTrash = false
 
     func mountedVolumes() async -> [VolumeInfo] { [] }
+
+    let mountChannel = MountChannel()
+    func watchMounts(_ onChange: @escaping @Sendable () -> Void) -> AnyObject { mountChannel.watch(onChange) }
 
     func scan(path: String, unattended: Bool,
               updates: (@Sendable (DiskScanUpdate) -> Void)?) async -> ScanResult? {

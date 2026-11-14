@@ -54,6 +54,11 @@ public final class DiskEngine: ModuleEngine, BackgroundScanning, @unchecked Send
         await offTheCooperativePool { self.volumes() }
     }
 
+    /// The volume list's reverse channel, answered by the capacity port.
+    public func watchMounts(_ onChange: @escaping @Sendable () -> Void) -> AnyObject {
+        capacity.observeChanges(onChange)
+    }
+
     /// The boot volume, walked by the timer instead of by a person.
     ///
     /// **The finding is the advice, not the tree.** A disk scan answers "what

@@ -210,7 +210,7 @@ extension LeftoversEngine: LeftoversWork {}
     /// stayed live for the length of a `trash` request, and the least harmless of
     /// them: it rescans, so the fresh `items` land on top of the list the removal
     /// is about to report on. The page dims the button as well — both, or neither
-    /// is reliable (ARCHITECTURE.md § One removal at a time).
+    /// is reliable (Architecture/Removal.md § One removal at a time).
     func setDisabled(_ disabled: Bool, item: StaleItem) async {
         guard !busy, !stopped else { return }
         await work.setDisabled(LeftoversToggle(label: item.identifier, path: item.path,

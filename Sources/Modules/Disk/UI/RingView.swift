@@ -232,13 +232,20 @@ struct RingView: View {
         HStack(spacing: HelmSpace.s3) {
             // The tooltip's colour key, 7 pt; the list's dot is 8.
             Circle().fill(color(for: segment)).frame(width: 7, height: 7)
-            Text(segment.isOther ? DkStr.otherItems
-                                 : (DiskViewModel.folderName(for: segment.path) ?? segment.name))
-                .font(HelmText.rowDetail)
-                .lineLimit(1)
-            Text(Bytes(segment.bytes))
-                .helmFigure()
-                .foregroundStyle(HelmText.quiet)
+            if segment.isFreeSpace {
+                // «X free», the words the ring speaks for it: the wedge has no name.
+                Text(DkStr.freeAmount(segment.bytes))
+                    .font(HelmText.rowDetail)
+                    .lineLimit(1)
+            } else {
+                Text(segment.isOther ? DkStr.otherItems
+                                     : (DiskViewModel.folderName(for: segment.path) ?? segment.name))
+                    .font(HelmText.rowDetail)
+                    .lineLimit(1)
+                Text(Bytes(segment.bytes))
+                    .helmFigure()
+                    .foregroundStyle(HelmText.quiet)
+            }
         }
         .padding(.horizontal, HelmSpace.s4).padding(.vertical, HelmSpace.s2)
         .glassEffect(.regular, in: .capsule)

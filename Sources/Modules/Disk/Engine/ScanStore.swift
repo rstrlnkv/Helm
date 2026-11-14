@@ -67,7 +67,16 @@ public final class ScanStore: @unchecked Sendable {
 
     public func load() -> Cached? {
         guard let data = try? Data(contentsOf: fileURL) else { return nil }
-        return try? JSONDecoder().decode(Cached.self, from: data)
+        do {
+            return try JSONDecoder().decode(Cached.self, from: data)
+        } catch {
+            // A missing file is the ordinary first launch and stays silent; one
+            // that is there and will not decode is a measurement lost. The file
+            // stays, and no path is named.
+            HelmLog.shared.warn(DiskEngine.moduleID,
+                                "the saved measurement could not be read — the page opens without it")
+            return nil
+        }
     }
 
     /// The same read, off whatever actor asked for it.

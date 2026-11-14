@@ -7,7 +7,7 @@ import XCTest
 /// **The fifth model that trashes, and the one a scan by file name would miss.**
 ///
 /// «The model refuses; the page dims. Both, or neither is reliable» —
-/// ARCHITECTURE.md § One removal at a time, stated once for the four view
+/// Architecture/Removal.md § One removal at a time, stated once for the four view
 /// models that send a removal. `OneRemovalAtATimeEverywhereTests` enforces
 /// it by reading every file under `Sources/Modules` that sends a removal
 /// (`work.trash(`, `work.trashPaths(` or `uvm.trashPaths(`), which `TrashedLeftoversView.swift` does

@@ -14,7 +14,7 @@ import HelmRuntime
 ///
 /// `OneRemovalAtATimeEverywhereTests` cannot see it. That scan reads the methods
 /// that set `busy = true`, and `toggleBasket` does not set it: `emptyBasket`,
-/// which does, is the other method. (ARCHITECTURE.md § One removal at a
+/// which does, is the other method. (Architecture/Removal.md § One removal at a
 /// time) states the rule this breaks in a sentence about both halves: «The model
 /// refuses; the page dims. Both, or neither is reliable.»
 ///

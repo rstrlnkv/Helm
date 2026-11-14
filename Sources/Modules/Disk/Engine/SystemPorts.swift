@@ -1,6 +1,12 @@
 import AppKit
 import Foundation
 
+extension SystemVolumeCapacity {
+    public func observeChanges(_ onChange: @escaping @Sendable () -> Void) -> AnyObject {
+        MountWatch(onChange)
+    }
+}
+
 /// Disks appearing and disappearing, for as long as this object is held.
 ///
 /// A separate type because its `deinit` is the whole point and a `@MainActor`
@@ -11,9 +17,8 @@ import Foundation
 ///
 /// `NSWorkspace`'s own centre, not `NotificationCenter.default`: these two
 /// notifications are posted there and nowhere else. Delivered on the main
-/// queue, where every reader of this lives. Local to Disk while Disk is the
-/// only module that wants it; a second one moves it to `HelmRuntime`.
-final class MountWatch {
+/// queue, where every reader of this lives.
+private final class MountWatch {
     private let tokens: [NSObjectProtocol]
 
     init(_ onChange: @escaping @Sendable () -> Void) {

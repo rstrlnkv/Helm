@@ -80,6 +80,11 @@ enum FreeSpace: Equatable, Sendable {
 public protocol VolumeCapacityPort: Sendable {
     func mounted() -> [VolumeReadout]
     func readout(at path: String) -> VolumeReadout?
+
+    /// Calls `onChange` on the main queue each time a volume appears or goes, for
+    /// as long as the returned token is held. Dropping the token ends it, so a
+    /// holder that stops needs nothing else.
+    func observeChanges(_ onChange: @escaping @Sendable () -> Void) -> AnyObject
 }
 
 public struct SystemVolumeCapacity: VolumeCapacityPort {

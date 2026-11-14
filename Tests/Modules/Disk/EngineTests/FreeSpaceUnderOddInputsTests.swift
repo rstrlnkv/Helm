@@ -267,6 +267,7 @@ private struct AnyPathCapacity: VolumeCapacityPort {
         readout.path = path
         return readout
     }
+    func observeChanges(_ onChange: @escaping @Sendable () -> Void) -> AnyObject { NSObject() }
 
 }
 
@@ -274,4 +275,5 @@ private struct AnyPathCapacity: VolumeCapacityPort {
 struct SilentCapacity: VolumeCapacityPort {
     func mounted() -> [VolumeReadout] { [] }
     func readout(at path: String) -> VolumeReadout? { nil }
+    func observeChanges(_ onChange: @escaping @Sendable () -> Void) -> AnyObject { NSObject() }
 }
