@@ -247,6 +247,15 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// same deadline and the same seam as every other.
     private let runner: VPNRunnerPort
 
+    /// How long the System-keychain read may wait. The read can sit behind a
+    /// dialog a person is reading, so this is long: it bounds a hang, not the
+    /// person. Without it a dialog nobody answers parks `VPNWorkQueue` for the
+    /// life of the process.
+    static let systemKeychainDeadline: TimeInterval = 600
+
+    private let keychainTool: String
+    private let keychainDeadline: TimeInterval
+
     convenience init() { self.init(purge: Self.purgeItemsWithTheOldAccessList) }
 
     /// The purge as an action, so a test can watch when it runs without ever
@@ -273,8 +282,15 @@ public final class KeychainCredentials: VPNCredentialsPort {
     /// holds whatever thread it is on for as long as a person looks at it,
     /// which is the one thing the cooperative pool's thread-per-core must never
     /// be spent on.
-    init(purge: @escaping @Sendable () -> Void, runner: VPNRunnerPort = ScutilRunner()) {
+    ///
+    /// The tool and its deadline are parameters so a test can put a stub that
+    /// sleeps in place of `security` and wait a second instead of ten minutes.
+    init(purge: @escaping @Sendable () -> Void, runner: VPNRunnerPort = ScutilRunner(),
+         keychainTool: String = "/usr/bin/security",
+         keychainDeadline: TimeInterval = KeychainCredentials.systemKeychainDeadline) {
         self.runner = runner
+        self.keychainTool = keychainTool
+        self.keychainDeadline = keychainDeadline
         DispatchQueue.global(qos: .utility).async(execute: purge)
     }
 
@@ -381,15 +397,15 @@ public final class KeychainCredentials: VPNCredentialsPort {
                 + "automatic connect does not ask the System keychain")
             return .behindAPrompt
         }
-        let secret = Self.keychainSecret(service: "\(uuid).SS", account: nil,
-                                         keychain: "/Library/Keychains/System.keychain")
+        let secret = keychainSecret(service: "\(uuid).SS", account: nil,
+                                    keychain: "/Library/Keychains/System.keychain")
         // Still `.behindAPrompt`: there *is* a secret — the configuration named
         // the keychain item that holds it — and this read did not come back with
         // it. A declined dialog and a locked keychain both land here, and both
         // leave the same fact behind for the screen to say.
         guard let secret, !secret.isEmpty else { return .behindAPrompt }
-        let password = Self.keychainSecret(service: uuid, account: authName,
-                                           keychain: "/Library/Keychains/System.keychain")
+        let password = keychainSecret(service: uuid, account: authName,
+                                      keychain: "/Library/Keychains/System.keychain")
 
         // 3. Cache in Helm's login keychain so future connects need no prompt.
         helmCacheWrite("\(uuid).ss", secret)
@@ -511,14 +527,21 @@ public final class KeychainCredentials: VPNCredentialsPort {
     }
 
     /// Reads a generic password value (`security -w`) from `keychain` (nil = the
-    /// default/login keychain). Returns nil if absent or unreadable. Never logs
+    /// default/login keychain). Returns nil if absent, unreadable or not answered
+    /// within `keychainDeadline`; a timeout is logged, with no name. Never logs
     /// the value.
-    private static func keychainSecret(service: String, account: String?, keychain: String?) -> String? {
+    private func keychainSecret(service: String, account: String?, keychain: String?) -> String? {
         var args = ["find-generic-password", "-w", "-s", service]
         if let account, !account.isEmpty { args += ["-a", account] }
         if let keychain { args.append(keychain) }
-        let result = HelmProcess.run("/usr/bin/security", args)
-        guard result.status == 0 else { return nil }
+        let result = HelmProcess.run(keychainTool, args, timeout: keychainDeadline)
+        guard result.status == 0 else {
+            if result.status == HelmProcess.timedOutStatus {
+                HelmLog.shared.warn(VPNEngine.moduleID, "the System keychain did not answer within "
+                    + "\(Int(keychainDeadline)) s; the secret is not known")
+            }
+            return nil
+        }
         let value = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
         return value.isEmpty ? nil : value
     }

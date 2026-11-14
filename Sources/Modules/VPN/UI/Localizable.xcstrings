@@ -2492,7 +2492,7 @@
         }
       }
     },
-    "orphanedRules": {
+    "orphanedRulesFew": {
       "extractionState": "manual",
       "localizations": {
         "de": {
@@ -2534,7 +2534,113 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Правил, указывающих на VPN, которого больше нет в Системных настройках: %@"
+            "value": "%@ правила указывают на VPN, которого больше нет в Системных настройках"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有 %@ 条规则指向已不在系统设置中的 VPN"
+          }
+        }
+      }
+    },
+    "orphanedRulesMany": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Regeln zeigen auf ein VPN, das nicht mehr in den Systemeinstellungen ist"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ rules point at a VPN that is no longer in System Settings"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ reglas apuntan a una VPN que ya no está en Ajustes del Sistema"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ règles visent une VPN qui n’est plus dans les Réglages Système"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "システム設定にない VPN を指す規則が %@ 件あります"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ regras apontam para uma VPN que já não está nos Ajustes do Sistema"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ правил указывают на VPN, которого больше нет в Системных настройках"
+          }
+        },
+        "zh": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有 %@ 条规则指向已不在系统设置中的 VPN"
+          }
+        }
+      }
+    },
+    "orphanedRulesOne": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Regel zeigt auf ein VPN, das nicht mehr in den Systemeinstellungen ist"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ rule points at a VPN that is no longer in System Settings"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ regla apunta a una VPN que ya no está en Ajustes del Sistema"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ règle vise une VPN qui n’est plus dans les Réglages Système"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "システム設定にない VPN を指す規則が %@ 件あります"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ regra aponta para uma VPN que já não está nos Ajustes do Sistema"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ правило указывает на VPN, которого больше нет в Системных настройках"
           }
         },
         "zh": {

@@ -47,7 +47,8 @@ final class AnUnreadableConfigurationIsNotAConnectTests: XCTestCase {
 
     private func read(_ answer: HelmProcess.Result) -> VPNCredentialRead {
         // `purge: {}`: no test may run the real keychain purge.
-        KeychainCredentials(purge: {}, runner: ShowRunner(answer))
+        KeychainCredentials(purge: {}, runner: ShowRunner(answer),
+                            keychainDeadline: KeychainCredentials.systemKeychainDeadline)
             .credentials(for: "Office", promptingAllowed: false)
     }
 

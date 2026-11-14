@@ -237,7 +237,8 @@ final class AHungScutilDoesNotParkTheModuleTests: XCTestCase {
 
     private func credentialsOnThis() -> KeychainCredentials {
         // `purge: {}`: no test may run the real keychain purge.
-        KeychainCredentials(purge: {}, runner: runner)
+        KeychainCredentials(purge: {}, runner: runner,
+                            keychainDeadline: KeychainCredentials.systemKeychainDeadline)
     }
 
     /// The answer is `.unreadable` (defects page row `vpn-show-unreadable`,
@@ -266,6 +267,46 @@ final class AHungScutilDoesNotParkTheModuleTests: XCTestCase {
         XCTAssertEqual(credentials.credentials(for: "A", promptingAllowed: false), .notNeeded)
         XCTAssertEqual(runner.count(of: ["--nc", "show", "A"]), 1, "precondition: the show read was made")
         XCTAssertFalse(namesATimeout(vpnLog()), "a read that answered was logged as a timeout: \(vpnLog())")
+    }
+
+    /// The production deadline outlasts a person reading a dialog (minutes) yet
+    /// is finite: a default of 0 or 1 s would refuse every prompted read, a
+    /// missing bound would park the queue for the life of the process.
+    func testTheSystemKeychainDeadlineInProductionOutlastsAPersonAndIsFinite() {
+        XCTAssertGreaterThanOrEqual(KeychainCredentials.systemKeychainDeadline, 300)
+        XCTAssertLessThanOrEqual(KeychainCredentials.systemKeychainDeadline, 3600)
+    }
+
+    /// The System-keychain read has a deadline of its own (`security` may sit
+    /// behind a dialog, so it is long in production; here one second against a
+    /// stub that sleeps five). The read answers `.behindAPrompt` — the secret
+    /// is not known — inside two seconds, names the timeout with no name, and a
+    /// following call on the same queue runs.
+    func testASystemKeychainReadThatNeverAnswersReturnsWithinItsDeadlineAndSaysSo() throws {
+        let dir = scratchDirectory("slow-security")
+        let tool = dir.appendingPathComponent("security")
+        try "#!/bin/sh\nsleep 5\n".write(to: tool, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tool.path)
+        let uuid = UUID().uuidString
+        runner.handler = { _, _ in
+            .answer(.init(status: 0, output: "<dictionary> {\n  AuthPassword : \(uuid)\n}\n"))
+        }
+        let credentials = Unsafe(KeychainCredentials(purge: {}, runner: runner,
+                                                     keychainTool: tool.path, keychainDeadline: 1))
+        let queue = DispatchQueue(label: "test.vpn.work")
+        let answer = ResultBox()
+        let next = expectation(description: "a call behind the read on the same queue")
+        let started = Date()
+        queue.async { answer.value = credentials.value.credentials(for: "Quiet Office", promptingAllowed: true) }
+        queue.async { next.fulfill() }
+        XCTAssertEqual(XCTWaiter().wait(for: [next], timeout: 2.5), .completed,
+                       "the System-keychain read held the queue past its deadline")
+        XCTAssertLessThan(Date().timeIntervalSince(started), 2.5)
+        XCTAssertEqual(runner.count(of: ["--nc", "show", "Quiet Office"]), 1, "precondition: the show read was made")
+        XCTAssertEqual(answer.value, .behindAPrompt)
+        XCTAssertTrue(namesATimeout(vpnLog()), "no log line names the timeout: \(vpnLog())")
+        XCTAssertFalse(vpnLog().contains { $0.lowercased().contains("quiet office") || $0.contains(uuid.lowercased()) },
+                       "the log line carries the connection's name or its keychain service: \(vpnLog())")
     }
 
     private final class Unsafe<T>: @unchecked Sendable {

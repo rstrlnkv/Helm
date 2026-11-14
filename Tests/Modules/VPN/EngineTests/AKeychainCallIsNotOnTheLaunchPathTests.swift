@@ -61,7 +61,8 @@ final class AKeychainCallIsNotOnTheLaunchPathTests: XCTestCase {
     func testBuildingThePortDoesNotWaitForTheKeychain() {
         let purge = ParkedPurge()
 
-        _ = KeychainCredentials(purge: { purge.run() })
+        _ = KeychainCredentials(purge: { purge.run() },
+                                keychainDeadline: KeychainCredentials.systemKeychainDeadline)
 
         XCTAssertFalse(purge.finished, """
             `KeychainCredentials.init` ran the credential-cache purge to \

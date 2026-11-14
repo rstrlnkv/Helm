@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 import HelmUI
 import Module_VPN_Engine
 
@@ -199,7 +200,13 @@ enum VPNStr {
     /// once, under the grid, because those rules have no card to be on.
     static func orphanedRules(_ n: Int, language: AppLanguage = AppLanguage.current) -> String {
         let count = Count(n, language: language)
-        return L(.orphanedRules(count), language: language)
+        // One key per form: the count sits in front of a noun that agrees
+        // with it, and Russian has three forms (`Plural.form`).
+        switch Plural.form(n, language: language.rawValue) {
+        case .one: return L(.orphanedRulesOne(count), language: language)
+        case .few: return L(.orphanedRulesFew(count), language: language)
+        case .many: return L(.orphanedRulesMany(count), language: language)
+        }
     }
     /// Under the two picture questions in the notices popover. The one sentence
     /// a person needs about the change of model: these are this configuration's,
