@@ -6,10 +6,11 @@ import Module_Uninstaller_Engine
 /// The Leftovers tab's state and its two doors to the engine, which are the view
 /// model's `scanOrphans` and `trashPaths`. Eight of the view's nine `@State`s moved here, and
 /// a `@State` inside a `View` struct has no seam: the guard below could be read
-/// from the source and never driven. Its lifetime is the page's, as the `@State`s
-/// were — the view holds it as a `@StateObject`.
+/// from the source and never driven. Its lifetime is the module's: the view model
+/// owns it, so the scan and the ticks outlive a sidebar click (Q10a), and
+/// `UninstallerViewModel.stop()` clears it. The view model outlives it, hence `unowned`.
 @MainActor final class OrphansModel: ObservableObject {
-    private let uvm: UninstallerViewModel
+    private unowned let uvm: UninstallerViewModel
 
     @Published private(set) var groups: [OrphanGroup] = []
     @Published private(set) var scanned = false
@@ -19,6 +20,10 @@ import Module_Uninstaller_Engine
     @Published private(set) var removedCount = 0
     @Published private(set) var busy = false
     @Published private(set) var banner: String?
+
+    /// Bumped by `clear()`: a scan that was in flight when the module stopped
+    /// answers into a model that has been emptied, and must not refill it.
+    private var generation = 0
 
     init(uvm: UninstallerViewModel) { self.uvm = uvm }
 
@@ -38,10 +43,20 @@ import Module_Uninstaller_Engine
     /// everything is already checked.
     func toggleAll() { selected = allSelected ? [] : Set(allPaths) }
 
+    /// Back to the state of a tab nobody has opened: the module was switched off.
+    func clear() {
+        generation += 1
+        groups = []; scanned = false; scanning = false; selected = []
+        failures = []; removedCount = 0; banner = nil
+    }
+
     func scan() async {
         scanning = true; banner = nil
         // Nil only when the module has been stopped: nothing to show then.
-        groups = await uvm.scanOrphans() ?? []
+        let mine = generation
+        let found = await uvm.scanOrphans() ?? []
+        guard mine == generation else { return }
+        groups = found
         // Nothing is pre-selected. A ticked list of 251 items is a button that
         // deletes whatever the scan got wrong, and this scan was wrong: apps
         // one folder down in /Applications read as uninstalled.

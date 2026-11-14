@@ -54,6 +54,10 @@ extension UninstallerEngine: UninstallerWork {}
     /// may press a control after that; a stopped model reaches no work.
     private(set) var closed = false
 
+    /// The Leftovers tab's state, kept here so that it outlives a sidebar click;
+    /// `stop()` clears it.
+    lazy var orphans = OrphansModel(uvm: self)
+
     /// The installed apps, and their sizes once those have been measured.
     ///
     /// These live here rather than in the page's `@State` because the page does
@@ -152,6 +156,7 @@ extension UninstallerEngine: UninstallerWork {}
         listening = nil
         onTrashArrival = nil
         openOffer = nil
+        orphans.clear()
     }
 
     /// Takes the engine's "look at the Trash again" while the model lives. With

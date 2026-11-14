@@ -29,7 +29,8 @@ final class TheOrphansTabRefusesASecondPressTests: XCTestCase {
             orphans: [OrphanGroup(bundleID: "com.gone.app", leftovers: [
                 Leftover(path: path, kind: .caches, sizeBytes: 2_048, matchedByName: false)])],
             removal: UninstallResult(trashed: [path], freedBytes: 2_048))
-        let model = OrphansModel(uvm: modelOver(work))
+        let uvm = modelOver(work)
+        let model = uvm.orphans
         await model.scan()
         model.toggleAll()
         XCTAssertEqual(model.selected, [path], "precondition: the leftover is ticked")

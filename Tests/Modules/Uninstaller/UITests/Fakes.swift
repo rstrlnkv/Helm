@@ -185,7 +185,12 @@ final class HeldWork: UninstallerWork, @unchecked Sendable {
     private let lock = NSLock()
     private var trashCount = 0
     var trashRequests: Int { lock.withLock { trashCount } }
+    private var batch: [String] = []
+    /// The paths of the last batch asked for.
+    var lastBatch: [String] { lock.withLock { batch } }
     private let released = AsyncStream<Void>.makeStream()
+    private let scanReleased = AsyncStream<Void>.makeStream()
+    private let holdsScan: Bool
     private let offers: [TrashedAppLeftovers]
     private let orphans: [OrphanGroup]
     private let removal: UninstallResult
@@ -193,17 +198,21 @@ final class HeldWork: UninstallerWork, @unchecked Sendable {
     /// - Parameters:
     ///   - orphans: what `scanOrphans` answers, at once.
     ///   - removal: what the held batch answers when released.
+    ///   - holdScan: `scanOrphans` hangs until `releaseScan()`.
     init(offers: [TrashedAppLeftovers] = [], orphans: [OrphanGroup] = [],
-         removal: UninstallResult = UninstallResult(trashed: [], freedBytes: 0)) {
+         removal: UninstallResult = UninstallResult(trashed: [], freedBytes: 0),
+         holdScan: Bool = false) {
+        self.holdsScan = holdScan
         self.offers = offers; self.orphans = orphans; self.removal = removal
     }
 
     func release() { released.continuation.finish() }
+    func releaseScan() { scanReleased.continuation.finish() }
 
     func trashedAppLeftovers() async -> [TrashedAppLeftovers] { offers }
 
     func trashPaths(_ paths: [String], quittingRunningApps: Bool) async -> UninstallResult {
-        lock.withLock { trashCount += 1 }
+        lock.withLock { trashCount += 1; batch = paths }
         // Hangs until `release()`. A `return` here would clear `busy` before the
         // caller resumed, and the gate would be untested.
         for await _ in released.stream {}
@@ -219,7 +228,10 @@ final class HeldWork: UninstallerWork, @unchecked Sendable {
     func scan(bundleID: String, appName: String) async -> ScanResult {
         ScanResult(leftovers: [], runningNow: false)
     }
-    func scanOrphans() async -> [OrphanGroup] { orphans }
+    func scanOrphans() async -> [OrphanGroup] {
+        if holdsScan { for await _ in scanReleased.stream {} }
+        return orphans
+    }
     var trashWatch: TrashWatch { .off }
     func setWatchingTrash(_ on: Bool) {}
     func dismissTrashedApp(bundleID: String) {}

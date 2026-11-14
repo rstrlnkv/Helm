@@ -9,12 +9,14 @@ extension OrphanGroup: Identifiable { public var id: String { bundleID } }
 struct OrphansView: View {
     let uvm: UninstallerViewModel
 
-    @StateObject private var model: OrphansModel
+    /// The view model's, not the page's: a sidebar click unmounts this view, and
+    /// the scan stays with the module.
+    @ObservedObject var model: OrphansModel
     @State private var confirming = false
 
     init(uvm: UninstallerViewModel) {
         self.uvm = uvm
-        _model = StateObject(wrappedValue: OrphansModel(uvm: uvm))
+        model = uvm.orphans
     }
 
     var body: some View {
