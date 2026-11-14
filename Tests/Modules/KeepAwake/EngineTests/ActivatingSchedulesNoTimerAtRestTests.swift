@@ -3,10 +3,10 @@ import HelmRuntime
 @testable import Module_KeepAwake_Engine
 
 /// What `KeepAwakeEngine` does per minute while nothing is happening.
-/// Kept, and run by default: it measures nothing (no `HELM_BENCH`); it is the only test that
+/// Kept, and run by default (no `HELM_BENCH`): it is the only test that
 /// `activate()` schedules no timer at rest (work done while nobody watches). With
 /// `scheduleBatteryWatch()` added to `activate()` only this class goes red.
-final class KeepAwakeAtRestBenchmark: XCTestCase {
+final class ActivatingSchedulesNoTimerAtRestTests: XCTestCase {
     var backing: InMemoryKeyValueStore!
     var store: NamespacedStore!
     var settings: KeepAwakeSettings!
