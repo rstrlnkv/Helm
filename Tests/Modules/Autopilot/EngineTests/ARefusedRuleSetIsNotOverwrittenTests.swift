@@ -22,27 +22,7 @@ import HelmTestSupport
 /// back into rules and named, rather than about its size: a byte count can be
 /// satisfied by a write that landed and happened to be the same length, and the
 /// question is whether the person's rules are still there.
-final class ARefusedRuleSetIsNotOverwrittenTests: XCTestCase {
-
-    private var home: URL!
-    private var root: URL!
-    private var backing: InMemoryKeyValueStore!
-    private var namespace: String!
-    private var keys: TestRuleKey!
-
-    override func setUpWithError() throws {
-        home = scratchDirectory("home")
-        root = home.appendingPathComponent("Downloads")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        backing = InMemoryKeyValueStore()
-        namespace = "autopilot.test.\(UUID().uuidString)"
-        keys = TestRuleKey()
-    }
-
-    private func engine() -> AutopilotEngine {
-        AutopilotEngine(store: NamespacedStore(namespace: namespace, backing: backing),
-                        home: home.path, keys: keys, sequence: TestRuleSequence())
-    }
+final class ARefusedRuleSetIsNotOverwrittenTests: SealedRulesRig {
 
     private var payloadKey: String { "module.\(namespace!).folders" }
 

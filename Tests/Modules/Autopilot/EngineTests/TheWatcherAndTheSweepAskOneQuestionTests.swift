@@ -39,10 +39,7 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
         // refused for reasons of their own at every depth, so without this the
         // depth question could be deleted and nothing would notice.
         try write("project/report.pdf", in: root, bytes: 10)
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        engine = AutopilotEngine.scratch(home: home.path)
     }
 
     private func path(_ relative: String) -> String {
@@ -53,15 +50,8 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
         FileManager.default.fileExists(atPath: path(relative))
     }
 
-    /// Everything under the watched folder, relative and sorted — the shape a
-    /// race cannot satisfy by accident.
-    private func tree() -> [String] {
-        let all = FileManager.default.enumerator(atPath: root.path)?.allObjects as? [String]
-        return (all ?? []).sorted()
-    }
-
     private func everyPathInTheTree() -> [String] {
-        tree().map { root.appendingPathComponent($0).path }
+        tree(under: root).map { root.appendingPathComponent($0).path }
     }
 
     private func folder(depth: Int = 8) -> WatchedFolder {
@@ -161,7 +151,7 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
 
         await waitForTheWatcherToFinish()
         XCTAssertFalse(exists("plain.pdf"), "the watcher did nothing at all")
-        XCTAssertTrue(exists("Documents/plain.pdf"), tree().description)
+        XCTAssertTrue(exists("Documents/plain.pdf"), tree(under: root).description)
     }
 
     func testAResourceInsideAnApplicationBundleIsLeftAlone() async throws {
@@ -171,7 +161,7 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
 
         await waitForTheWatcherToFinish()
         XCTAssertTrue(exists("Reader.app/Contents/Resources/manual.pdf"),
-                      "a rule took a resource out of an application bundle: \(tree())")
+                      "a rule took a resource out of an application bundle: \(tree(under: root))")
         XCTAssertFalse(exists("Reader.app/Contents/Resources/Documents/manual.pdf"))
     }
 
@@ -182,7 +172,7 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
 
         await waitForTheWatcherToFinish()
         XCTAssertTrue(exists(".quiet.pdf"),
-                      "a rule acted on a file the sweep can never see: \(tree())")
+                      "a rule acted on a file the sweep can never see: \(tree(under: root))")
     }
 
     /// `handle` hands its work to the engine's own queue and answers nothing.

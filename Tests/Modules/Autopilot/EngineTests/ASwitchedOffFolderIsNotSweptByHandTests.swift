@@ -35,10 +35,7 @@ final class ASwitchedOffFolderIsNotSweptByHandTests: XCTestCase {
         home = scratchDirectory("home")
         root = home.appendingPathComponent("Files")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "rules.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        engine = AutopilotEngine.scratch(home: home.path)
     }
 
     private func folder(enabled: Bool) -> WatchedFolder {

@@ -34,10 +34,7 @@ final class ADirectorySwappedDuringTheWalkIsNotReadTests: XCTestCase {
     }
 
     private func engine(swapping: Bool) -> AutopilotEngine {
-        let engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        let engine = AutopilotEngine.scratch(home: home.path)
         guard swapping else { return engine }
         let library = home.appendingPathComponent("Library/Inbox")
         let watched = self.watched!, dirs = self.dirs, secret = self.secret

@@ -30,10 +30,7 @@ final class AScopeRefusalNamesNothingInTheLogTests: XCTestCase {
         try FileManager.default.createSymbolicLink(
             at: home.appendingPathComponent("Stuff"),
             withDestinationURL: home.appendingPathComponent("Library"))
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        engine = AutopilotEngine.scratch(home: home.path)
     }
 
     private func watch(_ path: String) -> WatchedFolder {

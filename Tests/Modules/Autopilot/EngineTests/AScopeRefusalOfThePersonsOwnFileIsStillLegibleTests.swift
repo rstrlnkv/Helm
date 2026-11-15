@@ -33,10 +33,7 @@ final class AScopeRefusalOfThePersonsOwnFileIsStillLegibleTests: XCTestCase {
         try fm.createSymbolicLink(at: home.appendingPathComponent("Pictures Sorted"),
                                   withDestinationURL: home.appendingPathComponent(
                                       "Library/Mobile Documents/Pictures"))
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        engine = AutopilotEngine.scratch(home: home.path)
     }
 
     private func folder() -> WatchedFolder {

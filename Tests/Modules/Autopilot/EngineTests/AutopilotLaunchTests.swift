@@ -26,10 +26,6 @@ final class AutopilotLaunchTests: XCTestCase {
         namespace = "autopilot.test.\(UUID().uuidString)"
     }
 
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: home)
-    }
-
     private func store() -> NamespacedStore {
         NamespacedStore(namespace: namespace, backing: backing)
     }
@@ -79,14 +75,10 @@ final class AutopilotLaunchTests: XCTestCase {
         helm.deactivate()
 
         backing.raw["module.\(namespace!).folders"] = try JSONEncoder().encode(
-            [WatchedFolder(id: "planted", path: root.path, enabled: true, rules: [
-                Rule(id: "r", name: "take it", enabled: true, match: .all,
-                     conditions: [.fileExtension(["pdf"])], action: .trash),
-            ], depth: 1)])
+            emptyingRules(in: root))
         helm.sweepAll()
 
-        XCTAssertEqual((FileManager.default.enumerator(atPath: root.path)?
-            .allObjects as? [String])?.sorted(), ["statement.pdf"],
+        XCTAssertEqual(tree(under: root), ["statement.pdf"],
                        "rules planted after the first launch were adopted and run")
         XCTAssertNotNil(helm.status.refusal)
     }
@@ -116,7 +108,6 @@ final class TheLaunchNeverWaitsForTheKeyPortTests: XCTestCase {
 
     override func tearDownWithError() throws {
         stalled.release()
-        try? FileManager.default.removeItem(at: home)
     }
 
     private func store() -> NamespacedStore {

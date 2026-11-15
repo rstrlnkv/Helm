@@ -8,6 +8,8 @@ import XCTest
 /// removed folder's unread rules all survive a save (owner decision 4).
 final class StoredRuleSetTests: XCTestCase {
 
+    private typealias B = ASealedRecordBench
+
     /// Today's encoding: every condition case, every action case, depth 1 and 8,
     /// enabled on and off. Key order is the encoder's, which differs per process.
     private let deployed = #"[{"enabled":true,"path":"\/Users\/x\/Downloads","id":"f1","rules":[{"conditions":[{"name":{"_0":"contains","_1":"a"}},{"baseName":{"_0":"beginsWith","_1":"b"}},{"fileExtension":{"_0":["pdf","png"]}},{"kind":{"_0":"image"}},{"size":{"megabytes":4,"_0":"largerThan"}},{"dateAdded":{"_0":"olderThan","days":30}},{"dateModified":{"_0":"newerThan","days":2}},{"downloadedFrom":{"_0":"example.com"}},{"tag":{"_0":"red"}}],"enabled":true,"name":"All","id":"r1","action":{"move":{"to":"\/Users\/x\/Docs"}},"match":"all"},{"conditions":[{"name":{"_0":"contains","_1":"a"}}],"enabled":true,"name":"N0","id":"a0","action":{"move":{"to":"\/Users\/x\/Docs"}},"match":"any"},{"conditions":[{"baseName":{"_0":"beginsWith","_1":"b"}}],"enabled":false,"name":"N1","id":"a1","action":{"sortIntoSubfolder":{"_0":"month"}},"match":"any"},{"conditions":[{"fileExtension":{"_0":["pdf","png"]}}],"enabled":true,"name":"N2","id":"a2","action":{"rename":{"pattern":"{name}"}},"match":"any"},{"conditions":[{"kind":{"_0":"image"}}],"enabled":false,"name":"N3","id":"a3","action":{"addTag":{"_0":"t"}},"match":"any"},{"conditions":[{"size":{"megabytes":4,"_0":"largerThan"}}],"enabled":true,"name":"N4","id":"a4","action":{"trash":{}},"match":"any"}],"depth":1},{"enabled":false,"path":"\/Users\/x\/Pic\/é\"\/","id":"f2","rules":[],"depth":8}]"#
@@ -28,14 +30,6 @@ final class StoredRuleSetTests: XCTestCase {
         let x = try JSONSerialization.jsonObject(with: a) as AnyObject
         let y = try JSONSerialization.jsonObject(with: b) as AnyObject
         XCTAssertTrue(x.isEqual(y), file: file, line: line)
-    }
-
-    private func rule(_ id: String, extra: String = "") -> String {
-        #"{"id":"\#(id)","name":"n\#(id)","enabled":true,"match":"all","conditions":[{"tag":{"_0":"x"}}],"action":{"trash":{}}\#(extra)}"#
-    }
-
-    private func folder(_ id: String, rules: [String], extra: String = "") -> String {
-        #"{"id":"\#(id)","path":"/p/\#(id)","enabled":true,"rules":[\#(rules.joined(separator: ","))],"depth":1\#(extra)}"#
     }
 
     // MARK: - Old format
@@ -79,7 +73,7 @@ final class StoredRuleSetTests: XCTestCase {
 
     func testAnUnknownConditionAtIndexOneOfThreeSurvivesByteForByte() throws {
         let future = #"{"id":"b","name":"nb","enabled":true,"match":"all","conditions":[{"futureCase":{"_0":1}}],"action":{"trash":{}}}"#
-        let text = "[" + folder("f", rules: [rule("a"), future, rule("c")]) + "]"
+        let text = "[" + B.folder("f", rules: [B.rule("a"), future, B.rule("c")]) + "]"
         let p = try XCTUnwrap(parts(read(text)))
         XCTAssertEqual(p.folders[0].rules.map(\.id), ["a", "c"])
         XCTAssertEqual(p.unapplied, [UnappliedRule(folderID: "f", index: 1, name: "nb", raw: Data(future.utf8))])
@@ -105,7 +99,7 @@ final class StoredRuleSetTests: XCTestCase {
     // MARK: - Members this build does not know
 
     func testUnknownMembersOfAnUneditedRuleAndFolderSurviveByteForByte() throws {
-        let text = "[" + folder("f", rules: [rule("a", extra: #","futureKey":{"a":[1,2]}"#)],
+        let text = "[" + B.folder("f", rules: [B.rule("a", extra: #","futureKey":{"a":[1,2]}"#)],
                                  extra: #","folderFuture":7"#) + "]"
         let p = try XCTUnwrap(parts(read(text)))
         let composed = try XCTUnwrap(StoredRuleSet.compose(p.folders, unapplied: p.unapplied, stubs: p.stubs, extras: p.extras))
@@ -113,7 +107,7 @@ final class StoredRuleSetTests: XCTestCase {
     }
 
     func testUnknownMembersSurviveAnEditOfTheRule() throws {
-        let text = "[" + folder("f", rules: [rule("a", extra: #","futureKey":{"a":[1,2]}"#)],
+        let text = "[" + B.folder("f", rules: [B.rule("a", extra: #","futureKey":{"a":[1,2]}"#)],
                                  extra: #","folderFuture":7"#) + "]"
         var p = try XCTUnwrap(parts(read(text)))
         p.folders[0].rules[0].name = "edited"
@@ -125,8 +119,8 @@ final class StoredRuleSetTests: XCTestCase {
     }
 
     func testAnUneditedSiblingKeepsItsBytesWhenAnotherRuleIsEdited() throws {
-        let sibling = rule("b", extra: #","futureKey":1"#)
-        let text = "[" + folder("f", rules: [rule("a"), sibling]) + "]"
+        let sibling = B.rule("b", extra: #","futureKey":1"#)
+        let text = "[" + B.folder("f", rules: [B.rule("a"), sibling]) + "]"
         var p = try XCTUnwrap(parts(read(text)))
         p.folders[0].rules[0].name = "edited"
         let composed = try XCTUnwrap(StoredRuleSet.compose(p.folders, unapplied: p.unapplied, stubs: p.stubs, extras: p.extras))
@@ -137,7 +131,7 @@ final class StoredRuleSetTests: XCTestCase {
 
     func testRemovingAFolderThatHoldsAnUnappliedRuleWritesAStub() throws {
         let future = #"{"id":"b","name":"nb","enabled":true,"match":"all","conditions":[{"futureCase":1}],"action":{"trash":{}}}"#
-        let text = "[" + folder("f", rules: [rule("a"), future]) + "," + folder("g", rules: [rule("c")]) + "]"
+        let text = "[" + B.folder("f", rules: [B.rule("a"), future]) + "," + B.folder("g", rules: [B.rule("c")]) + "]"
         let p = try XCTUnwrap(parts(read(text)))
         let removed = p.folders.filter { $0.id != "f" }
         let data = try XCTUnwrap(StoredRuleSet.compose(removed, unapplied: p.unapplied, stubs: p.stubs, extras: p.extras))

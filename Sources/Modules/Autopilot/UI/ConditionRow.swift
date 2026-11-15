@@ -92,41 +92,13 @@ struct ConditionRow: View {
     @ViewBuilder private var detail: some View {
         switch condition {
         case let .name(comparison, value):
-            Picker(ApStr.a11yComparison, selection: Binding(
-                get: { comparison },
-                set: { condition = .name($0, value) })) {
-                    Text(ApStr.comparisonIs).tag(TextComparison.is)
-                    Text(ApStr.comparisonContains).tag(TextComparison.contains)
-                    Text(ApStr.comparisonBegins).tag(TextComparison.beginsWith)
-                    Text(ApStr.comparisonEnds).tag(TextComparison.endsWith)
-                }
-                .labelsHidden()
-                .frame(width: HelmPickerWidth.fitting(
-                    [ApStr.comparisonIs, ApStr.comparisonContains,
-                     ApStr.comparisonBegins, ApStr.comparisonEnds], minimum: AutopilotLayout.shortPicker))
-            TextField("", text: Binding(get: { value },
-                                        set: { condition = .name(comparison, $0) }))
-                .accessibilityLabel(ApStr.a11yValue)
+            textDetail(comparison, value) { condition = .name($0, $1) }
 
         case let .baseName(comparison, value):
             // The same four comparisons: the field differs, the question does
             // not, and two shapes for one question is how a screen teaches
             // somebody that they are different when they are not.
-            Picker(ApStr.a11yComparison, selection: Binding(
-                get: { comparison },
-                set: { condition = .baseName($0, value) })) {
-                    Text(ApStr.comparisonIs).tag(TextComparison.is)
-                    Text(ApStr.comparisonContains).tag(TextComparison.contains)
-                    Text(ApStr.comparisonBegins).tag(TextComparison.beginsWith)
-                    Text(ApStr.comparisonEnds).tag(TextComparison.endsWith)
-                }
-                .labelsHidden()
-                .frame(width: HelmPickerWidth.fitting(
-                    [ApStr.comparisonIs, ApStr.comparisonContains,
-                     ApStr.comparisonBegins, ApStr.comparisonEnds], minimum: AutopilotLayout.shortPicker))
-            TextField("", text: Binding(get: { value },
-                                        set: { condition = .baseName(comparison, $0) }))
-                .accessibilityLabel(ApStr.a11yValue)
+            textDetail(comparison, value) { condition = .baseName($0, $1) }
 
         case let .fileExtension(list):
             // Typed as a list because that is how it reads: "pdf, png, zip".
@@ -143,15 +115,11 @@ struct ConditionRow: View {
             .frame(width: HelmPickerWidth.fitting(FileKind.allCases.map(ApStr.kindName), minimum: AutopilotLayout.kindPicker))
 
         case let .size(comparison, megabytes):
-            Picker(ApStr.a11yComparison, selection: Binding(
-                get: { comparison },
-                set: { condition = .size($0, megabytes: megabytes) })) {
-                    Text(ApStr.comparisonLarger).tag(SizeComparison.largerThan)
-                    Text(ApStr.comparisonSmaller).tag(SizeComparison.smallerThan)
-                }
-                .labelsHidden()
-                .frame(width: HelmPickerWidth.fitting(
-                    [ApStr.comparisonLarger, ApStr.comparisonSmaller], minimum: AutopilotLayout.shortPicker))
+            ShortPicker(name: ApStr.a11yComparison, selected: comparison,
+                        options: [(.largerThan, ApStr.comparisonLarger),
+                                  (.smallerThan, ApStr.comparisonSmaller)]) {
+                condition = .size($0, megabytes: megabytes)
+            }
             numberField(megabytes, ApStr.a11yMegabytes) { condition = .size(comparison, megabytes: $0) }
             Text(ApStr.unitMegabytes).font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
 
@@ -175,16 +143,22 @@ struct ConditionRow: View {
     }
 
     @ViewBuilder
+    private func textDetail(_ comparison: TextComparison, _ value: String,
+                            _ rebuild: @escaping (TextComparison, String) -> Void) -> some View {
+        ShortPicker(name: ApStr.a11yComparison, selected: comparison,
+                    options: [(.is, ApStr.comparisonIs), (.contains, ApStr.comparisonContains),
+                              (.beginsWith, ApStr.comparisonBegins),
+                              (.endsWith, ApStr.comparisonEnds)]) { rebuild($0, value) }
+        TextField("", text: Binding(get: { value }, set: { rebuild(comparison, $0) }))
+            .accessibilityLabel(ApStr.a11yValue)
+    }
+
+    @ViewBuilder
     private func dateDetail(_ comparison: DateComparison, _ days: Double,
                             _ rebuild: @escaping (DateComparison, Double) -> Void) -> some View {
-        Picker(ApStr.a11yComparison, selection: Binding(get: { comparison },
-                                                        set: { rebuild($0, days) })) {
-            Text(ApStr.comparisonOlder).tag(DateComparison.olderThan)
-            Text(ApStr.comparisonNewer).tag(DateComparison.newerThan)
-        }
-        .labelsHidden()
-        .frame(width: HelmPickerWidth.fitting(
-            [ApStr.comparisonOlder, ApStr.comparisonNewer], minimum: AutopilotLayout.shortPicker))
+        ShortPicker(name: ApStr.a11yComparison, selected: comparison,
+                    options: [(.olderThan, ApStr.comparisonOlder),
+                              (.newerThan, ApStr.comparisonNewer)]) { rebuild($0, days) }
         numberField(days, ApStr.a11yDays) { rebuild(comparison, $0) }
         Text(ApStr.unitDays(for: days)).font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
     }

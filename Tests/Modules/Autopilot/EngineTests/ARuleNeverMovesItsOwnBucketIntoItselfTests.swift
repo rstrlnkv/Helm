@@ -26,10 +26,7 @@ final class ARuleNeverMovesItsOwnBucketIntoItselfTests: XCTestCase {
     override func setUpWithError() throws {
         home = scratchDirectory("home")
         try XCTSkipUnless(home.path.hasPrefix("/var/"), "the scratch home is not under /var: \(home.path)")
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        engine = AutopilotEngine.scratch(home: home.path)
     }
 
     private func sweepTwice(destination: String) throws -> SweepReport {

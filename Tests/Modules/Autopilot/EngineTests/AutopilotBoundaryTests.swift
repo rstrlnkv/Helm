@@ -4,6 +4,11 @@ import HelmTestSupport
 @testable import HelmRuntime
 @testable import Module_Autopilot_Engine
 
+private func facts(_ name: String, added: Date) -> FileFacts {
+    FileFacts(name: name, kind: .document, bytes: 4, added: added, modified: added,
+              now: Date(timeIntervalSince1970: 1_784_116_800))
+}
+
 /// The edges of the three things that have no natural stopping point: the
 /// collision counter, the stamp's stored value, and the scope gate a
 /// destination has to pass.
@@ -14,11 +19,6 @@ final class AutopilotBoundaryTests: XCTestCase {
 
     override func setUpWithError() throws {
         root = scratchDirectory("bounds")
-    }
-
-    private func facts(_ name: String, added: Date) -> FileFacts {
-        FileFacts(name: name, kind: .document, bytes: 4, added: added, modified: added,
-                  now: Date(timeIntervalSince1970: 1_784_116_800))
     }
 
     // MARK: - The end of the collision counter
@@ -261,11 +261,6 @@ final class AutopilotBoundaryTests: XCTestCase {
 /// behind it, the order of the months, and the two sides of a month boundary.
 final class AutopilotDateBucketTests: XCTestCase {
 
-    private func facts(_ name: String, added: Date) -> FileFacts {
-        FileFacts(name: name, kind: .document, bytes: 4, added: added, modified: added,
-                  now: Date(timeIntervalSince1970: 1_784_116_800))
-    }
-
     // MARK: - Dates with nothing behind them
 
     /// `FolderReader` substitutes `Date.distantPast` when a file has neither an
@@ -354,7 +349,6 @@ final class AutopilotSelfSortTests: XCTestCase {
         let home = scratchDirectory("self")
         let bucket = home.appendingPathComponent("Images")
         try FileManager.default.createDirectory(at: bucket, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: home) }
 
         let runner = RuleRunner(home: home.path)
         let plan = RulePlan(

@@ -221,13 +221,6 @@ final class RuleRunnerTests: XCTestCase {
                                    conditions: [.name(.contains, "")], action: action))
     }
 
-    /// Every path under `root`, relative and sorted. A folder described by its
-    /// contents rather than by a count of them.
-    private func tree() -> [String] {
-        let all = FileManager.default.enumerator(atPath: root.path)?.allObjects as? [String]
-        return (all ?? []).sorted()
-    }
-
     // MARK: - Never stamped: sorting
 
     /// The one that buries somebody's file.
@@ -243,7 +236,7 @@ final class RuleRunnerTests: XCTestCase {
         let outcome = runner.run(unstampedPlan(file, .sortIntoSubfolder(.kind), kind: .image), at: file.path, key: TestRuleKey.material)
 
         XCTAssertEqual(outcome, .alreadyDone)
-        XCTAssertEqual(tree(), ["Images", "Images/a.jpg"],
+        XCTAssertEqual(tree(under: root), ["Images", "Images/a.jpg"],
                        "the file was buried one bucket deeper")
     }
 
@@ -255,7 +248,7 @@ final class RuleRunnerTests: XCTestCase {
         let outcome = runner.run(unstampedPlan(file, .sortIntoSubfolder(.month)), at: file.path, key: TestRuleKey.material)
 
         XCTAssertEqual(outcome, .alreadyDone)
-        XCTAssertEqual(tree(), ["2026-07", "2026-07/a.pdf"])
+        XCTAssertEqual(tree(under: root), ["2026-07", "2026-07/a.pdf"])
     }
 
     /// And the case the rule is actually for still works: a file that is *not*
@@ -267,7 +260,7 @@ final class RuleRunnerTests: XCTestCase {
         let outcome = runner.run(unstampedPlan(file, .sortIntoSubfolder(.kind), kind: .image), at: file.path, key: TestRuleKey.material)
 
         XCTAssertEqual(outcome, .moved(to: root.appendingPathComponent("Images/a.jpg").path))
-        XCTAssertEqual(tree(), ["Images", "Images/a.jpg"])
+        XCTAssertEqual(tree(under: root), ["Images", "Images/a.jpg"])
     }
 
     /// A bucket nested inside another folder of the same name is still a file
@@ -297,7 +290,7 @@ final class RuleRunnerTests: XCTestCase {
         let outcome = runner.run(unstampedPlan(file, .move(to: root.path), kind: .image), at: file.path, key: TestRuleKey.material)
 
         XCTAssertEqual(outcome, .alreadyDone)
-        XCTAssertEqual(tree(), ["photo.jpg"], "the file was renamed rather than left alone")
+        XCTAssertEqual(tree(under: root), ["photo.jpg"], "the file was renamed rather than left alone")
     }
 
     /// The same destination written with a trailing slash, which is how anyone
@@ -310,7 +303,7 @@ final class RuleRunnerTests: XCTestCase {
                                  at: file.path, key: TestRuleKey.material)
 
         XCTAssertEqual(outcome, .alreadyDone)
-        XCTAssertEqual(tree(), ["photo.jpg"])
+        XCTAssertEqual(tree(under: root), ["photo.jpg"])
     }
 
     /// And a real move still moves.
@@ -321,7 +314,7 @@ final class RuleRunnerTests: XCTestCase {
         let outcome = runner.run(unstampedPlan(file, .move(to: elsewhere.path), kind: .image), at: file.path, key: TestRuleKey.material)
 
         XCTAssertEqual(outcome, .moved(to: elsewhere.appendingPathComponent("photo.jpg").path))
-        XCTAssertEqual(tree(), ["Sorted", "Sorted/photo.jpg"])
+        XCTAssertEqual(tree(under: root), ["Sorted", "Sorted/photo.jpg"])
     }
 }
 

@@ -143,15 +143,7 @@ final class ASweepDoesNotOfferItsOwnBucketTests: XCTestCase {
         home = scratchDirectory("home")
         root = home.appendingPathComponent("Downloads")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
-    }
-
-    private func tree() -> [String] {
-        let all = FileManager.default.enumerator(atPath: root.path)?.allObjects as? [String]
-        return (all ?? []).sorted()
+        engine = AutopilotEngine.scratch(home: home.path)
     }
 
     /// Every directory into `Folders/` — the rule from the log.
@@ -178,7 +170,7 @@ final class ASweepDoesNotOfferItsOwnBucketTests: XCTestCase {
         let report = engine.sweep(watched())
 
         XCTAssertEqual(report.refused, 0, "the bucket was refused, hourly and forever")
-        XCTAssertEqual(tree(), ["Folders", "Folders/Notes", "Folders/Notes/a.pdf",
+        XCTAssertEqual(tree(under: root), ["Folders", "Folders/Notes", "Folders/Notes/a.pdf",
                                 "Folders/old.pdf"])
     }
 
