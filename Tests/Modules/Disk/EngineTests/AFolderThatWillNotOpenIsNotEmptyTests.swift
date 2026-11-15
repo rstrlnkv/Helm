@@ -19,6 +19,7 @@ import XCTest
 /// `ETIMEDOUT`) and a directory replaced by a file under the walk (`ENOTDIR`)
 /// each read as a folder holding nothing, drawn as a genuine zero on a map whose
 /// whole job is where the space went.
+/// Past defect: fixed in commit 1c32d7cb.
 final class AFolderThatWillNotOpenIsNotEmptyTests: XCTestCase {
 
     /// The permission case, produced rather than described: a real directory at

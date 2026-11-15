@@ -4,15 +4,15 @@ import XCTest
 /// `~/Library/Logs/Helm/helm.log` is a product surface, and a suite run used to
 /// write into it.
 ///
-/// `EngineReply` logs at `error` when a payload will not decode or a reply will
-/// not encode — and its own tests exercise exactly that, because that is the
-/// behaviour they were written for. The lines landed in the file every dev build
+/// The engine wire, since removed, logged at `error` when a reply would not encode,
+/// and when it still read payloads it logged one that would not decode — and its own tests, since
+/// cut, exercised exactly that, because that was the behaviour they were written
+/// for. The lines landed in the file every dev build
 /// is triaged against before it ships, wearing the same shape as a real fault,
 /// and four of them were investigated as a defect that did not exist.
 ///
-/// The guard belongs here rather than beside those tests: any test that reaches
-/// any logging code writes, so the thing to hold still is where the log resolves
-/// its destination, not which four call sites happen to log today.
+/// The guard stands where the log resolves its destination, not at any call
+/// site: any test that switches the log on and reaches logging code writes.
 final class TheSuiteDoesNotWriteTheUsersLogTests: XCTestCase {
 
     /// Spelled out rather than read off `HelmLog`, which is the thing on trial.
@@ -37,6 +37,21 @@ final class TheSuiteDoesNotWriteTheUsersLogTests: XCTestCase {
                                               temporary: URL(fileURLWithPath: "/tmp"),
                                               underTest: false)
         XCTAssertEqual(folder.path, "/Users/anna/Library/Logs/Helm")
+        for id in ["com.helm.app", nil] as [String?] {
+            XCTAssertEqual(LogDestination.directory(home: URL(fileURLWithPath: "/Users/anna"),
+                                                    temporary: URL(fileURLWithPath: "/tmp"),
+                                                    underTest: false, bundleIdentifier: id).path,
+                           "/Users/anna/Library/Logs/Helm", "\(id ?? "nil")")
+        }
+    }
+
+    func testHelmDevLogsInAFolderOfItsOwn() {
+        let folder = LogDestination.directory(home: URL(fileURLWithPath: "/Users/anna"),
+                                              temporary: URL(fileURLWithPath: "/tmp"),
+                                              underTest: false,
+                                              bundleIdentifier: "com.helm.app.dev")
+        XCTAssertEqual(folder.path, "/Users/anna/Library/Logs/Helm Dev")
+        XCTAssertNotEqual(folder.path, "/Users/anna/Library/Logs/Helm")
     }
 
     func testATestRunLogsAnywhereButThere() {
@@ -59,11 +74,12 @@ final class TheSuiteDoesNotWriteTheUsersLogTests: XCTestCase {
 
     /// The one that would have caught it.
     ///
-    /// Asserting that the file did not grow passes for free when nothing was
+    /// Asserting that the marker is absent passes for free when nothing was
     /// written at all, so the line is proven to exist first — in the tail, which
-    /// is filled from the same parts the file line is spelled from.
+    /// is filled from the same parts the file line is spelled from. The file's
+    /// size and date are not compared: a Helm or Helm Dev running on the same Mac
+    /// writes that file and would turn the test red with no defect.
     func testAnErrorLoggedByATestDoesNotReachTheFileWeTriage() {
-        let before = shippingLogState()
         let marker = "log destination guard \(UUID().uuidString)"
 
         HelmLog.shared.setEnabled(true)
@@ -74,26 +90,9 @@ final class TheSuiteDoesNotWriteTheUsersLogTests: XCTestCase {
 
         XCTAssertTrue(entries.contains { $0.message == marker },
                       "nothing was logged, so nothing below is a test of anything")
-        XCTAssertEqual(shippingLogState(), before,
-                       "a test run appended to \(shippingLog.path)")
         if let text = try? String(contentsOf: shippingLog, encoding: .utf8) {
             XCTAssertFalse(text.contains(marker),
                            "a test's own error text is in the file people triage")
         }
-    }
-
-    /// Size and modification date together: a rewrite of the same length moves
-    /// one and not the other.
-    private struct FileState: Equatable {
-        let size: Int
-        let modified: Date?
-    }
-
-    /// `size: -1` is the absent file, which is a state worth telling from an
-    /// empty one.
-    private func shippingLogState() -> FileState {
-        let attributes = try? FileManager.default.attributesOfItem(atPath: shippingLog.path)
-        return FileState(size: (attributes?[.size] as? Int) ?? -1,
-                         modified: attributes?[.modificationDate] as? Date)
     }
 }

@@ -3,7 +3,6 @@
 
 import HelmContract
 import HelmRuntime
-import HelmUI
 import HelmTestSupport
 import XCTest
 @testable import Module_VPN_Engine
@@ -17,6 +16,8 @@ import XCTest
 /// into the silent one. The invariant below is structural — *some* channel
 /// carries the firing — rather than a check on one of them, because it is
 /// exactly the "both were switched off" state that shipped once.
+///
+/// Guards: some channel, banner or menu-bar label, always carries a firing (no fix commit; the code and this test landed together).
 @MainActor
 final class VPNAutomationAnnouncementTests: XCTestCase {
 
@@ -25,13 +26,11 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
         VPNAutomation(at: Date(), name: name, kind: kind)
     }
 
-    private func emit(_ automation: VPNAutomation, on transport: LocalTransport) {
-        let payload = VPNEngine.StatePayload(
+    private func emit(_ automation: VPNAutomation, on work: FakeVPNWork) {
+        work.say(VPNEngine.StatePayload(
             connections: [VPNConnection(id: "A1", name: "Office",
                                         status: .connected, kind: "IKEv2")],
-            autoConnected: ["Office"], defaultName: "Office", lastAutomation: automation)
-        transport.emit(EngineEvent(name: "state",
-                                   payload: try! JSONEncoder().encode(payload)))
+            autoConnected: ["Office"], lastAutomation: automation))
     }
 
     /// Waits on the announcement itself rather than on a count of yields: the
@@ -40,7 +39,7 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
     /// that happens to come out right, which is the way a broken fix shipped
     /// green here once already.
     private func settle(_ model: VPNViewModel) async {
-        for _ in 0..<500 where model.lastAutomation == nil { await Task.yield() }
+        await waitUntil("the firing handled", within: .seconds(5)) { model.lastAutomation != nil }
         await model.announcement?.value
     }
 
@@ -53,16 +52,15 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
     /// System Settings, and the app hears nothing when they do.
     private func announce(notice: VPNNotice, mirror: Bool, macOS: NoticeAuthorization)
         async -> (banner: [NoticeText], label: String?) {
-        let transport = LocalTransport()
+        let work = FakeVPNWork()
         let descriptor = VPNDescriptor()
-        let host = ModuleViewModel(transport: transport)
         let port = FakeAutomationNotice(state: macOS)
-        let model = descriptor.viewModel(host)
-        model.setForTesting(automation: nil, notice: notice,
-                            bannerAuthorized: mirror, notices: port)
-        emit(firing(), on: transport)
+        let model = VPNViewModel(work: work,
+                                settings: seededVPNSettings(notice: notice, bannerAuthorized: mirror))
+        model.setForTesting(automation: nil, notices: port)
+        emit(firing(), on: work)
         await settle(model)
-        return (port.posted, descriptor.statusAppearance(host).title)
+        return (port.posted, descriptor.statusAppearance(model).title)
     }
 
     func testTheAuthorizedBannerModePostsTheBanner() async {
@@ -129,16 +127,29 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
     /// payload — a refresh while the name is still on screen must not post the
     /// banner again.
     func testARepeatedPayloadDoesNotPostTheBannerTwice() async {
-        let transport = LocalTransport()
+        let work = FakeVPNWork()
         let port = FakeAutomationNotice()
-        let model = VPNViewModel(transport: transport, notices: port)
-        model.setForTesting(automation: nil, notice: .system, bannerAuthorized: true)
+        let model = VPNViewModel(work: work,
+                                settings: seededVPNSettings(notice: .system, bannerAuthorized: true),
+                                notices: port)
+        model.setForTesting(automation: nil)
         let fired = firing()
-        emit(fired, on: transport)
+        emit(fired, on: work)
         await settle(model)
-        emit(fired, on: transport)
-        for _ in 0..<200 { await Task.yield() }
+        emit(fired, on: work)
+        await grace()
         await model.announcement?.value
         XCTAssertEqual(port.posted.count, 1, "the same firing was announced twice")
+    }
+
+    /// A firing whose name matches no configuration falls back to the
+    /// module-wide settings, and a drop there is the drop setting, not the
+    /// rules' one.
+    func testADropOnANameNoConnectionCarriesAnswersWithTheDropSetting() {
+        let model = VPNViewModel(work: FakeVPNWork(),
+                                 settings: seededVPNSettings(notice: .silent, drop: .system))
+        XCTAssertEqual(model.notice(for: .dropped, on: "Nowhere"), .system,
+                       "a drop with no matching configuration took the rules' volume")
+        XCTAssertEqual(model.notice(for: .connected, on: "Nowhere"), .silent)
     }
 }

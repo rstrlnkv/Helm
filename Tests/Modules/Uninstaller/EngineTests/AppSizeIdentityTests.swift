@@ -12,6 +12,7 @@ import HelmTestSupport
 /// one, which the old assertion would have caught — keyed by path but measured
 /// from the wrong app it is still two, and the banner still says the wrong
 /// number about a removal it is about to perform.
+/// Past defect: fix commit 51247cad.
 final class AppSizeIdentityTests: XCTestCase {
 
     private var home: URL!
@@ -75,6 +76,7 @@ final class AppSizeIdentityTests: XCTestCase {
         XCTAssertEqual(Set(UninstallPlan.paths(groups, selectedLeftovers: [])),
                        [small.path, large.path],
                        "one of the two copies is not in the plan its own row queued")
-        XCTAssertEqual(UninstallPlan.totalBytes(groups, selectedLeftovers: []), 940_000)
+        XCTAssertEqual(UninstallPlan.totalBytes(groups, appBytes: [small.path: 40_000, large.path: 900_000],
+                                                     selectedLeftovers: []), 940_000)
     }
 }

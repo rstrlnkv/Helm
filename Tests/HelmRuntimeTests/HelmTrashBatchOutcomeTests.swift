@@ -2,7 +2,22 @@ import XCTest
 import HelmTestSupport
 @testable import HelmRuntime
 
-/// Either order of a nested batch, asserted absolutely.
+/// A batch that contains a folder and something inside it, in either order,
+/// asserted absolutely.
+///
+/// Disk reaches this without trying: the advice list offers `~/Library/Caches`
+/// while the ring, three levels down, offers `~/Library/Caches/com.acme.tool`,
+/// and `toggleBasket` only dedupes by exact path. Both go into one basket and
+/// one `trash` call.
+///
+/// Whichever goes first, both are gone afterwards — trashing a folder takes its
+/// contents. But if the parent went first, the child's own `trashItem` fails
+/// with `NSFileNoSuchFileError`, which `TrashFailure.reason` classifies as
+/// `.systemRefused`, and the screen tells the person that macOS refused to move
+/// a file that is already in their Trash. `UninstallerEngine.trashSync` has the
+/// guard for exactly this ("already gone … is not a failure"); the shared loop
+/// the other three modules were moved onto does not. The order a batch arrives
+/// in is a hash seed's (`DiskEngine.trash` feeds this `Array(Set(paths))`).
 ///
 /// Comparing a parent-first run with a child-first run proves nothing: `remove`
 /// sorts the batch before it starts, so the two agree by construction, and two
@@ -13,21 +28,6 @@ import HelmTestSupport
 /// nothing is reported as a refusal, and the bytes are counted once.
 final class HelmTrashBatchOutcomeTests: XCTestCase {
 
-    private var roots: [URL] = []
-    private var trashedNames: [String] = []
-
-    override func tearDownWithError() throws {
-        let fm = FileManager.default
-        for root in roots { try? fm.removeItem(at: root) }
-        let home = URL(fileURLWithPath: NSHomeDirectory())
-        let trash = (try? fm.url(for: .trashDirectory, in: .userDomainMask,
-                                 appropriateFor: home, create: false))
-            ?? home.appendingPathComponent(".Trash")
-        for name in trashedNames { try? fm.removeItem(at: trash.appendingPathComponent(name)) }
-        roots = []
-        trashedNames = []
-    }
-
     /// A folder holding one 300 KB file. Returns (parent, child).
     private func makeTree() throws -> (String, String) {
         let root = scratchDirectory("batch")
@@ -37,8 +37,8 @@ final class HelmTrashBatchOutcomeTests: XCTestCase {
         let childName = "helm-batch-file-\(UUID().uuidString).bin"
         try Data(repeating: 0x41, count: 300_000)
             .write(to: folder.appendingPathComponent(childName))
-        roots.append(root)
-        trashedNames.append(contentsOf: [name, childName])
+        reclaimFromTrash(name)
+        reclaimFromTrash(childName)
         return (folder.path, folder.appendingPathComponent(childName).path)
     }
 

@@ -29,7 +29,6 @@ final class TheLedgerCountsDaysNotLaunchesTests: XCTestCase {
     func testAnEmptyLedgerHasNothingToSay() {
         let ledger = ConversionLedger()
         XCTAssertEqual(ledger.total(over: .today, now: day("2026-08-27"), calendar: calendar).words, 0)
-        XCTAssertNil(ledger.since(now: day("2026-08-27"), calendar: calendar))
     }
 
     func testTwoConversionsOnOneDayAreOneRow() {
@@ -72,17 +71,6 @@ final class TheLedgerCountsDaysNotLaunchesTests: XCTestCase {
         XCTAssertEqual(ledger.total(over: .month, now: now, calendar: calendar).words, 3)
         XCTAssertEqual(ledger.total(over: .year, now: now, calendar: calendar).words, 3)
         XCTAssertEqual(ledger.total(over: .allTime, now: now, calendar: calendar).words, 4)
-    }
-
-    /// «All time» has to say when all time began, or it is a number with no
-    /// scale: 40 words is a lot in a week and nothing in three years.
-    func testAllTimeKnowsWhenItStarted() {
-        var ledger = ConversionLedger()
-        ledger.add(characters: 3, on: day("2026-03-04"), calendar: calendar)
-        ledger.add(characters: 3, on: day("2026-08-27"), calendar: calendar)
-        XCTAssertEqual(ledger.since(now: day("2026-08-27"), calendar: calendar)
-                        .map { calendar.startOfDay(for: $0) },
-                       calendar.startOfDay(for: day("2026-03-04")))
     }
 
     /// A clock that went backwards — a stamp from the future — must not make

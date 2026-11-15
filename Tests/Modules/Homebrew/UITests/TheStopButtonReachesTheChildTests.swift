@@ -1,23 +1,15 @@
 import XCTest
 import HelmContract
 import HelmTestSupport
-import HelmUI
-import HelmRuntime
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
 
-/// The whole path of a press on Stop: view model → wire → engine → the child's
-/// handle. Driven over the real `LocalTransport`, because the command name
-/// crosses a target boundary and only the trip proves the two sides agree.
+/// The whole path of a press on Stop: view model → port → engine → the child's
+/// handle. Driven over the real engine, because the act crosses a target
+/// boundary and only the trip proves the two sides agree.
+/// Kept: guards the defect fixed in 882fe986 fix(homebrew): the batch — a hang has a deadline, a press has an answer, a phase has a name.
 @MainActor
 final class TheStopButtonReachesTheChildTests: XCTestCase {
-
-    private struct FixedLocator: BrewLocator {
-        func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-    }
-    private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-    }
 
     private final class Handle: RunningProcess, @unchecked Sendable {
         private let lock = NSLock()
@@ -47,25 +39,20 @@ final class TheStopButtonReachesTheChildTests: XCTestCase {
         }
     }
 
-    private func waitUntil(_ what: String, _ condition: () -> Bool) async {
-        for _ in 0..<20_000 where !condition() { await Task.yield() }
-        XCTAssertTrue(condition(), "never reached: \(what)")
-    }
-
     func testStopFromTheViewModelTerminatesTheChild() async {
         let runner = HangingRunner()
-        let transport = LocalTransport()
+        let news = EngineNews<HomebrewNews>()
         let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
                                     privileged: NoPrivileges(), user: "tester",
-                                    transport: transport)
+                                    news: news)
         defer { _ = engine }
-        let model = HomebrewViewModel(vm: ModuleViewModel(transport: transport))
+        let model = HomebrewViewModel(work: engine)
 
         model.upgradeAll()
         await waitUntil("the operation was seen running") { model.op.phase == .running }
         await waitUntil("the stream started") { !runner.handles.isEmpty }
 
-        model.stop()
+        model.stopOperation()
 
         await waitUntil("the child was terminated") { runner.handles.first?.terminated == true }
     }
@@ -74,9 +61,9 @@ final class TheStopButtonReachesTheChildTests: XCTestCase {
     /// Structural.
     func testThePageWiresTheStopButton() throws {
         let page = RepoSource.root
-            .appendingPathComponent("Sources/Modules/Homebrew/UI/HomebrewSettingsPage.swift")
+            .appendingPathComponent("Sources/Modules/Homebrew/UI/HomebrewConsole.swift")
         let source = try String(contentsOf: page, encoding: .utf8)
-        XCTAssertTrue(source.contains("hb.stop()"),
-                      "HomebrewSettingsPage offers no way to stop a running operation")
+        XCTAssertTrue(source.contains("hb.stopOperation()"),
+                      "HomebrewConsole offers no way to stop a running operation")
     }
 }

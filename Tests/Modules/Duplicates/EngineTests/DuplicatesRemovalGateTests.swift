@@ -1,5 +1,7 @@
+import HelmTestSupport
 import XCTest
 @testable import HelmRuntime
+@testable import Module_Duplicates_Engine
 
 /// Which gate guards this module's deletions.
 ///
@@ -46,5 +48,25 @@ final class DuplicatesRemovalGateTests: XCTestCase {
         ])
         XCTAssertEqual(allowed.count, 2)
         XCTAssertEqual(refused, ["/System/Library/x"])
+    }
+
+    /// The engine has the last word: a path the scope gate refuses is reported
+    /// refused and **not attempted**. The recorder is the engine's `trashing:`
+    /// port and the verification answers `.identical` for everything, so the
+    /// only thing between the path and the recorder is the gate — with the
+    /// partition bypassed the path reaches the recorder and this goes red.
+    func testAPathTheGateRefusesIsRefusedByTheEngineAndNotAttempted() async {
+        let recorder = TrashRecorder()
+        let engine = DuplicatesEngine(settings: suiteSealGuard(),
+                                      trashing: recorder.trashing,
+                                      verifying: { { _, _ in .identical } })
+        let path = "/System/Library/Fonts/Helvetica.ttc"
+
+        let result = await engine.trash([DuplicatePlan(remove: path, keep: "\(home)/Downloads/keep.bin")])
+
+        XCTAssertEqual(result.refused.map(\.path), [path])
+        XCTAssertEqual(result.refused.map(\.reason), [.outOfScope])
+        XCTAssertEqual(recorder.count, 0, "the engine handed a refused path to the Trash")
+        XCTAssertTrue(result.removed.isEmpty)
     }
 }

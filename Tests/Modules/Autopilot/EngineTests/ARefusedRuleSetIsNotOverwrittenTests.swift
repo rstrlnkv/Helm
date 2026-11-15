@@ -22,27 +22,7 @@ import HelmTestSupport
 /// back into rules and named, rather than about its size: a byte count can be
 /// satisfied by a write that landed and happened to be the same length, and the
 /// question is whether the person's rules are still there.
-final class ARefusedRuleSetIsNotOverwrittenTests: XCTestCase {
-
-    private var home: URL!
-    private var root: URL!
-    private var backing: InMemoryKeyValueStore!
-    private var namespace: String!
-    private var keys: TestRuleKey!
-
-    override func setUpWithError() throws {
-        home = scratchDirectory("home")
-        root = home.appendingPathComponent("Downloads")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        backing = InMemoryKeyValueStore()
-        namespace = "autopilot.test.\(UUID().uuidString)"
-        keys = TestRuleKey()
-    }
-
-    private func engine() -> AutopilotEngine {
-        AutopilotEngine(store: NamespacedStore(namespace: namespace, backing: backing),
-                        home: home.path, keys: keys, sequence: TestRuleSequence())
-    }
+final class ARefusedRuleSetIsNotOverwrittenTests: SealedRulesRig {
 
     private var payloadKey: String { "module.\(namespace!).folders" }
 
@@ -131,7 +111,7 @@ final class ARefusedRuleSetIsNotOverwrittenTests: XCTestCase {
         keys = TestRuleKey(established: true)
         let next = engine()
         XCTAssertEqual(next.folders.map(\.id), [], "precondition: the tampered set is refused")
-        XCTAssertTrue(next.rulesRefused, "precondition: and the engine knows why")
+        XCTAssertNotNil(next.status.refusal, "precondition: and the engine knows why")
 
         next.folders = onePress()
 
@@ -152,12 +132,17 @@ final class ARefusedRuleSetIsNotOverwrittenTests: XCTestCase {
         // The page's own first act, and what makes the engine judge the plist:
         // `AutopilotViewModel.load` asks for the folders.
         XCTAssertEqual(next.folders.map(\.id), [], "precondition: the tampered set is refused")
-        XCTAssertTrue(next.rulesRefused, "precondition: and the engine knows why")
+        XCTAssertNotNil(next.status.refusal, "precondition: and the engine knows why")
 
         next.folders = onePress()
 
-        XCTAssertTrue(next.rulesRefused,
-                      "the refused write took the only warning the person gets with it")
+        // Not `status`: it re-judges the plist, which the refused write left
+        // alone, and would answer "tampered" whatever the write did to the
+        // recorded verdict. `discardRefusedRules` acts on the recorded verdict
+        // alone, so a warning the write cleared leaves the rules in place.
+        next.discardRefusedRules()
+        XCTAssertNil(backing.raw[payloadKey],
+                     "the refused write took the only warning the person gets with it")
     }
 
     /// The way out, and the only one: an explicit discard. Without it the page
@@ -171,11 +156,11 @@ final class ARefusedRuleSetIsNotOverwrittenTests: XCTestCase {
         // The page's own first act, and what makes the engine judge the plist:
         // `AutopilotViewModel.load` asks for the folders.
         XCTAssertEqual(next.folders.map(\.id), [], "precondition: the tampered set is refused")
-        XCTAssertTrue(next.rulesRefused, "precondition: and the engine knows why")
+        XCTAssertNotNil(next.status.refusal, "precondition: and the engine knows why")
 
         next.discardRefusedRules()
 
-        XCTAssertFalse(next.rulesRefused, "the discard left the engine still refusing")
+        XCTAssertNil(next.status.refusal, "the discard left the engine still refusing")
         next.folders = onePress()
         XCTAssertEqual(next.folders.map(\.id), ["fresh"], "and the page still cannot save")
         XCTAssertEqual(storedRuleIDs(), [], "the discarded set was not replaced")
@@ -193,7 +178,7 @@ final class ARefusedRuleSetIsNotOverwrittenTests: XCTestCase {
         let next = engine()
         XCTAssertEqual(next.folders.map(\.id), [], "precondition: nothing runs without the key")
 
-        XCTAssertEqual(next.refusal, .noKey, "an unreadable key was reported as tampering")
+        XCTAssertEqual(next.status.refusal, .noKey, "an unreadable key was reported as tampering")
         XCTAssertEqual(storedRuleIDs(), ["invoices", "shots"], "the rules were touched")
     }
 }

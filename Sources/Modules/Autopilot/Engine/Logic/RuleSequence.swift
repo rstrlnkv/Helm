@@ -18,13 +18,3 @@ public enum RuleSequence: Equatable, Sendable {
     /// would make a locked keychain the way past the check.
     case unavailable
 }
-
-/// Where the mark is kept, as a port: the production answer is a keychain item
-/// whose access list names only Helm, and a test must not write to the user's.
-public protocol RuleSequencePort: Sendable {
-    func highWater() -> RuleSequence
-    /// Records a new mark. False when it could not be written — which costs a
-    /// save nothing and leaves the rollback window one save wide.
-    @discardableResult
-    func raise(to seq: UInt64) -> Bool
-}

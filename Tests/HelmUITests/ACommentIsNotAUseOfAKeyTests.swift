@@ -11,16 +11,17 @@ import HelmTestSupport
 /// which is exactly right for every scan that counts punctuation — a call site,
 /// a brace depth, a modifier chain — and exactly wrong for a scan whose subject
 /// **is** a string literal. Put the orphan-translation scan on it and
-/// `L("Off")` becomes `L("")`: all 1054 keys read as dead at once, which is a
+/// `L("Off")` becomes `L("")`: every key reads as dead at once, which is a
 /// guard failing loudly. The other half of that mistake is the one that hides —
 /// reading the file **raw**, where a key named only in a comment reads as alive,
 /// which is a guard that has quietly stopped being able to fail.
 ///
-/// `Sources/HelmApp/AppStrings.swift` really does say «Not `L("Off")`», so the
-/// raw reading really does keep the key «Off» alive by explaining why it is not
-/// used there. Measured across the whole tree on 2026-08-21 the difference
-/// between the two readings was **0 keys**, so nothing was orphaned by it —
-/// this is the hole closed before something falls in it, not after.
+/// The host's strings file once carried a doc comment saying «Not `L("Off")`»
+/// (`git log -S` on that sentence finds it), so the raw reading really did keep
+/// the key «Off» alive by explaining why it was not used there.
+/// Measured across the whole tree on 2026-08-21 the difference between the two
+/// readings was **0 keys**, so nothing was orphaned by it — this is the hole
+/// closed before something falls in it, not after.
 ///
 /// `uncommented` is the third reading: comments blanked, string bodies kept.
 /// It cannot be written by a line filter and it cannot be written without
@@ -30,89 +31,68 @@ final class ACommentIsNotAUseOfAKeyTests: XCTestCase {
 
     // MARK: - The reading the orphan scan needs
 
-    /// The exact shape in the tree: a key named in prose to say it is *not*
-    /// asked for, above a line that really does ask for another.
-    ///
-    /// Both halves are asserted, and the order is not decoration. «The comment's
-    /// key is gone» alone is satisfied by a reader that returns nothing at all;
-    /// asserting the live key first is what says the subject happened.
-    func testAKeyNamedOnlyInACommentIsNotAKeyTheSourceAsksFor() {
-        let read = SwiftSource.uncommented("""
-        // The tick is drawn, not written: not `L("Off")` and never was.
-        let label = L("On")
-        """)
-        XCTAssertTrue(read.contains("L(\"On\")"),
-                      "the live key was blanked too — «\(read)»")
-        XCTAssertFalse(read.contains("\"Off\""),
-                       "a key explained in a comment still reads as asked for — «\(read)»")
-    }
-
-    /// The same in a doc comment, which is how this repository writes most of
-    /// its prose — and in a block comment, which no line filter can end.
-    func testProseIsBlankedWhicheverOfTheThreeWaysItIsWritten() {
-        let read = SwiftSource.uncommented("""
-        /// `L("Doc")` is named here to be explained.
-        /* L("Block")
-           still the same comment: L("BlockTwo") */
-        let label = L("Real")
-        """)
-        XCTAssertTrue(read.contains("\"Real\""), "the live key was blanked — «\(read)»")
-        for dead in ["Doc", "Block", "BlockTwo"] {
-            XCTAssertFalse(read.contains("\"\(dead)\""),
-                           "«\(dead)» survived its comment — «\(read)»")
+    /// Each row is a source, what must survive reading it and what must be
+    /// gone. Kept is asserted before gone, and the order is not decoration:
+    /// «the comment's key is gone» alone is satisfied by a reader that returns
+    /// nothing at all, and asserting the live key first is what says the
+    /// subject happened.
+    func testWhatSurvivesTheReadingAndWhatDoesNot() {
+        let rows: [(why: String, source: String, kept: [String], gone: [String])] = [
+            // The exact shape in the tree: a key named in prose to say it is
+            // *not* asked for, above a line that really does ask for another.
+            ("a key named only in a comment is not a key the source asks for", """
+            // The tick is drawn, not written: not `L("Off")` and never was.
+            let label = L("On")
+            """, ["L(\"On\")"], ["\"Off\""]),
+            // The same in a doc comment, which is how this repository writes
+            // most of its prose — and in a block comment, which no line filter
+            // can end.
+            ("prose is blanked whichever of the three ways it is written", """
+            /// `L("Doc")` is named here to be explained.
+            /* L("Block")
+               still the same comment: L("BlockTwo") */
+            let label = L("Real")
+            """, ["\"Real\""], ["\"Doc\"", "\"Block\"", "\"BlockTwo\""]),
+            // **The trap that makes this need a parser.** A `//` inside a
+            // string is not a comment, so blanking naively swallows the rest of
+            // the line — and the key after it.
+            ("a slash inside a string does not swallow the key after it", #"""
+            let url = "https://example.com"; let label = L("After")
+            """#, ["\"After\"", "https://example.com"], []),
+            // A key quoted inside a `"""` block is still a string, and the
+            // block spans lines — the reading `RepoSource.code` cannot make one
+            // line at a time.
+            ("a multiline block is one string and its content survives", #"""
+            let explanation = """
+            // not a comment in here
+            L("Quoted")
+            """
+            let label = L("Real")
+            """#, ["\"Quoted\"", "\"Real\""], []),
+            // A raw string keeps its escapes: `#"…\n…"#` has no escape at all,
+            // and a reader that treated `\` as one would end the literal two
+            // characters late and read the code after it as string.
+            ("a raw string is read to its own delimiter", #"""
+            let pattern = #"\bL\("#
+            let label = L("Real")
+            """#, ["\"Real\""], []),
+            // An escaped quote does not end the literal, and comes back **as it
+            // was written**: the orphan scan decodes `\"` itself, after this
+            // runs, and a reader that decoded it first would end four changelog
+            // keys early.
+            ("an escaped quote neither ends the string nor is decoded", #"""
+            let label = L("He said \"Date Added\" once") // L("Dead")
+            """#, [#"\"Date Added\""#], ["\"Dead\""]),
+        ]
+        for row in rows {
+            let read = SwiftSource.uncommented(row.source)
+            for kept in row.kept {
+                XCTAssertTrue(read.contains(kept), "\(row.why): «\(kept)» was lost — «\(read)»")
+            }
+            for gone in row.gone {
+                XCTAssertFalse(read.contains(gone), "\(row.why): «\(gone)» survived — «\(read)»")
+            }
         }
-    }
-
-    /// **The trap that makes this need a parser.** A `//` inside a string is not
-    /// a comment, so blanking naively swallows the rest of the line — and the
-    /// key after it.
-    func testASlashInsideAStringDoesNotSwallowTheKeyAfterIt() {
-        let read = SwiftSource.uncommented(#"""
-        let url = "https://example.com"; let label = L("After")
-        """#)
-        XCTAssertTrue(read.contains("\"After\""),
-                      "a URL's slashes were read as a comment — «\(read)»")
-        XCTAssertTrue(read.contains("https://example.com"),
-                      "the URL's own body was cut — «\(read)»")
-    }
-
-    /// A key quoted inside a `"""` block is still a string, and the block spans
-    /// lines — the reading `RepoSource.code` cannot make one line at a time.
-    func testAMultilineBlockIsOneStringAndItsContentSurvives() {
-        let read = SwiftSource.uncommented(#"""
-        let explanation = """
-        // not a comment in here
-        L("Quoted")
-        """
-        let label = L("Real")
-        """#)
-        XCTAssertTrue(read.contains("\"Quoted\""),
-                      "a block's own body was blanked — «\(read)»")
-        XCTAssertTrue(read.contains("\"Real\""), "the code after the block was lost — «\(read)»")
-    }
-
-    /// A raw string keeps its escapes: `#"…\n…"#` has no escape at all, and a
-    /// reader that treated `\` as one would end the literal two characters late
-    /// and read the code after it as string.
-    func testARawStringIsReadToItsOwnDelimiter() {
-        let read = SwiftSource.uncommented(#"""
-        let pattern = #"\bL\("#
-        let label = L("Real")
-        """#)
-        XCTAssertTrue(read.contains("\"Real\""),
-                      "the raw string never ended, so the code after it was swallowed — «\(read)»")
-    }
-
-    /// An escaped quote does not end the literal, and comes back **as it was
-    /// written**: the orphan scan decodes `\"` itself, after this runs, and a
-    /// reader that decoded it first would end four changelog keys early.
-    func testAnEscapedQuoteNeitherEndsTheStringNorIsDecoded() {
-        let read = SwiftSource.uncommented(#"""
-        let label = L("He said \"Date Added\" once") // L("Dead")
-        """#)
-        XCTAssertTrue(read.contains(#"\"Date Added\""#),
-                      "the escape was decoded by the reader — «\(read)»")
-        XCTAssertFalse(read.contains("\"Dead\""), "the tail comment survived — «\(read)»")
     }
 
     /// A finding still names a line, so a comment leaves its newlines where they

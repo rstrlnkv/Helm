@@ -19,13 +19,13 @@ public struct LogSite: Sendable, Equatable {
 
     /// `#fileID` is "ModuleName/File.swift". The module is already the log's
     /// category, so only the filename is kept.
-    public init(fileID: String, line: Int, function: String) {
+    init(fileID: String, line: Int, function: String) {
         self.file = fileID.split(separator: "/").last.map(String.init) ?? fileID
         self.line = line
         self.function = function
     }
 
-    public var description: String { "\(file):\(line) \(function)" }
+    var description: String { "\(file):\(line) \(function)" }
 }
 
 /// Turns a failure into something worth writing down.
@@ -95,30 +95,16 @@ public enum HelmFailure {
         return text.map { "OSStatus \(status) “\(oneLine($0))”" } ?? "OSStatus \(status)"
     }
 
-    /// nil for `noErr`, so a call site can log only when there is something to
-    /// log: `if let failure = HelmFailure.osStatusIfFailed(status) { … }`.
-    public static func osStatusIfFailed(_ status: Int32) -> String? {
-        status == 0 ? nil : osStatus(status)
-    }
-
-    /// A POSIX errno, named. `2` is nothing; `ENOENT (2) No such file or
-    /// directory` is a diagnosis.
-    public static func posix(_ code: Int32) -> String {
-        let text = String(cString: strerror(code))
-        return "errno \(code) “\(oneLine(text))”"
-    }
-
     // MARK: -
 
     /// A Swift error described by itself — except for the two whose description
     /// is made out of bytes somebody else chose.
     ///
     /// `DecodingError` and `EncodingError` carry a coding path, and for an
-    /// object-shaped payload every key in that path came off the wire. A table
+    /// object-shaped document every key in that path came off the file. A table
     /// keyed by path is an ordinary shape (`HashCache` and `appSizes` are both
-    /// written that way), so the keys are somebody's file names — and
-    /// `EngineReply` states the rule the other way round: the line carries the
-    /// command and the type it wanted, never the payload. The case and the type
+    /// written that way), so the keys are somebody's file names — and the line
+    /// carries the type it wanted, never the content. The case and the type
     /// it was reaching for are the whole of what a reader needs; the call site
     /// already names the arm and the type it asked for.
     private static func swiftDescription(of error: Error) -> String {
@@ -161,6 +147,30 @@ public enum HelmFailure {
     /// message field.
     private static let messageLimit = 800
 
+    /// `spelling` becomes `~` only where the path component ends: at the end of
+    /// the text, at a `/`, or at a character a name does not contain. Home
+    /// `/Users/anna` stays out of `/Users/annabelle/x` and `/Users/anna.smith`,
+    /// which are another account's.
+    private static func replacingHome(_ spelling: String, in text: String) -> String {
+        var result = ""
+        var rest = Substring(text)
+        while let found = rest.range(of: spelling) {
+            result += rest[..<found.lowerBound]
+            let after = rest[found.upperBound...]
+            let continuesName: Bool
+            if let next = after.first {
+                let isNameCharacter = next.isLetter || next.isNumber || next == "_" || next == "-"
+                let dotInName = next == "." && (after.dropFirst().first.map { $0.isLetter || $0.isNumber } ?? false)
+                continuesName = isNameCharacter || dotInName
+            } else {
+                continuesName = false
+            }
+            result += continuesName ? Substring(spelling) : "~"
+            rest = after
+        }
+        return result + rest
+    }
+
     /// One event is one line, and the reader is not to be lied to.
     ///
     /// The home path is stripped here rather than at the call sites, because
@@ -189,7 +199,7 @@ public enum HelmFailure {
         let home = NSHomeDirectory()
         if !home.isEmpty {
             for spelling in [Redact.FirmlinkTwin.dataMount + home, home] {
-                flat = flat.replacingOccurrences(of: spelling, with: "~")
+                flat = replacingHome(spelling, in: flat)
             }
         }
         flat = flat.trimmingCharacters(in: .whitespacesAndNewlines)

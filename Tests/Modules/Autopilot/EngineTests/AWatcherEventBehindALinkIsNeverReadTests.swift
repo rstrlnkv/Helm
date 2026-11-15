@@ -45,10 +45,7 @@ final class AWatcherEventBehindALinkIsNeverReadTests: XCTestCase {
                      action: .move(to: home.appendingPathComponent("Sorted").path)),
             ], depth: 1)
         }
-        let engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        let engine = AutopilotEngine.scratch(home: home.path)
         let weighed = Weighed()
         engine.reader = FolderReader(weigh: { url in weighed.note(url); return 4 }, home: home.path)
         engine.folders = [watch("hijacked", home.appendingPathComponent("Stuff/Inbox").path),

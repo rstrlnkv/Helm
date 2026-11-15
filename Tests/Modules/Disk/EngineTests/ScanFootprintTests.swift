@@ -6,7 +6,7 @@ import XCTest
 
 /// What one walk costs the process, and which of its two loops the cost is in.
 ///
-/// ARCHITECTURE.md § Module pattern reaches both, and **both loops are `BulkWalk`'s
+/// (ARCHITECTURE.md § Module pattern) reaches both, and **both loops are `BulkWalk`'s
 /// now** — the walk moved to `HelmRuntime` so that `FileWeight` and the
 /// duplicate finder could stop enumerating. The **worker** loop reads a
 /// directory at a time and has had its pool for as long as that section has
@@ -31,6 +31,7 @@ import XCTest
 /// The fixture is narrow and deep on purpose. The cost is per *path component
 /// composed*, not per file, so depth is the axis that makes a few thousand
 /// files say what a hundred thousand shallow ones would not.
+/// Past defect: fixed in commit 9e9734fb.
 final class ScanFootprintTests: XCTestCase {
 
     /// Deep enough that `charge` walks a real path, small enough that the whole
@@ -66,10 +67,10 @@ final class ScanFootprintTests: XCTestCase {
         // reading that answers the question is the second.
         _ = DiskScanner().scan(root: root.path)
 
-        let box = ProgressBox()
+        let box = Locked(0)
         let before = try XCTUnwrap(MemoryFootprint.current())
         let tree = DiskScanner().scan(root: root.path,
-                                      onProgress: { box.record($0.filesSeen) })
+                                      onProgress: { box.value = $0.filesSeen })
         let after = try XCTUnwrap(MemoryFootprint.current())
 
         XCTAssertNotNil(tree, "the fixture did not walk at all")

@@ -6,7 +6,7 @@ import Foundation
 /// keys its packages under `"formulae"` exactly as the formula file does, and
 /// the only difference is the name of a field inside each entry that this
 /// parser never reads. The dictionary key is the package name.
-public struct InstallCounts: Sendable, Equatable {
+struct InstallCounts: Sendable, Equatable {
     let counts: [String: Int]
     init(counts: [String: Int]) { self.counts = counts }
     /// No reading yet, or one that was refused. Distinct from a reading that

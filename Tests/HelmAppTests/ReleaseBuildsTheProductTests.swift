@@ -19,6 +19,8 @@ import HelmTestSupport
 /// build — it is here so the flag names something the manifest says exists,
 /// rather than the product SwiftPM synthesises for an executable target, which
 /// a rename would take away without a word.
+///
+/// Past defect: commit 5e153dfa, «build: the release build builds the app, not the package»; backlog #32 (a flag moved into a trailing comment).
 final class ReleaseBuildsTheProductTests: XCTestCase {
 
     /// Assert the hazard is real before asserting it is fenced off. A test that
@@ -39,9 +41,32 @@ final class ReleaseBuildsTheProductTests: XCTestCase {
         let script = try RepoSource.lines(of: "Scripts/package-app.sh")
         let builds = script.filter { $0.hasPrefix("swift build") }
         XCTAssertEqual(builds.count, 1, "expected one release build line, found \(builds)")
-        XCTAssertTrue(builds.first?.contains("--product HelmApp") == true,
+        XCTAssertTrue(builds.first.map { Self.words(of: $0).adjacentPair("--product", "HelmApp") } == true,
                       "the packaging script builds the whole package, which builds "
                       + "HelmTestSupport and its `import XCTest`: \(builds)")
+    }
+
+    /// The command's own words: the line up to a `#` that opens a comment, outside quotes.
+    private static func words(of line: String) -> [String] {
+        var quote: Character?
+        var kept = ""
+        for character in line {
+            if let open = quote { if character == open { quote = nil } }
+            else if character == "\"" || character == "'" { quote = character }
+            else if character == "#", kept.last.map({ $0 == " " }) ?? true { break }
+            kept.append(character)
+        }
+        return kept.split(separator: " ").map(String.init)
+    }
+
+    /// The reading itself, with the lines the real script does not hold: a flag
+    /// that sits in a comment, and a flag whose next word is not the product.
+    func testTheProductFlagIsReadOnlyWhereTheCommandSpellsIt() {
+        for bad in ["swift build # --product HelmApp", "swift build --product Other HelmApp"] {
+            XCTAssertFalse(Self.words(of: bad).adjacentPair("--product", "HelmApp"), bad)
+        }
+        XCTAssertTrue(Self.words(of: "swift build -c release --product HelmApp")
+            .adjacentPair("--product", "HelmApp"))
     }
 
     /// The half that makes the flag name something declared.
@@ -53,5 +78,11 @@ final class ReleaseBuildsTheProductTests: XCTestCase {
                       + "packaging with nothing to catch it")
         XCTAssertFalse(manifest.contains(#"targets: ["HelmTestSupport"]"#),
                        "the harness is in a product")
+    }
+}
+
+private extension Array where Element == String {
+    func adjacentPair(_ first: String, _ second: String) -> Bool {
+        zip(self, dropFirst()).contains { $0 == first && $1 == second }
     }
 }

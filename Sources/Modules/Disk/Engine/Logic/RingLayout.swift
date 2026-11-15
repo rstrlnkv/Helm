@@ -45,19 +45,20 @@ public struct RingGeometry: Sendable, Equatable {
 /// Pure sunburst math: focus node → arcs. Drawing and hit-testing share it,
 /// so a segment is clickable exactly where it is painted.
 public enum RingLayout {
-    /// Segments narrower than this fold into an "other" arc per parent.
+    /// Segments narrower than this fold into an "other" arc per parent; the scan's
+    /// own folded bucket (`isFolded`) is drawn as that same "other" arc.
     static let minimumVisibleAngle = 2.0 * .pi / 360.0 * 2.0   // 2°
 
     /// `path` locates `focus`; every segment's path is composed down from it,
     /// because `DiskNode` holds only the name. These strings are not decoration —
     /// `RingSegment.path` is what a click puts in the basket and what
-    /// `RemovableScope` is later asked to judge, so a segment's path has to be
+    /// `UserFileScope` is later asked to judge, so a segment's path has to be
     /// the same string the scan was handed. `DerivedPathTests` pins that.
     public static func layout(focus: DiskNode, path: String,
                               depthLevels: Int, freeBytes: Int) -> [RingSegment] {
         let dataBytes = focus.bytes
-        // Saturating: a volume may report a figure near Int.max (a wire payload,
-        // a filesystem that lies about its capacity), and the sum must not trap.
+        // Saturating: a volume may report a figure near Int.max (a saved scan read
+        // back from its file, a filesystem that lies about its capacity), and the sum must not trap.
         let total = dataBytes.saturatingAdding(max(freeBytes, 0))
         guard total > 0, dataBytes > 0 else { return [] }
 
@@ -93,6 +94,15 @@ public enum RingLayout {
                 // Saturating, like the free-space sum above: narrow children can
                 // together outweigh an integer when the tree was decoded from a file.
                 foldedBytes = foldedBytes.saturatingAdding(max(child.bytes, 0))
+                continue
+            }
+            if child.isFolded {
+                // The scan's own bucket is the same "other" wedge as the fold below.
+                out.append(RingSegment(name: "…", path: "", bytes: child.bytes,
+                                       startAngle: cursor, endAngle: cursor + span,
+                                       ring: ring, isDirectory: false, isOther: true,
+                                       isFreeSpace: false, noAccess: false))
+                cursor += span
                 continue
             }
             let childPath = ScanPath.child(of: parentPath, name: child.name)

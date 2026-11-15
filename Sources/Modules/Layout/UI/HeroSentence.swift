@@ -1,35 +1,17 @@
 /// Which of four things the hero is saying, decided once for both its lines.
 ///
-/// **The figure and the caption used to decide separately, and disagreed.** The
-/// caption asked `watching`, then the count, then the pause — so `suspended`
-/// was unreachable whenever the chosen period held nothing. The figure never
-/// asked about the pause at all. On a default install the period is «today», so
-/// a zero count is the whole of every morning before the first correction, and
-/// that is exactly when a password sheet is most likely to be in front: the
-/// module had dropped the buffer, the remembered word and the undo record, and
-/// the page said «Watching your words».
-///
-/// The window header 56 pt above said «Paused» at that same instant, because
-/// `LayoutDescriptor.activity` reads both flags.
-///
-/// A type rather than a reordering, because the ordering *is* the rule and a
-/// rule spelled twice is a rule that drifts.
-///
-/// `suspended` is deliberately not folded into `watching` by the caller —
-/// `watching` also gates the period row, and five buttons vanishing and
-/// returning as a password sheet opens and closes is motion about something the
-/// person did not do.
+/// One type decides the figure and the caption, because the ordering is the rule and a rule spelled
+/// twice drifts. `suspended` is not folded into `watching` by the caller: `watching` also gates the
+/// period row, and five buttons leaving and returning as a password sheet opens and closes would be
+/// motion about something the person did not do. The window header reads the same two flags through
+/// `LayoutDescriptor.activity`.
 enum HeroSentence: Equatable {
     /// macOS is not delivering keystrokes at all.
     case deaf
     /// Helm can hear and is refusing to listen: a secure field is in front.
     ///
-    /// **Carries whether there is still a figure**, because the pause takes the
-    /// caption and must not take the number with it. A password sheet is up for
-    /// as long as it takes to type a password, and the count of what the module
-    /// put right today does not stop being true while it is — a hero that
-    /// blanked its own figure for those few seconds would be reporting the
-    /// sheet, not the day.
+    /// Carries whether there is still a figure: the pause takes the caption and not the number, which
+    /// stays true while a password sheet is up.
     case paused(hasFigure: Bool)
     /// Watching, and nothing has needed putting right in the chosen period.
     case nothingYet

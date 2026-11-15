@@ -7,6 +7,7 @@ import XCTest
 /// **A window comes with its shadow unless the click was an option-click.** The flag is the person's act at
 /// the click, so it goes from `CaptureSession.window` to the port as it was given, and a window that is cut
 /// from the freeze instead has no shadow of its own to leave out and still comes back as a picture.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/CaptureSession.swift`: `capture.window(id, cursor: settings().showCursor, shadow: shadow)` -> `capture.window(id, cursor: settings().showCursor, shadow: true)`.
 final class TheOptionClickTakesTheWindowWithoutItsShadowTests: XCTestCase {
 
     private func freeze() -> Freeze {

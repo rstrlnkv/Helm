@@ -9,8 +9,8 @@ import XCTest
 /// read by `TheMapNamesRealDirectoriesTests`, any other, outside `CHANGELOG.md`,
 /// by the removal's `command grep` (ARCHITECTURE.md § Removal takes its traces).
 ///
-/// **Why this is a test and not a habit.** The standing documents of the repository
-/// (`ARCHITECTURE.md` among them) describe the app as it is now, and nothing checked that claim: on 2026-08-03
+/// **Why this is a test and not a habit.** `ARCHITECTURE.md` and the rules file
+/// describe the app as it is now, and nothing checked that claim: on 2026-08-03
 /// an audit found the file count seven out of date, "there are three gates"
 /// after a fourth had been added, a line number that had moved by a hundred
 /// lines, and two design records still describing four modules that had been
@@ -108,12 +108,6 @@ final class DocumentsNameTheTreeTests: XCTestCase {
     /// out of four, passed, and said nothing: `VERSIONING.md` had been named for
     /// a week and does not exist — it has no history in this repository at all.
     ///
-    /// **The rules document is not read here.** It is not in the repository (the
-    /// owner's `CLAUDE.local.md`, see `StandingDocuments.requireRules()`), and it names
-    /// files this tree does not hold: the one run that read it failed on
-    /// `agents/engineer.md`, the crew's. Its § pointers are checked by the two
-    /// `EverySectionNamed…` classes.
-    ///
     /// **One skip stays**: none of the standing documents beside
     /// `Package.swift`, which is the state of a checkout and not a finding.
     /// *Some* of them is a different question and gets a different answer.
@@ -163,7 +157,7 @@ final class DocumentsNameTheTreeTests: XCTestCase {
     /// directory leaves every mention of its old path wrong while its name still
     /// exists, and "somewhere in the tree there is a file called this" is the
     /// weaker claim the prose is not making. Paths are written from the root
-    /// (`Sources/HelmApp/ChangelogData.swift`) and from inside `Sources`
+    /// (`Sources/HelmAppStrings/ChangelogData.swift`) and from inside `Sources`
     /// (`Modules/Disk/UI/RingView.swift`) about equally often, so both are tried.
     ///
     /// A line number is checked too — `AppDelegate.swift:127` outlived the line
@@ -175,8 +169,8 @@ final class DocumentsNameTheTreeTests: XCTestCase {
     ///
     /// **A bare name with a line number needs a *unique* match.** With no line,
     /// "somewhere in the tree there is a file called this" is exactly the claim
-    /// being made — `SystemPorts.swift` is four different files, one per module
-    /// that has ports, and any of them answers for it. With a line, the document
+    /// being made — `SystemPorts.swift` is several different files, one in each
+    /// of several modules, and any of them answers for it. With a line, the document
     /// is pointing at *one* file, and more than one candidate makes the address
     /// ambiguous, which is a dead address by another name.
     ///

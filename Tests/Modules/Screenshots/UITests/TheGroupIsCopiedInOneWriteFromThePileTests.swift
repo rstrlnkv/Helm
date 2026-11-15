@@ -15,25 +15,13 @@ private func copied(_ s: PileScene, width: Int) throws {
 
 /// The module goes off with the group's copy in flight: the board is not written afterwards, and a refusal that
 /// would have been said is not said over a window that is gone.
+///
+/// Mutant, red here: `cancel` does not cancel the pile's copy task.
 @MainActor
 final class TheGroupIsCopiedInOneWriteFromThePileTests: XCTestCase {
 
-    private var scenes: [PileScene] = []
-
-    override func tearDown() {
-        for scene in scenes { scene.teardown() }
-        scenes = []
-        super.tearDown()
-    }
-
-    private func scene() throws -> PileScene {
-        let scene = try PileScene(self, name: "copy-all")
-        scenes.append(scene)
-        return scene
-    }
-
     func testAGroupCopyInFlightWhenTheModuleGoesOffReachesNoBoardAndSaysNothing() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "copy-all")
         for i in 0..<3 { try copied(s, width: 200 + i) }
         s.toast.model.copyAll()
         s.controller.cancel()
@@ -44,7 +32,7 @@ final class TheGroupIsCopiedInOneWriteFromThePileTests: XCTestCase {
         XCTAssertTrue(s.toast.model.shots.isEmpty)
         XCTAssertFalse(s.toast.model.shown)
         // The control: the same press with the module on writes.
-        let on = try scene()
+        let on = try PileScene(self, name: "copy-all")
         for i in 0..<3 { try copied(on, width: 200 + i) }
         on.toast.model.copyAll()
         await waitUntil("the control group was written") { on.board.lists.count >= 1 }
@@ -52,7 +40,7 @@ final class TheGroupIsCopiedInOneWriteFromThePileTests: XCTestCase {
 }
 
 /// **The pile's Copy All, pressed as the capsule presses it, puts every finished shot of the window on the clipboard in
-/// one write, in the list's order, or tells why it did not and puts none.** The controller, the toast and the session
+/// one write, in the list's order; a board that refuses is told and gets none, a file that is gone is left out and named.** The controller, the toast and the session
 /// are the app's own, over real files; the board counts a write a call. What the engine does with a list is
 /// `TheGroupIsCopiedInOneWriteTests`; read here are the shots the toast hands it (the finished ones, the held and the
 /// written, oldest first, at most twenty), what the person is told, and what the window is after.
@@ -60,22 +48,9 @@ final class TheGroupIsCopiedInOneWriteFromThePileTests: XCTestCase {
 /// Total failure of the subject prints: a write a shot, a shot still being written that is copied as nothing, a copy
 /// that did not happen and was not told, a refusal that takes the group with it, a group of twenty-five that copies
 /// twenty-five.
+/// Mutant, red here: `Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`: `let shots = toast.sources() guard !shots.isEmpty else { return }` -> `let shots = toast.sources()`.
 @MainActor
 final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
-
-    private var scenes: [PileScene] = []
-
-    override func tearDown() {
-        for scene in scenes { scene.teardown() }
-        scenes = []
-        super.tearDown()
-    }
-
-    private func scene() throws -> PileScene {
-        let scene = try PileScene(self, name: "copy-all")
-        scenes.append(scene)
-        return scene
-    }
 
     private func width(of png: Data) throws -> Int {
         let source = try XCTUnwrap(CGImageSourceCreateWithData(png as CFData, nil), "a write that is no picture")
@@ -90,7 +65,7 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
 
     func testCopyAllIsOneWriteWhateverTheNumberOfShotsInTheListsOrderWithFilesAndHeldPicturesMixed() async throws {
         for n in [1, 3, 20] {
-            let s = try scene()
+            let s = try PileScene(self, name: "copy-all")
             var expected: [Int] = []
             for i in 0..<n {
                 let width = 300 + 7 * i
@@ -112,7 +87,7 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
     }
 
     func testTwentyFiveShotsInIsTwentyOnTheBoardAndTheOldestFiveAreNotThere() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "copy-all")
         for i in 0..<25 { try copied(s, width: 100 + i) }
         s.toast.model.copyAll()
         await waitUntil("the group was written") { s.board.lists.count >= 1 }
@@ -122,7 +97,7 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
     }
 
     func testAShotStillBeingWrittenIsNotInTheGroupAndAGroupOfNothingFinishedIsNotWrittenOrTold() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "copy-all")
         s.toast.showWorking(try ShotToastRig.picture())
         s.toast.model.copyAll()
         await grace(0.2)
@@ -138,26 +113,12 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(s.board.lists.first).count, 1)
     }
 
-    // MARK: Told, and nothing on the board
+    // MARK: The board refuses
 
-    func testAFileThatIsGoneIsToldAndTheBoardGetsNoneOfTheGroupAndTheShotsAreBackAfterThePlaque() async throws {
-        let s = try scene()
-        let shots = [try await s.take(width: 400), try await s.take(width: 420), try await s.take(width: 440)]
-        try FileManager.default.removeItem(at: try XCTUnwrap(shots[1].file))
-        s.toast.model.copyAll()
-        await waitUntil("the person was told") { s.toast.model.refusal != nil }
-        XCTAssertEqual(refusalBody(s), ScStr.refusal(.encoding))
-        XCTAssertEqual(s.board.lists.count, 0, "a group of two of the three was written")
-        XCTAssertEqual(s.toast.model.shots.count, 3, "the plaque took the group with it")
-        XCTAssertFalse(s.toast.advance(by: 8.5))
-        XCTAssertFalse(s.toast.advance(by: 0.5))
-        XCTAssertNil(s.toast.model.refusal)
-        XCTAssertTrue(s.toast.model.isPile)
-        XCTAssertEqual(s.toast.sources().count, 3)
-    }
+    // A file that is gone is left out and named, and the rest is on the board in one write, not refused: `AShotWhoseFileIsGoneIsNamedAndTheRestIsCopiedTests`.
 
     func testABoardThatRefusesIsToldAndANewTryAfterItWritesTheWholeGroup() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "copy-all")
         for i in 0..<3 { try copied(s, width: 200 + i) }
         s.board.accepts = false
         s.toast.model.copyAll()
@@ -173,7 +134,7 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(s.board.lists.first).count, 3)
     }
     func testAnOpenRowCopiesTheSameGroupWhateverShotThePointerIsOn() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "copy-all")
         for i in 0..<4 { try copied(s, width: 210 + i) }
         s.toast.unfold()
         s.toast.model.focus = s.toast.model.shot(1)?.id ?? -1
@@ -186,7 +147,7 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
     // MARK: The pile leaves as one
 
     func testADragOfThePileCarriesEveryFinishedShotButTheOneItBeganOnInTheListsOrder() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "copy-all")
         let first = try await s.take(width: 400)
         try copied(s, width: 410)
         let third = try await s.take(width: 420)
@@ -209,13 +170,13 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
         XCTAssertFalse(model.othersDragged(with: third.id).isEmpty)
         s.toast.showRefusal(.pasteboard)
         XCTAssertTrue(model.othersDragged(with: third.id).isEmpty, "a drag from under a plaque carried the group")
-        XCTAssertNil(model.dragPayload)
+        XCTAssertNil(model.current.flatMap { model.drag(of: $0) })
     }
 
     func testASingleShotsDragCarriesNothingBesideIt() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "copy-all")
         let only = try await s.take(width: 400)
         XCTAssertTrue(s.toast.model.othersDragged(with: only.id).isEmpty)
-        XCTAssertNotNil(s.toast.model.dragPayload)
+        XCTAssertNotNil(s.toast.model.current.flatMap { s.toast.model.drag(of: $0) })
     }
 }

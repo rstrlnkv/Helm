@@ -4,15 +4,14 @@ import HelmRuntime
 
 /// Finds login items, settings and plug-ins whose owner is gone, and trashes
 /// the ones the user picks. Scanning walks many directories, so it runs off the
-/// concurrency pool via `blocking`.
+/// concurrency pool via `offTheCooperativePool`.
 public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     /// This module's id, and the only place it is written down.
     ///
     /// It reaches disk in shapes nothing would flag if they disagreed: the
-    /// `module.leftovers.*` keys of a store, the directory `ScanJournal` names after
-    /// it, and the removal attributed to it in the log. `LeftoversDescriptor.id`
-    /// is built from this rather than repeating it, the direction the
-    /// descriptors already carry their command enums, so the two spellings are
+    /// `module.leftovers.*` keys of a store and the removal attributed to it in the
+    /// log. `LeftoversDescriptor.id`
+    /// is built from this rather than repeating it, so the two spellings are
     /// one. **The string itself never changes** — it names folders and stored
     /// settings that are already on people's machines.
     public static let moduleID = "leftovers"
@@ -27,8 +26,6 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     /// agent folders at the moment of a press, so the engine's refusal rests on
     /// what is there now rather than on what a scan found earlier.
     private let files: LeftoversFilePort
-    private let localTransport: LocalTransport
-    public let transport: EngineTransport
     /// The write half. The scan gets `loaded` and cannot reach this.
     private let switcher: LoginItemSwitchPort
     /// Where the labels this module disabled are recorded, so `willDisable()`
@@ -40,17 +37,18 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
                 apps: InstalledAppsPort = WorkspaceInstalledApps(),
                 loaded: LoadedItemsPort = ActiveExtensions(),
                 switcher: LoginItemSwitchPort = ActiveExtensions(),
-                store: NamespacedStore = NamespacedStore(namespace: LeftoversEngine.moduleID,
-                                                         backing: UserDefaults.standard),
-                transport: LocalTransport = LocalTransport()) {
+                store: NamespacedStore = LeftoversEngine.defaultStore(backing: UserDefaults.standard)) {
         self.switcher = switcher
         self.home = home
         self.files = files
         self.store = store
         self.scanner = LeftoversScanner(home: home, files: files, apps: apps, extensions: loaded)
-        self.localTransport = transport
-        self.transport = transport
-        wireTransport()
+    }
+
+    /// The store the init default uses; a seam so a test can read the raw stored
+    /// key (`module.leftovers.disabledByHelm`) over an in-memory backing.
+    public static func defaultStore(backing: KeyValueStore) -> NamespacedStore {
+        NamespacedStore(namespace: moduleID, backing: backing)
     }
 
     public func activate() {}
@@ -62,16 +60,47 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     /// never Helm's.
     private static let recordKey = "disabledByHelm"
 
+    /// One lock over a press and over the give-back, so that a switch never lands
+    /// after `willDisable()` has read the record, and two presses cannot read the
+    /// record and write it over each other. Never held across a suspension: the
+    /// press takes it inside one hop off the cooperative pool.
+    private let switchLock = NSLock()
+    /// Set by `willDisable()` and read and written only under `switchLock`. It lives
+    /// as long as the engine, and the host builds a new engine on each enable
+    /// (`ModuleHost`), so it is the engine's last word where `stopped` in the
+    /// model is the page's.
+    private var handedBack = false
+
+    /// A label is left out of the record only when launchd refused the switch. An
+    /// `.unknown` answer is recorded: enabling at give-back a label that was never
+    /// disabled is harmless, and a disabled label with no record is never given
+    /// back. A hand-switch back on leaves the record unless launchd accepted it.
     func setDisabled(_ disabled: Bool, label: String) async {
-        await offTheCooperativePool { self.switcher.setDisabled(disabled, label: label) }
-        var recorded = Set(store.stringArray(Self.recordKey))
-        if disabled { recorded.insert(label) } else { recorded.remove(label) }
-        store.set(Array(recorded).sorted(), for: Self.recordKey)
+        await offTheCooperativePool {
+            self.switchLock.withLock {
+                guard !self.handedBack else {
+                    HelmLog.shared.warn(Self.moduleID,
+                                        "refused a switch: the module was already switched off")
+                    return
+                }
+                let answer = self.switcher.setDisabled(disabled, label: label)
+                var recorded = Set(self.store.stringArray(Self.recordKey))
+                if disabled {
+                    guard answer != .refused else { return }
+                    recorded.insert(label)
+                } else {
+                    guard answer == .accepted else { return }
+                    recorded.remove(label)
+                }
+                self.store.set(Array(recorded).sorted(), for: Self.recordKey)
+            }
+        }
     }
 
-    /// **The give-back.** Reached when the person switches the module off, while
-    /// the record is still there — `ResetPlan.order`
-    /// (`Sources/HelmRuntime/ResetPlan.swift:59`) asks the engines before it
+    /// **The give-back.** Reached when the person switches the module off, and for
+    /// every live module on «Reset all settings» (`ModuleHost.handBackSystemState`),
+    /// while the record is still there — `ResetPlan.order`
+    /// (`Sources/HelmRuntime/ResetPlan.swift`) asks the engines before it
     /// forgets preferences, and that order is why this can read anything at all.
     ///
     /// One ambiguity stays and is written down rather than solved: a label the
@@ -79,10 +108,19 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
     /// Helm's own, so it is given back too. It is described in
     /// ARCHITECTURE.md § Giving everything back.
     public func willDisable() {
-        let recorded = store.stringArray(Self.recordKey)
-        guard !recorded.isEmpty else { return }
-        for label in recorded { switcher.setDisabled(false, label: label) }
-        store.set([String](), for: Self.recordKey)
+        switchLock.withLock {
+            handedBack = true
+            let recorded = store.stringArray(Self.recordKey)
+            guard !recorded.isEmpty else { return }
+            // What launchd did not accept stays in the record: it may still be
+            // disabled, and the next give-back is the only one it will get.
+            let kept = recorded.filter { switcher.setDisabled(false, label: $0) != .accepted }
+            if !kept.isEmpty {
+                HelmLog.shared.warn(Self.moduleID,
+                                    "\(kept.count) switch(es) could not be given back")
+            }
+            store.set(kept, for: Self.recordKey)
+        }
     }
 
     public func deactivate() {}
@@ -134,79 +172,63 @@ public final class LeftoversEngine: ModuleEngine, @unchecked Sendable {
         }
     }
 
-    private func wireTransport() {
-        localTransport.setHandler { [weak self] command in
-            guard let self else { return Data() }
-            guard let name = LeftoversCommand(rawValue: command.name) else { return Data() }
-            switch name {
-            case .scan:
-                return EngineReply.encode(await self.scan(), for: command)
-            case .setDisabled:
-                guard let request = EngineReply.decode(LeftoversToggle.self, from: command)
-                else { return Data() }
-                // **The engine has the last word on the label, as it has on a
-                // path.** A label is whatever a `.plist` claims, and a file may
-                // claim another job's: `zz-innocent.plist` saying it is
-                // `com.securityvendor.agent` sends `launchctl disable` at the real
-                // job of that name. `LaunchLabel.mayBeSwitched` is the same
-                // predicate the row's offer reads, so this refuses nothing the page
-                // draws — it refuses whatever else builds a request.
-                guard LaunchLabel.mayBeSwitched(label: request.label, path: request.path) else {
-                    HelmLog.shared.warn(Self.moduleID,
-                                        "refused a switch: the label is not the one that file "
-                                        + "would register")
-                    return Data()
-                }
-                // **And the last word on the label being one file's.** A label two
-                // files register is one switch drawn twice: `launchctl disable
-                // gui/<uid>/<label>` stops whichever of them launchd kept, which
-                // this app cannot read, so a press on the row badged «Leftover» can
-                // stop the job the same scan calls «In use». The page withholds the
-                // switch there (`LeftoverActions.available`); this is the same rule
-                // asked of the two folders as they are now, and it refuses whatever
-                // else builds a request.
-                let reading = await offTheCooperativePool {
-                    LaunchClaims.onDisk(home: self.home, files: self.files)
-                }
-                let claimants = LaunchClaims.claimants(of: request.label, in: reading)
-                // **And a folder that did not open is not a folder with nothing
-                // in it.** Either agent folder can refuse a listing —
-                // `LaunchClaims.Reading` names the reasons, and that listing
-                // `/Library/LaunchAgents` is open to everyone on the Mac this
-                // was written on — and either one going unread turns «two files
-                // claim this switch» into «one does», on the safe-direction
-                // side of a guard whose whole subject is the unsafe direction.
-                guard reading.everyFolderOpened else {
-                    HelmLog.shared.warn(Self.moduleID,
-                                        "refused a switch: an agent folder would not open, so "
-                                        + "the files registering that label were never counted")
-                    return Data()
-                }
-                guard claimants.count <= 1 else {
-                    HelmLog.shared.warn(Self.moduleID,
-                                        "refused a switch: \(claimants.count) files register "
-                                        + "that label, and launchd was not asked which one it "
-                                        + "kept")
-                    return Data()
-                }
-                await self.setDisabled(request.disabled, label: request.label)
-                return Data()
-            case .trash:
-                guard let paths = EngineReply.decode([String].self, from: command)
-                else { return Data() }
-                return EngineReply.encode(await self.trash(paths), for: command)
-            }
+    /// Switches a login item, after the three questions the engine owes it.
+    ///
+    /// **The engine has the last word on the label, as it has on a path.** A label
+    /// is whatever a `.plist` claims, and a file may claim another job's:
+    /// `zz-innocent.plist` saying it is `com.securityvendor.agent` sends
+    /// `launchctl disable` at the real job of that name. `LaunchLabel.mayBeSwitched`
+    /// is the same predicate the row's offer reads, so this refuses nothing the page
+    /// draws — it refuses whatever else builds a request.
+    public func setDisabled(_ request: LeftoversToggle) async {
+        guard LaunchLabel.mayBeSwitched(label: request.label, path: request.path) else {
+            HelmLog.shared.warn(Self.moduleID,
+                                "refused a switch: the label is not the one that file "
+                                + "would register")
+            return
         }
+        // **And the last word on the label being one file's.** A label two
+        // files register is one switch drawn twice: `launchctl disable
+        // gui/<uid>/<label>` stops whichever of them launchd kept, which
+        // this app cannot read, so a press on the row badged «Leftover» can
+        // stop the job the same scan calls «In use». The page withholds the
+        // switch there (`LeftoverActions.available`); this is the same rule
+        // asked of the two folders as they are now, and it refuses whatever
+        // else builds a request.
+        let reading = await offTheCooperativePool {
+            LaunchClaims.onDisk(home: self.home, files: self.files)
+        }
+        let claimants = LaunchClaims.claimants(of: request.label, in: reading)
+        // **And a folder that did not open is not a folder with nothing
+        // in it.** Either agent folder can refuse a listing —
+        // `LaunchClaims.Reading` names the reasons, and that listing
+        // `/Library/LaunchAgents` is open to everyone on the Mac this
+        // was written on — and either one going unread turns «two files
+        // claim this switch» into «one does», on the safe-direction
+        // side of a guard whose whole subject is the unsafe direction.
+        guard reading.everyFolderOpened else {
+            HelmLog.shared.warn(Self.moduleID,
+                                "refused a switch: an agent folder would not open, so "
+                                + "the files registering that label were never counted")
+            return
+        }
+        guard claimants.count <= 1 else {
+            HelmLog.shared.warn(Self.moduleID,
+                                "refused a switch: \(claimants.count) files register "
+                                + "that label, and launchd was not asked which one it "
+                                + "kept")
+            return
+        }
+        await setDisabled(request.disabled, label: request.label)
     }
 }
 
-/// What the trash command answers with — the same value `DiskRemoval` and
+/// What `trash` answers with — the same value `DiskRemoval` and
 /// `DuplicateRemoval` name, and for the same reason.
 ///
 /// It was a field-for-field copy: `failed` for `refused`, and a
 /// `TrashFailureDetail` whose `message` carried `reason.rawValue` so that the
 /// page could hand it back to `TrashReasonText.sentence`. Nothing in the type
-/// said the string was a reason. The engine built the real result and unpacked
-/// it into the copy line by line; both ends of this wire are in one build, and
-/// the UI target imports this one, so one declaration serves both.
+/// said the string was a reason. The engine and the UI target are in one build,
+/// and the UI target imports this one, so one declaration serves both.
 public typealias LeftoversRemoval = HelmTrash.Result

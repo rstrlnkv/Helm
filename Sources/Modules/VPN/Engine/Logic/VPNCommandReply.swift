@@ -23,10 +23,8 @@ import HelmRuntime
 ///
 /// The sibling path had already learned this. `UnreadableListTests` exists
 /// because `--nc list` answering nothing looked exactly like a Mac with no VPN
-/// configured; its own comment says «`ScutilRunner.run` returns only the tool's
-/// stdout and throws the exit status away». The list was fixed and the two
-/// commands were not.
-public enum VPNCommandReply: Equatable, Sendable {
+/// configured. The list was fixed and the two commands were not.
+enum VPNCommandReply: Equatable, Sendable {
     /// `scutil` said nothing, which is what it says when it did the thing.
     case accepted
     /// There is no configuration by that name — renamed, deleted, or a rule
@@ -55,7 +53,7 @@ public enum VPNCommandReply: Equatable, Sendable {
     ///   the diagnostic file is the whole of what redaction exists to prevent.
     ///   Defaulted to nothing so a caller that has no list still gets the name it
     ///   asked about taken out; the engine passes the list it has just read.
-    public static func of(_ result: HelmProcess.Result, name: String,
+    static func of(_ result: HelmProcess.Result, name: String,
                           knownNames: [String] = []) -> VPNCommandReply {
         // **A tool that never ran is not a tool that agreed.** The table above
         // is about `scutil`'s own answers, all of which arrive with status 0 —
@@ -80,6 +78,18 @@ public enum VPNCommandReply: Equatable, Sendable {
         // into a sentence this enum cannot classify at all.
         if text.lowercased().hasPrefix("no service") { return .noSuchService }
         return .refused(withoutTheNames(text, names: names))
+    }
+
+    /// What the in-process start said, in the words the `scutil` path gives the
+    /// same news. A refusal carries fixed words and at most the system's number, so
+    /// it cannot hold a name.
+    static func of(_ answer: VPNStartAnswer) -> VPNCommandReply {
+        switch answer {
+        case .started: .accepted
+        case .noSuchService: .noSuchService
+        case .unreadable: .refused("the system's network configuration could not be read")
+        case .refused(let code): .refused("SCNetworkConnectionStart refused (SCError \(code))")
+        }
     }
 
     /// Every name gone, case-insensitively — the tool has no reason to spell one

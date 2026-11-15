@@ -8,13 +8,13 @@ import IOKit.ps
 
 // MARK: - IOKitSleepAssertions
 
-public final class IOKitSleepAssertions: SleepAssertions {
+final class IOKitSleepAssertions: SleepAssertions {
     private var systemAssertionID: IOPMAssertionID = 0
     private var displayAssertionID: IOPMAssertionID = 0
     private var hasSystemAssertion = false
     private var hasDisplayAssertion = false
 
-    public init() {}
+    init() {}
 
     /// The backstop, for the same reason `IOPSPowerInfo` below has one and
     /// `CGKeyTap` now does: `deactivate()` is the ordinary route and covers the
@@ -28,8 +28,7 @@ public final class IOKitSleepAssertions: SleepAssertions {
     ///   read only to decide whether to keep the id, and thrown away as an
     ///   *answer*: a refusal here is a Mac that sleeps while every surface says
     ///   Helm is holding it awake.
-    @discardableResult
-    public func preventSleep(display: Bool) -> Bool {
+    func preventSleep(display: Bool) -> Bool {
         if !hasSystemAssertion {
             var assertionID: IOPMAssertionID = 0
             let result = IOPMAssertionCreateWithName(
@@ -76,7 +75,7 @@ public final class IOKitSleepAssertions: SleepAssertions {
         return hasSystemAssertion && (!display || hasDisplayAssertion)
     }
 
-    public func release() {
+    func release() {
         if hasSystemAssertion {
             IOPMAssertionRelease(systemAssertionID)
             systemAssertionID = 0
@@ -92,10 +91,10 @@ public final class IOKitSleepAssertions: SleepAssertions {
 
 // MARK: - CGDisplayInfo
 
-public final class CGDisplayInfo: DisplayInfoPort {
-    public init() {}
+final class CGDisplayInfo: DisplayInfoPort {
+    init() {}
 
-    public func builtInFlags() -> [Bool] {
+    func builtInFlags() -> [Bool] {
         let maxDisplays: UInt32 = 16
         var displayIDs = [CGDirectDisplayID](repeating: 0, count: Int(maxDisplays))
         var displayCount: UInt32 = 0
@@ -107,13 +106,21 @@ public final class CGDisplayInfo: DisplayInfoPort {
     }
 }
 
+// MARK: - MacLidInfo
+
+final class MacLidInfo: LidInfoPort {
+    init() {}
+    func hasLid() -> Bool { MacHardware.hasLid }
+    func hasBattery() -> Bool { MacHardware.hasBattery }
+}
+
 // MARK: - IOPSPowerInfo
 
-public final class IOPSPowerInfo: PowerInfoPort {
+final class IOPSPowerInfo: PowerInfoPort {
     private var runLoopSource: CFRunLoopSource?
     private var onChange: (@Sendable () -> Void)?
 
-    public init() {}
+    init() {}
 
     /// The reading itself moved to `PowerSource` in `HelmRuntime` when
     /// background scans needed it too — a second IOKit read written in the
@@ -126,7 +133,7 @@ public final class IOPSPowerInfo: PowerInfoPort {
     ///
     /// Nil still means "IOKit would not answer", and the battery guard still
     /// reads that as no reading at all rather than as a flat battery.
-    public func snapshot() -> (onBattery: Bool, percent: Int)? {
+    func snapshot() -> (onBattery: Bool, percent: Int)? {
         guard let reading = PowerSource.current() else { return nil }
         return (onBattery: reading.onBattery, percent: reading.percent)
     }
@@ -135,9 +142,9 @@ public final class IOPSPowerInfo: PowerInfoPort {
     /// why. An independent read rather than a fold of the battery reading: this
     /// used to be `PowerSource.isOnMains`, whose nil-means-mains fold belongs to
     /// the background scan and was silently deciding this module's questions too.
-    public func supply() -> PowerSource.Supply? { PowerSource.supply() }
+    func supply() -> PowerSource.Supply? { PowerSource.supply() }
 
-    public func startObserving(_ onChange: @escaping @Sendable () -> Void) {
+    func startObserving(_ onChange: @escaping @Sendable () -> Void) {
         self.onChange = onChange
 
         let context = Unmanaged.passUnretained(self).toOpaque()
@@ -158,7 +165,7 @@ public final class IOPSPowerInfo: PowerInfoPort {
     /// invalidating stops the source firing at all, which is what matters if a
     /// callback is already scheduled — the context it would resolve is `self`,
     /// and `self` is about to go.
-    public func stopObserving() {
+    func stopObserving() {
         guard let source = runLoopSource else { return }
         runLoopSource = nil
         onChange = nil
@@ -173,7 +180,7 @@ public final class IOPSPowerInfo: PowerInfoPort {
 
 // MARK: - ScreenParamsObserver
 
-public final class ScreenParamsObserver: DisplayObserverPort {
+final class ScreenParamsObserver: DisplayObserverPort {
     /// Held so it can be taken back out — the same reason `WorkspaceAppPort`
     /// twenty lines below holds its own, and for the same defect: every enable
     /// of the module left another block registered for the life of the
@@ -183,11 +190,11 @@ public final class ScreenParamsObserver: DisplayObserverPort {
     /// enable, quietly.
     private var token: NSObjectProtocol?
 
-    public init() {}
+    init() {}
 
     deinit { stopObserving() }
 
-    public func startObserving(_ onChange: @escaping @Sendable () -> Void) {
+    func startObserving(_ onChange: @escaping @Sendable () -> Void) {
         stopObserving()
         token = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
@@ -198,7 +205,7 @@ public final class ScreenParamsObserver: DisplayObserverPort {
         }
     }
 
-    public func stopObserving() {
+    func stopObserving() {
         if let token { NotificationCenter.default.removeObserver(token) }
         token = nil
     }
@@ -206,24 +213,22 @@ public final class ScreenParamsObserver: DisplayObserverPort {
 
 // MARK: - WorkspaceAppPort
 
-public final class WorkspaceAppPort: AppRunningPort {
+final class WorkspaceAppPort: AppRunningPort {
     /// Held so the observers can be taken back out. Without this, switching
     /// the module off and on stacked another pair each time — the same defect
     /// `LayoutEngine.deactivate` documents.
-    private var tokens: [NSObjectProtocol] = []
+    private(set) var tokens: [NSObjectProtocol] = []
 
-    public init() {}
+    init() {}
 
-    deinit {
-        for token in tokens { NSWorkspace.shared.notificationCenter.removeObserver(token) }
-    }
+    deinit { stopObserving() }
 
     /// Through `RunningApps` for the same reason the VPN port is: this one is
     /// only ever reached from the main thread today, and "only ever, today" is
     /// exactly what was true of the other one.
-    public func runningBundleIDs() -> Set<String> { RunningApps.shared.bundleIDs() }
+    func runningBundleIDs() -> Set<String> { RunningApps.shared.bundleIDs() }
 
-    public func startObserving(_ onChange: @escaping @Sendable () -> Void) {
+    func startObserving(_ onChange: @escaping @Sendable () -> Void) {
         let center = NSWorkspace.shared.notificationCenter
         for token in tokens { center.removeObserver(token) }
         tokens = [NSWorkspace.didLaunchApplicationNotification,
@@ -233,23 +238,28 @@ public final class WorkspaceAppPort: AppRunningPort {
             }
         }
     }
+
+    func stopObserving() {
+        for token in tokens { NSWorkspace.shared.notificationCenter.removeObserver(token) }
+        tokens = []
+    }
 }
 
 // MARK: - CGEventPointer
 
-public final class CGEventPointer: PointerPort {
-    public init() {}
+final class CGEventPointer: PointerPort {
+    init() {}
 
-    public func location() -> CGPoint? {
+    func location() -> CGPoint? {
         CGEvent(source: nil)?.location
     }
 
-    public func move(to p: CGPoint) {
+    func move(to p: CGPoint) {
         CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: p, mouseButton: .left)?
             .post(tap: .cghidEventTap)
     }
 
-    public func displayBounds(containing p: CGPoint) -> CGRect? {
+    func displayBounds(containing p: CGPoint) -> CGRect? {
         let maxDisplays: UInt32 = 16
         var displayIDs = [CGDirectDisplayID](repeating: 0, count: Int(maxDisplays))
         var displayCount: UInt32 = 0
@@ -269,46 +279,42 @@ public final class CGEventPointer: PointerPort {
 
 // MARK: - DispatchClock
 
-/// Token whose lifetime controls the scheduled work item: dropping it (or letting it
-/// deinit) cancels the pending block, matching the engine's "release the AnyObject to
-/// cancel" convention used elsewhere (see expiryToken/jiggleToken/batteryToken).
-private final class DispatchWorkItemToken {
-    private let item: DispatchWorkItem
+final class DispatchClock: Clock {
+    init() {}
 
-    init(item: DispatchWorkItem) {
-        self.item = item
+    func schedule(after: TimeInterval, _ block: @escaping @Sendable () -> Void) -> AnyObject {
+        DelayedWork.schedule(on: .main, after: after, block)
     }
 
-    deinit {
-        item.cancel()
-    }
-}
-
-public final class DispatchClock: Clock {
-    public init() {}
-
-    public func schedule(after: TimeInterval, _ block: @escaping @Sendable () -> Void) -> AnyObject {
-        let item = DispatchWorkItem(block: block)
-        DispatchQueue.main.asyncAfter(deadline: .now() + after, execute: item)
-        return DispatchWorkItemToken(item: item)
-    }
-
-    public func now() -> Date {
+    func now() -> Date {
         Date()
     }
 }
 
 // MARK: - PmsetClamshellPort
 
-public final class PmsetClamshellPort: ClamshellPort {
-    private static let sudoersPath = SudoersRule.installedPath
+final class PmsetClamshellPort: ClamshellPort {
     private static let pmsetPath = SudoersRule.pmsetPath
     private static let sudoPath = "/usr/bin/sudo"
 
-    public init() {}
+    private let sudoersPath: String
+    private let privileged: @Sendable (String) -> PrivilegedOutcome
+    private let pmset: @Sendable () -> HelmProcess.Result
 
-    public func pmsetReport() -> String {
-        HelmProcess.run(Self.pmsetPath, ["-g"]).output
+    /// The two arguments are the seam a test reads the port through: which
+    /// command each half sends to root and how the outcome is read cannot be
+    /// seen from outside otherwise, and swapping them stayed green.
+    init(sudoersPath: String = SudoersRule.installedPath,
+                privileged: @escaping @Sendable (String) -> PrivilegedOutcome = { PrivilegedRun.run($0) },
+                pmset: @escaping @Sendable () -> HelmProcess.Result = { HelmProcess.run(PmsetClamshellPort.pmsetPath, ["-g"]) }) {
+        self.sudoersPath = sudoersPath
+        self.privileged = privileged
+        self.pmset = pmset
+    }
+
+    func pmsetReport() -> String? {
+        let result = pmset()
+        return result.status == 0 ? result.output : nil
     }
 
     /// The words come from `SudoersRule`, because the rule has to spell the same
@@ -316,7 +322,7 @@ public final class PmsetClamshellPort: ClamshellPort {
     /// spellings of this call are a name only one side ever changes — and the
     /// drift is an error nowhere, it is a call that quietly starts asking for a
     /// password again.
-    public func setDisableSleep(_ on: Bool) -> Bool {
+    func setDisableSleep(_ on: Bool) -> Bool {
         withoutPassword(SudoersRule.disableSleepArguments(on: on)) == 0
     }
 
@@ -333,18 +339,19 @@ public final class PmsetClamshellPort: ClamshellPort {
     /// reading it as the user always fails. Answering "not installed" every time
     /// meant the admin prompt came back every session, and the removal added
     /// alongside it could never run at all.
-    public func isSudoersInstalled() -> Bool {
-        FileManager.default.fileExists(atPath: Self.sudoersPath)
+    func isSudoersInstalled() -> Bool {
+        FileManager.default.fileExists(atPath: sudoersPath)
     }
 
     /// Asks sudo, not the filesystem. `-n` fails rather than prompting, and
     /// `disablesleep 0` is the half of the grant that is safe to spend on a
     /// question: it is what «restore sleep» does anyway, and it is idempotent.
-    public func canDisableSleepWithoutPassword() -> Bool {
+    func canDisableSleepWithoutPassword() -> Bool {
         withoutPassword(SudoersRule.disableSleepArguments(on: false)) == 0
     }
 
-    public func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
+    func installSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
+        let privileged = privileged
         DispatchQueue.global(qos: .userInitiated).async {
             let user = NSUserName()
             guard AccountName.isPlausible(user) else {
@@ -358,8 +365,7 @@ public final class PmsetClamshellPort: ClamshellPort {
             // path stood in `ps auxww` for the whole life of the password
             // prompt (`SudoersRule` has the rest). Everything now happens
             // inside root-owned /etc/sudoers.d.
-            let result = HelmProcess.run("/usr/bin/osascript", ["-e", SudoersRule.installScript(user: user)])
-            done(result.status == 0)
+            done(privileged(SudoersRule.installCommand(user: user)) == .done)
         }
     }
 
@@ -371,20 +377,20 @@ public final class PmsetClamshellPort: ClamshellPort {
     /// **The verdict is the second `fileExists`, not sudo's exit status.** The
     /// question is whether the file is gone, and a reading taken before the act
     /// cannot answer it.
-    public func removeSudoersWithoutPassword() -> Bool {
+    func removeSudoersWithoutPassword() -> Bool {
         guard isSudoersInstalled() else { return true }
-        withoutPassword(SudoersRule.removeArguments)
+        _ = withoutPassword(SudoersRule.removeArguments)
         return !isSudoersInstalled()
     }
 
     /// The withdrawal for a rule that cannot make it itself: one from before the
     /// `rm` line existed, or one somebody else wrote. This is the one that puts
     /// the administrator dialog on screen, so only a gesture may reach it.
-    public func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
+    func removeSudoers(_ done: @escaping @Sendable (Bool) -> Void) {
+        let privileged = privileged, sudoersPath = sudoersPath
         DispatchQueue.global(qos: .userInitiated).async {
-            guard self.isSudoersInstalled() else { done(true); return }
-            let result = HelmProcess.run("/usr/bin/osascript", ["-e", SudoersRule.removeScript()])
-            done(result.status == 0)
+            guard FileManager.default.fileExists(atPath: sudoersPath) else { done(true); return }
+            done(privileged(SudoersRule.removeCommand()) == .done)
         }
     }
 }
@@ -394,14 +400,15 @@ public final class PmsetClamshellPort: ClamshellPort {
 /// Convenience bundle of all production ports so the module wiring (host app) can
 /// construct one object and hand each port to `KeepAwakeEngine`'s initializer.
 public struct KeepAwakeSystemPorts {
-    public let assertions = IOKitSleepAssertions()
-    public let displayInfo = CGDisplayInfo()
-    public let displayObserver = ScreenParamsObserver()
-    public let power = IOPSPowerInfo()
-    public let apps = WorkspaceAppPort()
-    public let pointer = CGEventPointer()
-    public let clamshell = PmsetClamshellPort()
-    public let clock = DispatchClock()
+    public let assertions: SleepAssertions = IOKitSleepAssertions()
+    public let displayInfo: DisplayInfoPort = CGDisplayInfo()
+    public let lidInfo: LidInfoPort = MacLidInfo()
+    public let displayObserver: DisplayObserverPort = ScreenParamsObserver()
+    public let power: PowerInfoPort = IOPSPowerInfo()
+    public let apps: AppRunningPort = WorkspaceAppPort()
+    public let pointer: PointerPort = CGEventPointer()
+    public let clamshell: ClamshellPort = PmsetClamshellPort()
+    public let clock: Clock = DispatchClock()
     /// Where the battery veto's one notification goes. The log area is the
     /// module's id — `KeepAwakeEngine.moduleID`, the same constant every
     /// `HelmLog` call in this target reads, so the Journal files these lines

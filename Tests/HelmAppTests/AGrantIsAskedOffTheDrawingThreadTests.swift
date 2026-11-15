@@ -12,11 +12,10 @@ import XCTest
 /// got the cure, and the worst of the three sites was `HelmPanelContent` — the
 /// menu-bar panel, which runs this on every click of the icon.
 ///
-/// **The subject is the enclosing type, not the file.** `PermissionAudit` and
-/// `AppDelegate` probe too, at launch and from an audit, and those are judged
-/// separately: what makes a call a defect is that a `View` makes it, because a
-/// `View`'s `body`, `.task`, `.onAppear` and `.onReceive` all run where the frame
-/// is built.
+/// **The subject is the enclosing type, not the file.** `PermissionAudit` probes
+/// too, from the launch audit, and that is judged separately: what makes a call a
+/// defect is that a `View` makes it, because a `View`'s `body`, `.task`,
+/// `.onAppear` and `.onReceive` all run where the frame is built.
 ///
 /// **The scanner proves itself on a fixture before it is trusted over the tree.**
 /// An assertion of an absence passes when the subject never happened at all — a

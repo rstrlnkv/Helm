@@ -1,5 +1,6 @@
 import XCTest
 import HelmContract
+import HelmTestSupport
 @testable import HelmApp
 
 /// A store namespace is a module's id, and the id has one spelling.
@@ -20,7 +21,7 @@ import HelmContract
 /// cannot drift. `UninstallerEngine`'s default store was the seventh and was
 /// argued to be unfixable — engine-side, where the descriptor is out of reach on
 /// purpose, since an engine importing a UI target would be a door past the
-/// transport. The door was the wrong way round: the engine declares `moduleID`
+/// contract. The door was the wrong way round: the engine declares `moduleID`
 /// and the descriptor reads *it*, so nothing has to import upward. The eighth,
 /// `"app"`, stays a literal because it belongs to the host and names no module,
 /// and that is what this first test is for.
@@ -32,34 +33,17 @@ final class StoreNamespacesAreModuleIdsTests: XCTestCase {
     /// decision somebody writes down.
     private static let hostNamespace = "app"
 
-    private func code(_ line: String) -> String {
-        guard let range = line.range(of: "//") else { return line }
-        return String(line[line.startIndex..<range.lowerBound])
-    }
-
-    /// Every line of Swift under `Sources/<subpath>`, comments stripped, with
-    /// somewhere to say it. Both tests below read the tree; only what they look
-    /// for differs.
+    /// Every line of Swift under `<subpath>`, comments blanked, with somewhere
+    /// to say it. Both tests below read the tree; only what they look for differs.
     private func eachSourceLine(under subpath: String,
-                                _ visit: (_ where: String, _ code: String) -> Void) -> Int {
-        let root = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // HelmAppTests
-            .deletingLastPathComponent()   // Tests
-            .deletingLastPathComponent()   // repo
-            .appendingPathComponent(subpath)
-
-        var files = 0
-        let walk = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)
-        while let url = walk?.nextObject() as? URL {
-            guard url.pathExtension == "swift",
-                  let source = try? String(contentsOf: url, encoding: .utf8)
-            else { continue }
-            files += 1
-            for (index, line) in source.components(separatedBy: "\n").enumerated() {
-                visit("\(url.lastPathComponent):\(index + 1)", code(line))
+                                _ visit: (_ where: String, _ code: String) -> Void) throws -> Int {
+        let reads = try SwiftSource.uncommented(under: subpath)
+        for read in reads {
+            for (index, line) in read.text.components(separatedBy: "\n").enumerated() {
+                visit("\(read.path):\(index + 1)", line)
             }
         }
-        return files
+        return reads.count
     }
 
     func testEveryNamespaceLiteralNamesARegisteredModule() throws {
@@ -71,7 +55,7 @@ final class StoreNamespacesAreModuleIdsTests: XCTestCase {
         var offenders: [String] = []
         var found = 0
         let marker = "NamespacedStore(namespace: \""
-        _ = eachSourceLine(under: "Sources") { site, text in
+        _ = try eachSourceLine(under: "Sources") { site, text in
             guard let start = text.range(of: marker),
                   let end = text.range(of: "\"", range: start.upperBound..<text.endIndex)
             else { return }
@@ -110,7 +94,7 @@ final class StoreNamespacesAreModuleIdsTests: XCTestCase {
     /// no other list. `ListsAgreeWithTheTreeTests` covers only the three that
     /// `ScanRunner.scannableModules` names.
     ///
-    /// So this is a hand-written list, and it is the kind CLAUDE.md allows: it
+    /// So this is a hand-written list, and it is the kind the house rules allow: it
     /// is not a second spelling of anything the tree already knows, it is the
     /// prefixes the registered modules' keys are stored under in people's
     /// defaults. A module gained or renamed on purpose edits it, and that edit
@@ -156,7 +140,7 @@ final class StoreNamespacesAreModuleIdsTests: XCTestCase {
     func testNoModuleSpellsItsOwnIdAsALiteral() throws {
         var offenders: [String] = []
         var callSites = 0
-        let scanned = eachSourceLine(under: "Sources/Modules") { site, text in
+        let scanned = try eachSourceLine(under: "Sources/Modules") { site, text in
             for marker in ["module: ", "namespace: "] {
                 guard let start = text.range(of: marker) else { continue }
                 callSites += 1

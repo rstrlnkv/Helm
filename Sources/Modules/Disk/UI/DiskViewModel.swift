@@ -1,78 +1,90 @@
-import AppKit
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmUI
 import Module_Disk_Engine
 
-@MainActor public final class DiskViewModel: ObservableObject {
-    public enum Phase: Equatable { case start, scanning, result }
+/// What the model asks of the engine. A port, so the model's tests hold the
+/// engine's place without a walk of anybody's disk in reach.
+///
+/// The progress and the snapshots of a scan travel to the sink the caller hands
+/// over for that one call; the answer is the return value, so there is nothing
+/// to subscribe to and no reply that can be lost.
+protocol DiskWork: AnyObject, Sendable {
+    func mountedVolumes() async -> [VolumeInfo]
+    /// Calls back when a disk comes or goes, until the returned token is dropped.
+    func watchMounts(_ onChange: @escaping @Sendable () -> Void) -> AnyObject
+    func scan(path: String, unattended: Bool,
+              updates: (@Sendable (DiskScanUpdate) -> Void)?) async -> ScanResult?
+    func cancel()
+    func trash(_ paths: [String]) async -> DiskRemoval
+    func backgroundScan() async -> ScanReport?
+}
 
-    @Published public private(set) var phase: Phase = .start
-    @Published public private(set) var volumes: [VolumeInfo] = []
+extension DiskEngine: DiskWork {}
+
+@MainActor public final class DiskViewModel: ObservableObject {
+    enum Phase: Equatable { case start, scanning, result }
+
+    @Published private(set) var phase: Phase = .start
+    @Published private(set) var volumes: [VolumeInfo] = []
     /// When `volumes` was last answered; the wedge weighs it against the scan's own reading.
     private var volumesReadAt: Date?
-    // `internal(set)` rather than `private(set)` on the fields below that the
+    // Plain internal rather than `private(set)` on the fields below that the
     // basket writes: the setter's audience is still this type — its basket half
     // lives in `DiskViewModel+Basket.swift`, and `private` stops at the file.
-    @Published public internal(set) var result: ScanResult?
-    @Published public private(set) var tick: ScanTick?
+    @Published var result: ScanResult?
+    @Published private(set) var tick: ScanTick?
     /// Path stack from the scan root to the folder the ring is showing.
-    @Published public internal(set) var focusPath: [DiskEntry] = []
+    @Published var focusPath: [DiskEntry] = []
     /// Laid-out arcs for the current focus. Cached deliberately: recomputing
     /// layout in the view's body meant a full O(n) relayout on every hover
     /// frame — hovering only changes colours, never geometry.
-    @Published public private(set) var segments: [RingSegment] = []
+    @Published private(set) var segments: [RingSegment] = []
     /// True while partial snapshots are still feeding the ring.
-    @Published public private(set) var live = false
-    /// Which way the last navigation went — the ring's transition mirrors it.
+    @Published private(set) var live = false
     /// The path we just came up out of, so the ring can fold back into the
     /// wedge that represents it instead of cross-fading. Cleared once the ring
     /// has consumed it.
-    @Published public var foldingBackFrom: String?
+    @Published var foldingBackFrom: String?
     /// How many levels that fold covers, so the animation can take the time the
     /// distance deserves.
-    @Published public private(set) var foldingBackLevels: Int = 1
+    @Published private(set) var foldingBackLevels: Int = 1
     /// True while a folder deeper than the scan went is being measured.
-    @Published public private(set) var measuring = false
+    @Published private(set) var measuring = false
     /// The scan root's human name: "Macintosh HD", not "/".
-    @Published public private(set) var rootTitle = ""
+    @Published private(set) var rootTitle = ""
     /// What the last scan measured, so it can be measured again. Without it
     /// "Scan again" had nothing to scan and could only start over — it emptied
     /// the screen and showed the volume picker, which is not what it says.
-    @Published public private(set) var scannedPath: String?
-    @Published public var basket: [DiskEntry] = []
-    /// The second look: identical files under the focused folder. nil means
-    @Published public internal(set) var banner: String?
+    @Published private(set) var scannedPath: String?
+    @Published var basket: [DiskEntry] = []
+    /// The verdict of the last removal, «Moved to the Trash — …»; nil until one has run.
+    @Published var banner: String?
     /// Paths macOS refused. Announcing only what was freed hides these.
     /// With reasons. This was a list of bare paths, and the page printed the
     /// same sentence against every one of them — including the ones macOS
     /// refused for a reason the person could have acted on.
-    @Published public internal(set) var failures: [HelmTrash.Refusal] = []
+    @Published var failures: [HelmTrash.Refusal] = []
     /// How many actually moved. The banner is built before the outcome is
     /// known, so it cannot be asked whether it is true.
-    @Published public internal(set) var removedCount = 0
-    /// The removal whose reply never came back.
-    ///
-    /// A flag rather than a count, and that is the whole point: what a lost reply
-    /// knows is nothing, so it must not be expressible as a number. It is read
-    /// with the three fields above as one report — see `emptyBasket`.
-    @Published public internal(set) var replyLost = false
+    @Published var removedCount = 0
 
-    let client: TransportClient
-    private let vm: ModuleViewModel
-    private var eventsTask: Task<Void, Never>?
+    let work: any DiskWork
+    /// Set by `stop()`: the module is switched off or Helm is quitting, and a
+    /// press on a page still on screen reaches no work.
+    var closed = false
     /// Held so the observers can be taken back out: a view model dropped when
     /// the module is switched off must not be woken by the next disk somebody
     /// plugs in (ARCHITECTURE.md § An observer outlives the thing it points at).
-    private var mounts: MountWatch?
+    private var mounts: AnyObject?
+    private var appeared = false
     /// Injectable so a test does not read — and overwrite — the person's own
     /// last scan.
     let store: ScanStore
     /// When the current result landed; drives the cache lifetime.
-    @Published public private(set) var completedAt: Date?
+    @Published private(set) var completedAt: Date?
     /// True while showing a tree restored from disk rather than just measured.
-    @Published public private(set) var restored = false
+    @Published private(set) var restored = false
     /// True while showing a tree the walk never finished — Stop was pressed.
     ///
     /// Every number in such a tree is a **floor**: `TreeBuilder` charges a
@@ -80,7 +92,7 @@ import Module_Disk_Engine
     /// bottom of reports what had been counted so far and nothing about the rest.
     /// The screen has to say so, and the tree must never be saved: the module
     /// reopens on whatever the store holds and calls it a measurement.
-    @Published public private(set) var stopped = false
+    @Published private(set) var stopped = false
 
     /// Whether the tree on screen is a finished measurement, and so worth
     /// keeping for the next launch. The one place that decides it, because the
@@ -92,20 +104,19 @@ import Module_Disk_Engine
     /// *running* — so it answered yes about a tree still being built, which is
     /// every removal made from a live ring (the bar is drawn over the snapshot
     /// and dimmed only by `busy`).
-    public var treeIsComplete: Bool { !stopped && !live }
+    var treeIsComplete: Bool { !stopped && !live }
 
     /// Names for scans, handed out in order. Two are in flight whenever
-    /// somebody drills into a folder the walk has not reached, and both talk on
-    /// one transport.
+    /// somebody drills into a folder the walk has not reached.
     private var lastScanID = 0
     /// The scan the screen belongs to. Everything else — a folder measurement's
-    /// snapshots, the answer to a scan the user has since withdrawn — is not
-    /// about what is on screen and is dropped rather than drawn.
+    /// answer, the answer to a scan the user has since withdrawn — is not about
+    /// what is on screen and is dropped rather than drawn.
     ///
-    /// `cancel()` and `newScan()` move this on, which is what fences the
-    /// request still suspended inside `scan(path:)`: the "cancel" command is a
-    /// no-op once the engine's walk has finished, so the answer arrives either
-    /// way and used to replace the picker the person had just asked for.
+    /// `cancel()` and `newScan()` move this on, which is what fences the call
+    /// still suspended inside `scan(path:)`: cancelling is a no-op once the
+    /// engine's walk has finished, so the answer arrives either way and, unfenced,
+    /// replaces the picker the person has just asked for.
     private var showingScan = 0
 
     private func nextScanID() -> Int {
@@ -113,78 +124,51 @@ import Module_Disk_Engine
         return lastScanID
     }
 
-    /// Scan state must outlive the settings page — switching modules recreates
-    /// the page, and losing a minute-long scan to a sidebar click is hostile.
-    /// One instance for the app's lifetime; the page observes it.
-    private static var cached: DiskViewModel?
-    public static func shared(vm: ModuleViewModel) -> DiskViewModel {
-        // Keyed to the view model it was built against, not merely "exists".
-        // Turning the module off deallocates the engine; the LocalTransport
-        // held here survives, and its handler — captured weakly — answers every
-        // request with empty Data from then on. `ModuleHost.enable` makes a new
-        // view model, so this is the signal that the old one is talking to a
-        // corpse: without it the page came back to a volume list that was
-        // silently always empty, with no error, until the app restarted.
-        if let cached, cached.vm === vm { return cached }
-        let created = DiskViewModel(vm: vm)
-        cached = created
-        // Switching the module off drops the tree: a scan of a whole volume is
-        // hundreds of megabytes of nodes that nobody can reach afterwards. The
-        // on-disk cache still holds the scan, so this drops the copy in memory,
-        // not the result.
-        ModuleUICache.dropWhenDisabled(DiskDescriptor.id.rawValue) { cached = nil }
-        return created
+    init(work: any DiskWork, store: ScanStore = ScanStore()) {
+        self.work = work
+        self.store = store
     }
 
-    public init(vm: ModuleViewModel, store: ScanStore = ScanStore()) {
-        self.vm = vm
-        self.store = store
-        client = TransportClient(vm.transport)
-        // The VM owns the event loop, not the page: partial snapshots keep
-        // building the tree even while the user is on another module.
-        //
-        // The stream is captured here and `self` re-acquired per event, rather
-        // than handed to an instance method: `await self?.observeEvents()`
-        // resolves the weak capture once and then needs `self` for the whole
-        // call, and that call is a `for await` over a stream nothing finishes.
-        // It held the view model — scan tree and all — for the life of the app,
-        // so `ModuleUICache.dropWhenDisabled` dropped the cache and freed
-        // nothing.
-        let events = vm.transport.events
-        eventsTask = Task { [weak self] in
-            for await event in events {
-                guard let self else { break }   // dropped: stop consuming
-                await self.handle(event)
+    /// Closes the model; the host calls it before the engine's `deactivate()`, on
+    /// the person's switch and on quit. After it the scan, the drill, the
+    /// removal, the volume list and the background scan reach no work, and the
+    /// mount observers are taken back out.
+    func stop() {
+        closed = true
+        showingScan = nextScanID()
+        mounts = nil
+    }
+
+    /// What the model does when a page or the tile is first drawn, and what is
+    /// re-asked every time.
+    ///
+    /// **Not in `init`**, which the host runs when the module starts: the saved
+    /// scan is an index of every file on the volume and nobody has opened Disk
+    /// yet. Once per model: the last scan is read back and the mount observers
+    /// registered; every time:
+    /// the volume list, because a tile rebuilt on each opening of the panel
+    /// would otherwise show the figure from the first.
+    func appear() async {
+        if !appeared {
+            appeared = true
+            if !closed { Task { [weak self] in await self?.restoreLastScan() } }
+            // **A disk arriving or leaving is a fact only macOS knows.** Without
+            // this the volume list is a local copy of a live external fact with no
+            // channel from the port that knows — the family (ARCHITECTURE.md § Ports and logic). The
+            // page re-asked on every appearance and so covered it up; the panel
+            // tile is rebuilt rather than reappearing, and a drive plugged in
+            // while the page is open never showed up in the picker at all.
+            //
+            // `loadVolumes` is one call and returns, so the strong hold the task
+            // takes on `self` once it starts lasts as long as a volume-attributes
+            // read — not the trap of a `for await` over a
+            // stream nothing finishes (ARCHITECTURE.md § State that outlives a page and ends with its module).
+            mounts = closed ? nil : work.watchMounts { [weak self] in
+                Task { @MainActor in await self?.loadVolumes() }
             }
         }
-        Task { [weak self] in await self?.restoreLastScan() }
-        // **A disk arriving or leaving is a fact only macOS knows.** Without
-        // this the volume list is a local copy of a live external fact with no
-        // channel from the port that knows — the family CLAUDE.md names. The
-        // page re-asked on every appearance and so covered it up; the panel tile
-        // is rebuilt rather than reappearing, and a drive plugged in while the
-        // page is open never showed up in the picker at all.
-        //
-        // `loadVolumes` is one request and returns, so the strong hold the task
-        // takes on `self` once it starts lasts as long as a volume-attributes read — not the
-        // trap CLAUDE.md records for a `for await` over a stream nothing
-        // finishes.
-        mounts = MountWatch { [weak self] in
-            Task { @MainActor in await self?.loadVolumes() }
-        }
+        await loadVolumes()
     }
-
-    /// Ends the event loop, which unregisters the transport subscriber. The
-    /// mount observers go out with `mounts`, whose own lifetime is the
-    /// subscription — Swift 6 refuses a nonisolated `deinit` reading this
-    /// object's state, and a teardown that cannot be written is a teardown
-    /// nobody will write.
-    ///
-    /// Cancelling is what makes `AsyncStream` finish its iteration and fire
-    /// `onTermination`; the `guard let self` above only notices at the next
-    /// event, and a module that emits rarely would keep its subscriber until
-    /// one arrived.
-    deinit { eventsTask?.cancel() }
 
     /// A whole disk takes a minute to measure. Reopening Helm should not spend
     /// it again: the last tree is read back from disk and shown at once, with
@@ -251,8 +235,8 @@ import Module_Disk_Engine
     }
 
     /// A day-old tree is a guess, not a measurement. Called on page appear.
-    public static let cacheLifetime: TimeInterval = 86_400
-    public func expireIfStale(now: Date = Date()) {
+    static let cacheLifetime: TimeInterval = 86_400
+    func expireIfStale(now: Date = Date()) {
         guard phase == .result, !live, let completedAt,
               now.timeIntervalSince(completedAt) > Self.cacheLifetime else { return }
         newScan()
@@ -262,43 +246,23 @@ import Module_Disk_Engine
     /// header's question, and it had no name: `live` also gates whether snapshots
     /// may repaint the ring and `measuring` is also the second-walk guard, so the
     /// spinner hung on one of them and a folder measurement ran in silence.
-    public var walking: Bool { live || measuring }
+    var walking: Bool { live || measuring }
 
-    public var focus: DiskEntry? { focusPath.last }
-    public var basketBytes: Int { basket.map(\.bytes).saturatingSum() }
+    var focus: DiskEntry? { focusPath.last }
+    var basketBytes: Int { basket.map(\.bytes).saturatingSum() }
     /// Whether the page draws the bar under the ring — for a basket waiting to
     /// be emptied, or for the report of an emptying that has happened.
     ///
     /// Here rather than in the page because it is the condition three exits have
     /// to satisfy, and a copy of it in the view is a copy that can be satisfied
     /// while the screen still shows the bar.
-    /// `replyLost` is here for the same reason `banner` is: it is a sentence the
-    /// bar has to draw, and a bar that is not there cannot draw it.
-    public var showsRemovalBar: Bool { !basket.isEmpty || banner != nil || replyLost }
+    var showsRemovalBar: Bool { !basket.isEmpty || banner != nil }
 
-    /// The last read of the volume list went unanswered. Read with `volumes` as
-    /// one report, the way `replyLost` is read with the removal's three fields:
-    /// without it, «no volumes» and «no answer» are the same screen.
-    @Published public private(set) var volumeListLost = false
-
-    /// **A list nobody answered is not a Mac with no disks.**
-    ///
-    /// Folded with `??`, this drew the start screen's invitation over an empty
-    /// picker, and every Mac has at least one browsable volume. The quieter half
-    /// is `isVolumeScan`, a membership test against this list: with it emptied a
-    /// volume scan is taken for a folder scan and `recomputeSegments` leaves the
-    /// free-space wedge off — the flat disc that method's own comment exists to
-    /// prevent, from the other side. So the list stays and the page says so.
-    public func loadVolumes() async {
-        guard let list: [VolumeInfo] = await client.request(DiskCommand.volumes) else {
-            volumeListLost = true
-            // Counts and outcomes are free; nothing here names a volume.
-            HelmLog.shared.info(DiskEngine.moduleID, "volume list reply lost")
-            return
-        }
+    func loadVolumes() async {
+        guard !closed else { return }
+        let list = await work.mountedVolumes()
         volumes = list
         volumesReadAt = Date()
-        volumeListLost = false
         // **The ring is laid out against this list, and this list arrives after
         // it.** `recomputeSegments` asks `isVolumeScan`, a membership test of
         // `scannedPath` against `volumes`; `restoreLastScan` draws the cached
@@ -311,7 +275,8 @@ import Module_Disk_Engine
         recomputeSegments()
     }
 
-    public func scan(path: String) async {
+    func scan(path: String) async {
+        guard !closed else { return }
         // "/" is a path, not a name; the volume list knows what to call it.
         rootTitle = Self.title(for: path, volumes: volumes)
         scannedPath = path
@@ -335,12 +300,24 @@ import Module_Disk_Engine
         completedAt = nil
         let mine = nextScanID()
         showingScan = mine
-        let scan: ScanResult? = await client.request(DiskCommand.scan,
-                                                     encoding: ScanRequest(path: path, scan: mine))
+        // The updates travel on a stream made for this call and are drained here
+        // while the answer is awaited, so they are applied on the main actor and
+        // all of them before the answer is.
+        let (updates, sink) = AsyncStream.makeStream(of: DiskScanUpdate.self)
+        let work = self.work
+        async let answer: ScanResult? = {
+            defer { sink.finish() }
+            return await work.scan(path: path, unattended: false, updates: { sink.yield($0) })
+        }()
+        for await update in updates { apply(update, of: mine) }
+        let scan = await answer
         // Withdrawn while this was suspended: the screen has moved on and none
         // of what follows is about it.
         guard mine == showingScan else { return }
         live = false
+        // The count is the walk's; a folder measured after this one must not
+        // draw it beside its own spinner.
+        tick = nil
         guard let scan else {                    // cancelled
             phase = .start
             return
@@ -355,10 +332,6 @@ import Module_Disk_Engine
         recomputeSegments()
     }
 
-    /// Measure the same target again — what the button has always said.
-    ///
-    /// A restored tree carries its root but not the path it was scanned from,
-    /// so that is the fallback: the same place, either way.
     /// True when what was scanned is a whole volume rather than some folder on
     /// one. Free space only means something for the first.
     private var isVolumeScan: Bool {
@@ -366,10 +339,18 @@ import Module_Disk_Engine
         return volumes.contains { $0.path == path }
     }
 
-    public func rescan() async {
+    /// Measure the same target again — what the button has always said.
+    ///
+    /// A restored tree carries its root but not the path it was scanned from,
+    /// so that is the fallback: the same place, either way.
+    ///
+    /// Refused while a walk or a removal is running, as the button is dimmed:
+    /// under a folder measurement it started a second scan that left
+    /// `measuring` set for good, under a removal it replaced the tree the reply
+    /// is about to land on.
+    func rescan() async {
+        guard !walking, !busy else { return }
         guard let path = scannedPath ?? result?.root.path else { newScan(); return }
-        basket = []
-        clearRemovalReport()
         await scan(path: path)
     }
 
@@ -388,12 +369,12 @@ import Module_Disk_Engine
     /// bar is over the tree it belongs to and the invariant holds by keeping
     /// rather than by clearing. The clearing moved to `scan(path:)`, which is now
     /// the only place a tree is replaced.
-    public func cancel() {
+    func cancel() {
         // Nothing in flight belongs to the screen any more. The engine may
-        // already have finished walking, in which case the command below
+        // already have finished walking, in which case the call below
         // changes nothing and only this line keeps the answer off the screen.
         showingScan = nextScanID()
-        Task { await client.send(DiskCommand.cancel, encoding: [String]()) }
+        if !closed { work.cancel() }
         let wasWalking = live
         // The other walk this button is drawn over. Put down here rather than by
         // `measureAndDrill`'s own `defer`, which cannot run until the engine
@@ -401,6 +382,7 @@ import Module_Disk_Engine
         let wasMeasuring = measuring
         live = false
         measuring = false
+        tick = nil
         // There is a tree worth keeping only when a walk was actually running and
         // had reported at least one snapshot. Two other callers arrive here:
         // `newScan()`, which wants the screen emptied, and Stop pressed inside
@@ -419,17 +401,19 @@ import Module_Disk_Engine
         if wasWalking { stopped = true }
     }
 
-    /// Nothing on screen about a removal. The four fields are read as one report,
+    /// Nothing on screen about a removal. The three fields are read as one report,
     /// so they are put down together — a silence left standing over a fresh tree
     /// is a sentence about a press that belonged to another screen.
     func clearRemovalReport() {
         banner = nil
         failures = []
         removedCount = 0
-        replyLost = false
     }
 
-    public func newScan() {
+    /// Refused while a removal runs, like the button: the volume picker would
+    /// replace the tree the reply is about to land on.
+    func newScan() {
+        guard !busy else { return }
         cancel()
         store.clear()
         phase = .start
@@ -448,7 +432,7 @@ import Module_Disk_Engine
     }
 
     /// Advice entries ready for the basket.
-    public func entry(for advice: DiskAdvice) -> DiskEntry {
+    func entry(for advice: DiskAdvice) -> DiskEntry {
         DiskEntry(name: advice.name, path: advice.path, bytes: advice.bytes,
                   isDirectory: false, noAccess: false, children: [])
     }
@@ -459,7 +443,7 @@ import Module_Disk_Engine
     /// child only — so every arc past the first ring highlighted on hover and
     /// then did nothing. The whole chain is appended, so jumping two levels
     /// still leaves breadcrumbs that describe where you are.
-    public func drill(into path: String) {
+    func drill(into path: String) {
         guard let focus else { return }
         let chain = DiskFocus.chain(from: focus, to: path)
         guard let last = chain.last, last.isDirectory else { return }
@@ -481,20 +465,17 @@ import Module_Disk_Engine
 
     /// Scans one folder and splices the result into the tree, then opens it.
     private func measureAndDrill(into path: String) async {
-        guard !measuring else { return }
+        guard !measuring, !closed else { return }
         measuring = true
-        // A name of its own, and deliberately not the one the screen is
-        // showing: this scan's snapshots are a folder, and the ring is a
-        // volume. Only its final tree is wanted, and only if the tree it is
+        // Asks for no updates: this scan's snapshots are a folder, and the ring
+        // is a volume. Only its final tree is wanted, and only if the tree it is
         // grafted into is still the one on screen.
         let owner = showingScan
         // Against `owner`, so a withdrawn measurement arriving late cannot put
         // down the flag of the one that replaced it — Stop clears it and moves
         // `showingScan` on.
         defer { if owner == showingScan { measuring = false } }
-        let scan: ScanResult? = await client.request(DiskCommand.scan,
-                                                     encoding: ScanRequest(path: path,
-                                                                           scan: nextScanID()))
+        let scan = await work.scan(path: path, unattended: false, updates: nil)
         guard owner == showingScan, let scan, let current = result else { return }
         let grafted = DiskTreeSplice.replacing(path, with: scan.root, in: current.root)
         // The advice stays: it describes the volume, not the folder just
@@ -517,7 +498,7 @@ import Module_Disk_Engine
         if treeIsComplete { store.saveDetached(measured, at: completedAt ?? Date()) }
     }
 
-    public func back() {
+    func back() {
         guard focusPath.count > 1 else { return }
         foldingBackLevels = 1
         foldingBackFrom = focusPath.last?.path
@@ -525,7 +506,7 @@ import Module_Disk_Engine
         recomputeSegments()
     }
 
-    public func jump(to index: Int) {
+    func jump(to index: Int) {
         guard focusPath.indices.contains(index), index < focusPath.count - 1 else { return }
         // There is always exactly one wedge to fold into, however far the jump:
         // the child of the level being returned to that leads to where we were.
@@ -539,13 +520,13 @@ import Module_Disk_Engine
 
     /// The name shown for an entry: the scan root carries the volume's name,
     /// and macOS's own folders are named the way Finder names them.
-    public func displayName(for entry: DiskEntry) -> String {
+    func displayName(for entry: DiskEntry) -> String {
         if entry.path == focusPath.first?.path, !rootTitle.isEmpty { return rootTitle }
         return Self.folderName(for: entry.path) ?? entry.name
     }
 
     /// Localized name for a macOS folder, or nil when it has none.
-    public static func folderName(for path: String) -> String? {
+    static func folderName(for path: String) -> String? {
         SystemFolderNames.display(path: path, home: NSHomeDirectory(),
                                   language: AppLanguage.current.rawValue)
     }
@@ -557,34 +538,32 @@ import Module_Disk_Engine
     /// A removal is running. The page dims what would start a second one.
     /// Stored here because an extension cannot hold storage; set only by
     /// `emptyBasket`, one file over.
-    @Published public internal(set) var busy = false
+    @Published var busy = false
 
-    // MARK: - Events
+    // MARK: - Updates
 
-    private func handle(_ event: EngineEvent) async {
-        switch DiskEvent(rawValue: event.name) {
-        case .progress:
-            if let update = try? JSONDecoder().decode(ScanTick.self, from: event.payload),
-               update.scan == showingScan {
-                tick = update
-            }
-        case .partial:
-            // Whose snapshot this is decides everything: a folder
-            // measurement's tree drawn as the volume collapses the focus,
-            // keeps the volume's name and title, and draws the volume's
-            // free space against a folder.
-            guard live,
-                  let snapshot = try? JSONDecoder().decode(PartialScan.self,
-                                                           from: event.payload),
-                  snapshot.scan == showingScan
-            else { return }
-            result = snapshot.result
-            focusPath = DiskFocus.resolve(paths: focusPath.map(\.path), in: snapshot.result.root)
+    /// One thing the scan `scan` said while it ran. Dropped unless that scan is
+    /// still the one the screen belongs to: a snapshot of a walk withdrawn since
+    /// would otherwise repaint the ring with a tree nobody asked for.
+    private func apply(_ update: DiskScanUpdate, of scan: Int) {
+        guard scan == showingScan else { return }
+        switch update {
+        case .progress(let progress):
+            tick = progress
+        case .partial(let snapshot):
+            guard live else { return }
+            result = snapshot
+            focusPath = DiskFocus.resolve(paths: focusPath.map(\.path), in: snapshot.root)
             phase = .result
             recomputeSegments()
-        case .none:
-            return
         }
+    }
+
+    /// The unattended walk the host's scheduler asks for, answered by return. A
+    /// stopped model answers nil, which the scheduler reads as no answer.
+    func backgroundScan() async -> ScanReport? {
+        guard !closed else { return nil }
+        return await work.backgroundScan()
     }
 
     // MARK: - Layout
@@ -599,21 +578,14 @@ import Module_Disk_Engine
     /// and the first frame after it held three spanning 360. Every boundary
     /// moved at once, which is what read as a tear. Animating *towards* this
     /// makes the last frame the first frame by construction.
-    public func ringLayout(forFocusAt path: String) -> [RingSegment] {
-        guard let root = result?.root, let node = Self.find(path, in: root) else { return [] }
+    func ringLayout(forFocusAt path: String) -> [RingSegment] {
+        guard let root = result?.root,
+              let node = path == root.path ? root : DiskFocus.chain(from: root, to: path).last
+        else { return [] }
         // Free space belongs to a volume, not to a folder — the same rule
         // `recomputeSegments` applies, and a drill always lands below the root.
         return RingLayout.layout(focus: Self.node(from: node), path: node.path,
                                  depthLevels: RingView.visibleRings + 1, freeBytes: 0)
-    }
-
-    private static func find(_ path: String, in entry: DiskEntry) -> DiskEntry? {
-        if entry.path == path { return entry }
-        guard path.hasPrefix(entry.path) else { return nil }
-        for child in entry.children {
-            if let hit = find(path, in: child) { return hit }
-        }
-        return nil
     }
 
     func recomputeSegments() {
@@ -644,16 +616,20 @@ import Module_Disk_Engine
     }
 
     /// RingLayout works on the engine's node type; the UI holds the
-    /// transported snapshot, so the focused subtree is rebuilt for it.
+    /// flattened DiskEntry snapshot, so the focused subtree is rebuilt for it.
     ///
     /// The entry's path is dropped here and handed to `layout` separately: a
     /// `DiskNode` keeps only the name, and the layout composes the rest back
     /// down from the focus. The paths that come out are the entries' own again,
-    /// which is what the basket and `RemovableScope` see.
+    /// which is what the basket and `UserFileScope` see.
+    ///
+    /// `noAccess` and `isFolded` are carried too: without them the ring drew
+    /// no unreadable-folder wedge and took the folded bucket for a file named `…`.
     private static func node(from entry: DiskEntry) -> DiskNode {
         DiskNode(name: entry.name, bytes: entry.bytes,
                  isDirectory: entry.isDirectory,
-                 children: entry.children.map(node(from:)))
+                 children: entry.children.map(node(from:)),
+                 isFolded: entry.isFolded, noAccess: entry.noAccess)
     }
 
 }

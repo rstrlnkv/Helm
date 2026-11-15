@@ -1,7 +1,6 @@
 import Foundation
 import XCTest
 import HelmContract
-import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// **The reading that drew the button is older than the press.**
@@ -13,7 +12,7 @@ import HelmRuntime
 /// a terminal, or by Helm's own Installed tab two segments away. The argv the
 /// page still carries then names a package that is not on this Mac.
 ///
-/// So the argv arriving over the wire is a *candidate*, never a verdict:
+/// So the argv arriving through the door is a *candidate*, never a verdict:
 /// `HomebrewEngine.runDoctorFix` reads the installed list at the press and puts
 /// it through `DoctorFix.judge` again. The UI's judgement decides what to draw;
 /// this one decides what to run.
@@ -26,13 +25,6 @@ import HelmRuntime
 /// `testTheSamePressRunsAndThenRefusesWhenTheNameLeavesTheCellar`, is one
 /// engine pressed twice with nothing changed but the Cellar.
 final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
-
-    private struct FixedLocator: BrewLocator {
-        func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-    }
-    private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-    }
 
     /// A brew whose Cellar can change between two calls, because that is the
     /// whole subject: `installed` is read on every `brew list --versions` run,
@@ -99,28 +91,17 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
     }
 
     /// Every port named at construction, the marker included: a defaulted one
-    /// would be this Mac's own (`CLAUDE.md`).
+    /// would be this Mac's own (ARCHITECTURE.md § Fakes).
     private func engine(_ runner: ProcessRunner,
-                        _ transport: LocalTransport = LocalTransport()) -> HomebrewEngine {
+                        _ news: EngineNews<HomebrewNews> = EngineNews()) -> HomebrewEngine {
         HomebrewEngine(locator: FixedLocator(), runner: runner,
                        privileged: NoPrivileges(), user: "tester",
-                       transport: transport, marker: InMemoryOpMarker())
+                       news: news, marker: InMemoryOpMarker())
     }
 
-    /// Everything the engine put on the transport, read back through the replay:
+    /// Everything the engine put on the news, read back through the replay:
     /// with the fakes synchronous, whatever was emitted is already there.
-    private func states(_ transport: LocalTransport) async -> [OpState] {
-        transport.emit(EngineEvent(name: "test.sentinel", payload: Data()))
-        var found: [OpState] = []
-        for await event in transport.events {
-            if event.name == "test.sentinel" { break }
-            guard event.name == HomebrewEvent.opState.rawValue,
-                  let state = try? JSONDecoder().decode(OpState.self, from: event.payload)
-            else { continue }
-            found.append(state)
-        }
-        return found
-    }
+    private func states(_ news: EngineNews<HomebrewNews>) async -> [OpState] { await replay(news).states }
 
     // MARK: - The race this design exists for
 
@@ -134,8 +115,8 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
     /// refusal is the list `brew list` answered a line before the act.
     func testTheSamePressRunsAndThenRefusesWhenTheNameLeavesTheCellar() async {
         let runner = MovingCellar(installed: ["periphery", "wget"])
-        let transport = LocalTransport()
-        let engine = engine(runner, transport)
+        let news = EngineNews<HomebrewNews>()
+        let engine = engine(runner, news)
         let argv = ["uninstall", "periphery"]
 
         engine.runDoctorFix(argv)
@@ -155,7 +136,7 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
             judged when the issue was drawn rather than when the button was pressed — \
             \(runner.launched)
             """)
-        let refusals = await states(transport).filter { $0.reason == .fixRefused }
+        let refusals = await states(news).filter { $0.reason == .fixRefused }
         XCTAssertEqual(refusals.count, 1, """
             the run was refused and nothing was said about it: a press that answers with no \
             state at all is a button that visibly does nothing forever
@@ -169,8 +150,8 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
     /// would refuse `uninstall` by luck while admitting `cleanup` by mistake.
     func testACellarThatCouldNotBeReadRefusesTheRun() async {
         let runner = MovingCellar(installed: ["periphery"])
-        let transport = LocalTransport()
-        let engine = engine(runner, transport)
+        let news = EngineNews<HomebrewNews>()
+        let engine = engine(runner, news)
 
         engine.runDoctorFix(["uninstall", "periphery"])
         XCTAssertEqual(runner.launched.count, 1, "precondition: a readable Cellar ran it")
@@ -182,7 +163,7 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
             `brew list` refused and the engine ran the uninstall anyway — a refusal was read as \
             an answer about the machine: \(runner.launched)
             """)
-        let refusals = await states(transport).filter { $0.reason == .fixRefused }
+        let refusals = await states(news).filter { $0.reason == .fixRefused }
         XCTAssertEqual(refusals.count, 1, "the refusal was silent")
     }
 
@@ -211,10 +192,10 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
             """)
     }
 
-    /// **Nothing on this wire is trusted to have been judged.** No page draws a
+    /// **Nothing through this door is trusted to have been judged.** No page draws a
     /// button for `untap`, for an `uninstall` carrying two names, or for one
-    /// carrying a flag — but the transport is not a private channel, and the
-    /// engine is the gate rather than the page.
+    /// carrying a flag — but `perform(_:)` is public, and the engine is the gate
+    /// rather than the page.
     func testAnArgvNoPageEverDrewIsRefused() {
         let never = [
             ["untap", "sozercan/homebrew-repo"],   // off `DoctorFix.Allowed` entirely

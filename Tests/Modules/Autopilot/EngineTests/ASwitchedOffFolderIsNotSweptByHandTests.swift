@@ -1,4 +1,3 @@
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
 import XCTest
@@ -23,9 +22,9 @@ import XCTest
 ///
 /// What is real: the button looks live, and pressing it returns
 /// «examined N, acted 0» — a banner reporting a sweep of a folder that is off.
-/// The refusal is the engine's rather than the button's because the transport's
-/// `runNow` command is a second door, and a check living in a view does not
-/// stand in it.
+/// The refusal is the engine's rather than the button's because the model's
+/// door, `sweepNow(folderID:)`, is a second door, and a check living in a view
+/// does not stand in it.
 final class ASwitchedOffFolderIsNotSweptByHandTests: XCTestCase {
 
     private var home: URL!
@@ -36,10 +35,7 @@ final class ASwitchedOffFolderIsNotSweptByHandTests: XCTestCase {
         home = scratchDirectory("home")
         root = home.appendingPathComponent("Files")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "rules.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        engine = AutopilotEngine.scratch(home: home.path)
     }
 
     private func folder(enabled: Bool) -> WatchedFolder {
@@ -50,12 +46,8 @@ final class ASwitchedOffFolderIsNotSweptByHandTests: XCTestCase {
                       depth: 1)
     }
 
-    private func ask() async throws -> Data? {
-        let payload = EngineReply.encode(
-            WatchedFolderRef(id: "f"),
-            for: EngineCommand(name: AutopilotCommand.runNow.rawValue))
-        return try await engine.transport.send(
-            EngineCommand(name: AutopilotCommand.runNow.rawValue, payload: payload))
+    private func ask() async -> SweepReport? {
+        await engine.sweepNow(folderID: "f")
     }
 
     /// The control: with the folder on, the same command really moves the file.
@@ -64,7 +56,8 @@ final class ASwitchedOffFolderIsNotSweptByHandTests: XCTestCase {
     func testTheSameCommandMovesTheFileWhenTheFolderIsOn() async throws {
         engine.folders = [folder(enabled: true)]
         let file = try write("a.pdf", in: root)
-        _ = try await ask()
+        let report = await ask()
+        XCTAssertNotNil(report, "precondition: run now did not answer for an enabled folder")
         XCTAssertFalse(FileManager.default.fileExists(atPath: file.path),
                        "precondition: run now did not sweep an enabled folder")
     }
@@ -76,8 +69,12 @@ final class ASwitchedOffFolderIsNotSweptByHandTests: XCTestCase {
         engine.folders = [folder(enabled: false)]
         let file = try write("a.pdf", in: root)
 
-        _ = try await ask()
+        let report = await ask()
 
+        XCTAssertNil(report, """
+            «Run now» answered a report for a folder that is switched off — the banner \
+            «examined N, acted 0» over a sweep that did not happen
+            """)
         XCTAssertTrue(FileManager.default.fileExists(atPath: file.path), """
             «Run now» moved a file out of a folder the page draws as switched off. \
             `WatchedFolder.activeRules` is the guard that holds this — `enabled ? rules \

@@ -1,5 +1,4 @@
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
 import XCTest
@@ -7,35 +6,20 @@ import XCTest
 
 /// The heaviest read in the module obeys Stop between files.
 ///
-/// `trash` re-reads every pair in full before anything moves — minutes on an
+/// `trash` verifies every pair before anything moves — minutes on an
 /// external drive — and it used to do that un-abandonably: `cancel` reached only the
 /// search. The verification port here parks on purpose: a check that answers
 /// on the spot is over before Stop can be pressed, so every assertion about
 /// "while it runs" would pass with the guard deleted.
 final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
 
-    private var directory: URL!
-
-    override func setUpWithError() throws {
-        try super.setUpWithError()
-        // Under the home, because `UserFileScope` refuses everything else and
-        // the scope gate runs before the verification.
-        directory = scratchDirectory("watched-removal")
-    }
+    // Under the home, because `UserFileScope` refuses everything else and
+    // the scope gate runs before the verification.
+    private lazy var directory = scratchDirectory("watched-removal")
 
     @discardableResult
     private func write(_ name: String, _ contents: String) throws -> String {
-        let url = directory.appendingPathComponent(name)
-        try Data(contents.utf8).write(to: url)
-        return url.path
-    }
-
-    /// What the engine was told to trash — nothing, if Stop worked.
-    private final class TrashRecorder: @unchecked Sendable {
-        private let lock = NSLock()
-        private var urls: [URL] = []
-        var count: Int { lock.lock(); defer { lock.unlock() }; return urls.count }
-        func add(_ url: URL) { lock.lock(); urls.append(url); lock.unlock() }
+        try writeText(name, contents, in: directory)
     }
 
     private func plans(_ count: Int) throws -> [DuplicatePlan] {
@@ -45,9 +29,8 @@ final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
         }
     }
 
-    private func stopRemoval(of engine: DuplicatesEngine) async throws {
-        _ = try await engine.transport.send(
-            EngineCommand(name: DuplicatesCommand.stopRemoval.rawValue, payload: Data()))
+    private func stopRemoval(of engine: DuplicatesEngine) {
+        engine.stopRemoval()
     }
 
     func testStopBetweenFilesIsANamedOutcomeAndNothingMoves() async throws {
@@ -60,10 +43,10 @@ final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
 
         let removal = Task { await engine.trash(plans) }
         // The subject first: the verification really began.
-        for _ in 0..<20_000 where parked.calls < 1 { await Task.yield() }
+        await waitUntilReached("parked.calls >= 1", within: .seconds(5)) { parked.calls >= 1 }
         XCTAssertEqual(parked.calls, 1, "the removal never reached its first pair")
 
-        try await stopRemoval(of: engine)
+        stopRemoval(of: engine)
         // Every pair could go through from here — so a loop that ignores the
         // stop finishes all three instead of hanging, and the count below
         // catches it.
@@ -82,17 +65,17 @@ final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
     func testAStoppedReplyKeepsTheRefusalsItAlreadyKnew() async throws {
         let parked = ParkedVerify()
         let engine = DuplicatesEngine(settings: suiteSealGuard(),
-                                      trashing: { _ in },
+                                      trashing: neverTrashes,
                                       verifying: { { parked.check($0, $1) } })
         var plans = try plans(2)
         plans.append(DuplicatePlan(remove: "/System/Library/nope.bin",
                                    keep: plans[0].keep))
 
         let removal = Task { await engine.trash(plans) }
-        for _ in 0..<20_000 where parked.calls < 1 { await Task.yield() }
+        await waitUntilReached("parked.calls >= 1", within: .seconds(5)) { parked.calls >= 1 }
         XCTAssertEqual(parked.calls, 1)
 
-        try await stopRemoval(of: engine)
+        stopRemoval(of: engine)
         parked.release(2)
         let result = await removal.value
 
@@ -104,8 +87,8 @@ final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
     /// Stop with no removal running is a no-op, not a crash and not a stop
     /// stored up for the next press.
     func testStopWithNothingRunningStopsNothingLater() async throws {
-        let engine = DuplicatesEngine(settings: suiteSealGuard(), trashing: { _ in })
-        try await stopRemoval(of: engine)
+        let engine = DuplicatesEngine(settings: suiteSealGuard(), trashing: { try FileManager.default.removeItem(at: $0) })
+        stopRemoval(of: engine)
 
         let plans = try plans(1)
         let result = await engine.trash(plans)
@@ -113,5 +96,41 @@ final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
         XCTAssertFalse(result.cancelled,
                        "a stop pressed before the removal cancelled the removal after it")
         XCTAssertEqual(result.removed.count, 1)
+    }
+
+    /// `.moving` says the Trash has the batch: after the last `.verified`, once,
+    /// and never on a stopped removal.
+    private final class Ticks: @unchecked Sendable {
+        private let lock = NSLock()
+        private var all: [String] = []
+        func add(_ tick: RemovalTick) {
+            lock.withLock {
+                switch tick {
+                case .verified: all.append("verified")
+                case .moving: all.append("moving")
+                }
+            }
+        }
+        var seen: [String] { lock.withLock { all } }
+    }
+
+    func testMovingArrivesOnceAfterTheLastPairAndNeverOnAStop() async throws {
+        let ran = Ticks()
+        let ranEngine = DuplicatesEngine(settings: suiteSealGuard(),
+                                         trashing: { try FileManager.default.removeItem(at: $0) })
+        _ = await ranEngine.trash(try plans(2), progress: { ran.add($0) })
+        XCTAssertEqual(ran.seen, ["verified", "verified", "moving"])
+
+        let parked = ParkedVerify()
+        let stopped = Ticks()
+        let engine = DuplicatesEngine(settings: suiteSealGuard(), trashing: neverTrashes,
+                                      verifying: { { parked.check($0, $1) } })
+        let plans = try plans(3)
+        let removal = Task { await engine.trash(plans, progress: { stopped.add($0) }) }
+        await waitUntilReached("parked.calls >= 1", within: .seconds(5)) { parked.calls >= 1 }
+        stopRemoval(of: engine)
+        parked.release(3)
+        _ = await removal.value
+        XCTAssertFalse(stopped.seen.contains("moving"), "a stopped removal said the Trash had the batch")
     }
 }

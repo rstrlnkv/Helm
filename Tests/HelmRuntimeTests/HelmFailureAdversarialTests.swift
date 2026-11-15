@@ -12,7 +12,7 @@ import XCTest
 final class HelmFailureAdversarialTests: XCTestCase {
 
     private func line(_ message: String) -> String {
-        LogLine.format(date: Date(), level: .error, category: "x", message: message)
+        LogLine.line(LogEntry(date: Date(), level: .error, category: "x", message: message))
     }
 
     // MARK: - Size
@@ -220,8 +220,6 @@ final class HelmFailureAdversarialTests: XCTestCase {
     func testOSStatusAtTheEndsOfItsRange() {
         XCTAssertEqual(HelmFailure.osStatus(Int32.min), "OSStatus -2147483648")
         XCTAssertEqual(HelmFailure.osStatus(Int32.max), "OSStatus 2147483647")
-        XCTAssertNotNil(HelmFailure.osStatusIfFailed(Int32.min))
-        XCTAssertNotNil(HelmFailure.osStatusIfFailed(Int32.max))
     }
 
     /// Whatever macOS answers, the line stays one line and keeps the number:
@@ -233,29 +231,6 @@ final class HelmFailureAdversarialTests: XCTestCase {
             XCTAssertFalse(described.contains("\n"), described)
             XCTAssertTrue(described.hasPrefix("OSStatus "), described)
         }
-    }
-
-    // MARK: - errno
-
-    /// Codes that are not errnos at all, including the ends of the type. The
-    /// answer is allowed to be "unknown"; losing the number is not.
-    func testEveryErrnoKeepsItsNumberOnOneLine() {
-        for code in [Int32.min, -1, 0, 1, 34, 106, 107, 999_999, Int32.max] {
-            let described = HelmFailure.posix(code)
-            XCTAssertTrue(described.contains("\(code)"), described)
-            XCTAssertFalse(described.contains("\n"), described)
-            XCTAssertTrue(described.hasPrefix("errno "), described)
-        }
-    }
-
-    /// `posix(0)` reads as a failure — "errno 0 “Undefined error: 0”" — and
-    /// there is no `posixIfFailed` to stop a call site from logging it after a
-    /// call that succeeded, the way `osStatusIfFailed` does for OSStatus.
-    /// Pinned as a shape, not a bug: the asymmetry is the trap.
-    func testSuccessHasNoPosixEquivalentOfOSStatusIfFailed() {
-        XCTAssertNil(HelmFailure.osStatusIfFailed(0))
-        XCTAssertTrue(HelmFailure.posix(0).hasPrefix("errno 0"),
-                      "a successful call still describes as a failure")
     }
 
     // MARK: - The site
@@ -277,9 +252,8 @@ final class HelmFailureAdversarialTests: XCTestCase {
     /// A site with no line number and no name still produces a parseable line
     /// rather than a dangling parenthesis.
     func testASiteAlwaysClosesItsParenthesis() {
-        let written = LogLine.format(date: Date(), level: .warn, category: "x",
-                                     message: "m",
-                                     site: LogSite(fileID: "", line: 0, function: ""))
+        let written = LogLine.line(LogEntry(date: Date(), level: .warn, category: "x", message: "m",
+                                        site: LogSite(fileID: "", line: 0, function: "")))
         XCTAssertTrue(written.hasSuffix(")"), written)
         XCTAssertTrue(written.contains("m  ("), written)
     }
@@ -288,16 +262,16 @@ final class HelmFailureAdversarialTests: XCTestCase {
     /// looks like a site cannot be mistaken for one — the last parenthesis on
     /// the line is the real one.
     func testTheSiteIsTheLastThingOnTheLine() {
-        let written = LogLine.format(date: Date(), level: .error, category: "x",
-                                     message: "failed (Other.swift:1 g())",
-                                     site: LogSite(file: "Real.swift", line: 42,
-                                                   function: "f()"))
+        let written = LogLine.line(LogEntry(date: Date(), level: .error, category: "x",
+                                        message: "failed (Other.swift:1 g())",
+                                        site: LogSite(file: "Real.swift", line: 42,
+                                                      function: "f()")))
         XCTAssertTrue(written.hasSuffix("(Real.swift:42 f())"), written)
     }
 
     // MARK: - Threads
 
-    /// `LogLine.format` builds its own DateFormatter per call, so many threads
+    /// `LogLine.line` builds its own DateFormatter per call, so many threads
     /// formatting at once cannot corrupt each other's output. Every line must
     /// come back complete and correctly attributed.
     func testFormattingFromManyThreadsKeepsEveryLineWhole() {
@@ -307,10 +281,10 @@ final class HelmFailureAdversarialTests: XCTestCase {
         defer { lines.deinitialize(count: count); lines.deallocate() }
 
         DispatchQueue.concurrentPerform(iterations: count) { i in
-            lines[i] = LogLine.format(
-                date: Date(timeIntervalSince1970: 0), level: .error, category: "c\(i)",
-                message: "message \(i)",
-                site: LogSite(file: "F\(i).swift", line: i, function: "f\(i)()"),
+            lines[i] = LogLine.line(
+                LogEntry(date: Date(timeIntervalSince1970: 0), level: .error, category: "c\(i)",
+                         message: "message \(i)",
+                         site: LogSite(file: "F\(i).swift", line: i, function: "f\(i)()")),
                 timeZone: TimeZone(identifier: "UTC")!)
         }
         for i in 0..<count {

@@ -28,7 +28,7 @@ Paths reach `RemovableScope` and `UserFileScope` through
 the leaf alone, so a stale alias is trashed rather than chased. `ScanRoot` uses its
 `resolvingWholePath`, which resolves the leaf too, because it reads what the path points
 at rather than removing the name (`PathCanonical.swift` says why). `WatchScope` canonicalises on its own, resolving the
-whole path, leaf included, as far as it exists. `PathCanonical.ancestryIdentity(of:)` returns the device-and-inode chain that
+whole path, leaf included, as far as it exists. `PathCanonical.ancestryIdentity(of:)` returns the device and inode of the directory the resolved parent chain leads to, which
 `Sources/HelmRuntime/HelmTrash.swift` re-reads immediately before each move.
 
 `UserFileScope` compares a path against its protected prefixes in **both** spellings,
@@ -54,3 +54,10 @@ re-asked: a flag is the wrong question, and a reading that was true when taken i
 evidence at the moment of the act. A screenshot's file carries the reading its writer
 took of it, and the path is asked again when the editor opens on it and inside the move
 that sends it to the Trash (ARCHITECTURE.md § Screenshots).
+
+Reading a path by opening it and asking the descriptor (`open` and `F_GETPATH`, the way
+`Sources/Modules/Autopilot/Engine/FolderReader.swift` reads a level it already holds
+open) was rejected as the *shared* reading of a path: it is refused where only a
+lookup is answered, and it costs 9.4 µs against 1.1 µs for the string form (DEC-1a).
+Nobody needs to propose it again. A `GatedPath` type, a path that carries the proof
+of the gate it passed, is deferred by the owner until the first removal defect.

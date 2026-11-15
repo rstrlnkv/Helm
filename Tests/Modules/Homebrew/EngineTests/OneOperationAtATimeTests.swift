@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-import HelmRuntime
+import HelmContract
 @testable import Module_Homebrew_Engine
 
 /// One long operation at a time — the engine's own first sentence, and nothing
@@ -20,48 +20,6 @@ import HelmRuntime
 /// passes whether the guard exists or not. `HangingRunner` never exits, which
 /// is what a real `brew install` looks like for the seconds that matter.
 final class OneOperationAtATimeTests: XCTestCase {
-
-    private struct FixedLocator: BrewLocator {
-        func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-    }
-
-    private struct NoPrivileges: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-    }
-
-    /// Records what it was asked to run and never finishes it, until a test
-    /// says so.
-    private final class HangingRunner: ProcessRunner, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _calls: [[String]] = []
-        private var _exits: [@Sendable (Int32) -> Void] = []
-
-        var calls: [[String]] { lock.lock(); defer { lock.unlock() }; return _calls }
-
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) {
-            (0, "")
-        }
-
-        /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            lock.lock(); _calls.append(args); _exits.append(onExit); lock.unlock()
-            return NoProcess()
-        }
-
-        /// Lets the operation that is in flight finish, the way a `brew` that
-        /// has run to completion would.
-        func finishAll(code: Int32 = 0) {
-            lock.lock(); let exits = _exits; _exits = []; lock.unlock()
-            for exit in exits { exit(code) }
-        }
-    }
 
     private func engine(_ runner: ProcessRunner) -> HomebrewEngine {
         HomebrewEngine(locator: FixedLocator(), runner: runner,
@@ -126,5 +84,84 @@ final class OneOperationAtATimeTests: XCTestCase {
         engine.upgradeAll()
 
         XCTAssertEqual(runner.calls.count, 2, "a failed operation left the gate shut")
+    }
+
+    /// A second confirmed fix that is refused (its name left the Cellar) must
+    /// not write `.failed` over the first fix's `.running`: Stop would go and
+    /// the gate would look open while the child runs.
+    func testARefusedSecondFixNeverOverwritesTheRunningOne() async {
+        let runner = HangingRunner()
+        let news = EngineNews<HomebrewNews>()
+        let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
+                                    privileged: NoPrivileges(), user: "tester", news: news)
+
+        engine.runDoctorFix(["cleanup"])
+        XCTAssertEqual(runner.calls.count, 1, "precondition: the first fix started")
+        let first = await lastOpState(news)
+        XCTAssertEqual(first?.phase, .running, "precondition: the first fix reached .running")
+
+        engine.runDoctorFix(["uninstall", "ghost"])
+
+        let drained = await drain(news)
+        let after = drained.state
+        XCTAssertTrue(drained.busy,
+                      "the refused press did not say so in the console")
+        XCTAssertEqual(after?.phase, .running, "the refused press overwrote the running fix: \(String(describing: after))")
+        XCTAssertEqual(after?.label, "cleanup")
+        engine.install(name: "wget", isCask: false)
+        XCTAssertEqual(runner.calls.count, 1, "the gate was open while the first fix ran")
+    }
+
+    private final class SwitchableLocator: BrewLocator, @unchecked Sendable {
+        private let lock = NSLock()
+        private var _path: String?
+        init(_ path: String?) { _path = path }
+        var path: String? {
+            get { lock.lock(); defer { lock.unlock() }; return _path }
+            set { lock.lock(); _path = newValue; lock.unlock() }
+        }
+        func brewPath() -> String? { path }
+    }
+
+    /// A press with brew gone is refused inside the gate: it must not
+    /// overwrite a running operation, and it must hand the gate back.
+    func testABrewMissingRefusalKeepsTheGateAndReleasesIt() async {
+        let runner = HangingRunner()
+        let locator = SwitchableLocator("/opt/homebrew/bin/brew")
+        let news = EngineNews<HomebrewNews>()
+        let engine = HomebrewEngine(locator: locator, runner: runner,
+                                    privileged: NoPrivileges(), user: "tester", news: news)
+
+        engine.install(name: "wget", isCask: false)
+        let first = await lastOpState(news)
+        XCTAssertEqual(first?.phase, .running, "precondition: the install reached .running")
+
+        locator.path = nil
+        engine.install(name: "jq", isCask: false)
+        let drained = await drain(news)
+        let during = drained.state
+        XCTAssertTrue(drained.busy,
+                      "the refused press did not say so in the console")
+        XCTAssertEqual(during?.phase, .running, "a brew-missing press overwrote the running install: \(String(describing: during))")
+        XCTAssertEqual(during?.label, first?.label)
+
+        runner.finishAll()
+        engine.install(name: "jq", isCask: false)
+        let refused = await lastOpState(news)
+        XCTAssertEqual(refused?.phase, .failed)
+        XCTAssertEqual(refused?.reason, .brewMissing)
+
+        locator.path = "/opt/homebrew/bin/brew"
+        engine.install(name: "jq", isCask: false)
+        XCTAssertEqual(runner.calls.count, 2, "a refused press left the gate shut")
+    }
+
+    private func lastOpState(_ news: EngineNews<HomebrewNews>) async -> OpState? {
+        await drain(news).state
+    }
+
+    private func drain(_ news: EngineNews<HomebrewNews>) async -> (state: OpState?, busy: Bool) {
+        let items = await replay(news)
+        return (items.states.last, items.sawBusy)
     }
 }

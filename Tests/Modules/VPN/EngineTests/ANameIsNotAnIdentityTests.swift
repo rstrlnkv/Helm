@@ -18,11 +18,11 @@ import HelmRuntime
 /// The two failures below are what that costs, and they run in opposite
 /// directions: a drop that is never reported, and a name whose spelling the
 /// parser silently changes so that two configurations become one.
+///
+/// Past defect: commit 7851a0c2, «fix(vpn): the tool is asked before the app announces, and a name stops standing in for an identity».
 final class ANameIsNotAnIdentityTests: XCTestCase {
 
     private let clock = TestClock()
-
-    private var at: Date { clock.now }
 
     private func row(_ status: String, _ id: String, _ name: String) -> String {
         "* (\(status)) \(id) IPSec \"\(name)\" [IPSec:1]"
@@ -30,8 +30,7 @@ final class ANameIsNotAnIdentityTests: XCTestCase {
 
     private func engine(_ runner: FakeRunner) -> VPNEngine {
         let clock = self.clock
-        return VPNEngine(settings: VPNSettings(store: NamespacedStore(
-                            namespace: "vpn", backing: InMemoryKeyValueStore())),
+        return VPNEngine(settings: VPNSettings.inMemory(),
                          runner: runner, apps: FakeApps(),
                          interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                          now: { clock.now }, work: .inline)
@@ -88,8 +87,7 @@ final class ANameIsNotAnIdentityTests: XCTestCase {
     /// Without this, a module that had stopped reporting drops entirely would make
     /// the assertion above look like a narrow bug instead of a dead feature.
     func testTheSameFallIsReportedWithNoNamesake() {
-        let runner = FakeRunner()
-        runner.listOutput = [header, row("Disconnected", a, "Office")].joined(separator: "\n")
+        let runner = FakeRunner(list: [header, row("Disconnected", a, "Office")].joined(separator: "\n"))
         let e = engine(runner)
 
         e.connect("Office", auto: true)
@@ -153,8 +151,8 @@ final class ANameIsNotAnIdentityTests: XCTestCase {
     }
 
     /// The identity two SwiftUI `ForEach`es are keyed by must not repeat.
-    /// `VPNConnection.id` falls back to the *name* when no UUID-shaped token is on
-    /// the line, so the fallback turns the identity question back into the one
+    /// `VPNConnection.id` falls back to `<name>#<namesakes before it>` when no
+    /// UUID-shaped token is on the line, so the fallback turns the identity question back into the one
     /// this whole file is about — and duplicate ids in a `ForEach` are undefined,
     /// not merely ugly.
     func testTheIdentityOfTwoConnectionsIsNeverTheSame() {

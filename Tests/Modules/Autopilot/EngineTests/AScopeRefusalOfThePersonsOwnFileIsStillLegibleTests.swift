@@ -16,6 +16,8 @@ import HelmTestSupport
 /// What the history makes of that sweep is what these hold: one row per file
 /// the sweep refused, each naming the file, and the pass still named after the
 /// folder it swept. On disk, with the real engine.
+///
+/// Past defect: fixed in 4ce355a9.
 final class AScopeRefusalOfThePersonsOwnFileIsStillLegibleTests: XCTestCase {
 
     private var home: URL!
@@ -31,10 +33,7 @@ final class AScopeRefusalOfThePersonsOwnFileIsStillLegibleTests: XCTestCase {
         try fm.createSymbolicLink(at: home.appendingPathComponent("Pictures Sorted"),
                                   withDestinationURL: home.appendingPathComponent(
                                       "Library/Mobile Documents/Pictures"))
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        engine = AutopilotEngine.scratch(home: home.path)
     }
 
     private func folder() -> WatchedFolder {

@@ -2,7 +2,8 @@ public protocol ModuleEngine: AnyObject {
     func activate()
     /// **Somebody switched this module off, and is still at the screen.**
     ///
-    /// Called by the host from the person's own switch and from nowhere else —
+    /// Called by the host from the person's own switch and from «Reset all
+    /// settings» handing the system back (`ModuleHost.handBackSystemState`) —
     /// never from quitting, which is `deactivate()` alone. The distinction is not
     /// tidiness: `applicationWillTerminate` calls `deactivate()` on every live
     /// engine, so anything there that needs an answer from a person is a dialog
@@ -16,12 +17,22 @@ public protocol ModuleEngine: AnyObject {
     /// the process ends in `deactivate()`. Defaulted, because most engines have
     /// nothing to say to the difference.
     func willDisable()
+    /// **This engine stands in for the module without being it.** The host then
+    /// refuses to switch the module off and refuses «Reset all settings»: it would
+    /// write the real `enabled` flag and ask this engine to give back what the real
+    /// one never took, so the next ordinary launch would find the module off and
+    /// nothing to recover. Defaulted: only a stand-in says yes.
+    var standsIn: Bool { get }
     func deactivate()
-    /// Module-specific commands are sent through the typed façade over this
-    /// transport (LocalTransport in-process, XPCTransport out-of-process).
-    var transport: EngineTransport { get }
+    /// **How many models are listening to this engine right now.** Needed by the
+    /// host test that holds an `any ModuleEngine` and cannot see the engine's
+    /// own `EngineNews<…>`. Defaulted to 0, so that test's assert of 1 stays red
+    /// on a module that forgets to answer.
+    var subscriberCount: Int { get }
 }
 
 public extension ModuleEngine {
     func willDisable() {}
+    var standsIn: Bool { false }
+    var subscriberCount: Int { 0 }
 }

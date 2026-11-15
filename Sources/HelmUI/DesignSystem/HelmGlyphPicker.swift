@@ -16,17 +16,17 @@ enum HelmGlyphCatalogue {
 
     static var categories: [Category] {
         [
-            .init(id: "general", title: L("General"), symbols: [
+            .init(id: "general", title: L(.general), symbols: [
                 "square.grid.2x2", "star", "bolt", "flag",
                 "tag", "bookmark", "bell", "heart",
             ]),
-            .init(id: "work", title: L("Work"), symbols: [
+            .init(id: "work", title: L(.work), symbols: [
                 "folder", "doc", "tray", "archivebox",
                 "calendar", "clock", "checklist", "briefcase",
             ]),
-            // Not "System": that word is a tag on four other screens, meaning a
-            // file macOS owns — and its translations are adjectival there
-            // («Системный», "Del sistema"). One English key means one thing.
+            // Not "System": in Russian, Spanish and Portuguese the four
+            // "System …" tags of other screens are adjectives («Системный»,
+            // "Del sistema"), and this word would need a noun.
             //
             // The name is kept and the two symbols that were not hardware are
             // the ones that went: a gear and a wrench were the only members a
@@ -37,32 +37,29 @@ enum HelmGlyphCatalogue {
             // the app rather than as somebody's tab. A keyboard and a display
             // in their place, which keeps every category at two full rows of
             // the four-wide grid.
-            .init(id: "hardware", title: L("Hardware"), symbols: [
+            .init(id: "hardware", title: L(.hardware), symbols: [
                 "keyboard", "display", "cpu", "memorychip",
                 "internaldrive", "externaldrive", "gauge.with.dots.needle.33percent", "battery.100",
             ]),
-            .init(id: "network", title: L("Network"), symbols: [
+            .init(id: "network", title: L(.network), symbols: [
                 "network", "wifi", "antenna.radiowaves.left.and.right", "globe",
                 "lock.shield", "link", "arrow.up.arrow.down", "cloud",
             ]),
-            .init(id: "media", title: L("Media"), symbols: [
+            .init(id: "media", title: L(.media), symbols: [
                 "play.circle", "music.note", "speaker.wave.2", "camera",
                 "photo", "film", "mic", "headphones",
             ]),
-            .init(id: "nature", title: L("Nature"), symbols: [
+            .init(id: "nature", title: L(.nature), symbols: [
                 "moon", "sun.max", "cloud.rain", "leaf",
                 "drop", "flame", "snowflake", "sparkles",
             ]),
         ]
     }
-
-    // Every symbol on offer, for a caller that needs to hand one out.
 }
 
-/// Choosing one of them: a category down the side, a grid beside it.
+/// Choosing one of them: a category picker over a grid.
 ///
-/// Sized for a popover off a 300 pt panel, so the grid is four across — wider
-/// and the popover is wider than the thing it belongs to.
+/// 220 pt wide, four across.
 public struct HelmGlyphPicker: View {
     private let selected: String?
     private let choose: (String) -> Void
@@ -87,7 +84,7 @@ public struct HelmGlyphPicker: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Picker(L("Category"), selection: $category) {
+            Picker(L(.category), selection: $category) {
                 ForEach(HelmGlyphCatalogue.categories) { group in
                     Text(group.title).tag(group.id)
                 }
@@ -99,7 +96,7 @@ public struct HelmGlyphPicker: View {
                     Button { choose(symbol) } label: {
                         Image(systemName: symbol)
                             .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(symbol == selected ? Color.white : Color.primary)
+                            .foregroundStyle(symbol == selected ? HelmText.onFill : Color.primary)
                             .frame(width: 40, height: 32)
                             .background(RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
                                 .fill(symbol == selected ? AnyShapeStyle(Color.accentColor)

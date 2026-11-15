@@ -14,42 +14,18 @@ import SwiftUI
 /// a nicer costume. No count here: it was "four controls in four modules" when
 /// it was written and is neither now, which is what a number in a comment does.
 public enum HelmA11y {
-    public static var moveUp: String {
-        L("Move up")
-    }
-    public static var moveDown: String {
-        L("Move down")
-    }
-    public static var remove: String {
-        L("Remove")
-    }
-    public static var moreActions: String {
-        L("More actions")
-    }
-    public static var showInFinder: String {
-        L("Show in Finder")
-    }
+    public static var moveUp: String { L(.moveUp) }
+    public static var moveDown: String { L(.moveDown) }
+    public static var remove: String { L(.remove) }
+    public static var moreActions: String { L(.moreActions) }
+    public static var showInFinder: String { L(.showInFinder) }
     /// The ⓘ beside a settings row's name (`HelmExplainer`). macOS's own word
     /// for this control, read out of its tables rather than translated: «More
     /// Info» is «Подробнее», «Weitere Infos», «En savoir plus», «Más
     /// información», «Mais informações», 「詳しい情報」, 「更多信息」.
-    public static var moreInfo: String {
-        L("More Info")
-    }
+    static var moreInfo: String { L(.moreInfo) }
 
-    /// A segmented picker that narrows what a list is showing. Three modules
-    /// have one and none of them labelled it, because on screen the segments
-    /// say everything — "Installed / Updates / Search" needs no heading above
-    /// it. Read aloud it was a tab group with no name.
-    public static var whatToShow: String {
-        L("What to show")
-    }
-    /// The search field, which had no name at all. `SettingsToolbar` builds it
-    /// directly now, in the window's toolbar, and names it from the app layer
-    /// — `makeSearchItem` sets this word once and `patchSearch` re-reads it on
-    /// every refresh, including a language change; `HelmSearchField` set the
-    /// same word for the `NSViewRepresentable` that came before it, and
-    /// nothing mounts that type any more.
+    /// The search field, which had no name at all. The header row's field (`HelmHeaderSearch`) sets this word.
     ///
     /// **A placeholder is not a name**, and this one is the house rule read from
     /// the other end: «Search formulae and casks» disappears the moment there is
@@ -60,13 +36,28 @@ public enum HelmA11y {
     ///
     /// **The word is «Search» and nothing longer.** VoiceOver already says the
     /// role — "search field" — so a label spelling the role again reads as
-    /// "search field search field". This is the same key the Homebrew segment
-    /// draws, which is deliberate rather than an accident of the lookup: the
-    /// English text *is* the key, so a second key reading «Search» is not
-    /// representable, and the eight translations of that one word are the word
-    /// macOS itself uses for this control in each of them.
-    public static var searchField: String {
-        L("Search")
+    /// "search field search field". A second key reading «Search» is
+    /// refused: `testOneEnglishTextIsOneWordAcrossEveryCatalog` fails on
+    /// one English text under two symbols, and the eight translations of that
+    /// one word are the word macOS itself uses for this control in each of them.
+    static var searchField: String { L(.search) }
+
+    /// Where a row stands in a column of buttons, which VoiceOver does not say by itself ("1 of 5"). The
+    /// sidebar's rows read it as their value. `language` is explicit for the reason `HelmBasket` gives.
+    ///
+    /// Read out of the system's own table, as `expanded` and `collapsed` below are: the `%ld of %ld`
+    /// entry of `SCRGeneral.loctable` in VoiceOver's ScreenReader.framework; zh is `zh_CN`, pt is `pt_BR`.
+    /// The note variant below is not the system's `%@, %ld of %ld` (note first; ja `%1$@、%2$ld / %3$ld`):
+    /// it keeps the position first, as the plain form does.
+    static func position(_ n: Int, of m: Int,
+                                language: AppLanguage = AppLanguage.current) -> String {
+        L(.rowPosition(String(n), String(m)), language: language)
+    }
+
+    /// The same with a note after it — a row that cannot act says why. `note` arrives already localized.
+    static func position(_ n: Int, of m: Int, after note: String,
+                                language: AppLanguage = AppLanguage.current) -> String {
+        L(.rowPositionAfter(String(n), String(m), note), language: language)
     }
 
     /// Whether a disclosure is open. SwiftUI has no trait for it on macOS — the
@@ -96,9 +87,7 @@ public enum HelmA11y {
     /// term. The table's own phrases for an opened row — `row %lu expanded` and
     /// `expanded. %@` — say 表示されました, so that is what Japanese keeps.
     public static func expanded(_ isExpanded: Bool) -> String {
-        isExpanded
-            ? L("expanded")
-            : L("collapsed")
+        isExpanded ? L(.expanded) : L(.collapsed)
     }
 
     /// Calendar's own last item in this menu. The seven translations are its
@@ -107,8 +96,9 @@ public enum HelmA11y {
     /// dictionary writes «Свой цвет…».
     ///
     /// **The English is deliberately longer than Calendar's.** Calendar draws
-    /// «Other…» and this draws «Other colour…», because the English text is the
-    /// key and `Other…` is already spoken for — the fourth answer to «for how
+    /// «Other…» and this draws «Other colour…», because one English text is one
+    /// word (`testOneEnglishTextIsOneWordAcrossEveryCatalog`) and `Other…` is
+    /// already spoken for — the fourth answer to «for how
     /// long» in KeepAwake is the same macOS word for a *time*. Two of the eight
     /// then disagree with this one: Russian says «Другое…» of a time and
     /// «Другой…» of a colour, Portuguese «Outro…» against «Outra…», and
@@ -122,7 +112,7 @@ public enum HelmA11y {
     /// its Portuguese «Outro…», neither of which agrees with *el color* or *a
     /// cor*. The colour *names* are in `CalendarFoundation.framework`; see
     /// `PaletteColor.label`.
-    public static var otherColour: String { L("Other colour…") }
+    public static var otherColour: String { L(.otherColour) }
 
     /// Said once, out loud, for a change nobody pressed a button to cause.
     ///
@@ -138,7 +128,7 @@ public enum HelmA11y {
     }
 }
 
-public extension View {
+extension View {
     /// Speaks `text` once, each time it becomes a new non-nil value.
     ///
     /// For a verdict that grows into a banner without moving focus or changing
@@ -146,7 +136,7 @@ public extension View {
     /// return's report — so it is not silent to them. Disk and Autopilot each
     /// spelled the same `onChange` around `HelmA11y.announce`; this is the one
     /// place it lives now.
-    func helmAnnounces(_ text: String?) -> some View {
+    public func helmAnnounces(_ text: String?) -> some View {
         onChange(of: text) { _, new in
             if let new { HelmA11y.announce(new) }
         }

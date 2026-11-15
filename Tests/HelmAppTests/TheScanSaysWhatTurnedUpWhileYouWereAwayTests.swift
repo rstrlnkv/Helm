@@ -3,10 +3,11 @@ import HelmTestSupport
 import HelmUI
 import XCTest
 @testable import HelmApp
+import HelmAppStrings
 
 /// The other half of the journal.
 ///
-/// Three modules walk the volume twice a day, `ScanJournal.change(module:)`
+/// Three modules walk the volume once a day, `ScanJournal.change(module:)`
 /// computes what turned up since last time — and nothing in `Sources/` ever
 /// called it. The entire user-visible product of all that reading was a relative
 /// date on a settings page. This is the call that was missing, and the silences
@@ -168,5 +169,57 @@ final class TheScanSaysWhatTurnedUpWhileYouWereAwayTests: XCTestCase {
         XCTAssertEqual(notices.posted, [])
         XCTAssertEqual(notices.requests, 0,
                        "a standing refusal was asked about again")
+    }
+}
+
+// MARK: - The interval of a scan
+
+extension TheScanSaysWhatTurnedUpWhileYouWereAwayTests {
+
+    /// The `scan.<id>` interval is the walk and nothing after it: open while
+    /// the scan runs, closed when `run` returns, a report or none.
+    func testTheScanIntervalIsOpenDuringTheWalkAndClosedAfterIt() async {
+        build()
+        let label = "scan.disk"
+        var openDuring = false
+        await coordinator.run("disk") {
+            openDuring = HelmActivity.running.contains { $0.label == label }
+            return ScanReport(bytes: 1, count: 1, items: [])
+        }
+        XCTAssertTrue(openDuring, "the walk ran outside its interval, so the check below is vacuous")
+        XCTAssertFalse(HelmActivity.running.contains { $0.label == label },
+                       "the scan returned and its interval stayed open")
+
+        await coordinator.run("disk") { nil }
+        XCTAssertFalse(HelmActivity.running.contains { $0.label == label },
+                       "a scan with no answer left its interval open")
+    }
+
+    /// Closed after `run` returns is also true of an interval that stayed open
+    /// through the journal record and the log line, which is what it is not
+    /// allowed to do. `run` writes `lastScanAt` just before the record, and a
+    /// write to the defaults posts a notification on the writing thread before
+    /// the setter returns: that is the moment the interval is read.
+    func testTheScanIntervalIsClosedBeforeTheCompletionIsRecorded() async {
+        build()
+        let label = "scan.disk"
+        var walked = false
+        var openAfterTheWalk: [Bool] = []
+        let token = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification, object: nil, queue: nil) { _ in
+            guard walked else { return }
+            openAfterTheWalk.append(HelmActivity.running.contains { $0.label == label })
+        }
+        defer { NotificationCenter.default.removeObserver(token) }
+
+        await coordinator.run("disk") {
+            walked = true
+            return ScanReport(bytes: 1, count: 1, items: [])
+        }
+
+        XCTAssertFalse(openAfterTheWalk.isEmpty,
+                       "nothing was written after the walk, so the check below is vacuous")
+        XCTAssertFalse(openAfterTheWalk.contains(true),
+                       "the interval was still open when the completion was recorded")
     }
 }

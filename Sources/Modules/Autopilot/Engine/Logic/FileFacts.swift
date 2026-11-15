@@ -10,26 +10,26 @@ import Foundation
 /// `now` travels with the facts for the same reason: a rule that says "older
 /// than 30 days" is a comparison between two dates, and a comparison against
 /// `Date()` inside the matcher is a test that passes today.
-public struct FileFacts: Equatable, Sendable {
-    public let name: String
+struct FileFacts: Equatable, Sendable {
+    let name: String
     /// Where the file is. A rule is *decided* from the facts and *performed* on
     /// this: without it the runner rebuilt the path as folder + name, which
     /// names a different file for anything below the top level. At depth 2 a
     /// plan about `sub/big.bin` was executed against `big.bin` — and where no
     /// such twin existed, nothing below the top level ran at all while the dry
     /// run promised it would.
-    public let path: String
-    public let kind: FileKind
-    public let bytes: Int
-    public let added: Date
-    public let modified: Date
+    let path: String
+    let kind: FileKind
+    let bytes: Int
+    let added: Date
+    let modified: Date
     /// From `kMDItemWhereFroms` — nil for a file that arrived any other way.
-    public let downloadedFrom: String?
-    public let tags: [String]
-    public let isDirectory: Bool
-    public let now: Date
+    let downloadedFrom: String?
+    let tags: [String]
+    let isDirectory: Bool
+    let now: Date
 
-    public init(name: String, path: String = "", kind: FileKind, bytes: Int,
+    init(name: String, path: String = "", kind: FileKind, bytes: Int,
                 added: Date, modified: Date,
                 downloadedFrom: String? = nil, tags: [String] = [],
                 isDirectory: Bool = false, now: Date = Date()) {
@@ -46,7 +46,7 @@ public struct FileFacts: Equatable, Sendable {
     }
 
     /// Lowercased, without the dot. Empty for a file that has none.
-    public var fileExtension: String {
+    var fileExtension: String {
         (name as NSString).pathExtension.lowercased()
     }
 
@@ -54,7 +54,7 @@ public struct FileFacts: Equatable, Sendable {
     /// `archive.tar` for `archive.tar.gz`, because only the last dot is an
     /// extension. A dotfile keeps its whole name: `.gitignore` is what the file
     /// is called, not an empty name with an extension.
-    public var baseName: String {
+    var baseName: String {
         let name = self.name
         guard !name.hasPrefix(".") else { return name }
         return (name as NSString).deletingPathExtension

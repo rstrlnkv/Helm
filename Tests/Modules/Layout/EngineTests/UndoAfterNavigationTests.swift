@@ -4,51 +4,6 @@ import HelmContract
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-// Fakes are per-file in this suite by the same convention the others follow.
-
-private final class NavTyping: TypingPort, @unchecked Sendable {
-    var performed: [SwitchPlan] = []
-    func perform(_ plan: SwitchPlan) -> Bool { performed.append(plan); return true }
-}
-
-private final class NavContext: SecureContextPort, @unchecked Sendable {
-    var bundle = "com.apple.Notes"
-    func isSecureInput() -> Bool { false }
-    func isSecure() -> Bool { false }
-    func frontmostBundleID() -> String { bundle }
-}
-
-private struct NavTranslation: TranslationPort {
-    func translate(_ word: String, from: String, to: String) -> String? {
-        word == "ghbdtn" ? "привет" : nil
-    }
-}
-
-private struct NavSpell: SpellPort {
-    func isWord(_ word: String, sourceID: String) -> Bool? {
-        word.unicodeScalars.allSatisfy { $0.value > 0x400 }
-    }
-}
-
-private final class NavTap: KeyTapPort, @unchecked Sendable {
-    var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-    func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-               died: @escaping @Sendable () -> Void) -> Bool {
-        handler = onEvent
-        return true
-    }
-    func stop() { handler = nil }
-    func type(_ text: String) { for character in text { handler?(.character(character)) } }
-    func send(_ event: TypingBuffer.Event) { handler?(event) }
-}
-
-private final class NavSources: LayoutSourcePort, @unchecked Sendable {
-    func installed() -> [String] { ["en", "ru"] }
-    func current() -> String? { "en" }
-    func select(_ sourceID: String) {}
-}
-
 /// Which keys are allowed to spend the undo's one forgiveness.
 ///
 /// An undo is a blind edit: so many backspaces, then a replacement, at
@@ -71,14 +26,9 @@ private final class NavSources: LayoutSourcePort, @unchecked Sendable {
 /// still true → backspaces and a retype at the new caret, in the middle of the
 /// sentence, and the action the person actually wanted was eaten.
 final class UndoAfterNavigationTests: XCTestCase {
-    private var typing = NavTyping()
-    private var context = NavContext()
-    private var tap = NavTap()
-
-    /// The keycode this suite's «shortcut» is bound to. Any code will do; what
-    /// matters is that the engine has one recorded, because the forgiveness
-    /// exists for the recorded chord and for no other.
-    private static let shortcut: UInt16 = 9        // V, as good as any
+    private var typing = FakeTyping()
+    private var context = FakeSecure()
+    private var tap = FakeTap()
 
     /// Recorded, because a chord is only forgiven when it matches the binding.
     /// With nothing bound — the shipped default, where the gesture is a tap of
@@ -86,15 +36,11 @@ final class UndoAfterNavigationTests: XCTestCase {
     /// no chord is forgiven at all, and this suite would be asserting about a
     /// budget that no longer exists.
     private func engine(shortcutBound: Bool = true) -> LayoutEngine {
-        typing = NavTyping(); context = NavContext(); tap = NavTap()
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
-                                    backing: InMemoryKeyValueStore())
-        if shortcutBound {
-            store.set(Int(Self.shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
-        }
-        let engine = LayoutEngine(tap: tap, typing: typing, sources: NavSources(),
-                                  translation: NavTranslation(), spell: NavSpell(),
-                                  secure: context, settings: store)
+        typing = FakeTyping(); context = FakeSecure(); tap = FakeTap()
+        let store = layoutStore(bound: shortcutBound)
+        let engine = LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
+                                  translation: FakeTranslation(table: ["ghbdtn": "привет"]), spell: CyrillicSpell(),
+                                  secure: context, activation: FakeActivation(), settings: store)
         engine.activate()
         return engine
     }
@@ -126,7 +72,7 @@ final class UndoAfterNavigationTests: XCTestCase {
         let engine = engine()
         converted(engine)
 
-        tap.send(.chord(Self.shortcut))
+        tap.send(.chord(layoutShortcut))
         tap.send(.navigation)
         engine.undoLast()
 
@@ -140,7 +86,7 @@ final class UndoAfterNavigationTests: XCTestCase {
         let engine = engine()
         converted(engine)
 
-        tap.send(.chord(Self.shortcut))   // its keys, seen before Carbon dispatches
+        tap.send(.chord(layoutShortcut))   // its keys, seen before Carbon dispatches
         engine.undoLast()       // …and then the action itself
 
         XCTAssertEqual(typing.performed.count, 2, "the undo shortcut did nothing")
@@ -148,15 +94,14 @@ final class UndoAfterNavigationTests: XCTestCase {
                        "undo puts back what was replaced, ending and all")
     }
 
-    /// And a second chord is not: by then it is somebody navigating with ⌘←
-    /// rather than asking for an undo, and the tap cannot tell those apart from
-    /// the event alone.
+    /// And a second chord on that key is not: one is forgiven, the second
+    /// invalidates the record.
     func testASecondChordIsNotForgiven() {
         let engine = engine()
         converted(engine)
 
-        tap.send(.chord(Self.shortcut))
-        tap.send(.chord(Self.shortcut))
+        tap.send(.chord(layoutShortcut))
+        tap.send(.chord(layoutShortcut))
         engine.undoLast()
 
         XCTAssertEqual(typing.performed.count, 1)
@@ -172,7 +117,7 @@ final class UndoAfterNavigationTests: XCTestCase {
         let engine = engine()
         converted(engine)
 
-        tap.send(.chord(Self.shortcut &+ 1))     // ⌘V, or anything else
+        tap.send(.chord(layoutShortcut &+ 1))     // ⌘V, or anything else
         engine.undoLast()
 
         XCTAssertEqual(typing.performed.count, 1, """
@@ -190,7 +135,7 @@ final class UndoAfterNavigationTests: XCTestCase {
         let engine = engine(shortcutBound: false)
         converted(engine)
 
-        tap.send(.chord(Self.shortcut))
+        tap.send(.chord(layoutShortcut))
         engine.undoLast()
 
         XCTAssertEqual(typing.performed.count, 1,
@@ -203,7 +148,7 @@ final class UndoAfterNavigationTests: XCTestCase {
     /// them, and a chord that stopped ending the word would put ⌘S's "s" back
     /// in the buffer.
     func testBothEndTheWordAndNeitherConfirmsIt() {
-        for event in [TypingBuffer.Event.chord(Self.shortcut), .navigation] {
+        for event in [TypingBuffer.Event.chord(layoutShortcut), .navigation] {
             var buffer = TypingBuffer()
             buffer.type("ghbdtn")
             let completion = buffer.accept(event)

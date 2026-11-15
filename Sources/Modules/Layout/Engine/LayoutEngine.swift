@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 import HelmContract
 import HelmRuntime
@@ -9,7 +8,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// The module's own id, where the engine can read it: the log tag, the
     /// store's namespace and the hotkey slot are all this one string, and it
     /// was spelled as a literal a dozen times. The descriptor forwards it
-    /// upward — the same direction the command enums travel.
+    /// upward, from engine to UI.
     public static let moduleID = "layout"
 
 
@@ -19,18 +18,26 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     private let translation: TranslationPort
     private let spell: SpellPort
     private let secure: SecureContextPort
+    /// The two moments the engine asks the system again; stopped in `deactivate`.
+    private let activation: AppActivationPort
     private let sound: SoundPort?
     /// Optional like `sound`, and for the same reason: absent in the tests
     /// that are not about it; the descriptor wires the real one.
     private let announcer: AnnouncePort?
     /// Absent in tests, where the values are injected directly.
     private let settings: NamespacedStore?
-    private let localTransport: LocalTransport
-    public let transport: EngineTransport
+    private let news: EngineNews<LayoutState>
+    /// Where `settingsChanged` re-reads, in call order: `reloadSettings` ends in
+    /// an accessibility call and must not run on the thread the tap callback
+    /// runs on.
+    private let reloads = DispatchQueue(label: "layout.settings")
 
-    /// The tap delivers on its own run-loop source while the transport delivers
-    /// on a concurrency pool; both touch everything below.
+    /// The tap delivers on its own run-loop source, the gesture on a global
+    /// queue and the settings re-read on `reloads`; all touch everything below.
     private let lock = NSLock()
+    /// Guards `lastEmitted` and the `say` that follows its comparison.
+    private let emitLock = NSLock()
+    private var lastEmitted: LayoutState?
     private var buffer = TypingBuffer()
     /// The word that most recently ended, kept so "convert the last word" has
     /// something to work with: the shortcut is itself a chord, and a chord ends
@@ -42,9 +49,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// `buffer.wholeWord`, so it says nothing while the buffer is empty — and
     /// empty is the module's «no idea which app», which matches nothing.
     private var typingApp = ""
-    private var activeObserver: NSObjectProtocol?
-    /// The token `FrontmostApp` gives back, so this watcher can be stopped.
-    private var frontmostWatch: UUID?
     private var undo: UndoRecord?
     /// The last conversion as the page shows it, kept apart from `undo`: the
     /// right to a blind edit dies with the caret's next move, but the record —
@@ -71,11 +75,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// updater relaunches the app, which put «0 fixed today» in front of
     /// somebody who had used it all morning.
     private let ledger: LedgerStore
-    /// What the person taught the module by putting words back. Answers false
-    /// until its key arrives, which is the module as it was before it existed —
-    /// never a wait, and never a keychain dialog on the launch path.
-    /// Installed layouts macOS has no dictionary for. Asked once at activation
-    /// rather than per word: the probe costs about 150 µs and the per-word
+    /// Installed layouts macOS has no dictionary for. Asked at activation and
+    /// when Helm comes to the front, rather than per word: the probe costs about 150 µs and the per-word
     /// decision runs on the tap's own thread, where it already spends 476.
     private var noDictionary: [String] = []
     private var running = false
@@ -83,10 +84,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// that answer is what the settings page shows.
     private var tapped = false
     private var starting = false
-    /// Set while performing a conversion, so the keystrokes it sends are not
-    /// read back as typing. The marker on the events is the first line of
-    /// defence; this is the second, for anything the marker misses.
-    private var performing = false
     /// Whether the keystrokes arriving right now are a secure-input episode.
     /// Kept only to know its *edges*: the page is told «Paused» at the first
     /// secure key and «Active» at the first ordinary one, and nothing between —
@@ -99,6 +96,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                 translation: TranslationPort,
                 spell: SpellPort,
                 secure: SecureContextPort,
+                activation: AppActivationPort,
                 sound: SoundPort? = nil,
                 announcer: AnnouncePort? = nil,
                 selection: SelectionPort? = nil,
@@ -109,13 +107,14 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                 automatic: Bool = true,
                 audible: Bool = false,
                 settings: NamespacedStore? = nil,
-                transport: LocalTransport = LocalTransport()) {
+                news: EngineNews<LayoutState> = EngineNews()) {
         self.tap = tap
         self.typing = typing
         self.sources = sources
         self.translation = translation
         self.spell = spell
         self.secure = secure
+        self.activation = activation
         self.sound = sound
         self.announcer = announcer
         self.selection = selection
@@ -126,21 +125,16 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         self.automatic = automatic
         self.audible = audible
         self.settings = settings
-        self.localTransport = transport
-        self.transport = transport
-        wireTransport()
+        self.news = news
     }
 
     // MARK: - Module lifecycle
 
     public func activate() {
         lock.lock(); running = true; lock.unlock()
-        // Read the stored settings before the first key arrives. This used to
-        // happen only when the transport announced a change, so a launch kept
-        // whatever the initialiser held — and the tap key, which has no
-        // initialiser parameter, stayed `.off`. The gesture worked only in a
-        // session where the page had been opened, and silently, because `.off`
-        // refuses before there is anything to refuse.
+        // Read the stored settings before the first key arrives: the tap key has
+        // no initialiser parameter, so without this read it is `.off` until
+        // somebody opens the page.
         reloadSettings()
         refreshDictionarySupport()
         startTap()
@@ -149,53 +143,28 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // Without this the tap stayed dead until the next launch, which is the
         // same "switch that looks like it works" defect the note exists to
         // prevent.
-        // Dropped rather than overwritten: `deactivate` removes one observer,
-        // so two activates in a row left the first registered for good.
-        if let activeObserver { NotificationCenter.default.removeObserver(activeObserver) }
-        activeObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
-        ) { [weak self] _ in
-            guard let self else { return }
-            MainActor.assumeIsolated {
-                self.startTap()
-                // **And the layouts, because they change while Helm runs.**
-                // `noDictionary` was a snapshot taken in `activate()` and never
-                // re-asked, so a layout macOS has no spelling for — added in
-                // System Settings and come back from, which is this very
-                // notification — left «Fix as I type» dead for every pair
-                // including it, with the switch on, the badge green, and the
-                // one sentence the page owes for exactly that withheld until
-                // the next launch. Its neighbour `suspended` in the same state
-                // struct is live; this one was not.
-                //
-                // Here rather than on `kTISNotifyEnabledKeyboardInputSources-
-                // Changed`: coming back to the app is when somebody has just
-                // finished changing them, and it costs one `TISCreateInput-
-                // SourceList` per activation rather than a second observer.
-                self.refreshDictionarySupport()
-            }
-        }
-        // **The layout the person bound to this application.**
         //
-        // Through `FrontmostApp` rather than a `NSWorkspace` observer of our
-        // own: that type is the app's single observer of the activation notice
-        // and exists because `NSWorkspace` is main-thread-only. A second one
-        // here would be the third in the app.
+        // **And the layouts, because they change while Helm runs:** a layout
+        // macOS has no spelling for, added in System Settings and come back from,
+        // which is `helmBecameActive` below, must reach `noDictionary`, or
+        // «Fix as I type» is dead for every pair including it while the switch
+        // reads on.
         //
-        // `AppScope` does not gate this. «Do not rewrite my text here» and «I
-        // write English here» are different questions, and the second is more
-        // likely to be wanted in a terminal.
+        // Here rather than on `kTISNotifyEnabledKeyboardInputSourcesChanged`:
+        // coming back to the app is when somebody has just finished changing
+        // them, and it costs one `TISCreateInputSourceList` per activation
+        // rather than a second observer.
         //
-        // Dropped rather than overwritten, same as `activeObserver` three
-        // lines up and for the same reason: `FrontmostApp.shared` is a
-        // process-wide singleton whose `watchers` dictionary is never pruned,
-        // so two activates in a row would leave the first registered — and
-        // unstoppable, because `deactivate()` only has the newest token to
-        // hand back.
-        if let frontmostWatch { FrontmostApp.shared.stopWatching(frontmostWatch) }
-        frontmostWatch = FrontmostApp.shared.onChange { [weak self] app in
-            self?.selectBoundLayout(for: app)
-        }
+        // **The layout the person bound to this application.** `AppScope` does
+        // not gate it. «Do not rewrite my text here» and «I write English here»
+        // are different questions, and the second is more likely to be wanted in
+        // a terminal.
+        activation.startObserving(
+            helmBecameActive: { [weak self] in
+                self?.startTap()
+                self?.refreshDictionarySupport()
+            },
+            frontmostChanged: { [weak self] app in self?.selectBoundLayout(for: app) })
         emitState()
     }
 
@@ -245,12 +214,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     }
 
     public func deactivate() {
-        // Block observers do not remove themselves, and turning the module off
-        // and on again would stack another one each time.
-        if let activeObserver { NotificationCenter.default.removeObserver(activeObserver) }
-        activeObserver = nil
-        if let frontmostWatch { FrontmostApp.shared.stopWatching(frontmostWatch) }
-        frontmostWatch = nil
+        activation.stopObserving()
         tap.stop()
         lock.lock()
         running = false; tapped = false
@@ -300,8 +264,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// Drops everything a later gesture could use to edit text that is no
     /// longer in front of the caret. A blind edit measured against a word must
     /// not outlive the word — four paths used to clear two of these three and
-    /// leave the third standing, so a refused conversion, an expanded
-    /// abbreviation or a corrected capital left a word the gesture would then
+    /// leave the third standing, so a refused conversion or a
+    /// corrected capital left a word the gesture would then
     /// delete out of the middle of the sentence that had replaced it.
     ///
     /// **Call with the lock held.** This paragraph and that sentence were
@@ -349,7 +313,6 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // rather than stand until something else happens to emit.
         if leftSecureEpisode { emitState() }
         lock.lock()
-        guard !performing else { lock.unlock(); return }
         // Typing, clicking, navigating and leaving end the chance to undo: an
         // undo is a blind edit of a fixed length, and "привет abc" undone
         // becomes "приghbdtn ". A chord is the exception, and not a convenient
@@ -423,11 +386,10 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         wordConfirmed(completed, auto: auto, confirms: confirms)
     }
 
-    /// Three things can happen to a finished word, and exactly one does.
-    /// The order is fixed and is not a preference: an abbreviation is an
-    /// instruction somebody wrote down, a habit correction is about how the
-    /// keyboard was held, and a layout conversion is a guess — most explicit
-    /// first. Two edits to one word would be one edit the undo shortcut
+    /// Two things can happen to a finished word, and exactly one does.
+    /// The order is fixed and is not a preference: a habit correction is about
+    /// how the keyboard was held, and a layout conversion is a guess — most
+    /// explicit first. Two edits to one word would be one edit the undo shortcut
     /// cannot take back in a single press.
     private func wordConfirmed(_ completed: TypingBuffer.Completion, auto: Bool, confirms: Bool) {
         guard confirms else { return }
@@ -482,14 +444,14 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                                          with: replacement,
                                          trailing: completed.ending) else { return false }
         // `perform` forgets the word, which is what this path needs and used to
-        // spell out for itself: an expansion leaves no undo record — the app's
-        // own undo covers it, and one here would let the shortcut retype an
-        // abbreviation nobody asked to see again — and leaves no remembered
-        // word, because `brb` is not in the field any more and a gesture
-        // converting it would cut four characters out of the middle of the
-        // sentence that replaced it.
+        // spell out for itself: a correction leaves no undo record — the app's
+        // own undo covers it — and leaves no remembered word, because the
+        // uncorrected word is not in the field any more and a gesture converting
+        // it would cut characters out of the middle of the sentence that
+        // replaced it.
         let done = perform(plan)
-        if done, audible { sound?.playSwitch() }
+        lock.lock(); let announce = audible; lock.unlock()
+        if done, announce { sound?.playSwitch() }
         return done
     }
 
@@ -499,7 +461,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// typed.
     ///
     /// It had three — transliteration and case-walking went with them, and
-    /// `SelectionAction` records why. This comment said three long after they
+    /// `SelectionTransform` records why. This comment said three long after they
     /// were gone, which reads as two missing cases to find.
     ///
     /// A different mechanism from the word conversion and a stricter one. The
@@ -508,43 +470,30 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     /// same two refusals apply — a blocked app, a secure field — and one more:
     /// nothing happens unless the result actually differs, because replacing a
     /// selection with itself still clears that app's undo stack.
-    /// `selected` is the text the caller has already read, when it has.
+    /// `selected` is the text the caller has already read.
     ///
     /// `fix()` reads the selection off the main thread precisely because that
-    /// read can block, then hopped back and let this read it again — on the
-    /// tap's own callback thread, where `selectedText()` can fall through to
-    /// the ⌘C route and poll the pasteboard for up to 200 ms. The expensive
-    /// probe was paid twice and the second time on the one thread the comment
-    /// above `fix()` says it must never be on. `selected` is nil only when
-    /// nobody has read it yet.
+    /// read can block, and hands the text here rather than letting this read it
+    /// again on the tap's own callback thread.
     ///
     /// `readIn` is the app the caller read that text out of — the pin the word
     /// path has carried on `RememberedWord` since a word typed in Notes was
-    /// converted into Mail. Nil means nobody has read anything yet, so the read
-    /// happens here and pins the app it happens in.
+    /// converted into Mail.
     ///
-    /// **Not `private`, and not a command.** It answered a `LayoutCommand` case
-    /// nothing in the app ever sent — `AppDelegate` registers `fix` and only
-    /// `fix` — while six tests reached it by typing the command's name as a
-    /// *string*. Rename the case and those five would have gone on passing:
-    /// `wireTransport` refuses an unparseable name at the door and returns
-    /// `Data()`, so `selection.replaced` stayed empty, which is exactly what
-    /// they asserted. The door people actually use is `fix()`, one line below,
-    /// and it calls this.
-    func convertSelection(selected: String? = nil, readIn: String? = nil) {
+    /// **Not `private`, and not a door of its own.** Tests reach it directly; the
+    /// door people use is `fix()`, which calls this from its hop back to main.
+    func convertSelection(selected: String, readIn: String) {
         guard let selection else { return }
-        let bundleID = readIn ?? secure.frontmostBundleID()
+        let bundleID = readIn
         lock.lock()
-        // A module that was turned off types nothing. The word path has always
-        // asked and this one did not — it showed up as nothing because the only
-        // way in is `fix()`, which asks. The transport used to be a second door
-        // (`convertSelection`) and nothing ever sent it; the check stays,
-        // because a door that is not there today is not a door nobody adds.
+        // A module that was turned off types nothing; the check stays though
+        // `fix()` asks first, because a door that is not there today is not a
+        // door nobody adds.
         let live = running
         let allowed = scope.allows(bundleID)
         lock.unlock()
         guard live, allowed, !secure.isSecure() else { return }
-        guard let text = selected ?? selection.selectedText(), !text.isEmpty else { return }
+        let text = selected
 
         let transform = SelectionTransform(convert: { [weak self] source in
             guard let self,
@@ -590,9 +539,9 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // Written where it was read, or not written at all.
         //
         // Everything above was decided about `bundleID`, and by now that verdict
-        // is as old as the read: up to 200 ms of pasteboard polling in this call,
-        // or a whole queue hop when `fix()` did the reading. The tap cannot
-        // report the app changing in that window — a Space swipe, an alert, a
+        // is as old as the read: a whole queue hop, since `fix()` did the
+        // reading. The tap cannot report
+        // the app changing in that window — a Space swipe, an alert, a
         // call joining and any program calling `activate()` are neither a
         // keystroke nor a left click — so the app is asked for again here, at the
         // last moment before somebody else's text is replaced. Without it the
@@ -605,18 +554,15 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             return
         }
 
-        // `performing` for the same reason the word path sets it: the
-        // replacement is typed, the tap sees it, and without this it is read
-        // back as somebody typing a paragraph.
-        lock.lock(); performing = true; lock.unlock()
         let done = selection.replaceSelection(with: replacement)
-        lock.lock(); performing = false; forgetTheWord(); lock.unlock()
+        lock.lock(); forgetTheWord(); lock.unlock()
 
         guard done else {
             HelmLog.shared.warn(Self.moduleID, "selection refused by \(Redact.app(bundleID))")
             return
         }
-        if audible { sound?.playSwitch() }
+        lock.lock(); let announce = audible; lock.unlock()
+        if announce { sound?.playSwitch() }
         // A selection put right is words fixed today: this door used to fix
         // words without telling the page's one figure about them. Counted as
         // the words it actually holds — a sentence put right in one gesture is
@@ -716,8 +662,8 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                 exceptions: list)
         }
         guard case .convert(let replacement) = decision else {
-            // The word itself never reaches the log (§ The log carries no
-            // names); which door refused, and how long the word was, do.
+            // The word itself never reaches the log; which door refused, and how
+            // long the word was, do.
             if force {
                 HelmLog.shared.info(Self.moduleID,
                                     "gesture declined: the word is on the never-list, or its "
@@ -745,7 +691,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
                                     trailing: trailing.map(String.init) ?? "",
                                     forced: force)
         lock.lock()
-        undo = UndoRecord(event: event, from: from, to: to)
+        undo = UndoRecord(event: event, from: from)
         lastEvent = event
         lastEventUndone = false
         lock.unlock()
@@ -767,10 +713,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     }
 
     /// The key the gesture is bound to. Read at start and on every change.
-    public var boundTapKey: TapKey {
-        lock.lock(); defer { lock.unlock() }
-        return tapKey.key
-    }
+    var boundTapKey: TapKey { lock.withLock { tapKey.key } }
 
     /// One key, pressed and released on its own, does both jobs in turn.
     ///
@@ -822,7 +765,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // tapped. What comes back to main is the acting: the frontmost app, the
         // pasteboard, the sound.
         //
-        // The text read here is carried into `transform` rather than read
+        // The text read here is carried into `convertSelection` rather than read
         // again. It used to be discarded, and the second read landed on main,
         // which is exactly the thread this hop exists to keep clear.
         DispatchQueue.global(qos: .userInitiated).async { [self] in
@@ -830,15 +773,15 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             // is the one that had the keyboard when the read began, and the read
             // is exactly the window the app can change in. The text crossed the
             // hop below on its own and landed in whoever held the keyboard on
-            // arrival — `transform` compares this against the app in front at
-            // the write. `FrontmostApp` is asked rather than `NSWorkspace`
+            // arrival — `convertSelection` compares this against the app in front
+            // at the write. `FrontmostApp` is asked rather than `NSWorkspace`
             // precisely so this question is answerable off the main thread.
             let readIn = secure.frontmostBundleID()
             // **Asked before the field is read, not after it.**
             //
             // The page's promise is that a secure field is «skipped whole», and
             // this path read it first and refused two hops later — inside
-            // `transform`, by which time the password had been pulled out of
+            // `convertSelection`, by which time the password had been pulled out of
             // the accessibility tree, carried across a queue hop and held as a
             // `String`. `AXSelection` applies no role check of its own;
             // `isSecure()` reads `kAXRoleAttribute` off the *same* focused
@@ -847,11 +790,13 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             // cannot see: an app's own password field, in a browser that never
             // escalated.
             //
-            // Free, and better than free: `transform` paid this round trip on
-            // main, which is the thread this background hop exists to keep
-            // clear and the thread the tap callback runs on. `emitState`
-            // carries the sentence about a hung app blocking for the
-            // messenger's timeout; this is the same call.
+            // Asked here as well, off main, before the read; `convertSelection`
+            // asks again on main, kept as the same-app focus gate: the field in
+            // front at the write is judged, not only the one read. Main is the
+            // thread this background hop exists to keep clear and the thread
+            // the tap callback runs on. `emitState` carries the sentence about
+            // a hung app blocking for the messenger's timeout; this is the same
+            // call.
             guard !secure.isSecure() else {
                 HelmLog.shared.info(Self.moduleID, "gesture: the field is secure")
                 return
@@ -862,7 +807,10 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
             DispatchQueue.main.async { [self] in
                 HelmLog.shared.info(Self.moduleID,
                                     "gesture: \(hasSelection ? "selection" : "last word")")
-                if hasSelection { convertSelection(selected: selected, readIn: readIn); return }
+                if hasSelection, let selected {
+                    convertSelection(selected: selected, readIn: readIn)
+                    return
+                }
                 let bundleID = secure.frontmostBundleID()
                 lock.lock()
                 let undoable = undo?.canUndo(in: bundleID) ?? false
@@ -873,7 +821,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     }
 
     /// Puts the last conversion back, if the caret can still be where it was.
-    public func undoLast() {
+    func undoLast() {
         let bundleID = secure.frontmostBundleID()
         lock.lock()
         guard let record = undo, record.canUndo(in: bundleID),
@@ -927,7 +875,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
 
     /// Converts whatever is in the buffer right now, whatever the dictionary
     /// thinks — the hotkey path.
-    public func convertLastWord() {
+    func convertLastWord() {
         let bundleID = secure.frontmostBundleID()
         lock.lock()
         // `wholeWord`, not `word`: the buffer refuses a word it could not hold
@@ -957,17 +905,18 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // arrive and find the tap callback blocked. `appRules` was already
         // hoisted for exactly that reason and the five beside it were not.
         let rules = settings.boolTable(LayoutKey.appRules)
-        let readAutomatic = settings.bool(LayoutKey.automatic, default: true)
+        let readAutomatic = settings.layoutAutomatic
         let readExceptions = Exceptions(words: settings.stringArray(LayoutKey.exceptions))
-        let readAudible = settings.bool(LayoutKey.audible, default: false)
-        let readFixCapitals = settings.bool(LayoutKey.fixCapitals, default: true)
-        // -1 is the recorder's own «nothing bound», not a keycode. Read out here
-        // with its neighbours, before the lock.
-        let recorded = settings.int("\(LayoutHotkey.storePrefix)KeyCode", default: -1)
-        let readHotkey: UInt16? = recorded >= 0 ? UInt16(recorded) : nil
+        let readAudible = settings.layoutAudible
+        let readFixCapitals = settings.layoutFixCapitals
+        // -1 is the recorder's own «nothing bound», not a keycode, and a value
+        // past 16 bits (a hand-edited property list) binds nothing too, as it
+        // would trap the narrowing. Read out here with its neighbours, before
+        // the lock.
+        let recorded = settings.int(HotkeyStoreKeys(prefix: LayoutHotkey.storePrefix).keyCode, default: -1)
+        let readHotkey: UInt16? = recorded >= 0 ? UInt16(exactly: recorded) : nil
         let readTapKey = ModifierTap(
-            key: TapKey.from(settings.string(LayoutKey.tapKey,
-                                             default: TapKey.rightCommand.rawValue)))
+            key: settings.layoutTapKey)
         lock.lock()
         automatic = readAutomatic
         exceptions = readExceptions
@@ -985,59 +934,72 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         emitState()
     }
 
-    /// **Forgets only what was actually typed.**
-    ///
-    /// `forgetTheWord` ran either way, so a refusal threw away the word, the
-    /// undo record and the page's row — for an edit the app never carried out.
-    /// The field still held what the person typed, and the module had dropped
-    /// every handle on it: the gesture that exists to fix a word by hand was
-    /// dead on exactly the word that needed fixing, and one declined undo
-    /// retired the record for good.
-    ///
-    /// Safe only because `TypingPort.perform` is all-or-nothing now — it builds
-    /// every event before posting any. Keeping state across a refusal while the
-    /// port could still half-apply would aim a blind edit at text that is no
-    /// longer there, which is worse than the defect it repairs.
-    @discardableResult
+    /// Whether the event is a chord: a command, control or option key held.
     private func isAChord(_ event: TypingBuffer.Event) -> Bool {
         if case .chord = event { return true }
         return false
     }
 
+    /// **Forgets only what was actually typed.**
+    ///
+    /// A refusal used to run `forgetTheWord` all the same and throw away the
+    /// word, the undo record and the page's row, for an edit the app never
+    /// carried out: the field still held what the person typed and the module
+    /// had dropped every handle on it, so the gesture was dead on exactly the
+    /// word that needed fixing and one declined undo retired the record for good.
+    ///
+    /// Safe only because `TypingPort.perform` is all-or-nothing now: it builds
+    /// every event before posting any. State kept across a refusal while the
+    /// port could half-apply would aim a blind edit at text no longer there,
+    /// which is worse than the defect it repairs.
     @discardableResult
     private func perform(_ plan: SwitchPlan) -> Bool {
-        lock.lock(); performing = true; lock.unlock()
         let done = typing.perform(plan)
         lock.lock()
-        performing = false
         if done { forgetTheWord() }
         lock.unlock()
         return done
     }
 
-    // MARK: - Transport
+    // MARK: - What the engine says and hears
 
-    private func wireTransport() {
-        localTransport.setHandler { [weak self] command in
-            guard let self else { return Data() }
-            guard let name = LayoutCommand(rawValue: command.name) else { return Data() }
-            switch name {
-            case .fix: self.fix()
-            case .settingsChanged: self.reloadSettings()
-            }
-            return Data()
+    /// The state, as a stream: the latest one first, then every later one, in
+    /// order.
+    ///
+    /// **Registered before this returns, in the one hold of the lock that replays
+    /// what was last said** (`EngineNews.stream`): reading the state and then
+    /// subscribing leaves a window an emit falls into, and subscribing before the
+    /// replay hands over an older state after a newer one. Synchronous and not
+    /// actor-isolated, so the model takes it in its own synchronous `init`, before
+    /// its first suspension; the subscriber is counted when this returns. Ending
+    /// the iteration removes the subscriber.
+    public func stream() -> AsyncStream<LayoutState> { news.stream() }
+
+    public var subscriberCount: Int { news.subscriberCount }
+
+    /// Re-read the store, on the engine's own serial queue; returns at once.
+    public func settingsChanged() { settingsChanged(then: {}) }
+
+    /// `done` runs once the re-read is in force.
+    ///
+    /// Serial, so two quick writes read the store in the order they were made
+    /// and the later reload cannot commit before the earlier one.
+    func settingsChanged(then done: @escaping @Sendable () -> Void) {
+        reloads.async { [self] in
+            reloadSettings()
+            done()
         }
     }
 
-    /// Which installed layouts macOS cannot spell-check, asked once.
+    /// Which installed layouts macOS cannot spell-check, asked at activation
+    /// and when Helm comes to the front, never per word.
     ///
     /// The probe word is irrelevant: `isWord` answers `nil` for «no dictionary
     /// for this language» whatever it is given, and that nil is the whole
     /// question here. What it must not do is read a `false` as a missing
     /// dictionary — that is «not a word», which is the module's ordinary case.
-    /// Re-asked whenever the engine is about to judge a word, which is the
-    /// second ordinary moment the installed set can have moved under it — the
-    /// first being coming back to the app. Cheap: `DictionarySupport.missing`
+    /// Re-asked when Helm comes to the front, which is when somebody has just
+    /// finished editing their layouts. Cheap: `DictionarySupport.missing`
     /// walks the installed list and asks `isWord` once per source, and the
     /// answer only changes when somebody edits their layouts.
     private func refreshDictionarySupport() {
@@ -1069,13 +1031,21 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
         // beside it went straight back inside.
         let counted = ledger.totals(now: Date())
         lock.lock()
-        let state = LayoutState(enabled: tapped, automatic: automatic,
+        let state = LayoutState(enabled: tapped,
                                 suspended: suspended,
                                 lastConversion: lastEvent,
                                 lastConversionUndone: lastEventUndone,
                                 totals: counted,
                                 noDictionary: noDictionary)
         lock.unlock()
-        localTransport.emit(LayoutEvent.layoutState, encoding: state)
+        // Compared, recorded and said under one lock of its own — not `lock`,
+        // which the tap callback takes, and not across `isSecure` or the
+        // ledger read above — so the state recorded as last is the one said
+        // last, and a state equal to it is not said again.
+        emitLock.lock()
+        defer { emitLock.unlock() }
+        guard state != lastEmitted else { return }
+        lastEmitted = state
+        news.say(state)
     }
 }

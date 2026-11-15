@@ -15,13 +15,9 @@ import XCTest
 /// stops, and that a change reaches `scutil` — rather than on a settled value,
 /// which a poll already schedules and could satisfy by luck.
 final class VPNNetworkWatchTests: XCTestCase {
-    private func settings() -> VPNSettings {
-        VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
-    }
-
     func testActivateStartsWatchingTheNetwork() {
         let network = FakeNetwork()
-        let engine = VPNEngine(settings: settings(), runner: FakeRunner(),
+        let engine = VPNEngine(settings: VPNSettings.inMemory(), runner: FakeRunner(),
                                apps: FakeApps(), network: network,
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                work: .inline)
@@ -34,7 +30,7 @@ final class VPNNetworkWatchTests: XCTestCase {
     func testAChangeInTheNetworkReReadsTheList() {
         let runner = FakeRunner()
         let network = FakeNetwork()
-        let engine = VPNEngine(settings: settings(), runner: runner,
+        let engine = VPNEngine(settings: VPNSettings.inMemory(), runner: runner,
                                apps: FakeApps(), network: network,
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                work: .inline)
@@ -52,7 +48,7 @@ final class VPNNetworkWatchTests: XCTestCase {
     /// pointing at it is pointing at freed memory.
     func testDeactivateStopsWatching() {
         let network = FakeNetwork()
-        let engine = VPNEngine(settings: settings(), runner: FakeRunner(),
+        let engine = VPNEngine(settings: VPNSettings.inMemory(), runner: FakeRunner(),
                                apps: FakeApps(), network: network,
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                work: .inline)
@@ -69,7 +65,7 @@ final class VPNNetworkWatchTests: XCTestCase {
     func testDroppingTheEngineStopsWatching() {
         let network = FakeNetwork()
         do {
-            let engine = VPNEngine(settings: settings(), runner: FakeRunner(),
+            let engine = VPNEngine(settings: VPNSettings.inMemory(), runner: FakeRunner(),
                                    apps: FakeApps(), network: network,
                                    interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                    work: .inline)

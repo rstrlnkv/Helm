@@ -2,12 +2,12 @@ import Foundation
 
 /// Reading the log back — **the one place in this app a log line is parsed.**
 ///
-/// CLAUDE.md's rule is that the tail is filled from the same parts the file line
+/// The rule (ARCHITECTURE.md § The log pane) is that the tail is filled from the same parts the file line
 /// is spelled from, never by parsing the line back apart, and that rule stands
 /// for `write`: the live path holds the parts and hands them over. A *seed* has
 /// no parts to hold. The file is all there is, so it parses — here, once, in a
 /// type whose name says so — and `LogSeed`'s obligation in exchange is to be the
-/// exact inverse of `LogLine.format` rather than an approximate reader of it.
+/// exact inverse of `LogLine.line` rather than an approximate reader of it.
 /// `ThePageShowsTheLogAndNotTheSessionTests` holds the round trip.
 ///
 /// **A line it cannot read is kept whole and claims nothing.** Dropping it would
@@ -23,7 +23,7 @@ import Foundation
 /// *can* be wrong about is the clock — the file spells local time and no offset,
 /// so lines written in another time zone are drawn at the wall-clock time they
 /// were written at rather than the instant. The alternative is discarding them.
-enum LogSeed {
+public enum LogSeed {
 
     /// What one line of the file turned back into.
     enum Line: Equatable {
@@ -32,7 +32,7 @@ enum LogSeed {
         case unreadable(String)
     }
 
-    /// The stamp `LogLine.format` writes, read the other way — and read once a
+    /// The stamp `LogLine.line` writes, read the other way — and read once a
     /// minute rather than once a line.
     ///
     /// **Measured 2026-08-14**, three readings in a `-O` binary on this Mac:
@@ -98,7 +98,7 @@ enum LogSeed {
                                message: message, site: site))
     }
 
-    /// The site `LogLine.format` puts last, and only when the tail really has its
+    /// The site `LogLine.line` puts last, and only when the tail really has its
     /// shape: two spaces, then `Name.swift:123 function(…)` in brackets at the very
     /// end. A message ending in «(exit 2)» keeps its brackets — `HelmFailure`
     /// writes those, and stealing them would be inventing a source location.
@@ -201,9 +201,13 @@ enum LogSeed {
                 let size = (try? handle.seekToEnd()).map(Int.init) ?? 0
                 let offset = max(0, size - bytes)
                 try? handle.seek(toOffset: UInt64(offset))
-                guard let data = try? handle.readToEnd(),
-                      let text = String(data: data, encoding: .utf8)
-                else { return }
+                guard let data = try? handle.readToEnd() else { return }
+                // Decoded, not validated: a read cut inside a multi-byte character
+                // leaves bytes that are not UTF-8 in the first fragment (dropped
+                // below) and a tear in the last line (kept), and 0x0A never occurs
+                // inside a sequence, so no other line is touched. `String(data:)`
+                // would answer nil for the whole file.
+                let text = String(decoding: data, as: UTF8.self)
                 let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
                 let modified = attributes?[.modificationDate] as? Date
                 out += entries(from: text, startedMidFile: offset > 0,
@@ -212,5 +216,102 @@ enum LogSeed {
             }
         }
         return Array(out.suffix(limit))
+    }
+}
+
+/// **Recognising the launch words.** `HelmLog` writes them through `LogLine`;
+/// these read them back from the same words, held together by
+/// `TheLogSplitsIntoLaunchesTests`, which has a real `HelmLog` write each and
+/// asks this to read it — a reworded line otherwise turns every card into one
+/// long "earlier launch" and nothing says so.
+extension LogSeed {
+
+    /// The version a start line names, or nil for any other line.
+    ///
+    /// **A start line a crash glued to a torn one is still a start.** A write cut
+    /// short has no newline, so the next launch's first line is appended to it,
+    /// and `LogSeed` — which keeps a line whole and claims nothing — reads the
+    /// pair as one entry whose category is half a line plus the next stamp and
+    /// whose message is the start line's own «[app] Helm … started». The launch
+    /// after a crash is the one somebody opened the page for, so it is read here
+    /// as the launch it is; the entry stays one line, in the place it was.
+    public static func version(of entry: LogEntry) -> String? {
+        if entry.category == LogLine.appCategory, let version = version(inMessage: entry.message) {
+            return version
+        }
+        return versionOfGluedStart(entry)
+    }
+
+    public static func isTerminating(_ entry: LogEntry) -> Bool {
+        entry.category == LogLine.appCategory && entry.message == LogLine.terminating
+    }
+
+    public static func isLoggingDisabled(_ entry: LogEntry) -> Bool {
+        entry.category == LogLine.appCategory && entry.message == LogLine.loggingDisabled
+    }
+
+    public static func isBareLoggingEnabled(_ entry: LogEntry) -> Bool {
+        entry.category == LogLine.appCategory && entry.message == LogLine.loggingEnabledWord
+    }
+
+    /// `.some(nil)` for a bare «logging enabled» (older builds wrote no version),
+    /// `.some(version)` for «logging enabled (version)», nil for any other line.
+    public static func loggingEnabled(_ entry: LogEntry) -> String?? {
+        guard entry.category == LogLine.appCategory else { return nil }
+        let word = LogLine.loggingEnabledWord
+        if entry.message == word { return .some(nil) }
+        guard entry.message.hasPrefix(word + " ("), entry.message.hasSuffix(")") else { return nil }
+        return .some(String(entry.message.dropFirst(word.count + 2).dropLast()))
+    }
+}
+
+extension LogSeed {
+
+    /// The glued pair, whatever byte the tear fell on and whatever level the
+    /// torn line had. `LogSeed` reads the pair as a stamp-level-category-message
+    /// entry when it can and as one whole unreadable message when it cannot, so
+    /// the two are put back into one string — category, «] », message — and the
+    /// start line is looked for at the end of it: its own stamp, «[info] [app]
+    /// Helm … started». A start line standing alone has category `app` and was
+    /// answered before this is asked.
+    ///
+    /// **Not a line that carries a source site.** `HelmLog.warn` and `.error`
+    /// write one on every line, and a glued start never has one — the start
+    /// line is written without a site and is the end of the glued entry — so a
+    /// warning or an error that merely quotes a start line (a copied log line, a
+    /// file named like one) is not a launch. An `info` line has no site either,
+    /// so the same quote at that level cannot be told from a tear by the entry
+    /// alone.
+    fileprivate static func versionOfGluedStart(_ entry: LogEntry) -> String? {
+        guard entry.site == nil, entry.message.hasSuffix(LogLine.startedSuffix) else { return nil }
+        let text = entry.category.isEmpty ? entry.message : entry.category + "] " + entry.message
+        let marker = " [info] [\(LogLine.appCategory)] \(LogLine.startedPrefix)"
+        guard let found = text.range(of: marker, options: .backwards),
+              text.distance(from: text.startIndex, to: found.lowerBound) >= 23,
+              isStamp(text[text.index(found.lowerBound, offsetBy: -23)..<found.lowerBound])
+        else { return nil }
+        return version(inMessage: String(text[text.index(found.upperBound, offsetBy: -LogLine.startedPrefix.count)...]))
+    }
+
+    fileprivate static func version(inMessage message: String) -> String? {
+        guard message.hasPrefix(LogLine.startedPrefix), message.hasSuffix(LogLine.startedSuffix),
+              message.count > LogLine.startedPrefix.count + LogLine.startedSuffix.count
+        else { return nil }
+        return String(message.dropFirst(LogLine.startedPrefix.count).dropLast(LogLine.startedSuffix.count))
+    }
+
+    /// Exactly the 23 characters `LogLine.stampFormat` spells.
+    fileprivate static func isStamp(_ text: Substring) -> Bool {
+        let stamp = Array(text)
+        guard stamp.count == 23 else { return false }
+        return stamp.indices.allSatisfy { index in
+            switch index {
+            case 4, 7: return stamp[index] == "-"
+            case 10: return stamp[index] == " "
+            case 13, 16: return stamp[index] == ":"
+            case 19: return stamp[index] == "."
+            default: return stamp[index].isASCII && stamp[index].isNumber
+            }
+        }
     }
 }

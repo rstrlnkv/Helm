@@ -36,10 +36,12 @@ import XCTest
 /// while the answer is nil — so one transient read of `en0` is a tile that draws
 /// `en0`'s byte counters (which count since boot, the trap the design spec names
 /// by name) under a verdict of `.throughTunnel` whenever the default route is
-/// also `en0`. A green tick, a country, and a throughput figure, all about the
+/// also `en0`. A green dot, a country, and a throughput figure, all about the
 /// interface the traffic is leaving the tunnel *by*.
 ///
 /// Nil is the answer, and the caller is already written for it.
+///
+/// Past defect: commit c0fdd318, «fix(vpn): six repairs, from a blip that cost the tunnel to a decoy interface».
 final class ADecoyIsNeverTheTunnelsOwnInterfaceTests: XCTestCase {
 
     /// The control, and it is the committed fixture's own shape: with the

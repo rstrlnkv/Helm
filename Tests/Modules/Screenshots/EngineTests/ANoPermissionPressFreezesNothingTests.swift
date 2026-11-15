@@ -7,6 +7,7 @@ import XCTest
 /// freeze returns a desktop with no windows in it, and an overlay raised over
 /// that looks like the feature working. The refusal is the one thing the log
 /// says about it; a press that *is* granted says nothing at all.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/CaptureSession.swift`: `HelmLog.shared.warn(category, "no screen recording permission — capture refused")` -> `(line removed)`.
 final class ANoPermissionPressFreezesNothingTests: XCTestCase {
     override func setUp() { super.setUp(); ScreenshotsLog.begin() }
     override func tearDown() { ScreenshotsLog.end(); super.tearDown() }

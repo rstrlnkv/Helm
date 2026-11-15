@@ -1,5 +1,6 @@
 import Foundation
 import HelmRuntime
+import XCTest
 @testable import Module_Leftovers_Engine
 
 /// The module's four ports, faked once for this target — the scanner's three
@@ -16,7 +17,7 @@ import HelmRuntime
 /// same scan» was a state no test in those files could write down — and
 /// `ScanOrderIsTotalTests` builds exactly that pair, with the `/Library` copy
 /// coming back `writable: true`, which on a real Mac it never is. That is the
-/// unrepresentable-state shape CLAUDE.md names, in a fixture rather than in a fake
+/// unrepresentable-state shape (ARCHITECTURE.md § Fakes) names, in a fixture rather than in a fake
 /// of a port: the same defect `LeftoversWritableTests` had already found in the
 /// other direction and fixed *locally*, by locking the item instead of its folder.
 ///
@@ -53,7 +54,7 @@ struct LeftoversFakeFiles: LeftoversFilePort {
     /// which is what the real `FileManager` does and what `listing`, keyed by
     /// spelling alone, could not describe. «These children actually live somewhere
     /// else» was therefore a state no test in this target could write down, which
-    /// is why the scan trusted the seven directory names it is compiled with:
+    /// is why the scan trusted the eight directory names it is compiled with:
     /// `ADirectoryThatIsNotTheOneItNamesTests` is the case that had nowhere to go.
     var redirects: [String: String] = [:]
 
@@ -130,17 +131,82 @@ struct LeftoversFakeLoaded: LoadedItemsPort {
 /// `switcher:` — the real one holds `launchctl disable gui/<uid>/<label>` against
 /// the login items of whoever runs the suite.
 ///
-/// `setDisabled` returns nothing in the port, so there is no refusal for this to
-/// be freer or poorer about; what it records is the whole of the observable act.
+/// What it records is the observable act, the direction included: a give-back is
+/// `disabled == false`. The `answer` it gives back is launchd's, one value for
+/// every call unless a test sets `answers` for a label.
 final class LeftoversFakeSwitcher: LoginItemSwitchPort, @unchecked Sendable {
     private let lock = NSLock()
-    private var seen: [String] = []
-    func setDisabled(_ disabled: Bool, label: String) {
-        lock.lock(); defer { lock.unlock() }
-        seen.append(label)
+    private var seen: [(label: String, disabled: Bool)] = []
+    var answer: SwitchAnswer = .accepted
+    var answers: [String: SwitchAnswer] = [:]
+    /// Held by the first call when set: the fake blocks inside the port, the way a
+    /// `launchctl` that is slow to answer does.
+    var gate: LeftoversGate?
+    private var inside = 0
+    private var mostInside = 0
+    func setDisabled(_ disabled: Bool, label: String) -> SwitchAnswer {
+        lock.lock()
+        seen.append((label, disabled))
+        inside += 1
+        mostInside = max(mostInside, inside)
+        let result = answers[label] ?? answer
+        lock.unlock()
+        gate?.passThrough()
+        lock.lock(); inside -= 1; lock.unlock()
+        return result
     }
-    var labels: [String] {
+    /// The most calls that were inside the port at once.
+    var mostConcurrent: Int {
+        lock.lock(); defer { lock.unlock() }
+        return mostInside
+    }
+    var calls: [(label: String, disabled: Bool)] {
         lock.lock(); defer { lock.unlock() }
         return seen
     }
+    var labels: [String] { calls.map(\.label) }
+}
+
+/// A one-shot stop for a fake: the first caller of `passThrough` blocks until the
+/// test calls `release`, and the test can wait, within a wall-clock bound, for that
+/// caller to have arrived. Every wait is bounded, so a defect that never reaches the
+/// gate fails the test instead of hanging the suite.
+final class LeftoversGate: @unchecked Sendable {
+    private let entered = DispatchSemaphore(value: 0)
+    private let released = DispatchSemaphore(value: 0)
+    private let lock = NSLock()
+    private var used = false
+
+    func passThrough() {
+        let first = lock.withLock { () -> Bool in defer { used = true }; return !used }
+        guard first else { return }
+        entered.signal()
+        _ = released.wait(timeout: .now() + 10)
+    }
+    func waitUntilEntered() -> Bool { entered.wait(timeout: .now() + 5) == .success }
+    func release() { released.signal() }
+}
+
+/// The folders, with the first read of a directory held at the gate: the press is
+/// then inside `LaunchClaims.onDisk`, past the page's guard and before the switch.
+final class LeftoversGatedFiles: LeftoversFilePort, @unchecked Sendable {
+    let inner: LeftoversFakeFiles
+    let gate: LeftoversGate
+    init(_ inner: LeftoversFakeFiles, gate: LeftoversGate) { self.inner = inner; self.gate = gate }
+    func isWritableDirectory(_ url: URL) -> Bool { inner.isWritableDirectory(url) }
+    func contents(of url: URL) -> DirectoryListing.Contents { gate.passThrough(); return inner.contents(of: url) }
+    func exists(_ path: String) -> Bool? { inner.exists(path) }
+    func size(_ url: URL) -> Int { inner.size(url) }
+    func readPlist(_ url: URL) -> PlistData? { inner.readPlist(url) }
+    func resolvingSymlinks(_ url: URL) -> URL { inner.resolvingSymlinks(url) }
+}
+
+/// The launch agent a scan over `files` lists, unwrapped with the precondition every
+/// such test shares: a test about what a row says first needs the row.
+func firstAgent(home: URL, files: LeftoversFakeFiles,
+                loaded: LeftoversFakeLoaded = LeftoversFakeLoaded()) throws -> StaleItem {
+    let items = LeftoversScanner(home: home, files: files, apps: LeftoversFakeApps(),
+                                 extensions: loaded).scan()
+    return try XCTUnwrap(items.first { $0.kind == .launchAgent },
+                         "precondition: the agent is listed at all")
 }

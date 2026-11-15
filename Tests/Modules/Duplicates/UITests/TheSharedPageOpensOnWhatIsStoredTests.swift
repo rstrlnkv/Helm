@@ -1,13 +1,12 @@
-import HelmContract
 import HelmRuntime
-import HelmUI
+import HelmTestSupport
 import XCTest
 import Module_Duplicates_Engine
 @testable import Module_Duplicates_UI
 
 /// The fixture every page test in this target is built on can finish its read.
 ///
-/// `duplicatesModel` handed the page a bare `PlantedSealKey`, which takes
+/// `duplicatesModel` handed the page a bare `SealKeyProbe`, which takes
 /// `SealKeyPort`'s default `keyIfWarm() -> nil` — so `SettingGuard.isWarm` was
 /// false for ever, `DuplicatesSettings.keepPolicyIfWarm` answered «not yet»
 /// whatever was stored, and the popup sat on the default however long a test
@@ -20,22 +19,24 @@ import Module_Duplicates_Engine
 /// a fixture in which that never runs — so this is the claim the shared fixture
 /// now has to keep, asserted where the fixture is, rather than only inside the
 /// one test that builds its own ports.
+///
+/// Guards a past defect: 69505181 fix(duplicates): the batch is read against itself, and four other ways the page lied.
 @MainActor
 final class TheSharedPageOpensOnWhatIsStoredTests: XCTestCase {
 
     /// A store as an earlier run of the app would have left it: the policy the
-    /// person chose, sealed. `PlantedSealKey`'s material is fixed, so the seal
+    /// person chose, sealed. `SealKeyProbe`'s material is fixed, so the seal
     /// written here is one the page's own guard accepts — the same key, not the
     /// same object.
     private func storeHolding(_ policy: KeepPolicy) -> NamespacedStore {
         let store = duplicatesStore(folder: "\(home)/Downloads")
         DuplicatesSettings.setKeepPolicy(policy, in: store,
-                                         guardedBy: SettingGuard(keys: PlantedSealKey()))
+                                         guardedBy: SettingGuard(keys: SealKeyProbe(firstUse: false)))
         return store
     }
 
     func testThePageOpensOnTheStoredPolicyRatherThanTheDefault() async {
-        let dvm = duplicatesModel(over: OneAnswerTransport(groups: []),
+        let dvm = duplicatesModel(over: AnsweringWork(groups: []),
                                   store: storeHolding(.byDate))
         XCTAssertEqual(dvm.policy, .standard,
                        "precondition: the page starts on the default, before the read lands")
@@ -51,7 +52,7 @@ final class TheSharedPageOpensOnWhatIsStoredTests: XCTestCase {
     /// And the default is still the default — a fixture that answered `.byDate`
     /// to everything would pass the test above and mean nothing.
     func testAStoreWithNoPolicyLeavesThePageOnTheDefault() async {
-        let dvm = duplicatesModel(over: OneAnswerTransport(groups: []))
+        let dvm = duplicatesModel(over: AnsweringWork(groups: []))
 
         await dvm.firstLoad?.value
 

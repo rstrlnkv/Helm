@@ -41,62 +41,28 @@ private final class ToolThatMaySayNothing: SystemExtensionPort, @unchecked Senda
 
 }
 
-/// Refuses every bundle, so the classification is what the test is about.
-private struct RefusingTrash: TrashPort {
-    func trashItem(_ url: URL) -> TrashOutcome {
-        // 513 = NSFileWriteNoPermissionError, what macOS answers for a bundle it
-        // will not move.
-        TrashOutcome(succeeded: false, errorCode: 513, message: "denied")
-    }
-}
-private struct AnyFS: FileSystemPort {
-    func exists(_ url: URL) -> Bool { true }
-    func size(_ url: URL) -> Int { 0 }
-    func glob(_ pattern: URL) -> [URL] { [] }
-    func children(of url: URL) -> [URL] { [] }
-}
-private struct NoLister: AppLister {
-    func installedApps() -> [InstalledApp] { [] }
-    func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
-    func installedBundleIDs() -> Set<String> { [] }
-    func isKnownToSystem(bundleID: String) -> Bool { false }
-}
-
+/// Past defect: fix commit f710c8f9.
 final class ASilentToolIsNotNoExtensionsTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
         root = scratchDirectory("silent-extensions")
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
+        tailTheLog()
     }
 
     private var logged: [String] {
-        HelmLog.shared.recentEntries()
-            .filter { $0.category == UninstallerEngine.moduleID }
-            .map(\.message)
+        loggedLines(UninstallerEngine.moduleID)
     }
 
     /// A bundle whose `Info.plist` the engine can read — the id it blames a
     /// refusal on comes from there.
     private func makeApp(named name: String, bundleID: String) throws -> String {
-        let app = root.appendingPathComponent("\(name).app")
-        let contents = app.appendingPathComponent("Contents")
-        try FileManager.default.createDirectory(at: contents, withIntermediateDirectories: true)
-        try (["CFBundleIdentifier": bundleID] as NSDictionary)
-            .write(to: contents.appendingPathComponent("Info.plist"))
-        return app.path
+        try writeAppBundle(root.appendingPathComponent("\(name).app"), id: bundleID)
     }
 
     private func engine(_ tool: ToolThatMaySayNothing) -> UninstallerEngine {
-        UninstallerEngine(home: root, apps: NoLister(), fs: AnyFS(),
-                          trash: RefusingTrash(), running: NoRunning(), extensions: tool)
+        UninstallerEngine(home: root, apps: FakeApps(), fs: EveryPathExists(),
+                          trash: RefusesEverything(), running: NoRunning(), extensions: tool)
     }
 
     // MARK: -

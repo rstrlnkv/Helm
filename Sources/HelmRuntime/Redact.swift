@@ -38,7 +38,7 @@ public enum Redact {
     /// above is the whole of the redaction: their folders are the point of those
     /// screens. For the app-cleanup modules the leaf **is a bundle id** —
     /// `~/Library/Preferences/com.acme.tool.plist` — which is the thing `app`
-    /// exists for: ARCHITECTURE.md § Diagnostics log says a bundle id names a
+    /// exists for: (ARCHITECTURE.md § Diagnostics log) says a bundle id names a
     /// person's habits. Two kinds of leaf, one shared removal loop, and a
     /// caller has to say which it hands over.
     public enum Leaf: Sendable {
@@ -59,29 +59,6 @@ public enum Redact {
         let ext = knownExtension(of: name)
         return ((shown as NSString).deletingLastPathComponent as NSString)
             .appendingPathComponent(app(stem) + (ext.isEmpty ? "" : "." + ext))
-    }
-
-    /// Any text that may quote the software a path names, with that name tagged.
-    ///
-    /// Replaces every occurrence of the software's name in `text` with its tag,
-    /// for a line that quotes the name outside the path Helm wrote.
-    ///
-    /// **Known defect Redact-F1:** its one call site, in `HelmTrash`, hands it not the
-    /// system's sentence for a software leaf but Helm's own verdict
-    /// («<domain> <code>, <reason>»), and this replaces every occurrence, so an app
-    /// named like a word of that verdict («Cocoa», «Permission», «missing») garbles
-    /// the line and can be read back from the tag.
-    ///
-    /// Four characters at least, because this replaces every occurrence rather than
-    /// a delimited one: swapping a two-letter name out of a sentence rewrites the
-    /// sentence instead of redacting it. Such a name is left as it is in `text` —
-    /// never in the path, where the leaf is delimited and `path(_:leaf:)`
-    /// replaces it whatever its length.
-    public static func naming(_ text: String, software path: String, leaf: Leaf) -> String {
-        guard leaf == .softwareName else { return text }
-        let stem = softwareStem(path)
-        guard stem.count >= 4 else { return text }
-        return text.replacingOccurrences(of: stem, with: app(stem))
     }
 
     /// The part of a leaf that names software: everything but a *known* extension.
@@ -115,10 +92,6 @@ public enum Redact {
         "framework", "systemextension", "pkg", "bom", "log", "db", "lockfile"
     ]
 
-    public static func paths(_ paths: [String], home: String = NSHomeDirectory()) -> String {
-        paths.map { self.path($0, home: home) }.joined(separator: ", ")
-    }
-
     /// A short stable tag for a name that should not be written down.
     ///
     /// FNV-1a rather than `Hasher`, which is seeded per process: two lines in
@@ -134,13 +107,13 @@ public enum Redact {
     /// property this was chosen for — a line from yesterday still compares
     /// equal to a line from today — is untouched, while a tag copied into a bug
     /// report no longer means anything on anyone else's machine.
-    public static func tag(_ value: String, prefix: String) -> String {
+    static func tag(_ value: String, prefix: String) -> String {
         tag(value, prefix: prefix, salt: salt)
     }
 
     /// The same digest over a salt named outright.
     ///
-    /// The public call above reads a `static let` that is decided once per
+    /// The two-argument call above reads a `static let` that is decided once per
     /// process, which is right for the app and leaves a test no way to ask what
     /// a *different* salt would give — and «the same name tags the same way in
     /// two launches that could not save the salt» is a question about two

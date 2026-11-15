@@ -3,6 +3,9 @@ import HelmTestSupport
 
 /// `NOTICE.md` is the app's only attribution now, so it has to reach the copy.
 ///
+/// **Past defect: the attribution notice could stop shipping unseen** (6a5e7e59, the
+/// commit that removed the on-screen credit and added this class).
+///
 /// The About page carried a visible «Flag artwork: flag-icons, MIT» line, and
 /// it is gone: MIT asks for the notice to *accompany* copies, not to be drawn
 /// on a screen, and `NOTICE.md` ships inside the bundle with the copyright and

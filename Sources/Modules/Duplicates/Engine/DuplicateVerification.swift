@@ -12,7 +12,7 @@ import Foundation
 /// identical when they are no longer identical means one of them goes to the
 /// Trash and its contents are not preserved anywhere else. So the pair is read
 /// again, from disk, immediately before anything moves — a handful of files
-/// rather than the 70 GB a full search reads, which is a fraction of a second.
+/// rather than the 70 GB a full search reads.
 ///
 /// **No cache from before the press, ever, on this path.** That is the whole
 /// point: a digest older than the offer is exactly what this exists to
@@ -33,11 +33,6 @@ enum DuplicateVerification {
         case unreadable
     }
 
-    /// One pair, read fresh on both sides — `Batch` with a memo nobody shares.
-    static func verify(remove: String, keep: String) -> Verdict {
-        Batch().verify(remove: remove, keep: keep)
-    }
-
     /// One removal's verifications, with the survivor read once per batch.
     ///
     /// A group of N copies names the same survivor N−1 times, and reading it
@@ -48,13 +43,14 @@ enum DuplicateVerification {
     /// **What is memoised, and why it does not weaken the check.** Only the
     /// *surviving* copy's reading — inode, size, digest — and only for the life
     /// of one `Batch`, which one `trash` call creates and drops. The copy being
-    /// removed is read from disk in full on every call, always: that is the
-    /// guarantee the module advertises, and it is about the file whose contents
-    /// are about to stop existing anywhere else. The survivor stays on disk
+    /// removed is never memoised: it is read from disk on every call, and in
+    /// full whenever its inode and size leave the pair able to be identical.
+    /// That is the guarantee the module advertises, and it is about the file
+    /// whose contents are about to stop existing anywhere else. The survivor stays on disk
     /// whatever happens, so the freshness its reading needs is "within the
     /// operation the person pressed the button for" — the memo's first pair
-    /// reads it from disk inside this same removal, seconds at most before the
-    /// last pair asks. The cache the doc comment above refuses is the *scan's*
+    /// reads it from disk inside this same removal, before the last pair
+    /// asks. The cache the doc comment above refuses is the *scan's*
     /// — a digest older than the offer, standing in for a file nobody re-read —
     /// and nothing here outlives the press.
     /// `@unchecked Sendable` because the engine's default `verifying` closure
@@ -81,17 +77,19 @@ enum DuplicateVerification {
             self.hash = hash
         }
 
-        /// Reads the pair and compares — the removed side in full from disk,
-        /// the surviving side through the batch's one reading of it.
+        /// Reads the pair and compares — the removed side from disk, in full if
+        /// the pair can still be identical, the surviving side through the
+        /// batch's one reading of it.
         ///
         /// Full, not the prefix: the prefix hash exists to *thin the field*
         /// cheaply during a search, and two files agreeing on their first
         /// 128 KB is the reason to look further rather than a reason to delete
         /// one of them.
         ///
-        /// A size difference short-circuits the read — two files of unequal
-        /// length cannot hold the same bytes, and this is the common case when
-        /// something has been edited.
+        /// The survivor is read before either comparison. A shared inode or a
+        /// size difference then spares only the removed side's hash — two files
+        /// of unequal length cannot hold the same bytes, and this is the common
+        /// case when something has been edited.
         func verify(remove: String, keep: String) -> Verdict {
             guard let removeAttributes = try? FileManager.default
                 .attributesOfItem(atPath: remove)

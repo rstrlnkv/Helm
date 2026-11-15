@@ -16,6 +16,8 @@ import HelmTestSupport
 /// fails with EINVAL — a «failed» row in the history on every sweep, for
 /// ever, about a folder nobody asked to move. On disk: a scratch home under
 /// `/var/folders`, whose `/private` spelling is a real second spelling.
+///
+/// Past defect: fixed in 4ce355a9.
 final class ARuleNeverMovesItsOwnBucketIntoItselfTests: XCTestCase {
 
     private var home: URL!
@@ -24,10 +26,7 @@ final class ARuleNeverMovesItsOwnBucketIntoItselfTests: XCTestCase {
     override func setUpWithError() throws {
         home = scratchDirectory("home")
         try XCTSkipUnless(home.path.hasPrefix("/var/"), "the scratch home is not under /var: \(home.path)")
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        engine = AutopilotEngine.scratch(home: home.path)
     }
 
     private func sweepTwice(destination: String) throws -> SweepReport {

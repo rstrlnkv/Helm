@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
@@ -27,8 +28,7 @@ import HelmRuntime
 ///
 /// A Mac with a battery is a precondition of the engine-level checks, as it is
 /// for `TheBatteryGuardIsNotAPersonTests`: `batteryVetoes` opens on
-/// `MacHardware.hasBattery`, which is a fact about this machine. The pure
-/// decision below is asked of `BatteryGuard` directly and holds on any hardware.
+/// `lidInfo.hasBattery()`, which `FakeLidInfo` answers yes on any host.
 final class AChargeNobodyCanReadIsNotZeroTests: XCTestCase {
 
     private var store: NamespacedStore!
@@ -49,7 +49,7 @@ final class AChargeNobodyCanReadIsNotZeroTests: XCTestCase {
                                  displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(),
                                  power: power, apps: apps, pointer: FakePointer(),
-                                 clamshell: FakeClamshell(), clock: FakeClock())
+                                 clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
     /// IOKit answered, and the answer had nothing in it.
@@ -112,9 +112,7 @@ final class AChargeNobodyCanReadIsNotZeroTests: XCTestCase {
     // MARK: - What the log says about a number it has not got
 
     func testTheLogDoesNotInventAChargeItCouldNotRead() throws {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         engine.activate()
         engine.startSession(minutes: 0)
@@ -138,9 +136,7 @@ final class AChargeNobodyCanReadIsNotZeroTests: XCTestCase {
     /// The control for the line: a charge that *was* read is still in it, so the
     /// check above cannot be satisfied by a line that stopped carrying figures.
     func testTheLogStillNamesAChargeItDidRead() throws {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         engine.activate()
         engine.startSession(minutes: 0)

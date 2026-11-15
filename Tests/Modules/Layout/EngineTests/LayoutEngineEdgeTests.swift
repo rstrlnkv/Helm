@@ -4,94 +4,19 @@ import HelmContract
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-// The fakes are per-file on purpose: the ones in LayoutEngineTests are
-// file-private, and a shared set would tempt the next person to change one
-// suite's world to suit another's.
-
-private final class EdgeTyping: TypingPort, @unchecked Sendable {
-    var performed: [SwitchPlan] = []
-    func perform(_ plan: SwitchPlan) -> Bool { performed.append(plan); return true }
-}
-
-private final class EdgeContext: SecureContextPort, @unchecked Sendable {
-    var bundle = "com.apple.Notes"
-    func isSecureInput() -> Bool { false }
-    func isSecure() -> Bool { false }
-    func frontmostBundleID() -> String { bundle }
-}
-
-/// Translates anything: this suite is about lengths and endings, not about
-/// which words a dictionary knows.
-private struct EdgeTranslation: TranslationPort {
-    let table: [String: String]
-    func translate(_ word: String, from: String, to: String) -> String? {
-        if let known = table[word] { return known }
-        return String(repeating: "п", count: word.count)
-    }
-}
-
-/// Anything Cyrillic is a word; anything typed in Latin is not. That is the
-/// shape of every real mislayout.
-private struct EdgeSpell: SpellPort {
-    func isWord(_ word: String, sourceID: String) -> Bool? {
-        word.unicodeScalars.allSatisfy { $0.value > 0x400 }
-    }
-}
-
-private final class EdgeTap: KeyTapPort, @unchecked Sendable {
-    var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-    var modifiers: (@Sendable (ModifierTap.Input) -> Void)?
-    func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-               died: @escaping @Sendable () -> Void) -> Bool {
-        handler = onEvent
-        modifiers = onModifier
-        return true
-    }
-    /// One clean press and release of the bound key.
-    func tapKey(_ code: Int64, at: TimeInterval = 0) {
-        modifiers?(.down(code, at: at, othersHeld: false))
-        modifiers?(.up(code, at: at + 0.05))
-    }
-    func stop() { handler = nil }
-    func type(_ text: String) { for character in text { handler?(.character(character)) } }
-    func send(_ event: TypingBuffer.Event) { handler?(event) }
-}
-
-private final class EdgeSources: LayoutSourcePort, @unchecked Sendable {
-    var selected: [String] = []
-    func installed() -> [String] { ["en", "ru"] }
-    func current() -> String? { "en" }
-    func select(_ sourceID: String) { selected.append(sourceID) }
-}
-
 final class LayoutEngineEdgeTests: XCTestCase {
-    private var typing = EdgeTyping()
-    private var context = EdgeContext()
-    private var tap = EdgeTap()
-    private var sources = EdgeSources()
-
-    /// The chord bound as «fix». Only the recorded one ends a word and leaves
-    /// it remembered: every other chord may have changed the text in front of
-    /// the caret — ⌘V pastes, ⌥V types `√` — so the word before it is dropped.
-    private static let shortcut: UInt16 = 9
-
-    /// A store with that binding in it, because these suites use a chord as the
-    /// boundary that remembers.
-    private static func boundStore() -> NamespacedStore {
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
-                                    backing: InMemoryKeyValueStore())
-        store.set(Int(shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
-        return store
-    }
+    private var typing = FakeTyping()
+    private var context = FakeSecure()
+    private var tap = FakeTap()
+    private var sources = StuckSources()
 
     private func engine(                        settings: NamespacedStore? = nil,
                         table: [String: String] = [:]) -> LayoutEngine {
-        typing = EdgeTyping(); context = EdgeContext(); tap = EdgeTap(); sources = EdgeSources()
+        typing = FakeTyping(); context = FakeSecure(); tap = FakeTap(); sources = StuckSources()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
-                                  translation: EdgeTranslation(table: table),
-                                  spell: EdgeSpell(), secure: context,
-                                  settings: settings ?? Self.boundStore())
+                                  translation: SameLengthTranslation(table: table),
+                                  spell: CyrillicSpell(), secure: context, activation: FakeActivation(),
+                                  settings: settings ?? layoutStore(bound: true))
         engine.activate()
         return engine
     }
@@ -134,7 +59,7 @@ final class LayoutEngineEdgeTests: XCTestCase {
         tap.send(.space)
         XCTAssertEqual(typing.performed.count, 1, "precondition: the word was converted")
 
-        tap.send(.chord(Self.shortcut))        // the chord the user just pressed, seen by the tap first
+        tap.send(.chord(layoutShortcut))        // the chord the user just pressed, seen by the tap first
         engine.undoLast()       // …and then delivered to Helm by Carbon
         XCTAssertEqual(typing.performed.count, 2, "the undo shortcut did nothing")
         XCTAssertEqual(typing.performed.last?.insert, "ghbdtn ",
@@ -185,7 +110,7 @@ final class LayoutEngineEdgeTests: XCTestCase {
         tap.type("ghbdtn")
         // A chord, not an arrow: a caret move now forgets the word by itself, so
         // arranging this with one would prove nothing about `deactivate`.
-        tap.send(.chord(Self.shortcut))        // ends the word without converting; it is remembered
+        tap.send(.chord(layoutShortcut))        // ends the word without converting; it is remembered
         XCTAssertTrue(typing.performed.isEmpty, "precondition: nothing was converted")
         engine.deactivate()
         engine.convertLastWord()
@@ -199,41 +124,20 @@ final class LayoutEngineEdgeTests: XCTestCase {
 
 /// The engine has to read its own settings when it starts.
 ///
-/// It did not. `reloadSettings()` ran only when the transport announced a
-/// change, so on every launch the engine kept the values its initialiser
-/// happened to hold — and the tap key has no initialiser parameter at all, so
-/// it stayed `.off`. The gesture therefore worked only in a session where
-/// somebody had opened the Keyboard page and changed something, and was gone
-/// again after the next restart. Nothing was written to the log, because `.off`
-/// refuses before there is anything to refuse.
-///
-/// The test that was supposed to cover this sent `settingsChanged` itself
-/// first, which is the one thing a fresh launch does not do.
+/// `reloadSettings()` runs in `activate()`, not only when a change is announced:
+/// otherwise a launch keeps the values the initialiser holds, and the tap key,
+/// which has no initialiser parameter, stays `.off`; the gesture then refuses
+/// silently, before there is anything to log. A test that sends `settingsChanged`
+/// itself first does the one thing a fresh launch does not.
 final class SettingsAtStartTests: XCTestCase {
 
-    private final class CountingTap: KeyTapPort, @unchecked Sendable {
-        var modifiers: (@Sendable (ModifierTap.Input) -> Void)?
-        func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-                   onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-                   died: @escaping @Sendable () -> Void) -> Bool {
-            modifiers = onModifier
-            return true
-        }
-        func stop() {}
-        func tapKey(_ code: Int64) {
-            modifiers?(.down(code, at: 0, othersHeld: false))
-            modifiers?(.up(code, at: 0.05))
-        }
-    }
-
     func testTheBoundKeyWorksOnAFreshLaunchWithNothingStored() {
-        let tap = CountingTap()
-        let sources = EdgeSources()
-        let engine = LayoutEngine(tap: tap, typing: EdgeTyping(), sources: sources,
-                                  translation: EdgeTranslation(table: ["ghbdtn": "привет"]),
-                                  spell: EdgeSpell(), secure: EdgeContext(),
-                                  settings: NamespacedStore(namespace: "layout",
-                                                            backing: InMemoryKeyValueStore()))
+        let tap = FakeTap()
+        let sources = StuckSources()
+        let engine = LayoutEngine(tap: tap, typing: FakeTyping(), sources: sources,
+                                  translation: SameLengthTranslation(table: ["ghbdtn": "привет"]),
+                                  spell: CyrillicSpell(), secure: FakeSecure(), activation: FakeActivation(),
+                                  settings: layoutStore())
         engine.activate()
         // No `settingsChanged`: this is the launch, not a visit to the page.
 
@@ -241,77 +145,9 @@ final class SettingsAtStartTests: XCTestCase {
         // reach the engine — which it can only do if the key was ever read.
         XCTAssertNotEqual(engine.boundTapKey, .off,
                           "the engine never read its own settings at start")
-        tap.tapKey(TapKey.rightCommand.keyCode!)
+        let code = TapKey.rightCommand.keyCode!
+        tap.modifiers?(.down(code, at: 0, othersHeld: false))
+        tap.modifiers?(.up(code, at: 0.05))
         withExtendedLifetime(engine) {}
-    }
-}
-
-/// What the store holds against what the engine does with it: the defaults a
-/// fresh install runs on, and a choice that survives a reload.
-final class LayoutEngineStoredSettingsTests: XCTestCase {
-    private var typing = EdgeTyping()
-    private var tap = EdgeTap()
-
-    private func engine(settings: NamespacedStore, table: [String: String]) -> LayoutEngine {
-        typing = EdgeTyping(); tap = EdgeTap()
-        let engine = LayoutEngine(tap: tap, typing: typing, sources: EdgeSources(),
-                                  translation: EdgeTranslation(table: table),
-                                  spell: EdgeSpell(), secure: EdgeContext(),
-                                  settings: settings)
-        engine.activate()
-        return engine
-    }
-
-    /// The stored default and the documented default are the same default.
-    ///
-    /// `ConversionTriggers` says Return is off, and says why at length:
-    /// in a chat Return sends the message and empties the field, so the
-    /// backspaces delete nothing, the replacement is typed into an empty box
-    /// and the newline sends it — the other person gets the mistyped word and
-    /// then a second message correcting it. Every place that reads the setting
-    /// out of the store asks for `default: true`, so on a machine where nobody
-    /// has touched the switch, Return converts.
-    func testTheStoredDefaultsMatchTheDocumentedOnes() async throws {
-        let store = NamespacedStore(namespace: "layout", backing: InMemoryKeyValueStore())
-        let engine = engine(settings: store, table: ["ghbdtn": "привет"])
-        // Nothing has been written to the store: this is a fresh install
-        // reading its own defaults.
-        _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
-
-        tap.type("ghbdtn")
-        tap.send(.newline)
-        XCTAssertTrue(typing.performed.isEmpty,
-                      "Return converted on a store nobody has written to")
-
-        // …and the two that are documented as on stay on, so the answer is not
-        // "switch everything off". Counted as increments, so these two stand on
-        // their own whatever Return did above.
-        var seen = typing.performed.count
-        tap.type("ghbdtn")
-        tap.send(.space)
-        XCTAssertEqual(typing.performed.count, seen + 1, "a space still confirms by default")
-        seen = typing.performed.count
-        tap.type("ghbdtn")
-        tap.send(.punctuation("."))
-        XCTAssertEqual(typing.performed.count, seen + 1, "punctuation still confirms by default")
-    }
-
-    /// A choice the user made stays made across a settings reload — the store
-    /// is the source of truth once it has been written to.
-    ///
-    /// It used to be asserted over `onSpace`, one of three trigger switches
-    /// that no longer exist: the engine takes `ConversionTriggers` and
-    /// reads no key for them, precisely so a value stored by an older build
-    /// cannot outlive the control that could change it. «Fix as I type» carries
-    /// the same claim and is a setting the page still has.
-    func testAStoredChoiceSurvivesTheReload() async throws {
-        let backing = InMemoryKeyValueStore()
-        let store = NamespacedStore(namespace: "layout", backing: backing)
-        store.set(false, for: LayoutKey.automatic)
-        let engine = engine(settings: store, table: ["ghbdtn": "привет"])
-        _ = try await engine.transport.send(EngineCommand(name: "settingsChanged"))
-        tap.type("ghbdtn")
-        tap.send(.space)
-        XCTAssertTrue(typing.performed.isEmpty, "the user switched fixing as you type off")
     }
 }

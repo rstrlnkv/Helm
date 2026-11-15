@@ -1,10 +1,10 @@
 import HelmTestSupport
 import XCTest
-@testable import HelmApp
+import HelmAppStrings
+import HelmUI
 
-/// CLAUDE.md § Shipping — what a person does, not a role orders one `CHANGELOG.md` section and the same entries in
-/// `Sources/HelmApp/ChangelogData.swift` for every release, and ARCHITECTURE.md
-/// § What shipped records that the two have drifted about which versions exist before. Nothing in `Tests/` held
+/// (ARCHITECTURE.md § What shipped) orders one `CHANGELOG.md` section and the same entries in
+/// `Sources/HelmAppStrings/ChangelogData.swift` for every release, and records that the two have drifted about which versions exist before. Nothing in `Tests/` held
 /// them to that: `CHANGELOG.md` is named in two guards over the standing
 /// documents, and neither reads a version out of it.
 ///
@@ -17,11 +17,13 @@ import XCTest
 /// the changelog by a `-dev.N` in the ordinary course of work, between a version
 /// bump and its entry, and pinning that gap would be red for no defect.
 ///
-/// **No `AppLanguage.each` here.** `CLAUDE.md` orders a visible-string assertion
+/// **No `AppLanguage.each` here.** The house rules order a visible-string assertion
 /// parameterized across the eight languages, because a bare read of `L()`
 /// answers in whichever language a run happens to be in. A version number and a
 /// date are literals in both `CHANGELOG.md` and `ChangelogEntry` — `L()` never
 /// touches them — so there is nothing here for a language to change.
+///
+/// Past defect: commit 06dedd9f, «Hold the changelog and the app's list to the same releases».
 final class TheChangelogAndTheAppsListAgreeTests: XCTestCase {
 
     /// One release, named the same way on both sides of the comparison.
@@ -149,5 +151,22 @@ final class TheChangelogAndTheAppsListAgreeTests: XCTestCase {
 
         assertDescending(try recorded().map(\.version), source: "CHANGELOG.md")
         assertDescending(drawn().map(\.version), source: "ChangelogData.swift")
+    }
+    /// `Changelog.line` memoises one sub-bundle per language, keyed by the language it
+    /// read. A key that is not the language read (or two reads that disagree) hands every
+    /// language the first one's bundle for the process's life: the sentences then come back
+    /// identical in every language. English and Russian must differ somewhere in the list,
+    /// and the list must be the same length in both.
+    @MainActor
+    func testTheSentencesFollowTheLanguageAskedFor() {
+        var english: [String] = []
+        var russian: [String] = []
+        AppLanguage.only(.ru) { russian = Changelog.entries.flatMap { $0.items.map(\.text) } }
+        AppLanguage.only(.en) { english = Changelog.entries.flatMap { $0.items.map(\.text) } }
+        AppLanguage.only(.ru) { XCTAssertEqual(russian, Changelog.entries.flatMap { $0.items.map(\.text) }) }
+        XCTAssertFalse(english.isEmpty)
+        XCTAssertEqual(english.count, russian.count)
+        XCTAssertNotEqual(english, russian, "the Russian changelog reads as the English one")
+        XCTAssertTrue(zip(english, russian).contains { $0 != $1 })
     }
 }

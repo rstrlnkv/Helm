@@ -12,9 +12,13 @@ import XCTest
 /// The tail is seeded from the file now, and **the seed is the one place a log
 /// line is parsed back apart** — `write` still keeps the parts and hands them
 /// over, which is the rule this seed is the stated exception to. Everything below
-/// is about that parse: that it is the exact inverse of `LogLine.format`, that a
+/// is about that parse: that it is the exact inverse of `LogLine.line`, that a
 /// line it cannot read is kept rather than guessed at, and that a file which is
 /// missing, empty, huge, half-written or refused are five different answers.
+///
+/// Past defect: a read cut inside a multi-byte character («—», «⏎») or a last
+/// line torn inside one made the whole file undecodable, and the page showed
+/// nothing (log-12, fixed with this class's two cut-character tests).
 final class ThePageShowsTheLogAndNotTheSessionTests: XCTestCase {
 
     /// Fixed, so a machine in another zone reads these lines the same way. The
@@ -29,8 +33,7 @@ final class ThePageShowsTheLogAndNotTheSessionTests: XCTestCase {
     /// The line the file would carry for this entry — spelled by the app's own
     /// formatter, never by a second copy of the format written here.
     private func line(_ entry: LogEntry) -> String {
-        LogLine.format(date: entry.date, level: entry.level, category: entry.category,
-                       message: entry.message, site: entry.site, timeZone: utc)
+        LogLine.line(entry, timeZone: utc)
     }
 
     // MARK: - The parse is the inverse of the format
@@ -201,6 +204,41 @@ final class ThePageShowsTheLogAndNotTheSessionTests: XCTestCase {
         let out = LogSeed.read([url], atMost: 64 * 1024, limit: 1000, using: stamps)
 
         XCTAssertEqual(out.map(\.message), ["whole", "2026-08-14 10:00:00.0"])
+    }
+
+    /// The reader's window starts inside the «—» of a line: the bytes it lands on
+    /// are a continuation, the fragment is dropped, and the lines after it stay.
+    func testAReadCutInsideAMultiByteCharacterStillSeedsTheLinesAfterIt() throws {
+        let folder = scratchDirectory("log-seed-cut-inside")
+        let url = folder.appendingPathComponent("helm.log")
+        let cut = line(entry("before — after", at: 1_700_000_000))
+        let data = Data((cut + "\n" + line(entry("kept", at: 1_700_000_100)) + "\n").utf8)
+        let dash = try XCTUnwrap(data.firstRange(of: Data("—".utf8))).lowerBound
+        let bytes = data.count - (dash + 1)
+        XCTAssertEqual(data[dash + 1] & 0xC0, 0x80, "the cut is not inside a character")
+        try data.write(to: url)
+
+        let out = LogSeed.read([url], atMost: bytes, limit: 1000, using: stamps)
+
+        XCTAssertEqual(out.map(\.message), ["kept"], "the file was dropped for one cut character")
+    }
+
+    /// The process died inside a character: the torn last line is kept, as the
+    /// half-written one above is.
+    func testALastLineTornInsideAMultiByteCharacterIsKept() throws {
+        let folder = scratchDirectory("log-seed-torn-char")
+        let url = folder.appendingPathComponent("helm.log")
+        var data = Data((line(entry("whole", at: 1_700_000_000)) + "\n").utf8)
+        data.append(Data(line(entry("torn ", at: 1_700_000_100)).utf8))
+        data.append(contentsOf: [0xE2, 0x80])
+        XCTAssertNil(String(data: data, encoding: .utf8), "the tail is whole, so the fixture proves nothing")
+        try data.write(to: url)
+
+        let out = LogSeed.read([url], atMost: 64 * 1024, limit: 1000, using: stamps)
+
+        XCTAssertEqual(out.count, 2, "the file was dropped for a torn last character")
+        XCTAssertEqual(out.first?.message, "whole")
+        XCTAssertTrue(out.last?.message.hasPrefix("torn") == true)
     }
 
     /// A refused read is not an empty log, and it is not a reason to lose the

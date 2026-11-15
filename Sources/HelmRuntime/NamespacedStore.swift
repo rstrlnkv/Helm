@@ -57,11 +57,11 @@ public final class InMemoryKeyValueStore: KeyValueStore, @unchecked Sendable {
 
 extension UserDefaults: KeyValueStore {}
 
-public extension Notification.Name {
+extension Notification.Name {
     /// Posted after any `NamespacedStore` write; `object` is the full namespaced
     /// key ("module.<id>.<key>"). Views that mirror stored values into `@State`
     /// observe this to stay in sync with other windows.
-    static let helmStoreChanged = Notification.Name("helmStoreChanged")
+    public static let helmStoreChanged = Notification.Name("helmStoreChanged")
 }
 
 public final class NamespacedStore {
@@ -157,7 +157,7 @@ public final class NamespacedStore {
     }
 }
 
-public extension Notification.Name {
+extension Notification.Name {
     /// Posted when the user reorders modules, so the panel rebuilds.
-    static let helmModuleOrderChanged = Notification.Name("helmModuleOrderChanged")
+    public static let helmModuleOrderChanged = Notification.Name("helmModuleOrderChanged")
 }

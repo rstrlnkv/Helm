@@ -25,17 +25,17 @@ import HelmRuntime
 /// cleared, and `appLaunched` refuses to act on any app it believes is already
 /// launched. Auto-connect for that app is dead for the rest of the session,
 /// with a rule on screen that says it is on.
+///
+/// Guards an unattended action (a rule raising a tunnel); M103 below is the
+/// defect where a first unreadable list dropped every rule for good.
+///
+/// Past defect: commit 6dec5f2f, «fix: eight defects a second agent pass turned up».
 final class VPNEngineRuleReloadTests: XCTestCase {
-    private func settings() -> VPNSettings {
-        VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
-    }
-
     /// Off and on again. The rule is present, the VPN is present, the app
     /// launches — and the second launch issues nothing.
     func test_rule_removed_and_restored_still_connects_on_the_next_launch() {
-        let runner = FakeRunner()
-        runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
-        let store = settings()
+        let runner = FakeRunner(list: "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\"")
+        let store = VPNSettings.inMemory()
         store.setRulesJSON(ruleJSONForA)
         let apps = FakeApps.trustingA()
         let engine = VPNEngine(settings: store, runner: runner, apps: apps,
@@ -73,9 +73,8 @@ final class VPNEngineRuleReloadTests: XCTestCase {
     /// the failure on the `where core.rules[id] != nil` filter rather than on
     /// the reload or on the fake.
     func test_control_a_quit_while_the_rule_is_live_reconnects_on_relaunch() {
-        let runner = FakeRunner()
-        runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
-        let store = settings()
+        let runner = FakeRunner(list: "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\"")
+        let store = VPNSettings.inMemory()
         store.setRulesJSON(ruleJSONForA)
         let apps = FakeApps.trustingA()
         let engine = VPNEngine(settings: store, runner: runner, apps: apps,
@@ -99,12 +98,11 @@ final class VPNEngineRuleReloadTests: XCTestCase {
 
     /// The same shape with nobody touching the rules: the connection is
     /// renamed in System Settings, so `VPNRules.valid` drops the rule at the
-    /// next reload, and renamed back afterwards. `orphaned` exists precisely
-    /// because this happens.
+    /// next reload, and renamed back afterwards. `VPNTenants.orphaned` exists
+    /// precisely because this happens.
     func test_vpn_renamed_away_and_back_still_connects_on_the_next_launch() {
-        let runner = FakeRunner()
-        runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
-        let store = settings()
+        let runner = FakeRunner(list: "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\"")
+        let store = VPNSettings.inMemory()
         store.setRulesJSON(ruleJSONForA)
         let apps = FakeApps.trustingA()
         let engine = VPNEngine(settings: store, runner: runner, apps: apps,
@@ -128,6 +126,74 @@ final class VPNEngineRuleReloadTests: XCTestCase {
 
         XCTAssertEqual(runner.starts(of: "A"), 2,
                        "the connection is back under its old name and the app launched again")
+    }
+}
+
+extension VPNEngineRuleReloadTests {
+    /// M103: the first `--nc list` fails, so the rules cannot be filtered against
+    /// the connections; the second answers, and the app already running when the
+    /// engine started fires its rule once, through the identity gate.
+    func test_rules_dropped_by_an_unread_list_come_back_and_replay_the_running_app() {
+        let runner = FakeRunner()
+        runner.failingListReads = 1
+        runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
+        let store = VPNSettings.inMemory()
+        store.setRulesJSON(ruleJSONForA)
+        let apps = FakeApps.trustingA()
+        apps.bundleIDs = ["com.a"]
+        let network = FakeNetwork()
+        let engine = VPNEngine(settings: store, runner: runner, apps: apps, network: network,
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
+
+        engine.activate()
+        XCTAssertEqual(runner.starts(of: "A"), 0, "no list yet, so nothing can fire")
+        network.fire()
+
+        XCTAssertEqual(runner.starts(of: "A"), 1,
+                       "the list is read now, the rule is back and its app has been running since before")
+    }
+
+    /// The replay is the identity gate's, not a way round it: an instance signed as
+    /// something else fires nothing after the late read.
+    func test_the_replay_after_a_late_list_goes_through_the_identity_gate() {
+        let runner = FakeRunner()
+        runner.failingListReads = 1
+        runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
+        let store = VPNSettings.inMemory()
+        store.setRulesJSON(ruleJSONForA)
+        let apps = FakeApps()
+        apps.bundleIDs = ["com.a"]
+        let network = FakeNetwork()
+        let engine = VPNEngine(settings: store, runner: runner, apps: apps, network: network,
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
+
+        engine.activate()
+        network.fire()
+
+        XCTAssertEqual(runner.starts(of: "A"), 0)
+    }
+
+    /// The replay is for a running module only: a list read that lands after
+    /// `deactivate()` applies the held rules but starts nothing.
+    func test_a_late_list_read_after_deactivate_starts_no_tunnel() {
+        let runner = FakeRunner()
+        runner.failingListReads = 1
+        runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
+        let store = VPNSettings.inMemory()
+        store.setRulesJSON(ruleJSONForA)
+        let apps = FakeApps.trustingA()
+        apps.bundleIDs = ["com.a"]
+        let engine = VPNEngine(settings: store, runner: runner, apps: apps, network: FakeNetwork(),
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
+
+        engine.activate()
+        engine.deactivate()
+        engine.refresh()
+
+        XCTAssertEqual(runner.starts(of: "A"), 0, "the module is stopped, so a late list starts nothing")
     }
 }
 

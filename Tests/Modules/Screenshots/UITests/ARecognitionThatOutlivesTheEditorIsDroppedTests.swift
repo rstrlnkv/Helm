@@ -1,11 +1,10 @@
 import AppKit
 import CoreGraphics
 import Foundation
-import HelmContract
 import HelmTestSupport
 import HelmUI
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// The reader the overlay is handed: every call waits for `answer`, and it counts what the cancellation reached.
@@ -57,21 +56,14 @@ private var reading: CaptureSession.AreaReading {
 @MainActor
 private func plates(_ view: OverlayView) -> [String] { view.visiblePlates.compactMap(\.string) }
 
-/// **A reading of the area's text belongs to the editor that asked, for the area it asked about, and an answer that finds either gone is
-/// dropped:** nothing is inserted, nothing is copied, no plate is put up.
-///
-/// The overlay holds the task (`CaptureOverlay.beginReading`); `close` cancels it, and a change of the area under it ends it, since its boxes
-/// were for the old area. The reader here is the overlay's own seam (`EditorTextTools`) answering when the test says, so each test has a
-/// reading in flight at the moment it breaks the tie.
-///
-/// A dropped answer is asserted by what did not happen, so each such test ends with an answer of the same path that does act (the control):
-/// the stale answer was resumed first, so a defect that acted on it would already have acted.
+/// What both classes below stand on, and no test of its own: an overlay built over the real screens with the reader above as its
+/// text seam, closed again in `tearDown`, the language pinned to English.
 @MainActor
-final class ARecognitionThatOutlivesTheEditorIsDroppedTests: XCTestCase {
+class RecognitionRig: XCTestCase {
 
-    private var results: [OverlayResult] = []
-    private var rigged: (overlay: CaptureOverlay, display: DisplayID, view: OverlayView)?
-    private var reader = Reader()
+    fileprivate var results: [OverlayResult] = []
+    fileprivate var rigged: (overlay: CaptureOverlay, display: DisplayID, view: OverlayView)?
+    fileprivate var reader = Reader()
 
     override func setUp() {
         super.setUp()
@@ -85,13 +77,28 @@ final class ARecognitionThatOutlivesTheEditorIsDroppedTests: XCTestCase {
         super.tearDown()
     }
 
-    private func build() throws -> (overlay: CaptureOverlay, display: DisplayID, view: OverlayView) {
+    fileprivate func build() throws -> (overlay: CaptureOverlay, display: DisplayID, view: OverlayView) {
         reader = Reader()
         let tools = EditorTextTools(read: { [reader] in await reader.read($0, $1) }, copy: { [reader] in reader.copy($0) })
         let built = try OverlayRig.overlay(scale: 1, area: area, textTools: tools) { [weak self] in self?.results.append($0) }
         rigged = built
         return built
     }
+}
+
+/// **A reading of the area's text belongs to the editor that asked, for the area it asked about, and an answer that finds either gone is
+/// dropped:** nothing is inserted, nothing is copied, no plate is put up.
+///
+/// The overlay holds the task (`CaptureOverlay.beginReading`); `close` cancels it, and a change of the area under it ends it, since its boxes
+/// were for the old area. The reader here is the overlay's own seam (`EditorTextTools`) answering when the test says, so each test has a
+/// reading in flight at the moment it breaks the tie.
+///
+/// A dropped answer is asserted by what did not happen, so each such test ends with an answer of the same path that does act (the control):
+/// the stale answer was resumed first, so a defect that acted on it would already have acted.
+///
+/// Mutant, red here: `answered` drops the `held.serial == serial` check (red in `ARecognitionForAnAreaThatChangedIsDroppedTests`, same file).
+@MainActor
+final class ARecognitionThatOutlivesTheEditorIsDroppedTests: RecognitionRig {
 
     // MARK: The control: an answer that finds everything as it was
 
@@ -128,32 +135,9 @@ final class ARecognitionThatOutlivesTheEditorIsDroppedTests: XCTestCase {
 }
 
 /// An answer for an area that moved, was cropped, or a second choice while one reading runs, is dropped.
+/// Mutant, red here: `Sources/Modules/Screenshots/UI/CaptureOverlayEditing.swift`: `guard let held = reading, held.serial == serial,` -> `guard let held = reading,`.
 @MainActor
-final class ARecognitionForAnAreaThatChangedIsDroppedTests: XCTestCase {
-
-    private var results: [OverlayResult] = []
-    private var rigged: (overlay: CaptureOverlay, display: DisplayID, view: OverlayView)?
-    private var reader = Reader()
-
-    override func setUp() {
-        super.setUp()
-        AppLanguage.override = .en
-    }
-
-    override func tearDown() {
-        rigged?.overlay.close()
-        rigged = nil
-        AppLanguage.override = nil
-        super.tearDown()
-    }
-
-    private func build() throws -> (overlay: CaptureOverlay, display: DisplayID, view: OverlayView) {
-        reader = Reader()
-        let tools = EditorTextTools(read: { [reader] in await reader.read($0, $1) }, copy: { [reader] in reader.copy($0) })
-        let built = try OverlayRig.overlay(scale: 1, area: area, textTools: tools) { [weak self] in self?.results.append($0) }
-        rigged = built
-        return built
-    }
+final class ARecognitionForAnAreaThatChangedIsDroppedTests: RecognitionRig {
 
     // MARK: The area changed
 

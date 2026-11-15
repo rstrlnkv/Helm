@@ -11,6 +11,7 @@ import XCTest
 /// parser does not recognise has to answer nil rather than an empty map, or a
 /// broken endpoint reads as "nobody installs anything" and quietly re-sorts
 /// every search result by nothing at all.
+/// Kept: the only test of the three silent traps in the install-counts document (key, separators, unknown shape); `ARefusedFetchKeepsTheLastCountsTests` drives the fetch, not the parser.
 final class InstallCountsParserTests: XCTestCase {
 
     private func data(_ s: String) -> Data { Data(s.utf8) }

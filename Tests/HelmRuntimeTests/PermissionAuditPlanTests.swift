@@ -8,6 +8,8 @@ import XCTest
 /// hands over — which is exactly how the version-keyed defect survived them.
 /// The wiring is `ThePermissionAuditAsksTheSignatureTests`, and what makes one
 /// build tell itself apart from the next is `ARebuildIsANewProgramTests`.
+///
+/// Guards: b134c772 (the audit compared versions, not signatures) and b9edd7ec (it asked on a first run).
 final class PermissionAuditPlanTests: XCTestCase {
     func testOnlyWhatIsBothNeededAndMissingIsReported() {
         XCTAssertEqual(PermissionAuditPlan.missing(fullDisk: .denied, accessibility: .denied,

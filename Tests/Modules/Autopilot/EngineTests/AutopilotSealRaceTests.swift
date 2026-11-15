@@ -68,10 +68,10 @@ private final class HoldingStore: KeyValueStore, @unchecked Sendable {
 
 /// Two threads asking the engine whose rules these are.
 ///
-/// The rule set is read from the sweep timer, from FSEvents, from the transport
-/// and from the watch refresh — four callers, none of them serialised with the
+/// The rule set is read from the sweep timer, from FSEvents, from the model's
+/// door and from the watch refresh — four callers, none of them serialised with the
 /// others. Each read decides whether the stored rules are Helm's own and records
-/// that decision in `rulesRefused`, which is the only signal a person has that
+/// that decision in the status's `refusal`, which is the only signal a person has that
 /// something else wrote their rules. So the reads have to be ordered against
 /// each other: a decision taken about the file as it was is not allowed to be
 /// the last word about the file as it is.
@@ -108,13 +108,6 @@ final class AutopilotSealRaceTests: XCTestCase {
     /// Without it the read this test holds might be that one.
     private func settle(_ engine: AutopilotEngine) { engine.clearHistory() }
 
-    private func emptyingRules() -> [WatchedFolder] {
-        [WatchedFolder(id: "planted", path: root.path, enabled: true, rules: [
-            Rule(id: "r", name: "take it", enabled: true, match: .all,
-                 conditions: [.fileExtension(["pdf"])], action: .trash),
-        ], depth: 1)]
-    }
-
     /// Sets up an engine with one sealed, harmless rule set saved through Helm,
     /// and a read of it held mid-decision.
     private func engineWithAHeldRead() throws -> AutopilotEngine {
@@ -132,7 +125,7 @@ final class AutopilotSealRaceTests: XCTestCase {
     /// the read that saw the edit, and its verdict — "these are Helm's own
     /// rules", true of the file it read and of nothing since — lands last.
     ///
-    /// `rulesRefused` is what tells a person their rules were tampered with, so
+    /// The status's `refusal` is what tells a person their rules were tampered with, so
     /// the last write winning by accident is not a test problem.
     func testAReadThatBeganBeforeTheEditDoesNotGetTheLastWord() throws {
         let helm = try engineWithAHeldRead()
@@ -143,12 +136,16 @@ final class AutopilotSealRaceTests: XCTestCase {
         }
         XCTAssertTrue(backing.waitUntilHolding(), "the premise: a read is in flight")
 
-        backing.set(try JSONEncoder().encode(emptyingRules()), forKey: payloadKey)
+        backing.set(try JSONEncoder().encode(emptyingRules(in: root)), forKey: payloadKey)
         _ = helm.folders
 
         wait(for: [earlier], timeout: 5)
-        XCTAssertTrue(helm.rulesRefused,
-                      "a verdict about the rules as they were overwrote the verdict about the edit")
+        // Not `status`: it re-judges the plist and would heal a stale verdict
+        // before this looked at it. `discardRefusedRules` acts on the recorded
+        // verdict alone and does nothing unless it says "tampered".
+        helm.discardRefusedRules()
+        XCTAssertNil(backing.object(forKey: payloadKey),
+                     "a verdict about the rules as they were overwrote the verdict about the edit: the discard found nothing to refuse")
     }
 
     // MARK: - Why it holds

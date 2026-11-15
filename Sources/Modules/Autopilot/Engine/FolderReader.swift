@@ -33,17 +33,6 @@ struct FolderReader: Sendable {
         isDirectory && level >= depth
     }
 
-    /// The files a folder's rules will be offered, at the folder's depth.
-    ///
-    /// Depth 1 is the folder's own contents. Deeper is the folder's own
-    /// setting, and the walk does not descend into a package at any
-    /// depth: an `.app` or an `.rtfd` is one thing to a person, and descending
-    /// into it would offer a rule several hundred files that are not files as
-    /// far as anybody is concerned.
-    func facts(in folder: String, depth: Int, now: Date = Date()) -> [FileFacts] {
-        reading(in: folder, depth: depth, now: now).files
-    }
-
     /// The deepest a read goes whatever depth a folder asks for. The walk holds
     /// one descriptor per level it is inside, and a depth is an `Int` read out of
     /// a property list — a ceiling here is what keeps `Int.max` from being a
@@ -51,7 +40,15 @@ struct FolderReader: Sendable {
     /// person's Full Disk Access.
     static let deepest = 64
 
-    /// The same read, with the answer to "was there anything to read".
+    /// The files a folder's rules will be offered, at the folder's depth.
+    ///
+    /// Depth 1 is the folder's own contents. Deeper is the folder's own
+    /// setting, and the walk does not descend into a package at any
+    /// depth: an `.app` or an `.rtfd` is one thing to a person, and descending
+    /// into it would offer a rule several hundred files that are not files as
+    /// far as anybody is concerned.
+    ///
+    /// The answer comes with "was there anything to read".
     ///
     /// **Three states, because the caller cannot tell them apart from a count.**
     /// A walk that swallowed its open errors would fold a directory that is not
@@ -163,7 +160,7 @@ struct FolderReader: Sendable {
     private static func path(of fd: Int32) -> String? {
         var buffer = [CChar](repeating: 0, count: Int(MAXPATHLEN))
         guard fcntl(fd, F_GETPATH, &buffer) != -1 else { return nil }
-        return String(cString: buffer)
+        return String(decoding: buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }, as: UTF8.self)
     }
 
     /// Whether the folder is there and Helm may look inside it, without reading
@@ -191,7 +188,7 @@ struct FolderReader: Sendable {
     /// Whether a rule may be offered this file at all.
     ///
     /// **The sweep and the watcher used to answer this differently, and a rule
-    /// meant two things depending on which one ran.** `facts(in:)` reads through
+    /// meant two things depending on which one ran.** `reading(in:)` reads through
     /// `walk`, which leaves hidden entries out and treats a package as one thing,
     /// so an `.app` is one thing and a dotfile is not there; the FSEvents leg
     /// asked for the facts of whatever path it was handed, and an FSEvents stream
@@ -205,10 +202,8 @@ struct FolderReader: Sendable {
     /// same order, and `TheWatcherAndTheSweepAskOneQuestionTests` pins the two
     /// answers to each other over a real tree at three depths; an agreement
     /// proven by a test is what makes them one question rather than a sentence
-    /// saying they are. **Known defect F-Y2, in the defect log:** the walk stops
-    /// at `deepest` and this question does not know it, so for a depth past 64 —
-    /// which the UI never writes and the sealed property list does not take by
-    /// hand — the watcher admits files the sweep never reads.
+    /// saying they are. The depth is the folder's capped at `deepest`, as the
+    /// walk caps it, so a stored depth past 64 admits nothing the sweep never reads.
     func admits(_ url: URL, under folder: WatchedFolder) -> Bool {
         let file = url.standardizedFileURL
         var root = URL(fileURLWithPath: folder.path).standardizedFileURL
@@ -224,7 +219,7 @@ struct FolderReader: Sendable {
         }
         let below = components.count - root.pathComponents.count
         guard components.starts(with: root.pathComponents), below >= 1,
-              below <= folder.depth else { return false }
+              below <= min(folder.depth, Self.deepest) else { return false }
         // Every step from the folder down, the file itself included: a file
         // inside a hidden folder is one the walk never reaches either, and
         // a package's descendants are refused at whichever level the package sits.
@@ -242,13 +237,10 @@ struct FolderReader: Sendable {
     /// One file. Used by the watcher, which is told about a path rather than a
     /// folder.
     func facts(of url: URL, now: Date = Date()) -> FileFacts? {
-        facts(of: url, keys: [.isDirectoryKey, .isPackageKey, .fileSizeKey,
-                              .addedToDirectoryDateKey, .contentModificationDateKey,
-                              .creationDateKey, .tagNamesKey, .contentTypeKey], now: now)
-    }
-
-    private func facts(of url: URL, keys: [URLResourceKey], now: Date) -> FileFacts? {
-        guard let values = try? url.resourceValues(forKeys: Set(keys)) else { return nil }
+        let keys: Set<URLResourceKey> = [.isDirectoryKey, .isPackageKey, .fileSizeKey,
+                                         .addedToDirectoryDateKey, .contentModificationDateKey,
+                                         .creationDateKey, .tagNamesKey, .contentTypeKey]
+        guard let values = try? url.resourceValues(forKeys: keys) else { return nil }
         return facts(from: values, of: url, now: now)
     }
 

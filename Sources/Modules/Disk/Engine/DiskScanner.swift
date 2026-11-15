@@ -3,8 +3,6 @@ import HelmRuntime
 
 struct ScanProgress: Sendable {
     let filesSeen: Int
-    let bytesSeen: Int
-    let currentPath: String
 }
 
 /// Turns a directory tree into the tree this module draws.
@@ -45,12 +43,9 @@ final class DiskScanner: @unchecked Sendable {
         lock.lock(); cancelled = true; lock.unlock()
     }
 
-    private var isCancelled: Bool {
-        lock.lock(); defer { lock.unlock() }
-        return cancelled
-    }
+    private var isCancelled: Bool { lock.withLock { cancelled } }
 
-    /// Synchronous; run it via the module's `blocking` bridge.
+    /// Synchronous; run it via `offTheCooperativePool`.
     ///
     /// Directories are walked by `BulkWalk` — a small pool of threads and one
     /// `getattrlistbulk` per directory, which is what makes this an order of
@@ -75,8 +70,6 @@ final class DiskScanner: @unchecked Sendable {
         // the user expects them (FirmlinkMap has the why).
         let skip = injectedSkip ?? FirmlinkMap.skipSet(scanRoot: root)
         var filesSeen = 0
-        var bytesSeen = 0
-        var lastPath = root
         var lastEmit = Date()
 
         let completed = BulkWalk.walk(
@@ -100,14 +93,11 @@ final class DiskScanner: @unchecked Sendable {
                     builder.addFile(path: entry.path, bytes: entry.allocatedBytes,
                                     fileID: entry.fileID, modified: entry.modified)
                     filesSeen += 1
-                    bytesSeen += entry.allocatedBytes
-                    lastPath = entry.path
                 }
                 let now = Date()
-                if now.timeIntervalSince(lastEmit) > 0.35 {
+                if now.timeIntervalSince(lastEmit) > BulkWalk.progressInterval {
                     lastEmit = now
-                    onProgress?(ScanProgress(filesSeen: filesSeen, bytesSeen: bytesSeen,
-                                             currentPath: lastPath))
+                    onProgress?(ScanProgress(filesSeen: filesSeen))
                     // The builder thread owns the tree, so snapshotting here
                     // races with nothing.
                     onPartial?(builder.build())
@@ -115,7 +105,7 @@ final class DiskScanner: @unchecked Sendable {
             })
 
         guard completed else { return nil }
-        onProgress?(ScanProgress(filesSeen: filesSeen, bytesSeen: bytesSeen, currentPath: root))
+        onProgress?(ScanProgress(filesSeen: filesSeen))
         return builder.build()
     }
 }

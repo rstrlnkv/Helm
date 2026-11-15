@@ -16,15 +16,15 @@ import SwiftUI
 /// `0.5` of slack on both sides: a rubber-band bounce and a fractional inset
 /// put a few hundredths on the offset at rest, and an edge lit by rounding is
 /// lit for ever.
-public struct PanelScrollEdges: Equatable, Sendable {
+struct PanelScrollEdges: Equatable, Sendable {
     /// Content is scrolled up past the top edge.
-    public let above: Bool
+    let above: Bool
     /// Content continues below the bottom edge.
-    public let below: Bool
+    let below: Bool
 
-    public static let none = PanelScrollEdges(above: false, below: false)
+    static let none = PanelScrollEdges(above: false, below: false)
 
-    public init(above: Bool, below: Bool) {
+    init(above: Bool, below: Bool) {
         self.above = above
         self.below = below
     }
@@ -32,7 +32,7 @@ public struct PanelScrollEdges: Equatable, Sendable {
     /// - Parameters:
     ///   - offset: the content offset, which is `-insetTop` at rest at the top.
     ///   - viewport: the height of the scroll view itself.
-    public init(offset: CGFloat, insetTop: CGFloat, insetBottom: CGFloat,
+    init(offset: CGFloat, insetTop: CGFloat, insetBottom: CGFloat,
                 contentHeight: CGFloat, viewport: CGFloat) {
         let lowest = contentHeight + insetBottom - viewport
         above = offset + insetTop > 0.5
@@ -48,7 +48,7 @@ public struct PanelScrollEdges: Equatable, Sendable {
     }
 }
 
-public extension View {
+extension View {
     /// Marks the edges of a panel scroll view that have content past them: the
     /// content fades out over the last `HelmSpace.s5` before the clip.
     ///
@@ -60,7 +60,7 @@ public extension View {
     /// **No rule at either edge.** A hairline under the tab strip and another
     /// over the footer were drawn and taken out again (2026-09-17): two lines
     /// across a panel of cards read as bands cutting it into thirds.
-    func helmPanelScrollEdges() -> some View {
+    public func helmPanelScrollEdges() -> some View {
         modifier(PanelScrollEdgeMarks())
     }
 }

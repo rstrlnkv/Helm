@@ -1,11 +1,11 @@
 import XCTest
-import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// A query that reads the disk must not be allowed to change the machine.
 ///
-/// `brew list --versions` and `brew desc` answer about what is already
-/// installed: nothing they report depends on the catalogue being fresh. Left to
+/// `brew list --versions` answers about what is already installed and `brew
+/// desc` describes the names it is given: nothing they report depends on the
+/// catalogue being fresh. Left to
 /// itself brew may refresh that catalogue first, so a person pressing Refresh on
 /// a list of installed packages can be made to wait on a download nobody asked
 /// for — and on a Mac with no network, be refused an answer brew already had.
@@ -23,41 +23,8 @@ import HelmRuntime
 /// answers about the catalogue, and a stale catalogue makes «Updates: 0» a lie
 /// about the machine. The gate is "does this query need the catalogue", not
 /// "is this query slow".
-private final class EnvironmentRecorder: ProcessRunner, @unchecked Sendable {
-    private let lock = NSLock()
-    private var _calls: [(args: [String], env: [String: String])] = []
-    var calls: [(args: [String], env: [String: String])] {
-        lock.lock(); defer { lock.unlock() }; return _calls
-    }
-
-    func run(_ launchPath: String, _ args: [String],
-             env: [String: String]) -> (status: Int32, stdout: String) {
-        lock.lock(); _calls.append((args, env)); lock.unlock()
-        return (0, "")
-    }
-
-    /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-        (0, "")
-    }
-
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        lock.lock(); _calls.append((args, env)); lock.unlock()
-        onExit(0)
-        return NoProcess()
-    }
-}
-
-private struct FixedLocator: BrewLocator {
-    func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-}
-
-private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-}
-
+///
+/// Kept: guards the defect fixed in 11f8f602 Stop a purely local brew query from refreshing the catalogue.
 final class ALocalQueryDoesNotAutoUpdateTests: XCTestCase {
 
     private func engine(_ runner: ProcessRunner) -> HomebrewEngine {

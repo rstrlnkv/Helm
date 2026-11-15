@@ -8,13 +8,13 @@ import HelmRuntime
 /// **`swift test` used to try to delete the user's real VPN credentials, and its
 /// latch could never record that it had tried.**
 ///
-/// `VPNDescriptor.makeEngine` builds `VPNSystemPorts()` unconditionally, which
+/// `VPNDescriptor.makeModule` builds `VPNSystemPorts()` unconditionally, which
 /// constructs `KeychainCredentials`, whose `init` purged every `com.helm.vpn`
-/// item — and two test files call `makeEngine` for every descriptor there is. The
+/// item — and tests call `makeModule` for every descriptor there is. The
 /// latch was `UserDefaults.standard`, which is the *calling process's* domain, so
 /// the test domain never carried it and the purge was retried on every run.
 ///
-/// That is verbatim the lesson ARCHITECTURE.md § Diagnostics log records after a
+/// That is verbatim the lesson (ARCHITECTURE.md § Diagnostics log) records after a
 /// per-process latch let a test target wipe the real `helm.log`: **a latch belongs
 /// to what it guards, not to whoever asks.** Both halves are fixed
 /// here — the latch is a file beside Helm's own state, and the purge asks first

@@ -1,6 +1,5 @@
 import XCTest
 import HelmTestSupport
-import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// A store whose refresh takes long enough to still be running when the engine
@@ -36,30 +35,6 @@ private final class SleepySpy: PopularityReading, @unchecked Sendable {
     }
 }
 
-private struct NoBrew: BrewLocator {
-    func brewPath() -> String? { nil }
-}
-
-private struct IdleRunner: ProcessRunner, @unchecked Sendable {
-    func run(_ launchPath: String, _ args: [String],
-             env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-    /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-        (0, "")
-    }
-
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        onExit(0)
-        return NoProcess()
-    }
-}
-
-private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-}
-
 /// **The other half of the refresh's lifecycle, which nothing held.**
 ///
 /// `ActivationIsWhatStartsTheRefreshTests` holds the line that *starts* the
@@ -76,7 +51,7 @@ private struct NoPrivileges: PrivilegedRunner {
 /// the optional chain resolves the weak reference, reads the port out of it and
 /// lets the engine go before the call suspends, so `deinit` still runs.
 /// `Task { [weak self] in await self?.someAsyncMethodOfTheEngine() }` — the
-/// shape CLAUDE.md names, where the method holds `self` for as long as it runs
+/// shape (ARCHITECTURE.md § State that outlives a page and ends with its module) names, where the method holds `self` for as long as it runs
 /// — fails the second case below at its five-second wait. So what is held here
 /// is "the engine can be dropped while the fetch is in flight", which is the
 /// property that matters; the capture list is protected only through it.
@@ -88,7 +63,7 @@ private struct NoPrivileges: PrivilegedRunner {
 ///
 /// Both cases are wall-clock waits and not cooperative yields: the refresh runs
 /// on a task of its own, so a yield would buy a turn on the pool and no time at
-/// all (CLAUDE.md § What not to do, and what breaks if you do). They complete in
+/// all (ARCHITECTURE.md § Fakes). They complete in
 /// milliseconds when cancellation works and time out when it does not.
 final class TheRefreshEndsWithTheEngineTests: XCTestCase {
 

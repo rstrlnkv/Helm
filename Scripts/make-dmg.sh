@@ -7,26 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
-# The SIGNED bundle, which package-app.sh leaves outside the repo: the checkout
-# is meant to stay out from under a file provider (CLAUDE.md), but if one ever
-# syncs it, a bundle copied back in carries com.apple.FinderInfo, which
-# invalidates the signature. Never package a copy from build/.
-APP_DIR="${TMPDIR:-/tmp}/helm-package/Helm.app"
-[ -d "$APP_DIR" ] || { echo "signed Helm.app not found — run Scripts/package-app.sh first" >&2; exit 1; }
-codesign --verify --deep --strict "$APP_DIR" || {
-  echo "the staged bundle does not verify — do not ship it" >&2; exit 1; }
-# Releases ship ad-hoc. A bundle signed with this Mac's own identity
-# (`signing-identity.sh`) would tie every user's grants to a key that exists on
-# one machine.
-# Captured before matching, not piped: under pipefail a `grep -q` that stops
-# reading early can fail the pipeline on codesign's broken pipe.
-SIGNATURE="$(codesign -dv "$APP_DIR" 2>&1 || true)"
-printf '%s\n' "$SIGNATURE" | grep -x 'Signature=adhoc' >/dev/null || {
-  echo "the staged bundle is signed with a local identity — package a release" \
-       "with: HELM_SIGN_IDENTITY=- bash Scripts/package-app.sh" >&2; exit 1; }
-
-# Version drives the dmg filename (matches the GitHub release tag vX.Y.Z).
-VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_DIR/Contents/Info.plist")"
+source "$SCRIPT_DIR/staged-bundle.sh"
 DMG="$REPO_ROOT/build/Helm-$VERSION.dmg"
 # Outside the checkout, for the same reason package-app.sh signs there: a
 # bundle that passes through a provider-synced folder comes out carrying
@@ -71,11 +52,17 @@ TOOLS="$REPO_ROOT/build/dmg-tools"
 # `bad interpreter: No such file or directory` after the app was already
 # packaged. `--help` costs one process and answers the question that matters —
 # it, and not `--version`: dmgbuild has no such flag and exits 2 on it when whole.
-if ! "$TOOLS/bin/dmgbuild" --help >/dev/null 2>&1; then
-  echo "==> Setting up dmgbuild (first run, or its interpreter moved)"
+# The environment is also rebuilt when the pinned requirements change, so a venv
+# made before they existed (unpinned) is not reused. The hash is kept beside it.
+REQUIREMENTS="$SCRIPT_DIR/dmg-requirements.txt"
+REQUIREMENTS_SHA="$(/usr/bin/shasum -a 256 "$REQUIREMENTS" | cut -d" " -f1)"
+if ! "$TOOLS/bin/dmgbuild" --help >/dev/null 2>&1 \
+   || [ "$(cat "$TOOLS/requirements.sha256" 2>/dev/null)" != "$REQUIREMENTS_SHA" ]; then
+  echo "==> Setting up dmgbuild (first run, its interpreter moved, or the pins changed)"
   rm -rf "$TOOLS"
   python3 -m venv "$TOOLS"
-  "$TOOLS/bin/pip" install --quiet dmgbuild
+  "$TOOLS/bin/pip" install --quiet --require-hashes -r "$REQUIREMENTS"
+  echo "$REQUIREMENTS_SHA" > "$TOOLS/requirements.sha256"
 fi
 
 echo "==> Building $DMG"

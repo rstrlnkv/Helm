@@ -17,7 +17,7 @@ final class TypingBufferTests: XCTestCase {
     /// Every boundary returns the finished word exactly once, and clears.
     func testEachBoundaryCompletesTheWord() {
         for boundary in [TypingBuffer.Event.space, .newline, .punctuation("."),
-                         .navigation, .click, .focusChange] {
+                         .navigation, .click] {
             var buffer = TypingBuffer()
             for character in "ghbdtn" { _ = buffer.accept(.character(character)) }
             XCTAssertEqual(buffer.accept(boundary)?.word, "ghbdtn", "\(boundary)")
@@ -39,14 +39,6 @@ final class TypingBufferTests: XCTestCase {
         _ = buffer.accept(.backspace)
         _ = buffer.accept(.backspace)
         XCTAssertEqual(buffer.word, "", "past the start it stops rather than going negative")
-    }
-
-    /// Losing focus mid-word abandons it: by the time focus returns, the text
-    /// underneath may be anywhere.
-    func testFocusChangeLeavesNothingBehind() {
-        var buffer = feed([.character("x")])
-        _ = buffer.accept(.focusChange)
-        XCTAssertEqual(buffer.word, "")
     }
 
     /// The character that ended the word is reported with it: it is already in
@@ -74,7 +66,7 @@ final class TypingBufferTests: XCTestCase {
     /// word three lines up. One list, exhaustive, so a third caller cannot
     /// invent a third answer.
     func testTheEventsThatAreProofTheCaretMoved() {
-        for event in [TypingBuffer.Event.navigation, .click, .focusChange] {
+        for event in [TypingBuffer.Event.navigation, .click] {
             XCTAssertTrue(event.movedTheCaret,
                           "\(event) moved the caret and did not say so")
         }

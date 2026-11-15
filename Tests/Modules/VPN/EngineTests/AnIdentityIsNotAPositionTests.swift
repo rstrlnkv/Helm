@@ -14,6 +14,8 @@ import HelmRuntime
 /// stationary tunnel reads as the tunnel disappearing. The person gets the one
 /// banner this module interrupts them for — a drop — for a tunnel that never
 /// went anywhere.
+///
+/// Past defect: commit 1fe5e099, «fix(vpn): a rule is bound to a signature, and a forged plist stops summoning dialogs».
 final class AnIdentityIsNotAPositionTests: XCTestCase {
 
     private let at = Date(timeIntervalSince1970: 1_000_000)
@@ -26,8 +28,7 @@ final class AnIdentityIsNotAPositionTests: XCTestCase {
 
     private func engine(_ runner: FakeRunner) -> VPNEngine {
         let at = self.at
-        return VPNEngine(settings: VPNSettings(store: NamespacedStore(
-                            namespace: "vpn", backing: InMemoryKeyValueStore())),
+        return VPNEngine(settings: VPNSettings.inMemory(),
                          runner: runner, apps: FakeApps(),
                          interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                          now: { at }, work: .inline)

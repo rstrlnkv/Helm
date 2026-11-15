@@ -66,23 +66,9 @@ final class ARolledBackRuleSetIsRefusedTests: XCTestCase {
         for (key, value) in copy { backing.raw[key] = value }
     }
 
-    /// A rule that empties the folder, so what it did is visible as an absence
-    /// and nothing else.
-    private func emptyingRules() -> [WatchedFolder] {
-        [WatchedFolder(id: "f", path: root.path, enabled: true, rules: [
-            Rule(id: "r", name: "take it", enabled: true, match: .all,
-                 conditions: [.fileExtension(["pdf"])], action: .trash),
-        ], depth: 1)]
-    }
-
     /// The rule set the person replaced it with: same folder, nothing to do.
     private func harmlessRules() -> [WatchedFolder] {
         [WatchedFolder(id: "f", path: root.path, enabled: true, rules: [], depth: 1)]
-    }
-
-    private func tree() -> [String] {
-        let all = FileManager.default.enumerator(atPath: root.path)?.allObjects as? [String]
-        return (all ?? []).sorted()
     }
 
     private func writeAFile() throws {
@@ -96,11 +82,11 @@ final class ARolledBackRuleSetIsRefusedTests: XCTestCase {
     func testTheRuleSetSavedThroughHelmRuns() throws {
         try writeAFile()
         let helm = engine()
-        helm.folders = emptyingRules()
+        helm.folders = emptyingRules(in: root, id: "f")
 
         helm.sweepAll()
 
-        XCTAssertEqual(tree(), [], "these rules do act on this file when Helm saved them")
+        XCTAssertEqual(tree(under: root), [], "these rules do act on this file when Helm saved them")
     }
 
     // MARK: - The rule set from before
@@ -110,7 +96,7 @@ final class ARolledBackRuleSetIsRefusedTests: XCTestCase {
     func testAnOlderSealedRuleSetIsNotRun() throws {
         try writeAFile()
         let helm = engine()
-        helm.folders = emptyingRules()
+        helm.folders = emptyingRules(in: root, id: "f")
         let yesterday = stored()
         helm.folders = harmlessRules()
         XCTAssertEqual(helm.folders.first?.rules.count, 0, "the premise: the person edited them")
@@ -118,9 +104,9 @@ final class ARolledBackRuleSetIsRefusedTests: XCTestCase {
         putBack(yesterday)
         helm.sweepAll()
 
-        XCTAssertEqual(tree(), [leaf], "the rule the person deleted ran")
+        XCTAssertEqual(tree(under: root), [leaf], "the rule the person deleted ran")
         XCTAssertTrue(helm.folders.isEmpty, "the engine handed the old rules out")
-        XCTAssertTrue(helm.rulesRefused, "nothing said the rules on disk are not the person's")
+        XCTAssertNotNil(helm.status.refusal, "nothing said the rules on disk are not the person's")
     }
 
     /// And the number beside the payload cannot be raised to clear the mark: it
@@ -128,7 +114,7 @@ final class ARolledBackRuleSetIsRefusedTests: XCTestCase {
     func testRaisingTheNumberInThePlistDoesNotRestoreAnOldRuleSet() throws {
         try writeAFile()
         let helm = engine()
-        helm.folders = emptyingRules()
+        helm.folders = emptyingRules(in: root, id: "f")
         let yesterday = stored()
         helm.folders = harmlessRules()
 
@@ -136,8 +122,8 @@ final class ARolledBackRuleSetIsRefusedTests: XCTestCase {
         backing.raw[seqKey] = 99
         helm.sweepAll()
 
-        XCTAssertEqual(tree(), [leaf])
-        XCTAssertTrue(helm.rulesRefused)
+        XCTAssertEqual(tree(under: root), [leaf])
+        XCTAssertNotNil(helm.status.refusal)
     }
 
     /// A refused rule set is not overwritten, whichever refusal it is — the
@@ -145,7 +131,7 @@ final class ARolledBackRuleSetIsRefusedTests: XCTestCase {
     /// tampering. What is in the file is a rule set the person once had.
     func testARolledBackRuleSetIsNotWrittenOver() throws {
         let helm = engine()
-        helm.folders = emptyingRules()
+        helm.folders = emptyingRules(in: root, id: "f")
         let yesterday = stored()
         helm.folders = harmlessRules()
         putBack(yesterday)
@@ -167,16 +153,16 @@ final class ARolledBackRuleSetIsRefusedTests: XCTestCase {
         try writeAFile()
         // Exactly what the previous build wrote: the payload, and a MAC over the
         // payload alone.
-        let data = try JSONEncoder().encode(emptyingRules())
+        let data = try JSONEncoder().encode(emptyingRules(in: root, id: "f"))
         backing.raw[payloadKey] = data
         backing.raw[macKey] = SettingSeal.mac(for: data, key: TestRuleKey.material)
         keys = TestRuleKey(established: true)
 
         let helm = engine()
-        XCTAssertFalse(helm.rulesRefused, "the rules of everyone upgrading were refused")
+        XCTAssertNil(helm.status.refusal, "the rules of everyone upgrading were refused")
         helm.sweepAll()
 
-        XCTAssertEqual(tree(), [], "the person's own rules stopped working after the upgrade")
+        XCTAssertEqual(tree(under: root), [], "the person's own rules stopped working after the upgrade")
     }
 
     // MARK: - The keychain
@@ -186,16 +172,16 @@ final class ARolledBackRuleSetIsRefusedTests: XCTestCase {
     func testAMarkThatCannotBeReadStopsTheRules() throws {
         try writeAFile()
         let helm = engine()
-        helm.folders = emptyingRules()
-        XCTAssertEqual(tree(), [leaf], "the premise: nothing has run yet")
+        helm.folders = emptyingRules(in: root, id: "f")
+        XCTAssertEqual(tree(under: root), [leaf], "the premise: nothing has run yet")
 
         sequence = TestRuleSequence(at: sequence.mark, available: false)
         let deaf = engine()
         deaf.sweepAll()
 
-        XCTAssertEqual(tree(), [leaf])
+        XCTAssertEqual(tree(under: root), [leaf])
         XCTAssertTrue(deaf.folders.isEmpty)
-        XCTAssertEqual(deaf.refusal, .noKey)
+        XCTAssertEqual(deaf.status.refusal, .noKey)
     }
 
     /// Every save moves the mark, which is what makes the number a count of
@@ -203,7 +189,7 @@ final class ARolledBackRuleSetIsRefusedTests: XCTestCase {
     /// matters is that yesterday's number is below today's.
     func testEverySaveRaisesTheMark() {
         let helm = engine()
-        helm.folders = emptyingRules()
+        helm.folders = emptyingRules(in: root, id: "f")
         let first = sequence.mark
 
         helm.folders = harmlessRules()
@@ -222,11 +208,11 @@ final class ARolledBackRuleSetIsRefusedTests: XCTestCase {
         sequence = TestRuleSequence(available: true, writable: false)
         let helm = engine()
 
-        helm.folders = emptyingRules()
+        helm.folders = emptyingRules(in: root, id: "f")
 
         XCTAssertEqual(helm.folders.first?.rules.count, 1, "the save was refused")
-        XCTAssertFalse(helm.rulesRefused)
+        XCTAssertNil(helm.status.refusal)
         helm.sweepAll()
-        XCTAssertEqual(tree(), [], "the rules the person just saved did not run")
+        XCTAssertEqual(tree(under: root), [], "the rules the person just saved did not run")
     }
 }

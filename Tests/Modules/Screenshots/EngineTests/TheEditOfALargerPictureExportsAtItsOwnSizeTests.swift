@@ -12,6 +12,8 @@ import XCTest
 /// Everything is read back out of the rendered picture. Display 100×60 points, at the scale each case says.
 ///
 /// Total failure of the subject prints: a file the size of the screen.
+///
+/// Mutant, red here: `annotated(_ shown:)` hands the placement `scale: 1` instead of `perPoint`.
 final class TheEditOfALargerPictureExportsAtItsOwnSizeTests: XCTestCase {
 
     private let srgb = CGColorSpace(name: CGColorSpace.sRGB)!

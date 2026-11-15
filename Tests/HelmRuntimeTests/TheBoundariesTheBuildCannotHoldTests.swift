@@ -26,8 +26,11 @@ import XCTest
 /// import under any `#if`, whose condition is not evaluated. Not counted:
 /// `canImport(…)`, `.import`, a backticked `import`, an `import:` label.
 ///
-/// **AppKit is not pinned here.** An import line cannot tell a system call
-/// from a drawing; that half is read in review.
+/// **AppKit is pinned by path.** An engine imports AppKit, or Cocoa, which
+/// brings it, only in `Sources/Modules/<Name>/Engine/SystemPorts.swift`, one
+/// level under the engine's folder and no deeper. What an import line cannot
+/// tell is whether a line in that file is a system call or a drawing; that
+/// half is read in review.
 final class TheBoundariesTheBuildCannotHoldTests: XCTestCase {
 
     private static let importRule = try! NSRegularExpression(pattern:
@@ -90,6 +93,20 @@ final class TheBoundariesTheBuildCannotHoldTests: XCTestCase {
         XCTAssertTrue(offences.isEmpty, "an engine imports UI:\n" + offences.joined(separator: "\n"))
     }
 
+    /// AppKit's place in an engine is its `SystemPorts.swift`, the file directly
+    /// under `Engine`; `Cocoa` brings AppKit with it and counts the same. The
+    /// last assertion is the check's canary: a reader that sees no engine AppKit
+    /// import at all would pass the rest over nothing.
+    func testEngineAppKitImportsStandOnlyInSystemPorts() throws {
+        let appKit = try Self.found(where: Self.isEngineSource).filter { ["AppKit", "Cocoa"].contains($0.module) }
+        let offences = appKit.filter { !$0.path.hasSuffix("/Engine/SystemPorts.swift") || $0.path.split(separator: "/").count != 5 }
+            .map(\.place)
+        XCTAssertTrue(offences.isEmpty,
+                      "an engine imports AppKit outside its Engine/SystemPorts.swift:\n" + offences.joined(separator: "\n"))
+        XCTAssertFalse(appKit.isEmpty,
+                       "the reader found no AppKit import in any engine — the check above is over nothing")
+    }
+
     func testTheHostImportsNoEngine() throws {
         let host = try Self.found(where: Self.isHostSource)
         let interfaces = Set(host.map(\.module).filter { $0.hasPrefix("Module_") && $0.hasSuffix("_UI") })
@@ -97,6 +114,17 @@ final class TheBoundariesTheBuildCannotHoldTests: XCTestCase {
                        "the reader did not find HelmApp importing every module's UI — the check below is over nothing")
         let offences = host.filter { Self.isEngine($0.module) }.map(\.place)
         XCTAssertTrue(offences.isEmpty, "the host imports an engine:\n" + offences.joined(separator: "\n"))
+    }
+
+    /// `HelmShowcase` depends on `HelmUI` alone, and the build's import check passes an import of a
+    /// target reached through a declared one — `HelmRuntime` is behind `HelmUI` — so the showcase's imports are read from the lines: the system's SwiftUI and
+    /// AppKit, and the kit.
+    func testTheShowcaseImportsOnlyTheKit() throws {
+        let showcase = try Self.found { $0.count > 2 && $0[0] == "Sources" && $0[1] == "HelmShowcase" }
+        XCTAssertTrue(showcase.contains { $0.module == "HelmUI" },
+                      "the reader found no import of HelmUI in the showcase — the check below is over nothing there")
+        let offences = showcase.filter { !["SwiftUI", "AppKit", "HelmUI"].contains($0.module) }.map(\.place)
+        XCTAssertTrue(offences.isEmpty, "the showcase imports past the kit:\n" + offences.joined(separator: "\n"))
     }
 
     /// `@_exported import Module_Disk_Engine` in Disk's UI would hand the
@@ -288,6 +316,47 @@ final class TheBoundariesTheBuildCannotHoldTests: XCTestCase {
             if let problem = Self.missingImportCheck(in: try RepoSource.lines(of: script), of: script, startingWith: start) {
                 XCTFail(problem)
             }
+        }
+    }
+
+    // MARK: - Optional by design: never prompts, never logs the absence
+
+    /// The Dock bounds port reads trust with `AXIsProcessTrusted` and never the prompting `…WithOptions` anywhere in the
+    /// module, logs nothing itself, and its one timeout line is a fixed sentence under the module's category.
+    func testTheRealPortReadsTrustWithoutPromptingAndLogsNothing() throws {
+        let path = "Sources/Modules/Screenshots/Engine/SystemPorts.swift"
+        let code = SwiftSource.code(try RepoSource.text(of: path))
+        guard let start = code.range(of: "struct SystemDockBounds") else {
+            return XCTFail("SystemDockBounds is not in \(path)")
+        }
+        let rest = code[start.upperBound...]
+        let end = rest.range(of: "\n}")?.lowerBound ?? rest.endIndex
+        let body = rest[..<end]
+        // The subject first: the non-prompting trust reading is there and is the guard.
+        XCTAssertTrue(body.contains("guard AXIsProcessTrusted() else { return .notTrusted }"),
+                      "the trust reading moved; re-read this check")
+        XCTAssertFalse(body.contains("HelmLog"), "the Dock bounds port logs")
+        XCTAssertFalse(body.contains("print("), "the Dock bounds port prints")
+        // The one reading that is logged is logged where the port's answer is placed:
+        // under the module's own category, as a fixed sentence that can name nothing.
+        // This proves the callback the real path passes is a log.
+        // Literals kept here: the subject is the sentence itself.
+        let kept = SwiftSource.uncommented(try RepoSource.text(of: path))
+        guard let placing = kept.range(of: "func dockPlacement(") else {
+            return XCTFail("dockPlacement is not in \(path); re-read this check")
+        }
+        let after = kept[placing.upperBound...]
+        let placingBody = after[..<(after.range(of: "\n    }\n")?.lowerBound ?? after.endIndex)]
+        guard let call = placingBody.range(of: "DockStrip.placement(entries:") else {
+            return XCTFail("the real path no longer places through DockStrip.placement(entries:)")
+        }
+        let callback = placingBody[call.upperBound...]
+        XCTAssertTrue(callback.contains("HelmLog.shared.warn(ScreenshotsEngine.moduleID, \""),
+                      "a Dock that did not answer is not logged under the module's category")
+        XCTAssertFalse(callback.contains("\\("), "the timeout line interpolates something")
+        for read in try SwiftSource.code(under: "Sources/Modules/Screenshots") {
+            XCTAssertFalse(read.text.contains("AXIsProcessTrustedWithOptions"),
+                           "\(read.path) calls the prompting trust reading")
         }
     }
 }

@@ -1,4 +1,5 @@
 import XCTest
+import HelmTestSupport
 @testable import Module_Disk_Engine
 
 /// A scan nobody is watching stops at an application's database; a scan
@@ -15,8 +16,7 @@ final class UnattendedWalkStopsAtLibrariesTests: XCTestCase {
 
     override func setUpWithError() throws {
         let fm = FileManager.default
-        fixture = fm.temporaryDirectory
-            .appendingPathComponent("helm-library-walk-\(UUID().uuidString)")
+        fixture = scratchDirectory("library-walk")
         try fm.createDirectory(at: fixture.appendingPathComponent("Photos.photoslibrary/originals"),
                                withIntermediateDirectories: true)
         try fm.createDirectory(at: fixture.appendingPathComponent("Work"),
@@ -24,10 +24,6 @@ final class UnattendedWalkStopsAtLibrariesTests: XCTestCase {
         try Data(count: 200_000).write(
             to: fixture.appendingPathComponent("Photos.photoslibrary/originals/IMG_0001.heic"))
         try Data(count: 50_000).write(to: fixture.appendingPathComponent("Work/notes.txt"))
-    }
-
-    override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: fixture)
     }
 
     private func library(in tree: DiskNode) -> DiskNode? {

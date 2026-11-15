@@ -13,9 +13,9 @@ import Foundation
 /// evaluated by a shell running as root.
 ///
 /// The shared *runner* the first draft of this comment asked for is
-/// `PrivilegedRun`, and Homebrew's port goes through it; Keep Awake's
-/// `PmsetClamshellPort` still spawns `osascript` itself. The escaping is the
-/// half that must not be written twice, so it moved first.
+/// `PrivilegedRun`, and Homebrew's port and Keep Awake's `PmsetClamshellPort`
+/// both go through it. The escaping is the half that must not be written
+/// twice, so it moved first.
 public enum AppleScript {
 
     /// A string as an AppleScript double-quoted literal's contents.

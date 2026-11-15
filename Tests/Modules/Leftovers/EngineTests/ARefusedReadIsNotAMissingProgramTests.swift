@@ -1,5 +1,4 @@
 import Foundation
-import HelmRuntime
 import XCTest
 @testable import Module_Leftovers_Engine
 
@@ -36,10 +35,7 @@ final class ARefusedReadIsNotAMissingProgramTests: XCTestCase {
         files.plists["/Users/x/Library/LaunchAgents/com.vendor.updater.plist"] =
             PlistData(["Label": "com.vendor.updater", "Program": program, "RunAtLoad": true])
         arrange(&files)
-        let items = LeftoversScanner(home: home, files: files, apps: LeftoversFakeApps(),
-                                     extensions: LeftoversFakeLoaded()).scan()
-        return try XCTUnwrap(items.first { $0.kind == .launchAgent },
-                             "precondition: the agent is listed at all")
+        return try firstAgent(home: home, files: files)
     }
 
     /// **The finding.** Nobody could look, and the row calls it a leftover.

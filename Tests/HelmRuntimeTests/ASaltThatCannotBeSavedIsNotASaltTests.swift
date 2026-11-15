@@ -17,7 +17,7 @@ import XCTest
 /// Tuesday are the same application, and nobody reading the log can know it.
 ///
 /// It is the shape of a promise written in prose
-/// with no test under it. This is the test.
+/// with no test under it. This is the test (fix 5d50b405).
 final class ASaltThatCannotBeSavedIsNotASaltTests: XCTestCase {
 
     private var file: URL!

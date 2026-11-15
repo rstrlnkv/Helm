@@ -20,54 +20,17 @@ import XCTest
 /// `LastStatusChangeTime : 14:57:22`. Twice in the two days of log there was to
 /// read. A signal that cries wolf on a blip is a signal people switch off, and
 /// then the real drop is silent too.
+///
+/// Past defect: commit 038fee7f, «fix(vpn): a drop that healed in three seconds is not announced».
 final class ADropThatHealedIsNotAnnouncedTests: XCTestCase {
-
-    private let bundleID = "com.example.app"
-    private let identity = CodeIdentity(signingID: "com.example.app", teamID: "ABCDE12345")
-    private let header = "Available network connection services:"
-
-    private func row(_ status: String) -> String {
-        "* (\(status)) 11111111-1111-1111-1111-111111111111 VPN (com.x.work) \"work\" [VPN:com.x.work]"
-    }
-
-    private func list(_ status: String) -> String {
-        [header, row(status)].joined(separator: "\n")
-    }
-
-    /// **A tunnel Helm itself raised, because that is what a drop is about.**
-    ///
-    /// `_autoConnected` is written by an *automatic* connect — a rule firing for
-    /// an app that launched — and not by a command somebody sent. The first
-    /// version of this fixture connected through the transport and then asserted
-    /// its own precondition, which is how it said so.
-    private func engineHoldingTheTunnel(_ runner: FakeRunner, _ clock: TestClock) -> VPNEngine {
-        let apps = FakeApps()
-        apps.identities[bundleID] = identity
-        apps.bundleIDs = [bundleID]
-        let settings = VPNSettings(store: NamespacedStore(namespace: "vpn",
-                                                          backing: InMemoryKeyValueStore()))
-        settings.setRulesJSON(VPNRules.encode(
-            [bundleID: VPNAppRule(vpnName: "work", identity: identity)]))
-        runner.listOutput = list("Disconnected")
-        let engine = VPNEngine(settings: settings, runner: runner, apps: apps,
-                               interfaces: FakeInterfaces(), exit: FakeExit(),
-                               speed: FakeSpeed(), now: { clock.now }, work: .inline)
-        engine.activate()
-        runner.listOutput = list("Connected")
-        engine.refresh()
-        XCTAssertTrue(engine.autoConnected.contains("work"),
-                      "precondition: Helm is not holding the tunnel, so nothing here is a drop")
-        engine.clearLastAutomationForTesting()
-        return engine
-    }
 
     /// The measured case: down at one read, up at the next, three seconds later.
     func testATunnelThatComesBackInsideTheWindowIsNeverAnnounced() {
         let runner = FakeRunner()
         let clock = TestClock()
-        let engine = engineHoldingTheTunnel(runner, clock)
+        let engine = blipEngineHoldingTheTunnel(runner, clock)
 
-        runner.listOutput = list("Disconnected")
+        runner.listOutput = blipList("Disconnected")
         engine.refresh()
         XCTAssertNil(engine.lastAutomation, """
             the drop was announced on the first read that saw the tunnel down, \
@@ -75,7 +38,7 @@ final class ADropThatHealedIsNotAnnouncedTests: XCTestCase {
             """)
 
         clock.advance(3)
-        runner.listOutput = list("Connected")
+        runner.listOutput = blipList("Connected")
         engine.refresh()
         XCTAssertNil(engine.lastAutomation,
                      "a tunnel that came back was announced as lost")
@@ -95,9 +58,9 @@ final class ADropThatHealedIsNotAnnouncedTests: XCTestCase {
     func testATunnelThatStaysDownIsAnnouncedOnceTheWindowHasPassed() throws {
         let runner = FakeRunner()
         let clock = TestClock()
-        let engine = engineHoldingTheTunnel(runner, clock)
+        let engine = blipEngineHoldingTheTunnel(runner, clock)
 
-        runner.listOutput = list("Disconnected")
+        runner.listOutput = blipList("Disconnected")
         engine.refresh()
         XCTAssertNil(engine.lastAutomation, "precondition: it was announced before the window")
 
@@ -115,9 +78,9 @@ final class ADropThatHealedIsNotAnnouncedTests: XCTestCase {
     func testTheLossIsAnnouncedOnceRatherThanAtEveryRefresh() {
         let runner = FakeRunner()
         let clock = TestClock()
-        let engine = engineHoldingTheTunnel(runner, clock)
+        let engine = blipEngineHoldingTheTunnel(runner, clock)
 
-        runner.listOutput = list("Disconnected")
+        runner.listOutput = blipList("Disconnected")
         engine.refresh()
         clock.advance(VPNDropSettle.window)
         engine.refresh()

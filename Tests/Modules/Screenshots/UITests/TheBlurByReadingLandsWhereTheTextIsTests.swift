@@ -1,12 +1,11 @@
 import AppKit
 import CoreGraphics
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
 import HelmUI
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **Blur Emails and Phone Numbers puts each box where the text is, in the editor on an area of the screen and in the editor on a
@@ -20,6 +19,7 @@ import Module_Screenshots_Engine
 ///
 /// Synchronous on purpose: the answer arrives on a task of the overlay's, awaited by spinning the run loop to a deadline, so every
 /// assertion runs in one frame of the test and none after a suspension.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/AnnotationEditing.swift`: `let layer = Annotation(tool: .blur, start: CGPoint(x: rect.minX, y: rect.minY),` -> `let layer = Annotation(tool: .blur, start: CGPoint(x: rect.minX + 1, y: rect.minY),`.
 @MainActor
 final class TheBlurByReadingLandsWhereTheTextIsTests: XCTestCase {
 

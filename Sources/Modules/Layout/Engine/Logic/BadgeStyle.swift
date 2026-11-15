@@ -14,8 +14,8 @@ public enum BadgeStyle: String, CaseIterable, Sendable {
     /// **It was a separate stored key, and being separate is what made it a
     /// defect.** `indicatorShowsName` could only be switched from the status
     /// item's own menu — nowhere on the settings page — and turning it on made
-    /// three controls there lie: Style, Size and the preview grid captioned
-    /// «your layouts, as they will look» all went on describing a badge that
+    /// the controls there lie: Style and the preview grid captioned
+    /// «your layouts, as they will look» both went on describing a badge that
     /// was no longer being drawn, with nothing saying why. A style is what this
     /// always was, so it is a style: «Вид» is total again, and there is one
     /// place a person changes how the indicator looks.

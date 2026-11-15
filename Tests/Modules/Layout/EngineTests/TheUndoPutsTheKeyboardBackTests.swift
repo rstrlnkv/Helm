@@ -18,6 +18,8 @@ import XCTest
 /// Would have been unrepresentable before `FakeSources` learned to follow
 /// `select()` — `current()` answered "en" for ever, so «the keyboard is still
 /// on ru after the undo» was a state no test could hold.
+///
+/// Guards a past defect: an undo left the keyboard on the layout of the rejected conversion (fix commit `973d05d1`).
 final class TheUndoPutsTheKeyboardBackTests: XCTestCase {
 
     func testUndoPutsTheKeyboardBackWhereTheWordWasTyped() {
@@ -28,7 +30,7 @@ final class TheUndoPutsTheKeyboardBackTests: XCTestCase {
             tap: tap, typing: typing, sources: sources,
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
             spell: FakeSpell(valid: ["привет"]),
-            secure: FakeSecure(), automatic: true)
+            secure: FakeSecure(), activation: FakeActivation(), automatic: true)
         engine.activate()
 
         tap.type("ghbdtn"); tap.space()

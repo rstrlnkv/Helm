@@ -18,13 +18,17 @@ import HelmRuntime
 ///   indivisible act, and so is saving a rule set.
 /// - `keyLock` — held only around the two keychain ports, so the threads that
 ///   read the rule set cannot each raise a prompt of their own.
-/// - `trustLock` — the state a caller may ask about while a keychain prompt is
-///   open, which is why it is never held across a port call.
+/// - `trustLock` — the small state read and written under it: the verdict, the
+///   cached key, the mark and the one adoption. It is only ever held for a field
+///   access, never across a port call: a keychain prompt may be open for as long
+///   as a person ignores it, and nothing else should queue behind that.
 final class SealedRules: @unchecked Sendable {
+    /// The plist key the rule set is stored under: a stored name, never renamed.
+    static let storeKey = "folders"
     private let store: NamespacedStore
     /// The rule set is read from the engine's queue — the sweep timer and the
-    /// FSEvents leg both land there first — and from the transport, which
-    /// answers `folders` and `status` on whatever thread asked. Two threads at
+    /// FSEvents leg both land there first — and from the model's door, which
+    /// reads `folders` and `status` off the cooperative pool. Two threads at
     /// least, so the key and the verdict carry their own lock rather than
     /// borrowing one held elsewhere.
     private let keys: RuleKeyPort
@@ -32,15 +36,17 @@ final class SealedRules: @unchecked Sendable {
     /// plist's author cannot reach.
     private let sequence: RuleSequencePort
     private let trustLock = NSLock()
-    /// Held only around `keys.key()` — see `resolvedKey`. Never held with
-    /// `trustLock`, in either order.
+    /// Held only around the two keychain reads, `keys.key()` and
+    /// `sequence.highWater()` — see `resolvedKey`. `trustLock` is taken
+    /// inside it, briefly and never across the port call; `keyLock` is never
+    /// taken with `trustLock` held.
     private let keyLock = NSLock()
     /// One decision about the stored rules at a time: reading the plist,
     /// judging it against its seal, and recording that judgement are one
     /// indivisible act, and so is saving a rule set.
     ///
     /// The four callers that read the rule set — the sweep timer, FSEvents, the
-    /// transport and the watch refresh — each record what they decided in
+    /// model's door and the watch refresh — each record what they decided in
     /// `refusal`. Unordered, that write says what was true of the file at the
     /// moment *that* read snapshotted it: a read which began before something
     /// edited the plist could finish after the read that saw the edit and put
@@ -49,16 +55,19 @@ final class SealedRules: @unchecked Sendable {
     /// the scheduler ran last, and the verdict is the only signal they get.
     /// `AutopilotSealRaceTests` holds one read open and asserts on the other.
     ///
-    /// Taken before `keyLock`, never after, and never with `trustLock` held —
-    /// `trustLock` answers `rulesRefused`, which must not wait behind a keychain
-    /// prompt. Everything that waits on this lock is already a caller that wants
-    /// the rule set, which is what `keyLock` makes them queue for in any case.
+    /// Taken before `keyLock`, never after, and never with `trustLock` held.
+    /// Everything that waits on this lock is already a caller that wants the rule
+    /// set, which is what `keyLock` makes them queue for in any case.
     private let decisionLock = NSLock()
     private var key: RuleKey?
     /// The mark, resolved once per run like the key and held under the same
     /// lock. Nil until something has asked.
     private var mark: RuleSequence?
     private var refusalReason: RuleRefusal?
+    /// The rules the last read found and could not apply, kept beside the
+    /// verdict they were read with, and how many the log last said so about.
+    private var unappliedRules: [UnappliedRule] = []
+    private var unappliedLogged = 0
     /// Whether the one trust-on-first-use adoption is still unspent. See
     /// `takeTheOneAdoption`.
     private var adoptable = false
@@ -93,10 +102,10 @@ final class SealedRules: @unchecked Sendable {
     /// Both halves together because the verdict is a *side effect* of judging the
     /// stored rules: a caller that asked for the list and then asked for the
     /// refusal could be told about two different readings of the file.
-    func decision() -> (folders: [WatchedFolder], refusal: RuleRefusal?) {
+    func decision() -> (folders: [WatchedFolder], refusal: RuleRefusal?, unapplied: [UnappliedRule]) {
         decisionLock.withLock {
             let list = decided()
-            return (list, trustLock.withLock { refusalReason })
+            return trustLock.withLock { (list, refusalReason, unappliedRules) }
         }
     }
 
@@ -115,6 +124,9 @@ final class SealedRules: @unchecked Sendable {
     /// Whose rules the plist holds, and the ones that may run. Behind
     /// `decisionLock`, with the `refusing` calls it makes.
     private func decided() -> [WatchedFolder] {
+        // Only the list is cleared: the count the log last said stays, or every
+        // read would say it again.
+        trustLock.withLock { unappliedRules = [] }
         // Unverifiable is refused, not assumed. Without a key there is no
         // way to tell the person's rules from anyone else's, and this
         // module moves files with nobody watching.
@@ -124,7 +136,7 @@ final class SealedRules: @unchecked Sendable {
         // handed a rule set a month later and read it as one that predates
         // the seal.
         let key = RuleKey(material: resolved.material, firstUse: takeTheOneAdoption())
-        guard let data = store.data("folders"), !data.isEmpty else { return [] }
+        guard let data = store.data(Self.storeKey), !data.isEmpty else { return [] }
         // Unreadable is refused here too, and for the same reason as the key: the
         // mark is the half of the seal that says *which* rule set this is, and a
         // keychain that will not answer is "cannot tell", never "any of them".
@@ -150,13 +162,31 @@ final class SealedRules: @unchecked Sendable {
             return []
         }
         refusing(nil)
-        guard let list = try? JSONDecoder().decode([WatchedFolder].self, from: data)
-        else { return [] }
-        // On the way out as well as in. The setter has always brought
-        // numbers into range, and a plist somebody edited by hand — or one
-        // written by an older build — never went through the setter. It
-        // reaches the engine here.
-        return list.map(\.storable)
+        // Rule by rule: one a newer Helm wrote runs nowhere and is kept, the rest
+        // run. A record that cannot be parsed at all is refused, not read as empty.
+        // The folders come back through `storable`: the setter has always brought
+        // numbers into range, and a plist somebody edited by hand — or one written
+        // by an older build — never went through the setter. It reaches the engine here.
+        guard case let .read(list, unapplied, _, _) = StoredRuleSet.read(data) else {
+            refusing(.unreadable)
+            return []
+        }
+        noting(unapplied)
+        return list
+    }
+
+    /// Records the rules this read could not apply. The log says it once per
+    /// change of count, with no names: reads come with every sweep and event.
+    private func noting(_ unapplied: [UnappliedRule]) {
+        trustLock.lock()
+        defer { trustLock.unlock() }
+        unappliedRules = unapplied
+        guard unapplied.count != unappliedLogged else { return }
+        unappliedLogged = unapplied.count
+        if !unapplied.isEmpty {
+            HelmLog.shared.warn(AutopilotEngine.moduleID,
+                                "\(unapplied.count) rules were written by a newer Helm and are not applied")
+        }
     }
 
     /// The rule set on its way to the plist, sealed. Behind `decisionLock` for
@@ -164,7 +194,6 @@ final class SealedRules: @unchecked Sendable {
     /// and a read landing between them judges a rule set against the seal of the
     /// one before it — which is the same "something else wrote these" the module
     /// exists to report, said about Helm's own save.
-    ///
     private func write(_ folders: [WatchedFolder]) -> Bool {
         // No key, no save. Writing the rules unsealed would be worse than
         // refusing: the next launch would read them as somebody else's and
@@ -186,22 +215,33 @@ final class SealedRules: @unchecked Sendable {
                                  "folders were not saved over them")
             return false
         }
+        // What the stored record holds that this build could not read goes back
+        // with the new list. A record that cannot be parsed at all is not
+        // written over: nothing here deletes what it cannot read.
+        var unapplied: [UnappliedRule] = [], stubs: [RemovedFolder] = [], extras = KeptMembers()
+        if let stored = store.data(Self.storeKey), !stored.isEmpty {
+            guard case let .read(_, u, s, e) = StoredRuleSet.read(stored) else {
+                refusing(.unreadable)
+                HelmLog.shared.error(AutopilotEngine.moduleID,
+                                     "the stored rules could not be read, so \(folders.count) " +
+                                     "folders were not saved over them")
+                return false
+            }
+            (unapplied, stubs, extras) = (u, s, e)
+        }
         // Encoding a rule list can genuinely fail — `JSONEncoder` refuses a
         // non-finite `Double`, which a condition can hold — and returning
         // quietly discarded every folder and every rule while the screen
         // went on showing the new state. The old list survives instead, and
         // the failure is in the log.
-        // Clamped first: a condition holding ±∞ makes `JSONEncoder` throw,
-        // and the rules are one JSON value — so one unencodable number in
-        // one rule discarded every folder and every rule the person had,
-        // silently, while the screen went on showing the new state.
         do {
-            let data = try JSONEncoder().encode(folders.map(\.storable))
+            guard let data = StoredRuleSet.compose(folders, unapplied: unapplied, stubs: stubs, extras: extras)
+            else { throw CocoaError(.coderInvalidValue) }
             // Rules first, seal second. Interrupted between the two, the
             // plist holds a rule set whose seal does not fit it — which is
             // refused, and refusing rules the person did save is the
             // survivable half of this pair.
-            store.set(data, for: "folders")
+            store.set(data, for: Self.storeKey)
             seal(data, key)
             // Whatever was in the file before, these are Helm's now.
             refusing(nil)
@@ -281,7 +321,7 @@ final class SealedRules: @unchecked Sendable {
     /// What the seal says about the rules in the plist right now, or `nil` when
     /// there are none. Behind `decisionLock`, like both of its callers.
     private func storedJudgement(_ key: RuleKey) -> RuleSeal.Judgement? {
-        guard let data = store.data("folders"), !data.isEmpty else { return nil }
+        guard let data = store.data(Self.storeKey), !data.isEmpty else { return nil }
         // A mark that cannot be read is not permission to overwrite: `nil` here
         // means "nothing stored", and something is.
         return judged(data, key) ?? .broken
@@ -343,7 +383,7 @@ final class SealedRules: @unchecked Sendable {
     func discardRefused() {
         decisionLock.withLock {
             guard refusal == .tampered else { return }
-            store.set(nil, for: "folders")
+            store.set(nil, for: Self.storeKey)
             store.set(nil, for: RuleSeal.storeKey)
             // The number goes with the rules it numbers. The *mark* does not:
             // it is what stops the discarded set being put back afterwards.
@@ -364,9 +404,11 @@ final class SealedRules: @unchecked Sendable {
     /// forward is to throw it away — which is why `discardRefusedRules` takes
     /// only that one.
     ///
-    /// Read by `AutopilotCommand.status`, which is how the page draws a card
-    /// saying the rules could not be read instead of an empty state saying there
-    /// were never any.
+    /// `discardRefused` reads it to decide whether there is anything it may
+    /// discard. The page does not read it: `AutopilotEngine.status` takes the
+    /// verdict from `decision()`, which returns it together with the rules it
+    /// judged, so a card saying the rules could not be read is drawn from the
+    /// same read as the list and not from a second look at this property.
     var refusal: RuleRefusal? { trustLock.withLock { refusalReason } }
 
     /// Logged on the way in, once per transition. The rules are read on every
@@ -396,6 +438,10 @@ final class SealedRules: @unchecked Sendable {
             HelmLog.shared.error(AutopilotEngine.moduleID,
                                  "the key the rules are sealed with is unavailable; " +
                                  "no rules will run until it can be read")
+        case .unreadable:
+            HelmLog.shared.error(AutopilotEngine.moduleID,
+                                 "the stored rules could not be read; none of them will run " +
+                                 "and nothing will be saved over them")
         case .none:
             break
         }
@@ -407,11 +453,10 @@ final class SealedRules: @unchecked Sendable {
     ///
     /// **`trustLock` is not held across the port call.** The port can sit inside
     /// a modal keychain prompt for as long as a person ignores it, and
-    /// `trustLock` is also what answers `rulesRefused` — so holding it there put
-    /// a dialog between the UI and the engine's own state. `keyLock` is held
-    /// instead: it serialises the port, so the three threads that read the rule
-    /// set cannot each raise a prompt of their own, and it guards nothing any
-    /// other caller wants.
+    /// `trustLock` guards fields that `mark`, `refusing` and `takeTheOneAdoption`
+    /// touch too, so none of them should wait behind a dialog. `keyLock` is held
+    /// instead: it serialises the port, so the threads that read the rule set
+    /// cannot each raise a prompt of their own.
     private func resolvedKey() -> RuleKey? {
         if let held = trustLock.withLock({ key }) { return held }
 

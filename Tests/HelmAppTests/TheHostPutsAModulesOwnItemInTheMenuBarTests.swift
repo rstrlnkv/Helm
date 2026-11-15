@@ -7,7 +7,7 @@ import XCTest
 
 /// **The seam has two sides, and only one of them is in the module.**
 ///
-/// Keyboard's menu-bar indicator moved out of `makeEngine` — where it decorated
+/// Keyboard's menu-bar indicator moved out of the engine's construction — where it decorated
 /// the Mac of every process that asked a descriptor for an engine, the render
 /// harness included — and into `attachMenuBarPresence()`, which the host calls
 /// when a module starts running. That leaves the familiar hazard: the module now
@@ -28,26 +28,22 @@ final class TheHostPutsAModulesOwnItemInTheMenuBarTests: XCTestCase {
     private static let moduleID = "test-menu-bar-presence"
 
     /// A descriptor that counts the two calls and does nothing else.
-    private final class Recorder: ModuleDescriptor {
+    private final class Recorder: StandInDescriptor {
         static let id = ModuleID(TheHostPutsAModulesOwnItemInTheMenuBarTests.moduleID)
-        static let metadata = ModuleMetadata(id: id, name: "Recorder", summary: "",
-                                             sfSymbol: "gear", permissions: [])
-        static let category: ModuleCategory = .utilities
-        static let tint: ModuleTint = .keyboard
-        static let glyph: ShellGlyph = .disk
 
         var attached = 0
         var detached = 0
 
-        func makeEngine(store: NamespacedStore) -> any ModuleEngine { Stub() }
+        func makeModule(store: NamespacedStore) -> ModuleParts<PageModel> {
+            ModuleParts(engine: Stub(), model: PageModel())
+        }
         func attachMenuBarPresence() { attached += 1 }
         func detachMenuBarPresence() { detached += 1 }
-        func menuBar(_ vm: ModuleViewModel) -> MenuBarContribution? { nil }
-        func settingsPage(_ vm: ModuleViewModel) -> AnyView { AnyView(EmptyView()) }
     }
 
+    private final class PageModel {}
+
     private final class Stub: ModuleEngine {
-        let transport: EngineTransport = LocalTransport()
         func activate() {}
         func deactivate() {}
     }

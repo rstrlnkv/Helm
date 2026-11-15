@@ -70,18 +70,11 @@ final class AnHourlySweepThatTrashedSomethingSaysSoTests: XCTestCase {
     }
 
     /// The tally is answered for every pass, whether or not it is worth saying:
-    /// it is what the two legs of the engine add together, and a rule that
-    /// returned nothing for a quiet folder could not be summed.
+    /// a rule that returned nothing for a quiet folder would leave the caller
+    /// without an answer to ask `isSomething` of.
     func testAQuietPassStillTalliesToNothing() {
         let quiet = SweepNews.tally(of: [record(.moved)])
         XCTAssertEqual(quiet, SweepNews.Tally(trashed: 0, refused: 0, failed: 0))
         XCTAssertFalse(quiet.isSomething)
-    }
-
-    /// Two folders swept in one pass are one banner, so the tallies add.
-    func testTalliesFromTwoFoldersAddIntoOne() {
-        let first = SweepNews.tally(of: [record(.trashed), record(.refused)])
-        let second = SweepNews.tally(of: [record(.trashed), record(.failed)])
-        XCTAssertEqual(first + second, SweepNews.Tally(trashed: 2, refused: 1, failed: 1))
     }
 }

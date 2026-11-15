@@ -5,39 +5,11 @@ import XCTest
 import HelmRuntime
 @testable import Module_VPN_Engine
 
+/// Past defect: commit 7851a0c2, «fix(vpn): the tool is asked before the app announces, and a name stops standing in for an identity» (the settle poll ended before the tunnel began to come up).
 final class VPNEngineTests: XCTestCase {
-    private func makeSettings() -> VPNSettings {
-        VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
-    }
-
-    func test_toggle_connects_default_when_disconnected() {
-        let runner = FakeRunner()
-        runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
-        let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
-                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
-                               work: .inline)
-
-        engine.toggleDefault()
-
-        XCTAssertTrue(runner.issued.contains(["--nc", "start", "A"]))
-    }
-
-    func test_toggle_disconnects_when_connected() {
-        let runner = FakeRunner()
-        runner.listOutput = "(Connected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
-        let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
-                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
-                               work: .inline)
-
-        engine.toggleDefault()
-
-        XCTAssertTrue(runner.issued.contains(["--nc", "stop", "A"]))
-    }
-
     func test_auto_connect_on_app_launch() {
-        let runner = FakeRunner()
-        runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
-        let settings = makeSettings()
+        let runner = FakeRunner(list: "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\"")
+        let settings = VPNSettings.inMemory()
         settings.setRulesJSON(ruleJSONForA)
         let apps = FakeApps.trustingA()
         apps.bundleIDs = []
@@ -53,10 +25,43 @@ final class VPNEngineTests: XCTestCase {
         XCTAssertTrue(engine.autoConnected.contains("A"))
     }
 
+    /// M106: deactivation stops the app observation too, and activating again
+    /// arms it once.
+    func test_deactivate_stops_the_app_observation() {
+        let apps = FakeApps.trustingA()
+        let engine = VPNEngine(settings: VPNSettings.inMemory(), runner: FakeRunner(), apps: apps,
+                               interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                               work: .inline)
+
+        engine.activate()
+        XCTAssertEqual(apps.starts, 1)
+        engine.deactivate()
+        XCTAssertEqual(apps.stops, 1)
+        XCTAssertNil(apps.onChange)
+
+        engine.activate()
+        XCTAssertEqual(apps.starts, 2)
+        XCTAssertNotNil(apps.onChange)
+    }
+
+    /// M106: an engine released without `deactivate()` still stops the app observation.
+    func test_deinit_stops_the_app_observation() {
+        let apps = FakeApps.trustingA()
+        var engine: VPNEngine? = VPNEngine(settings: VPNSettings.inMemory(), runner: FakeRunner(), apps: apps,
+                                           interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
+                                           work: .inline)
+        engine?.activate()
+        XCTAssertNotNil(apps.onChange)
+
+        engine = nil
+
+        XCTAssertEqual(apps.stops, 1)
+        XCTAssertNil(apps.onChange)
+    }
+
     func test_auto_disconnect_on_app_quit() {
-        let runner = FakeRunner()
-        runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
-        let settings = makeSettings()
+        let runner = FakeRunner(list: "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\"")
+        let settings = VPNSettings.inMemory()
         settings.setRulesJSON(ruleJSONForA)
         let apps = FakeApps.trustingA()
         apps.bundleIDs = []

@@ -36,7 +36,7 @@ class KeepAwakeEngineRig: XCTestCase {
         engine = KeepAwakeEngine(settings: settings, store: store, assertions: assertions,
                                   displayInfo: displayInfo, displayObserver: displayObserver,
                                   power: power, apps: apps, pointer: pointer,
-                                  clamshell: clamshell, clock: clock)
+                                  clamshell: clamshell, clock: clock, lidInfo: FakeLidInfo())
     }
 }
 
@@ -119,11 +119,12 @@ final class KeepAwakeEngineTests: KeepAwakeEngineRig {
 
     @MainActor
     func test_clamshell_async_install_completing_after_stop_does_not_disable_sleep() async {
-        KeepAwakeSettings(store: store).setClamshellEnabled(true)
+        KeepAwakeSettings(store: store).setClamshellEnabled(false)
         clamshell.sudoersInstalled = false // forces the async installSudoers path
 
         engine.activate()
         engine.startSession(minutes: 0)
+        engine.lidSwitchTurned(true) // only the person's gesture on the switch asks
         await waitUntil("the lid asked for the rule") { clamshell.installCompletion != nil }
         XCTAssertNotNil(clamshell.installCompletion, "install should have been requested")
         XCTAssertTrue(clamshell.disableSleepCalls.isEmpty, "must not disable sleep before install completes")
@@ -178,14 +179,32 @@ final class KeepAwakeEngineTests: KeepAwakeEngineRig {
         clock.fire(after: 600)
         XCTAssertFalse(engine.isActive)
     }
+
+    /// Past defect: every recompute said its payload, equal to the last or not.
+    /// Two identical recomputes after a start are one emit; the stop behind them
+    /// is the second, and ends what is counted.
+    func test_a_recompute_that_changes_nothing_says_nothing() async {
+        let stream = engine.stream()
+        engine.startSession(minutes: 0)
+        engine.settingsChanged()
+        engine.settingsChanged()
+        engine.stopSession()
+        var said: [Bool] = []
+        for await payload in stream {
+            said.append(payload.isActive)
+            if !payload.isActive { break }
+        }
+        XCTAssertEqual(said, [true, false])
+    }
 }
 
+/// Guards: bbbb2e84 (toggleSession had no test; every other caller ignores the default duration, mutant green).
 final class KeepAwakeToggleTests: KeepAwakeEngineRig {
 
     // MARK: - The one entrance the hotkey and the panel switch both use
 
-    /// `toggleSession` had no test at all, and it is what `KeepAwakeCommand
-    /// .toggle` runs — the global hotkey, and the switch at the top of the
+    /// `toggleSession` had no test at all, and it is what the model's
+    /// `toggle()` calls — the global hotkey, and the switch at the top of the
     /// panel tile. Everything under it was covered and the door itself was not.
     func test_toggle_starts_a_session_at_the_default_duration() {
         store.set(25, for: "defaultDurationMinutes")
@@ -240,7 +259,7 @@ final class PowerObserverTeardownTests: XCTestCase {
                                      displayObserver: FakeDisplayObserver(),
                                      power: power, apps: FakeApps(),
                                      pointer: FakePointer(), clamshell: FakeClamshell(),
-                                     clock: FakeClock())
+                                     clock: FakeClock(), lidInfo: FakeLidInfo())
         engine.activate()
         XCTAssertTrue(power.observing, "the engine watches the power source while it is on")
 
@@ -249,6 +268,33 @@ final class PowerObserverTeardownTests: XCTestCase {
         XCTAssertFalse(power.observing,
                        "the run loop still holds a source pointing at a port that is about "
                        + "to be freed")
+    }
+
+    func testDeactivateStopsWatchingRunningApps() {
+        let apps = FakeApps()
+        let assertions = FakeAssertions()
+        let store = NamespacedStore(namespace: "keep-awake",
+                                    backing: InMemoryKeyValueStore())
+        let settings = KeepAwakeSettings(store: store)
+        settings.setAppTriggers([AppTrigger(bundleID: "com.example.render")])
+        let engine = KeepAwakeEngine(settings: settings, store: store,
+                                     assertions: assertions,
+                                     displayInfo: FakeDisplayInfo(),
+                                     displayObserver: FakeDisplayObserver(),
+                                     power: FakePower(), apps: apps,
+                                     pointer: FakePointer(), clamshell: FakeClamshell(),
+                                     clock: FakeClock(), lidInfo: FakeLidInfo())
+        engine.activate()
+        XCTAssertTrue(apps.observing, "the engine watches launches while it is on")
+        let before = assertions.preventCount
+
+        engine.deactivate()
+        apps.ids = ["com.example.render"]
+        apps.fire()
+
+        XCTAssertFalse(apps.observing)
+        XCTAssertFalse(assertions.held, "a launch after deactivation took a hold")
+        XCTAssertEqual(assertions.preventCount, before)
     }
 }
 
@@ -264,7 +310,7 @@ final class DisplayObserverStackingTests: XCTestCase {
 
     func testStartingTwiceLeavesOneObserver() {
         let observer = ScreenParamsObserver()
-        let calls = Counter()
+        let calls = LockedCount()
         observer.startObserving { calls.bump() }
         observer.startObserving { calls.bump() }
 
@@ -277,10 +323,3 @@ final class DisplayObserverStackingTests: XCTestCase {
     }
 }
 
-/// A counter a `@Sendable` block may touch.
-private final class Counter: @unchecked Sendable {
-    private let lock = NSLock()
-    private var count = 0
-    func bump() { lock.lock(); count += 1; lock.unlock() }
-    var value: Int { lock.lock(); defer { lock.unlock() }; return count }
-}

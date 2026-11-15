@@ -47,4 +47,15 @@ final class HelmProcessTimeoutTests: XCTestCase {
         XCTAssertEqual(result.status, 3)
         XCTAssertEqual(result.output, "hi")
     }
+
+    /// `.merged` carries both streams in write order, and keeps the deadline.
+    func testMergedStandardErrorIsReadAndStillBounded() {
+        let both = HelmProcess.runData("/bin/sh", ["-c", "echo out; echo err >&2"],
+                                       timeout: 5, standardError: .merged)
+        XCTAssertEqual(String(decoding: both.output, as: UTF8.self), "out\nerr\n")
+        let plain = HelmProcess.runData("/bin/sh", ["-c", "echo out; echo err >&2"], timeout: 5)
+        XCTAssertEqual(String(decoding: plain.output, as: UTF8.self), "out\n")
+        let hung = HelmProcess.runData("/bin/sleep", ["30"], timeout: 0.3, standardError: .merged)
+        XCTAssertEqual(hung.status, HelmProcess.timedOutStatus)
+    }
 }

@@ -3,7 +3,7 @@ import Foundation
 import HelmRuntime
 
 /// Where the duplicate search stands, for a sheet that shows its work.
-public struct DuplicateProgress: Codable, Sendable {
+public struct DuplicateProgress: Sendable {
     /// Hash operations this search will perform: two per candidate, a prefix
     /// pass and a full one. Not a file count — the sheet says "checks".
     public let candidates: Int
@@ -11,12 +11,19 @@ public struct DuplicateProgress: Codable, Sendable {
     public let hashed: Int
 
     /// Public because the type crosses the target boundary: the UI's fakes
-    /// build the tick the engine would have emitted, and a wire type only one
+    /// build the tick the engine would have emitted, and a type only one
     /// side can construct is a branch no test on the other side can reach.
     public init(candidates: Int, hashed: Int) {
         self.candidates = candidates
         self.hashed = hashed
     }
+}
+
+/// What a removal reports while it runs: a pair re-read from disk, then — once —
+/// that the Trash has the batch, from which a stop is too late.
+public enum RemovalTick: Sendable {
+    case verified(DuplicateProgress)
+    case moving
 }
 
 /// Finds files with identical content under one folder.
@@ -45,10 +52,7 @@ final class DuplicateScanner: @unchecked Sendable {
     /// that vanished between being listed and being read. A count, not the
     /// paths: the question the log is asked is whether the answer was whole,
     /// not whose folder was in the way.
-    var unreadablePaths: Int {
-        lock.lock(); defer { lock.unlock() }
-        return unreadable
-    }
+    var unreadablePaths: Int { lock.withLock { unreadable } }
 
     private func noteUnreadable() {
         lock.lock(); unreadable += 1; lock.unlock()
@@ -61,18 +65,12 @@ final class DuplicateScanner: @unchecked Sendable {
     /// nothing because nothing could be read is a different answer from a clean
     /// one. Kept beside `unreadablePaths` so the engine has one place to ask
     /// what the answer is missing.
-    var unreadableFiles: Int {
-        lock.lock(); defer { lock.unlock() }
-        return unreadableDigests
-    }
+    var unreadableFiles: Int { lock.withLock { unreadableDigests } }
 
     /// Application libraries the walk declined to enter — a photo library, a
     /// Music library, a Final Cut bundle. Not a fault and still a hole: the
     /// largest things under `~/Pictures` are inside one.
-    var librariesSkipped: Int {
-        lock.lock(); defer { lock.unlock() }
-        return skippedLibraries
-    }
+    var librariesSkipped: Int { lock.withLock { skippedLibraries } }
 
     private func noteSkippedLibrary() {
         lock.lock(); skippedLibraries += 1; lock.unlock()
@@ -102,12 +100,9 @@ final class DuplicateScanner: @unchecked Sendable {
         lock.lock(); cancelled = true; lock.unlock()
     }
 
-    private var isCancelled: Bool {
-        lock.lock(); defer { lock.unlock() }
-        return cancelled
-    }
+    private var isCancelled: Bool { lock.withLock { cancelled } }
 
-    /// Synchronous; run it via the module's `blocking` bridge. Returns nil
+    /// Synchronous; run it via `offTheCooperativePool`. Returns nil
     /// when cancelled — a partial answer to "what is duplicated" is a wrong
     /// answer, not a smaller right one.
     /// - Parameter cache: digests kept from the last search. Nil means read
@@ -298,7 +293,7 @@ final class DuplicateScanner: @unchecked Sendable {
                 // Once per directory rather than once per file: `Date()` in the
                 // inner loop was a reading taken a hundred thousand times to be
                 // thrown away, and a batch is a directory.
-                if Date().timeIntervalSince(lastEmit) > 0.35 {
+                if Date().timeIntervalSince(lastEmit) > BulkWalk.progressInterval {
                     lastEmit = Date()
                     onProgress?(DuplicateProgress(candidates: 0, hashed: seen))
                 }
@@ -370,8 +365,7 @@ final class DuplicateScanner: @unchecked Sendable {
 
     /// Hash-rate progress, throttled the way DiskScanner throttles partials:
     /// pass one alone measured 7.6k events against the ~3/s a person can
-    /// read, and every one of them crossed the transport to a main-actor
-    /// publish.
+    /// read, and every one of them reached a main-actor publish.
     private final class ThrottledProgress: @unchecked Sendable {
         private let total: Int
         private let onProgress: (@Sendable (DuplicateProgress) -> Void)?
@@ -388,10 +382,7 @@ final class DuplicateScanner: @unchecked Sendable {
         /// Files whose digest could not be taken. They leave the running by
         /// design — unknown is not identical — but a search that found nothing
         /// because nothing could be read is a different answer from a clean one.
-        var unreadableCount: Int {
-            lock.lock(); defer { lock.unlock() }
-            return unreadable
-        }
+        var unreadableCount: Int { lock.withLock { unreadable } }
 
         func noteUnreadable() {
             lock.lock(); unreadable += 1; lock.unlock()
@@ -401,7 +392,7 @@ final class DuplicateScanner: @unchecked Sendable {
             lock.lock()
             count += 1
             let now = Date()
-            let due = now.timeIntervalSince(lastEmit) > 0.35
+            let due = now.timeIntervalSince(lastEmit) > BulkWalk.progressInterval
             if due { lastEmit = now }
             let snapshot = min(count, total)
             lock.unlock()

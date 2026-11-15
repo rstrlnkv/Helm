@@ -14,6 +14,8 @@ import HelmTestSupport
 /// synchronous injection point inside the loop, so what `HelmActivity.running`
 /// answers there is what any memory reading taken mid-removal would see. No
 /// scheduling guess, no scan of a function body.
+///
+/// Guards: 669ff491 (only Disk named its trash phase).
 final class HelmTrashPhaseTests: XCTestCase {
 
     override func tearDown() {

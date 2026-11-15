@@ -27,7 +27,7 @@ struct HistorySection: View {
     /// are about the rules, which this view has never been given and should not
     /// be.
     let empty: HistoryEmpty.Reason?
-    let clear: () -> Void
+    let clear: (AutopilotViewModel.Discard) -> Void
 
     /// Whether the stored history is not Helm's, and the two gestures. Passed
     /// in rather than reached for, like `clear`: this view draws and asks, and
@@ -51,25 +51,29 @@ struct HistorySection: View {
     private var summary: ActionHistory.Summary { ActionHistory.summary(of: history) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: HelmSpace.s5) {
-            header
-            if refused { refusedCard }
-            if let empty {
-                Text(ApStr.historyEmpty(empty))
-                    .font(HelmText.rowTitle)
-                    .foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
-            } else {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: HelmSpace.s5) {
+                header
+                if refused { refusedCard }
+                if let empty {
+                    Text(ApStr.historyEmpty(empty))
+                        .font(HelmText.rowTitle)
+                        .foregroundStyle(HelmText.quiet)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            if empty == nil {
                 VStack(alignment: .leading, spacing: HelmSpace.s4) {
                     ForEach(runs) { pass($0) }
                 }
+                .padding(.top, HelmSpace.s5)
             }
         }
         .helmCard()
     }
 
     private var header: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: HelmSpace.s4) {
             Text(ApStr.historyTitle).font(HelmText.sectionHeading)
                 // A heading, so the rotor can reach the record without reading
                 // the whole list above it.
@@ -84,14 +88,13 @@ struct HistorySection: View {
             let problems = summary.refused + summary.failed
             if problems > 0 {
                 Text(ApStr.historyProblems(problems))
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
+                    .helmQuietDetail()
             }
-            Spacer(minLength: 8)
+            Spacer(minLength: HelmSpace.s4)
             // Not while the card below is showing, which carries the same
             // gesture under a label that says what it does.
             if !history.isEmpty, !refused {
-                Button(ApStr.historyClear, action: clear)
+                Button(HelmWord.clear) { clear(.history) }
                     .controlSize(.small)
             }
         }
@@ -101,25 +104,20 @@ struct HistorySection: View {
     /// history is itself something that happened — with the one way out beside
     /// it, the way a refused rule set has one.
     private var refusedCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(ApStr.historyTampered)
-                .font(HelmText.rowDetail)
-                .fixedSize(horizontal: false, vertical: true)
-            Button(ApStr.discardHistory, action: clear)
+        HelmBanner(ApStr.historyTampered) {
+            Button(ApStr.discardHistory) { clear(.refusedHistory) }
                 .controlSize(.small)
         }
-        .foregroundStyle(Color.orange)
     }
 
     /// One pass: its header, then its rows.
     private func pass(_ run: ActionRun) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: HelmSpace.s3) {
+            HStack(spacing: HelmSpace.s4) {
                 Text(ApStr.passHeader(at: run.at, folder: run.folder, files: run.records.count))
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
+                    .helmQuietDetail()
                     .lineLimit(1)
-                Spacer(minLength: 8)
+                Spacer(minLength: HelmSpace.s4)
                 if canPutBackRun(run) {
                     Button(ApStr.putBackFiles(run.undoable.count)) { putBackRun(run) }
                         .controlSize(.small)
@@ -130,56 +128,47 @@ struct HistorySection: View {
     }
 
     private func row(_ record: ActionRecord) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-        HStack(spacing: 8) {
-            // **The time is the pass's, not the row's.** It used to sit here, in
-            // a 96-point column, and once the rows were grouped it said the same
-            // thing as the header directly above it — five times over, since a
-            // sweep's records are all of one moment. The column is gone with it,
-            // and so is the finding about its width in eight languages: the
-            // header is a line of its own and has the room.
-            Spacer().frame(width: HelmSpace.s4)
-            Text(record.file)
-                .font(HelmText.rowTitle)
-                .lineLimit(1).truncationMode(.middle)
-            // Tail, not middle: this column never holds a path — a folder's
-            // name for a move, the landed name for a rename, a sentence for a
-            // refusal — and a sentence cut in the middle read «отказано:
-            // в…ённых папок». The file name above keeps `.middle`, being the
-            // one thing here whose both ends carry meaning.
-            Text(detail(record))
-                .font(HelmText.rowDetail)
-                .foregroundStyle(record.kind == .failed || record.kind == .refused
-                                 ? Color.orange : HelmText.quiet)
-                .lineLimit(1).truncationMode(.tail)
-            // The row stays after it goes back, marked. A history that deleted
-            // what it had undone would be hiding an action Autopilot took.
-            if record.undoneAt != nil {
-                HelmBadge(ApStr.putBackAlready)
-            }
-            Spacer(minLength: 8)
-            // The rule's name is the one word that says why, and the person
-            // writing it chose it: "Invoices" explains more than any sentence
-            // this screen could compose.
-            Text(record.rule)
-                .font(HelmText.rowDetail)
-                .foregroundStyle(HelmText.quiet)
-                .lineLimit(1)
-        }
-        // What the last return came to for this file, on its own row. Aligned
-        // under the file name — the same leading gap the row opens with — so a
-        // «march.pdf came back as march 2.pdf» sits with the file it renames
-        // rather than in the banner alone.
-        if let note = note(record) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: HelmSpace.s1) {
+            HStack(spacing: HelmSpace.s4) {
+                // The time is the pass's, not the row's: a sweep's records are all
+                // of one moment, so a time here would repeat the header above.
                 Spacer().frame(width: HelmSpace.s4)
-                Text(note)
+                Text(record.file)
+                    .font(HelmText.rowTitle)
+                    .lineLimit(1).truncationMode(.middle)
+                // Tail, not middle: this column never holds a path, and a sentence
+                // cut in the middle read «отказано: в…ённых папок». The file name
+                // above keeps `.middle`, being the one thing here whose both ends
+                // carry meaning.
+                Text(ApStr.historyDetail(record))
                     .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 8)
+                    .foregroundStyle(record.kind == .failed || record.kind == .refused
+                                     ? HelmSignal.warning : HelmText.quiet)
+                    .lineLimit(1).truncationMode(.tail)
+                // The row stays after it goes back, marked. A history that deleted
+                // what it had undone would be hiding an action Autopilot took.
+                if record.undoneAt != nil {
+                    HelmBadge(ApStr.putBackAlready)
+                }
+                Spacer(minLength: HelmSpace.s4)
+                // The rule's name is the one word that says why, and the person
+                // writing it chose it: "Invoices" explains more than any sentence
+                // this screen could compose.
+                Text(record.rule)
+                    .helmQuietDetail()
+                    .lineLimit(1)
             }
-        }
+            // What the last return came to for this file, on its own row. Aligned
+            // under the file name — the same leading gap the row opens with — so a
+            // «march.pdf came back as march 2.pdf» sits with the file it renames
+            // rather than in the banner alone.
+            if let note = note(record) {
+                HStack(spacing: HelmSpace.s4) {
+                    Spacer().frame(width: HelmSpace.s4)
+                    HelmSettingsNote(note)
+                    Spacer(minLength: HelmSpace.s4)
+                }
+            }
         }
         // Read as one thing. Six separate labels per row turns a page of
         // twenty into a hundred and twenty stops.
@@ -208,19 +197,5 @@ struct HistorySection: View {
     }
 
     private func reveal(_ path: String) { HelmReveal.inFinder(path) }
-
-    /// "trashed" needs no second half; the rest read as verb then value. A
-    /// refusal is the exception: its detail is the reason's rawValue — stored
-    /// data, not words — so it is read back into the enum and spoken whole. A
-    /// detail no current reason claims (a record a newer Helm wrote) falls
-    /// through to the verb-and-value form rather than to silence.
-    private func detail(_ record: ActionRecord) -> String {
-        if record.kind == .refused,
-           let reason = RuleOutcome.Refusal(rawValue: record.detail) {
-            return ApStr.historyRefusal(reason)
-        }
-        let verb = ApStr.historyVerb(record.kind)
-        return record.detail.isEmpty ? verb : "\(verb) \(record.detail)"
-    }
 
 }

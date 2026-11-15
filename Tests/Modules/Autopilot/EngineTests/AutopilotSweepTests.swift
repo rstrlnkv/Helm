@@ -35,20 +35,11 @@ final class AutopilotSweepTests: XCTestCase {
         // writes to the user's login keychain, and a test suite leaves nothing
         // behind. The seal itself is not stubbed out — these sweeps save and
         // read their rules through it exactly as the app does.
-        engine = AutopilotEngine(store: NamespacedStore(namespace: "rules.test.\(UUID().uuidString)",
-                                                    backing: InMemoryKeyValueStore()),
-                             home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        engine = AutopilotEngine.scratch(home: home.path)
     }
 
     private func exists(_ relative: String) -> Bool {
         FileManager.default.fileExists(atPath: root.appendingPathComponent(relative).path)
-    }
-
-    /// Every path under `root`, relative and sorted — the only description of a
-    /// folder that a race cannot satisfy by accident.
-    private func tree() -> [String] {
-        let all = FileManager.default.enumerator(atPath: root.path)?.allObjects as? [String]
-        return (all ?? []).sorted()
     }
 
     private func folder(_ rules: [Rule], depth: Int = 1) -> WatchedFolder {
@@ -124,11 +115,11 @@ final class AutopilotSweepTests: XCTestCase {
 
         let watched = folder([rule("r", [.fileExtension(["pdf"])], .rename(pattern: "b"))])
         engine.sweep(watched)
-        let settled = tree()
+        let settled = tree(under: root)
 
         engine.sweep(watched)
 
-        XCTAssertEqual(tree(), settled,
+        XCTAssertEqual(tree(under: root), settled,
                        "a second sweep acted again on a file the first one had already renamed")
     }
 
@@ -153,11 +144,11 @@ final class AutopilotSweepTests: XCTestCase {
                                    .sortIntoSubfolder(.kind))],
                              depth: 1)
         engine.sweep(watched)
-        let settled = tree()
+        let settled = tree(under: root)
 
         engine.sweep(watched)
 
-        XCTAssertEqual(tree(), settled, "the sorted files were sorted a second time")
+        XCTAssertEqual(tree(under: root), settled, "the sorted files were sorted a second time")
     }
 
     /// The same sweep at a depth that can see what the first one produced.
@@ -175,13 +166,13 @@ final class AutopilotSweepTests: XCTestCase {
                                    .sortIntoSubfolder(.kind))],
                              depth: 8)
         engine.sweep(watched)
-        let settled = tree()
+        let settled = tree(under: root)
         XCTAssertEqual(settled, ["Documents", "Documents/a.pdf", "Documents/b.pdf"],
                        "the premise: the second sweep will read these")
 
         engine.sweep(watched)
 
-        XCTAssertEqual(tree(), settled, "the sorted files were sorted a second time")
+        XCTAssertEqual(tree(under: root), settled, "the sorted files were sorted a second time")
     }
 
     /// And the same again with the mark taken off, which is what every sweep
@@ -203,13 +194,13 @@ final class AutopilotSweepTests: XCTestCase {
                                    .sortIntoSubfolder(.kind))],
                              depth: 8)
         engine.sweep(watched)
-        let settled = tree()
+        let settled = tree(under: root)
         XCTAssertEqual(settled, ["Documents", "Documents/a.pdf"])
 
         unstamp()
         engine.sweep(watched)
 
-        XCTAssertEqual(tree(), settled,
+        XCTAssertEqual(tree(under: root), settled,
                        "the file was buried one folder deeper, and would be again every hour")
     }
 
@@ -217,7 +208,7 @@ final class AutopilotSweepTests: XCTestCase {
     /// as the sweep left it, so the only thing the next sweep is missing is the
     /// record — which is the state an unstampable volume is in permanently.
     private func unstamp() {
-        for relative in tree() {
+        for relative in tree(under: root) {
             removexattr(root.appendingPathComponent(relative).path,
                         RuleStamp.attribute, XATTR_NOFOLLOW)
         }

@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Helm
 
 import Foundation
-import HelmContract
 import HelmRuntime
 import XCTest
 @testable import Module_VPN_Engine
@@ -19,7 +18,7 @@ import XCTest
 /// started them. Under `.inline` they arrive *inside* it, on another thread,
 /// which is the one thing the real queue rules out.
 ///
-/// So this is CLAUDE.md § What not to do, and what breaks if you do, read of the
+/// So this is (ARCHITECTURE.md § Fakes) read of the
 /// queue itself: the fake admits a state the real one cannot produce, and every
 /// test in this module is written against the fake.
 ///
@@ -27,13 +26,11 @@ import XCTest
 /// under the lock and then emits *outside* it. Two callers with the same payload
 /// therefore produce exactly one emission — the loser publishes nothing — and
 /// the winner's `emit` lands whenever its thread is next scheduled, which can be
-/// after the test has already read the wire. Measured on a two-tunnel fixture
+/// after the test has already read the stream. Measured on a two-tunnel fixture
 /// with an exit port that answers, same binary, five consecutive processes: the
-/// refresh's state reached the transport in two of them and in three it did not.
+/// refresh's state reached the news in two of them and in three it did not.
 /// The failure that produces is «the engine said nothing», which reads as a
-/// defect in the subject rather than in the harness — the shape CLAUDE.md
-/// records for Autopilot's `folders` getter, «7 failures in 70 and never twice
-/// in a row». Commit 4a3d2b81 repaired four tests in this module for a
+/// defect in the subject rather than in the harness. Commit 4a3d2b81 repaired four tests in this module for a
 /// neighbouring reason and this one was still under them.
 ///
 /// **The shipped app is not exposed**: `.background` is serial, so there is only
@@ -43,6 +40,8 @@ import XCTest
 /// because the window in the engine is a handful of instructions wide and a
 /// repetition count large enough to catch it reliably is a threshold nobody can
 /// justify. Two callers or one is a structure, and structure does not need luck.
+///
+/// Past defect: commit c0fdd318, «fix(vpn): six repairs, from a blip that cost the tunnel to a decoy interface».
 final class TheTestQueueIsAsSerialAsTheRealOneTests: XCTestCase {
 
     /// How many blocks were inside the queue at once, at the most.

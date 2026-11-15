@@ -15,7 +15,7 @@ import Foundation
 ///
 /// **A default name is not a name.** A seeded section is called «Питание»,
 /// «Power» or «電源» depending on the language, translated from its seed through
-/// eight `Localizable.strings` tables. Storing the displayed string would freeze
+/// eight languages of a string catalog. Storing the displayed string would freeze
 /// whichever language was current the day it was stored — and renaming one
 /// section would quietly stop the others following the app. So a section keeps
 /// its seed *and* an optional hand-set name, and clearing the name translates
@@ -33,7 +33,7 @@ public struct SidebarLayout: Equatable, Codable, Sendable {
         public var name: String?
         public var modules: [String]
 
-        public init(id: String, seed: String?, name: String?, modules: [String]) {
+        init(id: String, seed: String?, name: String?, modules: [String]) {
             self.id = id
             self.seed = seed
             self.name = name
@@ -43,7 +43,7 @@ public struct SidebarLayout: Equatable, Codable, Sendable {
 
     public var sections: [Section]
 
-    public init(sections: [Section]) { self.sections = sections }
+    init(sections: [Section]) { self.sections = sections }
 
     // MARK: - Seeding
 
@@ -166,7 +166,7 @@ public struct SidebarLayout: Equatable, Codable, Sendable {
         return copy
     }
 
-    public func movingSection(_ sectionID: String, before: String?) -> SidebarLayout {
+    func movingSection(_ sectionID: String, before: String?) -> SidebarLayout {
         guard let from = sections.firstIndex(where: { $0.id == sectionID }) else { return self }
         var copy = self
         let section = copy.sections.remove(at: from)

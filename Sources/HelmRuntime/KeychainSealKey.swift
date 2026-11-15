@@ -15,7 +15,7 @@ public protocol SealKeyPort: Sendable {
     ///
     /// Nil is a **third answer**, not a refusal: «cannot say yet». A caller that
     /// folded it into "no key" would report a stored setting as forged because a
-    /// keychain was slow, which is the shape ARCHITECTURE.md § Module pattern
+    /// keychain was slow, which is the shape (ARCHITECTURE.md § Module pattern)
     /// is about.
     ///
     /// The default is nil because it is the truth for a port that keeps
@@ -57,9 +57,7 @@ public final class KeychainSealKey: SealKeyPort {
     }
 
     private var query: [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: service,
-         kSecAttrAccount as String: account]
+        KeychainItem.address(service: service, account: account)
     }
 
     public func key() -> SealKey? {
@@ -75,31 +73,22 @@ public final class KeychainSealKey: SealKeyPort {
         // already treats it as the safe direction.
         guard !TestProcess.isRunning else { return nil }
         switch read() {
-        case let .found(material): return SealKey(material: material, firstUse: false)
+        case let .found(material):
+            return Self.existing(material)
         case .absent: return create()
-        case .unavailable: return nil
+        case .refused: return nil
         }
     }
 
-    private enum Read { case found(Data), absent, unavailable }
-
-    private func read() -> Read {
-        var q = query
-        q[kSecReturnData as String] = true
-        q[kSecMatchLimit as String] = kSecMatchLimitOne
-        var item: CFTypeRef?
-        let status = SecItemCopyMatching(q as CFDictionary, &item)
-        switch status {
-        case errSecSuccess:
-            guard let data = item as? Data, data.count == Self.length else { return .unavailable }
-            return .found(data)
-        case errSecItemNotFound:
-            return .absent
-        default:
+    private func read() -> KeychainAnswer {
+        let answer = KeychainItem.read(service: service, account: account)
+        // A success that held no readable data is refused without a status worth
+        // naming; only a status macOS actually gave is logged.
+        if case let .refused(status) = answer, status != errSecSuccess {
             HelmLog.shared.warn(category,
                                 "could not read the seal key: \(HelmFailure.osStatus(status))")
-            return .unavailable
         }
+        return answer
     }
 
     private func create() -> SealKey? {
@@ -125,7 +114,7 @@ public final class KeychainSealKey: SealKeyPort {
             // ago and can now. Whatever is there wins; a key we invented and
             // could not store would seal nothing.
             guard case let .found(existing) = read() else { return nil }
-            return SealKey(material: existing, firstUse: false)
+            return Self.existing(existing)
         default:
             HelmLog.shared.warn(category,
                                 "could not store the seal key: \(HelmFailure.osStatus(status))")
@@ -134,4 +123,57 @@ public final class KeychainSealKey: SealKeyPort {
     }
 
     private static let length = 32
+
+    /// A stored key is exactly `length` bytes or it is not ours: a short or long
+    /// value is refused, never padded or cut, because a different key seals
+    /// nothing the person saved.
+    static func existing(_ material: Data) -> SealKey? {
+        guard material.count == length else { return nil }
+        return SealKey(material: material, firstUse: false)
+    }
+}
+
+/// What the keychain said about one item.
+///
+/// `absent` is `errSecItemNotFound` and nothing else. Everything a keychain can
+/// say that is not "there is no such item" — a locked login keychain, a denied
+/// access list, a success with nothing readable in it — is `refused`, because
+/// `absent` makes the seal create a key and gives Autopilot's high-water mark no
+/// value to check a rollback against.
+public enum KeychainAnswer: Equatable {
+    case found(Data), absent, refused(OSStatus)
+}
+
+public enum KeychainItem {
+    /// The one place a status and an item become an answer. Pure, so a test can
+    /// say every status without a keychain.
+    static func answer(status: OSStatus, item: CFTypeRef?) -> KeychainAnswer {
+        switch status {
+        case errSecSuccess:
+            guard let data = item as? Data else { return .refused(errSecSuccess) }
+            return .found(data)
+        case errSecItemNotFound:
+            return .absent
+        default:
+            return .refused(status)
+        }
+    }
+
+    /// Where one generic-password item lives: the one spelling of its address.
+    public static func address(service: String, account: String) -> [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword,
+         kSecAttrService as String: service,
+         kSecAttrAccount as String: account]
+    }
+
+    /// Reads one generic-password item's data. The caller keeps its own test
+    /// guard, its own validation of the bytes and its own log line.
+    public static func read(service: String, account: String) -> KeychainAnswer {
+        var query = address(service: service, account: account)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        return answer(status: status, item: item)
+    }
 }

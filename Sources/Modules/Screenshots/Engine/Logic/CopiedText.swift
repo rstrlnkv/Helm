@@ -33,7 +33,7 @@ public enum CopiedText {
         }
     }
 
-    public static func text(of lines: [RecognizedLine]) -> String? {
+    static func text(of lines: [RecognizedLine]) -> String? {
         let kept = lines.map(\.string).filter { !$0.allSatisfy(AnnotationText.isInvisible) }
         return kept.isEmpty ? nil : kept.joined(separator: "\n")
     }

@@ -23,11 +23,11 @@ public struct IconShapePicker: View {
     /// picture, so without this nothing on the page ever shows the icon as it
     /// will appear in the bar.
     public init(selection: Binding<String>,
-                title: String = L("Icon shape"),
+                title: String? = nil,
                 tintToken: String = "primary",
                 size: String = MenuBarIconSize.small.rawValue) {
         self._selection = selection
-        self.title = title
+        self.title = title ?? L(.iconShape)
         self.tintToken = tintToken
         self.size = MenuBarIconSize(stored: size)
     }
@@ -109,7 +109,7 @@ public struct IconShapePicker: View {
 /// on their own terms: 42.5 pt of row against the segmented control's 41.0,
 /// a track at 1.08:1 against the card where the system's reads 1.15:1, and
 /// white on that accent fill at **3.22:1** — the one piece of text on the page
-/// under the 4.5:1 floor every colour in `HelmSurfaces` was solved against.
+/// under the 4.5:1 floor the text colours in `HelmText` and the signal colours in `HelmSignal` were solved against (`HelmText.separator`, a rule and not text, answers 3:1).
 public struct IconSizePicker: View {
     @Binding private var selection: String
 
@@ -120,7 +120,7 @@ public struct IconSizePicker: View {
     public var body: some View {
         // Named even though the label is hidden: the row's `LabeledContent`
         // titles it on screen, and VoiceOver reads the control itself.
-        Picker(L("Icon size"), selection: $selection) {
+        Picker(L(.iconSize), selection: $selection) {
             ForEach(MenuBarIconSize.allCases, id: \.rawValue) { size in
                 Text(size.label).tag(size.rawValue)
             }

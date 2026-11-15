@@ -4,6 +4,7 @@ import HelmTestSupport
 
 /// Against a real fixture tree in tmp — the bulk-attribute walk has too many
 /// byte-layout edge cases to trust without touching an actual filesystem.
+/// Past defect: fixed in commit 76f18e41.
 final class DiskScannerTests: XCTestCase {
     private var fixture: URL!
 
@@ -43,10 +44,10 @@ final class DiskScannerTests: XCTestCase {
     func testProgressReportsArrive() throws {
         final class Box: @unchecked Sendable { var last: ScanProgress? }
         let box = Box()
-        _ = DiskScanner(foldThreshold: 0).scan(root: fixture.path) { box.last = $0 }
+        let tree = try XCTUnwrap(DiskScanner(foldThreshold: 0).scan(root: fixture.path) { box.last = $0 })
         let last = try XCTUnwrap(box.last)
         XCTAssertEqual(last.filesSeen, 3)
-        XCTAssertGreaterThanOrEqual(last.bytesSeen, 210_000)
+        XCTAssertGreaterThanOrEqual(tree.bytes, 210_000)
     }
 
     /// MODTIME sits between OBJTYPE and FILEID in attribute-bit order; a

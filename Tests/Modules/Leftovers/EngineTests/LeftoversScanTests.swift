@@ -101,9 +101,7 @@ final class LeftoversScanTests: XCTestCase {
         // fixture went on setting it — so the scan saw no extensions at all and
         // the rule below was asserted over an empty list.
         let active = LeftoversFakeLoaded(installed: [
-            SystemExtensionInfo(identifier: "com.gone.vendor.app.ext", teamID: "T",
-                                name: "Ext", version: "1", state: "activated enabled",
-                                enabled: true),
+            SystemExtensionInfo(identifier: "com.gone.vendor.app.ext", version: "1", enabled: true),
         ])
         var scannerFiles = files
         scannerFiles.listing["/Users/x/Library/LaunchAgents"] = []
@@ -118,9 +116,7 @@ final class LeftoversScanTests: XCTestCase {
     /// another page, with no names.
     func testInstalledExtensionsAreListed() {
         let extensions = LeftoversFakeLoaded(installed: [
-            SystemExtensionInfo(identifier: "com.acme.app.network", teamID: "T1",
-                                name: "Acme Network", version: "1.0",
-                                state: "activated enabled", enabled: true),
+            SystemExtensionInfo(identifier: "com.acme.app.network", version: "1.0", enabled: true),
         ])
         let items = scanner(files: LeftoversFakeFiles(), installed: ["com.acme.app"],
                             extensions: extensions).scan()
@@ -132,9 +128,7 @@ final class LeftoversScanTests: XCTestCase {
     /// An extension whose host app is installed is in use; one whose host is
     /// gone is a leftover the user may want to clear in System Settings.
     func testExtensionStatusFollowsItsHostApp() {
-        let info = SystemExtensionInfo(identifier: "com.acme.app.network", teamID: "T1",
-                                       name: "Acme Network", version: "1.0",
-                                       state: "activated enabled", enabled: true)
+        let info = SystemExtensionInfo(identifier: "com.acme.app.network", version: "1.0", enabled: true)
         let live = scanner(files: LeftoversFakeFiles(), installed: ["com.acme.app"],
                            extensions: LeftoversFakeLoaded(installed: [info])).scan()
         XCTAssertEqual(live.first { $0.kind == .systemExtension }?.status, .inUse)
@@ -147,9 +141,7 @@ final class LeftoversScanTests: XCTestCase {
     /// Helm cannot delete an extension by moving a file — that is done in
     /// System Settings — so it must never offer a checkbox for one.
     func testExtensionsAreNeverSelectable() {
-        let info = SystemExtensionInfo(identifier: "com.acme.app.network", teamID: "T1",
-                                       name: "Acme Network", version: "1.0",
-                                       state: "activated enabled", enabled: true)
+        let info = SystemExtensionInfo(identifier: "com.acme.app.network", version: "1.0", enabled: true)
         let items = scanner(files: LeftoversFakeFiles(), installed: [],
                             extensions: LeftoversFakeLoaded(installed: [info])).scan()
         let ext = items.first { $0.kind == .systemExtension }
@@ -166,6 +158,8 @@ final class LeftoversScanTests: XCTestCase {
 /// stable, so those two came back in whichever order the algorithm happened to
 /// leave them: pressing «Scan again» could swap the pair, in a list where the
 /// row above a checkbox is the whole of what the tick means.
+///
+/// Past defect: fixed in `5603872d`.
 final class ScanOrderIsTotalTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 

@@ -71,6 +71,16 @@ final class ThePrivilegedRunHearsTheCancelTests: XCTestCase {
         let arguments = PrivilegedRun.arguments(for: command)
         XCTAssertEqual(arguments.last, AppleScript.administratorShellScript(command))
     }
+
+    /// A quote in the command is escaped before it reaches the script, so it
+    /// cannot end the literal and let the rest run as AppleScript under root.
+    /// Spelled out, not computed by `AppleScript`: a missing escape would then
+    /// agree with itself.
+    func testAQuoteAndABackslashInTheCommandAreEscapedInTheScript() {
+        let arguments = PrivilegedRun.arguments(for: #"/bin/echo "a\b""#)
+        XCTAssertEqual(arguments.last,
+                       #"do shell script "/bin/echo \"a\\b\"" with administrator privileges"#)
+    }
 }
 
 /// `do shell script` puts the failing command's **own output** inside the error

@@ -25,10 +25,7 @@ final class ADryRunIsOfTheFolderNotOfOneRuleTests: XCTestCase {
         home = scratchDirectory("home")
         root = home.appendingPathComponent("Downloads")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        engine = AutopilotEngine.scratch(home: home.path)
     }
 
     private func rule(_ id: String, enabled: Bool = true,
@@ -122,6 +119,25 @@ final class ADryRunIsOfTheFolderNotOfOneRuleTests: XCTestCase {
                        "the editor offered files a rule above it takes first")
         XCTAssertEqual(rows.filter { $0.ruleID == invoices.id }.count, 0,
                        "«Invoices» was shown as doing work it will never do")
+    }
+
+    /// What the earlier rule leaves alone reaches the one being written: both are
+    /// on, the PDF is the first rule's and the text file is the second's, and the
+    /// dry run of the folder shows each file with the rule that takes it.
+    func testAFileTheEarlierRuleLeavesAloneReachesTheRuleBeingWritten() throws {
+        try write("invoice-march.pdf", in: root, bytes: 10)
+        try write("notes.txt", in: root, bytes: 10)
+        let pdfs = Rule(id: "pdf", name: "All PDFs", enabled: true, match: .all,
+                        conditions: [.fileExtension(["pdf"])],
+                        action: .sortIntoSubfolder(.kind))
+        let notes = Rule(id: "txt", name: "Notes", enabled: true, match: .all,
+                         conditions: [.fileExtension(["txt"])],
+                         action: .sortIntoSubfolder(.kind))
+
+        let rows = engine.preview(folder([pdfs, notes]).previewing(notes)).map(PreviewRow.init)
+
+        XCTAssertEqual(Dictionary(uniqueKeysWithValues: rows.map { ($0.name, $0.ruleID) }),
+                       ["invoice-march.pdf": "pdf", "notes.txt": "txt"])
     }
 
     /// And with the earlier rule switched off, the same files come to the rule

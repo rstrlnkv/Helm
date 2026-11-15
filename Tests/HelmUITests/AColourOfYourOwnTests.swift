@@ -73,31 +73,3 @@ final class AColourOfYourOwnTests: XCTestCase {
         }
     }
 }
-
-/// «Other…» in the palette pop-up (`PaletteSwatches`) reaches the system colour
-/// panel itself, with no colour well or popover between the menu item and it.
-final class TheOtherColourOpensTheSystemPanelTests: XCTestCase {
-
-    /// **«Other…» opens the system panel, not a popover with a well in it.**
-    ///
-    /// A SwiftUI `ColorPicker` *is* a colour well — a button whose whole job is
-    /// to open `NSColorPanel` — so presenting one inside a popover put a second
-    /// click and a floating swatch between the menu item and the thing it
-    /// names. Reported as «remove this popup».
-    ///
-    /// A source check: the panel is AppKit's own window and a test cannot open
-    /// it without taking over the machine.
-    func testTheMenuOpensTheSystemPanelDirectly() throws {
-        let url = RepoSource.root
-            .appendingPathComponent("Sources/HelmUI/DesignSystem/PaletteSwatches.swift")
-        let source = try String(contentsOf: url, encoding: .utf8)
-        XCTAssertGreaterThan(source.count, 500, "the file was not read at all")
-        XCTAssertTrue(source.contains("NSColorPanel.shared"),
-                      "«Other…» does not reach the system panel")
-        XCTAssertFalse(source.contains("ColorPicker("),
-                       "a colour well is being presented instead of the panel, which is the "
-                       + "extra click this replaced")
-        XCTAssertFalse(source.contains(".popover("),
-                       "the popover is back")
-    }
-}

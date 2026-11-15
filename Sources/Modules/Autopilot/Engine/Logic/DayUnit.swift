@@ -17,13 +17,13 @@ import HelmRuntime
 public enum DayUnit {
 
     /// The number and its unit: "30 дней", "1 day".
-    public static func afterComparison(_ count: Int, language: String) -> String {
+    static func afterComparison(_ count: Int, language: String) -> String {
         guard language == "ru" else { return Plural.days(count, language: language) }
         return "\(count) " + Plural.russian(count, "дня", "дней", "дней")
     }
 
     /// Just the unit, for the row that draws the number in a field of its own.
-    public static func wordAfterComparison(_ count: Int, language: String) -> String {
+    static func wordAfterComparison(_ count: Int, language: String) -> String {
         let counted = afterComparison(count, language: language)
         // The languages that write the number with no space (ja, zh) come back
         // unchanged rather than mangled.

@@ -6,7 +6,7 @@ import Foundation
 /// `ScanCoordinator` lives in `HelmApp` and this lives here, where a test per
 /// verdict holds it with its ordering mutation-checked — four defects found in
 /// the coordinator on 2026-08-03 could be argued about and not pinned. What is
-/// left up there is the clock, the observer and the transport call: the parts
+/// left up there is the clock, the observer and the call into the engine: the parts
 /// that genuinely need a running app.
 ///
 /// This paragraph used to say `HelmApp` had no test target anywhere in
@@ -41,8 +41,8 @@ public enum ScanRunner {
         public var personSeconds: TimeInterval
         /// What the counter said at this reading, so the next one can tell a
         /// reset from a climb.
-        public var systemSeconds: TimeInterval
-        public var readAt: Date
+        var systemSeconds: TimeInterval
+        var readAt: Date
 
         public init(personSeconds: TimeInterval, systemSeconds: TimeInterval, readAt: Date) {
             self.personSeconds = personSeconds

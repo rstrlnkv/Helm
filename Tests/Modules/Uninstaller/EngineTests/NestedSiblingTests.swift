@@ -32,55 +32,16 @@ import XCTest
 ///
 /// Assertions name paths, never counts — a count is satisfied by any two of
 /// them.
-private struct NestedFS: FileSystemPort {
-    let entries: [String: Int]
-    func exists(_ url: URL) -> Bool { entries[url.path] != nil }
-    func size(_ url: URL) -> Int { entries[url.path] ?? 0 }
-    func glob(_ pattern: URL) -> [URL] {
-        let dir = pattern.deletingLastPathComponent().path
-        let name = pattern.lastPathComponent
-        return entries.keys
-            .filter { ($0 as NSString).deletingLastPathComponent == dir }
-            .filter { GlobMatch.matches(($0 as NSString).lastPathComponent, pattern: name) }
-            .sorted()
-            .map { URL(fileURLWithPath: $0) }
-    }
-    func children(of url: URL) -> [URL] {
-        entries.keys
-            .filter { ($0 as NSString).deletingLastPathComponent == url.path }
-            .sorted()
-            .map { URL(fileURLWithPath: $0) }
-    }
-}
-
-/// A real Mac's two answers, which differ. `topLevel` is what
-/// `contentsOfDirectory` finds; `nested` is installed and running and lives one
-/// folder down, so only LaunchServices knows about it.
-private struct PartlyVisible: AppLister {
-    let topLevel: Set<String>
-    let nested: Set<String>
-    func installedApps() -> [InstalledApp] {
-        topLevel.map { InstalledApp(name: $0, bundleID: $0,
-                                    path: "/Applications/\($0).app", sizeBytes: 0) }
-    }
-    func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
-    func installedBundleIDs() -> Set<String> { topLevel }
-    func isKnownToSystem(bundleID: String) -> Bool {
-        topLevel.contains(bundleID) || nested.contains(bundleID)
-    }
-}
-
 final class NestedSiblingTests: XCTestCase {
     private let lib = "/Users/x/Library"
 
     private func scan(_ id: String, topLevel: Set<String>, nested: Set<String>,
                       entries: [String: Int]) async throws -> ScanResult {
         let engine = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
-                                       apps: PartlyVisible(topLevel: topLevel, nested: nested),
-                                       fs: NestedFS(entries: entries),
+                                       apps: FakeApps.installed(topLevel, nested: nested),
+                                       fs: GlobbingFS(entries: entries),
                                        trash: NoTrash(), running: NoRunning())
-        return try await engine.scan(bundleID: id, appPath: "/Applications/Acrobat.app",
-                                     appName: "Acrobat")
+        return await engine.scan(bundleID: id, appName: "Acrobat")
     }
 
     /// The shape `SiblingPrefixTests` already refuses, moved one folder down.

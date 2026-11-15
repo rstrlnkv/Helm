@@ -15,8 +15,8 @@ import HelmRuntime
 /// that would have let the *later* real absence be reported as a drop.
 ///
 /// A rule is bound to a signature now. The verdict is a value with a reason rather
-/// than a `Bool`, because the settings row and the log each need to say which of
-/// the four refusals happened.
+/// than a `Bool`, because the log needs to say which of the four refusals
+/// happened.
 final class ARuleIsBoundToAnIdentityTests: XCTestCase {
 
     private let real = CodeIdentity(signingID: "com.example.app", teamID: "ABCDE12345")
@@ -58,9 +58,8 @@ final class ARuleIsBoundToAnIdentityTests: XCTestCase {
     /// The alternative — verify by name until re-picked — leaves the whole
     /// vulnerability standing on every installation that already has rules, for
     /// ever, since nothing would ever make somebody re-pick. Refusing is the safe
-    /// direction, and it is not silent: the row says the app has to be chosen
-    /// again, and choosing it again records the identity without disturbing the
-    /// rest of the rule.
+    /// direction, and it is not silent in the log; choosing the app again records
+    /// the identity without disturbing the rest of the rule.
     func testARuleFromBeforeIdentitiesExistedDoesNotFire() {
         XCTAssertEqual(VPNRuleTrust.judge(rule: rule(nil), running: real), .noIdentityRecorded)
     }
@@ -74,8 +73,7 @@ final class ARuleIsBoundToAnIdentityTests: XCTestCase {
                        .appNotSigned)
     }
 
-    /// The two verdicts a settings row can draw are the two that need nothing
-    /// running, which is what makes one function serve the page and the engine.
+    /// The two rule-level verdicts are the two that need nothing running.
     func testTheRuleLevelVerdictsDoNotDependOnWhatIsRunning() {
         XCTAssertEqual(VPNRuleTrust.judge(rule: rule(nil), running: nil), .noIdentityRecorded)
         XCTAssertEqual(VPNRuleTrust.judge(rule: rule(CodeIdentity(signingID: "", teamID: nil)),

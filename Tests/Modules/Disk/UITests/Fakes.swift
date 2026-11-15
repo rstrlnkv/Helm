@@ -1,201 +1,138 @@
 import Foundation
-import HelmContract
 import HelmRuntime
-import Module_Disk_Engine
+import HelmTestSupport
+@testable import Module_Disk_Engine
 import XCTest
+@testable import Module_Disk_UI
 
-// The two transports this module's page tests are written against, and the
-// waits that go with them.
+// The two engines this module's page tests are written against, and the waits
+// that go with them.
 //
-// **They are two on purpose.** `AnsweringTransport` answers on the spot;
-// `HeldTransport` parks every scan until a test releases it. A fake that
-// answers synchronously releases a gate before the call it is gating returns,
+// **They are two on purpose.** `AnsweringWork` answers on the spot;
+// `HeldWork` parks every scan until a test releases it. A fake that answers
+// synchronously releases a gate before the call it is gating returns,
 // so a test of a busy gate passes with the gate deleted — which is why
 // `DiskScanRaceTests` and `StopKeepsWhatItMeasuredTests` need the parking one
 // and cannot be served by the immediate one. Merging them would take the
 // mid-walk state out of the language these tests are written in.
-//
-// Each was spelled twice before it moved here, and the copies had drifted: one
-// `HeldTransport` had grown a "trash" case the other had not. The union is
-// kept — a fake simpler than the thing it stands for cannot fail the way the
-// thing can.
+
+// MARK: - A mount somebody can post
+
+/// The volume list's reverse channel, for a fake: `watch` hands out a token, and
+/// `post()` calls every handler whose token is still held, as a disk arriving
+/// would.
+final class MountChannel: @unchecked Sendable {
+    private final class Token {
+        let end: () -> Void
+        init(_ end: @escaping () -> Void) { self.end = end }
+        deinit { end() }
+    }
+
+    private let lock = NSLock()
+    private var handlers: [UUID: @Sendable () -> Void] = [:]
+
+    func watch(_ onChange: @escaping @Sendable () -> Void) -> AnyObject {
+        let id = UUID()
+        lock.withLock { handlers[id] = onChange }
+        return Token { [weak self] in self?.lock.withLock { _ = self?.handlers.removeValue(forKey: id) } }
+    }
+
+    var watchers: Int { lock.withLock { handlers.count } }
+
+    func post() {
+        let all = lock.withLock { Array(handlers.values) }
+        for handler in all { handler() }
+    }
+}
 
 // MARK: - Answers on the spot
 
 /// Volumes, scans and removals, all returned without suspending. For tests
 /// about what the view model *keeps* across a transition rather than about
 /// interleaving.
-final class AnsweringTransport: EngineTransport, @unchecked Sendable {
-
-    /// What the engine behind this wire does with a request.
-    ///
-    /// **A fake that can only answer is simpler than the port it stands for.**
-    /// `EngineTransport.send` is declared `throws` and its only implementation
-    /// answers empty `Data` for a handler whose engine has gone — which
-    /// `DiskViewModel.shared(vm:)`'s own comment describes in as many words:
-    /// a cached view model outliving its engine gets "every request with empty
-    /// Data from then on", the state switching the module off and on produces.
-    /// Without these two cases, «the removal nobody answered» was a state no
-    /// test in this target could write down, whatever anybody wrote.
-    ///
-    /// Kept apart from each other rather than folded together: JSON decodes
-    /// nothing from either, but they are not the same wire, and a command
-    /// answering a raw payload would tell them apart.
-    enum Answer: Equatable {
-        /// The fixture's reply: an engine that is there and answers.
-        case reply
-        /// `send` throws, which `TransportClient.request` folds to the same nil
-        /// as a reply that will not decode.
-        case refuse
-        /// Empty `Data` — an engine that is gone, or a command it does not know.
-        case nothing
-    }
+final class AnsweringWork: DiskWork, @unchecked Sendable {
 
     private let lock = NSLock()
     private var results: [String: ScanResult] = [:]
     private var removal = DiskRemoval(removed: [], refused: [], freedBytes: 0)
-    private var answer: Answer = .reply
     private let volumes: [VolumeInfo]
-    let events: AsyncStream<EngineEvent>
 
     init(volumes: [VolumeInfo]) {
         self.volumes = volumes
-        events = AsyncStream { _ in }
-    }
-
-    private var currentVolumes: [VolumeInfo] {
-        lock.lock(); defer { lock.unlock() }; return volumes
     }
 
     func answer(_ path: String, with result: ScanResult) {
-        lock.lock(); results[path] = result; lock.unlock()
+        lock.withLock { results[path] = result }
     }
 
     func answerTrash(with removal: DiskRemoval) {
-        lock.lock(); self.removal = removal; lock.unlock()
-    }
-
-    /// The engine going away under the page, or coming back. A port that can
-    /// change while the app is running says so rather than being fixed at init
-    /// (CLAUDE.md § What not to do, and what breaks if you do).
-    func answers(_ answer: Answer) {
-        lock.lock(); self.answer = answer; lock.unlock()
-    }
-
-    private var currentAnswer: Answer {
-        lock.lock(); defer { lock.unlock() }; return answer
+        lock.withLock { self.removal = removal }
     }
 
     /// What the engine was actually asked to trash. A basket row and a removal
     /// are not one to one — a cache row stands for its contents — so a test of
     /// that has to be able to read the request rather than the basket.
     var trashRequests: [[String]] {
-        lock.lock(); defer { lock.unlock() }; return requestedTrash
+        lock.withLock { requestedTrash }
     }
     private var requestedTrash: [[String]] = []
 
-    private func noteTrash(_ paths: [String]) {
-        lock.lock(); requestedTrash.append(paths); lock.unlock()
+    func mountedVolumes() async -> [VolumeInfo] { volumes }
+
+    let mountChannel = MountChannel()
+    func watchMounts(_ onChange: @escaping @Sendable () -> Void) -> AnyObject { mountChannel.watch(onChange) }
+
+    func scan(path: String, unattended: Bool,
+              updates: (@Sendable (DiskScanUpdate) -> Void)?) async -> ScanResult? {
+        lock.withLock { results[path] }
     }
 
-    private func result(for path: String) -> ScanResult? {
-        lock.lock(); defer { lock.unlock() }; return results[path]
+    func cancel() {}
+
+    func trash(_ paths: [String]) async -> DiskRemoval {
+        lock.withLock {
+            requestedTrash.append(paths)
+            return removal
+        }
     }
 
-    private var currentRemoval: DiskRemoval {
-        lock.lock(); defer { lock.unlock() }; return removal
-    }
-
-    func send(_ command: EngineCommand) async throws -> Data {
-        // The request is recorded before the wire is consulted: a test of a
-        // silence has to be able to assert that the batch really was sent, or it
-        // is asserting an absence over a press that never happened.
-        if command.name == DiskCommand.trash.rawValue {
-            noteTrash((try? JSONDecoder().decode([String].self, from: command.payload)) ?? [])
-        }
-        switch currentAnswer {
-        case .refuse: throw NoEngine.gone
-        case .nothing: return Data()
-        case .reply: break
-        }
-        switch command.name {
-        case "volumes":
-            return (try? JSONEncoder().encode(currentVolumes)) ?? Data()
-        case "scan":
-            let request = try? JSONDecoder().decode(ScanRequest.self, from: command.payload)
-            return (try? JSONEncoder().encode(request.flatMap { result(for: $0.path) })) ?? Data()
-        case "trash":
-            return (try? JSONEncoder().encode(currentRemoval)) ?? Data()
-        default:
-            return Data()
-        }
-    }
+    func backgroundScan() async -> ScanReport? { nil }
 }
-
-/// What a transport with nothing behind it throws.
-enum NoEngine: Error { case gone }
 
 // MARK: - Parks until released
 
-/// Every "scan" parks until the test releases it and events are pushed by hand,
+/// Every scan parks until the test releases it and updates are pushed by hand,
 /// so the interleaving is chosen rather than raced — and a walk can be caught
 /// in flight, which is the state the Stop button is visible in. A removal parks
 /// too when the test asks for it (`holdTrash`), which is the state the basket
 /// must not move in.
-final class HeldTransport: EngineTransport, @unchecked Sendable {
+final class HeldWork: DiskWork, @unchecked Sendable {
     private let lock = NSLock()
-    private var parked: [CheckedContinuation<Data, Never>] = []
-    private var requests: [ScanRequest] = []
+    private var parked: [CheckedContinuation<ScanResult?, Never>] = []
+    private var sinks: [(@Sendable (DiskScanUpdate) -> Void)?] = []
     private var trashBatches: [[String]] = []
     private var removal = DiskRemoval(removed: [], refused: [], freedBytes: 0)
-    private var heldTrash: [CheckedContinuation<Data, Never>] = []
+    private var heldTrash: [CheckedContinuation<DiskRemoval, Never>] = []
     private var holdsTrash = false
-    private var continuation: AsyncStream<EngineEvent>.Continuation?
-    let events: AsyncStream<EngineEvent>
 
-    init() {
-        var handle: AsyncStream<EngineEvent>.Continuation?
-        events = AsyncStream { handle = $0 }
-        continuation = handle
+    func mountedVolumes() async -> [VolumeInfo] { [] }
+
+    let mountChannel = MountChannel()
+    func watchMounts(_ onChange: @escaping @Sendable () -> Void) -> AnyObject { mountChannel.watch(onChange) }
+
+    func scan(path: String, unattended: Bool,
+              updates: (@Sendable (DiskScanUpdate) -> Void)?) async -> ScanResult? {
+        await withCheckedContinuation { park($0, updates) }
     }
 
-    func send(_ command: EngineCommand) async throws -> Data {
-        switch command.name {
-        case "volumes":
-            return (try? JSONEncoder().encode([VolumeInfo]())) ?? Data()
-        case "scan":
-            if let request = try? JSONDecoder().decode(ScanRequest.self,
-                                                       from: command.payload) {
-                note(request)
-            }
-            return await withCheckedContinuation { park($0) }
-        case "trash":
-            noteTrash((try? JSONDecoder().decode([String].self, from: command.payload)) ?? [])
-            guard isHoldingTrash else {
-                return (try? JSONEncoder().encode(currentRemoval)) ?? Data()
-            }
-            return await withCheckedContinuation { parkTrash($0) }
-        default:
-            return Data()
-        }
-    }
+    func cancel() {}
 
-    // Locking lives in non-async helpers: taking an NSLock across a suspension
-    // point is what the compiler objects to, and it is right to.
-    private func note(_ request: ScanRequest) {
-        lock.lock(); requests.append(request); lock.unlock()
-    }
+    func backgroundScan() async -> ScanReport? { nil }
 
-    private func noteTrash(_ paths: [String]) {
-        lock.lock(); trashBatches.append(paths); lock.unlock()
-    }
-
-    private func parkTrash(_ continuation: CheckedContinuation<Data, Never>) {
-        lock.lock(); heldTrash.append(continuation); lock.unlock()
-    }
-
-    private var isHoldingTrash: Bool {
-        lock.lock(); defer { lock.unlock() }; return holdsTrash
+    func trash(_ paths: [String]) async -> DiskRemoval {
+        lock.withLock { trashBatches.append(paths) }
+        guard lock.withLock({ holdsTrash }) else { return lock.withLock { removal } }
+        return await withCheckedContinuation { c in lock.withLock { heldTrash.append(c) } }
     }
 
     /// Hold the removal open until `releaseTrash()`.
@@ -208,59 +145,55 @@ final class HeldTransport: EngineTransport, @unchecked Sendable {
     /// and a batch that never comes back would hang those instead of failing
     /// them.
     func holdTrash() {
-        lock.lock(); holdsTrash = true; lock.unlock()
+        lock.withLock { holdsTrash = true }
     }
 
     /// Every batch the engine was really handed, in order. A basket row and a
     /// removal are not one to one, and a second press sends a second batch:
     /// counting them is how a refusal is told from a silence.
     var trashRequests: [[String]] {
-        lock.lock(); defer { lock.unlock() }; return trashBatches
+        lock.withLock { trashBatches }
     }
 
     func releaseTrash() {
-        lock.lock()
-        let waiting = heldTrash
-        heldTrash = []
-        let answer = removal
-        lock.unlock()
-        let payload = (try? JSONEncoder().encode(answer)) ?? Data()
-        waiting.forEach { $0.resume(returning: payload) }
+        let (waiting, answer) = lock.withLock { () -> ([CheckedContinuation<DiskRemoval, Never>], DiskRemoval) in
+            defer { heldTrash = [] }
+            return (heldTrash, removal)
+        }
+        waiting.forEach { $0.resume(returning: answer) }
     }
 
-    private func park(_ continuation: CheckedContinuation<Data, Never>) {
-        lock.lock(); parked.append(continuation); lock.unlock()
-    }
-
-    private var currentRemoval: DiskRemoval {
-        lock.lock(); defer { lock.unlock() }; return removal
+    private func park(_ continuation: CheckedContinuation<ScanResult?, Never>,
+                      _ updates: (@Sendable (DiskScanUpdate) -> Void)?) {
+        lock.withLock { parked.append(continuation); sinks.append(updates) }
     }
 
     func answerTrash(with removal: DiskRemoval) {
-        lock.lock(); self.removal = removal; lock.unlock()
+        lock.withLock { self.removal = removal }
     }
 
-    var parkedCount: Int { lock.lock(); defer { lock.unlock() }; return parked.count }
+    var parkedCount: Int { lock.withLock { parked.count } }
 
-    /// The name the view model gave the request at `index` — the screen has to
-    /// be able to recognise its own scan's events.
-    func scanID(_ index: Int) -> Int {
-        lock.lock(); defer { lock.unlock() }
-        return requests.indices.contains(index) ? requests[index].scan : -1
+    /// Whether the scan at `index` was started with a sink for its updates. The
+    /// volume walk draws a ring and asks for them; the measurement of one folder
+    /// wants only its final tree and asks for none.
+    func asksForUpdates(_ index: Int) -> Bool {
+        lock.withLock { sinks.indices.contains(index) && sinks[index] != nil }
     }
 
     func release(_ index: Int, with result: ScanResult?) {
-        lock.lock()
-        guard parked.indices.contains(index) else { lock.unlock(); return }
-        let continuation = parked.remove(at: index)
-        lock.unlock()
-        continuation.resume(returning: (try? JSONEncoder().encode(result)) ?? Data())
+        let continuation: CheckedContinuation<ScanResult?, Never>? = lock.withLock {
+            guard parked.indices.contains(index) else { return nil }
+            sinks.remove(at: index)
+            return parked.remove(at: index)
+        }
+        continuation?.resume(returning: result)
     }
 
-    func emitPartial(scan: Int, result: ScanResult) {
-        let payload = (try? JSONEncoder().encode(PartialScan(scan: scan, result: result)))
-            ?? Data()
-        continuation?.yield(EngineEvent(name: "partial", payload: payload))
+    /// A snapshot from the scan at `index`, through the sink that scan was given.
+    func emitPartial(_ index: Int, result: ScanResult) {
+        let sink = lock.withLock { sinks.indices.contains(index) ? sinks[index] : nil }
+        sink?(.partial(result))
     }
 }
 
@@ -272,29 +205,74 @@ func folder(_ path: String, bytes: Int, children: [DiskEntry] = []) -> DiskEntry
               isDirectory: true, noAccess: false, children: children)
 }
 
-/// Waits for the request task to reach the transport. Yielding a fixed number
-/// of times is a guess about scheduling; this is the condition the test
-/// depends on.
+/// Waits for the scan to park inside `HeldWork`, bounded by wall-clock time,
+/// and fails naming what never happened. Yielding a fixed number of times is a
+/// guess about scheduling; this is the condition the test depends on.
 ///
-/// `@MainActor`, as every caller is: the yields have to run where the view
-/// model's own tasks run, or the wait hops off and measures another thread.
+/// `@MainActor`, as every caller is: the test reads on the actor the view
+/// model's own tasks run on.
 @MainActor
-func untilParked(_ transport: HeldTransport, count: Int) async {
-    for _ in 0..<1000 where transport.parkedCount < count { await Task.yield() }
+func untilParked(_ work: HeldWork, count: Int, file: StaticString = #filePath,
+                 line: UInt = #line) async {
+    await waitUntilWithin("\(count) scan(s) parked in HeldWork", .seconds(5), file: file, line: line) {
+        work.parkedCount >= count
+    }
 }
 
 /// The same wait for a removal: it has left the model and is suspended inside
-/// the transport, which is the only moment «while a removal runs» exists in.
+/// `HeldWork.trash`, which is the only moment «while a removal runs» exists in.
 @MainActor
-func untilTrashing(_ transport: HeldTransport, count: Int = 1) async {
-    for _ in 0..<1000 where transport.trashRequests.count < count { await Task.yield() }
+func untilTrashing(_ work: HeldWork, count: Int = 1, file: StaticString = #filePath,
+                   line: UInt = #line) async {
+    await waitUntilWithin("\(count) removal(s) reached HeldWork.trash", .seconds(5),
+                          file: file, line: line) {
+        work.trashRequests.count >= count
+    }
 }
 
-/// Room for the tasks already scheduled to land. The two copies of this yielded
-/// 20 times and 50; the longer one is kept, because every use is either waiting
-/// for something to appear or asserting that it did not, and both are stronger
-/// the longer they wait.
+/// A walk to a finished tree: the scan parks in `HeldWork`, the test releases it
+/// with `result`, and the wait is for the walk to be over (a released scan sets
+/// `live` and `phase` in one synchronous stretch, so either reads the same).
 @MainActor
-func settle() async {
-    for _ in 0..<50 { await Task.yield() }
+func scanned(_ dvm: DiskViewModel, over work: HeldWork, answering result: ScanResult,
+             file: StaticString = #filePath, line: UInt = #line) async {
+    Task { await dvm.scan(path: "/Volumes/Big") }
+    await untilParked(work, count: 1, file: file, line: line)
+    work.release(0, with: result)
+    await waitUntilWithin("the walk answered", .seconds(5), file: file, line: line) { !dvm.live }
+}
+
+/// The unfinished-walk fixtures of the files about what Stop and a snapshot keep.
+@MainActor
+extension XCTestCase {
+
+    /// A snapshot of a walk in progress: the folder is charged with what has been
+    /// counted so far, which is the point — 600 of an unknown total. `Sub` has no
+    /// children, because the walk has not been inside it yet.
+    func partOfBig(files: Int = 1_200) -> ScanResult {
+        ScanResult(root: folder("/Volumes/Big", bytes: 900,
+                                children: [folder("/Volumes/Big/Sub", bytes: 600)]),
+                   freeBytes: 100, filesScanned: files, seconds: 0)
+    }
+
+    func heldModel(_ work: HeldWork) -> (DiskViewModel, ScanStore) {
+        // A store of its own: the module's real one is the person's last scan,
+        // and a harness must leave nothing behind. `scratchDirectory` owns the
+        // teardown, and it *drains* — a one-shot `removeItem` beside it was the
+        // very race that helper exists to close, and a save arriving from the view
+        // model's own fire-and-forget task is what needs it.
+        let store = ScanStore(directory: scratchDirectory("disk-held"))
+        return (DiskViewModel(work: work, store: store), store)
+    }
+
+    /// A walk in flight with one snapshot drawn — the state the Stop button is
+    /// visible in and the ring is live in.
+    func walkingWithASnapshot(_ work: HeldWork, _ dvm: DiskViewModel) async {
+        Task { await dvm.scan(path: "/Volumes/Big") }
+        await untilParked(work, count: 1)
+        work.emitPartial(0, result: partOfBig())
+        await waitUntil("the snapshot is drawn") { dvm.phase == .result }
+        XCTAssertEqual(dvm.phase, .result, "precondition: the ring is drawn from the snapshot")
+        XCTAssertTrue(dvm.live, "precondition: the walk is still running")
+    }
 }

@@ -1,11 +1,10 @@
 import AppKit
 import CoreGraphics
 import Foundation
-import HelmContract
 import HelmTestSupport
 import HelmUI
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **After "Blur Emails and Phone Numbers" the plate says what was done, never what the picture now is** — and a result of nothing is not
@@ -16,6 +15,7 @@ import Module_Screenshots_Engine
 /// "safe" in a word that is not on the list passes. What they catch is the plain regression — someone writing "Personal data hidden" — and
 /// the real guard is the sentences themselves, asserted whole. No plate carries a check mark either, and the plate is drawn white on dark,
 /// never green (`LabelLayer`).
+/// Mutant, red here: `Sources/Modules/Screenshots/UI/ScreenshotsStrings.swift`: `static var nothingBlurred: String { L(.nothingBlurred) }` -> `static var nothingBlurred: String { L(.textCopied) }`.
 @MainActor
 final class ThePlatesAfterBlurringNeverSayItIsSafeTests: XCTestCase {
 
@@ -132,6 +132,25 @@ final class ThePlatesAfterBlurringNeverSayItIsSafeTests: XCTestCase {
                 rig.overlay.perform(.tool(.rectangle))
                 XCTAssertTrue(rig.view.visiblePlates.isEmpty, "\(language): the plate stayed after the next input")
             }
+        }
+    }
+
+    /// Every kind of next input takes a finished reading's plate away, not only a palette action: a press on the screen and Esc each
+    /// clear it. Each is the one line `textPlate = nil` at its own site (CaptureOverlayInput.swift), so each is put up fresh here.
+    func testAPressAndEscEachTakeTheReadingsPlateAway() async throws {
+        let area = CGRect(x: 100, y: 100, width: 400, height: 300)
+        for how in ["press", "esc"] {
+            let tools = EditorTextTools(read: { _, _ in .read([], RecognizedBoxes.Source(pixels: area, scale: 1)) }, copy: { _ in .noText })
+            let rig = try OverlayRig.overlay(scale: 1, area: area, textTools: tools, onResult: { _ in })
+            defer { rig.overlay.close() }
+            rig.overlay.perform(.blurPersonalText)
+            await waitUntil("\(how): the plate came") { rig.overlay.textPlate != nil }
+            if how == "press" {
+                rig.overlay.mouseDown(on: rig.display, at: CGPoint(x: 300, y: 250), flags: [])
+            } else {
+                rig.overlay.escapeAsked()
+            }
+            XCTAssertNil(rig.overlay.textPlate, "\(how): the plate stayed after the next input")
         }
     }
 }

@@ -1,6 +1,8 @@
 import Foundation
 import HelmRuntime
 import ServiceManagement
+import HelmAppStrings
+import HelmUI
 
 /// What «Open Helm at login» is actually doing, as against what it says.
 ///
@@ -56,15 +58,32 @@ enum LoginItem {
         LoginItemState.state(status: SMAppService.mainApp.status, refused: refused)
     }
 
+    /// Whether switching off has a registration to give back. A registration
+    /// waiting for approval is still a registration: leaving it makes the switch
+    /// spring back on and Reset leave Helm in the login-item list.
+    static func unregisters(from status: SMAppService.Status) -> Bool {
+        status == .enabled || status == .requiresApproval
+    }
+
+    /// The write itself, with the system's status and its two calls handed in so
+    /// a test can watch which one `setEnabled` makes.
+    static func request(_ on: Bool, status: SMAppService.Status,
+                        register: () throws -> Void,
+                        unregister: () throws -> Void) throws {
+        if on {
+            if status != .enabled { try register() }
+        } else {
+            if unregisters(from: status) { try unregister() }
+        }
+    }
+
     /// Ask, then report what the system says afterwards — never what was asked.
     @discardableResult
     static func setEnabled(_ on: Bool) -> LoginItemState {
         do {
-            if on {
-                if SMAppService.mainApp.status != .enabled { try SMAppService.mainApp.register() }
-            } else {
-                if SMAppService.mainApp.status == .enabled { try SMAppService.mainApp.unregister() }
-            }
+            try request(on, status: SMAppService.mainApp.status,
+                        register: { try SMAppService.mainApp.register() },
+                        unregister: { try SMAppService.mainApp.unregister() })
         } catch {
             // Registration can fail for an unsigned or relocated build. That is
             // a fact about this Mac and it now reaches the screen, rather than
@@ -79,4 +98,21 @@ enum LoginItem {
     /// The door for `needsApproval`, which is otherwise a sentence pointing at a
     /// switch in the far corner.
     static func openSettings() { SMAppService.openSystemSettingsLoginItems() }
+}
+
+extension AppStr {
+    /// What the login switch has to say, and the two states where it says
+    /// nothing: a caption under an ordinary switch is a caption nobody reads.
+    ///
+    /// Optional rather than an empty string, so the page cannot draw an empty
+    /// `Text` — and so the compiler is what decides whether a new
+    /// `LoginItemState` is spoken for.
+    static func loginItemNote(_ state: LoginItemState,
+                              language: AppLanguage = AppLanguage.current) -> String? {
+        switch state {
+        case .on, .off: return nil
+        case .needsApproval: return loginItemNeedsApproval(language: language)
+        case .refused: return loginItemRefused(language: language)
+        }
+    }
 }

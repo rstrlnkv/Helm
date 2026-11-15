@@ -6,7 +6,7 @@ import Foundation
 /// file under this folder is one of a kind» is a claim about somebody's Mac, and
 /// it was drawn identically whether the walk read the whole tree or was refused
 /// every directory in it. The scanner knew better and told the log:
-/// `unreadablePaths` from the enumerator's error handler, and one count per file
+/// `unreadablePaths` from the directories the walk was refused, and one count per file
 /// whose digest could not be taken. `find` answered a bare array, and there was
 /// nowhere in that type to put either.
 ///
@@ -45,11 +45,10 @@ public enum DuplicatesEmpty {
     ///   - unreadable: directories the walk was refused plus files whose digest
     ///     failed — the two ways a file this scan should have compared was not
     ///     compared.
-    ///   - librariesSkipped: application libraries the walk declined to enter.
-    ///     Undercounts by construction: a library macOS knows as a package is
-    ///     stepped over by `.skipsPackageDescendants` before the walk is asked,
-    ///     and nothing counts those. Under-reporting a hole is the safe
-    ///     direction — every one it does report is real.
+    ///   - librariesSkipped: application libraries the walk declined to enter,
+    ///     judged by name (`ScanRoot.refusesDescent`) before any other package
+    ///     test, so every one the walk reaches is counted. One inside a subtree
+    ///     the walk never enters is not.
     public static func reason(groups: Int, unreadable: Int,
                               librariesSkipped: Int) -> Reason? {
         guard groups == 0 else { return nil }

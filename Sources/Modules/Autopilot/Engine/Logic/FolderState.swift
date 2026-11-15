@@ -11,7 +11,7 @@ import Foundation
 /// No error code: what the page has to say is which of the three it was, and a
 /// number in a sentence would be a code shown to somebody who cannot act on it.
 /// The log carries the reason.
-public enum FolderState: String, Codable, Equatable, Sendable {
+public enum FolderState: String, Equatable, Sendable {
     /// Helm read the folder. It may well have been empty — that is a folder with
     /// nothing to do, and it is the only one of these three that is fine.
     case read

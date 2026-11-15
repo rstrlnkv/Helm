@@ -8,7 +8,7 @@ import XCTest
 /// and by design nothing else — so a scan of `/Volumes/Anna's Work Backup` or
 /// of `/Users/<another account>` wrote a volume name or an account name into
 /// the file whose whole purpose is being pasted into a bug report. That is the
-/// class of fact ARCHITECTURE.md § Diagnostics log says must not reach it.
+/// class of fact (ARCHITECTURE.md § Diagnostics log) says must not reach it.
 ///
 /// The shape is kept because it is what triage reads — an external volume and
 /// another account are different stories — and the chosen name is replaced by

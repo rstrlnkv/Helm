@@ -82,7 +82,7 @@ final class TheVetoHappensWithNobodyThereTests: XCTestCase {
                                  displayObserver: FakeDisplayObserver(),
                                  power: power, apps: FakeApps(), pointer: FakePointer(),
                                  clamshell: FakeClamshell(), clock: FakeClock(),
-                                 batteryVeto: BatteryVetoChannel(port: notice,
+                                 lidInfo: FakeLidInfo(), batteryVeto: BatteryVetoChannel(port: notice,
                                                                  words: { Self.words($0) }))
     }
 
@@ -101,15 +101,8 @@ final class TheVetoHappensWithNobodyThereTests: XCTestCase {
     /// waits for macOS — so the test waits for the count it expects, and for a
     /// grace period afterwards when it expects none. A read of `posted` taken
     /// immediately would pass an absence for free.
-    private func waitUntil(_ reached: () -> Bool) async {
-        let deadline = Date().addingTimeInterval(2)
-        while !reached(), Date() < deadline {
-            try? await Task.sleep(nanoseconds: 1_000_000)
-        }
-    }
-
     private func waitForPosts(_ wanted: Int) async {
-        await waitUntil { notices.posted.count >= wanted }
+        await waitUntilReached("\(wanted) banner(s)") { notices.posted.count >= wanted }
     }
 
     /// A hand-started session, and then the charge falls under the floor with
@@ -266,7 +259,7 @@ final class TheVetoHappensWithNobodyThereTests: XCTestCase {
         engine.startSession(minutes: 0)
         onAFlatBattery()
         power.fire()
-        await waitUntil { notices.requests >= 1 }
+        await waitUntilReached("the person was asked") { notices.requests >= 1 }
         XCTAssertEqual(notices.requests, 1, "precondition: the person was asked once")
         XCTAssertEqual(notices.posted, [], "a banner was recorded that macOS had refused")
 
@@ -319,7 +312,7 @@ final class TheVetoHappensWithNobodyThereTests: XCTestCase {
                                  displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(),
                                  power: power, apps: FakeApps(), pointer: FakePointer(),
-                                 clamshell: FakeClamshell(), clock: FakeClock())
+                                 clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
         power.snap = (onBattery: false, percent: 100)
         power.says(.mains)
         engine.activate()

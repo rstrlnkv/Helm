@@ -51,7 +51,7 @@ final class AHalfTypedWordBelongsToOneAppTests: XCTestCase {
             tap: tap, typing: typing, sources: sources,
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
             spell: FakeSpell(valid: ["привет"]),
-            secure: secure)
+            secure: secure, activation: FakeActivation())
         engine.activate()
         return engine
     }
@@ -76,7 +76,7 @@ final class AHalfTypedWordBelongsToOneAppTests: XCTestCase {
             an app the word was never in. The completed word carries its app and refuses \
             here; the half-typed one carries none and does not.
             """)
-        engine.deactivate()   // drops the didBecomeActive observer this test registered
+        engine.deactivate()
     }
 
     /// The positive control: the same half-typed word, still in Notes, is the
@@ -91,7 +91,7 @@ final class AHalfTypedWordBelongsToOneAppTests: XCTestCase {
                        "the harness never converts, so the refusal it asserts proves nothing")
         XCTAssertEqual(typing.performed.first?.backspaces, 6)
         XCTAssertEqual(typing.performed.first?.insert, "привет")
-        engine.deactivate()   // drops the didBecomeActive observer this test registered
+        engine.deactivate()
     }
 
     /// And the empty bundle id — «no idea which app» — is not a match for
@@ -106,6 +106,6 @@ final class AHalfTypedWordBelongsToOneAppTests: XCTestCase {
 
         engine.convertLastWord()
         XCTAssertTrue(typing.performed.isEmpty)
-        engine.deactivate()   // drops the didBecomeActive observer this test registered
+        engine.deactivate()
     }
 }

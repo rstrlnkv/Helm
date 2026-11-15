@@ -13,12 +13,14 @@ final class OrphanDetectorTests: XCTestCase {
         XCTAssertFalse(OrphanDetector.isOrphan(name: "com.acme.tool.plist", installedBundleIDs: installed))
     }
 
-    /// ByHost prefs look like `<bundleID>.<UUID>` — still the installed app's data.
+    /// A name that extends an installed id past a dot, `<bundleID>.<suffix>`, is still the installed app's data.
     func testKeepsByHostSuffixOfInstalledApp() {
         XCTAssertFalse(OrphanDetector.isOrphan(name: "com.acme.tool.5F2A.plist", installedBundleIDs: installed))
     }
 
     func testSkipsAppleAndHelmDomains() {
+        XCTAssertFalse(OrphanDetector.isOrphan(name: "com.apple.Safari", installedBundleIDs: installed))
+        XCTAssertFalse(OrphanDetector.isOrphan(name: "com.apple.dt.Xcode", installedBundleIDs: installed))
         XCTAssertFalse(OrphanDetector.isOrphan(name: "com.apple.finder.plist", installedBundleIDs: installed))
         XCTAssertFalse(OrphanDetector.isOrphan(name: "com.helm.app.plist", installedBundleIDs: installed))
     }

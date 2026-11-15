@@ -18,8 +18,8 @@ import HelmRuntime
 /// nothing for a display that is gone, and only the part of the rectangle that
 /// still fits for one that got smaller.
 public struct RememberedSelection: Equatable, Sendable {
-    public let display: String
-    public let rect: CGRect
+    let display: String
+    let rect: CGRect
 
     /// The one ceiling of every stored coordinate (`StoredNumber`).
     static let ceiling = StoredNumber.ceiling
@@ -52,12 +52,12 @@ public struct RememberedSelection: Equatable, Sendable {
     // MARK: - The store
 
     /// **Deployed stored data: these names never move.**
-    public enum Key {
-        public static let display = "rememberedDisplay"
-        public static let x = "rememberedX"
-        public static let y = "rememberedY"
-        public static let width = "rememberedWidth"
-        public static let height = "rememberedHeight"
+    enum Key {
+        static let display = "rememberedDisplay"
+        static let x = "rememberedX"
+        static let y = "rememberedY"
+        static let width = "rememberedWidth"
+        static let height = "rememberedHeight"
     }
 
     /// Nil for none — never written, partly written, or written with something
@@ -80,7 +80,7 @@ public struct RememberedSelection: Equatable, Sendable {
     }
 
     /// Forgets the record: all five keys, so a partly written one is gone too.
-    public static func erase(from store: NamespacedStore) {
+    static func erase(from store: NamespacedStore) {
         for key in [Key.display, Key.x, Key.y, Key.width, Key.height] { store.set(nil, for: key) }
     }
 

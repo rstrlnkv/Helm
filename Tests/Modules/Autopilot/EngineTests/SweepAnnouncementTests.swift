@@ -6,6 +6,8 @@ import XCTest
 /// nothing happened — 24 lines a day about nothing drown the trail — and a
 /// person's Run now is always answered, because a button that leaves no line
 /// cannot be told apart from a button that did not run.
+///
+/// Past defect: fixed in 79d2fc9e.
 final class SweepAnnouncementTests: XCTestCase {
 
     private func report(acted: Int = 0, refused: Int = 0, failed: Int = 0,

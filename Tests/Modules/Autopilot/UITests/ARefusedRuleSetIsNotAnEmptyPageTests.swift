@@ -1,8 +1,6 @@
-import HelmContract
 import HelmRuntime
-import HelmUI
 import XCTest
-import Module_Autopilot_Engine
+@testable import Module_Autopilot_Engine
 @testable import Module_Autopilot_UI
 
 /// **«You have no folders» is what a tampered rule set looks like on screen.**
@@ -20,8 +18,8 @@ import Module_Autopilot_Engine
 @MainActor
 final class ARefusedRuleSetIsNotAnEmptyPageTests: XCTestCase {
 
-    private func model(on wire: AutopilotWire) -> AutopilotViewModel {
-        AutopilotViewModel(vm: ModuleViewModel(transport: wire))
+    private func model(on work: FakeAutopilotWork) -> AutopilotViewModel {
+        AutopilotViewModel(work: work, historyChanges: AsyncStream { _ in })
     }
 
     // MARK: - The control
@@ -29,18 +27,18 @@ final class ARefusedRuleSetIsNotAnEmptyPageTests: XCTestCase {
     /// Asserted first: a Mac with no rules really does reach the empty state,
     /// so the assertions below are about a page that would otherwise draw it.
     func testAMacWithNoRulesDrawsTheEmptyState() async {
-        let wire = AutopilotWire()
-        let model = model(on: wire)
+        let work = FakeAutopilotWork()
+        let model = model(on: work)
 
         await model.load()
 
-        XCTAssertTrue(wire.commands.contains(.status), "precondition: the status was asked for")
+        XCTAssertTrue(work.calls.contains("readStatus"), "precondition: the status was asked for")
         XCTAssertEqual(model.screen, .noFolders)
     }
 
     func testAMacWithRulesDrawsThem() async {
-        let wire = AutopilotWire(folders: [WatchedFolder(path: "/tmp/watched")])
-        let model = model(on: wire)
+        let work = FakeAutopilotWork(folders: [WatchedFolder(path: "/tmp/watched")])
+        let model = model(on: work)
 
         await model.load()
 
@@ -50,8 +48,8 @@ final class ARefusedRuleSetIsNotAnEmptyPageTests: XCTestCase {
     // MARK: - The refusal
 
     func testARuleSetSomebodyElseWroteIsNotDrawnAsAnEmptyMac() async {
-        let wire = AutopilotWire(status: AutopilotStatus(refusal: .tampered))
-        let model = model(on: wire)
+        let work = FakeAutopilotWork(status: AutopilotStatus(refusal: .tampered))
+        let model = model(on: work)
 
         await model.load()
 
@@ -65,14 +63,34 @@ final class ARefusedRuleSetIsNotAnEmptyPageTests: XCTestCase {
     /// answered by deleting anything: the rules are very probably the person's
     /// own and the keychain is locked.
     func testAKeyThatCouldNotBeReadIsItsOwnScreen() async {
-        let wire = AutopilotWire(status: AutopilotStatus(refusal: .noKey))
-        let model = model(on: wire)
+        let work = FakeAutopilotWork(status: AutopilotStatus(refusal: .noKey))
+        let model = model(on: work)
 
         await model.load()
 
         XCTAssertEqual(model.screen, .rulesRefused(.noKey))
         XCTAssertNotEqual(ApStr.rulesTampered, ApStr.rulesUnreadable,
                           "one sentence for two states the person can do different things about")
+    }
+
+    /// A record that is not a rule list at all is its own screen with its own sentence.
+    func testARecordThatCannotBeReadIsItsOwnScreen() async {
+        let work = FakeAutopilotWork(status: AutopilotStatus(refusal: .unreadable))
+        let model = model(on: work)
+
+        await model.load()
+
+        XCTAssertEqual(model.screen, .rulesRefused(.unreadable))
+        XCTAssertNotEqual(ApStr.rulesNotRead, ApStr.rulesUnreadable)
+        XCTAssertNotEqual(ApStr.rulesNotRead, ApStr.rulesTampered)
+    }
+
+    /// Discard deletes rules; the page's banner reads this one answer for it.
+    func testOnlyATamperedRuleSetOffersDiscard() {
+        XCTAssertTrue(RuleRefusal.tampered.offersDiscard, "precondition: the one that may")
+        XCTAssertFalse(RuleRefusal.noKey.offersDiscard)
+        XCTAssertFalse(RuleRefusal.unreadable.offersDiscard,
+                       "a record this build cannot read must not be offered for deletion")
     }
 
     // MARK: - What the page may send
@@ -91,51 +109,44 @@ final class ARefusedRuleSetIsNotAnEmptyPageTests: XCTestCase {
     /// the two leaves exactly this page — a list it may no longer write back.
     func testTheRefusedPageDoesNotSendAFolderList() async {
         let watched = WatchedFolder(id: "downloads", path: "/tmp/watched")
-        let wire = AutopilotWire(folders: [watched],
+        let work = FakeAutopilotWork(folders: [watched],
                                  status: AutopilotStatus(refusal: .tampered))
-        let model = model(on: wire)
+        let model = model(on: work)
         await model.load()
         XCTAssertEqual(model.folders.map(\.id), ["downloads"],
                        "precondition: the page is holding the folder the gesture is about")
 
         model.setEnabled(false, folder: watched)
+        // The send is a task the gesture starts and does not wait for, so an empty
+        // `saved` straight after it is true of a page with no guard at all. A page
+        // that may save is given the same gesture next, and the answer is read
+        // once its own send has landed: the refused page's, started first, has had
+        // its turn by then.
+        let open = FakeAutopilotWork(folders: [watched])
+        let openModel = self.model(on: open)
+        await openModel.load()
+        openModel.setEnabled(false, folder: watched)
+        let deadline = Date().addingTimeInterval(5)
+        while open.saved.isEmpty, Date() < deadline { try? await Task.sleep(nanoseconds: 10_000_000) }
+        XCTAssertFalse(open.saved.isEmpty, "precondition: a page that may save sent its list")
 
-        XCTAssertEqual(wire.saved, [], "a refused page wrote a folder list over the refused rules")
+        XCTAssertEqual(work.saved, [], "a refused page wrote a folder list over the refused rules")
     }
 
     /// And the one thing it may send. It is the only way out: while the rules
     /// are refused every save is refused too, so a page with no discard is a page
     /// that never takes another edit.
     func testDiscardingIsSentAndTheScreenComesBack() async {
-        let wire = AutopilotWire(status: AutopilotStatus(refusal: .tampered))
-        let model = model(on: wire)
+        let work = FakeAutopilotWork(status: AutopilotStatus(refusal: .tampered))
+        let model = model(on: work)
         await model.load()
         XCTAssertEqual(model.screen, .rulesRefused(.tampered), "precondition")
 
-        wire.answers(AutopilotStatus(refusal: nil))
+        work.answers(AutopilotStatus(refusal: nil))
         await model.discardRefusedRules()
 
-        XCTAssertTrue(wire.commands.contains(.discardRefusedRules),
+        XCTAssertTrue(work.calls.contains("dropRefusedRules"),
                       "the button drew and sent nothing")
         XCTAssertEqual(model.screen, .noFolders, "the page did not read the state back")
-    }
-
-    // MARK: - The silences
-
-    /// A status nobody answered is not «your rules are fine». Both silences,
-    /// because the wire has two and `TransportClient` folds them to one nil.
-    func testAStatusNobodyAnsweredIsNotAnAllClear() async {
-        for silence in [AutopilotWire.Answer.refuse, .nothing] {
-            let wire = AutopilotWire(status: AutopilotStatus(refusal: .tampered),
-                                     answering: silence)
-            let model = model(on: wire)
-
-            await model.load()
-
-            XCTAssertTrue(wire.commands.contains(.status),
-                          "precondition: the status really was asked for (\(silence))")
-            XCTAssertNotEqual(model.screen, .rulesRefused(.tampered),
-                              "a lost reply cannot be read as a refusal it never carried")
-        }
     }
 }

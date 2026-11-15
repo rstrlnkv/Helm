@@ -93,12 +93,13 @@ import Module_Screenshots_Engine
     /// «Other…» asks for the folder, and the target is written only once there
     /// is one the capture will accept — the page's own judgement, from the same
     /// function.
-    func choose(_ target: SaveTarget) {
+    func choose(_ target: SaveTarget, ask: @MainActor () -> ScreenshotsSettingsPage.FolderChoice = ScreenshotsSettingsPage.askForFolder) {
         if target == .other {
-            guard case .chosen(let path) = ScreenshotsSettingsPage.askForFolder() else { reload(); return }
-            store.set(path, for: ScreenshotsSettings.Key.otherFolder)
+            guard case .chosen(let path) = ask() else { reload(); return }
+            ScreenshotsSettings.chooseOtherFolder(path, in: store)
+        } else {
+            store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         }
-        store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         reload()
     }
 
@@ -129,7 +130,6 @@ import Module_Screenshots_Engine
 /// so the place it opens in does not depend on the width it was left at.
 @MainActor final class CapturePanel {
     let model: CapturePanelModel
-    private let store: NamespacedStore
     private var panel: BarPanel?
     /// The overlay the person picks on is open: the panel stands above it.
     var selecting = false { didSet { panel?.level = Self.level(selecting: selecting) } }
@@ -152,7 +152,6 @@ import Module_Screenshots_Engine
     }
 
     init(store: NamespacedStore) {
-        self.store = store
         model = CapturePanelModel(store: store)
         model.placeAgain = { [weak self] in
             guard let self, let panel = self.panel else { return }
@@ -286,9 +285,9 @@ final class BarPanel: NSPanel {
 
     override func keyDown(with event: NSEvent) {
         switch event.keyCode {
-        case 36, 76: onCapture()
+        case ShotKey.returnKey, ShotKey.enter: onCapture()
         // Esc is also `cancelOperation`, but only when the responder chain gets that far.
-        case 53: onCancel()
+        case ShotKey.escape: onCancel()
         default: super.keyDown(with: event)
         }
     }

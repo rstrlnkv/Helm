@@ -19,12 +19,12 @@ import HelmRuntime
 public struct VolumeReadout: Equatable, Sendable {
     public var name: String?
     public var path: String
-    public var isBrowsable: Bool
-    public var total: Int?
+    var isBrowsable: Bool
+    var total: Int?
     /// `volumeAvailableCapacityForImportantUsage` — what Finder shows.
-    public var importantFree: Int?
+    var importantFree: Int?
     /// `volumeAvailableCapacity` — purgeable space is not in it.
-    public var plainFree: Int?
+    var plainFree: Int?
 
     public init(name: String?, path: String, isBrowsable: Bool, total: Int?,
                 importantFree: Int?, plainFree: Int?) {
@@ -45,7 +45,7 @@ public struct VolumeReadout: Equatable, Sendable {
     /// (`(plainFree ?? 0) <= 0`), which is a disk that is really full. Bounded
     /// to `0...total` when the total is known, because the values come from the
     /// system and a figure past the capacity would draw a negative used share.
-    public var freeSpace: FreeSpace? {
+    var freeSpace: FreeSpace? {
         let bound: (Int) -> Int = { value in
             guard let total = self.total else { return max(value, 0) }
             return value.clamped(to: 0...max(total, 0))
@@ -62,11 +62,11 @@ public struct VolumeReadout: Equatable, Sendable {
 /// `volumeAvailableCapacity` figure, taken when the important-usage key gave
 /// nothing to believe; on APFS the plain key leaves purgeable space out, so a
 /// caller that has to tell the two apart can.
-public enum FreeSpace: Equatable, Sendable {
+enum FreeSpace: Equatable, Sendable {
     case important(Int)
     case fallback(Int)
 
-    public var bytes: Int {
+    var bytes: Int {
         switch self {
         case .important(let bytes), .fallback(let bytes): return bytes
         }
@@ -80,6 +80,11 @@ public enum FreeSpace: Equatable, Sendable {
 public protocol VolumeCapacityPort: Sendable {
     func mounted() -> [VolumeReadout]
     func readout(at path: String) -> VolumeReadout?
+
+    /// Calls `onChange` on the main queue each time a volume appears or goes, for
+    /// as long as the returned token is held. Dropping the token ends it, so a
+    /// holder that stops needs nothing else.
+    func observeChanges(_ onChange: @escaping @Sendable () -> Void) -> AnyObject
 }
 
 public struct SystemVolumeCapacity: VolumeCapacityPort {

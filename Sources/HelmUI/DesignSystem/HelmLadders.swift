@@ -3,11 +3,10 @@ import CoreGraphics
 /// **Space has one ladder: 2 · 4 · 6 · 8 · 12 · 18 · 28 · 40 pt.**
 ///
 /// Counted before it existed: twenty-four distinct padding values and thirteen
-/// distinct gaps across the settings window, against three declared tokens
-/// (`v3/audit.js`, check `space-off-the-ladder`). That is not a design with
-/// twenty-four decisions in it — it is one decision taken twenty-four times by
-/// eye, and nobody could see the difference between 10 and 12 pt anyway. The
-/// same disease the type scale had.
+/// distinct gaps across the settings window, against three declared tokens.
+/// That is not a design with twenty-four decisions in it — it is one decision
+/// taken twenty-four times by eye, and nobody could see the difference between
+/// 10 and 12 pt anyway. The same disease the type scale had.
 ///
 /// The steps are close together where they are small, because 2 pt matters at
 /// 4 pt and does not at 40, and above that each is about half again the one
@@ -36,7 +35,7 @@ public enum HelmSpace {
     public static let s8: CGFloat = 40
 }
 
-/// **A corner has one ladder: 4 · 6 · 10 · 14 · 26 pt.**
+/// **A corner has one ladder: 6 · 10 · 14 · 16 · 26 pt.**
 ///
 /// Sixteen distinct radii were counted against three declared tokens on the
 /// mockup side.
@@ -44,15 +43,9 @@ public enum HelmSpace {
 /// Five steps, and each names the thing it belongs to rather than a size: the
 /// call site should say what it is drawing, not how round it wants it.
 ///
-/// **Two of the five are already what the app draws**, spelled as numbers: the
-/// panel's glass is `.rect(cornerRadius: 26)` and the shape a panel card and a
-/// panel well share is 14. Those literals are not swept here — this commit lands
-/// the vocabulary — so until they are, `frame` and `panel` are names for numbers
-/// typed somewhere else, which is the state a `periphery` run will report as
-/// unused and which is not a defect.
+/// Two of the five, `frame` (14) and `panel` (26), are what the app drew as
+/// numbers before this ladder existed.
 public enum HelmRadius {
-    /// A swatch, a tag, anything smaller than a control.
-    public static let tiny: CGFloat = 4
     /// A control: a button, a field, a segment.
     public static let ctl: CGFloat = 6
     /// The one card. It replaces `HelmSurface.cardRadius`, which was 12 — on no
@@ -61,6 +54,10 @@ public enum HelmRadius {
     public static let card: CGFloat = 10
     /// A frame around cards: the panel's own card and the well inside it.
     public static let frame: CGFloat = 14
+    /// The settings window's corner on macOS 27, which Helm no longer reads from the system. It matches the
+    /// corner of System Settings' window as read pixel by pixel on this Mac's screenshots. The card is cut from it
+    /// (`ShellGeometry.cardRadius(windowRadius:)`), 12 pt.
+    public static let window: CGFloat = 16
     /// The panel. Big because it hangs off the menu bar with nothing around it.
     public static let panel: CGFloat = 26
 }

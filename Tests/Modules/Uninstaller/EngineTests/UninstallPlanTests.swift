@@ -1,21 +1,66 @@
 import XCTest
 @testable import Module_Uninstaller_Engine
 
+private func app(_ name: String, _ id: String, size: Int = 1000) -> InstalledApp {
+    InstalledApp(name: name, bundleID: id, path: "/Applications/\(name).app", sizeBytes: size)
+}
+private func leftover(_ path: String, _ size: Int) -> Leftover {
+    Leftover(path: path, kind: .caches, sizeBytes: size, matchedByName: false)
+}
+private func group(_ name: String, running: Bool, appSize: Int = 1000,
+                   leftovers: [Leftover] = []) -> UninstallGroup {
+    UninstallGroup(app: app(name, "com.test.\(name)", size: appSize),
+                   leftovers: leftovers, running: running)
+}
+
 /// The batch flow: pick several apps, review their files grouped per app, then
 /// trash the selection. Running apps must not be removed silently.
 final class UninstallPlanTests: XCTestCase {
-    private func app(_ name: String, _ id: String, size: Int = 1000) -> InstalledApp {
-        InstalledApp(name: name, bundleID: id, path: "/Applications/\(name).app", sizeBytes: size)
-    }
-    private func leftover(_ path: String, _ size: Int) -> Leftover {
-        Leftover(path: path, kind: .caches, sizeBytes: size, matchedByName: false)
-    }
-    private func group(_ name: String, running: Bool, appSize: Int = 1000,
-                       leftovers: [Leftover] = []) -> UninstallGroup {
-        UninstallGroup(app: app(name, "com.test.\(name)", size: appSize),
-                       leftovers: leftovers, running: running)
+    // MARK: - Paths and sizes
+
+    func testPathsCoverTheAppBundleAndItsSelectedLeftovers() {
+        let g = group("Alpha", running: false, appSize: 500,
+                      leftovers: [leftover("/L1", 10), leftover("/L2", 20)])
+        let selected: Set<String> = ["/L1"]
+        XCTAssertEqual(UninstallPlan.paths([g], selectedLeftovers: selected),
+                       ["/Applications/Alpha.app", "/L1"])
     }
 
+    func testEverySelectedAppContributesEvenWithoutLeftovers() {
+        let groups = [group("Alpha", running: false, appSize: 100),
+                      group("Beta", running: false, appSize: 250)]
+        XCTAssertEqual(UninstallPlan.paths(groups, selectedLeftovers: []),
+                       ["/Applications/Alpha.app", "/Applications/Beta.app"])
+    }
+
+    /// Prefix globs and exact paths can resolve to the same directory. Trashing
+    /// it twice made macOS report "doesn't exist" for the second attempt, which
+    /// surfaced as a failure the user could do nothing about.
+    func testPathsAreDeduplicated() {
+        let leftover = Leftover(path: "/L/Containers/com.a.b", kind: .containers,
+                                sizeBytes: 10, matchedByName: false)
+        let duplicate = Leftover(path: "/L/Containers/com.a.b", kind: .caches,
+                                 sizeBytes: 10, matchedByName: false)
+        let g = UninstallGroup(app: app("Alpha", "com.a.b"),
+                               leftovers: [leftover, duplicate], running: false)
+        XCTAssertEqual(UninstallPlan.paths([g], selectedLeftovers: ["/L/Containers/com.a.b"]),
+                       ["/Applications/Alpha.app", "/L/Containers/com.a.b"])
+    }
+
+    func testTwoAppsSharingALeftoverTrashItOnce() {
+        let shared = Leftover(path: "/L/shared", kind: .caches, sizeBytes: 5, matchedByName: false)
+        let a = UninstallGroup(app: app("Alpha", "com.a"), leftovers: [shared], running: false)
+        let b = UninstallGroup(app: app("Beta", "com.b"), leftovers: [shared], running: false)
+        XCTAssertEqual(UninstallPlan.paths([a, b], selectedLeftovers: ["/L/shared"]),
+                       ["/Applications/Alpha.app", "/L/shared", "/Applications/Beta.app"])
+    }
+}
+
+/// What the review shows about a batch: whether it may go ahead and how many
+/// bytes it frees. Optional: the engine asks again at removal
+/// (`TheAppIsAskedAgainAtRemovalTests`), so readiness only draws a warning and
+/// the button's help, and a wrong total is a wrong figure, not lost data.
+final class UninstallPlanFiguresTests: XCTestCase {
     // MARK: - Running apps gate
 
     func testReadyWhenNothingIsRunning() {
@@ -36,44 +81,23 @@ final class UninstallPlanTests: XCTestCase {
         XCTAssertEqual(UninstallPlan.readiness([], forceQuit: true), .empty)
     }
 
-    // MARK: - Paths and sizes
-
-    func testPathsCoverTheAppBundleAndItsSelectedLeftovers() {
-        let g = group("Alpha", running: false, appSize: 500,
-                      leftovers: [leftover("/L1", 10), leftover("/L2", 20)])
-        let selected: Set<String> = ["/L1"]
-        XCTAssertEqual(UninstallPlan.paths([g], selectedLeftovers: selected),
-                       ["/Applications/Alpha.app", "/L1"])
-    }
+    // MARK: - Sizes
 
     func testSizeCountsTheBundlePlusSelectedLeftoversOnly() {
         let g = group("Alpha", running: false, appSize: 500,
                       leftovers: [leftover("/L1", 10), leftover("/L2", 20)])
-        XCTAssertEqual(UninstallPlan.totalBytes([g], selectedLeftovers: ["/L1"]), 510)
-        XCTAssertEqual(UninstallPlan.totalBytes([g], selectedLeftovers: ["/L1", "/L2"]), 530)
-        XCTAssertEqual(UninstallPlan.totalBytes([g], selectedLeftovers: []), 500)
+        let alpha500 = ["/Applications/Alpha.app": 500]
+        XCTAssertEqual(UninstallPlan.totalBytes([g], appBytes: alpha500, selectedLeftovers: ["/L1"]), 510)
+        XCTAssertEqual(UninstallPlan.totalBytes([g], appBytes: alpha500, selectedLeftovers: ["/L1", "/L2"]), 530)
+        XCTAssertEqual(UninstallPlan.totalBytes([g], appBytes: alpha500, selectedLeftovers: []), 500)
     }
 
-    func testEverySelectedAppContributesEvenWithoutLeftovers() {
+    func testEverySelectedAppIsCounted() {
         let groups = [group("Alpha", running: false, appSize: 100),
                       group("Beta", running: false, appSize: 250)]
-        XCTAssertEqual(UninstallPlan.totalBytes(groups, selectedLeftovers: []), 350)
-        XCTAssertEqual(UninstallPlan.paths(groups, selectedLeftovers: []),
-                       ["/Applications/Alpha.app", "/Applications/Beta.app"])
-    }
-
-    /// Prefix globs and exact paths can resolve to the same directory. Trashing
-    /// it twice made macOS report "doesn't exist" for the second attempt, which
-    /// surfaced as a failure the user could do nothing about.
-    func testPathsAreDeduplicated() {
-        let leftover = Leftover(path: "/L/Containers/com.a.b", kind: .containers,
-                                sizeBytes: 10, matchedByName: false)
-        let duplicate = Leftover(path: "/L/Containers/com.a.b", kind: .caches,
-                                 sizeBytes: 10, matchedByName: false)
-        let g = UninstallGroup(app: app("Alpha", "com.a.b"),
-                               leftovers: [leftover, duplicate], running: false)
-        XCTAssertEqual(UninstallPlan.paths([g], selectedLeftovers: ["/L/Containers/com.a.b"]),
-                       ["/Applications/Alpha.app", "/L/Containers/com.a.b"])
+        XCTAssertEqual(UninstallPlan.totalBytes(groups, appBytes: ["/Applications/Alpha.app": 100,
+                                                                    "/Applications/Beta.app": 250],
+                                                     selectedLeftovers: []), 350)
     }
 
     func testSizeCountsADuplicatedPathOnce() {
@@ -81,14 +105,7 @@ final class UninstallPlanTests: XCTestCase {
         let duplicate = Leftover(path: "/L/x", kind: .caches, sizeBytes: 10, matchedByName: false)
         let g = UninstallGroup(app: app("Alpha", "com.a.b", size: 100),
                                leftovers: [leftover, duplicate], running: false)
-        XCTAssertEqual(UninstallPlan.totalBytes([g], selectedLeftovers: ["/L/x"]), 110)
-    }
-
-    func testTwoAppsSharingALeftoverTrashItOnce() {
-        let shared = Leftover(path: "/L/shared", kind: .caches, sizeBytes: 5, matchedByName: false)
-        let a = UninstallGroup(app: app("Alpha", "com.a"), leftovers: [shared], running: false)
-        let b = UninstallGroup(app: app("Beta", "com.b"), leftovers: [shared], running: false)
-        XCTAssertEqual(UninstallPlan.paths([a, b], selectedLeftovers: ["/L/shared"]),
-                       ["/Applications/Alpha.app", "/L/shared", "/Applications/Beta.app"])
+        XCTAssertEqual(UninstallPlan.totalBytes([g], appBytes: [g.app.path: 100],
+                                                     selectedLeftovers: ["/L/x"]), 110)
     }
 }

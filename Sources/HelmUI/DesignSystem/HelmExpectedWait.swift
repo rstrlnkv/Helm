@@ -9,7 +9,7 @@ import SwiftUI
 /// The shape of the problem it was written for: a button starts a run that
 /// takes about twenty seconds, and the port that does the work reports two
 /// things and only two — it started, and it stopped. There is no stage, no
-/// percentage and no byte counter on the wire, and there is no honest way to
+/// percentage and no byte counter in what it reports, and there is no honest way to
 /// invent one on the screen. What there *is* is a clock: the page knows when it
 /// pressed, and somebody has measured how long the thing usually takes. So this
 /// draws the clock and says so, rather than drawing a progress bar and implying
@@ -53,6 +53,8 @@ import SwiftUI
 /// over twenty seconds is less motion than the indicator it replaces, and it
 /// still answers the question.
 public struct HelmExpectedWait: View {
+    @Environment(\.helmTraits) private var traits
+
 
     /// **What may honestly be said about a wait, given a clock and nothing
     /// else.**
@@ -123,7 +125,7 @@ public struct HelmExpectedWait: View {
         // Paused when there is nothing to count: an unknown start draws one
         // still spinner and has no reason to wake the display for the rest of
         // the run.
-        TimelineView(.animation(minimumInterval: Self.tick(reduceMotion: HelmMotion.reduceMotion),
+        TimelineView(.animation(minimumInterval: Self.tick(reduceMotion: traits.reducedMotion),
                                 paused: started == nil)) { context in
             face(Claim.at(context.date, started: started, expected: expected))
         }

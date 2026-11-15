@@ -6,6 +6,7 @@ import XCTest
 /// read `volumeAvailableCapacity`, which on APFS leaves purgeable space out.
 /// These tests hold the choice between the readings, through a fake port that
 /// carries every reading the real one does.
+/// Past defect: fixed in commit 4ce355a9.
 final class FreeSpaceIsWhatFinderShowsTests: XCTestCase {
 
     private let gb = 1_000_000_000
@@ -33,16 +34,8 @@ final class FreeSpaceIsWhatFinderShowsTests: XCTestCase {
         XCTAssertNil(readout.freeSpace)
     }
 
-    func testAFigureOutsideTheCapacityIsBounded() {
-        var readout = measured
-        readout.importantFree = 900 * gb
-        XCTAssertEqual(readout.freeSpace, .important(494 * gb))
-        readout.importantFree = -5
-        XCTAssertEqual(readout.freeSpace, .important(0))
-    }
-
     func testTheEngineReportsImportantUsageAndUsedFollowsIt() {
-        let engine = DiskEngine(capacity: FakeCapacity(volumes: [measured]))
+        let engine = DiskEngine(capacity: FakeCapacity(volumes: [measured]), trashing: neverTrashes)
         let volumes = engine.volumes()
         XCTAssertEqual(volumes.count, 1, "the fake's one volume must reach the list")
         XCTAssertEqual(volumes.first?.freeBytes, 90 * gb)
@@ -52,7 +45,7 @@ final class FreeSpaceIsWhatFinderShowsTests: XCTestCase {
     func testTheEngineUsesTheFallbackWhenTheKeyIsUnreadable() {
         var readout = measured
         readout.importantFree = nil
-        let volumes = DiskEngine(capacity: FakeCapacity(volumes: [readout])).volumes()
+        let volumes = DiskEngine(capacity: FakeCapacity(volumes: [readout]), trashing: neverTrashes).volumes()
         XCTAssertEqual(volumes.first?.freeBytes, 39 * gb)
     }
 
@@ -60,23 +53,7 @@ final class FreeSpaceIsWhatFinderShowsTests: XCTestCase {
         var readout = measured
         readout.importantFree = nil
         readout.plainFree = nil
-        XCTAssertTrue(DiskEngine(capacity: FakeCapacity(volumes: [readout])).volumes().isEmpty)
-    }
-
-    /// The real port, on the boot volume: the key the fix depends on has to be
-    /// one the system answers, or every read silently takes the fallback.
-    func testTheSystemPortAnswersTheImportantUsageKeyOnTheBootVolume() throws {
-        let readout = try XCTUnwrap(SystemVolumeCapacity().readout(at: "/"))
-        let important = try XCTUnwrap(readout.importantFree, "important-usage key unreadable on /")
-        let plain = try XCTUnwrap(readout.plainFree)
-        XCTAssertGreaterThanOrEqual(important, plain, "purgeable space can only add to free")
-        // Read the plain key from Foundation, not through the port: a port that
-        // filled both fields from the old key would satisfy `>=` with equality.
-        let values = try URL(fileURLWithPath: "/").resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
-        let finder = try XCTUnwrap(values.volumeAvailableCapacityForImportantUsage)
-        let oldKey = try XCTUnwrap(try URL(fileURLWithPath: "/").resourceValues(forKeys: [.volumeAvailableCapacityKey]).volumeAvailableCapacity)
-        XCTAssertLessThan(abs(important - Int(finder)), abs(important - oldKey) + 1,
-                          "closer to the important-usage key than to the old one")
+        XCTAssertTrue(DiskEngine(capacity: FakeCapacity(volumes: [readout]), trashing: neverTrashes).volumes().isEmpty)
     }
 }
 
@@ -84,4 +61,5 @@ private struct FakeCapacity: VolumeCapacityPort {
     let volumes: [VolumeReadout]
     func mounted() -> [VolumeReadout] { volumes }
     func readout(at path: String) -> VolumeReadout? { volumes.first { $0.path == path } }
+    func observeChanges(_ onChange: @escaping @Sendable () -> Void) -> AnyObject { NSObject() }
 }

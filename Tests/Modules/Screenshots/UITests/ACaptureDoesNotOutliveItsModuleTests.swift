@@ -1,19 +1,17 @@
 import CoreGraphics
 import Foundation
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
-import HelmUI
 import XCTest
-import Module_Screenshots_Engine
+@testable import Module_Screenshots_Engine
 @testable import Module_Screenshots_UI
 
 /// **A capture the module was switched off under does nothing afterwards.**
 ///
 /// The freeze is the one long wait in a capture — some hundred milliseconds of
 /// ScreenCaptureKit on three displays — and the module's switch can be turned
-/// in it. `ModuleUICache.dropWhenDisabled` then calls `CaptureController.cancel`,
-/// which closes an overlay that does not exist yet and lets the controller go;
+/// in it. The model's `stop()` then calls `CaptureController.teardown`, which cancels the press and
+/// closes an overlay that does not exist yet, and the model lets the controller go;
 /// the task that was waiting on the freeze still holds the controller and
 /// resumes. On the area shortcut what it resumes into is `CaptureOverlay.present` — panels
 /// above the menu bar on every screen, owned by a controller nobody holds, for
@@ -23,66 +21,21 @@ import Module_Screenshots_Engine
 ///
 /// The freeze is held open by a gate, because a fake that answers at once is
 /// over before the switch can be turned.
+///
+/// Mutant, red here: `cancel` skips the press task's cancel.
 @MainActor
 final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
 
-    private final class HeldFreeze: ScreenCapturing, @unchecked Sendable {
-        let gate = PromptGate()
-        let frozen: Freeze
-        init(_ frozen: Freeze) { self.frozen = frozen }
-        func access() -> CaptureAccess { .granted }
-        func requestAccess() {}
-        func freeze(cursor: Bool) async -> FreezeOutcome {
-            await gate.arrive()
-            return .frozen(frozen)
-        }
-        func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
-    }
-
-    private final class Disk: ShotWriting, @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        var written: Int { lock.withLock { count } }
-        // A disk that counts its writes and keeps no file: nothing is read at any path and no name is claimed.
-        func reading(of url: URL) -> ShotReading? { nil }
-        func claim(_ written: URL, as name: URL) -> Bool { false }
-        func write(_ png: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
-            lock.withLock { count += 1 }
-            return .written(WrittenShot(url: folder.appendingPathComponent(base + "." + pathExtension), reading: NoFile.reading))
-        }
-    }
+    private typealias Disk = FakeWorkDisk
 
     private typealias Board = CountingBoard
-
-    private struct NoPreferences: CapturePreferences {
-        func location() -> RawSetting { RawSetting(nil) }
-        func symbolicHotkeys() -> SymbolicHotkeysReading { .absent }
-        func uiSounds() -> RawSetting { RawSetting(nil) }
-    }
-
-    private struct NoShutter: ShutterPlaying {
-        func play() {}
-    }
-
-    private func frozen(real: Bool = false) throws -> Freeze {
-        // Frames for the real screens, which the overlay needs to build its panels.
-        if real { return Freeze(displays: try OverlayRig.frames().map { .image($0) }, windows: []) }
-        let context = try XCTUnwrap(CGContext(data: nil, width: 20, height: 10, bitsPerComponent: 8, bytesPerRow: 0,
-                                              space: CGColorSpaceCreateDeviceRGB(),
-                                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-        let image = try XCTUnwrap(context.makeImage())
-        // A display id no screen carries: nothing here can reach a real screen.
-        return Freeze(displays: [.image(FrozenDisplay(id: DisplayID(0xDEAD_BEEF),
-                                                      frame: CGRect(x: 0, y: 0, width: 10, height: 5),
-                                                      scale: 2, image: image))],
-                      windows: [])
-    }
 
     /// The thumbnail is off, so no toast is put on anybody's screen.
     private func rig(_ target: SaveTarget, realScreens: Bool = false,
                      presenting: @escaping (CaptureOverlay) -> Bool = { _ in false })
-        throws -> (CaptureController, HeldFreeze, Disk, Board) {
-        let capture = HeldFreeze(try frozen(real: realScreens)), disk = Disk(), board = Board()
+        throws -> (CaptureController, PromptGate, Disk, Board) {
+        let gate = PromptGate(), disk = Disk(), board = Board()
+        let capture = FakeScreen(outcome: try FakeScreen.frozen(real: realScreens), gate: gate)
         let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore())
         store.set(false, for: ScreenshotsSettings.Key.thumbnail)
         store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)
@@ -90,9 +43,9 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
         let session = CaptureSession(capture: capture, writer: disk, trash: NoTrash(), pasteboard: board, preferences: NoPreferences(), shutter: NoShutter(), textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))
-        let controller = CaptureController(owner: ModuleViewModel(transport: LocalTransport()), store: store,
+        let controller = CaptureController(store: store,
                                            session: session, presentOverlay: presenting)
-        return (controller, capture, disk, board)
+        return (controller, gate, disk, board)
     }
 
     /// The control: the same press, nobody touching the switch, is a file under a
@@ -100,10 +53,10 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
     /// cancelled press below must not reach.
     func testAPressLeftAloneIsDelivered() async throws {
         for target in [SaveTarget.desktop, .clipboard] {
-            let (controller, capture, disk, board) = try rig(target)
+            let (controller, gate, disk, board) = try rig(target)
             controller.begin(.fullScreen)
-            await capture.gate.reached()
-            await capture.gate.open()
+            await gate.reached()
+            await gate.open()
             await waitUntil("the press became its file or its copy under \(target)") {
                 disk.written + board.copies == 1
             }
@@ -114,12 +67,12 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
 
     func testAPressWhoseModuleWentOffMidFreezeWritesAndCopiesNothing() async throws {
         for target in [SaveTarget.desktop, .clipboard] {
-            let (controller, capture, disk, board) = try rig(target)
+            let (controller, gate, disk, board) = try rig(target)
             controller.begin(.fullScreen)
-            await capture.gate.reached()
-            // What `ModuleUICache.dropWhenDisabled` does when the switch is turned.
+            await gate.reached()
+            // What `teardown` does first; the model's `stop()` calls it when the switch is turned.
             controller.cancel()
-            await capture.gate.open()
+            await gate.open()
             await grace(0.5)
             XCTAssertEqual(disk.written, 0,
                            "a capture of a module switched off during its freeze still wrote a file afterwards (\(target))")
@@ -133,21 +86,21 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
     /// control first, because an absence is only worth something beside the same
     /// press that did present.
     func testAnAreaPressLeftAloneReachesTheOverlay() async throws {
-        let presented = Count()
-        let (controller, capture, _, _) = try rig(.desktop, presenting: { _ in presented.bump(); return false })
+        let presented = LockedCount()
+        let (controller, gate, _, _) = try rig(.desktop, presenting: { _ in presented.bump(); return false })
         controller.begin(.area)
-        await capture.gate.reached()
-        await capture.gate.open()
+        await gate.reached()
+        await gate.open()
         await waitUntil("the area press reached the overlay") { presented.value == 1 }
     }
 
     func testAnAreaPressWhoseModuleWentOffMidFreezeShowsNoOverlay() async throws {
-        let presented = Count()
-        let (controller, capture, _, _) = try rig(.desktop, presenting: { _ in presented.bump(); return false })
+        let presented = LockedCount()
+        let (controller, gate, _, _) = try rig(.desktop, presenting: { _ in presented.bump(); return false })
         controller.begin(.area)
-        await capture.gate.reached()
+        await gate.reached()
         controller.cancel()
-        await capture.gate.open()
+        await gate.open()
         await grace(0.5)
         XCTAssertEqual(presented.value, 0,
                        "a module switched off during the freeze still put the area-shortcut overlay on every screen")
@@ -159,14 +112,14 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
     func testTheModuleGoingOffDuringTheFlashClosesTheOverlayAtOnce() async throws {
         for cancelled in [false, true] {
             let held = Held()
-            let (controller, capture, _, _) = try rig(.clipboard, realScreens: true, presenting: { overlay in
+            let (controller, gate, _, _) = try rig(.clipboard, realScreens: true, presenting: { overlay in
                 overlay.reducesMotion = { false }
                 held.overlay = overlay
                 return overlay.build()
             })
             controller.begin(.area)
-            await capture.gate.reached()
-            await capture.gate.open()
+            await gate.reached()
+            await gate.open()
             await waitUntil("the overlay reached the seam") { held.overlay != nil }
             let overlay = try XCTUnwrap(held.overlay)
             let display = try XCTUnwrap(try OverlayRig.frames().first?.id)
@@ -191,10 +144,4 @@ final class ACaptureDoesNotOutliveItsModuleTests: XCTestCase {
         var overlay: CaptureOverlay?
     }
 
-    private final class Count: @unchecked Sendable {
-        private let lock = NSLock()
-        private var n = 0
-        var value: Int { lock.withLock { n } }
-        func bump() { lock.withLock { n += 1 } }
-    }
 }

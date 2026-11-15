@@ -17,6 +17,19 @@ final class ObsoleteDefaultsTests: XCTestCase {
                         "a live setting must survive the purge")
     }
 
+    /// Two looks left as settings: how the panel's tabs were labelled and how a module's icon was drawn. `AppSettings.store`
+    /// writes under `module.app.`, so this is the spelling the purge has to carry, and a key left behind reads as a live setting.
+    func testTheRetiredLookChoicesArePurged() {
+        let store = InMemoryKeyValueStore()
+        store.set("glyph", forKey: "module.app.tabLabelStyle")
+        store.set("plain", forKey: "module.app.sidebarStyle")
+
+        ObsoleteDefaults.purge(from: store)
+
+        XCTAssertNil(store.object(forKey: "module.app.tabLabelStyle"))
+        XCTAssertNil(store.object(forKey: "module.app.sidebarStyle"))
+    }
+
     /// Every retired key is namespaced, so the purge can never reach into
     /// another app's or another module's settings.
     func testEveryRetiredKeyIsNamespaced() {
@@ -45,6 +58,11 @@ final class ObsoleteDefaultsTests: XCTestCase {
     /// another. The declaration is the thing that is actually spellable, and it
     /// is also the stronger rule: a key whose feature is gone has no reason to
     /// keep a constant.
+    ///
+    /// **Spelled as a literal counts too.** Most live keys have no constant at all:
+    /// `store.string("menuBarIconSize", default: "")` is the whole declaration, so
+    /// looking only for `= "name"` let `module.app.menuBarIconSize` join the list
+    /// unnoticed (a mutation said so).
     ///
     /// The exception is a key still read *once* by the migration that carries
     /// its value somewhere new before the purge takes it. There is one, it is
@@ -75,7 +93,7 @@ final class ObsoleteDefaultsTests: XCTestCase {
                 let code = SwiftSource.uncommented(
                     try String(contentsOf: RepoSource.root.appendingPathComponent(path),
                                encoding: .utf8))
-                XCTAssertFalse(code.contains("= \"\(name)\""),
+                XCTAssertFalse(code.contains("\"\(name)\""),
                                "\(key) is on the retired list — the purge deletes it at every "
                                + "launch — and \(path) still declares `\(name)` as a key. Either "
                                + "the constant is dead and should go, or the setting is live and "

@@ -4,51 +4,6 @@ import HelmContract
 import HelmRuntime
 @testable import Module_Layout_Engine
 
-// Fakes are per-file in this suite, by the convention the others follow.
-
-private final class ArrowTyping: TypingPort, @unchecked Sendable {
-    var performed: [SwitchPlan] = []
-    func perform(_ plan: SwitchPlan) -> Bool { performed.append(plan); return true }
-}
-
-private final class ArrowContext: SecureContextPort, @unchecked Sendable {
-    var bundle = "com.apple.Notes"
-    func isSecureInput() -> Bool { false }
-    func isSecure() -> Bool { false }
-    func frontmostBundleID() -> String { bundle }
-}
-
-private struct ArrowTranslation: TranslationPort {
-    func translate(_ word: String, from: String, to: String) -> String? {
-        word == "ghbdtn" ? "привет" : nil
-    }
-}
-
-private struct ArrowSpell: SpellPort {
-    func isWord(_ word: String, sourceID: String) -> Bool? {
-        word.unicodeScalars.allSatisfy { $0.value > 0x400 }
-    }
-}
-
-private final class ArrowTap: KeyTapPort, @unchecked Sendable {
-    var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-    func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-               onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-               died: @escaping @Sendable () -> Void) -> Bool {
-        handler = onEvent
-        return true
-    }
-    func stop() { handler = nil }
-    func type(_ text: String) { for character in text { handler?(.character(character)) } }
-    func send(_ event: TypingBuffer.Event) { handler?(event) }
-}
-
-private final class ArrowSources: LayoutSourcePort, @unchecked Sendable {
-    func installed() -> [String] { ["en", "ru"] }
-    func current() -> String? { "en" }
-    func select(_ sourceID: String) {}
-}
-
 /// The other half of the arrow-key defect.
 ///
 /// `UndoAfterNavigationTests` pinned the undo half: type `ghbdtn `, watch it
@@ -59,9 +14,10 @@ private final class ArrowSources: LayoutSourcePort, @unchecked Sendable {
 /// The gesture has a second outcome and it reads the same blind edit off a
 /// different field. With no undo record to spend, `fix()` falls through to
 /// `convertLastWord()`, which reaches for `lastCompleted` — the word that most
-/// recently *ended*. `handle()` clears that field for `.click` and
-/// `.focusChange` and sets it for everything else, so a bare arrow, Home, End,
-/// Tab or Escape *stores* the word it just ended instead of dropping it.
+/// recently *ended*. `handle()` used to clear that field for `.click` alone and
+/// set it for everything else, so a bare arrow, Home, End, Tab or Escape
+/// *stored* the word it just ended instead of dropping it. It now clears it
+/// whenever `movedTheCaret` is true, which covers `.navigation` and `.click`.
 ///
 /// Both fields carry the same promise. `RememberedWord`'s own doc says
 /// converting it "is only correct while the caret is still where the word left
@@ -79,23 +35,16 @@ private final class ArrowSources: LayoutSourcePort, @unchecked Sendable {
 /// back to main for the accessibility probe, and a test that waits on that is a
 /// test about scheduling. This is the same door, taken synchronously.
 final class GestureAfterNavigationTests: XCTestCase {
-    private var typing = ArrowTyping()
-    private var context = ArrowContext()
-    private var tap = ArrowTap()
-
-    /// The chord bound as «fix». Only the recorded one is treated as «may have
-    /// been the gesture arriving»; every other chord may have changed the text
-    /// in front of the caret, and the word before it is dropped.
-    private static let shortcut: UInt16 = 9
+    private var typing = FakeTyping()
+    private var context = FakeSecure()
+    private var tap = FakeTap()
 
     private func engine() -> LayoutEngine {
-        typing = ArrowTyping(); context = ArrowContext(); tap = ArrowTap()
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
-                                    backing: InMemoryKeyValueStore())
-        store.set(Int(Self.shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
-        let engine = LayoutEngine(tap: tap, typing: typing, sources: ArrowSources(),
-                                  translation: ArrowTranslation(), spell: ArrowSpell(),
-                                  secure: context, settings: store)
+        typing = FakeTyping(); context = FakeSecure(); tap = FakeTap()
+        let store = layoutStore(bound: true)
+        let engine = LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
+                                  translation: FakeTranslation(table: ["ghbdtn": "привет"]), spell: CyrillicSpell(),
+                                  secure: context, activation: FakeActivation(), settings: store)
         engine.activate()
         return engine
     }
@@ -119,9 +68,9 @@ final class GestureAfterNavigationTests: XCTestCase {
     /// reason not to close it.
     ///
     /// `handle()` overwrites the remembered word on *every* event that is not a
-    /// click or a focus change, and the overwrite is `finished.map { … }` — so
-    /// any second event, having nothing in the buffer to finish, writes nil and
-    /// clears it by accident. The word is therefore only exposed while the
+    /// caret move or a chord other than the shortcut, and the overwrite is
+    /// `finished.map { … }` — so any second event, having nothing in the buffer
+    /// to finish, writes nil and clears it by accident. The word is therefore only exposed while the
     /// caret move is the *most recent* thing that happened, which is exactly the
     /// shape of the gesture: press ↑ or Home or Escape, then tap the key. A
     /// second arrow, or one more character, hides it again.
@@ -184,7 +133,7 @@ final class GestureAfterNavigationTests: XCTestCase {
     func testTheShortcutsOwnChordStillLeavesTheWordConvertible() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.send(.chord(Self.shortcut))
+        tap.send(.chord(layoutShortcut))
 
         engine.convertLastWord()
 

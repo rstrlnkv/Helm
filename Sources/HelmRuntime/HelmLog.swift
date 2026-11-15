@@ -28,10 +28,10 @@ public enum LogPolicy {
 /// about whether there is a log at all.
 ///
 /// **A test process must not write into the file people triage.** The log is a
-/// product surface: `~/Library/Logs/Helm/helm.log` is what a dev build is judged
-/// by before it ships, so a line in it reads as something the app did. Logging
-/// code under test logs — `EngineReply`'s tests exercise the decode failure it
-/// was written to record — and those lines wore the shape of a real fault well
+/// product surface: the log of the build under triage (`~/Library/Logs/Helm/helm.log`,
+/// Helm Dev's in `Helm Dev`) is what a dev build is judged by before it ships, so a line in it reads as something the app did. Logging
+/// code under test logs — a test of a failing decode records the failure it provokes —
+/// and those lines wore the shape of a real fault well
 /// enough to be triaged as one.
 ///
 /// The *folder* moves rather than the file, because everything that lives beside
@@ -47,12 +47,24 @@ public enum LogPolicy {
 /// test rather than going dark, and nothing accumulates. `ScanJournal` takes one
 /// per process and has to sweep after the processes that died; a log has no
 /// reason to tell two runs apart, so it does not buy that problem.
-public enum LogDestination {
+enum LogDestination {
 
-    public static func directory(home: URL, temporary: URL, underTest: Bool) -> URL {
+    /// The folder under the home directory, spelled from the build's data folder:
+    /// Helm Dev logs in `Library/Logs/Helm Dev`, so it neither writes the real
+    /// Helm's log nor has its salt, rollover and purge latch beside it.
+    /// `ResetPlan` names the same folder.
+    static func relativePath(folder: DataFolder) -> String {
+        "Library/Logs/\(folder.rawValue)"
+    }
+
+    /// `bundleIdentifier` is the process's own; every identifier but Helm Dev's,
+    /// nil included, keeps `Library/Logs/Helm`.
+    static func directory(home: URL, temporary: URL, underTest: Bool,
+                                 bundleIdentifier: String? = Bundle.main.bundleIdentifier) -> URL {
         underTest
             ? temporary.appendingPathComponent("helm-test-logs", isDirectory: true)
-            : home.appendingPathComponent("Library/Logs/Helm", isDirectory: true)
+            : home.appendingPathComponent(relativePath(folder: DataFolder.of(identifier: bundleIdentifier)),
+                                          isDirectory: true)
     }
 
     /// What the page's tail is seeded from — the same decision read from the
@@ -75,12 +87,28 @@ public enum LogDestination {
 ///
 /// `LogSeed` is the inverse and the only one — see the rule on that type.
 public enum LogLine {
+    /// **The launch words, spelled once.** `HelmLog` writes them and `LogSeed`
+    /// recognises them from these, so the two sides cannot drift apart.
+    static let appCategory = "app"
+    static let startedPrefix = "Helm "
+    static let startedSuffix = " started"
+    static let loggingEnabledWord = "logging enabled"
+    static let loggingDisabled = "logging disabled"
+    static let terminating = "terminating"
+
+    static func started(version: String) -> String { startedPrefix + version + startedSuffix }
+
+    /// Bare for a build that knows no version, «logging enabled (version)» otherwise.
+    static func loggingEnabled(version: String?) -> String {
+        version.map { "\(loggingEnabledWord) (\($0))" } ?? loggingEnabledWord
+    }
+
     /// The line an entry would be written as, for anything outside this target
-    /// that has to spell one: «Copy log» is the caller, and what it puts on the
-    /// pasteboard is the line the file carries rather than a second format
-    /// invented at the button. The one that shipped dropped the level, the date
-    /// and the source site.
-    public static func line(_ entry: LogEntry, timeZone: TimeZone = .current) -> String {
+    /// that has to spell one: «Copy log» is the caller, through `lines` below,
+    /// and what it puts on the pasteboard is the line the file carries rather
+    /// than a second format invented at the button. The one that shipped dropped
+    /// the level, the date and the source site.
+    static func line(_ entry: LogEntry, timeZone: TimeZone = .current) -> String {
         line(entry, using: stamper(timeZone))
     }
 
@@ -111,15 +139,6 @@ public enum LogLine {
         formatter.timeZone = timeZone
         formatter.locale = Locale(identifier: "en_US_POSIX")
         return formatter
-    }
-
-    /// The five parts as they were always spelled, for a caller holding parts
-    /// rather than an entry.
-    static func format(date: Date, level: LogLevel, category: String,
-                       message: String, site: LogSite? = nil,
-                       timeZone: TimeZone = .current) -> String {
-        line(LogEntry(date: date, level: level, category: category, message: message, site: site),
-             using: stamper(timeZone))
     }
 
     /// The one place a line is spelled. An entry rather than five parameters,
@@ -155,13 +174,13 @@ public final class HelmLog: @unchecked Sendable {
     private var footprint = FootprintTracker()
     private let footprintQueue = DispatchQueue(label: "helm.log.footprint")
 
-    /// ~/Library/Logs/Helm/helm.log — the place macOS users (and Console.app)
+    /// ~/Library/Logs/Helm/helm.log (Helm Dev: ~/Library/Logs/Helm Dev) — the place macOS users (and Console.app)
     /// expect app logs to live. Somewhere else entirely under test; the reason
     /// is on `LogDestination`.
     ///
     /// Resolved once. Every appended line asks for this folder, and none of the
     /// three answers it is built from can change while the process lives.
-    public static let directory: URL =
+    static let directory: URL =
         LogDestination.directory(home: FileManager.default.homeDirectoryForCurrentUser,
                                  temporary: FileManager.default.temporaryDirectory,
                                  underTest: TestProcess.isRunning)
@@ -173,12 +192,12 @@ public final class HelmLog: @unchecked Sendable {
     /// `helm.log.1`, a name rotation has never written. The half of the log that
     /// most needed destroying — VPN names, application names, home paths —
     /// survived both the purge and the Clear button.
-    public static var previousFileURL: URL {
+    static var previousFileURL: URL {
         directory.appendingPathComponent("helm.previous.log")
     }
     /// Everything the log can leave on disk. Anything that clears the log
     /// clears all of it.
-    public static var allFileURLs: [URL] { [fileURL, previousFileURL] }
+    static var allFileURLs: [URL] { [fileURL, previousFileURL] }
     /// The same two, oldest half first, and none of them under test — the reason
     /// is on `LogDestination.seedSources`.
     static var seedSources: [URL] {
@@ -191,7 +210,7 @@ public final class HelmLog: @unchecked Sendable {
     /// happened, so a purge that removed it would be able to run again. Named
     /// here rather than inside the purge because a file name invented in a
     /// second place is a defect nothing in the suite catches now.
-    public static var resetMarkerURL: URL {
+    static var resetMarkerURL: URL {
         directory.appendingPathComponent(".redaction-reset")
     }
     private static let sizeLimit = 2 * 1024 * 1024   // 2 MB, then one rollover
@@ -232,7 +251,7 @@ public final class HelmLog: @unchecked Sendable {
         // is written, and the paragraph above says so.
         queue.async { Self.allFileURLs.forEach { _ = PrivateFile.harden(at: $0) } }
         guard on else { return }
-        write(.info, "app", "Helm \(version) started")
+        write(.info, LogLine.appCategory, LogLine.started(version: version))
     }
 
     /// Throws away a log written before `Redact` existed.
@@ -254,14 +273,27 @@ public final class HelmLog: @unchecked Sendable {
         guard !fm.fileExists(atPath: marker.path) else { return }
         queue.async {
             for url in Self.allFileURLs { try? FileManager.default.removeItem(at: url) }
-            // Discarded: the `createFile` below is what this block is for and it
-            // has its own answer; a folder that could not be made is a marker
-            // that cannot land, and an unlanded marker retries at the next
-            // launch — which is a repeated deletion of a log that is already
-            // empty. See `append` for why nothing here can be logged.
-            _ = PrivateFile.directory(at: Self.directory)
-            FileManager.default.createFile(atPath: marker.path, contents: Data())
+            Self.writePurgeLatch()
         }
+    }
+
+    /// Writes the latch again, after the reset has trashed the log folder with
+    /// the latch in it: the next launch would otherwise take the folder's
+    /// absence for a log written before `Redact` and purge the file holding the
+    /// reset's own refusals. Queued behind any pending append.
+    public func rewritePurgeLatch() {
+        queue.async { Self.writePurgeLatch() }
+    }
+
+    /// On the log queue only.
+    private static func writePurgeLatch() {
+        // Discarded: the `createFile` below is what this is for and it
+        // has its own answer; a folder that could not be made is a marker
+        // that cannot land, and an unlanded marker retries at the next
+        // launch — which is a repeated deletion of a log that is already
+        // empty. See `append` for why nothing here can be logged.
+        _ = PrivateFile.directory(at: directory)
+        FileManager.default.createFile(atPath: resetMarkerURL.path, contents: Data())
     }
 
     /// Both edges are written, and the off edge is written **before** the flag
@@ -275,19 +307,25 @@ public final class HelmLog: @unchecked Sendable {
     /// version back; `LogSeed` still reads the line as it always did, since the
     /// version is part of the message.
     public func setEnabled(_ on: Bool) {
-        if !on { write(.info, "app", "logging disabled") }
+        if !on { write(.info, LogLine.appCategory, LogLine.loggingDisabled) }
         queue.async { self.enabled = on }
         if on {
             // `sync` after the `async` above: the queue is serial, so the version
             // `start` stored is there, and nothing on the queue waits for the
             // caller's thread.
             let version = queue.sync { runVersion }
-            write(.info, "app", version.map { "logging enabled (\($0))" } ?? "logging enabled")
+            write(.info, LogLine.appCategory, LogLine.loggingEnabled(version: version))
         }
     }
 
-    /// The last lines, for a dev build that wants to watch them arrive rather
-    /// than open the file afterwards. Guarded by the same queue as the file, so
+    /// The last line of a launch. Written through here so the words are
+    /// `LogLine`'s and `LogSeed` reads back what this wrote.
+    public func terminating() {
+        write(.info, LogLine.appCategory, LogLine.terminating)
+    }
+
+    /// The last lines, for the Log page, which shows them arriving rather than
+    /// sending a person to open the file afterwards. Guarded by the same queue as the file, so
     /// a reader never sees a half-written line.
     private var tail = LogTail()
     /// The most lines `recentEntries()` ever answers with.
@@ -343,7 +381,7 @@ public final class HelmLog: @unchecked Sendable {
         queue.async { self.tail.clear() }
     }
 
-    public func write(_ level: LogLevel, _ category: String, _ message: String,
+    func write(_ level: LogLevel, _ category: String, _ message: String,
                       site: LogSite? = nil) {
         // The timestamp is taken here, where the event happened; the line is
         // built on the queue, after the check. Formatting allocates a
@@ -487,7 +525,7 @@ public final class HelmLog: @unchecked Sendable {
                 if !PrivateFile.write(data, to: url) { Self.sayOutOfBand() }
                 return
             }
-            try? handle.write(contentsOf: data)
+            do { try handle.write(contentsOf: data) } catch { Self.sayOutOfBand() }
         } else if !PrivateFile.write(data, to: url) {
             Self.sayOutOfBand()
         }

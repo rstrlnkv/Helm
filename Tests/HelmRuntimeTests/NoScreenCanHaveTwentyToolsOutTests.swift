@@ -3,6 +3,7 @@
 
 import XCTest
 @testable import HelmRuntime
+import HelmTestSupport
 
 /// **Nothing bounded how many tools Helm had out at once, and one screen found
 /// out.**
@@ -15,8 +16,9 @@ import XCTest
 /// where the app died.
 ///
 /// `HomebrewViewModel`'s `LatestRequest` stops that screen from asking. This is
-/// the floor under every screen not yet written — a caller may still ask for
-/// more than `launchCeiling`, and what it gets is a queue.
+/// the floor under every screen not yet written that goes through `run` or
+/// `runData` — a caller may still ask for more than `launchCeiling`, and what it
+/// gets is a queue.
 final class NoScreenCanHaveTwentyToolsOutTests: XCTestCase {
 
     override func setUp() {
@@ -24,6 +26,13 @@ final class NoScreenCanHaveTwentyToolsOutTests: XCTestCase {
         // The peak is cumulative until read, so anything an earlier test left
         // behind would be read here as this test's own load.
         _ = HelmProcess.peakLaunchesForTesting()
+    }
+
+    /// The two cases below measure against `launchCeiling`, so a ceiling raised
+    /// to any number would pass them; the number itself is what the name of this
+    /// class promises to keep under twenty.
+    func testTheCeilingIsBelowTwenty() {
+        XCTAssertLessThan(HelmProcess.launchCeiling, 20)
     }
 
     /// Twice the ceiling asked for at once, each holding its slot long enough
@@ -73,10 +82,4 @@ final class NoScreenCanHaveTwentyToolsOutTests: XCTestCase {
                        "\(asked - done.value) of \(asked) runs were dropped rather than queued")
     }
 
-    private final class LockedCount: @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        func bump() { lock.lock(); count += 1; lock.unlock() }
-        var value: Int { lock.lock(); defer { lock.unlock() }; return count }
-    }
 }

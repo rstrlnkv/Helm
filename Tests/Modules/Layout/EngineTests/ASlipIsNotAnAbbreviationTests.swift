@@ -12,6 +12,8 @@ import XCTest
 ///
 /// The fourth letter is what separates them: a slip carries a word behind it,
 /// an abbreviation-plus-suffix does not.
+///
+/// Guards a past defect: CDs, IDs, PCs read as a slipped Shift (fix commit `af50f192`).
 final class ASlipIsNotAnAbbreviationTests: XCTestCase {
 
     func testASlippedShiftIsCorrected() {
@@ -61,7 +63,7 @@ final class ASlipIsNotAnAbbreviationTests: XCTestCase {
     /// **What it still gets wrong, recorded rather than claimed away.** A
     /// three-letter abbreviation is out, but a longer one with a lowercase tail
     /// is not: `OSes`, `ТВшник`, `IPhone` all read as slips to this rule and
-    /// always did. That is why the switch ships off, and why its note names the
+    /// always did. That is why the switch's note names the
     /// boundary it has instead of promising one it does not.
     func testTheBoundaryThisRuleCannotDraw() {
         XCTAssertEqual(TypingHabits.corrected("OSes"), "Oses")

@@ -6,6 +6,8 @@ import XCTest
 /// `/Users/...` and `/System/Volumes/Data/Users/...`. A walk that follows both
 /// counts every byte under whichever path it happened to reach first — which
 /// is what parked 327 GB under "System" and left "Users" at 1.5 MB.
+///
+/// Guards: 45186d77 (the Data volume was walked twice).
 final class FirmlinkMapTests: XCTestCase {
     private let table = """
     /AppleInternal\tAppleInternal

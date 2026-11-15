@@ -103,13 +103,26 @@ final class TheDescriptorWalkHoldsItsGroundTests: XCTestCase {
     /// folder was a folder and every read in which it was a link is counted, and
     /// both must have happened.
     func testASubfolderSwappedForALinkWhileTheWalkRunsIsNeverReadThrough() throws {
+        try swapRace(into: "Library/Inbox", leaking: "/Library/")
+    }
+
+    /// The same race with a link to an ordinary folder. A link into `~/Library` is
+    /// also refused by the path the open lands on, so that test stays green with
+    /// `O_NOFOLLOW` gone; a link to a folder the gate allows is refused by the
+    /// open alone.
+    func testASubfolderSwappedForALinkToAnOrdinaryFolderIsNeverReadThrough() throws {
+        try write("Elsewhere/stray.pdf", in: home)
+        try swapRace(into: "Elsewhere", leaking: "/Elsewhere/")
+    }
+
+    private func swapRace(into target: String, leaking marker: String) throws {
         let watched = home.appendingPathComponent("Watched")
         try write("Watched/a.pdf", in: home)
         try write("Watched/m/ok.pdf", in: home)
         // The link waits under a hidden name, which the walk never lists.
         try FileManager.default.createSymbolicLink(
             at: watched.appendingPathComponent(".alt"),
-            withDestinationURL: home.appendingPathComponent("Library/Inbox"))
+            withDestinationURL: home.appendingPathComponent(target))
 
         let flipper = Flipper(watched.appendingPathComponent("m").path,
                               watched.appendingPathComponent(".alt").path)
@@ -117,21 +130,27 @@ final class TheDescriptorWalkHoldsItsGroundTests: XCTestCase {
         var throughAFolder = 0, overALink = 0
         var leaked: [String] = []
         flipper.start()
-        let deadline = Date().addingTimeInterval(4)
+        // Four seconds once both kinds of read have happened; up to ten while
+        // one has not, so a loaded machine waits for its evidence instead of
+        // failing on its absence. A read through the folder needs it to stay a
+        // folder from the open to the child's facts, which a swap with no pause
+        // can starve under load.
+        let enough = Date().addingTimeInterval(4), ceiling = Date().addingTimeInterval(10)
         var reads = 0
-        while Date() < deadline, reads < 20_000 {
+        while Date() < ceiling,
+              (reads < 20_000 && Date() < enough) || throughAFolder == 0 || overALink == 0 {
             reads += 1
             let files = reader.reading(in: watched.path, depth: 3).files
             if files.contains(where: { $0.name == "ok.pdf" }) { throughAFolder += 1 }
             if files.contains(where: { $0.name == "m" && !$0.isDirectory }) { overALink += 1 }
-            leaked += files.map(\.path).filter { $0.contains("/Library/") }
+            leaked += files.map(\.path).filter { $0.contains(marker) }
         }
         let swaps = flipper.stop()
 
         XCTAssertGreaterThan(swaps, 100, "precondition: the folder was swapped")
         XCTAssertGreaterThan(throughAFolder, 0, "precondition: some reads descended the real folder")
         XCTAssertGreaterThan(overALink, 0, "precondition: some reads met the link")
-        XCTAssertEqual(leaked, [], "the walk read through a link into ~/Library in \(leaked.count) of \(reads) reads")
+        XCTAssertEqual(leaked, [], "the walk read through a link into \(target) in \(leaked.count) of \(reads) reads")
     }
 
     // MARK: - The ceiling
@@ -144,12 +163,12 @@ final class TheDescriptorWalkHoldsItsGroundTests: XCTestCase {
         try write("Deep/" + chain.joined(separator: "/") + "/leaf.pdf", in: home)
         let reader = FolderReader(home: home.path)
 
-        let deep = Set(reader.facts(in: root.path, depth: Int.max).map(\.name))
+        let deep = Set(reader.reading(in: root.path, depth: Int.max).files.map(\.name))
         XCTAssertTrue(deep.contains("d\(FolderReader.deepest)"), "the ceiling's own level is offered")
         XCTAssertFalse(deep.contains("d\(FolderReader.deepest + 1)"), "the walk went past its ceiling")
         XCTAssertFalse(deep.contains("leaf.pdf"))
         // A depth under the ceiling is the depth asked for.
-        XCTAssertEqual(reader.facts(in: root.path, depth: 8).count, 8)
+        XCTAssertEqual(reader.reading(in: root.path, depth: 8).files.count, 8)
     }
 
     // MARK: - A folder saved as a link meets its own bucket
@@ -166,10 +185,7 @@ final class TheDescriptorWalkHoldsItsGroundTests: XCTestCase {
         try FileManager.default.createSymbolicLink(
             at: home.appendingPathComponent("DL"),
             withDestinationURL: home.appendingPathComponent("Downloads"))
-        let engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        let engine = AutopilotEngine.scratch(home: home.path)
         let folder = WatchedFolder(id: "w", path: home.appendingPathComponent("DL").path, enabled: true, rules: [
             Rule(id: "r", name: "Invoices", enabled: true, conditions: [.name(.beginsWith, "Invoice")],
                  action: .move(to: home.appendingPathComponent("DL/Invoices").path)),
@@ -211,8 +227,8 @@ final class TheDescriptorWalkHoldsItsGroundTests: XCTestCase {
     }
 }
 
-/// Swaps two directory entries atomically, as fast as it can, on a thread of
-/// its own, until told to stop.
+/// Swaps two directory entries atomically, on a thread of its own, until told
+/// to stop — each state held up to 200 µs, so a walk can land in either.
 private final class Flipper: @unchecked Sendable {
     private let a: String, b: String
     private let lock = NSLock()
@@ -226,7 +242,10 @@ private final class Flipper: @unchecked Sendable {
         Thread.detachNewThread { [self] in
             var swaps = 0
             while lock.withLock({ running }) {
-                if renamex_np(a, b, UInt32(RENAME_SWAP)) == 0 { swaps += 1 }
+                if renamex_np(a, b, UInt32(RENAME_SWAP)) == 0 {
+                    swaps += 1
+                    usleep(UInt32.random(in: 0...200))
+                }
             }
             // Leave the real folder under its own name.
             if (try? FileManager.default.destinationOfSymbolicLink(atPath: a)) != nil {

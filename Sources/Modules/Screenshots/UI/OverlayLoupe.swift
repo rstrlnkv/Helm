@@ -41,7 +41,6 @@ final class LoupeLayer: CALayer {
             lines.move(to: CGPoint(x: 0, y: at)); lines.addLine(to: CGPoint(x: side, y: at))
         }
         grid.path = lines
-        grid.strokeColor = NSColor.black.withAlphaComponent(0.12).cgColor
         grid.fillColor = nil
         grid.lineWidth = 1
         let box = CGRect(x: CGFloat(PixelLoupe.side / 2) * Self.cell, y: CGFloat(PixelLoupe.side / 2) * Self.cell,
@@ -73,6 +72,9 @@ final class LoupeLayer: CALayer {
         for part in [ring, picture, plate] as [CALayer] { addSublayer(part) }
         isHidden = true
     }
+    /// The grid's ink, from the table.
+    func paint(_ ink: OverlayInk) { grid.strokeColor = ink.grid }
+
     override init(layer: Any) { super.init(layer: layer) }
     @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
 

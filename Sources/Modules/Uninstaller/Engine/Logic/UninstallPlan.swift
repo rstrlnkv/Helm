@@ -32,14 +32,6 @@ public enum ReviewRow: Equatable, Sendable, Identifiable {
         case .leftover(let leftover): return leftover.path
         }
     }
-
-    /// A checkbox is an offer to decline, and the bundle cannot be declined:
-    /// removing an app without removing the app is not a thing this screen does.
-    public var isTickable: Bool {
-        if case .leftover = self { return true }
-        return false
-    }
-
 }
 
 /// Pure rules behind the batch uninstall flow.
@@ -51,8 +43,9 @@ public enum UninstallPlan {
         case needsQuit([String])
     }
 
-    /// A running app holds open files and would come back on relaunch, so it
-    /// blocks removal until the user agrees to force-quit it.
+    /// A running app holds open files and would come back on relaunch, so the
+    /// review warns of it, and the button's help says to quit it until the user
+    /// agrees to force-quit it.
     public static func readiness(_ groups: [UninstallGroup], forceQuit: Bool) -> Readiness {
         guard !groups.isEmpty else { return .empty }
         let running = groups.filter(\.running).map(\.app.name)
@@ -61,19 +54,14 @@ public enum UninstallPlan {
     }
 
     /// An application that is up at the moment a batch is about to move.
-    public struct RunningApp: Equatable, Sendable {
+    struct RunningApp: Equatable, Sendable {
         /// The bundle in the batch, as the batch spells it.
-        public let path: String
-        public let bundleID: String
-
-        public init(path: String, bundleID: String) {
-            self.path = path
-            self.bundleID = bundleID
-        }
+        let path: String
+        let bundleID: String
     }
 
     /// What a batch may do about the applications that are up.
-    public enum RunningVerdict: Equatable, Sendable {
+    enum RunningVerdict: Equatable, Sendable {
         case proceed
         /// Ask each of these to quit, wait for it to be gone, then move.
         case quitFirst([RunningApp])
@@ -87,8 +75,8 @@ public enum UninstallPlan {
     /// `readiness` above answers the same question from `ScanResult.runningNow`,
     /// which is a reading taken when the review was built and stale in both
     /// directions by the time anybody presses anything — an app quit since then
-    /// leaves the button dead, and an app started since then has its bundle moved
-    /// out from under it. That one dims a button; this one decides what moves.
+    /// still shows as running, and an app started since then does not. That one
+    /// words the warning and the button's help; this one decides what moves.
     ///
     /// **A refusal takes the whole batch.** The batch is a flat list of paths: a
     /// leftover carries no link back to the app it was found for, so "move
@@ -96,7 +84,7 @@ public enum UninstallPlan {
     /// and leaves the app running to write them back — the half-uninstall
     /// `waitUntilGone` exists to prevent. Nothing moves, the review stays, and the
     /// person can untick the app or allow the quit.
-    public static func verdict(running: [RunningApp], mayQuit: Bool) -> RunningVerdict {
+    static func verdict(running: [RunningApp], mayQuit: Bool) -> RunningVerdict {
         guard !running.isEmpty else { return .proceed }
         return mayQuit ? .quitFirst(running) : .refuse(running)
     }
@@ -123,10 +111,13 @@ public enum UninstallPlan {
         [.bundle(app: group.app)] + group.leftovers.map { .leftover($0) }
     }
 
-    public static func totalBytes(_ groups: [UninstallGroup], selectedLeftovers: Set<String>) -> Int {
+    /// `appBytes` is the measured size of each bundle, keyed by its path: the app
+    /// in a group carries the list's zero.
+    public static func totalBytes(_ groups: [UninstallGroup], appBytes: [String: Int],
+                                  selectedLeftovers: Set<String>) -> Int {
         var seen: Set<String> = []
         return groups.reduce(0) { sum, group in
-            var subtotal = seen.insert(group.app.path).inserted ? group.app.sizeBytes : 0
+            var subtotal = seen.insert(group.app.path).inserted ? appBytes[group.app.path] ?? 0 : 0
             for leftover in group.leftovers where selectedLeftovers.contains(leftover.path) {
                 if seen.insert(leftover.path).inserted { subtotal += leftover.sizeBytes }
             }

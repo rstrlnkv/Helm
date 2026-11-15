@@ -9,7 +9,7 @@ import XCTest
 /// `launchctl disable` is a change to the user's own launchd domain that
 /// survives a reboot and survives deleting Helm — and for a year nothing put it
 /// back, while the reset's first step was `handBackWhatIsOutsideHelm`
-/// (`Sources/HelmRuntime/ResetPlan.swift:38`). The give-back is one port call; what was missing was the
+/// (`ResetPlan.Step.handBackWhatIsOutsideHelm`). The give-back is one port call; what was missing was the
 /// record of which labels were ours to give back.
 ///
 /// **Why the record and not the system's list.** `disabledLabels()` answers what
@@ -64,12 +64,15 @@ final class ALeftoverSwitchIsGivenBackTests: XCTestCase {
 
         await e.setDisabled(true, label: "com.example.agent.one")
         await e.setDisabled(true, label: "com.example.agent.two")
-        let beforeGiveBack = switcher.labels.count
+        let beforeGiveBack = switcher.calls.count
 
         e.willDisable()
 
-        XCTAssertEqual(switcher.labels.count, beforeGiveBack + 2,
-                       "each recorded label is asked about a second time — the give-back")
+        let giveBack = switcher.calls.dropFirst(beforeGiveBack)
+        XCTAssertEqual(giveBack.map(\.label).sorted(),
+                       ["com.example.agent.one", "com.example.agent.two"])
+        XCTAssertTrue(giveBack.allSatisfy { !$0.disabled },
+                      "the give-back switches each label back on, never off again")
         XCTAssertEqual(store.stringArray("disabledByHelm"), [],
                        "the record is state, not a log: what has been given back is gone from it")
     }
@@ -81,5 +84,56 @@ final class ALeftoverSwitchIsGivenBackTests: XCTestCase {
         engine(switcher, store).willDisable()
         XCTAssertEqual(switcher.labels, [],
                        "an empty record must not become a sweep over the system's own list")
+    }
+
+    /// The record a shipped build wrote: a plain string array under
+    /// `disabledByHelm`. It must still be given back, whatever the build
+    /// that reads it is.
+    func testARecordTheShippedBuildWroteIsGivenBack() throws {
+        let switcher = LeftoversFakeSwitcher()
+        let store = NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)",
+                                    backing: InMemoryKeyValueStore())
+        store.set(["com.example.a", "com.example.b"], for: "disabledByHelm")
+
+        engine(switcher, store).willDisable()
+
+        XCTAssertEqual(switcher.calls.map(\.label).sorted(), ["com.example.a", "com.example.b"])
+        XCTAssertTrue(switcher.calls.allSatisfy { !$0.disabled })
+        XCTAssertEqual(store.stringArray("disabledByHelm"), [])
+    }
+
+    /// The full stored key, spelled out: the record sits under
+    /// `module.leftovers.disabledByHelm` in the default store. The tests above
+    /// pin the bare key only, through a namespace of their own.
+    func testTheDefaultStoreReadsTheKeyTheShippedBuildWrote() throws {
+        let switcher = LeftoversFakeSwitcher()
+        let backing = InMemoryKeyValueStore()
+        backing.set(["com.example.a"], forKey: "module.leftovers.disabledByHelm")
+        let e = engine(switcher, LeftoversEngine.defaultStore(backing: backing))
+
+        e.willDisable()
+
+        XCTAssertEqual(switcher.calls.map(\.label), ["com.example.a"])
+    }
+}
+
+extension ALeftoverSwitchIsGivenBackTests {
+    /// A hand enable leaves the record unless launchd accepted it: a refused or an
+    /// unknown answer means the label may still be disabled, and only the record
+    /// gets it back at the give-back.
+    func testAHandEnableThatLaunchdDidNotAcceptKeepsTheLabelRecorded() async throws {
+        for notAccepted in [SwitchAnswer.refused, .unknown] {
+            let switcher = LeftoversFakeSwitcher()
+            let store = NamespacedStore(namespace: "leftovers.test.\(UUID().uuidString)",
+                                        backing: InMemoryKeyValueStore())
+            let e = engine(switcher, store)
+            await e.setDisabled(true, label: "com.example.agent.one")
+            switcher.answer = notAccepted
+
+            await e.setDisabled(false, label: "com.example.agent.one")
+
+            XCTAssertEqual(store.stringArray("disabledByHelm"), ["com.example.agent.one"],
+                           "a hand enable answered \(notAccepted) must keep the record")
+        }
     }
 }

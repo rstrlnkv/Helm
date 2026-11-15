@@ -1,5 +1,4 @@
 import AppKit
-import HelmUI
 import Module_Screenshots_Engine
 
 /// One line of the ⋯ menu, as a value: what it says, whether it is checked, what it sends.
@@ -7,7 +6,7 @@ enum EditorMenuItem: Equatable {
     case tool(title: String, symbol: String, isOn: Bool, action: EditorAction)
     case submenu(title: String, isOn: Bool, children: [EditorMenuItem])
     case separator
-    /// A plain item; `isOn` is a check mark (Filled), false for Save and Pin.
+    /// A plain item; `isOn` is a check mark (Filled), false for Save.
     case action(title: String, action: EditorAction, isEnabled: Bool, isOn: Bool)
     /// An item that reads the picture's text: a symbol, and a hint — the item's tool tip — saying what it does.
     case reading(title: String, symbol: String, action: EditorAction, isEnabled: Bool, hint: String?)
@@ -18,8 +17,7 @@ enum EditorMenuItem: Equatable {
 /// tool is placed once and the check mark cannot differ from what the palette says is chosen.
 ///
 /// Order: the row objects taken off the row (`EditorPalette.rowKinds`), then the objects' own (`EditorPalette.objects`): Arrow, Shapes ▸ (Rectangle, Oval, Line, a separator, Filled), Text, Steps, Blur, then Crop (checked while the mode is on), Select, Magnifier and Emoji (`EditorPalette.afterSelect`), Thickness and Opacity… (enabled while a
-/// tool is chosen, unless it is the spotlight, which has no steps, or the eraser is on; with the eraser on no tool item here is checked, its object in the row is the raised one, and Filled stays checked by the setting), a separator, Save, Pin only while
-/// `PinEntry.isOffered`, and Share…, which does what Done does and opens the system's sheet at the thumbnail, a separator, and Copy Text and Blur Emails and Phone Numbers, both disabled while a reading of the text runs
+/// tool is chosen, unless it is the spotlight, which has no steps, or the eraser is on; with the eraser on no tool item here is checked, its object in the row is the raised one, and Filled stays checked by the setting), a separator, Save and Share…, which does what Done does and opens the system's sheet at the thumbnail, a separator, and Copy Text and Blur Emails and Phone Numbers, both disabled while a reading of the text runs
 /// (`EditorBarModel.reading`); the second carries a hint naming the four kinds it blurs. **Filled** is checked by the fill setting and enabled exactly where the fill applies
 /// (`EditorBarModel.fillApplies`): a box is the subject, so the fill changes what is drawn or selected now. A disabled
 /// `NSMenuItem` sends nothing even when its action is performed.
@@ -42,8 +40,8 @@ enum EditorMenu {
     }
 
     /// Whether an action's event is a key event typing a letter of `EditorKeys.toolKeys`: `Filler.choose` drops an action
-    /// for which this is true. A menu runs a key equivalent while it is open, and the owner has decided that a tool's letter
-    /// pressed in the open menu does nothing; the editor's own keys meet the menu closed. Return and space on a highlighted
+    /// for which this is true. A menu runs a key equivalent while it is open: a tool's letter
+    /// pressed there does nothing; the editor's own keys meet the menu closed. Return and space on a highlighted
     /// item are key events too, but no letter of that table, so they are a choice (keyboard navigation, VoiceOver) and pass.
     static func isSentByAKey(_ event: NSEvent?) -> Bool {
         guard event?.type == .keyDown, let typed = event?.charactersIgnoringModifiers?.lowercased() else { return false }
@@ -87,7 +85,6 @@ enum EditorMenu {
         items.append(.action(title: ScStr.thicknessAndOpacity, action: .thicknessAndOpacity(anchorX: model.moreFrame.midX),
                              isEnabled: model.tool != nil && model.tool != .spotlight && !model.erasing, isOn: false))
         items += [.separator, .action(title: ScStr.save, action: .exit(.save), isEnabled: true, isOn: false)]
-        if PinEntry.isOffered { items.append(.action(title: ScStr.pin, action: .exit(.pin), isEnabled: true, isOn: false)) }
         items.append(.action(title: ScStr.share, action: .exit(.share), isEnabled: true, isOn: false))
         items += [.separator,
                   .reading(title: ScStr.copyText, symbol: "text.viewfinder", action: .copyText, isEnabled: !model.reading, hint: nil),

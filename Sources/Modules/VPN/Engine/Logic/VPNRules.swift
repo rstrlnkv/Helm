@@ -8,8 +8,8 @@ import HelmRuntime
 /// the app's launch and quit.
 public struct VPNAppRule: Codable, Equatable {
     public var vpnName: String
-    public var connectOnLaunch: Bool
-    public var disconnectOnQuit: Bool
+    var connectOnLaunch: Bool
+    var disconnectOnQuit: Bool
     /// What the app the person picked is **signed** as.
     ///
     /// The rule used to be a bundle identifier and nothing else, which is a string
@@ -17,9 +17,9 @@ public struct VPNAppRule: Codable, Equatable {
     /// launch and quit and take somebody's tunnel down. `VPNRuleTrust` is what
     /// reads this; it is optional because rules written before it existed have no
     /// identity, and that is a state with its own answer rather than a default.
-    public var identity: CodeIdentity?
+    var identity: CodeIdentity?
 
-    public init(vpnName: String, connectOnLaunch: Bool = true, disconnectOnQuit: Bool = true,
+    init(vpnName: String, connectOnLaunch: Bool = true, disconnectOnQuit: Bool = true,
                 identity: CodeIdentity? = nil) {
         self.vpnName = vpnName
         self.connectOnLaunch = connectOnLaunch
@@ -77,8 +77,8 @@ public enum VPNRules {
     ///
     /// **Picking an app that already has a rule is how a rule from before
     /// identities existed is repaired.** It used to be ignored outright (`where
-    /// rules[bundleID] == nil`), so «choose the app again» — which is what the row
-    /// under such a rule now says — was advice the page had no way to carry out.
+    /// rules[bundleID] == nil`), so choosing the app again could not repair such a
+    /// rule.
     /// The identity is written and every choice the person made is left as it was.
     ///
     /// A bundle whose signature could not be read at all gets no rule: a rule that
@@ -100,29 +100,8 @@ public enum VPNRules {
     }
 
     /// Drop rules whose VPN is not among the currently-configured connections.
-    public static func valid(_ rules: [String: VPNAppRule], against connections: [VPNConnection]) -> [String: VPNAppRule] {
+    static func valid(_ rules: [String: VPNAppRule], against connections: [VPNConnection]) -> [String: VPNAppRule] {
         let names = Set(connections.map(\.name))
         return rules.filter { names.contains($0.value.vpnName) }
     }
-
-    /// How many rules can fire — what a dial labelled *automatic* is counting.
-    ///
-    /// It used to count `autoConnected`, the connections a rule has up at this
-    /// instant, so the strip read "0" directly above the list of rules the
-    /// person had written. Whether one is firing right now is the green dot's
-    /// answer; this is the other question. A rule set to `.off` is written down
-    /// and inert, and counting it would be the same lie the other way round.
-    public static func automationCount(_ rules: [String: VPNAppRule]) -> Int {
-        rules.values.count { $0.timing != .off }
-    }
-
-    /// Rules naming a VPN the system no longer has. They stop firing the
-    /// moment a connection is renamed or removed, and dropping them quietly
-    /// is how someone ends up trusting automation that has not run for weeks.
-    public static func orphaned(_ rules: [String: VPNAppRule],
-                                against connections: [VPNConnection]) -> [String: VPNAppRule] {
-        let names = Set(connections.map(\.name))
-        return rules.filter { !names.contains($0.value.vpnName) }
-    }
-
 }

@@ -20,6 +20,8 @@ import XCTest
 /// **Per module, not over all of them together.** A single descriptor left
 /// frozen is invisible to a reading that joins them all: the others still
 /// differ between two languages and the blob differs with them.
+///
+/// Guards the defect fixed in 60c18957 (a module's name froze in the first language).
 @MainActor
 final class AModuleNamesItselfInTodaysLanguageTests: XCTestCase {
 

@@ -1,8 +1,6 @@
-import HelmContract
 import HelmRuntime
-import HelmUI
 import XCTest
-import Module_Autopilot_Engine
+@testable import Module_Autopilot_Engine
 @testable import Module_Autopilot_UI
 
 /// **A preset's editor can be pointed at another folder, and the gate is asked
@@ -22,8 +20,8 @@ final class APresetsFolderCanBeChosenTests: XCTestCase {
 
     private let home = "/Users/x"
 
-    private func model(on wire: AutopilotWire) -> AutopilotViewModel {
-        AutopilotViewModel(vm: ModuleViewModel(transport: wire),
+    private func model(on work: FakeAutopilotWork) -> AutopilotViewModel {
+        AutopilotViewModel(work: work, historyChanges: AsyncStream { _ in },
                            presetFolders: FakePresetFolders(home: home), home: home)
     }
 
@@ -42,8 +40,8 @@ final class APresetsFolderCanBeChosenTests: XCTestCase {
     /// folder, its rule and the dry run it already has. The control first: a gate
     /// that refused every path would pass the refusal below for the wrong reason.
     func testARefusedFolderChangesNothingAndAsksForNoDryRun() async throws {
-        let wire = AutopilotWire()
-        let model = model(on: wire)
+        let work = FakeAutopilotWork()
+        let model = model(on: work)
         await model.load()
         let offer = try offer(model, .screenshots)
 
@@ -55,10 +53,10 @@ final class APresetsFolderCanBeChosenTests: XCTestCase {
                          "\(path) was taken as the preset's folder")
             XCTAssertNil(model.draftFolder(at: path), "\(path) was drafted")
         }
-        XCTAssertFalse(wire.commands.contains(.previewDraft),
+        XCTAssertFalse(work.calls.contains("dryRun"),
                        "a refused folder was read by a dry run")
-        XCTAssertNil(wire.previewed)
-        XCTAssertEqual(wire.saved, [], "a refused choice wrote a folder list")
+        XCTAssertNil(work.previewed)
+        XCTAssertEqual(work.saved, [], "a refused choice wrote a folder list")
     }
 
     // MARK: - A folder that is already watched
@@ -68,8 +66,8 @@ final class APresetsFolderCanBeChosenTests: XCTestCase {
     /// nobody's other rules are swept.
     func testAnAlreadyWatchedFolderIsReusedAndNotSwept() async throws {
         let watched = WatchedFolder(id: "dl", path: home + "/Downloads")
-        let wire = AutopilotWire(folders: [watched])
-        let model = model(on: wire)
+        let work = FakeAutopilotWork(folders: [watched])
+        let model = model(on: work)
         await model.load()
         let offer = try offer(model, .screenshots)
         XCTAssertTrue(offer.folderIsNew, "precondition: the preset began in a folder not yet watched")
@@ -81,16 +79,16 @@ final class APresetsFolderCanBeChosenTests: XCTestCase {
 
         await model.save(next.rule, in: next.folder)
 
-        let saved = try XCTUnwrap(wire.saved.last)
+        let saved = try XCTUnwrap(work.saved.last)
         XCTAssertEqual(saved.map(\.path), [home + "/Downloads"], "the folder was stored twice")
         XCTAssertEqual(saved.first?.rules.map(\.id), ["preset.screenshots"])
-        XCTAssertFalse(wire.commands.contains(.runNow), "a watched folder was swept")
+        XCTAssertFalse(work.calls.contains("sweepNow"), "a watched folder was swept")
     }
 
     // MARK: - The action goes with the folder
 
     func testTheScreenshotsActionMovesWithTheFolder() async throws {
-        let model = model(on: AutopilotWire())
+        let model = model(on: FakeAutopilotWork())
         await model.load()
         let offer = try offer(model, .screenshots)
         XCTAssertEqual(offer.draft.action, .move(to: home + "/Desktop/Screenshots"),
@@ -106,7 +104,7 @@ final class APresetsFolderCanBeChosenTests: XCTestCase {
     }
 
     func testAnEditedActionStaysWhereThePersonPutIt() async throws {
-        let model = model(on: AutopilotWire())
+        let model = model(on: FakeAutopilotWork())
         await model.load()
         let offer = try offer(model, .screenshots)
         var edited = offer.draft
@@ -122,7 +120,7 @@ final class APresetsFolderCanBeChosenTests: XCTestCase {
     /// A rule that is not a preset has no chooser and no action of the preset's
     /// to rebuild.
     func testARuleThatIsNotAPresetKeepsItsActionWhateverFolder() async throws {
-        let model = model(on: AutopilotWire())
+        let model = model(on: FakeAutopilotWork())
         await model.load()
         let rule = Rule(id: "r", name: "r", conditions: [.fileExtension(["pdf"])],
                         action: .move(to: home + "/Desktop/Screenshots"))
@@ -137,12 +135,12 @@ final class APresetsFolderCanBeChosenTests: XCTestCase {
     // MARK: - Done, and what it promises
 
     /// One expression decides the sweep and the sentence, so each answer is held
-    /// against what the wire was actually asked.
+    /// against what the engine was actually asked.
     func testDoneSweepsExactlyWhenTheSheetSaidItWould() async throws {
         for enabled in [true, false] {
-            let wire = AutopilotWire(report: SweepReport(folderID: "f", examined: 3, acted: 1,
+            let work = FakeAutopilotWork(report: SweepReport(folderID: "f", examined: 3, acted: 1,
                                                          refused: 0, failed: 0))
-            let model = model(on: wire)
+            let model = model(on: work)
             await model.load()
             let offer = try offer(model, .screenshots)
             var rule = offer.draft
@@ -152,15 +150,15 @@ final class APresetsFolderCanBeChosenTests: XCTestCase {
             await model.save(rule, in: offer.folder)
 
             XCTAssertEqual(promised, enabled, "a new folder with the rule on is swept, with it off is not")
-            XCTAssertNotNil(wire.saved.last, "precondition: the save happened (enabled \(enabled))")
-            XCTAssertEqual(wire.commands.filter { $0 == .runNow }.count, promised ? 1 : 0,
+            XCTAssertNotNil(work.saved.last, "precondition: the save happened (enabled \(enabled))")
+            XCTAssertEqual(work.count("sweepNow"), promised ? 1 : 0,
                            "the sweep and the sentence disagree (enabled \(enabled))")
         }
     }
 
     func testAFolderAlreadyWatchedPromisesNoSweep() async throws {
         let watched = WatchedFolder(id: "d", path: home + "/Desktop")
-        let model = model(on: AutopilotWire(folders: [watched]))
+        let model = model(on: FakeAutopilotWork(folders: [watched]))
         await model.load()
 
         XCTAssertFalse(model.sweepsAfterSaving(Rule(name: "r", action: .trash), in: watched))

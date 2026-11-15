@@ -21,9 +21,9 @@ import XCTest
 /// argument `RemovableScope` was written to refuse: "those gates live in view
 /// models, and a view model is the wrong place for the last word: the engine
 /// takes a list … and trashes them, so any defect upstream that produces a bad
-/// string produces a deleted folder." This module's own doc says the same in
-/// its own words: the bare-paths entrance was removed because "a caller sending
-/// bare paths gets nothing removed rather than something removed unchecked".
+/// string produces a deleted folder." This module made the same argument when
+/// it deleted its bare-paths entrance: a caller sending something unverifiable
+/// gets nothing removed rather than something removed unchecked (`KeptCopies.swift`).
 /// A plan list whose survivors are in its own removal set is the one remaining
 /// shape of "removed unchecked", and it is the shape whose cost is the content
 /// itself.
@@ -57,13 +57,13 @@ final class TheCopyThatStaysIsNeverAlsoTakenTests: XCTestCase {
         let b = try XCTUnwrap(attributes.attributesOfItem(atPath: second)[.systemFileNumber]
                                 as? UInt64)
         XCTAssertNotEqual(a, b, "the fixture is one file under two names, not two copies")
-        XCTAssertEqual(DuplicateVerification.verify(remove: first, keep: second), .identical)
+        XCTAssertEqual(DuplicateVerification.Batch().verify(remove: first, keep: second), .identical)
     }
 
     /// A plan list that names each copy as the other's survivor takes them both,
     /// and the content stops existing anywhere.
     func testABatchThatNamesEachCopyAsTheOthersSurvivorKeepsOneOfThem() async {
-        let result = await DuplicatesEngine(settings: suiteSealGuard(), trashing: { _ in })
+        let result = await DuplicatesEngine(settings: suiteSealGuard(), trashing: { try FileManager.default.removeItem(at: $0) })
             .trash([DuplicatePlan(remove: first, keep: second),
                     DuplicatePlan(remove: second, keep: first)])
 
@@ -80,7 +80,7 @@ final class TheCopyThatStaysIsNeverAlsoTakenTests: XCTestCase {
     /// this module answers to. Whichever copy the engine decides to keep, the
     /// plan that named it has to come back with a reason beside it.
     func testTheCopyThatIsKeptComesBackAsARefusalRatherThanBeingDropped() async {
-        let result = await DuplicatesEngine(settings: suiteSealGuard(), trashing: { _ in })
+        let result = await DuplicatesEngine(settings: suiteSealGuard(), trashing: { try FileManager.default.removeItem(at: $0) })
             .trash([DuplicatePlan(remove: first, keep: second),
                     DuplicatePlan(remove: second, keep: first)])
 

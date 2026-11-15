@@ -37,8 +37,6 @@ struct FootprintTracker: Sendable {
 
     private var last: [String: Int] = [:]
 
-    init() {}
-
     /// A reading worth logging, or nil.
     ///
     /// The first reading for a label is always worth it — that is the baseline

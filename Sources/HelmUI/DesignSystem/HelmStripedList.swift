@@ -26,8 +26,8 @@ import SwiftUI
 ///
 /// **Why not `.listRowBackground`.** A background painted row by row cannot
 /// tell which row is even and which is odd once a `Section` — with its own
-/// header row — sits above it; `HomebrewSettingsPage`'s health list carries
-/// three sections in one `List` and its package list two; alternation there is `NSTableView`'s own
+/// header row — sits above it; `HomebrewPackageList` carries two sections in
+/// one `List`; alternation there is `NSTableView`'s own
 /// count of the rows it draws, not a colour this code could compute row by
 /// row and get right.
 ///
@@ -55,8 +55,8 @@ import SwiftUI
 /// the list and the rows above it drift apart the day one of them moves. Nothing is measured
 /// at run time: the number is declared, so there is no reading that can be
 /// stale and no second view to keep in step with the list.
-public extension View {
-    func helmStripedList(rowPitch: CGFloat) -> some View {
+extension View {
+    public func helmStripedList(rowPitch: CGFloat) -> some View {
         modifier(HelmStripedListModifier(rowPitch: rowPitch))
     }
 }

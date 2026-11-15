@@ -24,19 +24,22 @@ final class RulerLayer: CALayer {
     override init() {
         super.init()
         mask = clip
-        // The strip: white at half, a hairline of black at 28 %, ticks every 10 pt, every fifth one longer.
-        body.fillColor = NSColor.white.withAlphaComponent(0.5).cgColor
-        body.strokeColor = NSColor.black.withAlphaComponent(0.28).cgColor
         body.lineWidth = 0.8
-        ticks.strokeColor = NSColor.black.withAlphaComponent(0.45).cgColor
         ticks.lineWidth = 0.8
-        pill.fillColor = NSColor.black.withAlphaComponent(0.6).cgColor
         label.font = Self.font
         label.fontSize = Self.font.pointSize
         label.foregroundColor = NSColor.white.cgColor
         label.alignmentMode = .center
         for sublayer in [body, ticks, pill, label] as [CALayer] { strip.addSublayer(sublayer) }
         addSublayer(strip)
+    }
+
+    /// The strip's and the pill's inks, from the table.
+    func paint(_ ink: OverlayInk) {
+        body.fillColor = ink.strip
+        body.strokeColor = ink.stripEdge
+        ticks.strokeColor = ink.ticks
+        pill.fillColor = ink.pill
     }
 
     override init(layer: Any) { super.init(layer: layer) }
@@ -46,10 +49,9 @@ final class RulerLayer: CALayer {
     /// A format style holds no cache, so a language changed between two captures is read at once; and a rounding that
     /// lands on nothing is zero, never a minus zero.
     static func text(degrees: CGFloat) -> String {
-        let locale = Locale(identifier: AppLanguage.current.rawValue)
         let whole = Double(degrees.rounded()) + 0
         return Measurement(value: whole, unit: UnitAngle.degrees)
-            .formatted(.measurement(width: .narrow, usage: .asProvided, numberFormatStyle: .number.precision(.fractionLength(0))).locale(locale))
+            .formatted(.measurement(width: .narrow, usage: .asProvided, numberFormatStyle: .number.precision(.fractionLength(0))).locale(AppLanguage.current.locale))
     }
 
     /// Draws `ruler` in `area`, both in the display's top-left points on a view `height` points tall (this layer's own

@@ -7,6 +7,8 @@ import XCTest
 /// «Трафик идёт через туннель» is a claim, and it is made from two readings that
 /// fail independently. The one thing this must never do is answer «через
 /// туннель» because a request failed.
+///
+/// Past defect: commit a5bb9e0d, «fix(vpn): the tunnel's interface is asked of scutil, by name» (the routing verdict came from a store lookup that could not answer).
 final class TheVerdictNeverGuessesTests: XCTestCase {
 
     func testTrafficIsInTheTunnelWhenTheDefaultRouteIsTheTunnelsInterface() {
@@ -73,22 +75,5 @@ final class TheVerdictNeverGuessesTests: XCTestCase {
     func testNeitherSourceIsStillUnknown() {
         XCTAssertEqual(VPNExitVerdict.of(tunnelInterface: "utun8", primaryInterface: nil,
                                          tunnelIsPrimary: nil, countryCode: "NL"), .unknown)
-    }
-
-    /// A synthesised enum codec can decode a case and silently drop its
-    /// payload — which here would put «через туннель — nowhere» on screen.
-    /// Round-trip every case, the country included.
-    func testEncodingAndDecodingPreservesEveryCaseAndItsCountry() throws {
-        let cases: [VPNExitVerdict] = [
-            .throughTunnel(countryCode: "NL"),
-            .throughTunnel(countryCode: nil),
-            .besideTunnel,
-            .unknown,
-        ]
-        for verdict in cases {
-            let data = try JSONEncoder().encode(verdict)
-            let decoded = try JSONDecoder().decode(VPNExitVerdict.self, from: data)
-            XCTAssertEqual(decoded, verdict)
-        }
     }
 }

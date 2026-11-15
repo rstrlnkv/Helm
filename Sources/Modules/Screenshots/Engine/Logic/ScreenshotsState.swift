@@ -7,7 +7,7 @@ import HelmRuntime
 /// folder macOS saves into (validated), and which of the system's screenshot
 /// boxes are ticked. Settings themselves are the page's own store, and a frame
 /// is never here.
-public struct ScreenshotsState: Codable, Equatable, Sendable {
+public struct ScreenshotsState: Equatable, Sendable {
     /// The folder pictures go to, as a path.
     public var folder: String
     /// Set when macOS names a folder Helm cannot use, and the path above is the
@@ -15,7 +15,7 @@ public struct ScreenshotsState: Codable, Equatable, Sendable {
     public var folderRefused: SaveFolderRefusal?
     public var boxes: [SystemBoxReading]
 
-    public init(folder: String, folderRefused: SaveFolderRefusal?, boxes: [SystemBoxReading]) {
+    init(folder: String, folderRefused: SaveFolderRefusal?, boxes: [SystemBoxReading]) {
         self.folder = folder
         self.folderRefused = folderRefused
         self.boxes = boxes
@@ -32,11 +32,11 @@ public struct ScreenshotsState: Codable, Equatable, Sendable {
 public struct ScreenshotsLocations: Sendable {
     public let home: URL
     public let desktop: URL
-    public let documents: URL
+    let documents: URL
 
     /// `documents` defaults to the home's own, so a test that names a scratch
     /// home has a Documents inside it and never the person's.
-    public init(home: URL, desktop: URL, documents: URL? = nil) {
+    init(home: URL, desktop: URL, documents: URL? = nil) {
         self.home = home
         self.desktop = desktop
         self.documents = documents ?? home.appendingPathComponent("Documents", isDirectory: true)

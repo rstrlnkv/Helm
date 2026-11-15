@@ -39,6 +39,60 @@ struct FakeApps: AppLister {
         if lookupDelay > 0 { Thread.sleep(forTimeInterval: lookupDelay) }
         return opened[path]
     }
+    /// Optional, the way the port is: `nil` is a Trash this process was not allowed
+    /// to read, which is a different fact from an empty one and has its own tests in
+    /// `TheOfferSwitchSaysWhatItIsDoingTests`. A non-optional here would satisfy
+    /// nothing and hand every test the protocol's default of `[]` — with no error
+    /// anywhere.
+    var trashed: [TrashedApp]? = []
+    func trashedApps() -> [TrashedApp]? { trashed }
+    /// A real Mac's two answers, which differ. `ids` is what `contentsOfDirectory`
+    /// finds; `nested` is installed and running and lives one folder down, so only
+    /// LaunchServices knows about it.
+    static func installed(_ ids: Set<String>, nested: Set<String> = []) -> FakeApps {
+        FakeApps(known: ids.union(nested), apps: ids.map {
+            InstalledApp(name: $0, bundleID: $0, path: "/Applications/\($0).app", sizeBytes: 0)
+        })
+    }
+}
+/// A Mac with none of the files a test asks about: nothing exists, nothing weighs
+/// anything, no glob and no listing finds a thing.
+struct NoFiles: FileSystemPort {
+    func exists(_ url: URL) -> Bool { false }
+    func size(_ url: URL) -> Int { 0 }
+    func glob(_ pattern: URL) -> [URL] { [] }
+    func children(of url: URL) -> [URL] { [] }
+}
+/// The opposite: every path exists, at `size` bytes, and nothing is listed.
+struct EveryPathExists: FileSystemPort {
+    var size = 0
+    func exists(_ url: URL) -> Bool { true }
+    func size(_ url: URL) -> Int { size }
+    func glob(_ pattern: URL) -> [URL] { [] }
+    func children(of url: URL) -> [URL] { [] }
+}
+/// Resolves a glob against its siblings and lists a folder's children the way the
+/// system port does, over the paths in `entries` (path → size). A fake that
+/// answers `[]` for a glob cannot see a defect in which names one reaches.
+struct GlobbingFS: FileSystemPort {
+    let entries: [String: Int]
+    func exists(_ url: URL) -> Bool { entries[url.path] != nil }
+    func size(_ url: URL) -> Int { entries[url.path] ?? 0 }
+    func glob(_ pattern: URL) -> [URL] {
+        let dir = pattern.deletingLastPathComponent().path
+        let name = pattern.lastPathComponent
+        return entries.keys
+            .filter { ($0 as NSString).deletingLastPathComponent == dir }
+            .filter { GlobMatch.matches(($0 as NSString).lastPathComponent, pattern: name) }
+            .sorted()
+            .map { URL(fileURLWithPath: $0) }
+    }
+    func children(of url: URL) -> [URL] {
+        entries.keys
+            .filter { ($0 as NSString).deletingLastPathComponent == url.path }
+            .sorted()
+            .map { URL(fileURLWithPath: $0) }
+    }
 }
 final class FakeTrash: TrashPort, @unchecked Sendable {
     var trashed: [String] = []
@@ -51,7 +105,16 @@ final class FakeTrash: TrashPort, @unchecked Sendable {
             return TrashOutcome(succeeded: false, errorCode: 513, message: "denied")
         }
         trashed.append(url.path)
+        // Gone from its place, as a real move leaves it: `HelmTrash.remove` asks.
+        try? FileManager.default.removeItem(at: url)
         return .success
+    }
+}
+/// macOS refusing every path, with 513 (NSFileWriteNoPermissionError, what it
+/// answers for a bundle it will not move) and no sentence worth reading.
+struct RefusesEverything: TrashPort {
+    func trashItem(_ url: URL) -> TrashOutcome {
+        TrashOutcome(succeeded: false, errorCode: 513, message: "denied")
     }
 }
 /// A running app that can actually stop running — and start again.
@@ -137,7 +200,7 @@ final class FakeRunning: RunningAppsPort, @unchecked Sendable {
 /// offered — the removal has its own tests, behind `RemovableScope`.
 ///
 /// A test that wants a refusal, or wants to know what was asked for, wants
-/// `FakeTrash(failing:)`, `MovingTrash` or `BlamingTrash` instead.
+/// `FakeTrash(failing:)`, `MovingTrash` or `RefusesEverything` instead.
 ///
 /// **The claim is enforced rather than measured once.** It used to say that
 /// making this refuse everything with 513 changed no result in this target —
@@ -172,4 +235,15 @@ struct NoRunning: RunningAppsPort {
     func quit(bundleID: String, force: Bool) {
         XCTFail("no test here quits anything — this test wants FakeRunning")
     }
+}
+
+/// A bundle at `app` whose `Info.plist` carries `id`: the engine reads the id from
+/// there, and it is what ties a refusal to the app owning a system extension.
+@discardableResult
+func writeAppBundle(_ app: URL, id: String) throws -> String {
+    let contents = app.appendingPathComponent("Contents")
+    try FileManager.default.createDirectory(at: contents, withIntermediateDirectories: true)
+    try (["CFBundleIdentifier": id] as NSDictionary)
+        .write(to: contents.appendingPathComponent("Info.plist"))
+    return app.path
 }

@@ -4,11 +4,12 @@
 import Foundation
 import HelmContract
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_VPN_Engine
 
-/// **One network event is one re-read. `SCDynamicStore` does not deliver one
-/// event.**
+/// **The notifications that arrive before a re-read runs are one re-read.
+/// `SCDynamicStore` does not deliver one event.**
 ///
 /// Measured in the owner's own `~/Library/Logs/Helm/helm.log`, not reasoned
 /// about: `network state changed; re-reading` arrives in bursts of up to seven
@@ -48,20 +49,9 @@ import XCTest
 /// The count is taken on `.background`, the queue the app runs on, because
 /// coalescing is about time and `VPNWorkQueue.inline` runs a delayed block at
 /// once. It is held until it stops moving before it is read.
+///
+/// Past defect: commit c0fdd318, «fix(vpn): six repairs, from a blip that cost the tunnel to a decoy interface».
 final class ANetworkBlipIsNotSevenSubprocessesTests: XCTestCase {
-
-    /// A counter a `@Sendable` hook can add to.
-    ///
-    /// `ProgressBox` in `HelmTestSupport` is the same lock and the same `Int`
-    /// and it *records* rather than *adds*, so it cannot count calls. This
-    /// belongs beside it; it is here only because `Tests/Support` has another
-    /// writer in it today.
-    private final class Tally: @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        func add() { lock.lock(); count += 1; lock.unlock() }
-        var value: Int { lock.lock(); defer { lock.unlock() }; return count }
-    }
 
     /// What the store delivered when one tunnel came up, on the machine the log
     /// above came from. Twenty rather than seven so that «fewer than one
@@ -82,23 +72,14 @@ final class ANetworkBlipIsNotSevenSubprocessesTests: XCTestCase {
         * (Connected) AAAAAAAA-0000-0000-0000-000000000001 VPN (com.x.work) "work" [VPN:com.x.work]
         """
 
-    private let status = """
-        Connected
-        Extended Status <dictionary> {
-          IPv4 : <dictionary> {
-            InterfaceName : utun4
-          }
-          IsPrimaryInterface : 1
-          Status : 2
-        }
-        """
+    private let status = scutilStatus(primary: true, extra: ["Status : 2"])
 
     /// Waits until `tally` has not moved for `still`, or gives up at `deadline`.
     ///
     /// A single reading taken too early would be *low*, which is the direction
     /// that makes this test pass while the defect is there — so the count is
     /// held until it stops moving rather than read after a fixed sleep.
-    private func settled(_ tally: Tally, still: TimeInterval = 0.4,
+    private func settled(_ tally: LockedCount, still: TimeInterval = 0.4,
                          deadline: TimeInterval = 8) -> Int {
         let started = Date()
         var last = tally.value
@@ -117,21 +98,19 @@ final class ANetworkBlipIsNotSevenSubprocessesTests: XCTestCase {
     }
 
     func testABurstFromTheStoreIsNotOneScutilRunEach() {
-        let runner = FakeRunner()
-        runner.listOutput = list
+        let runner = FakeRunner(list: list)
         runner.statusOutput["work"] = status
-        let listReads = Tally()
+        let listReads = LockedCount()
         // Counted through the fake's own locked hook, on the thread that issued
         // the command: `issued` is a plain array the module's queue appends to,
         // and reading it from here would be both a race and a poll.
-        runner.onRun = { args in if args == ["--nc", "list"] { listReads.add() } }
+        runner.onRun = { args in if args == ["--nc", "list"] { listReads.bump() } }
 
         let network = FakeNetwork()
         let interfaces = FakeInterfaces()
         interfaces.primary = "utun4"
         interfaces.counters = ["utun4": (in: 1_000, out: 2_000)]
-        let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
-                                    namespace: "vpn", backing: InMemoryKeyValueStore())),
+        let engine = VPNEngine(settings: VPNSettings.inMemory(),
                                runner: runner, apps: FakeApps(), network: network,
                                interfaces: interfaces, exit: FakeExit(), speed: FakeSpeed(),
                                work: .background)

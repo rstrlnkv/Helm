@@ -9,6 +9,8 @@ import XCTest
 /// when the module is switched off; the session is the last place that can still
 /// refuse, and it asks before each act. Each case cancels the task at a different
 /// point and has a control that proves the act would otherwise have happened.
+///
+/// Mutant, red here: `deliver` drops the `Task.isCancelled` check before the clipboard.
 final class ACancelledDeliveryReachesNeitherTheBoardNorTheDiskTests: XCTestCase {
 
     /// A clipboard that takes the picture and then cancels the task that is

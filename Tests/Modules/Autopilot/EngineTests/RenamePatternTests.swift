@@ -2,21 +2,21 @@ import Foundation
 import XCTest
 @testable import Module_Autopilot_Engine
 
+private func facts(_ name: String, kind: FileKind = .document,
+                   addedDaysAgo: Double = 0) -> FileFacts {
+    // 2026-07-15 12:00 UTC, so the month bucket is checkable.
+    let now = Date(timeIntervalSince1970: 1_784_116_800)
+    return FileFacts(name: name, kind: kind, bytes: 1,
+                     added: now.addingTimeInterval(-addedDaysAgo * 86_400),
+                     modified: now, now: now)
+}
+
 /// The two actions that compute a name rather than a destination.
 ///
 /// Both are pure string work, and both are where a rule can quietly produce
 /// something the filesystem will not take — an empty name, a name with a
 /// slash in it, a name that is only an extension. Those are the tests.
 final class RenamePatternTests: XCTestCase {
-
-    private func facts(_ name: String, kind: FileKind = .document,
-                       addedDaysAgo: Double = 0) -> FileFacts {
-        // 2026-07-15 12:00 UTC, so the month bucket is checkable.
-        let now = Date(timeIntervalSince1970: 1_784_116_800)
-        return FileFacts(name: name, kind: kind, bytes: 1,
-                         added: now.addingTimeInterval(-addedDaysAgo * 86_400),
-                         modified: now, now: now)
-    }
 
     // MARK: - Rename
 
@@ -64,15 +64,6 @@ final class RenamePatternTests: XCTestCase {
 /// its buckets.
 final class RenamePatternSubstitutionTests: XCTestCase {
 
-    private func facts(_ name: String, kind: FileKind = .document,
-                       addedDaysAgo: Double = 0) -> FileFacts {
-        // 2026-07-15 12:00 UTC, so the month bucket is checkable.
-        let now = Date(timeIntervalSince1970: 1_784_116_800)
-        return FileFacts(name: name, kind: kind, bytes: 1,
-                         added: now.addingTimeInterval(-addedDaysAgo * 86_400),
-                         modified: now, now: now)
-    }
-
     // MARK: - Rename
 
     func testTheTokensAreSubstituted() {
@@ -92,9 +83,9 @@ final class RenamePatternSubstitutionTests: XCTestCase {
         XCTAssertEqual(RenamePattern.apply("{name}-1", to: facts("Makefile")), "Makefile-1")
     }
 
-    /// A counter is what makes a pattern usable on more than one file. It is
-    /// supplied by the caller, because only the caller knows how many came
-    /// before.
+    /// A counter is what makes a pattern usable on more than one file. The
+    /// caller supplies it here; `CounterBook.name(for:facts:in:)` is what the runner
+    /// and the preview use to pick the lowest one the folder does not hold.
     func testTheCounterIsPaddedAndSupplied() {
         let f = facts("shot.png")
         XCTAssertEqual(RenamePattern.apply("{name}-{counter}", to: f, counter: 7),

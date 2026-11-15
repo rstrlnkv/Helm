@@ -1,5 +1,4 @@
 import Foundation
-import HelmRuntime
 import HelmTestSupport
 import XCTest
 @testable import Module_Uninstaller_Engine
@@ -29,14 +28,7 @@ final class ANameIsAGuessNotAnOwnershipQuestionTests: XCTestCase {
 
     override func setUpWithError() throws {
         home = scratchDirectory("nameguess")
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
+        tailTheLog()
     }
 
     private let player = InstalledApp(name: "Player", bundleID: "com.acme.player",
@@ -59,8 +51,7 @@ final class ANameIsAGuessNotAnOwnershipQuestionTests: XCTestCase {
         let engine = UninstallerEngine(home: home, apps: FakeApps(apps: [player]),
                                        fs: FMFileSystem(), trash: FakeTrash(),
                                        running: FakeRunning(running: []))
-        return try await engine.scan(bundleID: player.bundleID, appPath: player.path,
-                                     appName: player.name)
+        return await engine.scan(bundleID: player.bundleID, appName: player.name)
     }
 
     // MARK: -
@@ -114,9 +105,7 @@ final class ANameIsAGuessNotAnOwnershipQuestionTests: XCTestCase {
         let result = try await scan()
 
         XCTAssertEqual(result.leftovers.count, 2, "precondition: the scan really ran")
-        let lines = HelmLog.shared.recentEntries()
-            .filter { $0.category == UninstallerEngine.moduleID }
-            .map(\.message)
+        let lines = loggedLines(UninstallerEngine.moduleID)
         XCTAssertFalse(lines.contains { $0.contains("refused") }, """
             the log blames another app for a candidate nothing judged: \(lines)
             """)

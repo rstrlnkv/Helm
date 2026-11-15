@@ -37,6 +37,14 @@ final class LeftoverActionsTests: XCTestCase {
         XCTAssertFalse(actions.contains(.delete))
     }
 
+    /// A daemon is never deleted from here, writable file or not: unloading it
+    /// needs root, and a file moved out from under a loaded daemon is not a stop.
+    func testAWritableDaemonStillHasNoDelete() {
+        let actions = LeftoverActions.available(
+            for: item(.launchDaemon, .orphaned, path: "/tmp/com.acme.helper.plist", writable: true))
+        XCTAssertFalse(actions.contains(.delete))
+    }
+
     func testDaemonsOfferNothingButReveal() {
         let actions = LeftoverActions.available(for: item(.launchDaemon, .inUse, writable: false))
         XCTAssertEqual(actions, [.reveal])
@@ -65,6 +73,14 @@ final class LeftoverActionsTests: XCTestCase {
         let ext = item(.systemExtension, .orphaned, path: "com.acme.app.network",
                        writable: false)
         XCTAssertEqual(LeftoverActions.available(for: ext), [.systemSettings])
+    }
+
+    /// The reason is macOS's, not an administrator's, even for a third-party
+    /// extension the scan did not mark protected: SIP refuses everyone else.
+    func testAThirdPartySystemExtensionIsWithheldByMacOS() {
+        let ext = item(.systemExtension, .orphaned, id: "com.acme.app.network",
+                       path: "com.acme.app.network", writable: false)
+        XCTAssertEqual(LeftoverActions.whyDeleteIsWithheld(from: ext), .protectedByMacOS)
     }
 
     /// Deleting something that is in use is a different promise from clearing

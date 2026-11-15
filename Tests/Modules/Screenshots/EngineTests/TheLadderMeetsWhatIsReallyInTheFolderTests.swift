@@ -10,6 +10,8 @@ import XCTest
 /// them is written through, none is replaced, and each is one more step up the
 /// ladder. The real writer on a real folder, because what "exists" means for a
 /// dangling link is the file system's answer and not a set of names.
+///
+/// Mutant, red here: the writer's ladder starts at attempt 2.
 final class TheLadderMeetsWhatIsReallyInTheFolderTests: XCTestCase {
 
     private let base = "Screenshot 2026-09-30 at 14.02.11"

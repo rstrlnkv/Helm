@@ -1,5 +1,6 @@
 import XCTest
 import HelmRuntime
+import HelmTestSupport
 
 /// A module must declare the grants its features actually need.
 ///
@@ -13,16 +14,12 @@ import HelmRuntime
 /// A source scan because the descriptor lives in the UI target, which this
 /// test target cannot import, and because the fact worth pinning is the link
 /// between the two files rather than either one alone.
+///
+/// Guards: 8287d151 (Accessibility grant the pointer nudge needs was not declared).
 final class DeclaredPermissionsTests: XCTestCase {
 
     private var moduleRoot: URL {
-        URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // EngineTests
-            .deletingLastPathComponent()   // KeepAwake
-            .deletingLastPathComponent()   // Modules
-            .deletingLastPathComponent()   // Tests
-            .deletingLastPathComponent()   // repo
-            .appendingPathComponent("Sources/Modules/KeepAwake")
+        RepoSource.root.appendingPathComponent("Sources/Modules/KeepAwake")
     }
 
     private func source(_ relativePath: String) throws -> String {

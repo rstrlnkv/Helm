@@ -15,6 +15,8 @@ import XCTest
 /// (ARCHITECTURE.md § Release: everything ships to dev first), and calling it
 /// out would put a notice on the About page of every ordinary user the day a
 /// channel lags.
+///
+/// Past defect: commit 6a9a40a9, «refactor: what the screens say, what they keep, and what they look like», which added `.ahead` for it.
 final class UpdateAheadOfChannelTests: XCTestCase {
 
     private func release(tag: String) -> Data {

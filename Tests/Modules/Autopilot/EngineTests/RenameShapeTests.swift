@@ -10,6 +10,8 @@ import XCTest
 /// test, not a `contains`, and not a list of the tokens somebody thought of:
 /// the literals of the pattern, in order, with at least one character standing
 /// in for the name.
+///
+/// Past defect: fixed in 9e9734fb.
 final class RenameShapeTests: XCTestCase {
 
     // MARK: - One hole

@@ -11,7 +11,7 @@ import Foundation
 /// into one boolean would let a failed request read as «no tunnel», which is a
 /// warning about nothing, or as «through the tunnel», which is a reassurance
 /// nobody checked.
-public enum VPNExitVerdict: Codable, Equatable, Sendable {
+public enum VPNExitVerdict: Equatable, Sendable {
     /// The default route is the tunnel, and this is the **two-letter region
     /// code** the exit answered — `NL`, not «Netherlands». It was spelled
     /// `country:` while holding a code, which is the kind of name a reader
@@ -60,7 +60,7 @@ public enum VPNExitVerdict: Codable, Equatable, Sendable {
     /// that answered; with neither the verdict stays `.unknown`, because a
     /// guess here is either a warning about nothing or a reassurance nobody
     /// checked.
-    public static func of(tunnelInterface: String?, primaryInterface: String?,
+    static func of(tunnelInterface: String?, primaryInterface: String?,
                           tunnelIsPrimary: Bool?, countryCode: String?) -> VPNExitVerdict {
         guard let tunnelInterface else { return .unknown }
         if let primaryInterface {

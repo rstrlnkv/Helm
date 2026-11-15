@@ -25,7 +25,7 @@ public enum PencilGrain {
     /// The grain over part of an image: `grey` is 8-bit, each pixel's ink from 3 (nearly bare, never 0) to 255 (fully inked), its
     /// pixel (x, y) the image's pixel (`pixels.minX + x`, `pixels.minY + y`), top-left origin.
     public struct Mask {
-        public let grey: CGImage
+        let grey: CGImage
         /// Where `grey` sits in the image, in whole pixels.
         public let pixels: CGRect
 

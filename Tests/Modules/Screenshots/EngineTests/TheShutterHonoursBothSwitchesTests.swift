@@ -8,6 +8,7 @@ import XCTest
 /// a zero means off; a value of any other kind is not a decision and means on.
 /// The fake counts the plays, so a shutter that never sounds and one that always
 /// does are both red, and the four combinations are all asked.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/ScreenshotsSettings.swift`: `guard let number = uiAudio as? NSNumber else { return true }` -> `guard let number = uiAudio as? NSNumber else { return false }`.
 final class TheShutterHonoursBothSwitchesTests: XCTestCase {
 
     private func plays(setting: Bool, uiAudio: Any?) -> Int {

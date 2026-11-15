@@ -42,6 +42,8 @@ final class NamespacedStoreTests: XCTestCase {
 /// down with no assertion and no message about once in thirty runs under load.
 /// The thread sanitizer named it: `AutopilotSealTests.plant` against
 /// `InMemoryKeyValueStore.object(forKey:)` on the engine's queue.
+///
+/// Guards: edcba2c0 (the bare dictionary behind the fake store crashed the Autopilot bundle about once in thirty runs).
 final class InMemoryKeyValueStoreThreadingTests: XCTestCase {
 
     /// Written from one thread while another reads, which is the shape of every

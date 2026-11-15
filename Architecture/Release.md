@@ -13,7 +13,7 @@ not git's own top level, one whose own `.git` an ancestor's `core.worktree` can 
 for, or one steered by a `GIT_DIR`/`GIT_WORK_TREE` from the environment; or a history a
 graft or a replacement ref has given a shorter parent chain — rather than substituting a
 number. The gate announces what it computed (`==> Build number: N`) right after, before
-the compile it guards, and `Scripts/package-app.sh:298` writes the same number into the
+the compile it guards, and `Scripts/package-app.sh:297` writes the same number into the
 plist *of the assembled bundle*, so the tree's copy and a shipped bundle's copy disagree
 by design.
 
@@ -30,9 +30,10 @@ A MINOR bump resets PATCH to zero, a MAJOR bump resets both. What makes a line a
 rather than a licence to call any feature a patch is that the whole series — which
 releases, in what order, where it ends — is written down before the first of them ships.
 `CHANGELOG.md` names the line in one italic line under the first section heading it
-ships; that italic line is the only prose a section there gets, and
-`command grep -c '^\*[^*]' CHANGELOG.md` counts them against
-`command grep -c '^## ' CHANGELOG.md` version headings.
+ships, and uses the same single italic line where a version never shipped a build, to say
+where its work went out (`0.11.0`, `0.10.0` and `0.8.0` do); that italic line is the only
+prose a section there gets, and `command grep -c '^\*[^*]' CHANGELOG.md` counts both uses
+against `command grep -c '^## ' CHANGELOG.md` version headings.
 
 While the number is `0.x`, MINOR is the lane the work runs in. `1.0.0` is reserved for a
 Developer ID and notarization — the build opening without `xattr` — plus a settled module
@@ -66,26 +67,29 @@ attached with a `sha256` line for each in the notes, which `Scripts/make-zip.sh`
 `Scripts/make-dmg.sh` each print. The zip is what the in-app updater downloads for a
 silent install; the dmg is the manual drag-install path.
 
-`Scripts/package-app.sh:258` builds
+`Scripts/package-app.sh` builds with
 `swift build -c release --product HelmApp --explicit-target-dependency-import-check error`,
 assembles and signs in `$TMPDIR/helm-package`, and leaves a copy in `build/` for
 inspection. Only the signed copy under `$TMPDIR` is installed: it is the bundle the
 script signed and verified, while `.build/` holds an unsigned one with no usable
 identity at all. `Scripts/make-dmg.sh` and
-`Scripts/make-zip.sh` package that signed bundle and refuse one that does not verify.
+`Scripts/make-zip.sh` package that signed bundle and refuse one that does not verify,
+or one signed with a local identity; both source `Scripts/staged-bundle.sh` for that
+check and the version read (it is sourced, not run by hand, and `package-app.sh` does not source it).
 `Scripts/package-dev.sh` builds through `Scripts/package-app.sh` and installs **Helm Dev**
-beside the real app; its header says why a separate bundle. The release scripts are
+beside the real app; its header says why a separate bundle. `--no-launch` (or `HELM_DEV_NO_LAUNCH=1`) installs without opening it, because a launch writes state and a later step needs the installed bundle untouched; the script also waits up to about 10 s for the running Helm Dev to exit and refuses, leaving the installed copy alone, if it does not. Helm Dev is the crew's copy, with its own bundle identifier and defaults domain, and every intermediate build runs there; the owner's copy is built only from work he has accepted. The release scripts are
 `Scripts/package-app.sh`, `Scripts/make-dmg.sh`, `Scripts/make-zip.sh` and
-`Scripts/package-dev.sh`; `Scripts/flags` and `Scripts/design` produce nothing
-that ships on their own, and neither does `Scripts/test.sh`.
+`Scripts/package-dev.sh`; `Scripts/design` runs inside `Scripts/make-dmg.sh` and
+`Scripts/flags` writes resources the tree commits, so neither is a release step run by
+hand, and `Scripts/test.sh` ships nothing.
 
 The push comes before the release is created, never after: the release is tagged against
 the remote HEAD, so an unpushed commit puts the tag on the wrong one. A bad dev build is
 undone by publishing the next dev number with the reverted code and its digest lines,
 never by deleting or re-tagging a release people may have downloaded. A prerelease user
-who switches to Beta sees "up to date", because Beta reads the last non-prerelease tag,
-which is lower than what they are running, so the switch appears to do nothing until the
-next beta passes them.
+who switches to Beta sees the About card say the build is newer than the channel
+(`UpdateCheck.Outcome.ahead`), because Beta reads the last non-prerelease tag, which is
+lower than what they are running, until the next beta passes them.
 
 Before a release the tree is built from a fresh `git clone`: the manifest is refused whole
 when a declared test path does not exist, so an untracked test directory makes `swift
@@ -101,7 +105,7 @@ for TCC to hang Full Disk Access on, so the permission comes loose on every rebu
 passing strict signature verification says the bundle is valid and not that it is the
 same program TCC granted.
 
-`Scripts/package-app.sh:327` signs ad-hoc (`--sign -`) unless the Mac building it
+`Scripts/package-app.sh` signs with `--sign "$SIGN_IDENTITY"`, which is ad-hoc (`-`) unless the Mac building it
 names an identity of its own (`Scripts/signing-identity.sh`), and a release is always
 ad-hoc — `Scripts/make-zip.sh` and `Scripts/make-dmg.sh` refuse anything else. An ad-hoc
 bundle carries no Team ID and macOS ties a granted permission to the exact binary. A
@@ -120,14 +124,16 @@ to the pane from the first refusal. It is tied to the cdhash like the others, an
 does not survive an ad-hoc rebuild either.
 
 A stable signing identity is the only real fix, and the same purchase is what
-`NEVPNManager`, an `SMAppService` helper and notarization each need.
+an `SMAppService` helper and notarization each need.
 
 ## The updater
 
 `Sources/HelmApp/UpdateService.swift` carries the networking and the published state;
 `UpdateCheck.evaluate` is pure and tested; `Installer.installZip` does the install, and
 `UpdateSwap` and `UpdateHandoff` (`Sources/HelmApp/UpdateSwap.swift`) are the detached
-swap and the note a failure is reported by at the next launch. Their doc comments hold
+swap and the note a failure is reported by at the next launch, in the log and, whether
+logging is on or off, as a sentence on the About page's updates card
+(`UpdateService.unfinishedUpdate`). Their doc comments hold
 the reasons: why the app downloads the zip itself, why the old bundle is moved aside
 before the copy, and why the note is written before the app quits.
 
@@ -137,15 +143,28 @@ passes, and TLS protects the transport rather than the contents. No digest for t
 asset name opens the release page with the reason stated, and a digest that disagrees
 refuses the install outright (`ReleaseDigest`, `Sources/HelmRuntime/ReleaseDigest.swift`),
 and the unpacked bundle's own version is re-read as well, so a mislabelled asset cannot
-be swapped in either.
+be swapped in either. A build whose bundle identifier is not the release's
+(`AppBuild.takesPublishedBuilds`) is sent to the release page before any download, and
+`Installer.installZip` throws `identityMismatch` unless the unpacked bundle's identifier
+is the installed one's. The unzip and the digest run off the main actor
+(`offTheCooperativePool`), and every way out of the download and the install that does not
+hand the files to the swap script removes them.
+
+`UpdateService` takes the two things outside the process as ports, a feed that answers one
+GitHub request and the store the `updateChannel` key is kept in (still the bare key in
+`UserDefaults.standard`, app-wide, not a module setting); a test names both at every
+construction. An answer that comes back for a channel the person has since left is dropped,
+and only a manual check clears the spinner, and only while it is the newest manual check.
 
 ## What shipped
 
 `CHANGELOG.md` at the root of the tree is the canonical English record and is not
 bundled — nothing in `Scripts/package-app.sh` or `Package.swift` names it.
-`Sources/HelmApp/ChangelogData.swift` is the same list inside the app; the two have
+`Sources/HelmAppStrings/ChangelogData.swift` is the same list inside the app; the two have
 drifted about which versions exist before, and `TheChangelogAndTheAppsListAgreeTests`
-now holds them to the same releases and dates. A version heading in
+now holds them to the same releases and dates; the class is on
+`Tests/optional-tests.txt`, so it runs under `HELM_FULL_SUITE=1` or by `--filter`, not in
+a default run. A version heading in
 the file is `## X.Y.Z — YYYY-MM-DD`, one line per change with `**NEW**` / `**UPD**` /
 `**FIX**` first, newest version first. `command grep -c '^### ' CHANGELOG.md` prints zero:
 the file carries no sub-headings at all.
@@ -153,8 +172,8 @@ the file carries no sub-headings at all.
 The text of a changelog entry is written for the person who updated and is not part of
 making the code change. An entry that names a control is read against the running app and
 not only for grammar, because the English string is the key: a wrong name is faithfully
-translated into all seven other languages, and the fix is one key deleted and rewritten in
-eight files.
+translated into all seven other languages, and the fix is one key rewritten in
+`Sources/HelmAppStrings/Changelog.xcstrings` and its symbol in `ChangelogData.swift`.
 
 ## The disk image window
 
@@ -164,7 +183,9 @@ lives in `Scripts/dmg-settings.py`; the two hold the same slot coordinates seen 
 opposite sides, and each says so in its own comment. The reasons for the three drawings,
 the ring radius and the chevron's place, the dev mark, and why `dmgbuild` writes the
 window instead of Finder are in those two files and the header comments of
-`Scripts/make-dmg.sh`.
+`Scripts/make-dmg.sh`. `dmgbuild` is installed from `Scripts/dmg-requirements.txt`, every
+version pinned with its hashes, and the environment is rebuilt when that file's sha256
+changes.
 
 Two numbers there announce nothing when wrong, and `Scripts/dmg-settings.py` says why at
 each: `window_rect` is the *window's*, so it is the background's height plus the title bar,

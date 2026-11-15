@@ -29,6 +29,9 @@ enum UpdateCard: Equatable {
     /// This build is a prerelease ahead of the channel it follows.
     case ahead
     case upToDate
+    /// The self-update of the last launch did not finish, and nothing newer has
+    /// been said since.
+    case unfinishedUpdate
     /// Nothing was decided this session: say when the last check was instead of
     /// claiming to be current.
     case lastChecked
@@ -40,7 +43,7 @@ enum UpdateCard: Equatable {
     /// to read once it knows.
     static func drawn(installState: UpdateService.InstallState, checking: Bool,
                       hasRelease: Bool, hasAhead: Bool,
-                      note: UpdateService.Note?) -> UpdateCard {
+                      note: UpdateService.Note?, hasUnfinishedUpdate: Bool = false) -> UpdateCard {
         if let inFlight = drawnFor(installState) { return inFlight }
         // A check in flight is newer than whatever it is about to replace.
         if checking { return .checking }
@@ -57,7 +60,8 @@ enum UpdateCard: Equatable {
         // Before "up to date", which this state used to be read as: the check
         // reports both, and being ahead is the more specific answer.
         if hasAhead { return .ahead }
-        return note == .upToDate ? .upToDate : .lastChecked
+        if note == .upToDate { return .upToDate }
+        return hasUnfinishedUpdate ? .unfinishedUpdate : .lastChecked
     }
 
     /// The half of the decision an install in flight settles on its own; nil

@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 import HelmRuntime
 import HelmUI
@@ -13,8 +12,8 @@ struct DiskSettingsPage: View {
     @State private var diskAccess: PermissionState = .granted
     @State private var confirming = false
 
-    init(vm: ModuleViewModel) {
-        dvm = DiskViewModel.shared(vm: vm)
+    init(dvm: DiskViewModel) {
+        self.dvm = dvm
     }
 
     var body: some View {
@@ -28,7 +27,7 @@ struct DiskSettingsPage: View {
             // screen used to say nothing at all about that.
             if diskAccess == .denied {
                 HelmPermissionNote(need: .fullDiskAccess, text: DkStr.scanNeedsAccess)
-                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+                    .helmPageStrip()
                 Divider()
             }
             switch dvm.phase {
@@ -48,7 +47,7 @@ struct DiskSettingsPage: View {
         .helmTracksFullDiskAccess($diskAccess)
         .task {
             dvm.expireIfStale()
-            await dvm.loadVolumes()
+            await dvm.appear()
         }
         .animation(HelmMotion.interface, value: dvm.phase)
         // The basket bar inserts a divider and 45 pt under the ring; without
@@ -71,10 +70,10 @@ struct DiskSettingsPage: View {
         // dialog would start asking about `app#3f9a`.
         .confirmationDialog(DkStr.confirmTrash(question),
                             isPresented: $confirming, titleVisibility: .visible) {
-            Button(DkStr.moveToTrash, role: .destructive) {
+            Button(HelmWord.moveToTrash, role: .destructive) {
                 Task { await dvm.emptyBasket() }
             }
-            Button(DkStr.cancel, role: .cancel) {}
+            Button(HelmWord.cancel, role: .cancel) {}
         } message: {
             Text(question.named())
         }
@@ -84,22 +83,14 @@ struct DiskSettingsPage: View {
 
     private var startState: some View {
         ScrollView {
-            VStack(spacing: 12) {
+            VStack(spacing: HelmSpace.s5) {
                 // The same leading pin as the note under it and the cards
                 // below: without a frame the `VStack` centred this one line
                 // over a left-aligned column.
                 Text(DkStr.startHint)
                     .font(HelmText.rowTitle).foregroundStyle(HelmText.quiet)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 4)
-                // Above the cards rather than under them: with the list missing
-                // there are no cards, and the sentence is what the person is
-                // reading the gap for.
-                if dvm.volumeListLost {
-                    Text(DkStr.volumeListLost)
-                        .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                    .padding(.top, HelmSpace.s2)
                 ForEach(dvm.volumes) { volume in
                     volumeCard(volume)
                 }
@@ -110,14 +101,12 @@ struct DiskSettingsPage: View {
                         .frame(maxWidth: .infinity)
                 }
                 .controlSize(.large)
-                .padding(.top, 4)
+                .padding(.top, HelmSpace.s2)
             }
             // 20, the same inset the header, the permission note, the scanning
             // state and the result all use. The centred 744 pt column belongs
-            // to a grouped `Form`, and this page has none: `pageBleeds` is true
-            // precisely because the header must not centre itself over
-            // full-bleed content, so a column here put the cards 32.5 pt right
-            // of the note introducing them at the default window, and 202.5 at
+            // to a grouped `Form`, and this page has none: a column here put the
+            // cards 32.5 pt right of the note introducing them at the default window, and 202.5 at
             // 1400.
             .padding(HelmLayout.formInset)
         }
@@ -127,28 +116,19 @@ struct DiskSettingsPage: View {
         Button {
             Task { await dvm.scan(path: volume.path) }
         } label: {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: HelmSpace.s4) {
                 HStack {
                     Image(systemName: "internaldrive")
                         .foregroundStyle(HelmText.quiet)
                     Text(volume.name).font(HelmText.sectionHeading)
                     Spacer()
-                    Text(formatted(volume.usedBytes) + " / " + formatted(volume.totalBytes))
+                    Text(DkStr.usedOfTotal(volume))
                         .font(HelmText.figureFont)
                         .foregroundStyle(HelmText.quiet)
                 }
-                GeometryReader { proxy in
-                    let ratio = volume.totalBytes > 0
-                        ? Double(volume.usedBytes) / Double(volume.totalBytes) : 0
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.primary.opacity(0.10))
-                        Capsule().fill(Color.accentColor.opacity(0.75))
-                            .frame(width: proxy.size.width * ratio)
-                    }
-                }
-                .frame(height: 6)
-                Text(formatted(volume.freeBytes) + " " + DkStr.free)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                CapacityBar(volume: volume, height: 6)
+                Text(DkStr.freeAmount(volume.freeBytes))
+                    .helmQuietDetail()
             }
             .helmCard()
         }
@@ -163,7 +143,7 @@ struct DiskSettingsPage: View {
     /// nowhere to put Stop; it has a slot for it now.
     private var scanningState: some View {
         HelmBusyState(DkStr.scanning) {
-            Button(DkStr.stop) { dvm.cancel() }
+            Button(HelmWord.stopScan) { dvm.cancel() }
         }
     }
 
@@ -183,21 +163,12 @@ struct DiskSettingsPage: View {
             basketRow
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
+        .helmPageStrip()
     }
 
     /// What the last press said.
-    ///
-    /// **The lost reply comes first, and it is the stale-list wording.** Disk does
-    /// not re-read anything after a removal: the answered path prunes the tree
-    /// with the paths the engine says it moved, so a reply that never came leaves
-    /// the ring and the list showing exactly where the files were *before* the
-    /// press. `HelmRemovalOutcome.unanswered` ends by promising the list is where
-    /// they are now, which is true for the two modules that rescan and not here.
     @ViewBuilder private var removalReport: some View {
-        if dvm.replyLost {
-            HelmRemovalOutcome.unansweredWithStaleList
-        } else if let banner = dvm.banner {
+        if let banner = dvm.banner {
             HelmRemovalOutcome(
                 succeededText: banner,
                 removed: dvm.removedCount,
@@ -208,10 +179,8 @@ struct DiskSettingsPage: View {
 
     @ViewBuilder private var basketRow: some View {
         // **An empty basket draws nothing here, and cannot.** `showsRemovalBar`
-        // is `!basket.isEmpty || banner != nil || replyLost`, and the branch this
-        // used to hold asked for an empty basket with nothing reported — the one
-        // state in which there is no bar to draw it in. «Nothing selected» went
-        // with it, in eight languages.
+        // is `!basket.isEmpty || banner != nil`, so an empty basket with nothing
+        // reported is the one state with no bar to draw it in.
         if !dvm.basket.isEmpty {
             HStack(spacing: HelmSpace.s5) {
                 // A count is not a list. Everything about to be trashed can be
@@ -237,9 +206,11 @@ struct DiskSettingsPage: View {
                 // reply in flight is about — so this is the third door the same
                 // guard covers, dimmed beside the button it sits next to.
                 .disabled(dvm.busy)
-                .help(DkStr.basketContents)
+                // "Basket" was the only place the English UI used the word: no visible
+                // label says it — the bar itself is headed "To remove".
+                .help(HelmWord.showWhatIsMarkedForRemoval)
                 Spacer()
-                Button(DkStr.moveToTrash) { confirming = true }
+                Button(HelmWord.moveToTrash) { confirming = true }
                     .disabled(dvm.busy)
                     .buttonStyle(.borderedProminent)
             }
@@ -248,16 +219,9 @@ struct DiskSettingsPage: View {
 
     // MARK: - Helpers
 
-    private func formatted(_ bytes: Int) -> String {
-        Bytes(bytes)
-    }
-
     private func chooseFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let url = FolderPicker.choose(prompt: nil, startingAt: nil,
+                                            canCreate: false, activate: false) else { return }
         Task { await dvm.scan(path: url.path) }
     }
 }

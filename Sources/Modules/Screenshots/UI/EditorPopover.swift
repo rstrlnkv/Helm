@@ -14,9 +14,12 @@ struct EditorPopover: View {
     let height: CGFloat?
 
     static let width: CGFloat = 232
+    /// The card's side inset, which the colours pop-over wears on all four sides.
+    static let inset = HelmSpace.s5 + HelmSpace.s1
+    /// The room under the last slider.
+    private static let marksRoom = HelmSpace.s6 + HelmSpace.s3
 
-    /// The ink of the words, the marks and the percent, a literal primary colour with an opacity, for the reason `PopoverCard` gives.
-    /// The opacity was set by eye and no test measures its contrast.
+    /// The ink of the words, the marks and the percent, a literal primary colour with an opacity, for the reason `PopoverCard` gives. Measured on the shots, dark over a white picture: 5.03:1 at worst for the words, 4.92:1 for a mark.
     private static let ink = Color.primary.opacity(0.76)
 
     var body: some View { card.popoverCard(height: height, open: model.popoverOpen) }
@@ -31,9 +34,9 @@ struct EditorPopover: View {
                 Slider(value: opacity, in: 0.1...1) { Text(ScStr.opacityLabel) }
             }
         }
-        .padding(.horizontal, HelmSpace.s5 + HelmSpace.s1)
+        .padding(.horizontal, Self.inset)
         .padding(.top, HelmSpace.s5)
-        .padding(.bottom, HelmSpace.s6 + HelmSpace.s3)
+        .padding(.bottom, Self.marksRoom)
         .frame(width: Self.width)
     }
 
@@ -97,13 +100,10 @@ struct EditorPopover: View {
 
     // MARK: The percent
 
-    /// The language Helm speaks, not the Mac's region: the percent sign's place follows the first, like the words beside it. A
-    /// format style is a value and holds no cache, so a language changed between two captures is read at once.
-    private static var locale: Locale { Locale(identifier: AppLanguage.current.rawValue) }
-
-    /// «100 %»: a whole percent, with the space or none that the language puts before the sign.
+    /// «100 %»: a whole percent, with the space or none that the language puts before the sign. The language Helm speaks, not
+    /// the Mac's region: the percent sign's place follows the first, like the words beside it.
     static func opacityText(_ value: Double) -> String {
-        value.formatted(.percent.precision(.fractionLength(0)).locale(locale))
+        value.formatted(.percent.precision(.fractionLength(0)).locale(AppLanguage.current.locale))
     }
 }
 

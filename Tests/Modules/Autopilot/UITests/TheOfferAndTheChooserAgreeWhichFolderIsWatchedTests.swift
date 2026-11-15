@@ -1,6 +1,5 @@
 import HelmRuntime
 import HelmTestSupport
-import HelmUI
 import XCTest
 @testable import Module_Autopilot_Engine
 @testable import Module_Autopilot_UI
@@ -14,6 +13,7 @@ import XCTest
 ///
 /// Every input is on disk in a scratch home, and each is asked of both.
 @MainActor
+/// Past defect: fixed in 4ce355a9.
 final class TheOfferAndTheChooserAgreeWhichFolderIsWatchedTests: XCTestCase {
 
     private var home: URL!
@@ -41,7 +41,7 @@ final class TheOfferAndTheChooserAgreeWhichFolderIsWatchedTests: XCTestCase {
         -> (offer: Bool, chooser: Bool?) {
         let folder = WatchedFolder(id: "w", path: watched)
         let model = AutopilotViewModel(
-            vm: ModuleViewModel(transport: AutopilotWire(folders: [folder])),
+            work: FakeAutopilotWork(folders: [folder]), historyChanges: AsyncStream { _ in },
             presetFolders: FakePresetFolders(home: home.path), home: home.path)
         await model.load()
         let chosen = model.draftFolder(at: candidate)

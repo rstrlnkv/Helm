@@ -1,5 +1,4 @@
 import XCTest
-import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// Three questions about one new query, and the middle one is the point.
@@ -40,21 +39,6 @@ private final class UsesRunner: ProcessRunner, @unchecked Sendable {
     }
 }
 
-private struct FixedLocator: BrewLocator {
-    func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-}
-
-/// Homebrew is not installed, or was uninstalled in a terminal beside this
-/// window — `FSBrewLocator` re-reads the disk at every call, so this is an
-/// ordinary answer and not a broken fixture.
-private struct NoBrew: BrewLocator {
-    func brewPath() -> String? { nil }
-}
-
-private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-}
-
 final class ACaskIsNeverAskedWhatUsesItTests: XCTestCase {
 
     private func engine(_ runner: ProcessRunner) -> HomebrewEngine {
@@ -69,6 +53,13 @@ final class ACaskIsNeverAskedWhatUsesItTests: XCTestCase {
         let answer = engine(runner).dependents(name: "openssl@3", isCask: false)
         XCTAssertEqual(answer, ["aria2", "node"])
         XCTAssertEqual(runner.calls.first, ["uses", "--installed", "--", "openssl@3"])
+    }
+
+    /// Whitespace a shell would have eaten is not part of a package name.
+    func testSurroundingWhitespaceIsNotPartOfAName() {
+        let runner = UsesRunner()
+        runner.stdout = "  aria2  \n\n   \n node \n"
+        XCTAssertEqual(engine(runner).dependents(name: "openssl@3", isCask: false), ["aria2", "node"])
     }
 
     func testACaskCostsNoToolRun() {

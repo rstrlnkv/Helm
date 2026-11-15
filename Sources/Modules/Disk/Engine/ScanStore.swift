@@ -15,31 +15,24 @@ public final class ScanStore: @unchecked Sendable {
 
     public convenience init() { self.init(directory: ScanStore.defaultDirectory) }
 
-    /// A per-process temporary directory under `swift test`, Application Support
-    /// in the app — the answer `ScanJournal.defaultDirectory` next door already
-    /// gives, for the same reason and through the same `TestScratch`.
+    /// `Disk` under `HelmSupport.directory`: a per-process temporary directory under
+    /// `swift test`, Application Support's `Helm` folder in the app.
     ///
     /// **This file is an index of every file name on somebody's volume**, and
     /// without the question every test that renders Disk's page read theirs:
-    /// `DiskViewModel` takes its store as a defaulted argument, so a page built
-    /// through `shared(vm:)` restores whatever that file holds, on a detached task
-    /// that races the render's settle loop. `restoreLastScan` also calls `clear()`
+    /// `DiskViewModel` takes its store as a defaulted argument, so a model built
+    /// by `DiskDescriptor.makeModule`, which passes no store, restores whatever
+    /// that file holds once the page calls `appear()`, off the cooperative pool, racing
+    /// the render's settle loop. `restoreLastScan` also calls `clear()`
     /// when the saved root has gone, so a suite run could *delete* their cache
     /// and not only read it. `TheSuiteDoesNotReadTheUsersLastScanTests` carries
     /// what it cost the ratchets, in layers and in seconds.
     ///
-    /// Resolved once. Every `ScanStore()` would otherwise ask, and asking sweeps
-    /// `$TMPDIR` — a walk that belongs to the process, not to each store built in
-    /// it.
-    private static let defaultDirectory: URL = {
-        if TestProcess.isRunning { return TestScratch(prefix: "helm-disk-store-").directory() }
-        let base = FileManager.default.urls(for: .applicationSupportDirectory,
-                                            in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSHomeDirectory() + "/Library/Application Support")
-        return base.appendingPathComponent("Helm/Disk", isDirectory: true)
-    }()
+    /// Resolved once, as `HelmSupport.directory` is.
+    private static let defaultDirectory: URL =
+        HelmSupport.directory.appendingPathComponent("Disk", isDirectory: true)
 
-    public var fileURL: URL { directory.appendingPathComponent("last-scan.json") }
+    var fileURL: URL { directory.appendingPathComponent("last-scan.json") }
 
     /// 0700 on the folder and 0600 on the file, through `PrivateFile`: this
     /// cache is a full index of file names on the volume. `~/Library` is already
@@ -58,13 +51,13 @@ public final class ScanStore: @unchecked Sendable {
     /// nothing on the screen would ever mention it.
     ///
     /// It reports to the log rather than upward. There is nobody upward:
-    /// `saveDetached` is the app's only caller and it is a detached task with no
+    /// `saveDetached` is the app's only caller and it is a fire-and-forget task with no
     /// continuation, by construction and for a good reason — the encode is 81 ms
     /// of a full index of the volume and it used to run on the main actor. The
     /// log is a surface the person can open (`LogView` shows the tail live), so
     /// a refusal reaches somebody without a new sentence in eight languages
     /// claiming a failure they cannot act on.
-    public func save(_ result: ScanResult, at date: Date = Date()) {
+    func save(_ result: ScanResult, at date: Date = Date()) {
         if !PrivateFile.writeMakingTheFolder(Cached(result: result, savedAt: date), at: fileURL) {
             HelmLog.shared.warn(DiskEngine.moduleID,
                                 "the measured tree could not be saved — the next launch opens on "
@@ -74,7 +67,16 @@ public final class ScanStore: @unchecked Sendable {
 
     public func load() -> Cached? {
         guard let data = try? Data(contentsOf: fileURL) else { return nil }
-        return try? JSONDecoder().decode(Cached.self, from: data)
+        do {
+            return try JSONDecoder().decode(Cached.self, from: data)
+        } catch {
+            // A missing file is the ordinary first launch and stays silent; one
+            // that is there and will not decode is a measurement lost. The file
+            // stays, and no path is named.
+            HelmLog.shared.warn(DiskEngine.moduleID,
+                                "the saved measurement could not be read — the page opens without it")
+            return nil
+        }
     }
 
     /// The same read, off whatever actor asked for it.
@@ -84,16 +86,11 @@ public final class ScanStore: @unchecked Sendable {
     /// happen on the main actor, so opening Disk Space froze for a tenth of a
     /// second and every scan and every basket emptying froze again.
     public func loadDetached() async -> Cached? {
-        let url = fileURL
-        return await Task.detached(priority: .userInitiated) {
-            guard let data = try? Data(contentsOf: url) else { return nil }
-            return try? JSONDecoder().decode(Cached.self, from: data)
-        }.value
+        await offTheCooperativePool { self.load() }
     }
 
     public func saveDetached(_ result: ScanResult, at date: Date = Date()) {
-        let store = self
-        Task.detached(priority: .utility) { store.save(result, at: date) }
+        Task { await offTheCooperativePool(qos: .utility) { self.save(result, at: date) } }
     }
 
     public func clear() { try? FileManager.default.removeItem(at: fileURL) }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Helm
 
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_VPN_Engine
@@ -14,6 +15,8 @@ import HelmRuntime
 /// undoes launches it recorded. That is one gate rather than two, and it is the
 /// only place a check is possible at all, since at quit time there is no longer a
 /// bundle to read.
+///
+/// Past defect: commit 1fe5e099, «fix(vpn): a rule is bound to a signature, and a forged plist stops summoning dialogs».
 final class AForgedBundleCannotDropTheTunnelTests: XCTestCase {
 
     private let bundleID = "com.example.app"
@@ -117,12 +120,10 @@ final class AForgedBundleCannotDropTheTunnelTests: XCTestCase {
     }
 
     /// A rule stored before identities existed refuses, and says so in the log —
-    /// a rule that has quietly stopped firing is the failure ARCHITECTURE.md §
-    /// VPN is about.
+    /// a rule that has quietly stopped firing is the failure (ARCHITECTURE.md §
+    /// VPN) is about.
     func testARuleWithNoRecordedIdentityRefusesAndSaysSo() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         let apps = FakeApps()
         let runner = FakeRunner()
@@ -134,10 +135,10 @@ final class AForgedBundleCannotDropTheTunnelTests: XCTestCase {
 
         XCTAssertTrue(runner.issued.filter { $0.count > 1 && $0[1] == "start" }.isEmpty,
                       "a rule with no identity on record fired anyway")
-        let lines = HelmLog.shared.recentEntries().filter { $0.category == "vpn" }
-        XCTAssertTrue(lines.contains { $0.message.contains("noIdentityRecorded") },
-                      "nothing in the log says why the rule did nothing: \(lines.map(\.message))")
-        XCTAssertFalse(lines.contains { $0.message.contains(bundleID) },
+        let lines = loggedLines("vpn")
+        XCTAssertTrue(lines.contains { $0.contains("noIdentityRecorded") },
+                      "nothing in the log says why the rule did nothing: \(lines)")
+        XCTAssertFalse(lines.contains { $0.contains(bundleID) },
                        "and the bundle id reached the diagnostic file in clear")
         XCTAssertNil(engine.lastAutomation)
     }

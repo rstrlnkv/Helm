@@ -10,8 +10,9 @@ import XCTest
 /// build a bundle claiming to be somebody else's app, launch it and quit it, and
 /// everything in Helm that watches applications by identifier alone believed it.
 /// The signing identifier and team identifier come from a signature instead, and
-/// the read is here rather than in a module because two targets need it — the app
-/// picker records one, the VPN engine's app observer checks one.
+/// the read is here rather than in a module because `HelmRuntime` reads it too and
+/// cannot import one — VPN's settings page records one from what the app picker
+/// returned, the VPN engine's app observer checks one.
 final class ABundleIdIsNotAnIdentityTests: XCTestCase {
 
     /// `/bin/ls` is Apple-signed on every macOS and its designated identifier is

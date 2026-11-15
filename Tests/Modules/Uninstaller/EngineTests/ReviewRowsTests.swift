@@ -1,6 +1,17 @@
 import XCTest
 @testable import Module_Uninstaller_Engine
 
+private let tool = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
+                                path: "/Applications/Tool.app", sizeBytes: 900)
+
+private func leftover(_ path: String, _ bytes: Int) -> Leftover {
+    Leftover(path: path, kind: .caches, sizeBytes: bytes, matchedByName: false)
+}
+
+private func group(_ leftovers: [Leftover]) -> UninstallGroup {
+    UninstallGroup(app: tool, leftovers: leftovers, running: false)
+}
+
 /// The review screen is the last one before deletion — there is no dialog after
 /// it — and it never said the app itself was going.
 ///
@@ -14,18 +25,6 @@ import XCTest
 /// invariant is checkable: everything `paths` will trash is a row somebody was
 /// shown.
 final class ReviewRowsTests: XCTestCase {
-
-    private let tool = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
-                                    path: "/Applications/Tool.app", sizeBytes: 900)
-
-    private func leftover(_ path: String, _ bytes: Int) -> Leftover {
-        Leftover(path: path, kind: .caches, sizeBytes: bytes, matchedByName: false)
-    }
-
-    private func group(_ leftovers: [Leftover]) -> UninstallGroup {
-        UninstallGroup(app: tool, leftovers: leftovers, running: false)
-    }
-
     /// The case the old screen was emptiest in: an app with nothing beside it
     /// showed "No extra files found." and not one word about the app.
     func testAnAppWithNoLeftoversStillShowsItsBundle() {
@@ -56,31 +55,11 @@ final class ReviewRowsTests: XCTestCase {
 /// The review's rows in their order: the bundle comes first and is the one row that
 /// cannot be ticked, and the leftovers keep the order the scan put them in.
 final class ReviewRowsOrderTests: XCTestCase {
-
-    private let tool = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
-                                    path: "/Applications/Tool.app", sizeBytes: 900)
-
-    private func leftover(_ path: String, _ bytes: Int) -> Leftover {
-        Leftover(path: path, kind: .caches, sizeBytes: bytes, matchedByName: false)
-    }
-
-    private func group(_ leftovers: [Leftover]) -> UninstallGroup {
-        UninstallGroup(app: tool, leftovers: leftovers, running: false)
-    }
-
     func testTheBundleIsTheFirstRow() {
         let rows = UninstallPlan.reviewRows(group([leftover("/Users/x/Library/Caches/a", 10)]))
 
         XCTAssertEqual(rows.first, .bundle(app: tool),
                        "the last screen before deletion does not name the app it deletes")
-    }
-
-    /// A row with a checkbox is a row that can be declined. This one cannot.
-    func testTheBundleRowIsNotTickable() {
-        let rows = UninstallPlan.reviewRows(group([leftover("/Users/x/Library/Caches/a", 10)]))
-
-        XCTAssertEqual(rows.filter(\.isTickable).map(\.id), ["/Users/x/Library/Caches/a"],
-                       "the bundle row offers a choice the plan does not honour")
     }
 
     func testLeftoversKeepTheOrderTheScanPutThemIn() {

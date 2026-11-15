@@ -48,7 +48,7 @@ public enum AnnotationTool: String, CaseIterable, Sendable, Equatable {
     case emoji
 
     /// Drawn through the points of a drag rather than from its two ends.
-    public var isFreehand: Bool { self == .pen || self == .pencil || self == .highlighter }
+    var isFreehand: Bool { self == .pen || self == .pencil || self == .highlighter }
 
     /// Takes the pencil's grain (`PencilGrain`): the one predicate the screen and the export both ask, so neither
     /// can give the Pen or the Marker a grain the other does not.
@@ -98,7 +98,7 @@ public enum AnnotationThickness: Int, CaseIterable, Sendable, Equatable {
     /// The step's width in points under a tool: the stroke's width, and for the arrow the
     /// shaft at its thickest, of which the head is three, and for the blur the block's side, for the text the font's size,
     /// for a step the circle's diameter, for the magnifier the ring's width, for the emoji the font's size. The spotlight has no steps and reads 0 in each. The one table the screen and the export read.
-    public func points(for tool: AnnotationTool) -> CGFloat {
+    func points(for tool: AnnotationTool) -> CGFloat {
         let steps: [CGFloat]
         switch tool {
         case .pen: steps = [1.5, 3, 6]
@@ -130,7 +130,7 @@ public struct AnnotationStyle: Sendable, Equatable {
 
     /// The default step is the middle one, which is what a tool nobody picked a step for reads
     /// from the store (`EditorMemory`), so `standard` is that tool's style and not a second default.
-    public init(color: AnnotationInk? = nil, thickness: AnnotationThickness = .medium, filled: Bool = false,
+    init(color: AnnotationInk? = nil, thickness: AnnotationThickness = .medium, filled: Bool = false,
                 opacity: Double = 1) {
         self.color = color
         self.thickness = thickness
@@ -166,13 +166,13 @@ public struct Annotation: Sendable, Equatable {
     public typealias ID = Int
 
     public let tool: AnnotationTool
-    public let start: CGPoint
-    public let end: CGPoint
+    let start: CGPoint
+    let end: CGPoint
     /// The freehand path of the pen, the pencil and the highlighter, first point to last; empty for the other tools.
     public let points: [CGPoint]
     public let style: AnnotationStyle
     /// What the text tool wrote; nil for every other tool. Never in a log line: it is somebody's words.
-    public let text: String?
+    let text: String?
     /// Nothing outside `AnnotationEditing` gives one; 0 is the id of a value made by hand.
     public let id: ID
 
@@ -305,14 +305,14 @@ public struct Annotation: Sendable, Equatable {
     /// How much of the ink the marker lets through: 60 %. The multiply is what keeps text readable.
     static let markerAlpha: CGFloat = 0.6
     /// The most points any freehand trail (pen, pencil or marker) keeps; a longer drag is thinned, never grown.
-    public static let maxPoints = 1024
+    static let maxPoints = 1024
     /// The nearest a new freehand point may come to the last kept one, in points; a
     /// nearer pointer is only the tip of the stroke until it is this far.
     static let freehandGap: CGFloat = 2
 
     /// Painted as a solid shape rather than stroked: the arrow and the step always, and a rectangle or
     /// an ellipse when the style says filled.
-    public var isFilled: Bool {
+    var isFilled: Bool {
         tool == .arrow || tool == .step || (style.filled && (tool == .rectangle || tool == .ellipse))
     }
 
@@ -354,7 +354,7 @@ public struct Annotation: Sendable, Equatable {
     /// the nearest multiple of 45° for the straight ones, length kept. The pen and the pencil
     /// ignores it, and the magnifier is always the circle's square, ⇧ or not. The caller passes the **live** flag of the event in hand. With `bounds`
     /// a box with no travel on an axis grows to the side that has more room there.
-    public static func constrained(_ tool: AnnotationTool, from start: CGPoint, to end: CGPoint,
+    static func constrained(_ tool: AnnotationTool, from start: CGPoint, to end: CGPoint,
                                    shift: Bool, within bounds: CGRect? = nil) -> CGPoint {
         guard shift || tool == .magnifier else { return end }
         let dx = end.x - start.x, dy = end.y - start.y
@@ -377,7 +377,7 @@ public struct Annotation: Sendable, Equatable {
     /// Whether there is anything to draw: a click that never moved is not an
     /// arrow, and a rectangle with no width or no height is a line the person did
     /// not ask for. Not finite is not usable either.
-    public var isUsable: Bool {
+    var isUsable: Bool {
         guard ([start.x, start.y, end.x, end.y] + points.flatMap { [$0.x, $0.y] }).allSatisfy(\.isFinite)
         else { return false }
         switch tool {

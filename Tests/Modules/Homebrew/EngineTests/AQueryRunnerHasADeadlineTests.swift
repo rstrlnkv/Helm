@@ -10,6 +10,7 @@ import HelmRuntime
 ///
 /// The subject must really hang: a fake that answers synchronously makes a test
 /// of a deadline vacuous. `/bin/sleep` writes nothing and stays for 30 s.
+/// Kept: guards the defect fixed in 882fe986 fix(homebrew): the batch — a hang has a deadline, a press has an answer, a phase has a name.
 final class AQueryRunnerHasADeadlineTests: XCTestCase {
 
     func testAHungQueryComesBackAsATimeoutNotNever() {
@@ -41,6 +42,20 @@ final class AQueryRunnerHasADeadlineTests: XCTestCase {
         XCTAssertTrue(result.stdout.isEmpty, "a query that never answered came back with bytes")
         XCTAssertLessThan(Date().timeIntervalSince(started), 10,
                           "the bytes query waited past the runner's deadline")
+    }
+
+    /// `brew doctor` goes through `runCapturingDiagnostics`, which is `HelmProcess`'s
+    /// merged read now, and must keep the deadline: a hung doctor is a timeout
+    /// with no output, never a wait.
+    func testTheDiagnosticsQueryHasTheSameDeadline() {
+        let runner = ShellProcessRunner(queryTimeout: 0.3)
+        let started = Date()
+        let result = runner.runCapturingDiagnostics("/bin/sleep", ["30"], env: [:])
+        XCTAssertEqual(result.status, HelmProcess.timedOutStatus,
+                       "a hung `brew doctor` returned something other than the named timeout")
+        XCTAssertTrue(result.output.isEmpty, "a doctor that never answered came back with output")
+        XCTAssertLessThan(Date().timeIntervalSince(started), 10,
+                          "the diagnostics query waited past the runner's deadline")
     }
 
     /// The default is not a test value: it has to clear the slowest real query

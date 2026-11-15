@@ -35,7 +35,7 @@ public struct HotkeyCombination {
     /// **The one predicate for "this can be a shortcut"**: at least one of the
     /// four. The recorder asks it of what it captured and `init?` of what it
     /// read, so the row can never draw a pair the recorder would have refused.
-    public static func carriesAModifier(_ mask: Int) -> Bool {
+    static func carriesAModifier(_ mask: Int) -> Bool {
         (1...0xFFFF).contains(mask) && UInt32(mask) & shortcutModifiers != 0
     }
 

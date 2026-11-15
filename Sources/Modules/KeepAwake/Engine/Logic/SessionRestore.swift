@@ -30,6 +30,40 @@ enum SessionRestore {
         case indefinite
         /// A session with this much of it left.
         case remaining(TimeInterval)
+        /// The record says a session is on and its dates are not ones Helm writes.
+        /// Refused, like a deadline out of range: not a session.
+        case unreadable
+    }
+
+    /// One stored date, parsed once, where it enters.
+    enum Stored: Equatable {
+        /// No key, or exactly 0: what `rememberSession` writes for nil.
+        case absent
+        case at(Date)
+        /// Not a date Helm writes: NaN, an infinity, a negative, a value that is no number.
+        case unreadable
+
+        init(_ raw: Any?) {
+            guard let raw else { self = .absent; return }
+            guard let seconds = raw as? Double else { self = .unreadable; return }
+            if seconds == 0 { self = .absent; return }
+            self = seconds.isFinite && seconds > 0
+                ? .at(Date(timeIntervalSinceReferenceDate: seconds)) : .unreadable
+        }
+
+        var date: Date? { if case let .at(date) = self { date } else { nil } }
+    }
+
+    /// The same question asked of the stored record itself. A date that is not
+    /// one Helm writes, or a start with no end, is not read as «no deadline»:
+    /// that is an indefinite session, the Mac held awake on a number nobody wrote.
+    /// Every writer stores the two dates together.
+    static func decide(manualOn: Bool, start: Stored, end: Stored, now: Date) -> Decision {
+        guard manualOn else { return .none }
+        switch (start, end) {
+        case (.unreadable, _), (_, .unreadable), (.at, .absent): return .unreadable
+        default: return decide(manualOn: true, startDate: start.date, endDate: end.date, now: now)
+        }
     }
 
     /// - Parameters:

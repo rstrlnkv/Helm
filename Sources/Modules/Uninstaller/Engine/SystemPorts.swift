@@ -5,10 +5,10 @@ import HelmRuntime
 
 // MARK: - App listing
 
-final class WorkspaceAppLister: AppLister {
+public final class WorkspaceAppLister: AppLister {
     private let home: URL
     private let fs: FileSystemPort
-    init(home: URL, fs: FileSystemPort) { self.home = home; self.fs = fs }
+    public init(home: URL, fs: FileSystemPort) { self.home = home; self.fs = fs }
 
     private var searchDirs: [URL] {
         [URL(fileURLWithPath: "/Applications"),
@@ -17,21 +17,25 @@ final class WorkspaceAppLister: AppLister {
          home.appendingPathComponent("Applications/Setapp")]
     }
 
-    func installedBundleIDs() -> Set<String> {
+    public func installedBundleIDs() -> Set<String> {
         var ids: Set<String> = []
         for dir in searchDirs {
             guard let items = try? FileManager.default.contentsOfDirectory(
                 at: dir, includingPropertiesForKeys: nil) else { continue }
             for app in items where app.pathExtension == "app" {
-                let info = app.appendingPathComponent("Contents/Info.plist")
-                if let id = NSDictionary(contentsOf: info)?["CFBundleIdentifier"] as? String,
-                   !id.isEmpty { ids.insert(id) }
+                // A bulk read of file contents: the pool goes inside the iteration
+                // (ARCHITECTURE.md § Module pattern).
+                autoreleasepool {
+                    let info = app.appendingPathComponent("Contents/Info.plist")
+                    if let id = NSDictionary(contentsOf: info)?["CFBundleIdentifier"] as? String,
+                       !id.isEmpty { ids.insert(id) }
+                }
             }
         }
         return ids
     }
 
-    func isKnownToSystem(bundleID: String) -> Bool {
+    public func isKnownToSystem(bundleID: String) -> Bool {
         NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) != nil
     }
 
@@ -46,7 +50,7 @@ final class WorkspaceAppLister: AppLister {
     /// second time to group it by id would double that for an answer
     /// LaunchServices gives more completely — it registers `/Applications`
     /// itself, so a bundle there that it has never heard of does not arise.
-    func installedPaths(forBundleID id: String) -> [String] {
+    public func installedPaths(forBundleID id: String) -> [String] {
         NSWorkspace.shared.urlsForApplications(withBundleIdentifier: id)
             .map(\.path)
             .filter { InstalledLocation.isInstalled(path: $0, home: home.path) }
@@ -65,11 +69,19 @@ final class WorkspaceAppLister: AppLister {
     /// the name list for the same 53; on an APFS volume with `mdutil -i off` a
     /// copy of Calculator with its mtime set to 2020-01-02 answered that mtime
     /// and its names (15) did not carry the attribute.
-    func lastOpened(path: String) -> Date? {
+    public func lastOpened(path: String) -> Date? {
         guard let item = MDItemCreate(kCFAllocatorDefault, path as CFString),
               let names = MDItemCopyAttributeNames(item) as? [String],
               names.contains(kMDItemLastUsedDate as String) else { return nil }
         return MDItemCopyAttribute(item, kMDItemLastUsedDate) as? Date
+    }
+
+    /// What a failed read of the Trash means: no Trash at all is an empty one and
+    /// says nothing, anything else is a refusal that is logged and answered `nil`.
+    static func trashReadFailure(code: Int) -> (warning: String?, apps: [TrashedApp]?) {
+        code == NSFileReadNoSuchFileError
+            ? (nil, [])
+            : ("the Trash could not be read: \(code)", nil)
     }
 
     /// The user's own Trash only. Per-volume `/Volumes/*/.Trashes/<uid>` is left
@@ -82,12 +94,12 @@ final class WorkspaceAppLister: AppLister {
     /// offer, and the answer is no.
     ///
     /// **A read Helm was not allowed to make is `nil`, not empty.** That is the
-    /// Full Disk Access case, which is every install (CLAUDE.md), and folded into
+    /// Full Disk Access case, which is every local install (ARCHITECTURE.md § Signing and grants), and folded into
     /// `[]` it made the switch on the Leftovers tab say on over a Trash nothing
     /// could see. A Trash that is simply *not there* — a fresh account has none
     /// until something is deleted — is empty rather than nil, or the page would
     /// report a missing permission to somebody who has all of them.
-    func trashedApps() -> [TrashedApp]? {
+    public func trashedApps() -> [TrashedApp]? {
         let trash = home.appendingPathComponent(".Trash", isDirectory: true)
         let items: [URL]
         do {
@@ -98,21 +110,32 @@ final class WorkspaceAppLister: AppLister {
             // silence to whoever opens the log, and they want different answers:
             // the first is usually Full Disk Access, which every install takes
             // away again. The path is the user's home and is not written.
-            let code = (error as NSError).code
-            HelmLog.shared.warn(UninstallerEngine.moduleID,
-                                "the Trash could not be read: \(code)")
-            return code == NSFileReadNoSuchFileError ? [] : nil
+            let refusal = Self.trashReadFailure(code: (error as NSError).code)
+            if let warning = refusal.warning {
+                HelmLog.shared.warn(UninstallerEngine.moduleID, warning)
+            }
+            return refusal.apps
         }
         return items
             .filter { $0.pathExtension == "app" }
             .compactMap { app in
-                let info = app.appendingPathComponent("Contents/Info.plist")
-                return TrashedAppIdentity.of(path: app.path,
-                                             info: NSDictionary(contentsOf: info) as? [String: Any])
+                // Inside the iteration, and only the extracted identity leaves it
+                // (ARCHITECTURE.md § Module pattern).
+                autoreleasepool {
+                    let info = app.appendingPathComponent("Contents/Info.plist")
+                    return TrashedAppIdentity.of(path: app.path,
+                                                 info: NSDictionary(contentsOf: info) as? [String: Any])
+                }
             }
     }
 
-    func installedApps() -> [InstalledApp] {
+    /// One `opendir`, so the press that asks reads no `Info.plist` on main. A
+    /// missing Trash lists as empty and stays readable, as in `trashedApps()`.
+    public func trashIsReadable() -> Bool {
+        DirectoryListing.contents(of: home.appendingPathComponent(".Trash", isDirectory: true)) != .refused
+    }
+
+    public func installedApps() -> [InstalledApp] {
         let fm = FileManager.default
         var seen = Set<String>()
         var out: [InstalledApp] = []
@@ -129,16 +152,21 @@ final class WorkspaceAppLister: AppLister {
             for app in items where app.pathExtension == "app" {
                 guard !seen.contains(app.path) else { continue }
                 seen.insert(app.path)
-                let info = app.appendingPathComponent("Contents/Info.plist")
-                let dict = NSDictionary(contentsOf: info)
-                guard let bundleID = dict?["CFBundleIdentifier"] as? String, !bundleID.isEmpty else { continue }
+                // One `Info.plist` per bundle: the pool goes inside the iteration and
+                // only the two Strings leave it (ARCHITECTURE.md § Module pattern).
+                let plist: (bundleID: String, name: String?)? = autoreleasepool {
+                    let info = app.appendingPathComponent("Contents/Info.plist")
+                    let dict = NSDictionary(contentsOf: info)
+                    guard let bundleID = dict?["CFBundleIdentifier"] as? String, !bundleID.isEmpty else { return nil }
+                    return (bundleID, (dict?["CFBundleDisplayName"] as? String)
+                        ?? (dict?["CFBundleName"] as? String))
+                }
+                guard let bundleID = plist?.bundleID else { continue }
                 if !SystemApp.isSystem(bundleID: bundleID), Self.leadsElsewhere(app, inside: folder) {
                     linked += 1
                     continue
                 }
-                let name = (dict?["CFBundleDisplayName"] as? String)
-                    ?? (dict?["CFBundleName"] as? String)
-                    ?? app.deletingPathExtension().lastPathComponent
+                let name = plist?.name ?? app.deletingPathExtension().lastPathComponent
                 // Size 0: `appSizes()` fills these in afterwards, so the list
                 // appears at once instead of after a walk of every bundle.
                 out.append(InstalledApp(name: name, bundleID: bundleID,
@@ -186,7 +214,7 @@ final class WorkspaceAppLister: AppLister {
     /// `/System/Volumes/Preboot/Cryptexes/App/…`. Its row carries no checkbox and
     /// `setChecked` refuses the id (`SystemApp`), so it is not an offer to remove
     /// anything and there is nothing to withdraw — dropping it would only take the
-    /// row that says «System» away from a person who can see the app in Finder.
+    /// row that says «System app» away from a person who can see the app in Finder.
     private static func leadsElsewhere(_ app: URL, inside folder: URL) -> Bool {
         app.resolvingSymlinksInPath().standardizedFileURL.path
             != folder.appendingPathComponent(app.lastPathComponent).path
@@ -194,9 +222,12 @@ final class WorkspaceAppLister: AppLister {
 
     /// Measured in parallel: the walks are independent, and one slow bundle
     /// (Xcode, 3.2 s here) otherwise holds up the other thirty-eight.
-    func appSizes(_ apps: [InstalledApp]) -> [String: Int] {
+    public func appSizes(_ apps: [InstalledApp]) -> [String: Int] {
         let fs = self.fs
-        var sizes: [String: Int] = [:]
+        // `nonisolated(unsafe)`: the compiler cannot see `lock`, and the shape it
+        // objects to is the one wanted — one write per index under the lock, and
+        // the read below runs after `concurrentPerform` has joined.
+        nonisolated(unsafe) var sizes: [String: Int] = [:]
         let lock = NSLock()
         DispatchQueue.concurrentPerform(iterations: apps.count) { index in
             let app = apps[index]
@@ -258,9 +289,9 @@ public struct WorkspaceRunningApps: RunningAppsPort {
     /// `runningApplications(withBundleIdentifier:)` reads AppKit's own mutable
     /// list of running applications, and reading it off the main thread is what
     /// killed the VPN engine over four releases (ARCHITECTURE.md § Running
-    /// applications). Both callers here are off it: the scan runs inside
-    /// `offTheCooperativePool`, and `quit` arrives on the transport's pool —
-    /// while this very type is terminating applications, which is to say while
+    /// applications). All callers here are off it: the scan, each
+    /// quit and each poll of `waitUntilGone` run inside `offTheCooperativePool`
+    /// — while this very type is terminating applications, which is to say while
     /// that list is being mutated.
     ///
     /// The hop lives here rather than at the call sites because this is the
@@ -285,19 +316,7 @@ public struct WorkspaceRunningApps: RunningAppsPort {
     }
 }
 
-// MARK: - Factory
-
-public struct UninstallerSystemPorts {
-    public let fs = FMFileSystem()
-    public let trash = FMTrash()
-    public let running = WorkspaceRunningApps()
-    public let apps: AppLister
-    public init(home: URL) {
-        self.apps = WorkspaceAppLister(home: home, fs: FMFileSystem())
-    }
-}
-
-/// Both uninstaller checks go through the shared CLI in HelmRuntime.
+/// The one question, `activeExtensionHosts`, goes through the shared CLI in HelmRuntime.
 public struct SystemExtensionLister: SystemExtensionPort {
     public init() {}
     /// `hostIdentifiersIfAnswered`, never the folded reader: a tool that did not
@@ -306,4 +325,10 @@ public struct SystemExtensionLister: SystemExtensionPort {
     public func activeExtensionHosts() -> Set<String>? {
         SystemExtensionCLI.hostIdentifiersIfAnswered()
     }
+}
+
+/// The file probe `PermissionCheck` reads for the settings pages.
+public struct FullDiskAccessProbe: FullDiskAccessPort {
+    public init() {}
+    public func fullDiskAccess() -> PermissionState? { PermissionCheck.currentFullDiskAccess() }
 }

@@ -72,6 +72,7 @@ final class TheFindsUnderABlurAreSkippedTests: XCTestCase {
 }
 
 /// A second press over the same picture adds nothing, and of finds in one place there is one.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/PersonalFinds.swift`: `let covering = layers.filter { $0.tool == .blur }` -> `let covering = layers.filter { $0.tool != .blur }`.
 final class TheFindsAreMadeOnceAndInOnePlaceTests: XCTestCase {
 
     /// Pressing twice: what the first press put is what the second finds covered.

@@ -1,8 +1,6 @@
-import HelmContract
 import HelmRuntime
-import HelmUI
 import XCTest
-import Module_Autopilot_Engine
+@testable import Module_Autopilot_Engine
 @testable import Module_Autopilot_UI
 
 /// The editor's half of «the dry run is of one rule alone».
@@ -15,8 +13,8 @@ import Module_Autopilot_Engine
 @MainActor
 final class TheEditorAsksAboutTheFolderTests: XCTestCase {
 
-    private func model(on wire: AutopilotWire) -> AutopilotViewModel {
-        AutopilotViewModel(vm: ModuleViewModel(transport: wire))
+    private func model(on work: FakeAutopilotWork) -> AutopilotViewModel {
+        AutopilotViewModel(work: work, historyChanges: AsyncStream { _ in })
     }
 
     private func rule(_ id: String, enabled: Bool = false) -> Rule {
@@ -37,14 +35,14 @@ final class TheEditorAsksAboutTheFolderTests: XCTestCase {
         let broad = rule("all", enabled: true)
         let mine = rule("mine")
         let folder = WatchedFolder(id: "f", path: "/tmp/watched", rules: [broad, mine])
-        let wire = AutopilotWire(folders: [folder])
-        let model = model(on: wire)
+        let work = FakeAutopilotWork(folders: [folder])
+        let model = model(on: work)
 
         await model.runPreview(for: folder, rule: mine)
 
-        XCTAssertEqual(wire.previewed?.rules.map(\.id), ["all", "mine"],
+        XCTAssertEqual(work.previewed?.rules.map(\.id), ["all", "mine"],
                        "the editor asked about one rule and was answered about one rule")
-        XCTAssertEqual(wire.previewed?.rules.map(\.enabled), [true, true],
+        XCTAssertEqual(work.previewed?.rules.map(\.enabled), [true, true],
                        "the rule being written is the one the dry run is about")
     }
 
@@ -56,10 +54,10 @@ final class TheEditorAsksAboutTheFolderTests: XCTestCase {
         let broad = rule("all", enabled: true)
         let mine = rule("mine")
         let folder = WatchedFolder(id: "f", path: "/tmp/watched", rules: [broad, mine])
-        let wire = AutopilotWire(folders: [folder],
+        let work = FakeAutopilotWork(folders: [folder],
                                  preview: [row("notes.pdf", rule: broad),
                                            row("invoice.pdf", rule: mine)])
-        let model = model(on: wire)
+        let model = model(on: work)
 
         await model.runPreview(for: folder, rule: mine)
 
@@ -74,10 +72,10 @@ final class TheEditorAsksAboutTheFolderTests: XCTestCase {
         let broad = rule("all", enabled: true)
         let mine = rule("mine")
         let folder = WatchedFolder(id: "f", path: "/tmp/watched", rules: [broad, mine])
-        let wire = AutopilotWire(folders: [folder],
+        let work = FakeAutopilotWork(folders: [folder],
                                  preview: [row("invoice-march.pdf", rule: broad),
                                            row("invoice-april.pdf", rule: broad)])
-        let model = model(on: wire)
+        let model = model(on: work)
 
         await model.runPreview(for: folder, rule: mine)
 
@@ -93,8 +91,8 @@ final class TheEditorAsksAboutTheFolderTests: XCTestCase {
     func testAnAnswerForAClosedEditorIsNotDrawn() async {
         let mine = rule("mine")
         let folder = WatchedFolder(id: "f", path: "/tmp/watched", rules: [mine])
-        let wire = AutopilotWire(folders: [folder], preview: [row("invoice.pdf", rule: mine)])
-        let model = model(on: wire)
+        let work = FakeAutopilotWork(folders: [folder], preview: [row("invoice.pdf", rule: mine)])
+        let model = model(on: work)
         await model.runPreview(for: folder, rule: mine)
         XCTAssertEqual(model.previewByThisRule.count, 1, "precondition: it was drawn")
 

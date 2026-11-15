@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
@@ -21,6 +22,8 @@ import HelmRuntime
 /// is no rules and the banner that says so. Silently truncating to the first 200
 /// would be the one outcome nobody could see — a Mac held awake by rules the page
 /// does not draw, or rules the page draws that hold nothing.
+///
+/// Guards: d18692b8 (rules value unbounded, read on every recompute).
 final class AFileWithMoreRulesThanAnybodyChoseTests: XCTestCase {
 
     private var backing: InMemoryKeyValueStore!
@@ -66,9 +69,9 @@ final class AFileWithMoreRulesThanAnybodyChoseTests: XCTestCase {
 
         XCTAssertEqual(settings.appTriggers.count, 200)
         XCTAssertFalse(settings.appRulesUnreadable)
-        XCTAssertTrue(AppTriggerRules.isHolding(settings.appTriggers,
+        XCTAssertFalse(AppTriggerRules.holding(settings.appTriggers,
                                                 running: ["com.example.render"],
-                                                externalDisplay: false, onPower: false))
+                                                externalDisplay: false, onPower: false).isEmpty)
     }
 
     // MARK: - How long an id
@@ -152,9 +155,7 @@ final class AFileWithMoreRulesThanAnybodyChoseTests: XCTestCase {
 
     /// The engine over the same store answers the same way, and says so once.
     func testTheEngineHoldsNothingForSuchAFileAndSaysSo() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
         backing.raw["module.keep-awake.autoAppRules"] = rules(50_001)
         let apps = FakeApps()
         apps.ids = ["com.example.0.aaaaaaaaaaaa"]
@@ -163,7 +164,7 @@ final class AFileWithMoreRulesThanAnybodyChoseTests: XCTestCase {
                                      displayInfo: FakeDisplayInfo(),
                                      displayObserver: FakeDisplayObserver(),
                                      power: FakePower(), apps: apps, pointer: FakePointer(),
-                                     clamshell: FakeClamshell(), clock: FakeClock())
+                                     clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
 
         engine.activate()
 

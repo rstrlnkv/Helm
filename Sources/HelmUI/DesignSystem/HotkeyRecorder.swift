@@ -3,9 +3,9 @@ import AppKit
 import Carbon.HIToolbox
 import HelmRuntime
 
-public extension Notification.Name {
+extension Notification.Name {
     /// Posted when any global shortcut changes, so the host re-registers.
-    static let helmHotkeyChanged = Notification.Name("helmHotkeyChanged")
+    public static let helmHotkeyChanged = Notification.Name("helmHotkeyChanged")
 }
 
 /// Records one global shortcut into a module's store.
@@ -15,7 +15,7 @@ public extension Notification.Name {
 /// The three keys are `<prefix>KeyCode`, `<prefix>Modifiers`, `<prefix>Label`.
 @MainActor public final class HelmHotkeyRecorder: ObservableObject {
     @Published public private(set) var label: String
-    @Published public private(set) var recording = false
+    @Published private(set) var recording = false
 
     private let store: NamespacedStore
     private let prefix: String
@@ -28,17 +28,18 @@ public extension Notification.Name {
     /// keeps the empty row they asked for, and a person who never touched it
     /// sees the one that is live. `HotkeyManager` makes the same distinction when
     /// it registers, from the same `HotkeyFallback`.
-    public init(store: NamespacedStore, prefix: String = "hotkey", fallbackLabel: String? = nil) {
+    public init(store: NamespacedStore, prefix: String, fallbackLabel: String? = nil) {
         self.store = store
         self.prefix = prefix
-        if store.object("\(prefix)KeyCode") == nil, let fallbackLabel {
+        let keys = HotkeyStoreKeys(prefix: prefix)
+        if store.object(keys.keyCode) == nil, let fallbackLabel {
             label = fallbackLabel
-        } else if let held = HotkeyCombination(keyCode: store.int("\(prefix)KeyCode", default: -1),
-                                               modifiers: store.int("\(prefix)Modifiers", default: 0)) {
+        } else if let held = HotkeyCombination(keyCode: store.int(keys.keyCode, default: -1),
+                                               modifiers: store.int(keys.modifiers, default: 0)) {
             // A pair the manager holds is a shortcut that is live, and a row
             // with no label beside it (absent, not a string, empty) would draw
             // nothing over it: spell it from the pair instead.
-            let stored = store.string("\(prefix)Label", default: "")
+            let stored = store.string(keys.label, default: "")
             label = stored.isEmpty ? held.label : stored
         } else {
             // `<prefix>Label` is a key of its own, and a label beside a pair
@@ -59,7 +60,7 @@ public extension Notification.Name {
     /// not keep itself alive.
     private static weak var armed: HelmHotkeyRecorder?
 
-    public func startRecording() {
+    func startRecording() {
         if let armed = Self.armed, armed !== self { armed.stop() }
         Self.armed = self
         recording = true
@@ -85,9 +86,10 @@ public extension Notification.Name {
     }
 
     public func clear() {
-        store.set(-1, for: "\(prefix)KeyCode")
-        store.set(0, for: "\(prefix)Modifiers")
-        store.set("", for: "\(prefix)Label")
+        let keys = HotkeyStoreKeys(prefix: prefix)
+        store.set(-1, for: keys.keyCode)
+        store.set(0, for: keys.modifiers)
+        store.set("", for: keys.label)
         label = ""
         NotificationCenter.default.post(name: .helmHotkeyChanged, object: nil)
     }
@@ -100,9 +102,10 @@ public extension Notification.Name {
     /// record would be the one they cannot press. Expected from how macOS treats
     /// its own shortcuts; not measured here.
     public func assign(keyCode: Int, carbonModifiers: Int, label: String) {
-        store.set(keyCode, for: "\(prefix)KeyCode")
-        store.set(carbonModifiers, for: "\(prefix)Modifiers")
-        store.set(label, for: "\(prefix)Label")
+        let keys = HotkeyStoreKeys(prefix: prefix)
+        store.set(keyCode, for: keys.keyCode)
+        store.set(carbonModifiers, for: keys.modifiers)
+        store.set(label, for: keys.label)
         self.label = label
         NotificationCenter.default.post(name: .helmHotkeyChanged, object: nil)
     }
@@ -135,6 +138,15 @@ public extension Notification.Name {
     }
 }
 
+extension HelmHotkeyRecorder {
+    /// A recorder over a store that dies with it, for a view that shows the row and keeps nothing: the showcase
+    /// stores nothing and cannot name `HelmRuntime`'s store. Nothing in the product calls it.
+    public static func unsaved(label: String?) -> HelmHotkeyRecorder {
+        HelmHotkeyRecorder(store: NamespacedStore(namespace: "app", backing: InMemoryKeyValueStore()),
+                           prefix: "row", fallbackLabel: label)
+    }
+}
+
 /// One row: what the shortcut does, what it is, and how to change it.
 ///
 /// It also says when macOS refused the combination. A shortcut another app has
@@ -142,6 +154,8 @@ public extension Notification.Name {
 /// combination that does nothing is the switch-that-looks-like-it-works defect
 /// in another costume.
 public struct HelmHotkeyRow: View {
+    @Environment(\.helmTraits) private var traits
+
     @ObservedObject private var recorder: HelmHotkeyRecorder
     private let title: String
     private let taken: Bool
@@ -193,11 +207,11 @@ public struct HelmHotkeyRow: View {
             }
             if let note, !recorder.label.isEmpty {
                 Text(note)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmSignal.warning)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmSignal.warning(increased: traits.increasedContrast))
                     .fixedSize(horizontal: false, vertical: true)
             } else if taken, !recorder.label.isEmpty {
                 Text(Self.takenNote)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmSignal.warning)
+                    .font(HelmText.rowDetail).foregroundStyle(HelmSignal.warning(increased: traits.increasedContrast))
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -209,19 +223,19 @@ public struct HelmHotkeyRow: View {
     static func spoken(_ label: String) -> String {
         label.map { character -> String in
             switch character {
-            case "⌃": return L("Control")
-            case "⌥": return L("Option")
-            case "⇧": return L("Shift")
-            case "⌘": return L("Command")
+            case "⌃": return L(.control)
+            case "⌥": return L(.option)
+            case "⇧": return L(.shift)
+            case "⌘": return L(.command)
             default: return String(character)
             }
         }.joined(separator: ", ")
     }
 
-    private static var pressKeys: String { L("Press keys…") }
-    private static var none: String { L("None") }
-    private static var record: String { L("Set") }
-    private static var cancel: String { L("Cancel") }
-    private static var clear: String { L("Clear") }
-    private static var takenNote: String { L("Another app already uses this combination, so it does nothing here.") }
+    private static var pressKeys: String { L(.pressKeys) }
+    private static var none: String { L(.none) }
+    private static var record: String { L(.set) }
+    private static var cancel: String { L(.cancel) }
+    private static var clear: String { L(.clear) }
+    private static var takenNote: String { L(.takenNote) }
 }

@@ -42,8 +42,8 @@ public enum PanelGrid {
     /// the figure it sits under, which is the whole content of a compact
     /// widget.
     public static let minimumTile: CGFloat = 144
-    public static let padding: CGFloat = 12
-    public static let gap: CGFloat = 8
+    public static let padding: CGFloat = HelmSpace.s5
+    public static let gap: CGFloat = HelmSpace.s4
 
     /// The height the panel draws at before its strip has been measured: an
     /// 800 pt display, less the menu bar and a margin.
@@ -53,7 +53,7 @@ public enum PanelGrid {
     /// scrolled with free room between the panel and the Dock. The strip runs
     /// from the status item down to the screen's visible frame, which already
     /// stops at the Dock; the grid scrolls only once that is used up.
-    public static let maximumHeight: CGFloat = 768
+    private static let maximumHeight: CGFloat = 768
 
     /// Columns at a given panel width — never fewer than two.
     ///
@@ -123,7 +123,7 @@ public enum PanelGrid {
     }
 
     /// The least the grid is ever given: one row, rather than a sliver of one.
-    public static let minimumGrid: CGFloat = 120
+    private static let minimumGrid: CGFloat = 120
 
     /// The grid, as rows of indices into `sizes`.
     ///

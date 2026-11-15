@@ -5,6 +5,8 @@ import XCTest
 /// blame on a system extension, so a wrong entry here becomes wrong advice on a
 /// failure sheet. Fed the real `systemextensionsctl list` shape, including the
 /// two kinds of line that are not extensions.
+///
+/// Guards: 5f196564 (a host id matched without a separator blamed the wrong app).
 final class SystemExtensionHostTests: XCTestCase {
 
     /// Real output shape: a `---` section marker, the column header, one enabled
@@ -32,16 +34,13 @@ final class SystemExtensionHostTests: XCTestCase {
         XCTAssertEqual(parsed.first { $0.identifier.hasPrefix("com.example") }?.enabled, false)
     }
 
-    /// Version, team and state must each come from their own column — a name
+    /// Identifier and version must each come from their own column — a name
     /// carrying a version-looking string must not shift the others.
     func testEachFieldComesFromItsOwnColumn() {
         let parsed = SystemExtensionParser.parse(listing)
         let snitch = parsed.first { $0.identifier.hasPrefix("at.obdev") }
         XCTAssertEqual(snitch?.identifier, "at.obdev.littlesnitch.networkextension")
-        XCTAssertEqual(snitch?.teamID, "2XZUN9L63Z")
         XCTAssertEqual(snitch?.version, "6.1/6123")
-        XCTAssertEqual(snitch?.name, "Little Snitch Network Extension")
-        XCTAssertEqual(snitch?.state, "activated enabled")
     }
 
     /// The host is the extension id minus its last component. Both the

@@ -32,6 +32,47 @@ final class SudoersRuleTests: XCTestCase {
             """)
     }
 
+    /// Stored data: a rule real Helm installed is found, withdrawn and recovered
+    /// at the path it always had. Only Helm Dev's identifier moves off it.
+    func test_every_identifier_but_helm_devs_keeps_the_original_file() {
+        for identifier in ["com.helm.app", "com.apple.dt.xctest.tool", nil] {
+            XCTAssertEqual(SudoersRule.fileName(bundleIdentifier: identifier), "helm-keepawake")
+            XCTAssertEqual(SudoersRule.path(bundleIdentifier: identifier),
+                           "/etc/sudoers.d/helm-keepawake")
+        }
+    }
+
+    func test_helm_dev_has_a_file_of_its_own_and_it_has_no_dot() {
+        let name = SudoersRule.fileName(bundleIdentifier: AppBuild.devIdentifier)
+        XCTAssertEqual(name, "helm-keepawake-dev")
+        XCTAssertFalse(name.contains("."), "sudo skips includedir files with a dot in the name")
+        XCTAssertEqual(SudoersRule.path(bundleIdentifier: AppBuild.devIdentifier),
+                       "/etc/sudoers.d/helm-keepawake-dev")
+    }
+
+    /// Every place the rule's file is named derives from one identifier: Helm Dev
+    /// never installs, stages, withdraws or tells the user to `rm` the real file.
+    func test_every_place_the_file_is_named_follows_the_identifier() {
+        for (id, file) in [(AppBuild.devIdentifier, "helm-keepawake-dev"), ("com.helm.app", "helm-keepawake")] {
+            let paths = SudoersRule.paths(bundleIdentifier: id)
+            let installed = "/etc/sudoers.d/" + file
+            XCTAssertEqual(paths, SudoersRule.Paths(installed: installed, staging: installed + ".new",
+                                                    removeArguments: ["/bin/rm", "-f", installed]))
+            let install = SudoersRule.installCommand(user: "someone", paths: paths)
+            XCTAssertTrue(install.contains("> \(installed).new"))
+            XCTAssertTrue(install.contains("/bin/mv \(installed).new \(installed) "))
+            XCTAssertTrue(SudoersRule.text(user: "someone", paths: paths).contains("sudo rm \(installed)\n"))
+            XCTAssertEqual(SudoersRule.removeCommand(paths: paths), "/bin/rm -f \(installed)")
+        }
+        XCTAssertFalse(SudoersRule.installCommand(user: "someone", paths: SudoersRule.paths(bundleIdentifier: AppBuild.devIdentifier))
+            .contains("helm-keepawake "), "Helm Dev's install never names the real file")
+    }
+
+    func test_the_removal_names_the_same_literal_path_as_the_install() {
+        XCTAssertEqual(SudoersRule.removeArguments,
+                       ["/bin/rm", "-f", SudoersRule.installedPath])
+    }
+
     // MARK: - The privileged command
 
     func test_install_command_names_no_user_writable_path() {
@@ -102,7 +143,7 @@ final class SudoersRuleTests: XCTestCase {
 
     func test_privileged_script_is_one_escaped_literal_and_asks_for_admin() {
         let command = SudoersRule.installCommand(user: user)
-        let script = SudoersRule.installScript(user: user)
+        let script = AppleScript.administratorShellScript(command)
         XCTAssertEqual(script, "do shell script \"\(AppleScript.literal(command))\" "
                              + "with administrator privileges")
         // Nothing between the literal's own quotes may close it early: the only

@@ -1,46 +1,8 @@
 import XCTest
 import HelmTestSupport
-import HelmContract
 import HelmRuntime
-import HelmUI
-import Module_Disk_Engine
+@testable import Module_Disk_Engine
 @testable import Module_Disk_UI
-
-@MainActor
-private extension XCTestCase {
-
-    // MARK: - Fixtures
-
-    /// A snapshot of a walk in progress: the folder is charged with what has been
-    /// counted so far, which is the point — 600 of an unknown total.
-    func partOfBig(files: Int = 1_200) -> ScanResult {
-        ScanResult(root: folder("/Volumes/Big", bytes: 900,
-                                children: [folder("/Volumes/Big/Sub", bytes: 600)]),
-                   freeBytes: 100, filesScanned: files, seconds: 0)
-    }
-
-    func model(_ transport: HeldTransport) -> (DiskViewModel, ScanStore) {
-        // A store of its own: the module's real one is the person's last scan,
-        // and a harness must leave nothing behind. `temporaryStoreDirectory`
-        // owns the teardown, and it *drains* — a one-shot `removeItem` beside
-        // it was the very race that helper exists to close.
-        let store = ScanStore(directory: scratchDirectory("disk-stopkeep"))
-        return (DiskViewModel(vm: ModuleViewModel(transport: transport), store: store), store)
-    }
-
-    /// A walk in flight with one snapshot drawn — the state the Stop button is
-    /// visible in, and the only state this file is about.
-    func walkingWithASnapshot(
-        _ transport: HeldTransport, _ dvm: DiskViewModel
-    ) async {
-        Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(transport, count: 1)
-        transport.emitPartial(scan: transport.scanID(0), result: partOfBig())
-        await settle()
-        XCTAssertEqual(dvm.phase, .result, "precondition: the ring is drawn from the snapshot")
-        XCTAssertTrue(dvm.live, "precondition: the walk is still running")
-    }
-}
 
 /// What Stop keeps, now that it keeps something.
 ///
@@ -60,9 +22,9 @@ private extension XCTestCase {
 /// because the store is what the module reopens on and labels a measurement.
 ///
 /// `StopLeavesNothingBehindTests` is the other half — what Stop must *not* leave
-/// behind on the screens that do still empty. The transport here parks every
+/// behind on the screens that do still empty. The work here parks every
 /// scan so a walk can be caught mid-flight, which is the state that test's
-/// immediate transport cannot reach.
+/// immediate work cannot reach.
 @MainActor
 final class StopKeepsWhatItMeasuredTests: XCTestCase {
 
@@ -72,9 +34,9 @@ final class StopKeepsWhatItMeasuredTests: XCTestCase {
     /// screen. Stop used to satisfy it by emptying the basket, because Stop took
     /// the tree away; it satisfies it now by keeping both.
     func testStopKeepsTheBasketBecauseTheTreeIsStillOnScreen() async {
-        let transport = HeldTransport()
-        let (dvm, _) = model(transport)
-        await walkingWithASnapshot(transport, dvm)
+        let work = HeldWork()
+        let (dvm, _) = heldModel(work)
+        await walkingWithASnapshot(work, dvm)
         dvm.toggleBasket(folder("/Volumes/Big/Sub", bytes: 600))
         XCTAssertEqual(dvm.basket.map(\.path), ["/Volumes/Big/Sub"], "precondition")
 
@@ -89,15 +51,15 @@ final class StopKeepsWhatItMeasuredTests: XCTestCase {
     /// `scan(path:)` is the only route to one — which is what stops the
     /// cross-volume arithmetic bug coming back through a different door.
     func testMeasuringSomewhereElseEmptiesTheBasketAStopLeftBehind() async {
-        let transport = HeldTransport()
-        let (dvm, _) = model(transport)
-        await walkingWithASnapshot(transport, dvm)
+        let work = HeldWork()
+        let (dvm, _) = heldModel(work)
+        await walkingWithASnapshot(work, dvm)
         dvm.toggleBasket(folder("/Volumes/Big/Sub", bytes: 600))
         dvm.cancel()
         XCTAssertFalse(dvm.basket.isEmpty, "precondition: Stop kept it")
 
         Task { await dvm.scan(path: "/Volumes/Small") }
-        await untilParked(transport, count: 2)
+        await untilParked(work, count: 2)
 
         XCTAssertTrue(dvm.basket.isEmpty,
                       "\(dvm.basket.map(\.path)) belong to a volume that is no longer on screen")
@@ -115,23 +77,21 @@ final class StopKeepsWhatItMeasuredTests: XCTestCase {
     /// was incomplete, presented to them later as fact. That is the failure
     /// "Choose another…" was added to give a way out of.
     func testTrashingFromAStoppedTreeDoesNotWriteItToTheStore() async {
-        let transport = HeldTransport()
-        transport.answerTrash(with: DiskRemoval(removed: ["/Volumes/Big/Sub"],
+        let work = HeldWork()
+        work.answerTrash(with: DiskRemoval(removed: ["/Volumes/Big/Sub"],
                                                 refused: [], freedBytes: 600))
-        let (dvm, store) = model(transport)
-        await walkingWithASnapshot(transport, dvm)
+        let (dvm, store) = heldModel(work)
+        await walkingWithASnapshot(work, dvm)
         dvm.toggleBasket(folder("/Volumes/Big/Sub", bytes: 600))
         dvm.cancel()
 
         await dvm.emptyBasket()
         XCTAssertEqual(dvm.removedCount, 1, "precondition: the removal ran")
-        // `saveDetached` is a detached task, so absence is only meaningful after
-        // giving it room to land. The same wait sees the save in
-        // `testTrashingFromAFinishedTreeDoesWriteItToTheStore` below, which is
-        // what makes this assertion mean something.
-        for _ in 0..<200 where !FileManager.default.fileExists(atPath: store.fileURL.path) {
-            await Task.yield()
-        }
+        // `saveDetached` is fire-and-forget, so absence is only meaningful after
+        // giving it room to land. `testTrashingFromAFinishedTreeDoesWriteItToTheStore`
+        // below waits for the save and asserts it, which is what makes this
+        // assertion mean something.
+        await grace()
 
         XCTAssertFalse(FileManager.default.fileExists(atPath: store.fileURL.path),
                        "an unfinished tree was saved; the module will reopen on it "
@@ -142,20 +102,17 @@ final class StopKeepsWhatItMeasuredTests: XCTestCase {
     /// The control, and the proof that the wait above is long enough to see a
     /// save: the identical sequence on a finished tree does write one.
     func testTrashingFromAFinishedTreeDoesWriteItToTheStore() async {
-        let transport = HeldTransport()
-        transport.answerTrash(with: DiskRemoval(removed: ["/Volumes/Big/Sub"],
+        let work = HeldWork()
+        work.answerTrash(with: DiskRemoval(removed: ["/Volumes/Big/Sub"],
                                                 refused: [], freedBytes: 600))
-        let (dvm, store) = model(transport)
-        Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(transport, count: 1)
-        transport.release(0, with: partOfBig())
-        await settle()
+        let (dvm, store) = heldModel(work)
+        await scanned(dvm, over: work, answering: partOfBig())
         XCTAssertFalse(dvm.stopped, "precondition: a finished measurement")
         dvm.toggleBasket(folder("/Volumes/Big/Sub", bytes: 600))
 
         await dvm.emptyBasket()
-        for _ in 0..<200 where !FileManager.default.fileExists(atPath: store.fileURL.path) {
-            await Task.yield()
+        await waitUntil("control: a finished tree is saved", within: .seconds(5)) {
+            FileManager.default.fileExists(atPath: store.fileURL.path)
         }
 
         XCTAssertTrue(FileManager.default.fileExists(atPath: store.fileURL.path),
@@ -164,7 +121,7 @@ final class StopKeepsWhatItMeasuredTests: XCTestCase {
 }
 
 /// What Stop keeps on the screen: the tree the walk had built, the count it
-/// reached, and the flag that says it is unfinished. The transport parks every
+/// reached, and the flag that says it is unfinished. The work parks every
 /// scan so a walk can be caught mid-flight; the basket over a stopped tree, and
 /// what a stopped tree must not do to the store, are `StopKeepsWhatItMeasuredTests`'
 /// half.
@@ -174,9 +131,9 @@ final class StopKeepsTheTreeOnScreenTests: XCTestCase {
     // MARK: - The tree stays
 
     func testStopKeepsTheTreeTheWalkHadBuilt() async {
-        let transport = HeldTransport()
-        let (dvm, _) = model(transport)
-        await walkingWithASnapshot(transport, dvm)
+        let work = HeldWork()
+        let (dvm, _) = heldModel(work)
+        await walkingWithASnapshot(work, dvm)
 
         dvm.cancel()                    // the Stop button
 
@@ -191,12 +148,12 @@ final class StopKeepsTheTreeOnScreenTests: XCTestCase {
     /// The count the header shows is the count the snapshot carried, so the line
     /// describes this walk and not a previous one.
     func testTheStoppedTreeKeepsTheCountItReached() async {
-        let transport = HeldTransport()
-        let (dvm, _) = model(transport)
+        let work = HeldWork()
+        let (dvm, _) = heldModel(work)
         Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(transport, count: 1)
-        transport.emitPartial(scan: transport.scanID(0), result: partOfBig(files: 4_242))
-        await settle()
+        await untilParked(work, count: 1)
+        work.emitPartial(0, result: partOfBig(files: 4_242))
+        await waitUntil("the snapshot is drawn") { dvm.result?.filesScanned == 4_242 }
 
         dvm.cancel()
 
@@ -207,10 +164,10 @@ final class StopKeepsTheTreeOnScreenTests: XCTestCase {
     /// anything: there is no tree to keep, so this is the volume picker as it
     /// always was.
     func testStopBeforeTheFirstSnapshotShowsTheVolumePicker() async {
-        let transport = HeldTransport()
-        let (dvm, _) = model(transport)
+        let work = HeldWork()
+        let (dvm, _) = heldModel(work)
         Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(transport, count: 1)
+        await untilParked(work, count: 1)
         XCTAssertNil(dvm.result, "precondition: nothing has been drawn yet")
 
         dvm.cancel()
@@ -224,12 +181,9 @@ final class StopKeepsTheTreeOnScreenTests: XCTestCase {
     /// the walk has already ended — so the flag is driven by whether a walk was
     /// running, not by who called.
     func testAFinishedTreeIsNeverMarkedStopped() async {
-        let transport = HeldTransport()
-        let (dvm, _) = model(transport)
-        Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(transport, count: 1)
-        transport.release(0, with: partOfBig())
-        await settle()
+        let work = HeldWork()
+        let (dvm, _) = heldModel(work)
+        await scanned(dvm, over: work, answering: partOfBig())
         XCTAssertFalse(dvm.live, "precondition: the walk answered")
 
         dvm.cancel()

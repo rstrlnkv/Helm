@@ -17,7 +17,7 @@ final class HelmTrashBatchInvariantTests: XCTestCase {
     private var root: URL!
 
     override func setUpWithError() throws {
-        root = trashScratchDirectory("trash-batch")
+        root = scratchDirectory("trash-batch")
     }
 
     /// A file this batch will really trash. The teardown that used to sit here

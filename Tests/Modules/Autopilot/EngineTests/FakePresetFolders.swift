@@ -1,5 +1,5 @@
 import Foundation
-import Module_Autopilot_Engine
+@testable import Module_Autopilot_Engine
 
 /// A stand-in for the two folders `FileManager` is asked about.
 ///

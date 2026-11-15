@@ -5,18 +5,18 @@ import Foundation
 /// The plan is what the dry run shows and what the runner executes, and it is
 /// the same value in both cases — so what someone was shown and what happened
 /// cannot drift apart.
-public struct RulePlan: Equatable, Sendable {
-    public let facts: FileFacts
-    public let rule: Rule
-    public var action: RuleAction { rule.action }
+struct RulePlan: Equatable, Sendable {
+    let facts: FileFacts
+    let rule: Rule
+    var action: RuleAction { rule.action }
 
-    public init(facts: FileFacts, rule: Rule) {
+    init(facts: FileFacts, rule: Rule) {
         self.facts = facts
         self.rule = rule
     }
 }
 
-public extension RulePlan {
+extension RulePlan {
 
     /// The first enabled rule whose conditions hold. Nothing, if none do.
     ///

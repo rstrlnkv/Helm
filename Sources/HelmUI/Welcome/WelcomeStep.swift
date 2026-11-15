@@ -6,19 +6,19 @@ import HelmContract
 
 public struct WelcomeStep: Equatable, Identifiable, Sendable {
     public let id: String
-    public let sfSymbol: String
+    let sfSymbol: String
     public let title: String
-    public let body: String
+    let body: String
     /// Every module's symbol, in registry order — only ever non-empty on the
     /// intro step, which is a showcase rather than a single-symbol step.
-    public let moduleSymbols: [String]
+    let moduleSymbols: [String]
     /// The module this step is about, so its switch has something to bind to.
     /// Nil on the intro, which is not a module.
-    public let moduleID: String?
+    let moduleID: String?
     /// The one thing this module offers to set up, worded as the button that
     /// takes somebody there. The module's own word, out of its descriptor —
     /// this file knows of no module by name and must not start.
-    public let offer: String?
+    let offer: String?
 
     public init(id: String, sfSymbol: String, title: String, body: String,
                 moduleSymbols: [String] = [], moduleID: String? = nil,

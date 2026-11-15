@@ -6,7 +6,7 @@ third-party artwork, which carries its own terms.
 ## Flag artwork — flag-icons
 
 `Sources/Modules/Layout/UI/Flags/*.png` are rendered from the 4:3 SVGs of
-**flag-icons**, one per ISO 3166-1 alpha-2 region, at 128 × 96.
+**flag-icons**, one per ISO 3166-1 alpha-2 region, at 128 × 96 points (256 × 192 pixels).
 
 - Source: <https://github.com/lipis/flag-icons>
 - Copyright: © Panayiotis Lipiridis and contributors
@@ -52,8 +52,6 @@ They are taken from the Figma file **PencilKit for figma (Copy)**
 a community recreation of Apple's iPadOS 13 PencilKit picker.
 
 - Source: <https://www.figma.com/design/33IGj6K24Gp1BJIpWmHZJs/PencilKit-for-figma--Copy->
-- Author: (to be filled in by the owner)
-- Licence: (to be filled in by the owner)
 - Use in Helm: the owner checked the file's licence on 2026-10-02 and decided
   the objects may be used.
 - Modified for Helm: SVG filters removed (macOS drops them silently), the Pen, Marker and

@@ -201,4 +201,31 @@ final class RuleSealTests: XCTestCase {
         XCTAssertEqual(judge(rules, mac: old, key: established(), seq: 0, highWater: 1),
                        .rolledBack)
     }
+
+    /// **The message a number is sealed in is a format, and deployed seals depend
+    /// on it.** The payload, a NUL (JSON never holds one, so a numbered message
+    /// can not be a rule set's own bytes), and the number big-endian. A
+    /// different spelling would refuse every rule set a Mac has already saved.
+    /// Compared by the byte layout rather than a pinned MAC, so it fails for
+    /// the layout and not for the key.
+    func testTheNumberIsSealedAfterANulAndBigEndian() {
+        let rules = payload()
+        var message = rules
+        message.append(contentsOf: [0, 0, 0, 0, 0, 0, 0, 0, 0x2A])
+
+        XCTAssertEqual(RuleSeal.mac(for: rules, seq: 42, key: material),
+                       SettingSeal.mac(for: message, key: material))
+    }
+}
+
+/// What the rule-sequence item's bytes mean. A value that is not a number must
+/// read as unavailable: `absent` is the permissive reading.
+final class RuleSequenceBytesTests: XCTestCase {
+    func testOnlyANumberIsAMark() {
+        XCTAssertEqual(KeychainRuleSequence.sequence(from: Data("42".utf8)), .at(42))
+        XCTAssertEqual(KeychainRuleSequence.sequence(from: Data([0xFF, 0xFE])), .unavailable)
+        XCTAssertEqual(KeychainRuleSequence.sequence(from: Data("abc".utf8)), .unavailable)
+        XCTAssertEqual(KeychainRuleSequence.sequence(from: Data("18446744073709551616".utf8)), .unavailable)
+        XCTAssertEqual(KeychainRuleSequence.sequence(from: Data()), .unavailable)
+    }
 }

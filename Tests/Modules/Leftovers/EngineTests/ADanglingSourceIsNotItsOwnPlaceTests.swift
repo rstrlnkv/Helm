@@ -9,7 +9,7 @@ import XCTest
 /// entirely.**
 ///
 /// `LeftoversScanner.isItsOwnPlace` is the whole defence against a planted source:
-/// four of the seven directories the scan is compiled with do not exist on a stock
+/// four of the eight directories the scan is compiled with do not exist on a stock
 /// install, so any process running as the person can create one as a link and have
 /// the enumeration happen wherever it points, under Helm's Full Disk Access, with
 /// every row still spelling the folder that was compiled in. The guard is
@@ -48,7 +48,7 @@ import XCTest
 /// `ADirectoryThatIsNotTheOneItNamesTests` drives `LeftoversFakeFiles.redirects`, a
 /// dictionary lookup that resolves a link to a target whether or not the target
 /// exists — so the fake can resolve what the real port cannot. That is a fake
-/// *freer* than its port (CLAUDE.md § What not to do, and what breaks if you do),
+/// *freer* than its port (ARCHITECTURE.md § Fakes),
 /// and what it buys is a branch that is proven for a state production never
 /// reaches: the dangling case has no fixture there, because in that fake there is
 /// no such thing as dangling. This file therefore drives the real
@@ -66,7 +66,7 @@ final class ADanglingSourceIsNotItsOwnPlaceTests: XCTestCase {
     /// row.
     ///
     /// A local helper that does *more* than the shared one keeps its own body and
-    /// calls it — CLAUDE.md § Where things go. It calls `FileSystemLeftovers` for
+    /// calls it, as the house rules order. It calls `FileSystemLeftovers` for
     /// everything it answers.
     private struct FilesUnder: LeftoversFilePort {
         let root: String
@@ -215,7 +215,7 @@ final class ADanglingSourceIsNotItsOwnPlaceTests: XCTestCase {
 
     /// The same planting on a source that *does* exist on a stock install — the
     /// person's own Preferences folder replaced by a link — because «four of the
-    /// seven do not exist» is the easy case and not the only one.
+    /// eight do not exist» is the easy case and not the only one.
     func testADanglingLinkOverAnOrdinarySourceIsAlsoReported() throws {
         let home = canonicalHome("leftovers-dangling-prefs")
         let planted = try link("Library/Preferences",

@@ -1,30 +1,7 @@
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Duplicates_Engine
-
-/// A seal key that says whether anybody ever asked it for one.
-///
-/// The `.adopt` door is spent by the *first* read, so the guard that proves it
-/// has to see the asking and not only the answer — a fake that hands back a key
-/// and remembers nothing cannot tell «established on first read» from «never
-/// touched», which is the state this whole check exists to forbid.
-private final class RecordingKey: SealKeyPort, @unchecked Sendable {
-    private let firstUse: Bool
-    private let lock = NSLock()
-    private var asked = 0
-
-    init(firstUse: Bool = false) { self.firstUse = firstUse }
-
-    var timesAsked: Int {
-        lock.lock(); defer { lock.unlock() }
-        return asked
-    }
-
-    func key() -> SealKey? {
-        lock.lock(); asked += 1; lock.unlock()
-        return SealKey(material: Data(repeating: 0x11, count: 32), firstUse: firstUse)
-    }
-}
 
 /// The keep policy steers work nobody is watching — a background scan decides
 /// which of somebody's identical files is the spare one — and it lives in
@@ -47,11 +24,12 @@ final class TheKeepPolicyIsSealedWhereStoredTests: XCTestCase {
                                 backing: InMemoryKeyValueStore())
     }
 
-    private func engine(_ keys: RecordingKey) -> DuplicatesEngine {
-        DuplicatesEngine(store: store, settings: SettingGuard(keys: keys))
+    private func engine(_ keys: SealKeyProbe) -> DuplicatesEngine {
+        DuplicatesEngine(store: store, settings: SettingGuard(keys: keys),
+                         trashing: neverTrashes)
     }
 
-    private func seal(_ value: String, with keys: RecordingKey) {
+    private func seal(_ value: String, with keys: SealKeyProbe) {
         store.set(value, for: key)
         store.set(SettingGuard(keys: keys).seal(Data(value.utf8)) ?? "",
                   for: SettingGuard.macKey(for: key))
@@ -60,14 +38,24 @@ final class TheKeepPolicyIsSealedWhereStoredTests: XCTestCase {
     // MARK: - What is stored, when Helm stored it
 
     func testASealedPolicyIsTheOneTheSearchUses() {
-        let keys = RecordingKey()
+        let keys = SealKeyProbe(firstUse: false)
         seal(KeepPolicy.byDate.rawValue, with: keys)
 
         XCTAssertEqual(engine(keys).storedKeepPolicy(), .byDate)
     }
 
+    /// The save itself: what `setKeepPolicy` writes is read back as chosen, so it
+    /// wrote the MAC beside the value. A save that stored the value alone would
+    /// come back as a policy nobody sealed, and the search would use the default.
+    func testASavedPolicyIsTheOneTheSearchUses() {
+        let keys = SealKeyProbe(firstUse: false)
+        DuplicatesSettings.setKeepPolicy(.byDate, in: store, guardedBy: SettingGuard(keys: keys))
+
+        XCTAssertEqual(engine(keys).storedKeepPolicy(), .byDate)
+    }
+
     func testAMacThatWasNeverAskedGetsTheDefault() {
-        XCTAssertEqual(engine(RecordingKey()).storedKeepPolicy(), .standard)
+        XCTAssertEqual(engine(SealKeyProbe(firstUse: false)).storedKeepPolicy(), .standard)
     }
 
     /// The door `.adopt` leaves open is spent on the first read, whatever is
@@ -75,11 +63,11 @@ final class TheKeepPolicyIsSealedWhereStoredTests: XCTestCase {
     /// leaves an installation sitting one unsealed value away from adopting a
     /// stranger's for ever — `AppSettings.disabledScans` shipped exactly that.
     func testTheKeyIsEstablishedOnTheFirstReadEvenWithNothingStored() {
-        let keys = RecordingKey(firstUse: true)
+        let keys = SealKeyProbe(firstUse: true)
 
         XCTAssertEqual(engine(keys).storedKeepPolicy(), .standard)
 
-        XCTAssertGreaterThan(keys.timesAsked, 0,
+        XCTAssertGreaterThan(keys.reads, 0,
                              "nothing was stored and the guard was never touched, "
                              + "so the adoption door is still open tomorrow")
     }
@@ -90,7 +78,7 @@ final class TheKeepPolicyIsSealedWhereStoredTests: XCTestCase {
     func testAPolicyChosenBeforeSealingIsAdoptedAndSealed() {
         store.set(KeepPolicy.byDate.rawValue, for: key)
 
-        XCTAssertEqual(engine(RecordingKey(firstUse: true)).storedKeepPolicy(), .byDate)
+        XCTAssertEqual(engine(SealKeyProbe(firstUse: true)).storedKeepPolicy(), .byDate)
 
         XCTAssertFalse(store.string(SettingGuard.macKey(for: key), default: "").isEmpty,
                        "adopting without sealing leaves the same question open tomorrow")
@@ -101,7 +89,7 @@ final class TheKeepPolicyIsSealedWhereStoredTests: XCTestCase {
     /// The whole point: the value changed and the seal did not, because whoever
     /// wrote it does not have the key.
     func testAPolicySomethingElseWroteIsNotTheOneTheSearchUses() {
-        let keys = RecordingKey()
+        let keys = SealKeyProbe(firstUse: false)
         seal(KeepPolicy.byPlace.rawValue, with: keys)
         store.set(KeepPolicy.byDate.rawValue, for: key)   // …and now it is forged
 
@@ -118,13 +106,13 @@ final class TheKeepPolicyIsSealedWhereStoredTests: XCTestCase {
     func testAMissingSealOnAnInstallationThatHasSealedBeforeIsTheDefault() {
         store.set(KeepPolicy.byDate.rawValue, for: key)
 
-        XCTAssertEqual(engine(RecordingKey()).storedKeepPolicy(), .standard)
+        XCTAssertEqual(engine(SealKeyProbe(firstUse: false)).storedKeepPolicy(), .standard)
     }
 
     /// A spelling this build does not know is the default too, and by the same
     /// route: the enum is what the raw value has to parse into.
     func testAPolicyThisBuildDoesNotKnowIsTheDefault() {
-        let keys = RecordingKey()
+        let keys = SealKeyProbe(firstUse: false)
         seal("by-the-moon", with: keys)
 
         XCTAssertEqual(engine(keys).storedKeepPolicy(), .standard)
@@ -149,7 +137,7 @@ final class TheKeepPolicyIsSealedWhereStoredTests: XCTestCase {
         try payload.write(to: fixture.appendingPathComponent("one.bin"))
         try payload.write(to: fixture.appendingPathComponent("two.bin"))
 
-        let keys = RecordingKey()
+        let keys = SealKeyProbe(firstUse: false)
         store.set(fixture.path, for: "folder")
         store.set(SettingGuard(keys: keys).seal(Data(fixture.path.utf8)) ?? "",
                   for: SettingGuard.macKey(for: "folder"))

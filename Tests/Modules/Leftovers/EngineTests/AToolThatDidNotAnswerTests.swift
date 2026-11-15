@@ -1,5 +1,6 @@
 import Foundation
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Leftovers_Engine
 
@@ -15,7 +16,7 @@ import XCTest
 /// disabled list decides the «Disabled» badge — this module's whole reassurance that
 /// a login item will not run.
 ///
-/// The family CLAUDE.md names: a local reading standing in for a live external fact,
+/// The family (ARCHITECTURE.md § Ports and logic) names: a local reading standing in for a live external fact,
 /// with no channel from the port that knows. Two facts, «nothing is loaded» and
 /// «nobody answered», and nothing could tell them apart — including a test, which is
 /// why `LeftoversFakeLoaded` now holds `nil` as well.
@@ -31,15 +32,11 @@ final class AToolThatDidNotAnswerTests: XCTestCase {
         files.listing["/Users/x/Library/LaunchAgents"] = ["\(label).plist"]
         files.plists["/Users/x/Library/LaunchAgents/\(label).plist"] =
             PlistData(["Label": label, "RunAtLoad": true])
-        let items = LeftoversScanner(home: home, files: files, apps: LeftoversFakeApps(),
-                                     extensions: loaded).scan()
-        return try XCTUnwrap(items.first { $0.kind == .launchAgent },
-                             "precondition: the agent is listed at all")
+        return try firstAgent(home: home, files: files, loaded: loaded)
     }
 
     private var liveExtension: SystemExtensionInfo {
-        SystemExtensionInfo(identifier: label, teamID: "T", name: "Security", version: "1",
-                            state: "activated enabled", enabled: true)
+        SystemExtensionInfo(identifier: label, version: "1", enabled: true)
     }
 
     /// **The finding.** The tool did not answer, and the row is a leftover.
@@ -89,16 +86,10 @@ final class AToolThatDidNotAnswerTests: XCTestCase {
     /// this is the only place it can be seen from outside, since the row it produces
     /// looks like any other unjudged row.
     func testTheRefusalsAreLoggedAndNameNothing() throws {
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-        defer {
-            HelmLog.shared.clearTail()
-            HelmLog.shared.setEnabled(false)
-        }
+        tailTheLog()
 
         _ = try agent(when: LeftoversFakeLoaded(installed: nil, disabled: nil))
-        let lines = HelmLog.shared.recentEntries()
-            .filter { $0.category == "leftovers" }.map(\.message)
+        let lines = loggedLines("leftovers")
 
         XCTAssertTrue(lines.contains { $0.contains("systemextensionsctl") }, """
             nothing said the extension list never came, so the only trace of it is rows that \

@@ -45,15 +45,13 @@ public struct HelmPermissionNote: View {
     /// The verb, where an empty state can read it too: a page whose whole
     /// content is «this needs a permission» draws the same word on a prominent
     /// button rather than inventing a second one for the same act.
-    public static var grantLabel: String {
-        L("Grant…")
-    }
+    public static var grantLabel: String { L(.grant) }
 }
 
-public extension View {
+extension View {
     /// Runs when Helm comes back to the front — the moment to re-read anything
     /// the user may have changed in System Settings while away.
-    func helmOnAppActive(_ action: @escaping () -> Void) -> some View {
+    public func helmOnAppActive(_ action: @escaping () -> Void) -> some View {
         onReceive(NotificationCenter.default.publisher(
             for: NSApplication.didBecomeActiveNotification)) { _ in action() }
     }
@@ -70,7 +68,7 @@ public extension View {
     /// Synchronous, unlike the disk probe: `AXIsProcessTrusted()` is one
     /// non-blocking call and needs no hop, so the answer is there on the first
     /// frame rather than one later.
-    func helmTracksAccessibility(_ state: Binding<PermissionState>,
+    public func helmTracksAccessibility(_ state: Binding<PermissionState>,
                                  alsoOn extra: Notification.Name? = nil) -> some View {
         modifier(HelmAccessibilityTracker(state: state, extra: extra))
     }
@@ -87,7 +85,7 @@ public extension View {
     /// The probe is `PermissionCheck.fullDiskAccess()`, which is four blocking
     /// file reads and says at its own declaration why it does them off the
     /// cooperative pool.
-    func helmTracksFullDiskAccess(_ state: Binding<PermissionState>,
+    public func helmTracksFullDiskAccess(_ state: Binding<PermissionState>,
                                   alsoOn extra: Notification.Name? = nil) -> some View {
         modifier(HelmFullDiskTracker(state: state, extra: extra))
     }
@@ -100,7 +98,7 @@ public extension View {
     /// Synchronous like Accessibility's, for the same reason: the probe is
     /// `CGPreflightScreenCaptureAccess`, one non-blocking call that answers from
     /// the process's own grant and raises no dialog.
-    func helmTracksScreenRecording(_ state: Binding<PermissionState>,
+    public func helmTracksScreenRecording(_ state: Binding<PermissionState>,
                                    alsoOn extra: Notification.Name? = nil) -> some View {
         modifier(HelmScreenRecordingTracker(state: state, extra: extra))
     }
@@ -174,8 +172,8 @@ private struct HelmFullDiskTracker: ViewModifier {
 /// takes key focus without activating the app on purpose, so a panel opened
 /// from the menu-bar icon never sees `didBecomeActive`. Without a moment of its
 /// own the panel would read the grants once, at launch, and go on drawing that
-/// answer for the life of the process — which is the reading older than the act
-/// CLAUDE.md names, in the surface most exposed to it.
+/// answer for the life of the process — which is a reading older than the act
+/// (ARCHITECTURE.md § The gates), in the surface most exposed to it.
 ///
 /// A publisher rather than an `if` around `onReceive`: a `ViewModifier` cannot
 /// branch on the shape of its body without changing the view's identity, and a

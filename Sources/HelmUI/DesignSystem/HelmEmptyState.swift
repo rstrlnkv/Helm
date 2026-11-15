@@ -60,7 +60,7 @@ public struct HelmEmptyState<Actions: View>: View {
                 // one; the scale steps 13 · 16 · 22, and an empty state's
                 // heading is the step above a section heading and well below a
                 // hero figure.
-                Text(title).font(.system(size: 16, weight: .semibold))
+                Text(title).font(HelmText.plateTitle)
             }
             if let message {
                 Text(message)
@@ -100,14 +100,14 @@ public struct HelmEmptyState<Actions: View>: View {
     private static var textWidth: CGFloat { 380 }
 }
 
-public extension HelmEmptyState where Actions == EmptyView {
+extension HelmEmptyState where Actions == EmptyView {
     /// A statement: nothing matched, nothing is left. No button — one here
     /// would invite somebody to repeat what just came back empty.
     ///
     /// The symbol is optional even so: "nothing was found" after a scan has
     /// earned a green check, while "type to search" is a caption and drawing a
     /// plate above it would announce an outcome where none happened yet.
-    init(symbol: String? = nil, tint: Color = .secondary,
+    public init(symbol: String? = nil, tint: Color = .secondary,
          title: String? = nil, message: String, note: String? = nil) {
         self.init(symbol: symbol, tint: tint, title: title,
                   message: message, note: note) { EmptyView() }
@@ -140,8 +140,7 @@ public struct HelmBusyState<Actions: View>: View {
             ProgressView().controlSize(.small)
             if let message {
                 Text(message)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
+                    .helmQuietDetail()
                     .multilineTextAlignment(.center)
             }
             actions
@@ -156,10 +155,32 @@ public struct HelmBusyState<Actions: View>: View {
     }
 }
 
-public extension HelmBusyState where Actions == EmptyView {
+extension HelmBusyState where Actions == EmptyView {
     /// Waiting with nothing to be done about it — a spinner, or a spinner and a
     /// line saying what is being waited for.
-    init(_ message: String? = nil) {
+    public init(_ message: String? = nil) {
         self.init(message) { EmptyView() }
+    }
+}
+
+/// A button's label while the button's own work runs: a small spinner before the words.
+public struct HelmBusyLabel: View {
+    private let title: String
+    private let busy: Bool
+
+    public init(_ title: String, busy: Bool) {
+        self.title = title
+        self.busy = busy
+    }
+
+    public var body: some View {
+        if busy {
+            HStack(spacing: HelmSpace.s3) {
+                ProgressView().controlSize(.small)
+                Text(title)
+            }
+        } else {
+            Text(title)
+        }
     }
 }

@@ -5,7 +5,7 @@ import Foundation
 /// what have I not opened for a long time. The reverse of each answers no
 /// question of that kind, so there is no direction to choose and the menu that
 /// offers these stays a flat list of three.
-public enum AppSortOrder: String, Codable, CaseIterable, Sendable {
+public enum AppSortOrder: String, CaseIterable, Sendable {
     /// A to Z. Also what every list is in until a reading arrives.
     case name
     /// Largest first; a size that was measured as nothing goes last.
@@ -23,7 +23,7 @@ public enum AppSortOrder: String, Codable, CaseIterable, Sendable {
     /// any process running as the user can write, so an unknown spelling reads
     /// as the standard order rather than as an error nobody can act on. A case
     /// retired later is kept in the enum and mapped here, never deleted.
-    public init(stored raw: String?) {
+    init(stored raw: String?) {
         self = raw.flatMap(AppSortOrder.init(rawValue:)) ?? .standard
     }
 }
@@ -34,13 +34,13 @@ public enum AppSortOrder: String, Codable, CaseIterable, Sendable {
 /// draws three different things: a date (`opened`), "no record" (asked, and
 /// Spotlight had none) and nothing at all (`unread` — not asked, because the
 /// read was cut short by its ceiling or its deadline).
-public struct AppOpenedReading: Codable, Equatable, Sendable {
+public struct AppOpenedReading: Equatable, Sendable {
     /// Path → last opened. An app that is not here and not in `unread` has no
     /// record.
     public let opened: [String: Date]
     /// Paths this read never got to.
     public let unread: [String]
-    public init(opened: [String: Date], unread: [String] = []) {
+    init(opened: [String: Date], unread: [String] = []) {
         self.opened = opened
         self.unread = unread
     }
@@ -53,7 +53,7 @@ public enum AppSort {
     /// Whether the date order can mean anything: only when Spotlight answered
     /// for at least one app. With no date at all, every row would read "no
     /// record" and the order would be the name order presented as a measurement.
-    /// `nil` is a reading that has not arrived (or was lost).
+    /// `nil` is a reading that has not been taken yet.
     public static func dateOrderAvailable(_ opened: [String: Date]?) -> Bool {
         !(opened?.isEmpty ?? true)
     }

@@ -14,13 +14,13 @@ import Foundation
 /// the two the same bytes. The ring lies inside the circle, its outer edge the circle's.
 public enum Magnifier {
     /// How many times larger the picture under the lens is shown.
-    public static let factor: CGFloat = 2
+    static let factor: CGFloat = 2
     /// The smallest circle a drag or a resize keeps, in points: under it the lens shows a few pixels and the ring is all there is.
-    public static let minimumDiameter: CGFloat = 8
+    static let minimumDiameter: CGFloat = 8
 
     /// The lens in `context`, whose user space is the display's top-left points: the part of `display` (the frozen picture, `scale`
     /// pixels to a point) round the circle's centre, magnified, clipped to the circle, and the ring over it. Nothing is drawn for another tool.
-    public static func draw(_ annotation: Annotation, over display: CGImage, scale: CGFloat, in context: CGContext) {
+    static func draw(_ annotation: Annotation, over display: CGImage, scale: CGFloat, in context: CGContext) {
         guard annotation.tool == .magnifier, scale.isFinite, scale > 0 else { return }
         let circle = annotation.frame
         let centre = CGPoint(x: circle.midX, y: circle.midY)

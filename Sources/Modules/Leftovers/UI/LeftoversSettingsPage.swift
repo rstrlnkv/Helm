@@ -15,8 +15,8 @@ struct LeftoversSettingsPage: View {
     @State private var confirmingBatch = false
     @State private var pendingDeletion: StaleItem?
 
-    init(vm: ModuleViewModel) {
-        lvm = LeftoversViewModel.shared(vm: vm)
+    init(lvm: LeftoversViewModel) {
+        self.lvm = lvm
     }
 
     /// What the row's menu may call this. An ellipsis is a promise that another
@@ -24,7 +24,7 @@ struct LeftoversSettingsPage: View {
     /// dialog follows the row says exactly what the bar below it says, because
     /// it is the same act.
     private static func deleteLabel(for item: StaleItem) -> String {
-        LeftoverActions.needsConfirmation(item) ? LfStr.deleteItem : LfStr.removeSelected
+        LeftoverActions.needsConfirmation(item) ? LfStr.deleteItem : HelmWord.moveToTrash
     }
 
     /// What «Found: N» is about: the rows the list under it draws.
@@ -56,7 +56,7 @@ struct LeftoversSettingsPage: View {
             }
             if diskAccess == .denied {
                 HelmPermissionNote(need: .fullDiskAccess, text: LfStr.scanNeedsAccess)
-                    .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+                    .helmPageStrip()
                 Divider()
             }
             // The safety line, where the thing it is about is: over the list,
@@ -69,9 +69,7 @@ struct LeftoversSettingsPage: View {
             // whatever the list holds — the menu that hid the rows has to remain
             // reachable, or the page is a dead end.
             if lvm.nothingToShow == nil {
-                Text(LfStr.reviewNote)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
+                HelmSettingsNote(LfStr.reviewNote)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, HelmLayout.formInset).padding(.top, HelmSpace.s5)
             }
@@ -80,9 +78,6 @@ struct LeftoversSettingsPage: View {
             // under it.
             if footHasSomethingToSay {
                 Divider()
-                // Nearest the list, because it is about the list: the report
-                // under it is about the press.
-                staleListNote
                 outcomeRow
                 // Both are about the selection, so both need rows to be about —
                 // and the report above them is not: a removal that emptied the
@@ -107,17 +102,15 @@ struct LeftoversSettingsPage: View {
                             isPresented: Binding(get: { pendingDeletion != nil },
                                                  set: { if !$0 { pendingDeletion = nil } }),
                             titleVisibility: .visible) {
-            Button(LfStr.removeSelected, role: .destructive) {
+            Button(HelmWord.moveToTrash, role: .destructive) {
                 if let item = pendingDeletion { Task { await lvm.remove(item) } }
                 pendingDeletion = nil
             }
-            Button(LfStr.cancelAction, role: .cancel) { pendingDeletion = nil }
+            Button(HelmWord.cancel, role: .cancel) { pendingDeletion = nil }
         }
-        // The page's controls, in the window's own `NSToolbar`
-        // (`SettingsToolbar`), through the contract every module page shares
-        // (`HelmWindowToolbar.swift` in `HelmUI`) — see `toolbarContent`
-        // below for what each zone carries and why.
-        .helmWindowToolbar(toolbarContent, token: LeftoversDescriptor.id.rawValue)
+        // The page's controls, in the header row of the window's card, through the contract every module page
+        // shares (`HelmWindowToolbar.swift` in `HelmUI`) — see `toolbarContent` below for what each carries.
+        .helmWindowToolbar(toolbarContent)
         // **No curve on the page, on the tab or on the count.** «Leftovers» and
         // «All» are one `List` whose rows `visibleItems` changes, and a rescan or
         // a removal changes the same list, so a curve on the whole page (keyed to
@@ -128,14 +121,14 @@ struct LeftoversSettingsPage: View {
         // Narrowing the list drops the ticks it hides, the way the kind filter
         // and a fresh scan already do. Without this the switcher was the one
         // way a selection could outlive its row. Moved here from the switcher
-        // view itself once that view moved into the window's toolbar, which
+        // view itself once that view moved into the header row, which
         // owns no state of the page's to hang a change handler on
-        // (`HomebrewSettingsPage` does the same for its own segment).
+        // (`HomebrewManager` does the same for its own segment).
         .onChange(of: lvm.showAll) { _, _ in lvm.dropHiddenSelections() }
     }
 
     /// **What is left of the page's bar once its controls are in the
-    /// window's toolbar: what the scan found.** The filter, the kind menu and
+    /// window's header row: what the scan found.** The filter, the kind menu and
     /// Scan moved to `toolbarContent`; the captions stay in the page because
     /// they describe the list under them rather than act on it, and a count
     /// is not a control to put glass behind.
@@ -144,10 +137,10 @@ struct LeftoversSettingsPage: View {
             captions
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+        .helmPageStrip()
     }
 
-    /// **The page's controls, in the window's toolbar.**
+    /// **The page's controls, in the window's header row.**
     ///
     /// Tabs are declared only while there is a list — an empty tab array
     /// leaves the switcher out of the bar entirely, the same guard the old
@@ -166,10 +159,8 @@ struct LeftoversSettingsPage: View {
     private var toolbarContent: HelmPageToolbarContent {
         let hasList = !lvm.items.isEmpty
         return HelmPageToolbarContent(
-            tabs: hasList ? [HelmToolbarTab(id: "onlyLeftovers", title: LfStr.filterLeftovers,
-                                            symbol: "doc.badge.ellipsis"),
-                            HelmToolbarTab(id: "all", title: LfStr.filterAll,
-                                          symbol: "list.bullet")] : [],
+            tabs: hasList ? [HelmToolbarTab(id: "onlyLeftovers", title: HelmWord.leftovers),
+                            HelmToolbarTab(id: "all", title: LfStr.filterAll)] : [],
             selectedTab: hasList ? Binding(get: { lvm.showAll ? "all" : "onlyLeftovers" },
                                            set: { lvm.showAll = ($0 == "all") }) : nil,
             actions: [
@@ -204,15 +195,15 @@ struct LeftoversSettingsPage: View {
     /// derivation, so the toolbar and the invitation cannot say two
     /// different things about the same scan.
     private var scanTitle: String {
-        lvm.scanning ? LfStr.scanning : (lvm.scanned ? LfStr.rescan : LfStr.scan)
+        lvm.scanning ? HelmWord.scanning : (lvm.scanned ? HelmWord.scanAgain : LfStr.scan)
     }
 
     /// What the scan found, and what it could not judge — one caption or two,
     /// whichever the pane can hold.
     ///
     /// **The strip had no slack, and an `HStack` pays for that out of whatever is
-    /// flexible.** With both captions fixed, at the narrowest pane the window
-    /// allows (606 pt): «Сканировать заново» drawn 20.5 pt against the 154.0 its
+    /// flexible.** With both captions fixed, at a 606 pt pane, which the window
+    /// no longer gives: «Сканировать заново» drawn 20.5 pt against the 154.0 its
     /// words need, «Escanear de nuevo» 20.5 against 139.0, German 92.5 against
     /// 118.5 — the verb reduced to an ellipsis by two labels.
     ///
@@ -228,7 +219,8 @@ struct LeftoversSettingsPage: View {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: HelmSpace.s5) { found; unchecked }
                 unchecked
-                // Where even one will not fit — Russian at 606 pt — the strip
+                // Where even one would not fit — Russian at 606 pt, which the window
+                // no longer gives — the strip
                 // keeps its controls, and nothing said only here is lost: the
                 // screen this is about is the *empty* one, where the sentence is
                 // the message and no width can take it away.
@@ -249,7 +241,7 @@ struct LeftoversSettingsPage: View {
     /// and never cut — the count is the whole of what it carries.
     private func caption(_ text: String) -> some View {
         Text(text)
-            .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+            .helmQuietDetail()
             .lineLimit(1).fixedSize()
     }
 
@@ -263,41 +255,32 @@ struct LeftoversSettingsPage: View {
     /// the report of the removal that emptied it, which is the one thing down here
     /// that is not about the selection.
     private var footHasSomethingToSay: Bool {
-        !lvm.items.isEmpty || removalOutcome != nil || silence == .listLost
+        !lvm.items.isEmpty || removalOutcome != nil
     }
 
-    /// Whether the screen under the toolbar is drawing a Scan button of its own.
+    /// Whether the screen under the header row is drawing a Scan button of its own.
     ///
     /// `LeftoversEmpty.invites` and nothing beside it: the empty state asks the
     /// same question to decide whether it draws a verb, so the two answers cannot
     /// come apart. A statement — «no leftovers found», «everything is hidden by the
-    /// filter» — draws none, and there the toolbar's is the only way to scan again.
+    /// filter» — draws none, and there the header row's is the only way to scan again.
     private var invitationCarriesTheScan: Bool {
         guard let nothing = lvm.nothingToShow else { return false }
         return LeftoversEmpty.invites(nothing)
     }
 
     /// **The invitation's own verb, now that Scan has moved into the
-    /// window's toolbar** (`toolbarContent` above) — drawn only on the
+    /// window's header row** (`toolbarContent` above) — drawn only on the
     /// empty-state screens `LeftoversEmpty.invites` names, where the
-    /// invitation is the call to action and the toolbar's own Scan is
-    /// hidden by `invitationCarriesTheScan`. It used to also stand for the
-    /// toolbar's own button, at the end of a bar this page drew itself,
-    /// before that bar moved into `SettingsToolbar`; the two are drawn in one
-    /// place each now, never both, so `scanRefused` and `scanTitle` above
+    /// invitation is the call to action and the header row's own Scan is
+    /// hidden by `invitationCarriesTheScan`. The header row's own button and
+    /// this one are drawn in one place each, never both, so `scanRefused` and `scanTitle` above
     /// are shared rather than restated here.
     private var scanButton: some View {
         Button {
             Task { await lvm.scan() }
         } label: {
-            if lvm.scanning {
-                HStack(spacing: 6) {
-                    ProgressView().controlSize(.small)
-                    Text(scanTitle)
-                }
-            } else {
-                Text(scanTitle)
-            }
+            HelmBusyLabel(scanTitle, busy: lvm.scanning)
         }
         .disabled(scanRefused)
     }
@@ -368,8 +351,8 @@ struct LeftoversSettingsPage: View {
                 HelmCheckboxSlot()
             }
 
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: HelmSpace.s1) {
+                HStack(spacing: HelmSpace.s3) {
                     Text(item.identifier)
                         .lineLimit(1)
                         // Not SwiftUI's `.secondary`: it measures 3.95:1 here,
@@ -398,7 +381,7 @@ struct LeftoversSettingsPage: View {
                 // and the floor it reads are `LeftoverDetailLine`'s.
                 if let detail = LfStr.detail(for: item) {
                     LeftoverDetailLine(detail: detail)
-                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                        .helmQuietDetail()
                 }
             }
             // A name, up to two badges and a line saying where the file is and
@@ -410,7 +393,7 @@ struct LeftoversSettingsPage: View {
             Spacer()
             controls(for: item)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, HelmSpace.s1)
     }
 
     /// What a row offers at its trailing edge: the switch, and then either the way
@@ -446,7 +429,7 @@ struct LeftoversSettingsPage: View {
                 Text(Bytes(item.sizeBytes))
                     .helmFigure().foregroundStyle(HelmText.quiet)
             }
-            Menu {
+            HelmRowMenu(subject: item.identifier) {
                 Button(HelmA11y.showInFinder) { HelmReveal.inFinder(item.path) }
                 if item.actions.contains(.delete) {
                     Button(Self.deleteLabel(for: item), role: .destructive) {
@@ -467,12 +450,7 @@ struct LeftoversSettingsPage: View {
                     // over Apple's own files, where no password helps.
                     Text(LfStr.noDelete(withheld))
                 }
-            } label: {
-                Image(systemName: "ellipsis.circle")
             }
-            .menuStyle(.borderlessButton)
-            .accessibilityLabel("\(HelmA11y.moreActions), \(item.identifier)")
-            .fixedSize()
         }
     }
 
@@ -499,34 +477,32 @@ struct LeftoversSettingsPage: View {
     @ViewBuilder private func badge(_ badge: RowBadge) -> some View {
         switch badge {
         case .status(let status): statusBadge(status)
-        // Grey, like the two facts nobody may tick: what a colour separates in
-        // this list is «ticked by Select all» from «never ticked», and a
-        // switched-off row is neither.
+        // Grey, like protected, unreadable and the unchecked trio, rows nobody may
+        // tick: what the warning colour separates in this list is «ticked by
+        // Select all» from «never ticked», and a switched-off row is neither.
         case .disabled: HelmBadge(LfStr.statusDisabled)
-        case .runsAtLogin: HelmBadge(LfStr.runsAtLogin, tint: .orange)
+        case .runsAtLogin: HelmBadge(LfStr.runsAtLogin, tint: HelmSignal.warning)
         }
     }
 
     private func statusBadge(_ status: ItemStatus) -> some View {
         let (text, color): (String, Color) = switch status {
-        case .orphaned: (LfStr.statusOrphaned, .orange)
-        case .inUse: (LfStr.statusInUse, .green)
-        case .protectedItem: (LfStr.statusProtected, .secondary)
-        // **Grey, read off the render rather than reasoned about.** The first
-        // version used `HelmSignal.warning`, whose 20 % wash at badge size is not
-        // distinguishable from `.orange`'s — so «Остаток» and «Не читается» drew as
-        // the same pill two rows apart, and the colour separating «ticked by Select
-        // all» from «never ticked» said nothing. Grey is what the other two facts
-        // nobody may tick already wear.
-        case .unreadable: (LfStr.statusUnreadable, .secondary)
-        // Grey for the reason above: what separates a colour here is «ticked by
-        // Select all» from «never ticked», and these are the never-ticked. **One
+        case .orphaned: (LfStr.statusOrphaned, HelmSignal.warning)
+        case .inUse: (LfStr.statusInUse, HelmSignal.success)
+        case .protectedItem: (LfStr.statusProtected, HelmBadge.neutralTint)
+        // **Grey, not the warning colour.** «Leftover» wears the warning colour,
+        // and an unreadable row in it would draw as the same pill two rows apart,
+        // so the warning colour separating «ticked by Select all» from «never ticked»
+        // would say nothing. Grey is what `.protectedItem` and the unchecked statuses below wear.
+        case .unreadable: (LfStr.statusUnreadable, HelmBadge.neutralTint)
+        // Grey for the reason above: what the warning colour separates here is
+        // «ticked by Select all» from «never ticked», and these are the never-ticked. **One
         // word for the three of them on purpose**: all three are counted in the
         // «Helm could not check N items» the empty screen draws, and a second
         // word would have the badge and that sentence disagree. Which kind of
         // unchecked a row is, is the sentence under its name.
         case .undetermined, .sourceRedirected, .sourceUnreadable:
-            (LfStr.statusUndetermined, .secondary)
+            (LfStr.statusUndetermined, HelmBadge.neutralTint)
         }
         return HelmBadge(text, tint: color)
     }
@@ -560,19 +536,6 @@ struct LeftoversSettingsPage: View {
         if let outcome = removalOutcome { statement(outcome) }
     }
 
-    /// What a rescan nobody answered says: the rows above are the previous
-    /// scan's, and nothing else about the page changed.
-    ///
-    /// Drawn only where the removal is not already saying it — when both requests
-    /// were lost, `silenceOutcome` draws one sentence that covers both, and two
-    /// phrasings of one machine fact is the defect this pass exists to end.
-    @ViewBuilder private var staleListNote: some View {
-        if silence == .listLost {
-            statement(Text(LfStr.rescanLost)
-                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet))
-        }
-    }
-
     /// A full-width line of prose at the foot of the page, in the shape this row
     /// established and the selection line then needed as well.
     ///
@@ -589,9 +552,7 @@ struct LeftoversSettingsPage: View {
     /// Which of the component's verdicts this round is, or nil for a page nobody
     /// has pressed anything on.
     ///
-    /// Its own member so the frame and the padding above are written once: the
-    /// lost reply has no banner to key off, and drawing it in a branch of its own
-    /// meant that chain twice.
+    /// Its own member so the frame and the padding above are written once.
     ///
     /// **The Grant button is keyed to the refusal, not to the page's own probe.**
     /// Keyed to `diskAccess` it stood beside every refusal on a Mac without the
@@ -600,9 +561,6 @@ struct LeftoversSettingsPage: View {
     /// `PermissionCheck.reason` names Full Disk Access for container paths only,
     /// and this module's sources reach none.
     private var removalOutcome: HelmRemovalOutcome? {
-        // Ahead of the banner, which is nil in this state: a reply that never came
-        // says so rather than nothing.
-        if let unanswered = Self.silenceOutcome(silence) { return unanswered }
         guard let banner = lvm.banner else { return nil }
         return HelmRemovalOutcome(succeededText: banner,
                                   removed: lvm.removedCount,
@@ -612,36 +570,11 @@ struct LeftoversSettingsPage: View {
                                   })
     }
 
-    /// Which of this page's two requests went unanswered, if either.
-    private var silence: LeftoversSilence.Note? {
-        LeftoversSilence.note(removalUnanswered: lvm.replyLost,
-                              rescanUnanswered: lvm.scanReplyLost,
-                              scanned: lvm.scanned)
-    }
-
-    /// The report a silence draws, or nil where the silence is not about a
-    /// removal at all.
-    ///
-    /// Its own function, and exhaustive over the note for the reason
-    /// `LfStr.kindName` records: which sentence stands over which silence is the
-    /// whole of this fix.
-    private static func silenceOutcome(_ note: LeftoversSilence.Note?) -> HelmRemovalOutcome? {
-        switch note {
-        case .removalLost: .unanswered
-        // The rescan that would have made «the list above shows where the files
-        // are now» true was lost with it.
-        case .removalAndListLost: .unansweredWithStaleList
-        // Not a removal: the sentence for it is `staleListNote`, and drawing both
-        // would say one silence twice.
-        case .listLost, nil: nil
-        }
-    }
-
     /// What is ticked, on a line of its own above the buttons.
     ///
     /// **It was the fourth thing in the button row, and an `HStack` does not
     /// wrap** — the same defect the report above it was moved out for, one row
-    /// down. At the narrowest pane the row overflowed and what paid for it was the
+    /// down. At a 606 pt pane the row overflowed and what paid for it was the
     /// destructive button: measured against natural widths at 606 pt, «Move to
     /// Trash» came out 40.0 pt short in German, 36.0 in French, 33.5 in Spanish and
     /// 18.5 in Russian, drawn as «In den Papierkorb…» and «Переместить в Корзи…» —
@@ -653,7 +586,7 @@ struct LeftoversSettingsPage: View {
     /// `outcomeRow` established and the buttons get the width they ask for.
     private var selectionLine: some View {
         statement(Text(LfStr.selectedLine(lvm.selectedCount, Bytes(lvm.selectedBytes)))
-            .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet))
+            .helmQuietDetail())
     }
 
     /// **Drawn only where there is something to act on**, which is the guard the
@@ -664,16 +597,16 @@ struct LeftoversSettingsPage: View {
     /// filter menu: what emptied the list is then a menu on screen, not the Mac.
     private var actionBar: some View {
         HStack(spacing: HelmSpace.s5) {
-            Button(LfStr.selectAll) { lvm.tickAll() }
+            Button(HelmWord.selectAll) { lvm.tickAll() }
             // `busy` for the same reason as its neighbour: five controls on this
             // page can start or change an act, and two of them dimmed during a
             // removal. Ticking rows mid-request changes what the report that comes
             // back is about.
             .disabled(lvm.leftoverCount == 0 || lvm.busy)
-            Button(LfStr.deselectAll) { lvm.untickAll() }
+            Button(HelmWord.clearSelection) { lvm.untickAll() }
                 .disabled(lvm.selected.isEmpty || lvm.busy)
             Spacer()
-            Button(LfStr.removeSelected) { confirmingBatch = true }
+            Button(HelmWord.moveToTrash) { confirmingBatch = true }
                 .buttonStyle(.borderedProminent)
                 .disabled(lvm.selected.isEmpty || lvm.busy)
                 // `selectedCount`, not `selected.count`: the bar above this button
@@ -683,12 +616,12 @@ struct LeftoversSettingsPage: View {
                 .confirmationDialog(LfStr.confirmSelected(lvm.selectedCount,
                                                           Bytes(lvm.selectedBytes)),
                                     isPresented: $confirmingBatch, titleVisibility: .visible) {
-                    Button(LfStr.removeSelected, role: .destructive) {
+                    Button(HelmWord.moveToTrash, role: .destructive) {
                         Task { await lvm.removeSelected() }
                     }
-                    Button(LfStr.cancelAction, role: .cancel) { }
+                    Button(HelmWord.cancel, role: .cancel) { }
                 }
         }
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, 12)
+        .helmPageStrip()
     }
 }

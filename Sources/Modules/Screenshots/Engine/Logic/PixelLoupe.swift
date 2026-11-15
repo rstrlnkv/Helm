@@ -20,7 +20,7 @@ public struct PixelLoupe: @unchecked Sendable {
     /// The pixel under the point, in the frame's own pixels, top-left origin.
     public let pixel: (x: Int, y: Int)
     /// The middle pixel's colour, 0...255 a channel.
-    public let centre: (red: UInt8, green: UInt8, blue: UInt8)
+    let centre: (red: UInt8, green: UInt8, blue: UInt8)
 
     /// `#RRGGBB`, upper case: the form a design tool and the system's colour meter both print.
     public var hex: String {

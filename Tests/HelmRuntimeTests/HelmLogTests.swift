@@ -1,6 +1,7 @@
 import XCTest
 @testable import HelmRuntime
 
+/// Guards the dev build that an «off» saved by the beta silenced (fix 4ce355a9).
 final class LogPolicyTests: XCTestCase {
     func testDevBuildsLogByDefault() {
         XCTAssertTrue(LogPolicy.isEnabled(version: "0.7.0-dev.2", override: nil))
@@ -21,12 +22,15 @@ final class LogPolicyTests: XCTestCase {
     }
 }
 
+/// The one-line-per-event spelling `LogSeed` and «Copy log» read back, and the
+/// only test that flattening a newline is asserted: the Copy-log defect named at
+/// `LogLine.line`.
 final class LogLineTests: XCTestCase {
     private let stamp = Date(timeIntervalSince1970: 1_700_000_000)
 
     func testLineCarriesTimeLevelCategoryAndMessage() {
-        let line = LogLine.format(date: stamp, level: .error, category: "vpn",
-                                  message: "connect failed", timeZone: TimeZone(identifier: "UTC")!)
+        let line = LogLine.line(LogEntry(date: stamp, level: .error, category: "vpn", message: "connect failed"),
+                            timeZone: TimeZone(identifier: "UTC")!)
         XCTAssertTrue(line.hasSuffix("[error] [vpn] connect failed"), line)
         XCTAssertTrue(line.hasPrefix("2023-11-14 22:13:20"), line)
         XCTAssertFalse(line.contains("\n"))
@@ -34,14 +38,14 @@ final class LogLineTests: XCTestCase {
 
     /// Newlines would break one-line-per-event parsing when reading the file.
     func testMultilineMessagesAreFlattened() {
-        let line = LogLine.format(date: stamp, level: .info, category: "brew",
-                                  message: "line one\nline two", timeZone: TimeZone(identifier: "UTC")!)
+        let line = LogLine.line(LogEntry(date: stamp, level: .info, category: "brew", message: "line one\nline two"),
+                            timeZone: TimeZone(identifier: "UTC")!)
         XCTAssertTrue(line.hasSuffix("line one ⏎ line two"), line)
     }
 }
 
-/// The log file was 0644 inside a 0700 folder, where ARCHITECTURE.md § Diagnostics
-/// log describes the 0700 as the protection — measured on the owner's own Mac,
+/// The log file was 0644 inside a 0700 folder, where (ARCHITECTURE.md § Diagnostics
+/// log) describes the 0700 as the protection — measured on the owner's own Mac,
 /// where the folder was doing all of it and the file none.
 ///
 /// Two halves, because a file gets its mode from whoever created it: `append`

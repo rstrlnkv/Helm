@@ -16,6 +16,8 @@ import HelmTestSupport
 /// the folder they name is full.
 ///
 /// On disk: a scratch home, a real link, a real file.
+///
+/// Past defect: fixed in 4ce355a9.
 final class AFolderWatchedThroughALinkIsReadTests: XCTestCase {
 
     private var home: URL!
@@ -27,10 +29,7 @@ final class AFolderWatchedThroughALinkIsReadTests: XCTestCase {
         try FileManager.default.createSymbolicLink(
             at: home.appendingPathComponent("DL"),
             withDestinationURL: home.appendingPathComponent("Downloads"))
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        engine = AutopilotEngine.scratch(home: home.path)
     }
 
     /// A rule that takes the one file there — the preset's own conditions look

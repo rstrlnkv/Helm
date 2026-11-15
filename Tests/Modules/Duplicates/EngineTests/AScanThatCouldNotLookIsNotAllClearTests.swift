@@ -13,6 +13,8 @@ import HelmTestSupport
 /// bare array and there was nowhere in that type to put them, so the page could
 /// not have known. Leftovers had exactly this and it was repaired four commits
 /// ago; this is the same repair.
+///
+/// Guards a past defect: f0e00ef3 fix(duplicates): the banner counts what the disk gives back, and the page reaches the screen at all.
 final class AScanThatCouldNotLookIsNotAllClearTests: XCTestCase {
 
     // MARK: - The rule

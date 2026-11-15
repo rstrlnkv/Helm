@@ -45,7 +45,7 @@ enum OrphanDetector {
         guard !name.hasPrefix(".") else { return false }
         let id = bundleID(from: name)
         guard !skippedPrefixes.contains(where: { id.hasPrefix($0) }) else { return false }
-        // ByHost prefs carry a UUID tail (com.acme.tool.<UUID>); match on prefix too.
+        // An id that extends an installed id past a dot (com.acme.tool.helper) is that app's.
         if installedBundleIDs.contains(id) { return false }
         if installedBundleIDs.contains(where: { id.hasPrefix($0 + ".") }) { return false }
         return !knownToSystem(id)

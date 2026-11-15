@@ -16,6 +16,8 @@ import HelmTestSupport
 /// Same names in different folders is the ordinary case for a folder watched
 /// deeper than one level: `report.pdf`, `IMG_0001.JPG`, `invoice.pdf`,
 /// `index.html`, `Icon`.
+///
+/// Past defect: fixed in 6dec5f2f.
 final class PreviewRowIdentityTests: XCTestCase {
 
     private var home: URL!
@@ -26,10 +28,7 @@ final class PreviewRowIdentityTests: XCTestCase {
         home = scratchDirectory("home")
         root = home.appendingPathComponent("Downloads")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "rules.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        engine = AutopilotEngine.scratch(home: home.path)
     }
 
     /// Two files, one rule, one folder watched two levels deep.

@@ -28,17 +28,29 @@ enum Installer {
     }
 
     /// Unzips `zipURL`, validates the bundle, then swaps + relaunches (terminates the app).
-    /// Runs on the main actor; the work is quick for a ~2 MB archive.
+    /// Runs on the main actor, but the unzip does not: `ditto` on the 7.4 MB asset
+    /// is a blocking child process, and holding the main thread through it froze
+    /// the Installing line. Everything that touches `Bundle.main`, `NSApp` or the
+    /// swap stays on main.
+    ///
+    /// The unzipped payload is removed on every way out that does not hand it to
+    /// the swap script; once handed over, the script owns it (and keeps it on a
+    /// failed copy, `UpdateSwap`).
     @MainActor
-    static func installZip(at zipURL: URL, expectedVersion: String) throws {
+    static func installZip(at zipURL: URL, expectedVersion: String) async throws {
         let fm = FileManager.default
         let work = fm.temporaryDirectory
             .appendingPathComponent("HelmUpdate-\(UUID().uuidString)", isDirectory: true)
         try fm.createDirectory(at: work, withIntermediateDirectories: true)
+        var handedOver = false
+        defer { if !handedOver { try? fm.removeItem(at: work) } }
 
         // Unzip with ditto (handles the ditto-produced archive + preserves the signature).
-        guard HelmProcess.run("/usr/bin/ditto", ["-x", "-k", zipURL.path, work.path]).status == 0
-        else { throw InstallError.unzipFailed }
+        let zipPath = zipURL.path, workPath = work.path
+        let unzipped = await offTheCooperativePool {
+            HelmProcess.run("/usr/bin/ditto", ["-x", "-k", zipPath, workPath]).status
+        }
+        guard unzipped == 0 else { throw InstallError.unzipFailed }
 
         // The downloaded archive is consumed — drop it now so it never lingers.
         try? fm.removeItem(at: zipURL)
@@ -56,8 +68,7 @@ enum Installer {
         // Beta's release, which is newer than its own prerelease, and ends up
         // holding a bundle that calls itself the release's identifier at the
         // dev build's own address.
-        guard let installedID = Bundle.main.bundleIdentifier,
-              identifier(ofBundleAt: newApp) == installedID else {
+        guard isSameProgram(newApp, as: Bundle.main.bundleIdentifier) else {
             throw InstallError.identityMismatch
         }
 
@@ -69,6 +80,7 @@ enum Installer {
 
         try launchSwapScript(newApp: newApp.path, installPath: installPath,
                              workDir: work.path, version: expectedVersion)
+        handedOver = true
         NSApp.terminate(nil)
     }
 
@@ -79,18 +91,25 @@ enum Installer {
         return items.first { $0.pathExtension == "app" }
     }
 
+    private static func info(ofBundleAt app: URL) -> NSDictionary? {
+        NSDictionary(contentsOf: app.appendingPathComponent("Contents/Info.plist"))
+    }
+
     private static func version(ofBundleAt app: URL) -> String? {
-        let plist = app.appendingPathComponent("Contents/Info.plist")
-        guard let dict = NSDictionary(contentsOf: plist) else { return nil }
-        return dict["CFBundleShortVersionString"] as? String
+        info(ofBundleAt: app)?["CFBundleShortVersionString"] as? String
     }
 
     /// What a bundle on disk calls itself. Read exactly the way its version is
     /// read one function up, so the two answers come from one plist.
     static func identifier(ofBundleAt app: URL) -> String? {
-        let plist = app.appendingPathComponent("Contents/Info.plist")
-        guard let dict = NSDictionary(contentsOf: plist) else { return nil }
-        return dict["CFBundleIdentifier"] as? String
+        info(ofBundleAt: app)?["CFBundleIdentifier"] as? String
+    }
+
+    /// Whether the bundle calls itself the installed program. A missing
+    /// identifier on either side is no match.
+    static func isSameProgram(_ app: URL, as installedID: String?) -> Bool {
+        guard let installedID, let got = identifier(ofBundleAt: app) else { return false }
+        return got == installedID
     }
 
     /// Compares versions ignoring a leading "v" (tag "v0.4.0" vs bundle "0.4.0").

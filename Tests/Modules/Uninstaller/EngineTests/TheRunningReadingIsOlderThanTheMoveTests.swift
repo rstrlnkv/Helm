@@ -6,7 +6,7 @@ import XCTest
 
 /// **A reading of which applications are up is not good for the move.**
 ///
-/// `removeBatch` quits the running applications of a batch one after another, a
+/// `trashPaths` quits the running applications of a batch one after another, a
 /// force quit and a `waitUntilGone` per app, five seconds apiece by default,
 /// before `trashSync` moves anything. After that loop it asks again, and
 /// `held()` returns what is still up as `stillRunning` instead of moving it.
@@ -49,9 +49,7 @@ final class TheRunningReadingIsOlderThanTheMoveTests: XCTestCase {
     private func appBundle(_ name: String, id: String) throws -> String {
         let app = home.appendingPathComponent("Applications/\(name).app")
         _ = try write("Applications/\(name).app/Contents/MacOS/\(name)", in: home, bytes: 64)
-        try (["CFBundleIdentifier": id] as NSDictionary)
-            .write(to: app.appendingPathComponent("Contents/Info.plist"))
-        return app.path
+        return try writeAppBundle(app, id: id)
     }
 
     private func engine(_ running: FakeRunning, trash: TrashPort) -> UninstallerEngine {
@@ -67,7 +65,7 @@ final class TheRunningReadingIsOlderThanTheMoveTests: XCTestCase {
     /// the batch quits them in turn. Nothing asks again about the first once its
     /// wait has come back, so anything that starts it in the seconds that follow
     /// — and something starting an application without asking Helm is the whole
-    /// point of the family CLAUDE.md names — has its bundle taken out from under
+    /// point of the family (ARCHITECTURE.md § The gates) names — has its bundle taken out from under
     /// it.
     ///
     /// The moment is pinned rather than timed: `FakeRunning` is told that quitting
@@ -112,7 +110,7 @@ final class TheRunningReadingIsOlderThanTheMoveTests: XCTestCase {
     /// to move, so the person is told the uninstall worked.
     ///
     /// It costs the engine's own five-second deadline, which is the number that
-    /// ships: `removeBatch` calls `waitUntilGone` with its defaults and there is
+    /// ships: `trashPaths` calls `waitUntilGone` with its defaults and there is
     /// nothing to inject. A shorter one here would be a test of a different
     /// program.
     func testAnAppThatIgnoredTheQuitIsNotReportedAsRemovedCleanly() async throws {

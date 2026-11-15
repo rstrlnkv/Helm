@@ -1,10 +1,8 @@
-import HelmContract
 import HelmRuntime
 import HelmTestSupport
-import HelmUI
 import SwiftUI
 import XCTest
-import Module_Uninstaller_Engine
+@testable import Module_Uninstaller_Engine
 @testable import Module_Uninstaller_UI
 
 /// **One bundle id, two things on disk — and two lists still identify by the
@@ -36,27 +34,6 @@ import Module_Uninstaller_Engine
 final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
 
     /// Reports the Trash and the installed set independently — an app can be in
-    /// both, and `nil` is a Trash this process was not allowed to read.
-    private struct Lister: AppLister {
-        var installed: [InstalledApp] = []
-        var trashed: [TrashedApp]? = []
-        func installedApps() -> [InstalledApp] { installed }
-        func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
-        func installedBundleIDs() -> Set<String> { Set(installed.map(\.bundleID)) }
-        func isKnownToSystem(bundleID: String) -> Bool { false }
-        func trashedApps() -> [TrashedApp]? { trashed }
-    }
-
-    /// Every candidate exists, so the sweep has something to offer whatever the
-    /// id. What a scan decides is `LeftoverMatcher`'s business and is tested
-    /// there.
-    private struct Everything: FileSystemPort {
-        func exists(_ url: URL) -> Bool { true }
-        func size(_ url: URL) -> Int { 4_096 }
-        func glob(_ pattern: URL) -> [URL] { [] }
-        func children(of url: URL) -> [URL] { [] }
-    }
-
     // MARK: -
 
     /// The unprompted window, end to end: the engine really does hand back two
@@ -68,11 +45,11 @@ final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
         store.set(true, for: "watchTrash")
         // Delete, reinstall, delete again: the Finder keeps both and renames the
         // second. One `Info.plist`, so one bundle id.
-        let lister = Lister(trashed: [
+        let lister = FakeApps(trashed: [
             TrashedApp(bundleID: "com.acme.tool", name: "Tool", path: "/Users/ann/.Trash/Tool.app"),
             TrashedApp(bundleID: "com.acme.tool", name: "Tool", path: "/Users/ann/.Trash/Tool 2.app"),
         ])
-        let engine = UninstallerEngine(home: home, apps: lister, fs: Everything(),
+        let engine = UninstallerEngine(home: home, apps: lister, fs: EveryPathExists(size: 4_096),
                                        trash: NoTrash(), running: NoRunning(), store: store)
 
         let groups = await engine.trashedAppLeftovers()
@@ -85,6 +62,30 @@ final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
             Trash sends — «what one press sends has to be exactly what was listed above it» \
             is `TrashOfferPlan`'s own promise, and identity is what keeps it.
             """)
+    }
+
+    /// The tick: two installed copies share an id, and ticking one reviews
+    /// exactly that copy and sends only its bundle path to the Trash.
+    func testTickingOneOfTwoCopiesReviewsAndRemovesOnlyThatCopy() async throws {
+        let direct = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
+                                  path: "/Applications/Tool.app", sizeBytes: 40_000)
+        let setapp = InstalledApp(name: "Tool", bundleID: "com.acme.tool",
+                                  path: "/Users/ann/Applications/Setapp/Tool.app", sizeBytes: 900_000)
+        let work = AnsweringWork(apps: [direct, setapp],
+                                 scans: ["com.acme.tool": ScanResult(leftovers: [], runningNow: false)],
+                                 removal: UninstallResult(trashed: [setapp.path], freedBytes: 1))
+        let uvm = modelOver(work)
+        await uvm.loadAppsIfNeeded()
+
+        uvm.setChecked(setapp, true)
+        XCTAssertTrue(uvm.isChecked(setapp), "the ticked copy is not ticked")
+        XCTAssertFalse(uvm.isChecked(direct), "ticking one copy ticked the other, which shares its id")
+        await uvm.prepareReview()
+        XCTAssertEqual(uvm.groups.map(\.app.path), [setapp.path])
+
+        await uvm.removeSelection()
+        let batch = try XCTUnwrap(work.batches.last, "the removal was never sent")
+        XCTAssertEqual(batch.paths, [setapp.path])
     }
 
     /// The control. Two different apps were always two rows, so the assertion
@@ -108,6 +109,7 @@ final class TwoCopiesOfOneAppAreTwoRowsTests: XCTestCase {
 /// The picker's half of the same rule: two installed copies of one app share a
 /// bundle id, and the picker still has to tell them apart.
 @MainActor
+/// Past defect: backlog uninstaller-U20 (C139).
 final class TheAppPickerGivesEachCopyItsOwnIdentityTests: XCTestCase {
 
     /// The picker. Two installed copies, one row.

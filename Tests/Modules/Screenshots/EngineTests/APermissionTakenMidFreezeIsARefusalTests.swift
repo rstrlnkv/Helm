@@ -7,6 +7,7 @@ import XCTest
 /// system hands back after that is a picture of nothing. It is a refusal:
 /// counted as an ordinary failure it becomes an empty file on the Desktop that
 /// reads as a capture.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/CaptureSession.swift`: `while the screen was being frozen") return .refused(.noPermission)` -> `while the screen was being frozen") return .refused(.captureFailed)`.
 final class APermissionTakenMidFreezeIsARefusalTests: XCTestCase {
     override func setUp() { super.setUp(); ScreenshotsLog.begin() }
     override func tearDown() { ScreenshotsLog.end(); super.tearDown() }

@@ -18,6 +18,8 @@ import HelmTestSupport
 /// this was never going to happen. It is decided in `RulePlan`, the one value
 /// the dry run shows and the runner executes, so both agree without being asked
 /// to.
+///
+/// Past defect: fixed in 4b379093.
 final class ASortRuleDoesNotSortItsOwnBucketsTests: XCTestCase {
 
     private let day = Date(timeIntervalSince1970: 1_800_000_000)
@@ -129,6 +131,8 @@ final class ASortRuleDoesNotSortItsOwnBucketsTests: XCTestCase {
 /// The same thing over a real folder, because the refusal in the owner's log
 /// was a whole sweep's — and because the dry run and the sweep read one value,
 /// which is only worth saying if something asks them both.
+///
+/// Past defect: fixed in 4b379093.
 final class ASweepDoesNotOfferItsOwnBucketTests: XCTestCase {
 
     private var home: URL!
@@ -139,15 +143,7 @@ final class ASweepDoesNotOfferItsOwnBucketTests: XCTestCase {
         home = scratchDirectory("home")
         root = home.appendingPathComponent("Downloads")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
-    }
-
-    private func tree() -> [String] {
-        let all = FileManager.default.enumerator(atPath: root.path)?.allObjects as? [String]
-        return (all ?? []).sorted()
+        engine = AutopilotEngine.scratch(home: home.path)
     }
 
     /// Every directory into `Folders/` — the rule from the log.
@@ -174,7 +170,7 @@ final class ASweepDoesNotOfferItsOwnBucketTests: XCTestCase {
         let report = engine.sweep(watched())
 
         XCTAssertEqual(report.refused, 0, "the bucket was refused, hourly and forever")
-        XCTAssertEqual(tree(), ["Folders", "Folders/Notes", "Folders/Notes/a.pdf",
+        XCTAssertEqual(tree(under: root), ["Folders", "Folders/Notes", "Folders/Notes/a.pdf",
                                 "Folders/old.pdf"])
     }
 

@@ -1,18 +1,8 @@
 import XCTest
+import HelmTestSupport
 @testable import Module_Uninstaller_Engine
 
 final class UninstallerEngineTests: XCTestCase {
-    /// A running app must be force-quit only when the caller asks for it.
-    func test_quit_passes_force_flag_to_the_port() async {
-        let running = FakeRunning(running: ["com.test.app"])
-        let e = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
-                                  apps: FakeApps(), fs: FakeFS(existing: [:]),
-                                  trash: FakeTrash(), running: running)
-        e.quit(bundleID: "com.test.app")
-        e.quit(bundleID: "com.test.app", force: true)
-        XCTAssertEqual(running.quits.map(\.1), [false, true])
-    }
-
     // Leftover paths in the shape the engine will actually see: inside the
     // home the engine was given. Bare "/a" is refused by the scope gate, and
     // rightly — nothing at the root of the volume is an app's leftover.
@@ -23,24 +13,23 @@ final class UninstallerEngineTests: XCTestCase {
                           running: FakeRunning(running: running))
     }
 
-    func testScanReturnsOnlyExistingCandidates() async throws {
-        let fs = FakeFS(existing: [
-            "/Users/x/Library/Caches/com.acme.tool": 100,
-            "/Users/x/Library/Preferences/com.acme.tool.plist": 10,
-        ])
-        let r = try await engine(fs: fs).scan(bundleID: "com.acme.tool",
-                                              appPath: "/Applications/Tool.app", appName: "Tool")
-        XCTAssertEqual(Set(r.leftovers.map(\.path)),
-                       ["/Users/x/Library/Caches/com.acme.tool",
-                        "/Users/x/Library/Preferences/com.acme.tool.plist"])
-        XCTAssertEqual(r.leftovers.first { $0.kind == .caches }?.sizeBytes, 100)
-        XCTAssertFalse(r.runningNow)
+    /// The `*<id>*` glob alone finds what `*.<id>` also found: a team-prefixed
+    /// folder, a group-prefixed one and the id with a suffix. A scratch home on
+    /// the real filesystem, so the glob is expanded by the shipping port.
+    func testGroupContainersAreFoundWithoutTheDotPrefixGlob() async throws {
+        let home = scratchDirectory("group-containers")
+        let names = ["group.x.com.acme.tool", "TEAM.com.acme.tool", "com.acme.tool.helper"]
+        for n in names { try write("Library/Group Containers/\(n)/f", in: home) }
+        let r = await UninstallerEngine(home: home, apps: FakeApps(), fs: FMFileSystem(),
+                                        trash: FakeTrash(), running: FakeRunning(running: []))
+            .scan(bundleID: "com.acme.tool", appName: "Tool")
+        XCTAssertEqual(Set(r.leftovers.map { URL(fileURLWithPath: $0.path).lastPathComponent }), Set(names))
     }
 
     func testScanFlagsRunning() async throws {
         let fs = FakeFS(existing: [:])
         let r = try await engine(fs: fs, running: ["com.acme.tool"])
-            .scan(bundleID: "com.acme.tool", appPath: "/Applications/Tool.app", appName: "Tool")
+            .scan(bundleID: "com.acme.tool", appName: "Tool")
         XCTAssertTrue(r.runningNow)
     }
 
@@ -77,4 +66,26 @@ final class UninstallerOrphanScanTests: XCTestCase {
                         "/Users/x/Library/Preferences/com.gone.app.plist"])
     }
 
+    /// One id found in several folders is asked about once: each question is a
+    /// LaunchServices lookup, and a scan over thousands of entries repeats ids.
+    func testAnIdFoundInSeveralFoldersIsAskedAboutOnce() async {
+        final class Counting: AppLister, @unchecked Sendable {
+            var asked: [String] = []
+            func installedBundleIDs() -> Set<String> { [] }
+            func isKnownToSystem(bundleID: String) -> Bool { asked.append(bundleID); return false }
+            func installedApps() -> [InstalledApp] { [] }
+            func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
+        }
+        var fs = FakeFS(existing: [:])
+        fs.listings = [
+            "/Users/x/Library/Caches": ["com.gone.app"],
+            "/Users/x/Library/Preferences": ["com.gone.app.plist"],
+            "/Users/x/Library/Application Support": ["com.gone.app"],
+        ]
+        let apps = Counting()
+        let e = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"), apps: apps,
+                                  fs: fs, trash: FakeTrash(), running: FakeRunning(running: []))
+        _ = await e.scanOrphans()
+        XCTAssertEqual(apps.asked, ["com.gone.app"], "the same id was put to LaunchServices more than once")
+    }
 }

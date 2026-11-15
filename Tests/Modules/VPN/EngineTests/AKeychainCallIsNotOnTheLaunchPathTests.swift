@@ -8,7 +8,7 @@ import XCTest
 /// **A keychain call at launch is a hang, and on this bundle it is a dialog.**
 ///
 /// `KeychainCredentials.init` ran `SecItemDelete` on the thread that built it,
-/// and the thread that builds it is the main one: `VPNDescriptor.makeEngine` is
+/// and the thread that builds it is the main one: `VPNDescriptor.makeModule` is
 /// `@MainActor` and constructs `VPNSystemPorts()` while the module list is being
 /// assembled, before anything is on screen. That is the family of the hang
 /// repaired in 4dcc5fb6 — 19,09 s in `HelmApp_2026-08-19-235500_MacBook.hang` —
@@ -31,8 +31,7 @@ final class AKeychainCallIsNotOnTheLaunchPathTests: XCTestCase {
     ///
     /// **The wait is bounded**, and that is the point of it: a purge left on the
     /// launch path parks `init` itself, and an unbounded gate would hang the suite
-    /// where it has to fail it instead (CLAUDE.md § What not to do, and what breaks
-    /// if you do).
+    /// where it has to fail it instead (ARCHITECTURE.md § Shared test plumbing).
     private final class ParkedPurge: @unchecked Sendable {
         private let started = DispatchSemaphore(value: 0)
         private let go = DispatchSemaphore(value: 0)
@@ -62,12 +61,13 @@ final class AKeychainCallIsNotOnTheLaunchPathTests: XCTestCase {
     func testBuildingThePortDoesNotWaitForTheKeychain() {
         let purge = ParkedPurge()
 
-        _ = KeychainCredentials(purge: { purge.run() })
+        _ = KeychainCredentials(purge: { purge.run() },
+                                keychainDeadline: KeychainCredentials.systemKeychainDeadline)
 
         XCTAssertFalse(purge.finished, """
             `KeychainCredentials.init` ran the credential-cache purge to \
             completion before it returned, on the thread that built it — which \
-            is the main one, `VPNDescriptor.makeEngine` being `@MainActor`. On \
+            is the main one, `VPNDescriptor.makeModule` being `@MainActor`. On \
             an ad-hoc-signed bundle that `SecItemDelete` is a system dialog in \
             front of a window that has drawn nothing, at every install
             """)

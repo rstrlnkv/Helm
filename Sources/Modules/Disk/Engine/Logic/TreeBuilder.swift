@@ -22,7 +22,7 @@ final class TreeBuilder: @unchecked Sendable {
     func addFile(path: String, bytes: Int, fileID: UInt64, modified: TimeInterval = 0) {
         // A hard link's target is one allocation however many names it has.
         //
-        // 0 is not an id — it is the absence of one. `DiskScanner.readDirectory`
+        // 0 is not an id — it is the absence of one. `BulkWalk`
         // leaves it there when the filesystem does not return `ATTR_CMN_FILEID`,
         // and treating that as an id like any other means the first such file is
         // counted and every later one is dropped from the tree *and* from the

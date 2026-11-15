@@ -104,24 +104,22 @@ final class PanelLayoutTests: XCTestCase {
         XCTAssertEqual(decoded.allSlots.map(\.size), [.wide, .compact])
     }
 
-    /// The control for that one: a *known* size still decodes as itself, so the
-    /// lenient path is not quietly answering `wide` to everything.
-    func testAKnownSizeStillDecodesAsItself() throws {
+    /// A layout written before this build decodes whole rather than taking the
+    /// document down with it: `JSONDecoder` gives up on the document, not the
+    /// field, so a missing `dismissed` or `hidden` list, or a tab without a
+    /// glyph, would each have thrown under the synthesised decoder. The
+    /// *known* size is the control for the lenient one above: it still decodes
+    /// as itself, so the lenient path is not quietly answering `wide` to everything.
+    func testALayoutFromAnOlderBuildDecodesWhole() throws {
         let json = """
         {"tabs":[{"id":"t","widgets":[{"widget":"vpn","size":"tall"}]}]}
         """
         let decoded = try JSONDecoder().decode(PanelLayout.self, from: Data(json.utf8))
+        XCTAssertEqual(decoded.allSlots.map(\.widget), ["vpn"])
         XCTAssertEqual(decoded.allSlots.first?.size, .tall)
-    }
-
-    /// A tab written before glyphs existed decodes with none rather than
-    /// taking the layout with it.
-    func testATabFromBeforeGlyphsDecodes() throws {
-        let json = """
-        {"tabs":[{"id":"t","widgets":[{"widget":"vpn","size":"wide"}]}]}
-        """
-        let decoded = try JSONDecoder().decode(PanelLayout.self, from: Data(json.utf8))
         XCTAssertNil(decoded.tabs.first?.glyph)
+        XCTAssertTrue(decoded.dismissed.isEmpty)
+        XCTAssertTrue(decoded.hidden.isEmpty)
     }
 
     // MARK: - A widget that was taken off stays off
@@ -165,19 +163,6 @@ final class PanelLayoutTests: XCTestCase {
         XCTAssertEqual(back.reconciled(arriving: ["vpn"]).allSlots.map(\.widget), ["vpn"])
     }
 
-    /// A panel arranged before this build has no `dismissed` key, and the
-    /// synthesised decoder would have thrown on it — taking the whole layout
-    /// with it, because `JSONDecoder` gives up on the document rather than the
-    /// field.
-    func testALayoutFromBeforeThisBuildStillDecodes() throws {
-        let json = """
-        {"tabs":[{"id":"t","widgets":[{"widget":"vpn","size":"tall"}]}]}
-        """
-        let decoded = try JSONDecoder().decode(PanelLayout.self, from: Data(json.utf8))
-        XCTAssertEqual(decoded.allSlots.map(\.widget), ["vpn"])
-        XCTAssertTrue(decoded.dismissed.isEmpty)
-    }
-
     func testTheNoteSurvivesTheRoundTrip() throws {
         let before = layout([("vpn", .wide), ("disk", .wide)]).removing("disk")
         let data = try JSONEncoder().encode(before)
@@ -190,18 +175,6 @@ final class PanelLayoutTests: XCTestCase {
         for _ in 0..<5 { l = l.reconciled(arriving: ["layout", "vpn", "homebrew"]) }
         XCTAssertEqual(l.allSlots.map(\.widget), ["vpn"])
         XCTAssertTrue(l.isHidden("homebrew"))
-    }
-
-    /// A layout written before `dismissed` or `hidden` existed still decodes — the
-    /// synthesised decoder throws on a missing key and takes the document with
-    /// it.
-    func testALayoutFromBeforeEitherListDecodes() throws {
-        let json = """
-        {"tabs":[{"id":"t","widgets":[{"widget":"vpn","size":"wide"}]}]}
-        """
-        let decoded = try JSONDecoder().decode(PanelLayout.self, from: Data(json.utf8))
-        XCTAssertTrue(decoded.dismissed.isEmpty)
-        XCTAssertTrue(decoded.hidden.isEmpty)
     }
 }
 

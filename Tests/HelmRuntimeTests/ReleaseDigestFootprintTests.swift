@@ -14,6 +14,8 @@ import HelmTestSupport
 ///
 /// Gated: this test writes and hashes over a gigabyte to make the defect
 /// unmissable — `HELM_BENCH=1 swift test --filter ReleaseDigestFootprintTests`.
+///
+/// Past defect: commit 9e9734fb, «fix: the ten defects the third review pass could prove».
 final class ReleaseDigestFootprintTests: XCTestCase {
 
     private var file: URL!

@@ -23,7 +23,7 @@ import HelmRuntime
 /// **Every field here is written on one thread and read on another.** The ask
 /// runs inside `shell.async` on the coordinator's own queue; the test reads the
 /// counts on the main actor. One lock and the fields behind it, the shape
-/// `ProgressBox` carries for the same reason — the barrier below orders the two,
+/// `Locked` carries for the same reason — the barrier below orders the two,
 /// and the lock is what makes the read of a plain `Int` legal rather than merely
 /// lucky.
 private final class RemovalPromptClamshell: ClamshellPort, @unchecked Sendable {
@@ -41,10 +41,6 @@ private final class RemovalPromptClamshell: ClamshellPort, @unchecked Sendable {
     var sudoersInstalled: Bool {
         get { locked { installed } }
         set { locked { installed = newValue } }
-    }
-    var pmset: String {
-        get { locked { report } }
-        set { locked { report = newValue } }
     }
     var removeCount: Int { locked { removes } }
     var installCount: Int { locked { installs } }
@@ -85,7 +81,7 @@ private final class RemovalPromptClamshell: ClamshellPort, @unchecked Sendable {
     }
 
     func setDisableSleep(_ on: Bool) -> Bool { true }
-    func pmsetReport() -> String { locked { report } }
+    func pmsetReport() -> String? { locked { report } }
 }
 
 /// Switching «stay awake with the lid closed» off takes the passwordless-sudo
@@ -135,7 +131,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
                                  assertions: FakeAssertions(), displayInfo: FakeDisplayInfo(),
                                  displayObserver: FakeDisplayObserver(), power: FakePower(),
                                  apps: FakeApps(), pointer: FakePointer(),
-                                 clamshell: clamshell, clock: FakeClock())
+                                 clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
         engine.activate()
     }
 
@@ -156,8 +152,7 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
     /// happened yet is an absence assertion passing on a subject that never
     /// occurred.
     private func settingsChanged() async {
-        _ = try? await engine.transport.send(
-            EngineCommand(name: KeepAwakeCommand.settingsChanged.rawValue))
+        engine.settingsChanged()
         await engine.drainClamshellForTests()
     }
 
@@ -269,8 +264,9 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
     /// lid is safe to close on the strength of a rule that has just been
     /// removed. It asks for it back instead, which is the same answer
     /// `APmsetThatRefusedIsNotASuccessTests` demands when the rule disappears
-    /// behind the app's back for any other reason.
-    func testARuleRemovedWhileTheOptionWentBackOnIsAskedForAgain() async {
+    /// behind the app's back for any other reason — but only the person's own
+    /// turn of the lid switch may raise the dialog for it, never a Start press.
+    func testARuleRemovedWhileTheOptionWentBackOnIsAskedForAgainByTheSwitchNotByStart() async {
         await switchTheOption(false)
         XCTAssertEqual(clamshell.removeCount, 1, "precondition: a removal is in flight")
 
@@ -281,20 +277,20 @@ final class TheRemovalPromptIsAPromptTooTests: XCTestCase {
 
         engine.startSession(minutes: 0)
         await engine.drainClamshellForTests()
-        await drainMain()
+        await drainMainQueue()
+
+        XCTAssertTrue(engine.isActive, "precondition: the press started a session")
+        XCTAssertEqual(clamshell.installCount, 0,
+                       "a Start press raised the administrator dialog for the vanished rule")
+        XCTAssertFalse(engine.clamshellActive, "the session holds the Mac without the lid rule")
+
+        engine.lidSwitchTurned(false)
+        engine.lidSwitchTurned(true)
+        await engine.drainClamshellForTests()
+        await drainMainQueue()
 
         XCTAssertEqual(clamshell.installCount, 1,
-                       "the session began with the lid option on and a rule that is no longer "
-                       + "there, and nothing went to look")
-        XCTAssertTrue(engine.clamshellActive)
-    }
-
-    /// Everything already on the main queue has run. The engine posts its
-    /// install callback with `DispatchQueue.main.async`; this is enqueued after
-    /// it, and a serial queue runs them in order — an ordering fact, not a sleep.
-    private func drainMain() async {
-        let drained = expectation(description: "main queue drained")
-        DispatchQueue.main.async { drained.fulfill() }
-        await fulfillment(of: [drained], timeout: 5)
+                       "the person turned the lid switch on over a rule that is no longer "
+                       + "there, and nothing went to ask for it")
     }
 }

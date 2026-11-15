@@ -3,11 +3,12 @@ import Foundation
 /// Where a store of somebody's own files goes instead, while XCTest is loaded.
 ///
 /// `TestProcess` answers whether to ask for one of these at all and says why the
-/// question is the one it is; this answers what it looks like. Two stores need
-/// it — the scan journal and Disk's last-scan cache — and the second one is why
-/// the shape lives here rather than in either: the naming, the sweep and the
-/// liveness question are the same three things both times, and Disk's cache is a
-/// file whose contents a suite read by accident for months.
+/// question is the one it is; this answers what it looks like. Four stores need
+/// it — the scan journal, Disk's last-scan cache, the support directory and
+/// Screenshots' home — which is why the shape lives here rather than in any one:
+/// the naming, the sweep and the liveness question are the same three things
+/// each time. Disk's cache is a file whose contents a suite read by accident
+/// for months.
 ///
 /// **A redirection with no end to it is half an improvement.** One directory per
 /// process, kept for ever, is what the journal did first: **452 of them** in

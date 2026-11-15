@@ -1,29 +1,30 @@
 import Foundation
 import HelmRuntime
 
-/// Supported UI languages. English is the base (source strings live at the call
-/// site); the others come from per-string tables.
+/// Supported UI languages. English is the base; every string catalog holds the
+/// other seven beside it.
 ///
-/// The `.lproj` directories are named by the raw values (`zh`, `pt`), not by
-/// `zh-Hans` or `pt-BR`, because Helm picks the language itself rather than
-/// leaving it to the system's resolution.
+/// The catalogs' language codes are the raw values (`zh`, `pt`), not `zh-Hans`
+/// or `pt-BR`, because Helm picks the language itself rather than leaving it to
+/// the system's resolution.
 public enum AppLanguage: String, CaseIterable, Sendable {
     case en, zh, es, fr, de, ja, ru, pt
 
     /// Best match from the user's preferred languages, else English.
     ///
-    /// Cached: this is read by every `L()` and every `Bytes()`, and every one of
-    /// Helm's 238 string properties is computed, so a hovered list of 200 rows
+    /// Cached: this is read by every `L()` and every `Bytes()`, and Helm's string
+    /// properties are computed, so a hovered list of 200 rows
     /// hit `Locale.preferredLanguages` — a CFPreferences read — a few hundred
-    /// times per frame. The cache is dropped when the system's locale changes,
-    /// which is the only thing that can change the answer.
+    /// times per frame. The cache is dropped when the system's locale changes
+    /// or `override` is set, the only two things that can change the answer.
     public static var current: AppLanguage { cache.value }
 
     /// A language chosen in Settings, overriding the system's preference.
     ///
-    /// Dev builds only, and the picker that writes it says so: this exists to
-    /// read a screen in seven languages without logging out of the Mac, which
-    /// is what checking a translation against the running app costs otherwise.
+    /// Helm sets it in Dev builds only, and the picker that writes it says so;
+    /// the showcase sets it from `--language`. It exists to read a screen in
+    /// seven languages without logging out of the Mac, which is what checking
+    /// a translation against the running app costs otherwise.
     /// Nil is the ordinary state and means «whatever this Mac is set to».
     ///
     /// Setting it drops the cache, which is the same thing the system's own
@@ -50,6 +51,12 @@ public enum AppLanguage: String, CaseIterable, Sendable {
         case .pt: return "Português"
         }
     }
+
+    /// The language as a `Locale`, for a format style or a formatter.
+    ///
+    /// Computed, never stored and never static: a format style holds no cache, so a language
+    /// changed between two reads is spoken at the next one.
+    public var locale: Locale { Locale(identifier: rawValue) }
 
     private static let cache = LanguageCache()
 
@@ -89,6 +96,10 @@ public enum AppLanguage: String, CaseIterable, Sendable {
             return resolved
         }
 
+        /// The first two letters of each preferred language, in order, name the
+        /// catalog: `zh-Hant` goes to the Simplified `zh` catalog and `pt-PT` to
+        /// the Brazilian `pt` one, in line with Info.plist's `zh-Hans` and
+        /// `pt-BR`. A `zh-Hant` translation is a later chain.
         private static func resolve() -> AppLanguage {
             for code in Locale.preferredLanguages {
                 let base = code.prefix(2).lowercased()
@@ -99,76 +110,94 @@ public enum AppLanguage: String, CaseIterable, Sendable {
     }
 }
 
-/// Localize a base (English) string, read out of `Resources/<lang>.lproj/
-/// Localizable.strings` with the English itself as the key. Usage:
-/// `L("Keep Awake")`.
+/// A word from a module's own catalog, in the app's language.
 ///
-/// The optional table is for the handful of call sites Swift interpolation
-/// keeps out of a `.strings` file — interpolation runs before the lookup, so
-/// `L("Step \(step) of \(total)")` would look for the literal key "Step 3 of
-/// 10". Where a table is given, it wins outright and the `.lproj` files are
-/// never consulted; where it is empty (the default, and the ordinary case),
-/// the lookup goes to `Localized`.
-public func L(_ english: String, _ table: [AppLanguage: String] = [:]) -> String {
-    L(english, table, language: AppLanguage.current)
+/// `String(localized:)` alone answers in the language macOS resolves for the
+/// process, not the one the person picked in Helm, so the resource is asked in
+/// `language`. The resource carries its own target's bundle, which is why one
+/// function in the kit can read every module's catalog; the symbol is what
+/// makes a mistyped key a build error.
+///
+/// **Remembered, because the system does not.** `String(localized:)` measures
+/// dearer the larger the table it answers from, on every call; a held dictionary
+/// does not. A word drawn in a view body is paid per frame at the
+/// system's price, so each answer is kept by what identifies it — key, table,
+/// bundle, arguments and language — and only an answer not kept pays.
+///
+/// **`remembered: false` for a word that holds somebody's typed text.** The memo keeps the
+/// arguments with the answer and forgets only by count, so a word typed into a field would outlive
+/// whatever the owner of that text does to forget it. Such a word pays the system's price on every
+/// ask and leaves nothing behind.
+public func L(_ resource: LocalizedStringResource,
+              language: AppLanguage = AppLanguage.current,
+              remembered: Bool = true) -> String {
+    var resource = resource
+    resource.locale = language.locale
+    return remembered ? ResourceAnswers.shared.string(for: resource) : String(localized: resource)
 }
 
-/// The same, for a language named outright.
+/// The answers `L(_:language:remembered:)` has given, bounded because a resource that
+/// carries arguments is a new entry for every value it is asked with.
 ///
-/// The suite runs in this machine's language, so a test that reads
-/// `AppLanguage.current` checks English eight times — `Quoted` and
-/// `HelmConfirm.trash` both take the language for exactly this reason, and each
-/// had to spell the lookup out again to do it.
-public func L(_ english: String, _ table: [AppLanguage: String] = [:],
-              language: AppLanguage) -> String {
-    guard table.isEmpty else {
-        return language == .en ? english : table[language] ?? english
-    }
-    return Localized.string(english, language: language)
-}
-
-/// The `.lproj` tables themselves: one sub-bundle per language, loaded from
-/// `Bundle.module` and cached — the same reasoning `AppLanguage.current`
-/// already carried one level up, one bundle per language rather than one per
-/// row of a hovered list.
+/// A `LocalizedStringResource` is not `Hashable`, and its arguments can be read
+/// only by describing `defaultValue`, so the dictionary is keyed by what is
+/// plain to read — key, table, language — and each such family keeps a short
+/// list of `(resource, answer)` that the resource's own `==` searches. That `==`
+/// also compares the bundle and the arguments, so the same key in two catalogs
+/// (`summary`, `upToDate`) stays two answers.
 ///
-/// Not `NSLocalizedString`: that hands the language to the system's own bundle
-/// resolution, which would answer `Locale.preferredLanguages` again rather than
-/// `AppLanguage.current`, and has no way to ask about a language other than the
-/// running one — which every localization test in this suite needs to do.
-enum Localized {
-    /// English is the key, and English is also what a missing bundle or a
-    /// missing key falls back to — so a table that never made it out of the
-    /// migration reads as untranslated English rather than a crash.
-    static func string(_ key: String, language: AppLanguage) -> String {
-        guard language != .en else { return key }
-        return table(for: language)[key] ?? key
+/// **Why the list is short.** The visible part puts every value of one template
+/// in one family, so a hit is a search by `==` through all of them. A family
+/// holds at most `perFamily` answers and the oldest is replaced, so a hit costs
+/// at most that many comparisons and a miss twice that, whatever the arguments
+/// are. Above `perFamily` values of one template in turn every ask misses, and
+/// costs a little more than no memo.
+///
+/// **Not `LockedMemo`**, which needs a `Hashable` key, keeps every value for good
+/// and builds under its lock. Here the build is `String(localized:)`, the very
+/// call this exists to avoid, and it runs outside the lock so a slow word does
+/// not hold up the others; a memo that never forgets would also grow by one
+/// entry per argument ever shown.
+private final class ResourceAnswers: @unchecked Sendable {
+    static let shared = ResourceAnswers()
+
+    private struct Family: Hashable {
+        let key: String
+        let table: String?
+        let language: String
     }
 
-    /// The path to a language's `Localizable.strings`, so a test can read the
-    /// shipped table as data — `Bundle.module` inside a test target resolves to
-    /// the test's own bundle, not `HelmUI`'s, so this is the only way a test
-    /// outside this module can see what actually ships.
-    static func stringsFile(for language: AppLanguage) -> URL? {
-        Bundle.module
-            .url(forResource: language.rawValue, withExtension: "lproj")?
-            .appendingPathComponent("Localizable.strings")
-    }
+    /// Answers kept per family.
+    private static let perFamily = 16
 
-    private static let cache = LockedMemo<AppLanguage, [String: String]>()
+    /// Past this many answers in all, everything is dropped and rebuilt on
+    /// demand, the way `AppLanguage`'s cache drops its answer: simpler than
+    /// ordering them.
+    private static let ceiling = 4096
 
-    private static func table(for language: AppLanguage) -> [String: String] {
-        cache.value(for: language) { load(language) }
-    }
+    private let lock = NSLock()
+    private var answers: [Family: [(resource: LocalizedStringResource, text: String)]] = [:]
+    private var count = 0
 
-    private static func load(_ language: AppLanguage) -> [String: String] {
-        guard let bundleURL = Bundle.module.url(forResource: language.rawValue,
-                                                withExtension: "lproj"),
-              let bundle = Bundle(url: bundleURL),
-              let path = bundle.path(forResource: "Localizable", ofType: "strings"),
-              let dict = NSDictionary(contentsOfFile: path) as? [String: String]
-        else { return [:] }
-        return dict
+    func string(for resource: LocalizedStringResource) -> String {
+        let family = Family(key: resource.key, table: resource.table,
+                            language: resource.locale.identifier)
+        lock.lock()
+        let kept = answers[family]?.first { $0.resource == resource }?.text
+        lock.unlock()
+        if let kept { return kept }
+        let text = String(localized: resource)
+        lock.lock()
+        defer { lock.unlock() }
+        if count >= Self.ceiling { answers.removeAll(); count = 0 }
+        var list = answers.removeValue(forKey: family) ?? []
+        if !list.contains(where: { $0.resource == resource }) {
+            if list.count >= Self.perFamily { list.removeFirst(); count -= 1 }
+            list.append((resource, text))
+            count += 1
+        }
+        answers[family] = list
+        return text
     }
 }
 
@@ -181,16 +210,18 @@ public func Bytes(_ count: Int) -> String {
 /// A number in the user's language: "1,5" where the language writes a comma.
 /// The rule summary printed `String(format: "%.1f", …)` beside sizes that
 /// `Bytes` had already written with a comma, so one line read "1.5 МБ" next to
-/// "1,5 ГБ".
-public func Decimal(_ value: Double, decimals: Int = 1) -> String {
+/// "1,5 ГБ". Not named `Decimal`: a free function of that name shares its
+/// call spelling with `Foundation.Decimal`, and `Decimal(anInt)` binds to
+/// Foundation's initialiser, not to this one (VPN's speed tile drew «10000»).
+public func Fractional(_ value: Double, decimals: Int = 1) -> String {
     HelmBytes.decimal(value, decimals: decimals, language: AppLanguage.current.rawValue)
 }
 
 /// A count in the user's language: "1 499 308", "1.499.308". Beside `Bytes` and
-/// `Decimal` because it is the same mistake one class of number over — a scan
+/// `Fractional` because it is the same mistake one class of number over — a scan
 /// of `/` reported "1499308 files", where macOS itself groups the digits.
 ///
-/// Not `Decimal`, which turns grouping off on purpose: that one writes the
+/// Not `Fractional`, which turns grouping off on purpose: that one writes the
 /// mantissa of a size, where a separator would be a second decimal mark.
 public func Count(_ value: Int, language: AppLanguage = AppLanguage.current) -> String {
     HelmBytes.grouped(value, language: language.rawValue)
@@ -386,15 +417,38 @@ public enum HelmDates {
         cache.day(language: language, zone: NSTimeZone.default).string(from: date)
     }
 
+    /// **The days a folded row stands for, written the way the language writes a
+    /// span of days** — the system's own interval formatter, and not two days
+    /// joined with a dash: the sign and its spacing are the language's (Japanese
+    /// writes «～», and a day that shares its month or year with the other is
+    /// written once). The long date style `day` uses, which makes a span and a
+    /// heading one family in six of the eight languages; in Chinese and Japanese
+    /// the interval formatter answers that style in numerals
+    /// (`2026/9/22 – 2026/9/23`) beside a heading spelled `2026年9月22日`, so
+    /// those two ask for the day by a template (`2026年9月22日 – 23日` in
+    /// Chinese, `2026年9月22日～23日` in Japanese).
+    ///
+    /// The formatter is kept per language and zone, never in one constant: the
+    /// app's language changes while it runs, and a formatter built per call is
+    /// the cost the page reads a thousand rows to avoid.
+    public static func daySpan(from first: Date, to last: Date, language: String,
+                               zone: TimeZone) -> String {
+        let spelled = cache.daySpan(language: language, zone: zone).string(from: first, to: last)
+        // A formatter that answers nothing leaves the two days as `day` writes
+        // them rather than an empty heading over a row.
+        return spelled.isEmpty ? day(first, language: language) + " – "
+            + day(last, language: language) : spelled
+    }
+
     private static let cache = Cache()
 
     private final class Cache: @unchecked Sendable {
-        private let lock = NSLock()
-        private var relatives: [String: RelativeDateTimeFormatter] = [:]
-        private var absolutes: [String: DateFormatter] = [:]
-        private var days: [String: DateFormatter] = [:]
-        private var clocks: [String: DateFormatter] = [:]
-        private var spans: [String: DateComponentsFormatter] = [:]
+        private let relatives = LockedMemo<String, RelativeDateTimeFormatter>()
+        private let absolutes = LockedMemo<String, DateFormatter>()
+        private let days = LockedMemo<String, DateFormatter>()
+        private let clocks = LockedMemo<String, DateFormatter>()
+        private let daySpans = LockedMemo<String, DateIntervalFormatter>()
+        private let spans = LockedMemo<String, DateComponentsFormatter>()
 
         /// Reads the stored form and nothing else: fixed format, fixed locale.
         /// `en_US_POSIX` because a fixed-format formatter on any other locale
@@ -414,26 +468,43 @@ public enum HelmDates {
         /// zone `storage` parsed in, so its day cannot shift.
         func day(language: String, zone: TimeZone) -> DateFormatter {
             let key = "\(language)|\(zone.identifier)"
-            lock.lock(); defer { lock.unlock() }
-            if let existing = days[key] { return existing }
-            let formatter = DateFormatter()
-            formatter.locale = Locale(identifier: language)
-            formatter.dateStyle = .long
-            formatter.timeStyle = .none
-            formatter.timeZone = zone
-            days[key] = formatter
-            return formatter
+            return days.value(for: key) {
+                let formatter = DateFormatter()
+                formatter.locale = Locale(identifier: language)
+                formatter.dateStyle = .long
+                formatter.timeStyle = .none
+                formatter.timeZone = zone
+                return formatter
+            }
+        }
+
+        func daySpan(language: String, zone: TimeZone) -> DateIntervalFormatter {
+            let key = "\(language)|\(zone.identifier)"
+            return daySpans.value(for: key) {
+                let formatter = DateIntervalFormatter()
+                formatter.locale = Locale(identifier: language)
+                formatter.timeZone = zone
+                // The long style answers numerals in Chinese and Japanese, beside
+                // headings spelled `2026年9月22日`; the template spells the day
+                // as they do. «MMMM» would be `九月` in Chinese, so «MMM».
+                if language.hasPrefix("zh") || language.hasPrefix("ja") {
+                    formatter.dateTemplate = "yMMMd"
+                } else {
+                    formatter.dateStyle = .long
+                    formatter.timeStyle = .none
+                }
+                return formatter
+            }
         }
 
         func clock(language: String) -> DateFormatter {
-            lock.lock(); defer { lock.unlock() }
-            if let existing = clocks[language] { return existing }
-            let formatter = DateFormatter()
-            formatter.dateStyle = .none
-            formatter.timeStyle = .short
-            formatter.locale = Locale(identifier: language)
-            clocks[language] = formatter
-            return formatter
+            return clocks.value(for: language) {
+                let formatter = DateFormatter()
+                formatter.dateStyle = .none
+                formatter.timeStyle = .short
+                formatter.locale = Locale(identifier: language)
+                return formatter
+            }
         }
 
         /// Keyed by the language *and* the unit set: two formatters per
@@ -441,23 +512,22 @@ public enum HelmDates {
         /// safe to reconfigure under a reader.
         func span(language: String, hours: Bool) -> DateComponentsFormatter {
             let key = "\(language)|\(hours)"
-            lock.lock(); defer { lock.unlock() }
-            if let existing = spans[key] { return existing }
-            let formatter = DateComponentsFormatter()
-            // The locale rides on the calendar: `DateComponentsFormatter` has
-            // no locale of its own, and one with no calendar answers in the
-            // system's language.
-            var calendar = Calendar(identifier: .gregorian)
-            calendar.locale = Locale(identifier: language)
-            formatter.calendar = calendar
-            formatter.unitsStyle = .abbreviated
-            formatter.allowedUnits = hours ? [.hour, .minute] : [.minute, .second]
-            // `dropLeading`, never `dropAll`: a tunnel up for four seconds has
-            // no minutes to show and must still say «4 с» rather than nothing
-            // at all, which is what dropping every zero leaves.
-            formatter.zeroFormattingBehavior = .dropLeading
-            spans[key] = formatter
-            return formatter
+            return spans.value(for: key) {
+                let formatter = DateComponentsFormatter()
+                // The locale rides on the calendar: `DateComponentsFormatter` has
+                // no locale of its own, and one with no calendar answers in the
+                // system's language.
+                var calendar = Calendar(identifier: .gregorian)
+                calendar.locale = Locale(identifier: language)
+                formatter.calendar = calendar
+                formatter.unitsStyle = .abbreviated
+                formatter.allowedUnits = hours ? [.hour, .minute] : [.minute, .second]
+                // `dropLeading`, never `dropAll`: a tunnel up for four seconds has
+                // no minutes to show and must still say «4 с» rather than nothing
+                // at all, which is what dropping every zero leaves.
+                formatter.zeroFormattingBehavior = .dropLeading
+                return formatter
+            }
         }
 
         /// Keyed by the language **and** the style, for the reason `span` above
@@ -469,24 +539,22 @@ public enum HelmDates {
         func relative(language: String,
                       style: HelmDates.AgeStyle) -> RelativeDateTimeFormatter {
             let key = "\(language)|\(style)"
-            lock.lock(); defer { lock.unlock() }
-            if let existing = relatives[key] { return existing }
-            let formatter = RelativeDateTimeFormatter()
-            formatter.unitsStyle = style.system
-            formatter.locale = Locale(identifier: language)
-            relatives[key] = formatter
-            return formatter
+            return relatives.value(for: key) {
+                let formatter = RelativeDateTimeFormatter()
+                formatter.unitsStyle = style.system
+                formatter.locale = Locale(identifier: language)
+                return formatter
+            }
         }
 
         func absolute(language: String) -> DateFormatter {
-            lock.lock(); defer { lock.unlock() }
-            if let existing = absolutes[language] { return existing }
-            let formatter = DateFormatter()
-            formatter.dateStyle = .short
-            formatter.timeStyle = .short
-            formatter.locale = Locale(identifier: language)
-            absolutes[language] = formatter
-            return formatter
+            return absolutes.value(for: language) {
+                let formatter = DateFormatter()
+                formatter.dateStyle = .short
+                formatter.timeStyle = .short
+                formatter.locale = Locale(identifier: language)
+                return formatter
+            }
         }
     }
 }

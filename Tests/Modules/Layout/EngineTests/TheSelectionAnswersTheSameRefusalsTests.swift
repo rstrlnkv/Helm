@@ -15,10 +15,10 @@ import XCTest
 /// - a translation that turns a letter into a mark, because somebody typing
 ///   letters meant letters.
 ///
-/// The selection door never reaches `LayoutVerdict` at all. `transform` builds a
-/// `SelectionTransform` straight out of `TranslationPort` and writes whatever
-/// comes back. So the same key press, on the same word, honours the list when
-/// nothing is selected and ignores it when the word is selected — which is the
+/// The selection door never reached `LayoutVerdict` at all. `convertSelection` built a
+/// `SelectionTransform` straight out of `TranslationPort` and wrote whatever
+/// came back. So the same key press, on the same word, honoured the list when
+/// nothing was selected and ignored it when the word was selected — which was the
 /// harder half to notice, because selecting the word first is what somebody
 /// does when the automatic path has *already* refused it.
 ///
@@ -27,12 +27,6 @@ import XCTest
 final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
 
     // MARK: - Ports
-
-    private final class Typing: TypingPort, @unchecked Sendable {
-        var performed: [SwitchPlan] = []
-        var succeeds = true
-        func perform(_ plan: SwitchPlan) -> Bool { performed.append(plan); return succeeds }
-    }
 
     /// Both halves of the secure check, kept apart the way the port keeps them:
     /// `isSecureInput` is the system-wide syscall, `isSecure` also recognises an
@@ -68,42 +62,13 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
         }
     }
 
-    private final class Tap: KeyTapPort, @unchecked Sendable {
-        var handler: (@Sendable (TypingBuffer.Event) -> Void)?
-        var modifiers: (@Sendable (ModifierTap.Input) -> Void)?
-        var grant = true
-        func start(_ onEvent: @escaping @Sendable (TypingBuffer.Event) -> Void,
-                   onModifier: @escaping @Sendable (ModifierTap.Input) -> Void,
-                   died: @escaping @Sendable () -> Void) -> Bool {
-            guard grant else { return false }
-            handler = onEvent
-            modifiers = onModifier
-            return true
-        }
-        func stop() { handler = nil; modifiers = nil }
-    }
-
-    private final class Sources: LayoutSourcePort, @unchecked Sendable {
-        var selected: [String] = []
-        private var live: String
-        private let all: [String]
-        init(current: String, installed: [String]) { live = current; all = installed }
-        func installed() -> [String] { all }
-        func current() -> String? { live }
-        func select(_ sourceID: String) { selected.append(sourceID); live = sourceID }
-    }
-
-    /// The tree and the clipboard are two readings, as they are in the port:
-    /// `selectedTextWithoutClipboard` is the accessibility tree alone, and
-    /// `selectedText` falls through to ⌘C when the tree says nothing. And the
+    /// The selection is the accessibility tree alone, as it is in the port. The
     /// replace can be refused, which is the state an app that will not take
     /// synthesised edits is permanently in.
     private final class Selection: SelectionPort, @unchecked Sendable {
         var treeText: String?
-        var clipboardText: String?
         var accepts = true
         var replaced: [String] = []
-        func selectedText() -> String? { treeText ?? clipboardText }
         func selectedTextWithoutClipboard() -> String? { treeText }
         func replaceSelection(with text: String) -> Bool {
             guard accepts else { return false }
@@ -124,16 +89,15 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
         "ru>en": ["привет": "ghbdtn", "дфых": "las["],
     ]
 
-    private func engine(current: String,
-                        exceptions: [String],
-                        typing: Typing,
+    private func engine(exceptions: [String],
+                        typing: FakeTyping,
                         selection: Selection,
-                        sources: Sources) -> LayoutEngine {
+                        sources: FakeSources) -> LayoutEngine {
         let engine = LayoutEngine(
-            tap: Tap(), typing: typing, sources: sources,
+            tap: FakeTap(), typing: typing, sources: sources,
             translation: Translation(table: table),
             spell: Spell(valid: ["привет", "las["], noDictionary: []),
-            secure: Context(),
+            secure: Context(), activation: FakeActivation(),
             selection: selection,
             ledger: LedgerStore(),
             exceptions: exceptions,
@@ -148,13 +112,13 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
     /// when the subject never happened, and «the selection was not replaced» is
     /// green in a world where no selection is ever replaced.
     func testASelectedWordIsConvertedWhenItIsOnNoList() async throws {
-        let typing = Typing()
+        let typing = FakeTyping()
         let selection = Selection()
         selection.treeText = "ghbdtn"
-        let engine = engine(current: "en", exceptions: [], typing: typing,
+        let engine = engine(exceptions: [], typing: typing,
                             selection: selection,
-                            sources: Sources(current: "en", installed: ["en", "ru"]))
-        engine.convertSelection()
+                            sources: FakeSources())
+        engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Notes")
         XCTAssertEqual(selection.replaced, ["привет"],
                        "precondition: the selection path converts an ordinary word")
         engine.deactivate()
@@ -167,13 +131,13 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
     /// select the word — which is what somebody does when the module has been
     /// refusing to touch it — and press the same key. It is rewritten.
     func testANeverListedWordIsNotConvertedBecauseItWasSelected() async throws {
-        let typing = Typing()
+        let typing = FakeTyping()
         let selection = Selection()
         selection.treeText = "ghbdtn"
-        let engine = engine(current: "en", exceptions: ["ghbdtn"], typing: typing,
+        let engine = engine(exceptions: ["ghbdtn"], typing: typing,
                             selection: selection,
-                            sources: Sources(current: "en", installed: ["en", "ru"]))
-        engine.convertSelection()
+                            sources: FakeSources())
+        engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Notes")
         XCTAssertEqual(selection.replaced, [], """
             the word is on «Never change these words» and selecting it was \
             enough to get it converted: the identical gesture with nothing \
@@ -187,13 +151,13 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
     /// tired of seeing `привет` appear writes down the word they keep *seeing*,
     /// not the one they typed.
     func testTheConvertedFormOnTheListCountsForASelectionToo() async throws {
-        let typing = Typing()
+        let typing = FakeTyping()
         let selection = Selection()
         selection.treeText = "ghbdtn"
-        let engine = engine(current: "en", exceptions: ["привет"], typing: typing,
+        let engine = engine(exceptions: ["привет"], typing: typing,
                             selection: selection,
-                            sources: Sources(current: "en", installed: ["en", "ru"]))
-        engine.convertSelection()
+                            sources: FakeSources())
+        engine.convertSelection(selected: "ghbdtn", readIn: "com.apple.Notes")
         XCTAssertEqual(selection.replaced, [], """
             the list entry names the converted form and the selection was \
             converted into it anyway — the two word paths check both forms for \
@@ -213,13 +177,13 @@ final class TheSelectionAnswersTheSameRefusalsTests: XCTestCase {
     /// stops it. The word path refuses it even when the person asked by name,
     /// because a bracket where a letter was is not the word they asked for.
     func testASelectionIsNotConvertedIntoAWordWithAMarkWhereALetterWas() async throws {
-        let typing = Typing()
+        let typing = FakeTyping()
         let selection = Selection()
         selection.treeText = "дфых"
-        let engine = engine(current: "ru", exceptions: [], typing: typing,
+        let engine = engine(exceptions: [], typing: typing,
                             selection: selection,
-                            sources: Sources(current: "ru", installed: ["ru", "en"]))
-        engine.convertSelection()
+                            sources: FakeSources(current: "ru"))
+        engine.convertSelection(selected: "дфых", readIn: "com.apple.Notes")
         XCTAssertEqual(selection.replaced, [], """
             four letters were replaced by three letters and a bracket. Both \
             word verdicts refuse this — `decide` and `decideForced` alike — and \

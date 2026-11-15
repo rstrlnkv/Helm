@@ -9,8 +9,8 @@ import XCTest
 /// `systemextensionsctl list` prints a line per *record*, not per extension, and
 /// an upgrade leaves two: the new one `[activated enabled]` and the old one
 /// `[terminated waiting to uninstall on reboot]`. `SystemExtensionParser.parse`
-/// answers one `SystemExtensionInfo` a line, correctly — the state and the
-/// version differ — and `LeftoversScanner.systemExtensions` then builds a
+/// answers one `SystemExtensionInfo` a line, correctly — the enabled flag and
+/// the version differ — and `LeftoversScanner.systemExtensions` then builds a
 /// `StaleItem` per record whose `path` is `info.identifier`, which is the same
 /// string for both.
 ///
@@ -33,20 +33,18 @@ import XCTest
 /// The fixture is two records of one identifier because that is what the port
 /// hands back; `LeftoversFakeLoaded` has always been able to hold it, and no test
 /// had used it — a capability of a fake nobody has exercised is a missing test,
-/// not dead weight (CLAUDE.md).
+/// not dead weight (ARCHITECTURE.md § Fakes).
+///
+/// Past defect: fixed in `5603872d`.
 final class TwoRowsCannotWearOneIdentityTests: XCTestCase {
     private let home = URL(fileURLWithPath: "/Users/x")
 
     /// The two lines `systemextensionsctl` prints while an upgrade waits for a
-    /// reboot: same bundle id, different version, different state, and only the
+    /// reboot: same bundle id, different version, and only the
     /// new one enabled.
     private let upgrading = [
-        SystemExtensionInfo(identifier: "com.vendor.app.networkextension", teamID: "T1",
-                            name: "Vendor Network", version: "2.0/2258",
-                            state: "activated enabled", enabled: true),
-        SystemExtensionInfo(identifier: "com.vendor.app.networkextension", teamID: "T1",
-                            name: "Vendor Network", version: "1.9/2201",
-                            state: "terminated waiting to uninstall on reboot", enabled: false),
+        SystemExtensionInfo(identifier: "com.vendor.app.networkextension", version: "2.0/2258", enabled: true),
+        SystemExtensionInfo(identifier: "com.vendor.app.networkextension", version: "1.9/2201", enabled: false),
     ]
 
     private func scan() -> [StaleItem] {

@@ -11,6 +11,8 @@ import XCTest
 /// comparison. The offer then called the watched folder new, took a second
 /// `WatchedFolder` for it and, on Done, swept it — which runs the person's own
 /// rules over everything in it on behalf of a preset.
+///
+/// Past defect: fixed in 4ce355a9.
 final class APresetOfferComparesFoldersThroughTheGateTests: XCTestCase {
 
     private var home: URL!

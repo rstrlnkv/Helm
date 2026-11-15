@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 
 /// The names the two halves of this module agree on.
 ///
@@ -22,12 +23,67 @@ public enum LayoutKey {
     /// UI-only, but it lives here so the list is the whole list.
     public static let indicator = "indicator"
     public static let badgeStyle = "badgeStyle"
-    /// The system input menu's «Show Input Source Name», for Helm's own
-    /// indicator: the layout's name in the menu bar instead of its badge.
+    /// The old «Show Input Source Name» switch of Helm's own indicator. Nothing
+    /// writes it now: `LanguageIndicator` carries a `true` over to
+    /// `BadgeStyle.sourceName` and erases it.
     public static let indicatorShowsName = "indicatorShowsName"
     public static let introSeen = "introSeen"
     /// What the hero was last showing. A view preference rather than a setting
     /// that changes what the module does — kept so the page opens where it was
     /// left, the way the sidebar width is.
     public static let heroPeriod = "heroPeriod"
+}
+
+/// What each stored setting holds before anyone has chosen, spelled once for
+/// the engine and the pages that read the same keys.
+enum LayoutDefault {
+    static let automatic = true
+    static let audible = false
+    static let fixCapitals = true
+    static let tapKey = TapKey.rightCommand
+}
+
+extension NamespacedStore {
+    /// The four stored settings read with their defaults, so the engine and the
+    /// pages share the read as well as the table: one test of these pins every
+    /// caller.
+    public var layoutAutomatic: Bool { bool(LayoutKey.automatic, default: LayoutDefault.automatic) }
+    public var layoutAudible: Bool { bool(LayoutKey.audible, default: LayoutDefault.audible) }
+    public var layoutFixCapitals: Bool { bool(LayoutKey.fixCapitals, default: LayoutDefault.fixCapitals) }
+    public var layoutTapKey: TapKey {
+        TapKey.from(string(LayoutKey.tapKey, default: LayoutDefault.tapKey.rawValue))
+    }
+}
+
+extension ConversionPeriod {
+    /// The period the page was left on: the panel and the window answer the
+    /// same question, so they must not answer it differently. `.today` when
+    /// nothing is stored or the stored word is not one of ours.
+    public static func stored(in store: NamespacedStore) -> ConversionPeriod {
+        ConversionPeriod(rawValue: store.string(LayoutKey.heroPeriod, default: "")) ?? .today
+    }
+}
+
+/// The chord this module registers with the host, named once.
+///
+/// Two names, each read on both sides of a target boundary — the host
+/// registering the shortcut and the page drawing the row for it. Neither
+/// half is an error when the other changes: the slot name only has to *match*, so
+/// a rename leaves the page asking `HotkeyStatus` about a binding nobody filed;
+/// and the store prefix is where the recorded combination lives, so a rename
+/// there means somebody's chord is read from keys nothing writes. Both fail the
+/// same way — the row draws a shortcut and pressing it does nothing.
+///
+/// Beside `LayoutKey` because it is the same kind of fact.
+public enum LayoutHotkey {
+    /// The slot `HotkeyManager` files the binding under, which is this module's
+    /// id and the verb it runs. Not stored anywhere: it only has to be one
+    /// string in two targets.
+    public static let fix = "\(LayoutEngine.moduleID).fix"
+
+    /// Where the recorded combination is kept — `<prefix>KeyCode`,
+    /// `<prefix>Modifiers`, `<prefix>Label` inside the module's own store.
+    /// **Deployed stored data: this name never moves.** A new shortcut takes a
+    /// new prefix instead.
+    public static let storePrefix = "convertHotkey"
 }

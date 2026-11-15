@@ -1,12 +1,12 @@
 import Foundation
 
-public extension Notification.Name {
+extension Notification.Name {
     /// Posted by Keep Awake each time it moves the pointer itself.
     ///
     /// Declared here rather than in that module because the listener is
     /// `ScanCoordinator` in `HelmApp`, and neither target can see the other's:
     /// a name shared by two strangers belongs to the runtime they both import.
-    static let helmPointerNudged = Notification.Name("helmPointerNudged")
+    public static let helmPointerNudged = Notification.Name("helmPointerNudged")
 }
 
 /// Whether a background scan may run right now.
@@ -22,20 +22,20 @@ public enum ScanSchedule {
 
     /// Everything the decision needs, gathered by the caller.
     public struct Conditions: Equatable, Sendable {
-        public let now: Date
+        let now: Date
         /// When a scan last **finished**, with an answer. Nil on a machine that
         /// has never completed one.
-        public let lastRun: Date?
+        let lastRun: Date?
         /// Seconds since the person last touched keyboard, mouse or trackpad.
-        public let idleSeconds: TimeInterval
-        public let onMains: Bool
+        let idleSeconds: TimeInterval
+        let onMains: Bool
         /// How many times this scan already ran today.
-        public let runsToday: Int
+        let runsToday: Int
         /// The switch in Settings.
-        public let isEnabled: Bool
+        let isEnabled: Bool
         /// This session owns the console.
-        public let onConsole: Bool
-        public let screenLocked: Bool
+        let onConsole: Bool
+        let screenLocked: Bool
         /// When a scan was last **started**, answered or not.
         ///
         /// Separate from `lastRun` because they refuse for different lengths of
@@ -44,7 +44,7 @@ public enum ScanSchedule {
         /// could not read — has not measured anything and should be tried again
         /// later. Writing one figure for both is what made `runsPerDay = 2`
         /// unreachable.
-        public let lastAttempt: Date?
+        let lastAttempt: Date?
 
         public init(now: Date, lastRun: Date?, idleSeconds: TimeInterval,
                     onMains: Bool, runsToday: Int, isEnabled: Bool,
@@ -80,12 +80,12 @@ public enum ScanSchedule {
 
     /// Five minutes. Two minutes of stillness is a person reading; five is a
     /// person who left.
-    public static let idleThreshold: TimeInterval = 300
+    static let idleThreshold: TimeInterval = 300
     /// Once a day, with a second run allowed for the case where the first was
     /// cut short — and no more, so a wrong clock cannot spend the afternoon
     /// reading the volume.
-    public static let runsPerDay = 2
-    public static let interval: TimeInterval = 24 * 3600
+    static let runsPerDay = 2
+    static let interval: TimeInterval = 24 * 3600
     /// How long an attempt that answered nothing holds the module.
     ///
     /// It cannot be zero — a root that always refuses would be walked on every
@@ -94,7 +94,7 @@ public enum ScanSchedule {
     /// exists only on paper. An hour is long enough that a person who unplugged
     /// the drive has time to plug it back in, and short enough that a scan cut
     /// short at breakfast still happens before evening.
-    public static let retryInterval: TimeInterval = 3600
+    static let retryInterval: TimeInterval = 3600
 
     /// The order is the decision. Each guard below is above the next because
     /// getting it wrong tells the person something untrue about their own Mac.

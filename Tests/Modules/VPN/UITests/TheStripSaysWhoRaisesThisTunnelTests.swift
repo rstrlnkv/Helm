@@ -11,6 +11,8 @@ import XCTest
 /// It is the card's answer to «who raises this», which is the question the flat
 /// list of rules never answered — and it has to be an answer that fits in a
 /// card, so it is capped and says how many it did not draw.
+///
+/// Guards: the strip's cap, its overflow count and the orphan rule (no fix commit; the code and this test landed together in 1eadc939).
 final class TheStripSaysWhoRaisesThisTunnelTests: XCTestCase {
 
     private func rule(_ vpn: String) -> VPNAppRule { VPNAppRule(vpnName: vpn) }

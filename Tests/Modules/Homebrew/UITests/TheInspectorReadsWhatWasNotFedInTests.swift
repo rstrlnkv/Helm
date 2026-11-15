@@ -15,6 +15,7 @@ import XCTest
 /// The rule under all four: `InspectorState.of` is the only thing that decides
 /// what a button does, and every one of these inputs reaches it from a real
 /// `brew`.
+/// Kept: guards the reconcile gaps closed in ea433871 Guard the three inputs the inspector's own family never put in.
 final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
 
     private let node = BrewPackage(name: "node", version: "26.8.2", isCask: false)
@@ -42,8 +43,7 @@ final class TheInspectorReadsWhatWasNotFedInTests: XCTestCase {
     // MARK: - A pinned cask
 
     /// **`brew pin` being formulae-only is a fact about brew, not about this
-    /// type.** `pkgRow` and `InspectorState` both carry the comment «pinned and
-    /// cask never overlap»; `BrewOutdatedParser` reads `pinned` out of the JSON
+    /// type.** `BrewOutdatedParser` reads `pinned` out of the JSON
     /// for whichever array it is in, so the day a cask carries it the value
     /// arrives here. Refusing the upgrade is the safe answer either way — an
     /// `Upgrade` button that brew answers with «…is pinned» is a button that

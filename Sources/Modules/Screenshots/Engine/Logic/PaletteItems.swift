@@ -12,7 +12,7 @@ public enum PaletteItem: String, CaseIterable, Sendable {
 
     /// What an item is until a person says otherwise. A tool added later takes this at once, for the person who had
     /// already chosen something as for the one who had not.
-    public var shownByDefault: Bool { true }
+    var shownByDefault: Bool { true }
 }
 
 /// Which objects the palette's row shows: the person's explicit picks over each item's default.
@@ -25,18 +25,13 @@ public enum PaletteItem: String, CaseIterable, Sendable {
 /// others nothing. A stored value that is no table reads as no picks. Not sealed: nothing unattended reads it.
 public enum PaletteItems {
     /// The picks, for the items that have one.
-    public static func picks(_ store: NamespacedStore) -> [PaletteItem: Bool] {
+    static func picks(_ store: NamespacedStore) -> [PaletteItem: Bool] {
         let stored = store.object(ScreenshotsSettings.Key.paletteChoices) as? [String: Any] ?? [:]
         var picks: [PaletteItem: Bool] = [:]
         for item in PaletteItem.allCases {
             if let pick = stored[item.rawValue] as? Bool { picks[item] = pick }
         }
         return picks
-    }
-
-    /// Whether `item` is on the palette: its pick, or its default.
-    public static func isShown(_ item: PaletteItem, in store: NamespacedStore) -> Bool {
-        picks(store)[item] ?? item.shownByDefault
     }
 
     /// The items not taken off, in the order of the cases: every case with no pick against it, so this is a name list, not

@@ -18,50 +18,44 @@ struct DiskResultView: View {
             VStack(spacing: 0) {
                 BreadcrumbBar(dvm: dvm, layout: width)
                 Divider()
-                content(width)
+                content()
             }
         }
     }
 
-    @ViewBuilder private func content(_ layout: DiskLayout) -> some View {
-        if layout.showsRing {
-            HStack(spacing: 0) {
-                // The ring swaps with a zoom that mirrors the navigation:
-                // The ring is never replaced: clicking a wedge widens it until
-                // it is the whole circle and only then drills, and coming back
-                // runs the same transform backwards. A cross-fade between two
-                // rings said "something changed"; this says "you are inside
-                // this one".
-                ZStack {
-                    RingView(segments: dvm.segments,
-                             focusName: dvm.focus.map(dvm.displayName(for:)) ?? "",
-                             focusBytes: dvm.focus?.bytes ?? 0,
-                             growing: dvm.live,
-                             hovered: $hovered,
-                             // No animation here: the ring has already opened
-                             // the wedge by the time this runs, and the drill is
-                             // what lands underneath it.
-                             onSelect: { segment in dvm.drill(into: segment.path) },
-                             onBack: { dvm.back() },
-                             canGoBack: dvm.focusPath.count > 1,
-                             displayName: { segment in
-                                 DiskViewModel.folderName(for: segment.path) ?? segment.name
-                             },
-                             foldingBackFrom: dvm.foldingBackFrom,
-                             foldingBackLevels: dvm.foldingBackLevels,
-                             onFoldConsumed: { dvm.foldingBackFrom = nil },
-                             targetLayout: { dvm.ringLayout(forFocusAt: $0) })
-                }
-                .frame(minWidth: 300, idealWidth: 360, maxWidth: 380)
-                .aspectRatio(1, contentMode: .fit)
-                .padding(HelmSpace.s5)
-                Divider()
-                childList
+    @ViewBuilder private func content() -> some View {
+        HStack(spacing: 0) {
+            // The ring is never replaced: clicking a wedge widens it until
+            // it is the whole circle and only then drills, and coming back
+            // runs the same transform backwards. A cross-fade between two
+            // rings said "something changed"; this says "you are inside
+            // this one".
+            ZStack {
+                RingView(segments: dvm.segments,
+                         focusName: dvm.focus.map(dvm.displayName(for:)) ?? "",
+                         focusBytes: dvm.focus?.bytes ?? 0,
+                         growing: dvm.live,
+                         hovered: $hovered,
+                         // No animation here: the ring has already opened
+                         // the wedge by the time this runs, and the drill is
+                         // what lands underneath it.
+                         onSelect: { segment in dvm.drill(into: segment.path) },
+                         onBack: { dvm.back() },
+                         canGoBack: dvm.focusPath.count > 1,
+                         displayName: { segment in
+                             DiskViewModel.folderName(for: segment.path) ?? segment.name
+                         },
+                         foldingBackFrom: dvm.foldingBackFrom,
+                         foldingBackLevels: dvm.foldingBackLevels,
+                         onFoldConsumed: { dvm.foldingBackFrom = nil },
+                         targetLayout: { dvm.ringLayout(forFocusAt: $0) })
             }
-        } else {
-            // Below the width where both fit, the ring is what goes. The list
-            // carries every fact the ring does and needs less room to do it;
-            // a 300 pt ring beside a squeezed list serves neither.
+            // The ring column: the 300 pt frame `DiskLayout` measured it with (its
+            // table's ring-column row), 380 the ceiling a wide pane may stretch it to.
+            .frame(minWidth: 300, idealWidth: 360, maxWidth: 380)
+            .aspectRatio(1, contentMode: .fit)
+            .padding(HelmSpace.s5)
+            Divider()
             childList
         }
     }
@@ -172,15 +166,15 @@ private struct BreadcrumbBar: View {
     @State private var showingAdvice = false
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: HelmSpace.s4) {
             Button {
                 withAnimation(HelmMotion.emphasis) { dvm.back() }
             } label: {
                 Image(systemName: "chevron.backward")
             }
             .disabled(dvm.focusPath.count <= 1)
-            .help(DkStr.back)
-            .accessibilityLabel(DkStr.back)
+            .help(HelmWord.back)
+            .accessibilityLabel(HelmWord.back)
 
             // `fixedSize` on the group, not on each crumb: a `frame(maxWidth:)`
             // is a range, and in an HStack with room to spare every crumb took
@@ -189,27 +183,28 @@ private struct BreadcrumbBar: View {
             // gaps between them, which reads as a layout fault rather than as
             // a path. Asking the group for its ideal width makes each maximum
             // behave as the ceiling it was meant to be.
-            HStack(spacing: 8) { crumbs }
+            HStack(spacing: HelmSpace.s4) { crumbs }
                 .fixedSize()
 
-            Spacer(minLength: 12)
+            Spacer(minLength: HelmSpace.s5)
 
             // **Either walk**, not only the volume's. Drilling past the depth the
             // scan reached starts a real walk of that folder, and this pair was
             // behind `live` alone — so the click looked dead, the ring changed
             // under the person when it landed, and there was nothing to press to
-            // stop it. The file count belongs to the volume walk and is absent
-            // here by construction: a folder measurement's progress events carry
-            // its own scan's name, which is not the one the screen is showing.
+            // stop it. The file count belongs to the volume walk: a folder
+            // measurement asks for no updates (`measureAndDrill` passes no sink), so
+            // nothing of it reaches `tick`, which the view model clears when a scan
+            // ends or is stopped, so there is no count left over to draw here.
             if dvm.walking {
-                HStack(spacing: 6) {
+                HStack(spacing: HelmSpace.s3) {
                     ProgressView().controlSize(.small)
                     if let tick = dvm.tick, layout.showsScanStatement {
                         Text(DkStr.liveCount(tick.files))
                             .helmFigure()
                             .foregroundStyle(HelmText.quiet)
                     }
-                    Button(DkStr.stop) { dvm.cancel() }
+                    Button(HelmWord.stopScan) { dvm.cancel() }
                         .controlSize(.small)
                 }
             } else {
@@ -219,6 +214,7 @@ private struct BreadcrumbBar: View {
                 // `DiskLayout.statement`, because two of the three are warnings
                 // and a warning is not a thing to drop when the window is small.
                 scanStatement
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
             }
 
             if let advice = dvm.result?.advice, !advice.isEmpty, !dvm.live {
@@ -236,18 +232,19 @@ private struct BreadcrumbBar: View {
                 }
             }
 
-            HStack(spacing: 8) {
-                Button(DkStr.scanAgain) { Task { await dvm.rescan() } }
-                    .disabled(dvm.live)
+            HStack(spacing: HelmSpace.s4) {
+                Button(HelmWord.scanAgain) { Task { await dvm.rescan() } }
+                    .disabled(dvm.walking || dvm.busy)
                 // The way out. "Scan again" measures the same place forever, so
                 // a scan of the wrong thing — or of a folder that was only ever
                 // meant to be looked at once — had no exit at all: the module
                 // reopened on it at every launch.
                 Button(DkStr.chooseAnother) { dvm.newScan() }
+                    .disabled(dvm.busy)
             }
             .controlSize(.small)
         }
-        .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s5)
+        .helmPageStrip()
     }
 
     /// What the ring is showing: a stopped walk, a memory of a measurement, or a
@@ -262,7 +259,6 @@ private struct BreadcrumbBar: View {
         case .stopped:
             if let result = dvm.result {
                 Text(DkStr.stopped)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
                     // The hint carries the count and the consequence, and it rode
                     // on a `Text` that was not drawn below 800 pt of pane — so the
                     // screen reader lost it exactly where the sighted reader did.
@@ -275,13 +271,11 @@ private struct BreadcrumbBar: View {
             // «Измерено » with the sentence stopping where the age should be.
             if let savedAt = dvm.completedAt, let age = HelmDates.age(savedAt) {
                 Text(DkStr.measured(age))
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
             }
         case .scanned:
             if let result = dvm.result {
                 Text(DkStr.scannedIn(result.filesScanned,
-                                     Decimal(result.seconds)))
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
+                                     Fractional(result.seconds)))
             }
         case .none:
             EmptyView()
@@ -324,6 +318,7 @@ private struct BreadcrumbBar: View {
             Text(dvm.displayName(for: entry))
                 .font(HelmText.sectionHeading)
                 .lineLimit(1).truncationMode(.middle)
+                // A ceiling for a long name, not a width held for a short one.
                 .frame(maxWidth: 150, alignment: .leading)
         } else {
             Button {
@@ -344,7 +339,7 @@ private struct BreadcrumbBar: View {
 
     private var chevron: some View {
         Image(systemName: "chevron.compact.right")
-            .font(.system(size: 11))
+            .font(HelmText.rowDetail)
             .foregroundStyle(HelmText.separator)
     }
 }
@@ -359,7 +354,7 @@ private struct BreadcrumbBar: View {
 /// doors into the basket, so anything true of the control has to be remembered
 /// at both, and `.disabled` while a removal runs was remembered at neither.
 ///
-/// **Dim, because the model refuses.** ARCHITECTURE.md § One removal at a time:
+/// **Dim, because the model refuses.** Architecture/Removal.md § One removal at a time:
 /// the basket is what the reply in flight is about, so `DiskViewModel.toggleBasket`
 /// declines while `busy` — and a button that is live over a refusal is a press
 /// that does nothing, which is worse than the discard it replaced.
@@ -377,7 +372,7 @@ private struct BasketButton: View {
     /// The row this button belongs to, as the row draws it. Read aloud once per
     /// row down a list of two hundred, and without it every one of them was
     /// «Mark for removal» — the name of the *action*, with no object, which is
-    /// the defect `DkStr.markForRemoval` was written to fix and only half fixed.
+    /// the defect `HelmBasket.mark` was written to fix.
     let name: String
     let basketed: Bool
     let removing: Bool
@@ -406,7 +401,7 @@ private struct BasketButton: View {
 /// A row mirrors its wedge: same swatch, and a background bar whose width is
 /// the item's share of the focused folder — the list reads as a bar chart.
 private struct ChildRow: View {
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.helmAccessibility) private var accessibility
     /// True when every visible row would carry the same caption — at a volume
     /// root, all ten of them. Homebrew already wrote this lesson down: "46 of 47
     /// rows were 'formula', and a label with one value is an ornament."
@@ -435,13 +430,16 @@ private struct ChildRow: View {
 
     private var isHovered: Bool { hovered == child.path }
 
+    private var increased: Bool { accessibility.increasedContrast }
+
     private func reveal() { HelmReveal.inFinder(child.path) }
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: HelmSpace.s4) {
             Circle()
-                .fill(child.isDirectory ? DiskPalette.base(for: child.path)
-                                        : Color.secondary.opacity(0.5))
+                .fill(child.isDirectory ? DiskPalette.base(for: child.path, increased: increased)
+                                        : DiskPalette.fileDot)
+                // The colour key of the row; the ring's tooltip draws a 7 pt one.
                 .frame(width: 8, height: 8)
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 // The flag, not the name: a person's own file called "…" was
@@ -452,9 +450,9 @@ private struct ChildRow: View {
                     // The token, not `.orange`: the system colour is tuned for
                     // a dark background and measures 2.31:1 on a light window,
                     // which is ten-point body text nobody can read.
-                    Text(DkStr.noAccess).font(.caption2).foregroundStyle(HelmSignal.warning)
+                    Text(DkStr.noAccess).font(HelmText.smallPrint).foregroundStyle(HelmSignal.warning)
                 } else if !removable, !everyRowIsSystem {
-                    Text(DkStr.systemItem).font(.caption2).foregroundStyle(HelmText.faint)
+                    Text(DkStr.systemItem).font(HelmText.smallPrint).foregroundStyle(HelmText.faint)
                 }
             }
             .accessibilityElement(children: .combine)
@@ -492,8 +490,7 @@ private struct ChildRow: View {
                 }
             }
             .buttonStyle(.borderless)
-            .font(.system(size: 11))
-            .foregroundStyle(HelmText.quiet)
+            .helmQuietDetail()
             .frame(width: 13)
             if removable {
                 BasketButton(name: drawnName, basketed: basketed, removing: removing,
@@ -501,25 +498,16 @@ private struct ChildRow: View {
             }
         }
         .padding(.vertical, HelmSpace.s1)
-        .padding(.horizontal, 6)
+        .padding(.horizontal, HelmSpace.s3)
         .background(
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     if isHovered {
                         RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
-                            .fill(DiskPalette.base(for: child.path)
-                                .opacity(colorScheme == .light ? 0.38 : 0.16))
+                            .fill(DiskPalette.rowHover(for: child.path, increased: increased))
                     }
                     RoundedRectangle(cornerRadius: HelmRadius.ctl, style: .continuous)
-                        // Heavier in light. `DiskPalette` is eight fixed HSB
-                        // constants with no idea what it is drawn on, and one
-                        // opacity does not carry the same weight on both: at
-                        // 0.10 the largest bar measures about 1.10:1 over a
-                        // white list against 1.17:1 over the dark one, and the
-                        // smaller bars simply are not there. Same trick
-                        // `HelmMetricStrip.legible` uses for the same reason.
-                        .fill(DiskPalette.base(for: child.path)
-                            .opacity(colorScheme == .light ? 0.28 : 0.10))
+                        .fill(DiskPalette.rowBar(for: child.path, hovered: isHovered, increased: increased))
                         .frame(width: max(proxy.size.width * fraction, 2))
                 }
             }
@@ -564,15 +552,17 @@ private struct AdviceList: View {
                 .padding(.horizontal, HelmSpace.s5).padding(.top, HelmSpace.s5).padding(.bottom, HelmSpace.s4)
             Divider()
             ScrollView {
-                VStack(spacing: 2) {
+                VStack(spacing: HelmSpace.s1) {
                     ForEach(advice) { item in
                         row(item)
                     }
                 }
-                .padding(8)
+                .padding(HelmSpace.s4)
             }
+            // The tallest the list grows before it scrolls.
             .frame(maxHeight: 320)
         }
+        // The popover's width.
         .frame(width: 380)
     }
 
@@ -582,11 +572,12 @@ private struct AdviceList: View {
         return HStack(spacing: HelmSpace.s5) {
             Image(systemName: icon(item.kind))
                 .foregroundStyle(HelmText.quiet)
-                .frame(width: 18)
+                // The icon column of an advice row.
+                .frame(width: HelmLayout.symbolColumn)
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 Text(item.name).lineLimit(1).truncationMode(.middle)
                 Text(DkStr.adviceReason(item))
-                    .font(.caption2)
+                    .font(HelmText.smallPrint)
                     .foregroundStyle(HelmText.quiet)
             }
             Spacer()

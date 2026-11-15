@@ -3,7 +3,7 @@ import HelmUI
 import XCTest
 import Module_Autopilot_Engine
 import Module_Autopilot_UI
-import Module_Disk_Engine
+@testable import Module_Disk_Engine
 import Module_Disk_UI
 import Module_Duplicates_Engine
 import Module_Duplicates_UI
@@ -33,7 +33,7 @@ import Module_VPN_UI
 /// `StoreNamespacesAreModuleIdsTests` holds the registered ids against the
 /// registry, so a rename that both sides agree on still fails there.
 ///
-/// The rows are a hand-written list, which CLAUDE.md allows only tied to the
+/// The rows are a hand-written list, which the house rules allow only tied to the
 /// thing it names: the first test ties it to `ModuleRegistry.all`, so a module
 /// gained or lost fails the guard instead of slipping past it.
 @MainActor

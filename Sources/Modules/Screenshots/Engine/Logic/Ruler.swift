@@ -16,18 +16,18 @@ public struct Ruler: Sendable, Equatable {
     /// The strip's thickness across, in points.
     public static let width: CGFloat = 34
     /// How far from an edge a stroke may begin and still be straightened along it, in points.
-    public static let reach: CGFloat = 12
+    static let reach: CGFloat = 12
     /// How near to 0°, 45° or 90° the angle sticks to it, in degrees.
-    public static let stick: CGFloat = 2
+    static let stick: CGFloat = 2
     /// The length the strip appears with, at most: a smaller area takes four fifths of its width.
-    public static let standardLength: CGFloat = 300
+    static let standardLength: CGFloat = 300
 
     public private(set) var center: CGPoint
     public let length: CGFloat
     /// Degrees, clockwise, in (-90, 90].
     public private(set) var angle: CGFloat
 
-    public init(center: CGPoint, length: CGFloat = standardLength, angle: CGFloat = 0) {
+    init(center: CGPoint, length: CGFloat = standardLength, angle: CGFloat = 0) {
         self.center = center
         self.length = length
         self.angle = 0
@@ -40,12 +40,12 @@ public struct Ruler: Sendable, Equatable {
     }
 
     /// One long side of the strip.
-    public struct Edge: Sendable, Equatable {
-        public let from: CGPoint
-        public let to: CGPoint
+    struct Edge: Sendable, Equatable {
+        let from: CGPoint
+        let to: CGPoint
 
         /// The nearest point of the edge to `point`.
-        public func project(_ point: CGPoint) -> CGPoint {
+        func project(_ point: CGPoint) -> CGPoint {
             let dx = to.x - from.x, dy = to.y - from.y
             let along = dx * dx + dy * dy
             guard along > 0 else { return from }
@@ -53,7 +53,7 @@ public struct Ruler: Sendable, Equatable {
             return CGPoint(x: from.x + dx * t, y: from.y + dy * t)
         }
 
-        public func distance(to point: CGPoint) -> CGFloat {
+        func distance(to point: CGPoint) -> CGFloat {
             let near = project(point)
             return hypot(point.x - near.x, point.y - near.y)
         }
@@ -68,7 +68,7 @@ public struct Ruler: Sendable, Equatable {
     }
 
     /// The two long edges, the one on the upper side of a level strip first.
-    public var edges: [Edge] {
+    var edges: [Edge] {
         [-Self.width / 2, Self.width / 2].map { Edge(from: place(along: -length / 2, across: $0), to: place(along: length / 2, across: $0)) }
     }
 
@@ -80,14 +80,14 @@ public struct Ruler: Sendable, Equatable {
     }
 
     /// The edge a stroke that begins at `point` runs along: the nearer one, when it is within `reach`.
-    public func edge(near point: CGPoint) -> Edge? {
+    func edge(near point: CGPoint) -> Edge? {
         guard point.x.isFinite, point.y.isFinite else { return nil }
         return edges.map { (edge: $0, distance: $0.distance(to: point)) }.min { $0.distance < $1.distance }
             .flatMap { $0.distance <= Self.reach ? $0.edge : nil }
     }
 
     /// Where a stroke that begins at `point` lies: on the nearer edge, or nil when it begins too far from both and is free.
-    public func snap(_ point: CGPoint) -> CGPoint? { edge(near: point)?.project(point) }
+    func snap(_ point: CGPoint) -> CGPoint? { edge(near: point)?.project(point) }
 
     /// The strip taken to `point`, held with its centre inside `area`. A point that is not a number moves nothing.
     public mutating func move(to point: CGPoint, within area: CGRect) {

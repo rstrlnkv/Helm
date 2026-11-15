@@ -25,18 +25,6 @@ public enum HelmConfirm {
     /// reason `Quoted` does — the eight tables cannot be checked otherwise.
     public static func trash(_ subject: String, _ size: String,
                              language: AppLanguage = AppLanguage.current) -> String {
-        let table: [AppLanguage: String] = [
-            .ru: "Переместить \(subject) (\(size)) в Корзину?",
-            .es: "¿Trasladar \(subject) (\(size)) a la papelera?",
-            // U+00A0 before the question mark: an ordinary space there is a
-            // line-breaking one, so the mark can end up alone on the next line.
-            .fr: "Placer \(subject) (\(size)) dans la corbeille\u{00A0}?",
-            .de: "\(subject) (\(size)) in den Papierkorb legen?",
-            .ja: "\(subject)（\(size)）をゴミ箱に入れますか？",
-            .zh: "将\(subject)（\(size)）移到废纸篓？",
-            .pt: "Mover \(subject) (\(size)) para o Lixo?",
-        ]
-        let english = "Move \(subject) (\(size)) to the Trash?"
-        return language == .en ? english : table[language] ?? english
+        return L(.trash(subject, size), language: language)
     }
 }

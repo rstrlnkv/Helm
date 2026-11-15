@@ -6,7 +6,7 @@ import HelmTestSupport
 
 /// **The two triggers disagreed about what a rule means.**
 ///
-/// The sweep and the dry run read a folder through `FolderReader.facts(in:)`,
+/// The sweep and the dry run read a folder through `FolderReader.reading(in:)`,
 /// whose enumerator is built with `.skipsHiddenFiles` and
 /// `.skipsPackageDescendants` — so an `.app` is one thing and a dotfile is not
 /// there at all. The FSEvents leg took the path it was handed and asked for its
@@ -39,10 +39,7 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
         // refused for reasons of their own at every depth, so without this the
         // depth question could be deleted and nothing would notice.
         try write("project/report.pdf", in: root, bytes: 10)
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        engine = AutopilotEngine.scratch(home: home.path)
     }
 
     private func path(_ relative: String) -> String {
@@ -53,15 +50,8 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
         FileManager.default.fileExists(atPath: path(relative))
     }
 
-    /// Everything under the watched folder, relative and sorted — the shape a
-    /// race cannot satisfy by accident.
-    private func tree() -> [String] {
-        let all = FileManager.default.enumerator(atPath: root.path)?.allObjects as? [String]
-        return (all ?? []).sorted()
-    }
-
     private func everyPathInTheTree() -> [String] {
-        tree().map { root.appendingPathComponent($0).path }
+        tree(under: root).map { root.appendingPathComponent($0).path }
     }
 
     private func folder(depth: Int = 8) -> WatchedFolder {
@@ -87,7 +77,7 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
     // MARK: - What the sweep can see
 
     func testTheSweepNeverOffersABundleResourceOrAHiddenFile() {
-        let found = reader.facts(in: root.path, depth: 8).map(\.name).sorted()
+        let found = reader.reading(in: root.path, depth: 8).files.map(\.name).sorted()
 
         XCTAssertEqual(found, ["Reader.app", "plain.pdf", "project", "report.pdf"],
                        "the sweep's own reader changed what it can see")
@@ -102,6 +92,26 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
         XCTAssertTrue(reader.admits(deep, under: folder(depth: 2)))
     }
 
+    /// The walk stops at `FolderReader.deepest` whatever depth a folder stores, so
+    /// the watcher refuses what lies below it too: a depth of 70 must not admit
+    /// the file at level 65 that the sweep never returns.
+    func testTheWatcherAdmitsNoDeeperThanTheWalkReads() throws {
+        let levels = (1...64).map { "d\($0)" }
+        let atSixtyFour = levels.dropLast().joined(separator: "/") + "/at64.pdf"
+        let atSixtyFive = levels.joined(separator: "/") + "/at65.pdf"
+        try write(atSixtyFour, in: root, bytes: 10)
+        try write(atSixtyFive, in: root, bytes: 10)
+        XCTAssertTrue(exists(atSixtyFour) && exists(atSixtyFive), "the fixture is not there")
+        let watched = folder(depth: 70)
+
+        let swept = Set(reader.reading(in: root.path, depth: 70).files.map { resolved($0.path) })
+
+        XCTAssertTrue(swept.contains(resolved(path(atSixtyFour))), "the walk did not read level 64")
+        XCTAssertFalse(swept.contains(resolved(path(atSixtyFive))), "the walk read level 65")
+        XCTAssertTrue(reader.admits(URL(fileURLWithPath: path(atSixtyFour)), under: watched))
+        XCTAssertFalse(reader.admits(URL(fileURLWithPath: path(atSixtyFive)), under: watched))
+    }
+
     // MARK: - The one question
 
     /// The tie between the two triggers: for every file in the tree, what the
@@ -114,7 +124,7 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
             // Resolved on both sides: the enumerator hands back `/private/var/…`
             // for a scratch directory under `/var`, which is one path spelled two
             // ways and not a disagreement about any file.
-            let swept = Set(reader.facts(in: root.path, depth: depth).map { resolved($0.path) })
+            let swept = Set(reader.reading(in: root.path, depth: depth).files.map { resolved($0.path) })
             let admitted = Set(everyPathInTheTree()
                 .filter { reader.admits(URL(fileURLWithPath: $0), under: watched) }
                 .map(resolved))
@@ -134,47 +144,44 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
     /// The control: an ordinary file in the watched folder is acted on, so the
     /// two assertions below are about a leg that ran rather than one that never
     /// started.
-    func testAnOrdinaryFileIsActedOn() throws {
+    func testAnOrdinaryFileIsActedOn() async throws {
         engine.folders = [folder()]
 
         engine.handle([path("plain.pdf")])
 
-        try waitForTheWatcherToFinish()
+        await waitForTheWatcherToFinish()
         XCTAssertFalse(exists("plain.pdf"), "the watcher did nothing at all")
-        XCTAssertTrue(exists("Documents/plain.pdf"), tree().description)
+        XCTAssertTrue(exists("Documents/plain.pdf"), tree(under: root).description)
     }
 
-    func testAResourceInsideAnApplicationBundleIsLeftAlone() throws {
+    func testAResourceInsideAnApplicationBundleIsLeftAlone() async throws {
         engine.folders = [folder()]
 
         engine.handle([path("Reader.app/Contents/Resources/manual.pdf"), path("plain.pdf")])
 
-        try waitForTheWatcherToFinish()
+        await waitForTheWatcherToFinish()
         XCTAssertTrue(exists("Reader.app/Contents/Resources/manual.pdf"),
-                      "a rule took a resource out of an application bundle: \(tree())")
+                      "a rule took a resource out of an application bundle: \(tree(under: root))")
         XCTAssertFalse(exists("Reader.app/Contents/Resources/Documents/manual.pdf"))
     }
 
-    func testAHiddenFileIsLeftAlone() throws {
+    func testAHiddenFileIsLeftAlone() async throws {
         engine.folders = [folder(depth: 1)]
 
         engine.handle([path(".quiet.pdf"), path("plain.pdf")])
 
-        try waitForTheWatcherToFinish()
+        await waitForTheWatcherToFinish()
         XCTAssertTrue(exists(".quiet.pdf"),
-                      "a rule acted on a file the sweep can never see: \(tree())")
+                      "a rule acted on a file the sweep can never see: \(tree(under: root))")
     }
 
     /// `handle` hands its work to the engine's own queue and answers nothing.
     /// The history is written after the whole batch, so a record for the control
     /// file is the batch having finished — not a sleep, which would be a guess
     /// about a machine.
-    private func waitForTheWatcherToFinish() throws {
-        let deadline = Date().addingTimeInterval(5)
-        while Date() < deadline {
-            if engine.history.contains(where: { $0.file == "plain.pdf" }) { return }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+    private func waitForTheWatcherToFinish() async {
+        await waitUntilReached("the watcher finished its batch", within: .seconds(5)) {
+            engine.history.contains(where: { $0.file == "plain.pdf" })
         }
-        XCTFail("the watcher never finished its batch")
     }
 }

@@ -11,6 +11,8 @@ import HelmRuntime
 /// contain. Two writers reach this key without the picker — a hand-edited
 /// plist, and `AppTriggerRules.migrating(from:)`, which turns the older
 /// `autoApps` string list into rules and does nothing about what is in it.
+///
+/// Guards: de97195b (rules a file can hold that the picker never writes).
 final class RulesAPlistCanHoldTests: XCTestCase {
 
     private var backing: InMemoryKeyValueStore!
@@ -88,10 +90,10 @@ final class RulesAPlistCanHoldTests: XCTestCase {
     func testARuleWithAnEmptyBundleIDHoldsNothing() {
         let empty = [AppTrigger(bundleID: "")]
 
-        XCTAssertFalse(AppTriggerRules.isHolding(empty, running: [],
-                                                 externalDisplay: true, onPower: true))
-        XCTAssertFalse(AppTriggerRules.isHolding(empty, running: ["com.apple.Safari"],
-                                                 externalDisplay: true, onPower: true),
+        XCTAssertTrue(AppTriggerRules.holding(empty, running: [],
+                                                 externalDisplay: true, onPower: true).isEmpty)
+        XCTAssertTrue(AppTriggerRules.holding(empty, running: ["com.apple.Safari"],
+                                                 externalDisplay: true, onPower: true).isEmpty,
                        "a rule naming no app held the Mac awake for an app it does not name")
     }
 
@@ -111,11 +113,11 @@ final class RulesAPlistCanHoldTests: XCTestCase {
                        "com.example.a/b"]
         let rules = awkward.map { AppTrigger(bundleID: $0) }
 
-        let back = AppTriggerRules.decode(AppTriggerRules.encode(rules))
+        let back = (AppTriggerRules.readable(AppTriggerRules.encode(rules)) ?? [])
 
         XCTAssertEqual(back.map(\.bundleID), awkward)
-        XCTAssertTrue(AppTriggerRules.isHolding(back, running: ["com.example.🚀"],
-                                                externalDisplay: false, onPower: false),
+        XCTAssertFalse(AppTriggerRules.holding(back, running: ["com.example.🚀"],
+                                                externalDisplay: false, onPower: false).isEmpty,
                       "an id that came back changed can never match a running app again")
     }
 
@@ -139,9 +141,9 @@ final class RulesAPlistCanHoldTests: XCTestCase {
 
         XCTAssertEqual(settings.appTriggers.count, 200)
         XCTAssertFalse(settings.appRulesUnreadable, "a list at the ceiling is not a broken file")
-        XCTAssertTrue(AppTriggerRules.isHolding(settings.appTriggers,
+        XCTAssertFalse(AppTriggerRules.holding(settings.appTriggers,
                                                 running: ["com.example.render"],
-                                                externalDisplay: false, onPower: false))
+                                                externalDisplay: false, onPower: false).isEmpty)
     }
 
     /// And an engine over the same store answers the same, so the length is a
@@ -157,7 +159,7 @@ final class RulesAPlistCanHoldTests: XCTestCase {
                                      displayInfo: FakeDisplayInfo(),
                                      displayObserver: FakeDisplayObserver(),
                                      power: FakePower(), apps: apps, pointer: FakePointer(),
-                                     clamshell: FakeClamshell(), clock: FakeClock())
+                                     clamshell: FakeClamshell(), clock: FakeClock(), lidInfo: FakeLidInfo())
 
         engine.activate()
 

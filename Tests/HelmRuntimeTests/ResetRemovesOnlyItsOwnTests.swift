@@ -18,7 +18,7 @@ import HelmTestSupport
 ///
 /// Everywhere else a test that trashes gives its files unownable names, so the
 /// cleanup can reconstruct `~/.Trash/<name>` and be sure the item is its own
-/// (`TrashScratch`). Here the name comes from `ResetPlan.roots` and it is
+/// (`TrashScratch`). Here the name comes from `ResetPlan.removablePaths` and it is
 /// `Helm`. The UUID in the temporary home above it does not survive the move —
 /// only the moved item's own name does — so **four folders called `Helm` went
 /// into the real Trash on every run**, which is litter that also lies: somebody
@@ -37,8 +37,9 @@ import HelmTestSupport
 /// the one mistake a cleanup must not be able to make.
 ///
 /// What that costs is coverage of the *second* path in the same batch, and
-/// `ResetPlanTests` is where the pair is checked; what `HelmTrash` does with a
-/// batch of two has its own tests, on files that can be cleaned up.
+/// `ResetPlanTests` pins the two directories and the gate's refusals; what
+/// `HelmTrash` does with a batch of two has its own tests, on files that can be
+/// cleaned up.
 final class ResetRemovesOnlyItsOwnTests: XCTestCase {
     private var home: String!
     /// Written into the scan file, and read back before anything is removed
@@ -49,7 +50,7 @@ final class ResetRemovesOnlyItsOwnTests: XCTestCase {
         home = scratchDirectory("reset-test").path
         sentinel = "helm-reset-test-" + UUID().uuidString
         // The two directories a reset is allowed to take…
-        for path in ResetPlan.removablePaths(home: home) {
+        for path in ResetPlan.removablePaths(home: home, folder: .helm) {
             try FileManager.default.createDirectory(atPath: path + "/Disk",
                                                     withIntermediateDirectories: true)
             try sentinel.write(toFile: path + "/Disk/last-scan.json", atomically: true,
@@ -66,7 +67,6 @@ final class ResetRemovesOnlyItsOwnTests: XCTestCase {
     }
 
     override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(atPath: home)
         reclaimTheHelmFolderThisTestTrashed()
     }
 
@@ -91,9 +91,17 @@ final class ResetRemovesOnlyItsOwnTests: XCTestCase {
     /// is then really moved, which is what proves `HelmTrash` was given a path
     /// it could act on rather than one it would have refused.
     func testItTakesHelmsOwnDirectoryAndLeavesTheNeighbours() throws {
-        let paths = ResetPlan.removablePaths(home: home)
-            .filter { ResetPlan.mayRemove($0, home: home) }
+        let paths = ResetPlan.removablePaths(home: home, folder: .helm)
+            .filter { ResetPlan.mayRemove($0, home: home, folder: .helm) }
         XCTAssertEqual(paths.count, 2, "the plan and its own gate disagree")
+        // The gate itself, asked about the neighbours and the containers: a gate
+        // widened to the parent of Helm's folders still passes its own two paths.
+        for path in ["\(home!)/Library/Application Support/Sketch",
+                     "\(home!)/Library/Logs/DiagnosticReports",
+                     "\(home!)/Library/Application Support/Helmet",
+                     "\(home!)/Library/Application Support", "\(home!)/Library/Logs"] {
+            XCTAssertFalse(ResetPlan.mayRemove(path, home: home, folder: .helm), path)
+        }
 
         let taken = try XCTUnwrap(paths.first { $0.contains("Application Support") })
         let result = HelmTrash.remove(allowed: [taken], module: "reset-test")

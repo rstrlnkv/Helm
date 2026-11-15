@@ -1,5 +1,4 @@
 import XCTest
-import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// **`brew doctor` is asked for uncoloured output, and only `brew doctor` is.**
@@ -48,14 +47,7 @@ private final class RecordingRunner: ProcessRunner, @unchecked Sendable {
     }
 }
 
-private struct FixedLocator: BrewLocator {
-    func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-}
-
-private struct NoPrivileges: PrivilegedRunner {
-    func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
-}
-
+/// Kept: the only test that `brew doctor` is asked uncoloured (measured on 2026-09-29, see above); the coloured-doctor class beside it accepts a refusal as a repair too.
 final class TheDoctorIsAskedForPlainTextTests: XCTestCase {
 
     private static let esc = "\u{1B}"

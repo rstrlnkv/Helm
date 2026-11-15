@@ -12,7 +12,7 @@ import HelmRuntime
 /// The exception is anything whose height is measured and clipped. A bouncy
 /// spring overshoots its target, and an overshooting height clips its own
 /// content for a frame or two — exactly the class of panel glitch
-/// ARCHITECTURE.md § Motion warns about. Those use `disclosure`, which is a spring with
+/// Architecture/DesignSystem.md § Motion warns about. Those use `disclosure`, which is a spring with
 /// the bounce set to zero: physical timing, no overshoot.
 public enum HelmMotion {
     /// "Reduce motion" is a medical setting, not a preference: springs that
@@ -21,34 +21,35 @@ public enum HelmMotion {
     /// keeps this current, so a change applies to the next animation without a
     /// relaunch — and collapse to an instant cut rather than removing the state
     /// change itself.
-    private static var reduced: Bool { reduceMotion }
-
-    /// The system setting, read fresh. Public only so the view modifier below
-    /// can hand it to `spins` as a value.
+    ///
+    /// The system setting, read fresh through `HelmAccessibility.system`: for AppKit code, for pages
+    /// that are not yet on `\.helmTraits`, and for every `Animation` token below, which read it here: a view
+    /// that animates by a token (`HelmButtonStyle` and `HelmPageHeader` by `hover(entering:)`) takes Reduce
+    /// Motion from here and not from `\.helmTraits`.
     public static var reduceMotion: Bool {
-        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        HelmAccessibility.system.reducedMotion
     }
     private static let instant = Animation.linear(duration: 0.01)
 
     /// Opening and closing measured-height sections. No overshoot by design.
     public static var disclosure: Animation {
-        reduced ? instant : .smooth(duration: 0.30)
+        reduceMotion ? instant : .smooth(duration: 0.30)
     }
 
     /// Small state changes: reordering rows, toggling a filter, moving a
     /// selection, switching a tab. A touch of spring so it doesn't feel mechanical.
     public static var interface: Animation {
-        reduced ? instant : .snappy(duration: interfaceDuration)
+        reduceMotion ? instant : .snappy(duration: interfaceDuration)
     }
 
     /// `interface`'s duration alone, in seconds, for a caller that animates
     /// through AppKit — `NSAnimationContext` takes a number and has nowhere to
-    /// put an `Animation`, so `HelmToolbarSwitcher`'s fill group would
+    /// put an `Animation`, so such a caller would
     /// otherwise carry the number as a literal of its own, which is the
     /// duplicate-constant shape nothing goes red on.
     ///
-    /// **Not the same curve.** `interface` is a spring and the switcher's fill group
-    /// runs AppKit's own timing function; what is shared here is the length, so
+    /// **Not the same curve.** `interface` is a spring and an AppKit caller
+    /// runs a timing function; what is shared here is the length, so
     /// the two move for the same time and not along the same path. A caller
     /// using this is responsible for its own `reduceMotion` branch, because a
     /// bare number cannot collapse the way a token does.
@@ -69,7 +70,7 @@ public enum HelmMotion {
     /// `fraction`. The control points are read back from `interfaceCurve` itself, so there is no second copy
     /// of them; the parameter is found by bisection. A `fraction` below 0 reads 0 and one above 1 reads 1, as
     /// do the infinities; not-a-number reads 1, so a travel that does not know where it is ends at its target.
-    /// Whether a caller may travel at all is `travels(reduceMotion:)`, which this does not ask.
+    /// Whether a caller may travel at all is `moves(reduceMotion:)`, which this does not ask.
     public static func interfaceProgress(at fraction: Double) -> Double {
         guard !fraction.isNaN else { return 1 }
         guard fraction > 0 else { return 0 }
@@ -100,9 +101,9 @@ public enum HelmMotion {
     /// The sidebar folding to the rail and unfolding again: the rows' half of the move, written inside
     /// `withAnimation` where the fold flag lands. The width itself is driven by the shell's own clock
     /// along `interfaceCurve` for `sidebarFoldDuration`; the shell asks for this token only when it starts
-    /// that, which is only when `travels` allows it, so both are asked for in the same turn and given the same duration.
+    /// that, which is only when `moves` allows it, so both are asked for in the same turn and given the same duration.
     public static var sidebarFold: Animation {
-        reduced ? instant : .snappy(duration: sidebarFoldDuration)
+        reduceMotion ? instant : .snappy(duration: sidebarFoldDuration)
     }
 
     /// `sidebarFold`'s duration alone, in seconds, for the width the shell drives. A caller using
@@ -121,8 +122,8 @@ public enum HelmMotion {
     /// One name rather than two tokens, because it is one behaviour with two
     /// halves; `.smooth` is a spring with the bounce set to zero, which is what
     /// "monotonic, no overshoot" means in this vocabulary.
-    public static func hover(entering: Bool) -> Animation {
-        reduced ? instant : .smooth(duration: entering ? 0.19 : 0.33)
+    static func hover(entering: Bool) -> Animation {
+        reduceMotion ? instant : .smooth(duration: entering ? 0.19 : 0.33)
     }
 
     /// A panel arriving on screen from the menu bar.
@@ -138,7 +139,7 @@ public enum HelmMotion {
     /// something you wait for. Eased rather than sprung because a spring that
     /// short is a spring nobody can see.
     public static var panelEntrance: Animation {
-        reduced ? instant : .easeOut(duration: 0.12)
+        reduceMotion ? instant : .easeOut(duration: 0.12)
     }
 
     /// A tile moving out of the way of one being dragged over it.
@@ -149,7 +150,7 @@ public enum HelmMotion {
     /// to wobble — 0.28 with a high damping is one soft landing, not a bounce
     /// anybody has to wait out.
     public static var reorder: Animation {
-        reduced ? instant : .spring(response: 0.28, dampingFraction: 0.72)
+        reduceMotion ? instant : .spring(response: 0.28, dampingFraction: 0.72)
     }
 
     /// The two fades a carried tile leaves behind it, both deliberately slower
@@ -169,7 +170,7 @@ public enum HelmMotion {
     /// dark hole that had arrived instantly. Half a second means the slot is
     /// still dimming as it comes out from under the hand.
     public static var slotFade: Animation {
-        reduced ? instant : .easeOut(duration: 0.5)
+        reduceMotion ? instant : .easeOut(duration: 0.5)
     }
 
     /// `wellFade`: the grey well marking where the carried tile came from. It
@@ -177,13 +178,13 @@ public enum HelmMotion {
     /// with animations off, and the well has to go on fading through it — so it
     /// is a shade quicker than the slot it sits in.
     public static var wellFade: Animation {
-        reduced ? instant : .easeOut(duration: 0.4)
+        reduceMotion ? instant : .easeOut(duration: 0.4)
     }
 
     /// Large morphs where the shape itself changes — a pill growing into a
     /// card. Bouncy enough to read as fluid.
     public static var emphasis: Animation {
-        reduced ? instant : .spring(response: 0.42, dampingFraction: 0.78)
+        reduceMotion ? instant : .spring(response: 0.42, dampingFraction: 0.78)
     }
 
     /// The disk ring opening or closing a level.
@@ -206,7 +207,7 @@ public enum HelmMotion {
     /// (a breadcrumb jump) covers more ground than a single drill and needs the
     /// time to show it; at the same duration it read as a cut with a blur.
     public static func ringMorph(levels: Int = 1) -> Animation {
-        guard !reduced else { return instant }
+        guard !reduceMotion else { return instant }
         let distance = Double(levels.clamped(to: 1...4))
         return .easeInOut(duration: 0.50 + 0.16 * (distance - 1))
     }
@@ -219,8 +220,8 @@ public enum HelmMotion {
     /// visibly *un*-spun, with a snappy spring's overshoot at the end. A thing
     /// with momentum does not do that. Two dozen degrees is enough to read as
     /// deceleration and short enough that the check still feels finished.
-    public static var spinDown: Animation {
-        reduced ? instant : .easeOut(duration: 0.55)
+    static var spinDown: Animation {
+        reduceMotion ? instant : .easeOut(duration: 0.55)
     }
 
     /// Whether an indefinite symbol spin may run.
@@ -228,64 +229,38 @@ public enum HelmMotion {
     /// Both facts are arguments rather than one being read from the system, so
     /// the rule can be tested at all: a check that consults `NSWorkspace` only
     /// proves the machine it ran on was set the way the test assumed.
-    public static func spins(requested: Bool, reduceMotion: Bool) -> Bool {
+    static func spins(requested: Bool, reduceMotion: Bool) -> Bool {
         requested && !reduceMotion
     }
 
-    /// Whether one glyph may morph into another.
-    ///
-    /// The same shape as `spins` and for the same reason: a decision made of
-    /// arguments can be asserted, a decision that reads `NSWorkspace` can only
-    /// be asserted about the machine it ran on. There is no `requested:` half
-    /// — a glyph that changes what it says always wants to be seen changing;
-    /// the only question is whether the person has asked for stillness.
-    public static func swaps(reduceMotion: Bool) -> Bool {
-        !reduceMotion
-    }
-
-    /// Whether a Liquid Glass capsule may morph — an item's glass sliding and
-    /// resizing into or out of a neighbour's, rather than the two simply
-    /// appearing and disappearing in place.
-    ///
-    /// The same shape as `spins` and `swaps`, and for the same reason: a
-    /// decision made of an argument can be asserted, a decision that reads
-    /// `NSWorkspace` can only be asserted about the machine it ran on.
-    public static func morphs(reduceMotion: Bool) -> Bool {
-        !reduceMotion
-    }
-
-    /// Whether a chosen object may travel up to its raised place, rather than
-    /// standing there at once — the screenshot editor's palette lifts the picked
-    /// pen, marker, pencil, eraser or ruler by `PaletteObject.lift`, the bar's
-    /// switcher slides its pick to a pressed segment (`HelmFlatSegmentedCell.slide`), and the
-    /// settings window's sidebar travels to the rail or back (`ShellContentView.fold(to:animated:)`).
-    ///
-    /// The same shape as `spins`, `swaps` and `morphs`, and for the same reason:
-    /// a decision made of an argument can be asserted, one that reads
-    /// `NSWorkspace` can only be asserted about the machine it ran on. Under
-    /// Reduce Motion the object is still raised — that is how the palette shows
-    /// the choice — and only the travel is cut.
-    public static func travels(reduceMotion: Bool) -> Bool {
-        !reduceMotion
-    }
-
-    /// Whether the screenshot overlay may flash the shot it has taken. The same shape as `travels`, and
-    /// for the same reason; under Reduce Motion there is no flash at all and the overlay closes at once.
-    public static func flashes(reduceMotion: Bool) -> Bool {
+    /// Whether a decision that is only a matter of motion may move at all: the
+    /// same shape as `spins` and for the same reason, a decision made of an
+    /// argument can be asserted, one that reads `NSWorkspace` can only be
+    /// asserted about the machine it ran on. There is no `requested:` half; the
+    /// only question is whether the person has asked for stillness. Its callers:
+    /// the header row's tabs slide their pick to a pressed tab (`HelmHeaderTabs`),
+    /// the screenshot editor's palette lifts the picked pen, marker, pencil,
+    /// eraser or ruler by `PaletteObject.lift`, the settings window's sidebar
+    /// travels to the rail or back (`ShellContentView.fold(to:animated:)`), the
+    /// window buttons' plate morphs between its closed shape and its open one
+    /// (`ShellWindowButtons.show(animated:)`), one glyph morphs into another
+    /// (`helmSymbolSwap`), and the screenshot overlay flashes the shot it has taken.
+    /// Under Reduce Motion the palette object is still raised — that is how it
+    /// shows the choice — and only the travel is cut; there is no flash at all
+    /// and the overlay closes at once.
+    public static func moves(reduceMotion: Bool) -> Bool {
         !reduceMotion
     }
 }
 
-public extension View {
+extension View {
     /// The one way a glyph turns forever — the refresh buttons on the list
     /// screens while their list reloads.
     ///
     /// `.symbolEffect(.rotate, options: .repeating)` on its own does not honour
     /// Reduce Motion; SwiftUI leaves that to us, and these two spun regardless.
-    func helmSteadySpin(_ active: Bool) -> some View {
-        symbolEffect(.rotate, options: .repeating,
-                     isActive: HelmMotion.spins(requested: active,
-                                                reduceMotion: HelmMotion.reduceMotion))
+    public func helmSteadySpin(_ active: Bool) -> some View {
+        modifier(SteadySpin(active: active))
     }
 
     /// The one way a glyph becomes a different glyph.
@@ -308,10 +283,31 @@ public extension View {
     /// Reduce Motion cuts twice over. `HelmMotion.interface` collapses to a
     /// 0.01 s cut on its own, and the transition goes to `.identity` as well,
     /// so the glyph changes without the layers being taken apart first.
-    func helmSymbolSwap(_ symbol: String) -> some View {
-        contentTransition(HelmMotion.swaps(reduceMotion: HelmMotion.reduceMotion)
-                          ? .symbolEffect(.replace.magic(fallback: .downUp))
-                          : .identity)
+    public func helmSymbolSwap(_ symbol: String) -> some View {
+        modifier(SymbolSwap(symbol: symbol))
+    }
+}
+
+private struct SteadySpin: ViewModifier {
+    let active: Bool
+    @Environment(\.helmTraits) private var traits
+
+    func body(content: Content) -> some View {
+        content.symbolEffect(.rotate, options: .repeating,
+                             isActive: HelmMotion.spins(requested: active,
+                                                        reduceMotion: traits.reducedMotion))
+    }
+}
+
+private struct SymbolSwap: ViewModifier {
+    let symbol: String
+    @Environment(\.helmTraits) private var traits
+
+    func body(content: Content) -> some View {
+        content
+            .contentTransition(HelmMotion.moves(reduceMotion: traits.reducedMotion)
+                               ? .symbolEffect(.replace.magic(fallback: .downUp))
+                               : .identity)
             .animation(HelmMotion.interface, value: symbol)
     }
 }

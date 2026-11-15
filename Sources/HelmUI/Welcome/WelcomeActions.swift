@@ -14,16 +14,16 @@ import Foundation
 /// about. The defaults are the harmless answers: every module on, no login
 /// item, and a button that goes nowhere.
 public struct WelcomeActions {
-    public var isModuleEnabled: (String) -> Bool
-    public var setModuleEnabled: (String, Bool) -> Void
-    public var isLaunchAtLogin: () -> Bool
+    var isModuleEnabled: (String) -> Bool
+    var setModuleEnabled: (String, Bool) -> Void
+    var isLaunchAtLogin: () -> Bool
     /// Answers with what the login item **is** afterwards, not with what it was
     /// asked to be: registration can be refused, and a tour switch that stays
     /// where the finger left it is the same lie the settings page had.
-    public var setLaunchAtLogin: (Bool) -> Bool
+    var setLaunchAtLogin: (Bool) -> Bool
     /// Take somebody to that module's page, which is where whatever it offered
     /// to set up actually is.
-    public var openModule: (String) -> Void
+    var openModule: (String) -> Void
 
     public init(isModuleEnabled: @escaping (String) -> Bool = { _ in true },
                 setModuleEnabled: @escaping (String, Bool) -> Void = { _, _ in },

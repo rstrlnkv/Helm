@@ -8,8 +8,8 @@ import HelmRuntime
 /// "No VPNs are configured" and "scutil did not answer" are different facts,
 /// and until now they were the same empty array.
 ///
-/// `ScutilRunner.run` returns only the tool's stdout and throws the exit status
-/// away, and `parseList` skips every line it cannot read — so a failed read
+/// `refreshNow` reads only the stdout `ScutilRunner.run` returns and never its
+/// exit status, and `parseList` skips every line it cannot read — so a failed read
 /// produced `[]`, exactly like a machine with nothing configured. Two things
 /// then went wrong at once, and the second is the worse one:
 ///
@@ -25,6 +25,8 @@ import HelmRuntime
 /// list` prints before it enumerates anything — present even on a machine with
 /// no VPNs at all, checked against the real tool — or contains at least one row
 /// we could read. Nothing else is an answer.
+///
+/// Past defect: commit 4b7564a0, «fix(vpn): silence from scutil is not "you have no VPNs"».
 final class UnreadableListTests: XCTestCase {
 
     private let header = "Available network connection services in the current set (*=enabled):"
@@ -34,8 +36,7 @@ final class UnreadableListTests: XCTestCase {
     }
 
     private func makeEngine(_ runner: FakeRunner) -> VPNEngine {
-        VPNEngine(settings: VPNSettings(store: NamespacedStore(namespace: "vpn",
-                                                               backing: InMemoryKeyValueStore())),
+        VPNEngine(settings: VPNSettings.inMemory(),
                   runner: runner,
                   apps: FakeApps(),
                   interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
@@ -68,8 +69,7 @@ final class UnreadableListTests: XCTestCase {
     // MARK: - What the engine does with a silence
 
     func testAnUnreadableRefreshKeepsTheConnectionsItAlreadyHad() {
-        let runner = FakeRunner()
-        runner.listOutput = row("Connected", "work")
+        let runner = FakeRunner(list: row("Connected", "work"))
         let engine = makeEngine(runner)
         engine.refresh()
         XCTAssertEqual(engine.connections.map(\.name), ["work"])
@@ -83,8 +83,7 @@ final class UnreadableListTests: XCTestCase {
     }
 
     func testAnAnswerSayingNothingIsConfiguredIsStillObeyed() {
-        let runner = FakeRunner()
-        runner.listOutput = row("Connected", "work")
+        let runner = FakeRunner(list: row("Connected", "work"))
         let engine = makeEngine(runner)
         engine.refresh()
 
@@ -99,8 +98,7 @@ final class UnreadableListTests: XCTestCase {
     /// The dangerous half: a read that failed must not look like every tunnel
     /// dropping at once.
     func testAnUnreadableRefreshDoesNotAnnounceADisconnection() {
-        let runner = FakeRunner()
-        runner.listOutput = row("Connected", "work")
+        let runner = FakeRunner(list: row("Connected", "work"))
         let engine = makeEngine(runner)
         engine.connect("work", auto: true)
         engine.refresh()                    // it came up because of us

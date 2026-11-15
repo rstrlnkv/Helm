@@ -26,7 +26,7 @@ public enum HelmDuration {
         let formatter = DateComponentsFormatter()
         formatter.calendar = {
             var calendar = Calendar.current
-            calendar.locale = Locale(identifier: language.rawValue)
+            calendar.locale = language.locale
             return calendar
         }()
         formatter.unitsStyle = .abbreviated
