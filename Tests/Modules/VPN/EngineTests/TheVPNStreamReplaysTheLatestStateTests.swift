@@ -23,15 +23,13 @@ final class TheVPNStreamReplaysTheLatestStateTests: XCTestCase {
 
     private func engine(_ runner: FakeRunner, news: EngineNews<VPNEngine.StatePayload>,
                         interfaces: FakeInterfaces = FakeInterfaces()) -> VPNEngine {
-        VPNEngine(settings: VPNSettings(store: NamespacedStore(namespace: "vpn",
-                                                               backing: InMemoryKeyValueStore())),
+        VPNEngine(settings: VPNSettings.inMemory(),
                   runner: runner, apps: FakeApps(), news: news,
                   interfaces: interfaces, exit: FakeExit(), speed: FakeSpeed(), work: .inline)
     }
 
     private func listed(_ status: String) -> FakeRunner {
-        let runner = FakeRunner()
-        runner.listOutput = "(\(status)) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
+        let runner = FakeRunner(list: "(\(status)) 11111111-1111-1111-1111-111111111111 IPSec \"A\"")
         return runner
     }
 

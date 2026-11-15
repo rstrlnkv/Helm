@@ -20,8 +20,7 @@ final class ADropIsItsOwnNewsTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        settings = VPNSettings(store: NamespacedStore(namespace: "vpn",
-                                                      backing: InMemoryKeyValueStore()))
+        settings = VPNSettings.inMemory()
     }
 
     /// The default, so the split changes nothing for somebody who never opens

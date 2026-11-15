@@ -34,12 +34,8 @@ final class TheLogDoesNotNameTheConnectionTests: XCTestCase {
         tailTheLog()
     }
 
-    private func makeSettings() -> VPNSettings {
-        VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
-    }
-
     private func engine(_ runner: FakeRunner) -> VPNEngine {
-        VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
+        VPNEngine(settings: VPNSettings.inMemory(), runner: runner, apps: FakeApps(),
                   interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                   work: .inline)
     }

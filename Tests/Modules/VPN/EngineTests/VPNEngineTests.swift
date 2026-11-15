@@ -7,14 +7,9 @@ import HelmRuntime
 
 /// Past defect: commit 7851a0c2, «fix(vpn): the tool is asked before the app announces, and a name stops standing in for an identity» (the settle poll ended before the tunnel began to come up).
 final class VPNEngineTests: XCTestCase {
-    private func makeSettings() -> VPNSettings {
-        VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
-    }
-
     func test_auto_connect_on_app_launch() {
-        let runner = FakeRunner()
-        runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
-        let settings = makeSettings()
+        let runner = FakeRunner(list: "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\"")
+        let settings = VPNSettings.inMemory()
         settings.setRulesJSON(ruleJSONForA)
         let apps = FakeApps.trustingA()
         apps.bundleIDs = []
@@ -34,7 +29,7 @@ final class VPNEngineTests: XCTestCase {
     /// arms it once.
     func test_deactivate_stops_the_app_observation() {
         let apps = FakeApps.trustingA()
-        let engine = VPNEngine(settings: makeSettings(), runner: FakeRunner(), apps: apps,
+        let engine = VPNEngine(settings: VPNSettings.inMemory(), runner: FakeRunner(), apps: apps,
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                work: .inline)
 
@@ -52,7 +47,7 @@ final class VPNEngineTests: XCTestCase {
     /// M106: an engine released without `deactivate()` still stops the app observation.
     func test_deinit_stops_the_app_observation() {
         let apps = FakeApps.trustingA()
-        var engine: VPNEngine? = VPNEngine(settings: makeSettings(), runner: FakeRunner(), apps: apps,
+        var engine: VPNEngine? = VPNEngine(settings: VPNSettings.inMemory(), runner: FakeRunner(), apps: apps,
                                            interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                            work: .inline)
         engine?.activate()
@@ -65,9 +60,8 @@ final class VPNEngineTests: XCTestCase {
     }
 
     func test_auto_disconnect_on_app_quit() {
-        let runner = FakeRunner()
-        runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
-        let settings = makeSettings()
+        let runner = FakeRunner(list: "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\"")
+        let settings = VPNSettings.inMemory()
         settings.setRulesJSON(ruleJSONForA)
         let apps = FakeApps.trustingA()
         apps.bundleIDs = []

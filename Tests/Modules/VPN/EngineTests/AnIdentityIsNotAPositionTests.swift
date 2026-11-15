@@ -28,8 +28,7 @@ final class AnIdentityIsNotAPositionTests: XCTestCase {
 
     private func engine(_ runner: FakeRunner) -> VPNEngine {
         let at = self.at
-        return VPNEngine(settings: VPNSettings(store: NamespacedStore(
-                            namespace: "vpn", backing: InMemoryKeyValueStore())),
+        return VPNEngine(settings: VPNSettings.inMemory(),
                          runner: runner, apps: FakeApps(),
                          interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                          now: { at }, work: .inline)

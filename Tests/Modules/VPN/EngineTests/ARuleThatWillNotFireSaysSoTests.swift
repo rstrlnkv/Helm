@@ -16,8 +16,7 @@ final class ARuleThatWillNotFireSaysSoTests: XCTestCase {
     private let header = "Available network connection services:"
     private let real = CodeIdentity(signingID: "com.example.app", teamID: "ABCDE12345")
 
-    private let settings = VPNSettings(store: NamespacedStore(namespace: "vpn",
-                                                              backing: InMemoryKeyValueStore()))
+    private let settings = VPNSettings.inMemory()
     private let runner = FakeRunner()
 
     private func engine(identity: CodeIdentity?, apps: FakeApps) -> VPNEngine {

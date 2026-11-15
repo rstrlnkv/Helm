@@ -31,8 +31,7 @@ final class TheGreenIsOnlyOnATunnelThatIsConnectedTests: XCTestCase {
     private func model(_ status: VPNStatus) -> VPNViewModel {
         let work = FakeVPNWork()
         // In memory, never `UserDefaults.standard`.
-        let settings = VPNSettings(store: NamespacedStore(namespace: "vpn",
-                                                         backing: InMemoryKeyValueStore()))
+        let settings = VPNSettings.inMemory()
         let vm = VPNViewModel(work: work, settings: settings)
         work.say(VPNEngine.StatePayload(
             connections: [VPNConnection(id: "1", name: "One", status: status, kind: "IKEv2")],

@@ -41,11 +41,6 @@ public struct VPNCardAction: Equatable, Sendable {
         }
     }
 
-    init(word: Word, enabled: Bool) {
-        self.word = word
-        self.enabled = enabled
-    }
-
     public static func of(_ status: VPNStatus) -> VPNCardAction {
         switch status {
         case .connected:

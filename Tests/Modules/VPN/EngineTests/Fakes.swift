@@ -3,11 +3,14 @@
 
 import Foundation
 import HelmRuntime
+import XCTest
 @testable import Module_VPN_Engine
 
 final class FakeRunner: VPNRunnerPort {
     var issued: [[String]] = []
     var listOutput: String = ""
+
+    init(list: String = "") { listOutput = list }
 
     /// **Consecutive answers to `--nc list`, which is what the real tool gives.**
     ///
@@ -273,4 +276,65 @@ final class FakeApps: AppObserverPort {
         apps.identities["com.a"] = testAppIdentity
         return apps
     }
+}
+
+/// The fixture two blip files share: a tunnel Helm itself raised, because that is
+/// what a drop is about. `_autoConnected` is written by an *automatic* connect — a
+/// rule firing for an app that launched — and not by a command somebody sent, so
+/// the first version of this fixture, which connected with a command, said
+/// nothing about drops until it asserted its own precondition.
+private let blipBundleID = "com.example.app"
+private let blipIdentity = CodeIdentity(signingID: "com.example.app", teamID: "ABCDE12345")
+
+func blipList(_ status: String) -> String {
+    ["Available network connection services:",
+     "* (\(status)) 11111111-1111-1111-1111-111111111111 VPN (com.x.work) \"work\" [VPN:com.x.work]"]
+        .joined(separator: "\n")
+}
+
+func blipEngineHoldingTheTunnel(_ runner: FakeRunner, _ clock: TestClock) -> VPNEngine {
+    let apps = FakeApps()
+    apps.identities[blipBundleID] = blipIdentity
+    apps.bundleIDs = [blipBundleID]
+    let settings = VPNSettings.inMemory()
+    settings.setRulesJSON(VPNRules.encode(
+        [blipBundleID: VPNAppRule(vpnName: "work", identity: blipIdentity)]))
+    runner.listOutput = blipList("Disconnected")
+    // Every port named, none defaulted: three of the defaults reach the
+    // network or run a tool for fifteen seconds
+    // (`NoTestTakesAProductionPortTests`).
+    let engine = VPNEngine(settings: settings, runner: runner, apps: apps,
+                           interfaces: FakeInterfaces(), exit: FakeExit(),
+                           speed: FakeSpeed(), now: { clock.now }, work: .inline)
+    engine.activate()
+    runner.listOutput = blipList("Connected")
+    engine.refresh()
+    XCTAssertTrue(engine.autoConnected.contains("work"),
+                  "precondition: Helm is not holding the tunnel, so nothing here is a drop")
+    engine.clearLastAutomationForTesting()
+    return engine
+}
+
+/// `scutil --nc status "<name>"` for a tunnel that is up, as the real tool writes
+/// it: the tunnel's own `InterfaceName` inside the `IPv4` dictionary, the routing
+/// flag one level out (absent when `primary` is nil), then any `extra` lines.
+/// `TheInterfaceComesFromTheToolTests` carries the whole captured output, decoys and all.
+func scutilStatus(_ interface: String = "utun4", primary: Bool? = nil, extra: [String] = []) -> String {
+    (["Connected", "Extended Status <dictionary> {", "  IPv4 : <dictionary> {",
+      "    InterfaceName : \(interface)", "  }"]
+        + (primary.map { ["  IsPrimaryInterface : \($0 ? 1 : 0)"] } ?? [])
+        + extra.map { "  " + $0 } + ["}"]).joined(separator: "\n")
+}
+
+extension VPNSettings {
+    /// Settings over a store that lives and dies with the test, in the module's own namespace.
+    static func inMemory() -> VPNSettings {
+        VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
+    }
+}
+
+/// One `scutil --nc list` row in the plain IPSec shape, without the leading `*`.
+func scutilListRow(_ status: String, _ name: String = "A",
+                   id: String = "11111111-1111-1111-1111-111111111111") -> String {
+    "(\(status)) \(id) IPSec \"\(name)\""
 }

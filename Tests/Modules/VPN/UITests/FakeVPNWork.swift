@@ -6,12 +6,18 @@ import HelmRuntime
 @testable import Module_VPN_Engine
 @testable import Module_VPN_UI
 
+extension VPNSettings {
+    /// Settings over a store that lives and dies with the test, in the module's own namespace.
+    static func inMemory() -> VPNSettings {
+        VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
+    }
+}
+
 /// An in-memory `VPNSettings`, seeded through the module's own keys the way the
 /// app's store would hold them: `drop` is the rules' mode unless given.
 func seededVPNSettings(notice: VPNNotice? = nil, drop: VPNNotice? = nil,
                        bannerAuthorized: Bool = false, spin: Bool = false) -> VPNSettings {
-    let settings = VPNSettings(store: NamespacedStore(namespace: "vpn",
-                                                      backing: InMemoryKeyValueStore()))
+    let settings = VPNSettings.inMemory()
     if let notice = notice ?? drop {
         settings.store.set(notice.rawValue, for: VPNSettings.automationNoticeKey)
         settings.store.set((drop ?? notice).rawValue, for: VPNSettings.dropNoticeKey)

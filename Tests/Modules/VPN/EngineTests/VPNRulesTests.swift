@@ -104,8 +104,7 @@ final class AutoConnectedFollowsRealityTests: XCTestCase {
         let runner = FakeRunner()
         let clock = TestClock()
         runner.listOutput = #"* (Connected) A --> B  "Work" [IKEv2]"#
-        let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
-            namespace: "vpn", backing: InMemoryKeyValueStore())),
+        let engine = VPNEngine(settings: VPNSettings.inMemory(),
             runner: runner, apps: FakeApps(),
             interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
             now: { clock.now }, work: .inline)
@@ -134,10 +133,8 @@ extension AutoConnectedFollowsRealityTests {
     /// would wipe a connection Helm had just raised, which is what broke
     /// `test_auto_connect_on_app_launch` on the first attempt at this.
     func testAConnectionThatHasNotComeUpYetIsStillCredited() {
-        let runner = FakeRunner()
-        runner.listOutput = #"(Disconnected) 1111 IPSec "Work""#
-        let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
-            namespace: "vpn", backing: InMemoryKeyValueStore())),
+        let runner = FakeRunner(list: #"(Disconnected) 1111 IPSec "Work""#)
+        let engine = VPNEngine(settings: VPNSettings.inMemory(),
             runner: runner, apps: FakeApps(),
             interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
             work: .inline)

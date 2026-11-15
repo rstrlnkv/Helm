@@ -106,8 +106,7 @@ final class AHungScutilDoesNotParkTheModuleTests: XCTestCase {
     }
 
     private func makeEngine() -> VPNEngine {
-        VPNEngine(settings: VPNSettings(store: NamespacedStore(namespace: "vpn",
-                                                               backing: InMemoryKeyValueStore())),
+        VPNEngine(settings: VPNSettings.inMemory(),
                   runner: runner, apps: FakeApps(),
                   interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                   work: .inline)

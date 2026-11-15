@@ -29,12 +29,6 @@ public struct VPNAutomation: Equatable, Sendable {
     public let name: String
     public let kind: Kind
 
-    init(at: Date, name: String, kind: Kind) {
-        self.at = at
-        self.name = name
-        self.kind = kind
-    }
-
     /// How long the ring turns. Two revolutions at 0.6 s each — long enough to
     /// register as movement, short enough that it cannot be mistaken for a
     /// progress indicator. The host measures the same window from

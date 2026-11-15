@@ -25,9 +25,6 @@ public enum VPNExcludedRoutes {
     /// half-read (`VPNStatusParser`).
     struct Route: Equatable, Sendable {
         let destination: String
-        init(destination: String) {
-            self.destination = destination
-        }
     }
 
     /// **What the exclusions amount to, in the three shapes a reader can act
@@ -51,12 +48,6 @@ public enum VPNExcludedRoutes {
         /// reason the type's own comment gives — and counted rather than
         /// flagged, because «two more» and «forty more» are different news.
         public let others: Int
-
-        init(localNetwork: Bool, apple: Bool, others: Int) {
-            self.localNetwork = localNetwork
-            self.apple = apple
-            self.others = others
-        }
 
         /// The tunnel that excludes nothing. Not the same as «nobody looked» —
         /// a status read that failed produces no `Reading` at all, so there is

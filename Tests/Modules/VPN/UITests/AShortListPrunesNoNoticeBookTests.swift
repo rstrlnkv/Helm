@@ -17,8 +17,7 @@ import HelmTestSupport
 final class AShortListPrunesNoNoticeBookTests: XCTestCase {
 
     func testAnEmptyListLeavesEveryChoiceInTheBook() async {
-        let settings = VPNSettings(store: NamespacedStore(namespace: "vpn",
-                                                          backing: InMemoryKeyValueStore()))
+        let settings = VPNSettings.inMemory()
         settings.setNoticeBook(settings.noticeBook.setting("1", notice: .silent))
         let before = VPNNoticeBook.encode(settings.noticeBook)
         XCTAssertNotEqual(before, VPNNoticeBook.encode(VPNNoticeBook()),

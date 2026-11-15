@@ -20,8 +20,7 @@ final class ACardsNoticeIsNotTheModulesTests: XCTestCase {
 
     private func fixture() async -> (VPNViewModel, VPNSettings, FakeAutomationNotice) {
         let work = FakeVPNWork()
-        let settings = VPNSettings(store: NamespacedStore(namespace: "vpn",
-                                                          backing: InMemoryKeyValueStore()))
+        let settings = VPNSettings.inMemory()
         let port = FakeAutomationNotice(state: .authorized)
         let vm = VPNViewModel(work: work, settings: settings, notices: port)
         work.say(VPNEngine.StatePayload(

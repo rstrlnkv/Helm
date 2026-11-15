@@ -28,8 +28,7 @@ final class VPNNoticeChoiceTests: XCTestCase {
     }
 
     private func model(_ port: FakeAutomationNotice) -> (VPNViewModel, VPNSettings) {
-        let settings = VPNSettings(store: NamespacedStore(namespace: "vpn",
-                                                          backing: InMemoryKeyValueStore()))
+        let settings = VPNSettings.inMemory()
         return (VPNViewModel(work: FakeVPNWork(), settings: settings, notices: port),
                 settings)
     }

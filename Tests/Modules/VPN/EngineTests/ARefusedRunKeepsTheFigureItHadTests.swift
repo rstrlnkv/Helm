@@ -52,19 +52,6 @@ final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
             .joined(separator: "\n")
     }
 
-    private func status() -> String {
-        """
-        Connected
-        Extended Status <dictionary> {
-          IPv4 : <dictionary> {
-            InterfaceName : utun4
-          }
-          IsPrimaryInterface : 1
-          Status : 2
-        }
-        """
-    }
-
     /// One tunnel, up, carrying the default route — so the engine accepts a
     /// measurement on it rather than refusing by name. Every port named; three
     /// of the defaults reach the network or run a subprocess for twenty seconds
@@ -75,17 +62,15 @@ final class ARefusedRunKeepsTheFigureItHadTests: XCTestCase {
     /// figure could survive on screen by luck of some other field having changed.
     private func oneTunnel(_ speed: FakeSpeed)
         -> (engine: VPNEngine, news: EngineNews<VPNEngine.StatePayload>) {
-        let runner = FakeRunner()
-        runner.listOutput = list()
-        runner.statusOutput["routed"] = status()
+        let runner = FakeRunner(list: list())
+        runner.statusOutput["routed"] = scutilStatus(primary: true, extra: ["Status : 2"])
         let interfaces = FakeInterfaces()
         interfaces.primary = "utun4"
         interfaces.counters = ["utun4": (in: 1_000_000, out: 1_000_000)]
         let exit = FakeExit()
         exit.hangs = true
         let news = EngineNews<VPNEngine.StatePayload>()
-        let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
-                                    namespace: "vpn", backing: InMemoryKeyValueStore())),
+        let engine = VPNEngine(settings: VPNSettings.inMemory(),
                                runner: runner, apps: FakeApps(), news: news,
                                interfaces: interfaces, exit: exit, speed: speed,
                                work: .inline)

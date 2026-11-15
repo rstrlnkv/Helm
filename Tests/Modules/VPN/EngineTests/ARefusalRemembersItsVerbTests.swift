@@ -21,16 +21,14 @@ final class ARefusalRemembersItsVerbTests: XCTestCase {
     private let uuid = "11111111-1111-1111-1111-111111111111"
 
     private func engine(_ runner: FakeRunner) -> VPNEngine {
-        VPNEngine(settings: VPNSettings(store: NamespacedStore(
-                    namespace: "vpn", backing: InMemoryKeyValueStore())),
+        VPNEngine(settings: VPNSettings.inMemory(),
                   runner: runner, apps: FakeApps(),
                   interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                   work: .inline)
     }
 
     private func runner(refusing text: String) -> FakeRunner {
-        let runner = FakeRunner()
-        runner.listOutput = "(Connected) \(uuid) IPSec \"Office\""
+        let runner = FakeRunner(list: "(Connected) \(uuid) IPSec \"Office\"")
         runner.reply = text
         return runner
     }

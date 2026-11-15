@@ -30,8 +30,7 @@ final class ANameIsNotAnIdentityTests: XCTestCase {
 
     private func engine(_ runner: FakeRunner) -> VPNEngine {
         let clock = self.clock
-        return VPNEngine(settings: VPNSettings(store: NamespacedStore(
-                            namespace: "vpn", backing: InMemoryKeyValueStore())),
+        return VPNEngine(settings: VPNSettings.inMemory(),
                          runner: runner, apps: FakeApps(),
                          interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                          now: { clock.now }, work: .inline)
@@ -88,8 +87,7 @@ final class ANameIsNotAnIdentityTests: XCTestCase {
     /// Without this, a module that had stopped reporting drops entirely would make
     /// the assertion above look like a narrow bug instead of a dead feature.
     func testTheSameFallIsReportedWithNoNamesake() {
-        let runner = FakeRunner()
-        runner.listOutput = [header, row("Disconnected", a, "Office")].joined(separator: "\n")
+        let runner = FakeRunner(list: [header, row("Disconnected", a, "Office")].joined(separator: "\n"))
         let e = engine(runner)
 
         e.connect("Office", auto: true)
