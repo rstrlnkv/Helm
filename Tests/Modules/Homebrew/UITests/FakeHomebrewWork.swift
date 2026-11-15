@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Helm
 
 import Foundation
-import HelmTestSupport
 import XCTest
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI

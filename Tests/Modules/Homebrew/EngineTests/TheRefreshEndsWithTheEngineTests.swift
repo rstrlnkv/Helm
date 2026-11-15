@@ -1,6 +1,5 @@
 import XCTest
 import HelmTestSupport
-import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// A store whose refresh takes long enough to still be running when the engine

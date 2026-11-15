@@ -106,7 +106,7 @@ isolation of its own. A cooperative yield is never a wait, and a new test calls 
 rather than write a local `eventually` or `until`. Four local waits stay, each for its own
 reason: the sync `eventually` in `StoppingTheInstallAndItsAdminDialogTests` (two) and in
 `TheInstallerWrapperKeepsItsWordTests`, a wait on a process whose end the test does not
-control; and the `until` in
+control, as the doc comment on the first says; and the `until` in
 `Tests/Modules/Uninstaller/UITests/TheSortedListUnderOddInputsTests.swift`, a wait on the clock for work
 on another task.
 `grace()` is the wait before asserting an

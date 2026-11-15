@@ -1,5 +1,4 @@
 import Foundation
-import HelmContract
 @testable import Module_Layout_Engine
 
 // The Layout engine's port fakes, one file: typing, secure context, translation,

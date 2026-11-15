@@ -1,5 +1,4 @@
 import XCTest
-import HelmRuntime
 @testable import Module_Homebrew_Engine
 
 /// **`brew doctor` is asked for uncoloured output, and only `brew doctor` is.**
