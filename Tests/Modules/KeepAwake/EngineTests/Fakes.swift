@@ -299,6 +299,21 @@ extension XCTestCase {
         await fulfillment(of: [drained], timeout: 5)
     }
 
+    /// Everything already on the main queue has run.
+    ///
+    /// The engine posts a callback with `DispatchQueue.main.async` (`osascript`
+    /// calls back on a background queue, and engine state belongs on main); this
+    /// is enqueued after it, and a serial queue runs them in order, so it is an
+    /// ordering fact, not a sleep. `await fulfillment` rather than `wait(for:)`:
+    /// these tests are on the main actor, and blocking it is what stops the
+    /// queue draining at all.
+    @MainActor
+    func drainMainQueue() async {
+        let drained = expectation(description: "main queue drained")
+        DispatchQueue.main.async { drained.fulfill() }
+        await fulfillment(of: [drained], timeout: 5)
+    }
+
     /// The withdrawal has been attempted, and its verdict has landed.
     ///
     /// It runs on the coordinator's own serial queue — a child process must not

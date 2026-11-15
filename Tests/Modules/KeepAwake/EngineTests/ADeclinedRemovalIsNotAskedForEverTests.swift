@@ -94,7 +94,7 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
     /// Every edit is a `settingsChanged`, and each one finds the same true
     /// answer — the option is off, our rule is on disk — so each one puts an
     /// administrator password dialog on screen for a decision the person has
-    /// already made. The `await settle()` between them is not decoration: it is
+    /// already made. The `await drainMainActor()` between them is not decoration: it is
     /// what lets `removalInFlight` clear, which is exactly what the person
     /// answering the dialog does, and without it this case would pass on a
     /// guard that has nothing to do with the defect.
@@ -112,7 +112,7 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
         // slider sends one of these per change.
         for _ in 0..<3 {
             engine.settingsChanged()
-            await settle()
+            await drainMainActor()
         }
 
         XCTAssertEqual(clamshell.removeCalls, 1,
@@ -141,7 +141,7 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
         clamshell.sudoersInstalled = false
         clamshell.passwordlessGrantExists = false
         engine.settingsChanged()
-        await settle()
+        await drainMainActor()
 
         XCTAssertFalse(engine.lidGrantRemains,
                        "the row goes on naming a passwordless root rule that is not there, and "
@@ -159,15 +159,10 @@ final class ADeclinedRemovalIsNotAskedForEverTests: XCTestCase {
         XCTAssertTrue(engine.lidGrantRemains, "precondition")
 
         engine.settingsChanged()
-        await settle()
+        await drainMainActor()
 
         XCTAssertTrue(engine.lidGrantRemains,
                       "the page stopped naming a rule that is still granting passwordless "
                       + "`pmset disablesleep` to this account")
     }
-
-    /// The removal's callback records its verdict on the main actor. Awaiting a
-    /// hop of our own is what puts this after it; a serial executor runs them in
-    /// order, so this is an ordering fact rather than a sleep.
-    private func settle() async { await drainMainActor() }
 }

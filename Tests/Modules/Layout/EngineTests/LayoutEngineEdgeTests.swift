@@ -10,27 +10,13 @@ final class LayoutEngineEdgeTests: XCTestCase {
     private var tap = FakeTap()
     private var sources = StuckSources()
 
-    /// The chord bound as «fix». Only the recorded one ends a word and leaves
-    /// it remembered: every other chord may have changed the text in front of
-    /// the caret — ⌘V pastes, ⌥V types `√` — so the word before it is dropped.
-    private static let shortcut: UInt16 = 9
-
-    /// A store with that binding in it, because these suites use a chord as the
-    /// boundary that remembers.
-    private static func boundStore() -> NamespacedStore {
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
-                                    backing: InMemoryKeyValueStore())
-        store.set(Int(shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
-        return store
-    }
-
     private func engine(                        settings: NamespacedStore? = nil,
                         table: [String: String] = [:]) -> LayoutEngine {
         typing = FakeTyping(); context = FakeSecure(); tap = FakeTap(); sources = StuckSources()
         let engine = LayoutEngine(tap: tap, typing: typing, sources: sources,
                                   translation: SameLengthTranslation(table: table),
                                   spell: CyrillicSpell(), secure: context, activation: FakeActivation(),
-                                  settings: settings ?? Self.boundStore())
+                                  settings: settings ?? layoutStore(bound: true))
         engine.activate()
         return engine
     }
@@ -73,7 +59,7 @@ final class LayoutEngineEdgeTests: XCTestCase {
         tap.send(.space)
         XCTAssertEqual(typing.performed.count, 1, "precondition: the word was converted")
 
-        tap.send(.chord(Self.shortcut))        // the chord the user just pressed, seen by the tap first
+        tap.send(.chord(layoutShortcut))        // the chord the user just pressed, seen by the tap first
         engine.undoLast()       // …and then delivered to Helm by Carbon
         XCTAssertEqual(typing.performed.count, 2, "the undo shortcut did nothing")
         XCTAssertEqual(typing.performed.last?.insert, "ghbdtn ",
@@ -124,7 +110,7 @@ final class LayoutEngineEdgeTests: XCTestCase {
         tap.type("ghbdtn")
         // A chord, not an arrow: a caret move now forgets the word by itself, so
         // arranging this with one would prove nothing about `deactivate`.
-        tap.send(.chord(Self.shortcut))        // ends the word without converting; it is remembered
+        tap.send(.chord(layoutShortcut))        // ends the word without converting; it is remembered
         XCTAssertTrue(typing.performed.isEmpty, "precondition: nothing was converted")
         engine.deactivate()
         engine.convertLastWord()
@@ -166,8 +152,7 @@ final class SettingsAtStartTests: XCTestCase {
         let engine = LayoutEngine(tap: tap, typing: FakeTyping(), sources: sources,
                                   translation: SameLengthTranslation(table: ["ghbdtn": "привет"]),
                                   spell: CyrillicSpell(), secure: FakeSecure(), activation: FakeActivation(),
-                                  settings: NamespacedStore(namespace: "layout",
-                                                            backing: InMemoryKeyValueStore()))
+                                  settings: layoutStore())
         engine.activate()
         // No `settingsChanged`: this is the launch, not a visit to the page.
 

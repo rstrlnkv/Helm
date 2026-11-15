@@ -30,7 +30,7 @@ final class LayoutEngineLaunchTests: XCTestCase {
     private var sound = LaunchSound()
 
     private func store(_ write: (NamespacedStore) -> Void = { _ in }) -> NamespacedStore {
-        let store = NamespacedStore(namespace: "layout", backing: InMemoryKeyValueStore())
+        let store = layoutStore()
         write(store)
         return store
     }

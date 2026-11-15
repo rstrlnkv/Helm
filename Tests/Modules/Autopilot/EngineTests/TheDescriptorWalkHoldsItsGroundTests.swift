@@ -185,10 +185,7 @@ final class TheDescriptorWalkHoldsItsGroundTests: XCTestCase {
         try FileManager.default.createSymbolicLink(
             at: home.appendingPathComponent("DL"),
             withDestinationURL: home.appendingPathComponent("Downloads"))
-        let engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        let engine = AutopilotEngine.scratch(home: home.path)
         let folder = WatchedFolder(id: "w", path: home.appendingPathComponent("DL").path, enabled: true, rules: [
             Rule(id: "r", name: "Invoices", enabled: true, conditions: [.name(.beginsWith, "Invoice")],
                  action: .move(to: home.appendingPathComponent("DL/Invoices").path)),

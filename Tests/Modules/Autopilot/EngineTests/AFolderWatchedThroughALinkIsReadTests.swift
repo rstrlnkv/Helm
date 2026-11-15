@@ -29,10 +29,7 @@ final class AFolderWatchedThroughALinkIsReadTests: XCTestCase {
         try FileManager.default.createSymbolicLink(
             at: home.appendingPathComponent("DL"),
             withDestinationURL: home.appendingPathComponent("Downloads"))
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        engine = AutopilotEngine.scratch(home: home.path)
     }
 
     /// A rule that takes the one file there — the preset's own conditions look

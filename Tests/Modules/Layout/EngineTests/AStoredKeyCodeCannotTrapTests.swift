@@ -11,8 +11,7 @@ import HelmRuntime
 /// a chord is then not the gesture, so it drops the word before it.
 final class AStoredKeyCodeCannotTrapTests: XCTestCase {
     private func activatedEngine(storing code: Int, typing: FakeTyping, tap: FakeTap) -> LayoutEngine {
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
-                                    backing: InMemoryKeyValueStore())
+        let store = layoutStore()
         store.set(code, for: "\(LayoutHotkey.storePrefix)KeyCode")
         let engine = LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
                                   translation: FakeTranslation(table: ["ghbdtn": "привет"]), spell: CyrillicSpell(),

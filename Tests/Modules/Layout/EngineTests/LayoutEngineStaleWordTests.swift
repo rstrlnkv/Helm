@@ -51,11 +51,6 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     private var sources = StuckSources()
     private var selection = StaleSelection()
 
-    /// The chord bound as «fix». Only the recorded one ends a word and leaves
-    /// it remembered: every other chord may have changed the text in front of
-    /// the caret — ⌘V pastes, ⌥V types `√` — so the word before it is dropped.
-    private static let shortcut: UInt16 = 9
-
     /// A store with that binding in it, because these suites use a chord as the
     /// boundary that remembers.
     /// **Every setting this suite varies goes in the store, not only in the
@@ -66,9 +61,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     /// which is deliberate (ARCHITECTURE.md § Module pattern); the test has
     /// to speak to it the way the page does.
     private static func boundStore(fixCapitals: Bool = false) -> NamespacedStore {
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
-                                    backing: InMemoryKeyValueStore())
-        store.set(Int(shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
+        let store = layoutStore(bound: true)
         store.set(fixCapitals, for: LayoutKey.fixCapitals)
         return store
     }
@@ -115,7 +108,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         tap.type("vjq")
         // A chord, not an arrow: a caret move now forgets the word on its own,
         // and the subject here is what the selection edit leaves behind.
-        tap.send(.chord(Self.shortcut))          // ends the word without converting; it is remembered
+        tap.send(.chord(layoutShortcut))          // ends the word without converting; it is remembered
         XCTAssertTrue(typing.performed.isEmpty, "precondition: nothing was converted")
 
         selection.text = "ghbdtn"
@@ -189,7 +182,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     func testAWordLeftBehindInAnotherAppIsNotTheGesturesToConvert() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.send(.chord(Self.shortcut))               // ⌘Tab, as the tap reports it
+        tap.send(.chord(layoutShortcut))               // ⌘Tab, as the tap reports it
         XCTAssertTrue(typing.performed.isEmpty, "precondition: nothing was converted")
 
         context.bundle = "com.apple.Mail"
@@ -215,7 +208,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     func testAChordThatIsNotTheShortcutIsNotAWordTheGestureMayConvert() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.send(.chord(Self.shortcut &+ 1))     // ⌘V, or anything that is not the binding
+        tap.send(.chord(layoutShortcut &+ 1))     // ⌘V, or anything that is not the binding
 
         engine.convertLastWord()
 
@@ -232,7 +225,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
     func testTheWordIsStillConvertibleInTheAppItWasTypedIn() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.send(.chord(Self.shortcut))
+        tap.send(.chord(layoutShortcut))
         engine.convertLastWord()
         XCTAssertEqual(typing.performed.count, 1)
         XCTAssertEqual(typing.performed[0].backspaces, 6)
@@ -254,7 +247,7 @@ final class LayoutEngineStaleWordTests: XCTestCase {
         tap.type("ghbdtn")
         // A chord, not an arrow, for the same reason: the subject is the token
         // the buffer refused, not the boundary that set the word up.
-        tap.send(.chord(Self.shortcut))                // ends the word without converting; it is remembered
+        tap.send(.chord(layoutShortcut))                // ends the word without converting; it is remembered
         tap.type(String(repeating: "g", count: TypingBuffer.maxLength + 6))
         tap.send(.space)                // too long to report — and it is not reported
         XCTAssertTrue(typing.performed.isEmpty, "precondition: the long token was refused")

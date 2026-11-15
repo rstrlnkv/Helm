@@ -274,11 +274,7 @@ struct KeepAwakeSettingsPage: View {
                                mark: shownEnabled.lidHolding
                                    ? .holding
                                    : .spacer(inCardWithMarks: shownMarksPossible)) {
-                    Toggle(KAStr.keepAwakeLidClosed, isOn: $clamshellEnabled)
-                        .labelsHidden()
-                        .onChange(of: clamshellEnabled) { _, v in
-                            vm.lidSwitchTurned(v)
-                        }
+                    savingSwitch(KAStr.keepAwakeLidClosed, $clamshellEnabled) { vm.lidSwitchTurned($0) }
                 }
             }
 
@@ -288,11 +284,9 @@ struct KeepAwakeSettingsPage: View {
             // it changes.
             HelmSettingRow(KAStr.timerEndsAutomation, note: KAStr.timerEndsAutomationNote,
                            mark: .spacer(inCardWithMarks: shownMarksPossible)) {
-                Toggle(KAStr.timerEndsAutomation, isOn: $timerEndsAutomation)
-                    .labelsHidden()
-                    .onChange(of: timerEndsAutomation) { _, v in
-                        vm.save(in: store) { $0.setTimerEndsAutomation(v) }
-                    }
+                savingSwitch(KAStr.timerEndsAutomation, $timerEndsAutomation) { v in
+                    vm.save(in: store) { $0.setTimerEndsAutomation(v) }
+                }
             }
             // The threshold and the switch on one row — a level means nothing with
             // the guard off, and the control is disabled rather than hidden so the
@@ -321,11 +315,9 @@ struct KeepAwakeSettingsPage: View {
                         .disabled(!batteryGuardEnabled)
                         .accessibilityLabel(KAStr.turnOffLowBattery)
                         .accessibilityValue(KAStr.belowPercent(batteryGuardPercent))
-                    Toggle(KAStr.turnOffLowBattery, isOn: $batteryGuardEnabled)
-                        .labelsHidden()
-                        .onChange(of: batteryGuardEnabled) { _, v in
-                            vm.save(in: store) { $0.setBatteryGuardEnabled(v) }
-                        }
+                    savingSwitch(KAStr.turnOffLowBattery, $batteryGuardEnabled) { v in
+                        vm.save(in: store) { $0.setBatteryGuardEnabled(v) }
+                    }
                 }
             }
         }
@@ -401,10 +393,16 @@ struct KeepAwakeSettingsPage: View {
                        note: KAStr.ruleNote(note, condition, batteryFloor: batteryGuardPercent),
                        mark: .of(enabled: enabled, satisfied: satisfied,
                                  inCardWithMarks: shownMarksPossible)) {
-            Toggle(title, isOn: binding)
-                .labelsHidden()
-                .onChange(of: binding.wrappedValue) { _, v in save(v) }
+            savingSwitch(title, binding, save)
         }
+    }
+
+    /// A switch that writes on the edge the person made, not on every redraw.
+    private func savingSwitch(_ title: String, _ on: Binding<Bool>,
+                              _ save: @escaping (Bool) -> Void) -> some View {
+        Toggle(title, isOn: on)
+            .labelsHidden()
+            .onChange(of: on.wrappedValue) { _, v in save(v) }
     }
 
     @ViewBuilder private var appsSection: some View {
@@ -427,11 +425,9 @@ struct KeepAwakeSettingsPage: View {
     @ViewBuilder private var behaviourSection: some View {
         HelmSettingsSection(HelmSectionName.behaviour) {
             HelmSettingRow(KAStr.keepDisplayOn) {
-                Toggle(KAStr.keepDisplayOn, isOn: $keepDisplayOn)
-                    .labelsHidden()
-                    .onChange(of: keepDisplayOn) { _, v in
-                        vm.save(in: store) { $0.setKeepDisplayOn(v) }
-                    }
+                savingSwitch(KAStr.keepDisplayOn, $keepDisplayOn) { v in
+                    vm.save(in: store) { $0.setKeepDisplayOn(v) }
+                }
             }
             // The interval means nothing with the switch off, so it shares the
             // row rather than floating below it — and it is a pop-up, because
@@ -452,11 +448,9 @@ struct KeepAwakeSettingsPage: View {
                 .onChange(of: jiggleIntervalMinutes) { _, v in
                     vm.save(in: store) { $0.setJiggleIntervalMinutes(v) }
                 }
-                Toggle(KAStr.movePointer, isOn: $jiggleEnabled)
-                    .labelsHidden()
-                    .onChange(of: jiggleEnabled) { _, v in
-                        vm.save(in: store) { $0.setJiggleEnabled(v) }
-                    }
+                savingSwitch(KAStr.movePointer, $jiggleEnabled) { v in
+                    vm.save(in: store) { $0.setJiggleEnabled(v) }
+                }
             }
             // macOS drops synthetic mouse events from an untrusted app, so
             // without this grant the switch above is on and nothing moves.
@@ -527,23 +521,13 @@ struct KeepAwakeSettingsPage: View {
                     .onChange(of: activeIconShape) { _, v in
                         writeLook(v, MenuBarLook.Key.iconShape)
                     }
-                Toggle(KAStr.customActiveIcon, isOn: $customActiveIcon)
-                    .labelsHidden()
-                    .onChange(of: customActiveIcon) { _, v in
-                        writeLook(v, MenuBarLook.Key.customIcon)
-                    }
+                savingSwitch(KAStr.customActiveIcon, $customActiveIcon) { v in writeLook(v, MenuBarLook.Key.customIcon) }
             }
             HelmSettingRow(KAStr.ringTimer, note: KAStr.ringTimerNote) {
-                Toggle(KAStr.ringTimer, isOn: $ringTimer)
-                    .labelsHidden()
-                    .onChange(of: ringTimer) { _, v in writeLook(v, MenuBarLook.Key.ringTimer) }
+                savingSwitch(KAStr.ringTimer, $ringTimer) { v in writeLook(v, MenuBarLook.Key.ringTimer) }
             }
             HelmSettingRow(KAStr.showTimerText) {
-                Toggle(KAStr.showTimerText, isOn: $showTimerText)
-                    .labelsHidden()
-                    .onChange(of: showTimerText) { _, v in
-                        writeLook(v, MenuBarLook.Key.showTimerText)
-                    }
+                savingSwitch(KAStr.showTimerText, $showTimerText) { v in writeLook(v, MenuBarLook.Key.showTimerText) }
             }
             HelmSettingRow(KAStr.timerColor, note: KAStr.timerColorNote) {
                 timerColorSwatches

@@ -3,6 +3,29 @@ import XCTest
 @testable import Module_Autopilot_Engine
 @testable import Module_Autopilot_UI
 
+/// The fixture both preset classes below stand on: a model over a fake work port
+/// and the offered preset behind a row.
+@MainActor
+class PresetModelRig: XCTestCase {
+
+    fileprivate let home = "/Users/x"
+
+    fileprivate func model(on work: FakeAutopilotWork) -> AutopilotViewModel {
+        AutopilotViewModel(work: work, historyChanges: AsyncStream { _ in },
+                           presetFolders: FakePresetFolders(home: home), home: home)
+    }
+
+    fileprivate func offer(_ model: AutopilotViewModel, _ kind: PresetKind) throws -> OfferedPreset {
+        try XCTUnwrap(model.presets.first { $0.preset.kind == kind })
+    }
+
+    /// What the row's button hands to the editor, and what the editor's Done
+    /// hands back.
+    fileprivate func draft(_ offer: OfferedPreset) -> Rule {
+        offer.preset.rule(named: "Screenshots", in: offer.folder.path)
+    }
+}
+
 /// **The one folder in this module that does not arrive through the panel.**
 ///
 /// Every other one does, which is what makes the path a person's choice. A
@@ -15,24 +38,8 @@ import XCTest
 /// over everything in it — which is not what pressing Done on a preset asked
 /// for.
 @MainActor
-final class APresetBringsItsFolderWithItTests: XCTestCase {
+final class APresetBringsItsFolderWithItTests: PresetModelRig {
 
-    private let home = "/Users/x"
-
-    private func model(on work: FakeAutopilotWork) -> AutopilotViewModel {
-        AutopilotViewModel(work: work, historyChanges: AsyncStream { _ in },
-                           presetFolders: FakePresetFolders(home: home), home: home)
-    }
-
-    private func offer(_ model: AutopilotViewModel, _ kind: PresetKind) throws -> OfferedPreset {
-        try XCTUnwrap(model.presets.first { $0.preset.kind == kind })
-    }
-
-    /// What the row's button hands to the editor, and what the editor's Done
-    /// hands back.
-    private func draft(_ offer: OfferedPreset) -> Rule {
-        offer.preset.rule(named: "Screenshots", in: offer.folder.path)
-    }
 
     // MARK: - Saving one
 
@@ -195,24 +202,8 @@ final class APresetBringsItsFolderWithItTests: XCTestCase {
 /// exists or the rule set is refused, and watching their folder at its own
 /// default depth.
 @MainActor
-final class APresetOnOfferTests: XCTestCase {
+final class APresetOnOfferTests: PresetModelRig {
 
-    private let home = "/Users/x"
-
-    private func model(on work: FakeAutopilotWork) -> AutopilotViewModel {
-        AutopilotViewModel(work: work, historyChanges: AsyncStream { _ in },
-                           presetFolders: FakePresetFolders(home: home), home: home)
-    }
-
-    private func offer(_ model: AutopilotViewModel, _ kind: PresetKind) throws -> OfferedPreset {
-        try XCTUnwrap(model.presets.first { $0.preset.kind == kind })
-    }
-
-    /// What the row's button hands to the editor, and what the editor's Done
-    /// hands back.
-    private func draft(_ offer: OfferedPreset) -> Rule {
-        offer.preset.rule(named: "Screenshots", in: offer.folder.path)
-    }
 
     // MARK: - The control
 

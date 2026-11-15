@@ -4,24 +4,18 @@ import HelmTestSupport
 @testable import HelmRuntime
 @testable import Module_Autopilot_Engine
 
-/// The hourly sentinel, and the one thing it does that cannot be taken back.
-///
-/// Autopilot trashes files with nobody at the desk and the whole account of it
-/// was a line in a log file, while the banner port was spent on the two modules
-/// that touch no files at all. This drives the real leg — the timer's sweep —
-/// over a real folder, because the rule that decides is tested next door and
-/// what is left to get wrong here is a prompt that outlives the module; which
-/// trigger speaks is `WhichTriggerSpeaksAfterASweepTests`' question.
-final class TheSweepTellsSomebodyWhatItBinnedTests: XCTestCase {
+/// The fixture both sweep-notice classes below stand on: a real folder in a
+/// temporary home, an engine on a fresh store, and the notice port.
+class SweepNoticeRig: XCTestCase {
 
-    private var home: URL!
-    private var root: URL!
-    private var engine: AutopilotEngine!
-    private var notices: FakeAutomationNotice!
+    fileprivate var home: URL!
+    fileprivate var root: URL!
+    fileprivate var engine: AutopilotEngine!
+    fileprivate var notices: FakeAutomationNotice!
 
     /// Rendered from the tally rather than from `L()`: the words are the UI
     /// target's and the point here is that the numbers reach them intact.
-    private static func words(_ tally: SweepNews.Tally) -> NoticeText {
+    fileprivate static func words(_ tally: SweepNews.Tally) -> NoticeText {
         NoticeText(title: "Autopilot",
                    body: "trashed \(tally.trashed) refused \(tally.refused) "
                        + "failed \(tally.failed)")
@@ -36,7 +30,7 @@ final class TheSweepTellsSomebodyWhatItBinnedTests: XCTestCase {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     }
 
-    private func build(_ port: FakeAutomationNotice) {
+    fileprivate func build(_ port: FakeAutomationNotice) {
         notices = port
         engine = AutopilotEngine(
             store: NamespacedStore(namespace: "rules.test.\(UUID().uuidString)",
@@ -48,19 +42,31 @@ final class TheSweepTellsSomebodyWhatItBinnedTests: XCTestCase {
     /// A file whose leaf nobody else could own, so the teardown that takes it
     /// back out of the Trash cannot take somebody else's.
     @discardableResult
-    private func trashable(_ base: String) throws -> String {
+    fileprivate func trashable(_ base: String) throws -> String {
         let leaf = unownableLeaf(base)
         reclaimFromTrash(leaf)
         try write(leaf, in: root, bytes: 8)
         return leaf
     }
 
-    private func watch(_ action: RuleAction, on ext: String = "pdf") {
+    fileprivate func watch(_ action: RuleAction, on ext: String = "pdf") {
         let rule = Rule(id: "r", name: "r", enabled: true, match: .all,
                         conditions: [.fileExtension([ext])], action: action)
         engine.folders = [WatchedFolder(id: "f", path: root.path, enabled: true,
                                         rules: [rule], depth: 1)]
     }
+}
+
+/// The hourly sentinel, and the one thing it does that cannot be taken back.
+///
+/// Autopilot trashes files with nobody at the desk and the whole account of it
+/// was a line in a log file, while the banner port was spent on the two modules
+/// that touch no files at all. This drives the real leg — the timer's sweep —
+/// over a real folder, because the rule that decides is tested next door and
+/// what is left to get wrong here is a prompt that outlives the module; which
+/// trigger speaks is `WhichTriggerSpeaksAfterASweepTests`' question.
+final class TheSweepTellsSomebodyWhatItBinnedTests: SweepNoticeRig {
+
 
     // MARK: - The permission
 
@@ -95,55 +101,8 @@ final class TheSweepTellsSomebodyWhatItBinnedTests: XCTestCase {
 /// These drive the real legs — the timer's sweep and the FSEvents batch — over a
 /// real folder, because the rule that decides is tested next door and what is
 /// left to get wrong is *which trigger* speaks.
-final class WhichTriggerSpeaksAfterASweepTests: XCTestCase {
+final class WhichTriggerSpeaksAfterASweepTests: SweepNoticeRig {
 
-    private var home: URL!
-    private var root: URL!
-    private var engine: AutopilotEngine!
-    private var notices: FakeAutomationNotice!
-
-    /// Rendered from the tally rather than from `L()`: the words are the UI
-    /// target's and the point here is that the numbers reach them intact.
-    private static func words(_ tally: SweepNews.Tally) -> NoticeText {
-        NoticeText(title: "Autopilot",
-                   body: "trashed \(tally.trashed) refused \(tally.refused) "
-                       + "failed \(tally.failed)")
-    }
-
-    override func setUpWithError() throws {
-        // A real folder inside a temporary home: `WatchScope` refuses anything
-        // outside one, and a test exempted from that gate is a test of another
-        // program.
-        home = scratchDirectory("home")
-        root = home.appendingPathComponent("helm-sweep-notice-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-    }
-
-    private func build(_ port: FakeAutomationNotice) {
-        notices = port
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "rules.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence(),
-            sweepNotice: SweepNotifier(port: port, words: Self.words))
-    }
-
-    /// A file whose leaf nobody else could own, so the teardown that takes it
-    /// back out of the Trash cannot take somebody else's.
-    @discardableResult
-    private func trashable(_ base: String) throws -> String {
-        let leaf = unownableLeaf(base)
-        reclaimFromTrash(leaf)
-        try write(leaf, in: root, bytes: 8)
-        return leaf
-    }
-
-    private func watch(_ action: RuleAction, on ext: String = "pdf") {
-        let rule = Rule(id: "r", name: "r", enabled: true, match: .all,
-                        conditions: [.fileExtension([ext])], action: action)
-        engine.folders = [WatchedFolder(id: "f", path: root.path, enabled: true,
-                                        rules: [rule], depth: 1)]
-    }
 
     /// The banner is posted from a task of its own — nothing in the engine waits
     /// for macOS — so a read taken straight afterwards would pass an absence for

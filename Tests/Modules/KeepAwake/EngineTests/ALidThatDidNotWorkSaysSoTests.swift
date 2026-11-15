@@ -219,7 +219,9 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
         clamshell.passwordlessGrantExists = false
 
         engine.willDisable()
-        await settle()
+        // The removal's callback records its verdict on the main actor: state of
+        // ours hops, the reads of the port deliberately do not.
+        await drainMainActor()
 
         XCTAssertEqual(clamshell.removeCalls, 0)
     }
@@ -238,10 +240,4 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
             .filter { $0.category == KeepAwakeEngine.moduleID && $0.message.contains(text) }
             .count
     }
-
-    /// The removal's callback records its verdict on the main actor — state of
-    /// ours hops, the reads of the port deliberately do not. Awaiting a hop of our
-    /// own is what puts this after it; a serial executor runs them in order, so
-    /// this is an ordering fact rather than a sleep.
-    private func settle() async { await drainMainActor() }
 }

@@ -108,13 +108,6 @@ final class AutopilotSealRaceTests: XCTestCase {
     /// Without it the read this test holds might be that one.
     private func settle(_ engine: AutopilotEngine) { engine.clearHistory() }
 
-    private func emptyingRules() -> [WatchedFolder] {
-        [WatchedFolder(id: "planted", path: root.path, enabled: true, rules: [
-            Rule(id: "r", name: "take it", enabled: true, match: .all,
-                 conditions: [.fileExtension(["pdf"])], action: .trash),
-        ], depth: 1)]
-    }
-
     /// Sets up an engine with one sealed, harmless rule set saved through Helm,
     /// and a read of it held mid-decision.
     private func engineWithAHeldRead() throws -> AutopilotEngine {
@@ -143,7 +136,7 @@ final class AutopilotSealRaceTests: XCTestCase {
         }
         XCTAssertTrue(backing.waitUntilHolding(), "the premise: a read is in flight")
 
-        backing.set(try JSONEncoder().encode(emptyingRules()), forKey: payloadKey)
+        backing.set(try JSONEncoder().encode(emptyingRules(in: root)), forKey: payloadKey)
         _ = helm.folders
 
         wait(for: [earlier], timeout: 5)

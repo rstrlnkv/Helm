@@ -2,19 +2,17 @@ import Foundation
 import XCTest
 @testable import Module_Autopilot_Engine
 
-/// Whether a file matches a rule. Everything here is arithmetic on facts — no
-/// filesystem — which is the point of `FileFacts` existing at all: the question
-/// "would this rule fire" has to be answerable without a file to fire it on.
-final class RuleMatcherTests: XCTestCase {
+/// The facts and rule builders both matcher classes below stand on.
+class RuleMatcherRig: XCTestCase {
 
-    private func facts(name: String = "invoice.pdf",
-                       kind: FileKind = .document,
-                       bytes: Int = 2_000_000,
-                       addedDaysAgo: Double = 1,
-                       modifiedDaysAgo: Double = 1,
-                       from: String? = nil,
-                       tags: [String] = [],
-                       isDirectory: Bool = false) -> FileFacts {
+    fileprivate func facts(name: String = "invoice.pdf",
+                           kind: FileKind = .document,
+                           bytes: Int = 2_000_000,
+                           addedDaysAgo: Double = 1,
+                           modifiedDaysAgo: Double = 1,
+                           from: String? = nil,
+                           tags: [String] = [],
+                           isDirectory: Bool = false) -> FileFacts {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         return FileFacts(name: name,
                          kind: kind,
@@ -27,10 +25,16 @@ final class RuleMatcherTests: XCTestCase {
                          now: now)
     }
 
-    private func rule(_ match: RuleMatch, _ conditions: [RuleCondition]) -> Rule {
+    fileprivate func rule(_ match: RuleMatch, _ conditions: [RuleCondition]) -> Rule {
         Rule(id: "r", name: "test", enabled: true, match: match,
              conditions: conditions, action: .trash)
     }
+}
+
+/// Whether a file matches a rule. Everything here is arithmetic on facts — no
+/// filesystem — which is the point of `FileFacts` existing at all: the question
+/// "would this rule fire" has to be answerable without a file to fire it on.
+final class RuleMatcherTests: RuleMatcherRig {
 
     /// A rule with nothing in it matches nothing. The other reading — that an
     /// empty `all` is vacuously true — would make a half-written rule act on
@@ -49,41 +53,14 @@ final class RuleMatcherTests: XCTestCase {
     }
 }
 
-/// Whether a file matches a rule. Everything here is arithmetic on facts — no
-/// filesystem — which is the point of `FileFacts` existing at all: the question
-/// "would this rule fire" has to be answerable without a file to fire it on.
-final class RuleMatcherConditionTests: XCTestCase {
-
-    private func facts(name: String = "invoice.pdf",
-                       kind: FileKind = .document,
-                       bytes: Int = 2_000_000,
-                       addedDaysAgo: Double = 1,
-                       modifiedDaysAgo: Double = 1,
-                       from: String? = nil,
-                       tags: [String] = [],
-                       isDirectory: Bool = false) -> FileFacts {
-        let now = Date(timeIntervalSince1970: 1_800_000_000)
-        return FileFacts(name: name,
-                         kind: kind,
-                         bytes: bytes,
-                         added: now.addingTimeInterval(-addedDaysAgo * 86_400),
-                         modified: now.addingTimeInterval(-modifiedDaysAgo * 86_400),
-                         downloadedFrom: from,
-                         tags: tags,
-                         isDirectory: isDirectory,
-                         now: now)
-    }
+/// The conditions one by one; the whole-rule questions are `RuleMatcherTests`'.
+final class RuleMatcherConditionTests: RuleMatcherRig {
 
     /// Two helpers rather than one with a defaulted first parameter: with both
     /// positions unlabelled, `rule([...])` is ambiguous often enough that the
     /// failures read as errors in the conditions rather than in the call.
     private func rule(_ conditions: [RuleCondition]) -> Rule {
         rule(.all, conditions)
-    }
-
-    private func rule(_ match: RuleMatch, _ conditions: [RuleCondition]) -> Rule {
-        Rule(id: "r", name: "test", enabled: true, match: match,
-             conditions: conditions, action: .trash)
     }
 
     // MARK: - Name

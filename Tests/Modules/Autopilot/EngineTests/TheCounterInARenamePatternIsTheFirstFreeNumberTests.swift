@@ -27,7 +27,6 @@ final class TheCounterInARenamePatternIsTheFirstFreeNumberTests: XCTestCase {
         let home = scratchDirectory("home")
         let root = home.appendingPathComponent("Files")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        addTeardownBlock { try? FileManager.default.removeItem(at: home) }
         return (home, root)
     }
 
@@ -54,31 +53,30 @@ final class TheCounterInARenamePatternIsTheFirstFreeNumberTests: XCTestCase {
         try FileManager.default.contentsOfDirectory(atPath: root.path).sorted()
     }
 
-    func testTwoFilesRenamedInOneSweepGetOneAndTwo() throws {
+    /// A fresh folder holding `existing`, one sweep of `pattern` over `swept`, and
+    /// what the folder lists afterwards.
+    private func assertSweep(_ pattern: String, existing: [String], swept: [String],
+                             gives expected: [String],
+                             file: StaticString = #filePath, line: UInt = #line) throws {
         let (home, root) = try folder()
-        try put(["a.txt", "b.txt"], in: root)
+        try put(existing, in: root)
+        _ = sweep(pattern, over: swept, in: root, home: home)
+        XCTAssertEqual(try listing(root), expected, file: file, line: line)
+    }
 
-        _ = sweep("photo-{counter}", over: ["a.txt", "b.txt"], in: root, home: home)
-
-        XCTAssertEqual(try listing(root), ["photo-001.txt", "photo-002.txt"])
+    func testTwoFilesRenamedInOneSweepGetOneAndTwo() throws {
+        try assertSweep("photo-{counter}", existing: ["a.txt", "b.txt"], swept: ["a.txt", "b.txt"],
+                        gives: ["photo-001.txt", "photo-002.txt"])
     }
 
     func testTheCounterAlsoWorksBesideADate() throws {
-        let (home, root) = try folder()
-        try put(["a.txt", "b.txt"], in: root)
-
-        _ = sweep("{date}-{counter}", over: ["a.txt", "b.txt"], in: root, home: home)
-
-        XCTAssertEqual(try listing(root), ["2026-07-15-001.txt", "2026-07-15-002.txt"])
+        try assertSweep("{date}-{counter}", existing: ["a.txt", "b.txt"], swept: ["a.txt", "b.txt"],
+                        gives: ["2026-07-15-001.txt", "2026-07-15-002.txt"])
     }
 
     func testANumberAlreadyTakenInTheFolderIsSkipped() throws {
-        let (home, root) = try folder()
-        try put(["photo-001.txt", "c.txt"], in: root)
-
-        _ = sweep("photo-{counter}", over: ["c.txt"], in: root, home: home)
-
-        XCTAssertEqual(try listing(root), ["photo-001.txt", "photo-002.txt"])
+        try assertSweep("photo-{counter}", existing: ["photo-001.txt", "c.txt"], swept: ["c.txt"],
+                        gives: ["photo-001.txt", "photo-002.txt"])
     }
 
     func testASecondSweepRenamesNothing() throws {
@@ -188,12 +186,8 @@ final class TheCounterInARenamePatternIsTheFirstFreeNumberTests: XCTestCase {
 
     /// APFS holds `Invoice-001.pdf` and `invoice-001.pdf` to be one name.
     func testANumberWornInAnotherCaseIsTaken() throws {
-        let (home, root) = try folder()
-        try put(["Invoice-001.pdf", "x.pdf"], in: root)
-
-        _ = sweep("invoice-{counter}", over: ["x.pdf"], in: root, home: home)
-
-        XCTAssertEqual(try listing(root), ["Invoice-001.pdf", "invoice-002.pdf"])
+        try assertSweep("invoice-{counter}", existing: ["Invoice-001.pdf", "x.pdf"], swept: ["x.pdf"],
+                        gives: ["Invoice-001.pdf", "invoice-002.pdf"])
     }
 
     /// Every number to 999 worn: refused for its own reason, nothing renamed.

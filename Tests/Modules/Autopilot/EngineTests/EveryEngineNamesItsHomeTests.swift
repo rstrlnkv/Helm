@@ -13,6 +13,6 @@ final class EveryEngineNamesItsHomeTests: XCTestCase {
         try PortsAtConstruction.check("AutopilotEngine",
                                       under: "Tests/Modules/Autopilot",
                                       naming: ["home"],
-                                      atLeast: 37)
+                                      atLeast: 16)
     }
 }

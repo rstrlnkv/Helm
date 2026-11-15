@@ -3,6 +3,22 @@ import XCTest
 import HelmTestSupport
 @testable import Module_Autopilot_Engine
 
+/// The fixture both reader classes below stand on: a scratch folder and the
+/// reader over it.
+class FolderReaderRig: XCTestCase {
+
+    fileprivate var root: URL!
+    fileprivate let reader = FolderReader()
+
+    override func setUpWithError() throws {
+        root = scratchDirectory("reader")
+    }
+
+    fileprivate func names(depth: Int) -> [String] {
+        reader.reading(in: root.path, depth: depth).files.map(\.name).sorted()
+    }
+}
+
 /// What a rule is offered, and what it is not.
 ///
 /// `FolderReader` is the only place a file becomes `FileFacts`, so it is the
@@ -11,18 +27,7 @@ import HelmTestSupport
 /// Everything asserted here is about the *shape* of what comes back: which
 /// names, at which levels. Sizes and dates come off the disk and are not this
 /// module's to promise.
-final class FolderReaderTests: XCTestCase {
-
-    private var root: URL!
-    private let reader = FolderReader()
-
-    override func setUpWithError() throws {
-        root = scratchDirectory("reader")
-    }
-
-    private func names(depth: Int) -> [String] {
-        reader.reading(in: root.path, depth: depth).files.map(\.name).sorted()
-    }
+final class FolderReaderTests: FolderReaderRig {
 
     // MARK: - Packages
 
@@ -146,18 +151,7 @@ final class FolderReaderTests: XCTestCase {
 
 /// How far a read goes down, and what it offers when there is nothing to walk:
 /// the depth limit, an empty folder, a folder that is gone.
-final class FolderReaderDepthTests: XCTestCase {
-
-    private var root: URL!
-    private let reader = FolderReader()
-
-    override func setUpWithError() throws {
-        root = scratchDirectory("reader")
-    }
-
-    private func names(depth: Int) -> [String] {
-        reader.reading(in: root.path, depth: depth).files.map(\.name).sorted()
-    }
+final class FolderReaderDepthTests: FolderReaderRig {
 
     // MARK: - Depth
 

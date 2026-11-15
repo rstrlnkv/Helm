@@ -30,11 +30,6 @@ final class UndoAfterNavigationTests: XCTestCase {
     private var context = FakeSecure()
     private var tap = FakeTap()
 
-    /// The keycode this suite's «shortcut» is bound to. Any code will do; what
-    /// matters is that the engine has one recorded, because the forgiveness
-    /// exists for the recorded chord and for no other.
-    private static let shortcut: UInt16 = 9        // V, as good as any
-
     /// Recorded, because a chord is only forgiven when it matches the binding.
     /// With nothing bound — the shipped default, where the gesture is a tap of
     /// a single modifier through `deliverModifier` and never reaches `handle` —
@@ -42,11 +37,7 @@ final class UndoAfterNavigationTests: XCTestCase {
     /// budget that no longer exists.
     private func engine(shortcutBound: Bool = true) -> LayoutEngine {
         typing = FakeTyping(); context = FakeSecure(); tap = FakeTap()
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
-                                    backing: InMemoryKeyValueStore())
-        if shortcutBound {
-            store.set(Int(Self.shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
-        }
+        let store = layoutStore(bound: shortcutBound)
         let engine = LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
                                   translation: FakeTranslation(table: ["ghbdtn": "привет"]), spell: CyrillicSpell(),
                                   secure: context, activation: FakeActivation(), settings: store)
@@ -81,7 +72,7 @@ final class UndoAfterNavigationTests: XCTestCase {
         let engine = engine()
         converted(engine)
 
-        tap.send(.chord(Self.shortcut))
+        tap.send(.chord(layoutShortcut))
         tap.send(.navigation)
         engine.undoLast()
 
@@ -95,7 +86,7 @@ final class UndoAfterNavigationTests: XCTestCase {
         let engine = engine()
         converted(engine)
 
-        tap.send(.chord(Self.shortcut))   // its keys, seen before Carbon dispatches
+        tap.send(.chord(layoutShortcut))   // its keys, seen before Carbon dispatches
         engine.undoLast()       // …and then the action itself
 
         XCTAssertEqual(typing.performed.count, 2, "the undo shortcut did nothing")
@@ -109,8 +100,8 @@ final class UndoAfterNavigationTests: XCTestCase {
         let engine = engine()
         converted(engine)
 
-        tap.send(.chord(Self.shortcut))
-        tap.send(.chord(Self.shortcut))
+        tap.send(.chord(layoutShortcut))
+        tap.send(.chord(layoutShortcut))
         engine.undoLast()
 
         XCTAssertEqual(typing.performed.count, 1)
@@ -126,7 +117,7 @@ final class UndoAfterNavigationTests: XCTestCase {
         let engine = engine()
         converted(engine)
 
-        tap.send(.chord(Self.shortcut &+ 1))     // ⌘V, or anything else
+        tap.send(.chord(layoutShortcut &+ 1))     // ⌘V, or anything else
         engine.undoLast()
 
         XCTAssertEqual(typing.performed.count, 1, """
@@ -144,7 +135,7 @@ final class UndoAfterNavigationTests: XCTestCase {
         let engine = engine(shortcutBound: false)
         converted(engine)
 
-        tap.send(.chord(Self.shortcut))
+        tap.send(.chord(layoutShortcut))
         engine.undoLast()
 
         XCTAssertEqual(typing.performed.count, 1,
@@ -157,7 +148,7 @@ final class UndoAfterNavigationTests: XCTestCase {
     /// them, and a chord that stopped ending the word would put ⌘S's "s" back
     /// in the buffer.
     func testBothEndTheWordAndNeitherConfirmsIt() {
-        for event in [TypingBuffer.Event.chord(Self.shortcut), .navigation] {
+        for event in [TypingBuffer.Event.chord(layoutShortcut), .navigation] {
             var buffer = TypingBuffer()
             buffer.type("ghbdtn")
             let completion = buffer.accept(event)

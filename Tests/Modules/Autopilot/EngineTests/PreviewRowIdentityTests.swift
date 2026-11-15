@@ -28,10 +28,7 @@ final class PreviewRowIdentityTests: XCTestCase {
         home = scratchDirectory("home")
         root = home.appendingPathComponent("Downloads")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        engine = AutopilotEngine(
-            store: NamespacedStore(namespace: "rules.test.\(UUID().uuidString)",
-                                   backing: InMemoryKeyValueStore()),
-            home: home.path, keys: TestRuleKey(), sequence: TestRuleSequence())
+        engine = AutopilotEngine.scratch(home: home.path)
     }
 
     /// Two files, one rule, one folder watched two levels deep.

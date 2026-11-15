@@ -1,4 +1,5 @@
 import Foundation
+import HelmRuntime
 @testable import Module_Autopilot_Engine
 
 /// The mark, behaving the way the keychain item does — absent until something
@@ -43,5 +44,15 @@ final class TestRuleSequence: RuleSequencePort, @unchecked Sendable {
         guard writable else { return false }
         value = seq
         return true
+    }
+}
+
+extension AutopilotEngine {
+    /// An engine on a store nobody else holds, with the test key and sequence.
+    static func scratch(home: String) -> AutopilotEngine {
+        AutopilotEngine(
+            store: NamespacedStore(namespace: "autopilot.test.\(UUID().uuidString)",
+                                   backing: InMemoryKeyValueStore()),
+            home: home, keys: TestRuleKey(), sequence: TestRuleSequence())
     }
 }

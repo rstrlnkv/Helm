@@ -130,4 +130,12 @@ public extension XCTestCase {
         try Data(repeating: filler, count: bytes).write(to: url)
         return url
     }
+
+    /// Every path under `root`, relative and sorted: a folder described by its
+    /// contents rather than by a count of them, the only description a race
+    /// cannot satisfy by accident.
+    func tree(under root: URL) -> [String] {
+        let all = FileManager.default.enumerator(atPath: root.path)?.allObjects as? [String]
+        return (all ?? []).sorted()
+    }
 }

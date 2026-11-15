@@ -119,8 +119,8 @@ import Module_Layout_Engine
     public func menuBar(_ model: LayoutViewModel) -> MenuBarContribution? {
         guard let store else { return .utility }
         return MenuBarContribution(panelTile: AnyView(
-            LayoutWidgets.Wide(lvm: model,
-                               period: ConversionPeriod.stored(in: store), onNever: { Self.never($0, store, model) })))
+            LayoutWidgets.Fixed(lvm: model, size: .wide,
+                                period: ConversionPeriod.stored(in: store), onNever: { Self.never($0, store, model) })))
     }
 
     /// Three sizes, three questions: how many · how many and what to do · why
@@ -129,10 +129,10 @@ import Module_Layout_Engine
         guard let store else { return nil }
         switch size {
         case .compact:
-            return AnyView(LayoutWidgets.Compact(lvm: model, period: ConversionPeriod.stored(in: store)))
+            return AnyView(LayoutWidgets.Fixed(lvm: model, size: .compact, period: ConversionPeriod.stored(in: store)))
         case .wide:
-            return AnyView(LayoutWidgets.Wide(lvm: model, period: ConversionPeriod.stored(in: store),
-                                              onNever: { Self.never($0, store, model) }))
+            return AnyView(LayoutWidgets.Fixed(lvm: model, size: .wide, period: ConversionPeriod.stored(in: store),
+                                               onNever: { Self.never($0, store, model) }))
         case .tall:
             return AnyView(LayoutWidgets.Tall(lvm: model, store: store,
                                               onNever: { Self.never($0, store, model) },

@@ -4,20 +4,14 @@ import HelmTestSupport
 @testable import HelmRuntime
 @testable import Module_Autopilot_Engine
 
-/// The history is sealed for the same reason the rules are, and the reason is
-/// stronger here: a rule has to be matched against a file before it does
-/// anything, and a history record **is** the instruction. Every field a return
-/// acts on — where the file is, where it goes, who it is — comes out of a plist
-/// any process running as this user can write.
-///
-/// So a history that does not verify is shown and never acted on, and the one
-/// way forward is to throw it away, exactly as it is for a refused rule set.
-final class AHistoryNotHelmsPutsNothingBackTests: XCTestCase {
+/// The fixture both history classes below stand on: a folder, an engine on a
+/// fresh store, and one real sweep.
+class SweptHistoryRig: XCTestCase {
 
-    private var home: URL!
-    private var root: URL!
-    private var store: NamespacedStore!
-    private var engine: AutopilotEngine!
+    fileprivate var home: URL!
+    fileprivate var root: URL!
+    fileprivate var store: NamespacedStore!
+    fileprivate var engine: AutopilotEngine!
 
     override func setUpWithError() throws {
         home = scratchDirectory("home")
@@ -29,7 +23,7 @@ final class AHistoryNotHelmsPutsNothingBackTests: XCTestCase {
                                  keys: TestRuleKey(), sequence: TestRuleSequence())
     }
 
-    private func folder(_ action: RuleAction) -> WatchedFolder {
+    fileprivate func folder(_ action: RuleAction) -> WatchedFolder {
         WatchedFolder(id: "f", path: root.path, enabled: true,
                       // Every PDF: `contains ""` is false in Swift, which is a
                       // trap a matcher test would have caught and a runner test
@@ -42,13 +36,25 @@ final class AHistoryNotHelmsPutsNothingBackTests: XCTestCase {
     /// A sweep that really moved something, so everything below is about a
     /// history with something in it.
     @discardableResult
-    private func aSweptFile(_ name: String = "a.pdf") throws -> URL {
+    fileprivate func aSweptFile(_ name: String = "a.pdf") throws -> URL {
         let file = try write(name, in: root)
         engine.sweep(folder(.move(to: root.appendingPathComponent("Sorted").path)))
         XCTAssertFalse(FileManager.default.fileExists(atPath: file.path),
                        "nothing was moved, so this proves nothing")
         return file
     }
+
+}
+
+/// The history is sealed for the same reason the rules are, and the reason is
+/// stronger here: a rule has to be matched against a file before it does
+/// anything, and a history record **is** the instruction. Every field a return
+/// acts on — where the file is, where it goes, who it is — comes out of a plist
+/// any process running as this user can write.
+///
+/// So a history that does not verify is shown and never acted on, and the one
+/// way forward is to throw it away, exactly as it is for a refused rule set.
+final class AHistoryNotHelmsPutsNothingBackTests: SweptHistoryRig {
 
     // MARK: - Putting one back
 
@@ -186,43 +192,7 @@ final class AHistoryNotHelmsPutsNothingBackTests: XCTestCase {
 
 /// One sweep is one run in the history: every record of a sweep carries the
 /// same run, and two sweeps carry two.
-final class ASweepIsOneRunInTheHistoryTests: XCTestCase {
-
-    private var home: URL!
-    private var root: URL!
-    private var store: NamespacedStore!
-    private var engine: AutopilotEngine!
-
-    override func setUpWithError() throws {
-        home = scratchDirectory("home")
-        root = home.appendingPathComponent("Files")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        store = NamespacedStore(namespace: "rules.test.\(UUID().uuidString)",
-                                backing: InMemoryKeyValueStore())
-        engine = AutopilotEngine(store: store, home: home.path,
-                                 keys: TestRuleKey(), sequence: TestRuleSequence())
-    }
-
-    private func folder(_ action: RuleAction) -> WatchedFolder {
-        WatchedFolder(id: "f", path: root.path, enabled: true,
-                      // Every PDF: `contains ""` is false in Swift, which is a
-                      // trap a matcher test would have caught and a runner test
-                      // never can — the runner is handed its plan.
-                      rules: [Rule(id: "r", name: "Sort", enabled: true,
-                                   conditions: [.fileExtension(["pdf"])], action: action)],
-                      depth: 1)
-    }
-
-    /// A sweep that really moved something, so everything below is about a
-    /// history with something in it.
-    @discardableResult
-    private func aSweptFile(_ name: String = "a.pdf") throws -> URL {
-        let file = try write(name, in: root)
-        engine.sweep(folder(.move(to: root.appendingPathComponent("Sorted").path)))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path),
-                       "nothing was moved, so this proves nothing")
-        return file
-    }
+final class ASweepIsOneRunInTheHistoryTests: SweptHistoryRig {
 
     // MARK: - The pass
 

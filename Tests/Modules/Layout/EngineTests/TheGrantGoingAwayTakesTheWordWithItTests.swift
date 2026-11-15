@@ -42,19 +42,9 @@ final class TheGrantGoingAwayTakesTheWordWithItTests: XCTestCase {
     private var tap = FakeTap()
     private var sources = FakeSources()
 
-    /// No `settings:` store on purpose — nothing here is about what was saved,
-    /// and an engine with no store cannot reach `UserDefaults` to find out.
-    /// The chord these tests use to end a word without converting it — bound,
-    /// because only the recorded shortcut ends a word and leaves it remembered.
-    /// Every other chord may have changed the text in front of the caret (⌘V
-    /// pastes, ⌥V types `√`), so the word before it is dropped.
-    private static let shortcut: UInt16 = 9
-
     private func engine() -> LayoutEngine {
         typing = FakeTyping(); secure = FakeSecure(); tap = FakeTap(); sources = FakeSources()
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
-                                    backing: InMemoryKeyValueStore())
-        store.set(Int(Self.shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
+        let store = layoutStore(bound: true)
         let engine = LayoutEngine(
             tap: tap, typing: typing, sources: sources,
             translation: FakeTranslation(table: ["ghbdtn": "привет"]),
@@ -74,7 +64,7 @@ final class TheGrantGoingAwayTakesTheWordWithItTests: XCTestCase {
     func testAWordRememberedWhenTheGrantWentIsNotTheGesturesToConvert() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.handler?(.chord(Self.shortcut))
+        tap.handler?(.chord(layoutShortcut))
         XCTAssertTrue(typing.performed.isEmpty, "precondition: nothing has been converted yet")
 
         tap.macOSTakesItAway()
@@ -96,7 +86,7 @@ final class TheGrantGoingAwayTakesTheWordWithItTests: XCTestCase {
     func testTheSameWordIsStillTheGesturesToConvertWhileTheTapIsAlive() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.handler?(.chord(Self.shortcut))
+        tap.handler?(.chord(layoutShortcut))
 
         engine.convertLastWord()
         XCTAssertEqual(typing.performed.count, 1,

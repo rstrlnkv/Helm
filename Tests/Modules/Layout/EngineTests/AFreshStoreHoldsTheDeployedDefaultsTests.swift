@@ -35,7 +35,7 @@ private final class DefaultsSelection: SelectionPort, @unchecked Sendable {
 final class AFreshStoreHoldsTheDeployedDefaultsTests: XCTestCase {
 
     private func store() -> NamespacedStore {
-        NamespacedStore(namespace: "layout", backing: InMemoryKeyValueStore())
+        layoutStore()
     }
 
     func testTheSettingsDefaultAsTheyAlwaysDid() {

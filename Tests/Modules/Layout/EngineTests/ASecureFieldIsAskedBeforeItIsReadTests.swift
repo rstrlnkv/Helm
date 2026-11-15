@@ -88,26 +88,13 @@ final class ASecureFieldIsAskedBeforeItIsReadTests: XCTestCase {
         var replaced: [String] { lock.lock(); defer { lock.unlock() }; return written }
     }
 
-    private struct Translation: TranslationPort {
-        func translate(_ word: String, from: String, to: String) -> String? {
-            word.isEmpty ? nil : String(repeating: "п", count: word.count)
-        }
-    }
-
-    private struct Spell: SpellPort {
-        func isWord(_ word: String, sourceID: String) -> Bool? {
-            word.unicodeScalars.allSatisfy { $0.value > 0x400 }
-        }
-    }
-
     private func engine(_ context: Context, _ selection: Selection) -> LayoutEngine {
         let engine = LayoutEngine(
             tap: FakeTap(), typing: FakeTyping(), sources: FakeSources(current: "en"),
-            translation: Translation(), spell: Spell(),
+            translation: SameLengthTranslation(), spell: CyrillicSpell(),
             secure: context, activation: FakeActivation(), selection: selection,
             ledger: LedgerStore(),
-            settings: NamespacedStore(namespace: LayoutEngine.moduleID,
-                                      backing: InMemoryKeyValueStore()))
+            settings: layoutStore())
         engine.activate()
         return engine
     }

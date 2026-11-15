@@ -39,16 +39,9 @@ final class GestureAfterNavigationTests: XCTestCase {
     private var context = FakeSecure()
     private var tap = FakeTap()
 
-    /// The chord bound as «fix». Only the recorded one is treated as «may have
-    /// been the gesture arriving»; every other chord may have changed the text
-    /// in front of the caret, and the word before it is dropped.
-    private static let shortcut: UInt16 = 9
-
     private func engine() -> LayoutEngine {
         typing = FakeTyping(); context = FakeSecure(); tap = FakeTap()
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
-                                    backing: InMemoryKeyValueStore())
-        store.set(Int(Self.shortcut), for: "\(LayoutHotkey.storePrefix)KeyCode")
+        let store = layoutStore(bound: true)
         let engine = LayoutEngine(tap: tap, typing: typing, sources: StuckSources(),
                                   translation: FakeTranslation(table: ["ghbdtn": "привет"]), spell: CyrillicSpell(),
                                   secure: context, activation: FakeActivation(), settings: store)
@@ -140,7 +133,7 @@ final class GestureAfterNavigationTests: XCTestCase {
     func testTheShortcutsOwnChordStillLeavesTheWordConvertible() {
         let engine = engine()
         tap.type("ghbdtn")
-        tap.send(.chord(Self.shortcut))
+        tap.send(.chord(layoutShortcut))
 
         engine.convertLastWord()
 

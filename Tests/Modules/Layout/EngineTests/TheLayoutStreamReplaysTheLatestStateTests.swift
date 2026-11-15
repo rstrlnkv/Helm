@@ -22,8 +22,7 @@ final class TheLayoutStreamReplaysTheLatestStateTests: XCTestCase {
         LayoutEngine(tap: tap, typing: FakeTyping(), sources: FakeSources(),
                      translation: FakeTranslation(table: [:]), spell: FakeSpell(valid: []),
                      secure: FakeSecure(), activation: FakeActivation(),
-                     settings: NamespacedStore(namespace: LayoutEngine.moduleID,
-                                               backing: InMemoryKeyValueStore()),
+                     settings: layoutStore(),
                      news: news)
     }
 

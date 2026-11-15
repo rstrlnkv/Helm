@@ -103,14 +103,10 @@ struct ActionRow: View {
             .controlSize(.small)
 
         case let .sortIntoSubfolder(scheme):
-            Picker(ApStr.a11yScheme, selection: Binding(get: { scheme },
-                                                        set: { action = .sortIntoSubfolder($0) })) {
-                Text(ApStr.schemeKind).tag(SortScheme.kind)
-                Text(ApStr.schemeMonth).tag(SortScheme.month)
+            ShortPicker(name: ApStr.a11yScheme, selected: scheme,
+                        options: [(.kind, ApStr.schemeKind), (.month, ApStr.schemeMonth)]) {
+                action = .sortIntoSubfolder($0)
             }
-            .labelsHidden()
-            .frame(width: HelmPickerWidth.fitting([ApStr.schemeKind, ApStr.schemeMonth],
-                                                  minimum: AutopilotLayout.shortPicker))
 
         case let .rename(pattern):
             TextField("{name}", text: Binding(get: { pattern },
