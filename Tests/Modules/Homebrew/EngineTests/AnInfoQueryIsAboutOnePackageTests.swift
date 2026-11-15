@@ -51,17 +51,6 @@ private final class InfoRunner: ProcessRunner, @unchecked Sendable {
     }
 }
 
-private struct FixedLocator: BrewLocator {
-    func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-}
-
-/// Homebrew is not installed, or was uninstalled in a terminal beside this
-/// window — `FSBrewLocator` re-reads the disk at every call, so this is an
-/// ordinary answer and not a broken fixture.
-private struct NoBrew: BrewLocator {
-    func brewPath() -> String? { nil }
-}
-
 final class AnInfoQueryIsAboutOnePackageTests: XCTestCase {
 
     private func engine(_ runner: ProcessRunner) -> HomebrewEngine {

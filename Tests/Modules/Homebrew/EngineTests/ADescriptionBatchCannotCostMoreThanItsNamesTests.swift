@@ -43,10 +43,6 @@ import HelmRuntime
 /// Kept: guards the defect fixed in 7006109b fix(homebrew): four refusals the module read as good news.
 final class ADescriptionBatchCannotCostMoreThanItsNamesTests: XCTestCase {
 
-    private struct FixedLocator: BrewLocator {
-        func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-    }
-
     /// A brew that resolves the names in `known` and refuses any call carrying
     /// a name it does not know — validating the whole call before printing
     /// anything, which is what `brew desc` does (observed: exit 1, message on

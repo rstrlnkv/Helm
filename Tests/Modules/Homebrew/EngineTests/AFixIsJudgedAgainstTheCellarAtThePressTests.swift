@@ -26,10 +26,6 @@ import HelmContract
 /// engine pressed twice with nothing changed but the Cellar.
 final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
 
-    private struct FixedLocator: BrewLocator {
-        func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-    }
-
     /// A brew whose Cellar can change between two calls, because that is the
     /// whole subject: `installed` is read on every `brew list --versions` run,
     /// so a test can uninstall something the way a terminal does.
@@ -105,17 +101,7 @@ final class AFixIsJudgedAgainstTheCellarAtThePressTests: XCTestCase {
 
     /// Everything the engine put on the news, read back through the replay:
     /// with the fakes synchronous, whatever was emitted is already there.
-    private func states(_ news: EngineNews<HomebrewNews>) async -> [OpState] {
-        news.say(.line("test.sentinel"), slot: "test.sentinel")
-        var found: [OpState] = []
-        for await item in news.stream() {
-            if case .line("test.sentinel") = item { break }
-            guard case .state(let state) = item
-            else { continue }
-            found.append(state)
-        }
-        return found
-    }
+    private func states(_ news: EngineNews<HomebrewNews>) async -> [OpState] { await replay(news).states }
 
     // MARK: - The race this design exists for
 

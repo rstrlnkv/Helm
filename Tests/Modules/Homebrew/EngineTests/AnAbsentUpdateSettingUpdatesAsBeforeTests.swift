@@ -2,32 +2,6 @@ import XCTest
 import HelmRuntime
 @testable import Module_Homebrew_Engine
 
-private final class EnvironmentRecorder: ProcessRunner, @unchecked Sendable {
-    private let lock = NSLock()
-    private var _calls: [(args: [String], env: [String: String])] = []
-    var calls: [(args: [String], env: [String: String])] { lock.withLock { _calls } }
-
-    func run(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, stdout: String) {
-        lock.withLock { _calls.append((args, env)) }
-        return (0, "")
-    }
-
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-        (0, "")
-    }
-
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        onExit(0)
-        return NoProcess()
-    }
-}
-
-private struct FixedLocator: BrewLocator {
-    func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-}
-
 /// Kept: guards the stored `module.homebrew.updateBeforeChecking`. A Mac that never wrote it must
 /// still run `brew outdated` with brew's own refresh, the bytes it ran with before the setting existed.
 final class AnAbsentUpdateSettingUpdatesAsBeforeTests: XCTestCase {

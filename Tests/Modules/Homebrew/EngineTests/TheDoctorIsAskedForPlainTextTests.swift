@@ -47,10 +47,6 @@ private final class RecordingRunner: ProcessRunner, @unchecked Sendable {
     }
 }
 
-private struct FixedLocator: BrewLocator {
-    func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-}
-
 /// Kept: the only test that `brew doctor` is asked uncoloured (measured on 2026-09-29, see above); the coloured-doctor class beside it accepts a refusal as a repair too.
 final class TheDoctorIsAskedForPlainTextTests: XCTestCase {
 

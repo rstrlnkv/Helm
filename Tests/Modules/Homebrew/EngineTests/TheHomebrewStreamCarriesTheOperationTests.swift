@@ -43,10 +43,6 @@ private final class HandFedRunner: ProcessRunner, @unchecked Sendable {
 private struct FixtureBrew: BrewLocator {
     func brewPath() -> String? { "/opt/fixture/bin/brew" }
 }
-private struct NoBrew: BrewLocator {
-    func brewPath() -> String? { nil }
-}
-
 /// Kept: the only test that the engine's stream delivers lines and states whole and in order, and to a late subscriber; the model-side class reads a fake stream, not the engine's.
 final class TheHomebrewStreamCarriesTheOperationTests: XCTestCase {
 

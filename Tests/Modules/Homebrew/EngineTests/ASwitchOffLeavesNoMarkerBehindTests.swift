@@ -23,45 +23,15 @@ import HelmRuntime
 /// that matter), and its handle records a TERM without ending the stream, as
 /// the real one does: the child dies, then EOF, then `onExit`.
 final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
-
-    private struct FixedLocator: BrewLocator {
-        func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-    }
     private struct AllowingPrivileged: PrivilegedRunner {
         func runAdmin(_ script: String) -> PrivilegedOutcome { .done }
     }
 
-    private final class Handle: RunningProcess, @unchecked Sendable {
-        private let lock = NSLock()
-        private var n = 0
-        var terminations: Int { lock.lock(); defer { lock.unlock() }; return n }
-        func terminate() { lock.lock(); n += 1; lock.unlock() }
-    }
-
-    private final class Runner: ProcessRunner, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _handles: [Handle] = []
-        private var _exits: [@Sendable (Int32) -> Void] = []
-        var handles: [Handle] { lock.lock(); defer { lock.unlock() }; return _handles }
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) {
-            // The Cellar a doctor fix is judged against.
-            if args.first == "list" { return (0, args.contains("--cask") ? "" : "wget 1.25.0\n") }
-            return (0, "")
-        }
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String],
-                                     env: [String: String]) -> (status: Int32, output: String) { (0, "") }
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            let handle = Handle()
-            lock.lock(); _handles.append(handle); _exits.append(onExit); lock.unlock()
-            return handle
-        }
-        func exitAll(code: Int32) {
-            lock.lock(); let exits = _exits; _exits = []; lock.unlock()
-            for exit in exits { exit(code) }
-        }
+    /// The Cellar a doctor fix is judged against.
+    private func cellarRunner() -> HangingRunner {
+        let runner = HangingRunner()
+        runner.listing = "wget 1.25.0\n"
+        return runner
     }
 
     /// Reports what is written *now*, without taking it the way `status()` does.
@@ -113,7 +83,7 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
 
     func testASwitchOffTerminatesOnlyTheInstallAndTheMarkerGoesWhenTheChildDoes() {
         for kind in Kind.allCases {
-            let runner = Runner()
+            let runner = cellarRunner()
             let marker = SpyMarker()
             let news = EngineNews<HomebrewNews>()
             let running = engine(runner, marker, news: news)
@@ -129,10 +99,10 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
             XCTAssertNil(running.status().interruptedOp, "\(kind): busy was false while the child still ran")
             XCTAssertEqual(marker.written, kind.label, "\(kind): a status read took the marker of a running child")
 
-            runner.exitAll(code: kind.terminated == 1 ? 143 : 0)
+            runner.finishAll(code: kind.terminated == 1 ? 143 : 0)
 
             XCTAssertNil(marker.written, "\(kind): the child is gone and the marker stayed")
-            XCTAssertNil(engine(Runner(), marker).status().interruptedOp,
+            XCTAssertNil(engine(cellarRunner(), marker).status().interruptedOp,
                          "\(kind): the next enable reported a ghost \"running at quit\"")
         }
     }
@@ -141,7 +111,7 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
     /// heard, which a weak capture of the engine could not do.
     func testTheExitOfADroppedEnginesChildStillClearsTheMarker() {
         for kind in Kind.allCases {
-            let runner = Runner()
+            let runner = cellarRunner()
             let marker = SpyMarker()
             autoreleasepool {
                 let dropped = engine(runner, marker)
@@ -150,7 +120,7 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
             }
             XCTAssertEqual(marker.written, kind.label, "\(kind): the marker went before the child did")
 
-            runner.exitAll(code: 0)
+            runner.finishAll(code: 0)
 
             XCTAssertNil(marker.written, "\(kind): nobody cleared the marker after the engine was dropped")
         }
@@ -158,21 +128,16 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
 
     func testAnOperationSwitchedOffIsSaidOnce() async {
         for kind in Kind.allCases {
-            let runner = Runner()
+            let runner = cellarRunner()
             let news = EngineNews<HomebrewNews>()
             let running = engine(runner, SpyMarker(), news: news)
             let tape = news.stream()
             kind.start(running)
             running.deactivate()
             let exitCode: Int32 = kind.terminated == 1 ? 143 : 0
-            runner.exitAll(code: exitCode)
+            runner.finishAll(code: exitCode)
 
-            news.say(.line("test.sentinel"), slot: "test.sentinel")
-            var terminal: [OpState] = []
-            for await item in tape {
-                if case .line("test.sentinel") = item { break }
-                if case .state(let s) = item, s.phase != .running { terminal.append(s) }
-            }
+            let terminal = await replay(news, from: tape).states.filter { $0.phase != .running }
             XCTAssertEqual(terminal.count, 1, "\(kind): ended \(terminal.count) times: \(terminal)")
             XCTAssertEqual(terminal.first?.phase, exitCode == 0 ? .done : .failed,
                            "\(kind): the ending's phase does not follow the exit code: \(terminal)")
@@ -186,7 +151,7 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
     /// door the operation comes through — until it is activated again.
     func testNothingLaunchesAfterTheSwitchOffUntilItIsEnabledAgain() {
         for kind in Kind.allCases {
-            let runner = Runner()
+            let runner = cellarRunner()
             let marker = SpyMarker()
             let off = engine(runner, marker)
             off.deactivate()
@@ -199,14 +164,14 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
             off.activate()
             kind.start(off)
             XCTAssertEqual(runner.handles.count, 1, "\(kind): the gate stayed shut after the module came back")
-            runner.exitAll(code: 0)
+            runner.finishAll(code: 0)
         }
     }
 
     /// A doctor fix whose Cellar read is still out when the switch-off lands:
     /// the launch behind that read is refused.
     func testASwitchOffDuringTheFixsCellarReadLaunchesNothing() {
-        let runner = Runner()
+        let runner = cellarRunner()
         let marker = SpyMarker()
         let hook = HookedRunner(runner)
         let off = engine(hook, marker)
@@ -226,7 +191,7 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
     /// operation — a second `brew` on the same Cellar, a "running at quit" about
     /// an operation that is running now, or the old exit deleting the new marker.
     func testAFreshEngineBesideARunningOneLaunchesNothingAndTakesNoMarker() {
-        let runner = Runner()
+        let runner = cellarRunner()
         let marker = SpyMarker()
         let gate = OperationGate()
         let old = HomebrewEngine(locator: FixedLocator(), runner: runner, privileged: AllowingPrivileged(),
@@ -243,13 +208,13 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
         XCTAssertNil(fresh.status().interruptedOp, "a running operation was reported as left by a quit")
         XCTAssertEqual(marker.written, "upgrade all", "the new engine took the running operation's marker")
 
-        runner.exitAll(code: 0)                    // the old operation ends
+        runner.finishAll(code: 0)                    // the old operation ends
         XCTAssertNil(marker.written)
         fresh.uninstall(name: "wget", isCask: false)
         XCTAssertEqual(runner.handles.count, 2, "the gate stayed shut after the old operation ended")
         XCTAssertEqual(marker.written, "uninstall wget")
 
-        runner.exitAll(code: 0)
+        runner.finishAll(code: 0)
         XCTAssertNil(marker.written)
     }
 
@@ -258,7 +223,7 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
     /// one cannot have written by then. The marker is hooked: a press on the
     /// second engine made *inside* `clear()` must be refused, the gate still shut.
     func testTheOldExitClearsBeforeTheGateOpensForTheNextOperation() {
-        let runner = Runner()
+        let runner = cellarRunner()
         let marker = HookedMarker()
         let gate = OperationGate()
         let old = HomebrewEngine(locator: FixedLocator(), runner: runner, privileged: AllowingPrivileged(),
@@ -274,7 +239,7 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
         }
         old.upgradeAll()
         old.deactivate()
-        runner.exitAll(code: 0)
+        runner.finishAll(code: 0)
         marker.onClear = nil
 
         XCTAssertEqual(handlesInside, 1, "the gate opened before the marker was cleared: a child launched inside clear()")
@@ -284,7 +249,7 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
         fresh.install(name: "jq", isCask: false)
         XCTAssertEqual(marker.inner.written, "install jq")
 
-        runner.exitAll(code: 0)                    // nothing of the old operation is left to exit
+        runner.finishAll(code: 0)                    // nothing of the old operation is left to exit
         XCTAssertNil(marker.inner.written)
         XCTAssertEqual(runner.handles.count, 2)
     }
@@ -292,7 +257,7 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
     /// An engine dropped while idle was never the gate's holder: its `deinit`
     /// must not open another engine's gate.
     func testADroppedIdleEngineOpensNoOtherEnginesGate() {
-        let runner = Runner()
+        let runner = cellarRunner()
         let marker = SpyMarker()
         let gate = OperationGate()
         let a = HomebrewEngine(locator: FixedLocator(), runner: runner, privileged: AllowingPrivileged(),
@@ -311,10 +276,10 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
         XCTAssertEqual(runner.handles.count, 1, "a dropped idle engine opened the gate for a second brew")
         XCTAssertEqual(marker.written, "upgrade all", "the running operation's marker was disturbed")
 
-        runner.exitAll(code: 0)                    // control: the gate opens when its holder ends
+        runner.finishAll(code: 0)                    // control: the gate opens when its holder ends
         c.uninstall(name: "wget", isCask: false)
         XCTAssertEqual(runner.handles.count, 2, "the gate stayed shut after the holder ended")
-        runner.exitAll(code: 0)
+        runner.finishAll(code: 0)
     }
 
     /// An engine dropped without `deactivate()` while the install waits for
@@ -322,7 +287,7 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
     /// engine weakly) must give the shared gate back in `deinit`: otherwise
     /// the app refuses every operation until it is relaunched.
     func testAnEngineDroppedInTheToolsWaitGivesTheGateBack() {
-        let runner = Runner()
+        let runner = cellarRunner()
         let gate = OperationGate()
         let ticker = FakeWaitTicker()
         weak var dropped: HomebrewEngine?
@@ -341,13 +306,13 @@ final class ASwitchOffLeavesNoMarkerBehindTests: XCTestCase {
                                user: "tester", marker: SpyMarker(), gate: gate)
         b.upgradeAll()
         XCTAssertEqual(runner.handles.count, 1, "the dropped engine's gate stayed shut")
-        runner.exitAll(code: 0)
+        runner.finishAll(code: 0)
     }
 
     private final class HookedRunner: ProcessRunner, @unchecked Sendable {
-        let inner: Runner
+        let inner: HangingRunner
         var onList: (@Sendable () -> Void)?
-        init(_ inner: Runner) { self.inner = inner }
+        init(_ inner: HangingRunner) { self.inner = inner }
         func run(_ launchPath: String, _ args: [String],
                  env: [String: String]) -> (status: Int32, stdout: String) {
             let answer = inner.run(launchPath, args, env: env)

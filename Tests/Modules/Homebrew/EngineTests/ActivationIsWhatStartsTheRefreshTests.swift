@@ -12,10 +12,6 @@ private final class RefreshSpy: PopularityReading, @unchecked Sendable {
     func refreshIfDue() async { asked.fulfill() }
 }
 
-private struct NoBrew: BrewLocator {
-    func brewPath() -> String? { nil }
-}
-
 /// **The one line that makes the whole feature run, held by a test.**
 ///
 /// `activate()`'s single `Task` is the only thing anywhere in the app that ever

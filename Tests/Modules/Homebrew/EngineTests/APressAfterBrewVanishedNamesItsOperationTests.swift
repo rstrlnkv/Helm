@@ -36,12 +36,7 @@ final class APressAfterBrewVanishedNamesItsOperationTests: XCTestCase {
         let engine = HomebrewEngine(locator: GoneBrew(), runner: runner, privileged: NoPrivileges(),
                                     user: "tester", news: news)
         press(engine)
-        news.say(.line("test.sentinel"), slot: "test.sentinel")
-        var state: OpState?
-        for await item in news.stream() {
-            if case .line("test.sentinel") = item { break }
-            if case .state(let s) = item { state = s }
-        }
+        let state = await replay(news).states.last
         return (state, runner.launches)
     }
 

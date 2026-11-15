@@ -55,18 +55,8 @@ final class InstallBrewTests: XCTestCase {
     /// where the replay ends, so the read is deterministic — everything the
     /// engine emitted happened synchronously before this call.
     private func replayed(_ news: EngineNews<HomebrewNews>) async -> (state: OpState?, busy: Bool) {
-        news.say(.line("test.sentinel"), slot: "test.sentinel")
-        var state: OpState?
-        var busy = false
-        for await item in news.stream() {
-            if case .line("test.sentinel") = item { break }
-            switch item {
-            case .state(let s): state = s
-            case .busy: busy = true
-            case .line, .brew: break
-            }
-        }
-        return (state, busy)
+        let items = await replay(news)
+        return (items.states.last, items.sawBusy)
     }
 
     // MARK: - The account name gate

@@ -14,10 +14,6 @@ import HelmRuntime
 /// Kept: guards the defect fixed in 882fe986 fix(homebrew): the batch — a hang has a deadline, a press has an answer, a phase has a name.
 final class ATimedOutQueryIsANamedRefusalTests: XCTestCase {
 
-    private struct FixedLocator: BrewLocator {
-        func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-    }
-
     /// What `ShellProcessRunner` answers once its deadline has passed.
     private final class TimedOutRunner: ProcessRunner, @unchecked Sendable {
         private let lock = NSLock()

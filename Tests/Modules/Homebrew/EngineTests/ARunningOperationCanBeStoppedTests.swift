@@ -13,57 +13,8 @@ import HelmContract
 /// would finish before there is anything to stop.
 final class ARunningOperationCanBeStoppedTests: XCTestCase {
 
-    private struct FixedLocator: BrewLocator {
-        func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-    }
-
-    /// A handle the way the real one is: terminating it does not finish the
-    /// stream by itself — the child dies, *then* EOF and the exit arrive.
-    private final class Handle: RunningProcess, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _terminated = false
-        var terminated: Bool { lock.lock(); defer { lock.unlock() }; return _terminated }
-        func terminate() { lock.lock(); _terminated = true; lock.unlock() }
-    }
-
-    private final class HangingRunner: ProcessRunner, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _handles: [Handle] = []
-        private var _exits: [@Sendable (Int32) -> Void] = []
-        var handles: [Handle] { lock.lock(); defer { lock.unlock() }; return _handles }
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-        /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            let handle = Handle()
-            lock.lock(); _handles.append(handle); _exits.append(onExit); lock.unlock()
-            return handle
-        }
-        /// The child is gone; the pipe closes; the exit lands. SIGTERM deaths
-        /// report the signal number, which is what the engine must not read as
-        /// a build failure once it asked for the stop itself.
-        func exitAll(code: Int32) {
-            lock.lock(); let exits = _exits; _exits = []; lock.unlock()
-            for exit in exits { exit(code) }
-        }
-    }
-
     private func lastOpState(_ news: EngineNews<HomebrewNews>) async -> OpState? {
-        news.say(.line("test.sentinel"), slot: "test.sentinel")
-        var last: OpState?
-        for await item in news.stream() {
-            if case .line("test.sentinel") = item { break }
-            if case .state(let s) = item {
-                last = s
-            }
-        }
-        return last
+        await replay(news).states.last
     }
 
     func testStopTerminatesTheChildAndNamesTheOutcome() async {
@@ -80,7 +31,7 @@ final class ARunningOperationCanBeStoppedTests: XCTestCase {
         XCTAssertTrue(runner.handles[0].terminated,
                       "Stop was pressed and the child brew was not terminated")
 
-        runner.exitAll(code: 15)
+        runner.finishAll(code: 15)
         let state = await lastOpState(news)
         XCTAssertEqual(state?.phase, .failed)
         XCTAssertEqual(state?.reason, .stopped,
@@ -101,7 +52,7 @@ final class ARunningOperationCanBeStoppedTests: XCTestCase {
                                     news: news)
 
         engine.install(name: "wget", isCask: false)
-        runner.exitAll(code: 15)
+        runner.finishAll(code: 15)
 
         let state = await lastOpState(news)
         XCTAssertEqual(state?.phase, .failed)
@@ -133,10 +84,10 @@ final class ARunningOperationCanBeStoppedTests: XCTestCase {
 
         engine.install(name: "wget", isCask: false)
         engine.stop()
-        runner.exitAll(code: 15)
+        runner.finishAll(code: 15)
 
         engine.upgradeAll()
-        runner.exitAll(code: 1)
+        runner.finishAll(code: 1)
 
         let state = await lastOpState(news)
         XCTAssertEqual(state?.phase, .failed)

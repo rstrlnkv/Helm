@@ -56,10 +56,6 @@ private final class ColouringDoctor: ProcessRunner, @unchecked Sendable {
     }
 }
 
-private struct FixedLocator: BrewLocator {
-    func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-}
-
 /// Kept: guards the defect fixed in 4b5e0df9 feat(settings): … a Health page of its own.
 final class ADoctorThatNamedNothingReadableIsNotACleanMacTests: XCTestCase {
 

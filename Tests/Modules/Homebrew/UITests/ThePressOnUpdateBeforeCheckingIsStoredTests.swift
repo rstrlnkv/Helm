@@ -74,6 +74,4 @@ final class ThePressOnUpdateBeforeCheckingIsStoredTests: XCTestCase {
                     onLine: @escaping @Sendable (String) -> Void,
                     onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess { onExit(0); return NoProcess() }
     }
-
-    private struct FixedLocator: BrewLocator { func brewPath() -> String? { "/opt/homebrew/bin/brew" } }
 }

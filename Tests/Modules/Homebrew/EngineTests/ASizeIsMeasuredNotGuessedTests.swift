@@ -74,27 +74,6 @@ final class ASizeIsMeasuredNotGuessedTests: XCTestCase {
         }
     }
 
-    private struct FixedLocator: BrewLocator {
-        func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-    }
-    /// Nothing here runs a `brew`: every question in this file is about a
-    /// directory. A runner that launches anything at all would be an
-    /// integration test against the owner's own Homebrew.
-    private struct SilentRunner: ProcessRunner {
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String],
-                                     env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            onExit(0)
-            return NoProcess()
-        }
-    }
-
     // MARK: - The fixture
 
     /// A Cellar under `prefix` holding one keg of `files`, and what those files
@@ -120,7 +99,10 @@ final class ASizeIsMeasuredNotGuessedTests: XCTestCase {
     }
 
     private func engine(weight: PackageWeight) -> HomebrewEngine {
-        HomebrewEngine(locator: FixedLocator(), runner: SilentRunner(),
+        // Nothing here runs a `brew`: every question in this file is about a
+        // directory. A runner that launches anything at all would be an
+        // integration test against the owner's own Homebrew.
+        HomebrewEngine(locator: FixedLocator(), runner: IdleRunner(),
                        privileged: NoPrivileges(), user: "tester",
                        marker: InMemoryOpMarker(), popularity: NoPopularity(),
                        weight: weight)
@@ -303,7 +285,7 @@ final class ASizeIsMeasuredNotGuessedTests: XCTestCase {
         XCTAssertEqual(engine.size(name: "openssl@3", isCask: false, version: "3.6.4"), 4_096)
 
         // The whole of an operation, through the one door every operation uses:
-        // `SilentRunner` exits the child at once, so the conclude path has run
+        // `IdleRunner` exits the child at once, so the conclude path has run
         // by the time this returns.
         engine.uninstall(name: "wget", isCask: false)
         weight.answer(8_192)

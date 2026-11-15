@@ -59,10 +59,6 @@ private final class DoctorRunner: ProcessRunner, @unchecked Sendable {
     }
 }
 
-private struct FixedLocator: BrewLocator {
-    func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-}
-
 /// Guards: 551243cf (the doctor query); with the issues read only when the exit status is 0 the class goes red.
 final class ADoctorReadingIsNotGatedOnExitStatusTests: XCTestCase {
 

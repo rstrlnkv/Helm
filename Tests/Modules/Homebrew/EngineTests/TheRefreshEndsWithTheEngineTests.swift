@@ -35,10 +35,6 @@ private final class SleepySpy: PopularityReading, @unchecked Sendable {
     }
 }
 
-private struct NoBrew: BrewLocator {
-    func brewPath() -> String? { nil }
-}
-
 /// **The other half of the refresh's lifecycle, which nothing held.**
 ///
 /// `ActivationIsWhatStartsTheRefreshTests` holds the line that *starts* the

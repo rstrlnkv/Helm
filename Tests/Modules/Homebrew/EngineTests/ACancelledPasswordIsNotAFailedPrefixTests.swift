@@ -44,7 +44,7 @@ final class ACancelledPasswordIsNotAFailedPrefixTests: XCTestCase {
         rig.engine.installBrew()
 
         XCTAssertEqual(rig.runner.calls.count, 1)
-        XCTAssertEqual(rig.runner.calls.first?.env, HomebrewEngine.installerEnvironment)
+        XCTAssertEqual(rig.runner.streamCalls.first?.env, HomebrewEngine.installerEnvironment)
     }
 
     /// The installer itself ends non-zero: named, with its code.

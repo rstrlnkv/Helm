@@ -14,6 +14,10 @@ struct NoPrivileges: PrivilegedRunner {
     func runAdmin(_ script: String) -> PrivilegedOutcome { .declined }
 }
 
+struct FixedLocator: BrewLocator {
+    func brewPath() -> String? { "/opt/homebrew/bin/brew" }
+}
+
 /// Answers every query with status 0 and nothing on standard output, and ends
 /// every streamed child at once.
 struct IdleRunner: ProcessRunner, @unchecked Sendable {

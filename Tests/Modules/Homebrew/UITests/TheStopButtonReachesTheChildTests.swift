@@ -11,10 +11,6 @@ import HelmTestSupport
 @MainActor
 final class TheStopButtonReachesTheChildTests: XCTestCase {
 
-    private struct FixedLocator: BrewLocator {
-        func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-    }
-
     private final class Handle: RunningProcess, @unchecked Sendable {
         private let lock = NSLock()
         private var _terminated = false

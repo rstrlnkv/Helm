@@ -53,10 +53,6 @@ final class ARefusedQueryIsNotACleanMachineTests: XCTestCase {
 
     // MARK: - Fakes
 
-    private struct FixedLocator: BrewLocator {
-        func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-    }
-
     /// A brew that answers a canned `(status, stdout)` per subcommand — and can
     /// answer *differently per call*, because the real one does: `listInstalled`
     /// runs `list --formula` and `list --cask` as two children, and a refusal

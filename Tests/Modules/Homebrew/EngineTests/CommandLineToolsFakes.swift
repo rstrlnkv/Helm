@@ -209,42 +209,14 @@ final class ScriptedPrivileged: PrivilegedRunner, @unchecked Sendable {
     func answer() { answered.signal() }
 }
 
-/// Records what it was asked to stream and finishes only when told: a stream
-/// that answered at once would release the busy gate before the call returned.
-final class RecordingStreamRunner: ProcessRunner, @unchecked Sendable {
-    struct Call { let args: [String]; let env: [String: String] }
-    private let lock = NSLock()
-    private var _calls: [Call] = []
-    private var _exits: [@Sendable (Int32) -> Void] = []
-
-    var calls: [Call] { lock.lock(); defer { lock.unlock() }; return _calls }
-
-    func run(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) { (0, "") }
-
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        lock.lock(); _calls.append(Call(args: args, env: env)); _exits.append(onExit); lock.unlock()
-        return NoProcess()
-    }
-
-    func finishAll(code: Int32 = 0) {
-        lock.lock(); let exits = _exits; _exits = []; lock.unlock()
-        for exit in exits { exit(code) }
-    }
-}
-
 /// An engine wired to the three fakes for the three sides of its boundary —
 /// Apple's tools, time, root — plus a runner, each named at construction.
 final class WaitRig {
-    struct FixedLocator: BrewLocator { func brewPath() -> String? { "/opt/homebrew/bin/brew" } }
-
     let journal = Journal()
     let tools: FakeCommandLineTools
     let ticker = FakeWaitTicker()
     let privileged: ScriptedPrivileged
-    let runner = RecordingStreamRunner()
+    let runner = HangingRunner()
     let news = EngineNews<HomebrewNews>()
     let engine: HomebrewEngine
 
@@ -260,17 +232,7 @@ final class WaitRig {
     /// opened now. A sentinel emitted before subscribing marks where the replay
     /// ends, so the read is deterministic.
     func replayed() async -> (state: OpState?, busy: Bool) {
-        news.say(.line("test.sentinel"), slot: "test.sentinel")
-        var state: OpState?
-        var busy = false
-        for await item in news.stream() {
-            if case .line("test.sentinel") = item { break }
-            switch item {
-            case .state(let s): state = s
-            case .busy: busy = true
-            case .line, .brew: break
-            }
-        }
-        return (state, busy)
+        let items = await replay(news)
+        return (items.states.last, items.sawBusy)
     }
 }

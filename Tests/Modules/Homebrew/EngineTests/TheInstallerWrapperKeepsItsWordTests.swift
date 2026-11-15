@@ -248,19 +248,6 @@ final class TheInstallerWrapperPassesItsCodeAndOutputThroughTests: XCTestCase {
 
 // MARK: - Harness, shared by the two classes above
 
-private final class Run: @unchecked Sendable {
-    let done = DispatchSemaphore(value: 0)
-    private let lock = NSLock()
-    private var _status: Int32?
-    private var _exits = 0
-    private var _lines: [String] = []
-    var status: Int32? { lock.lock(); defer { lock.unlock() }; return _status }
-    var exits: Int { lock.lock(); defer { lock.unlock() }; return _exits }
-    var lines: [String] { lock.lock(); defer { lock.unlock() }; return _lines }
-    func line(_ l: String) { lock.lock(); _lines.append(l); lock.unlock() }
-    func exit(_ s: Int32) { lock.lock(); _status = s; _exits += 1; lock.unlock(); done.signal() }
-}
-
 private struct Ground {
     let root: URL
     let temporaries: URL
@@ -288,22 +275,6 @@ private struct Ground {
 
 private extension XCTestCase {
 
-    func composedInstaller() throws -> String {
-        let rig = WaitRig()
-        rig.tools.gitExecutable = true
-        rig.engine.installBrew()
-        return try XCTUnwrap(try XCTUnwrap(rig.runner.calls.first, "the engine launched nothing").args.last)
-    }
-
-    func rehosted(_ command: String, source: URL, temporaries: URL) throws -> String {
-        let url = try XCTUnwrap(command.split(separator: " ").first { $0.hasPrefix("https://") },
-                                "the command downloads nothing over https any more")
-        return command
-            .replacingOccurrences(of: String(url), with: "file://\(source.path)")
-            .replacingOccurrences(of: "/usr/bin/mktemp",
-                                  with: "/usr/bin/mktemp -p \(temporaries.path) -t helm")
-    }
-
     func ground(_ label: String) throws -> Ground {
         let root = scratchDirectory(label)
         let temporaries = root.appendingPathComponent("tmp")
@@ -314,22 +285,6 @@ private extension XCTestCase {
         // A red run must not leave a stand-in behind it.
         addTeardownBlock { g.killAll() }
         return g
-    }
-
-    func start(_ command: String, trace: Bool = false) -> (RunningProcess, Run) {
-        let run = Run()
-        let handle = ShellProcessRunner().stream("/bin/bash", [trace ? "-xc" : "-c", command], env: [:],
-                                                 onLine: { run.line($0) }, onExit: { run.exit($0) })
-        return (handle, run)
-    }
-
-    func eventually(_ seconds: TimeInterval, _ condition: () -> Bool) -> Bool {
-        let deadline = Date().addingTimeInterval(seconds)
-        while Date() < deadline {
-            if condition() { return true }
-            Thread.sleep(forTimeInterval: 0.01)
-        }
-        return condition()
     }
 
     /// A line only the shell writes about its own jobs: `[1]+  Done …`,

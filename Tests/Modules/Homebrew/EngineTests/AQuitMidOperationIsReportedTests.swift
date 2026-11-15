@@ -13,10 +13,6 @@ import HelmRuntime
 /// left behind — once.
 final class AQuitMidOperationIsReportedTests: XCTestCase {
 
-    private struct FixedLocator: BrewLocator {
-        func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-    }
-
     private func engine(_ runner: ProcessRunner, marker: OpMarker) -> HomebrewEngine {
         HomebrewEngine(locator: FixedLocator(), runner: runner,
                        privileged: NoPrivileges(), user: "tester", marker: marker)

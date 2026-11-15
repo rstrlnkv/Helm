@@ -3,10 +3,6 @@ import HelmContract
 @testable import Module_Homebrew_Engine
 @testable import Module_Homebrew_UI
 
-private struct FixedLocator: BrewLocator {
-    func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-}
-
 @MainActor
 private func pair(_ runner: ProcessRunner) -> (HomebrewEngine, HomebrewViewModel) {
     let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
@@ -255,59 +251,39 @@ final class MovingOffThePackageRetiresAnUninstallAskTests: XCTestCase {
 
     // MARK: - The three gestures
 
-    /// Back on the narrow screen: `backBar` calls `select(nil)` and nothing
-    /// else. The list comes up, and the answer must not put a confirmation
-    /// over it.
-    func testBackRetiresTheAsk() async {
-        let runner = self.runner()
-        let (engine, vm) = pair(runner)
-        let ask = await askInFlight(vm, runner)
+    /// Each row is its own door, and a fresh runner, pair and ask are built for it.
+    func testEveryGestureThatMovesOffThePackageRetiresTheAsk() async {
+        let gestures: [(gesture: (HomebrewViewModel) -> Void, message: String)] = [
+            // Back on the narrow screen: `backBar` calls `select(nil)` and nothing
+            // else. The list comes up, and the answer must not put a confirmation
+            // over it.
+            ({ $0.select(nil) },
+             "pressing Back left the query out, and its answer raised a confirmation for "
+             + "the app's only irreversible deletion over the package list"),
+            // Another row: `List(selection:)`'s setter, the same door a click on any
+            // neighbouring row goes through. The screen is describing yt-dlp and the
+            // dialog would offer to delete openssl@3.
+            ({ [neighbour] in $0.select(neighbour.id) },
+             "a confirmation for openssl@3 opened over a page describing yt-dlp"),
+            // Another segment: the segmented picker writes `segment` through its own
+            // binding and never touches `select(_:)`, so this is the gesture a fix
+            // made at the selection setter alone does not close.
+            ({ $0.segment = .updates },
+             "a confirmation for a package in Installed opened over the Updates segment"),
+        ]
+        for (gesture, message) in gestures {
+            let runner = self.runner()
+            let (engine, vm) = pair(runner)
+            let ask = await askInFlight(vm, runner)
 
-        vm.select(nil)
+            gesture(vm)
 
-        runner.release()
-        await ask.value
-        XCTAssertNil(vm.pendingUninstall,
-                     "pressing Back left the query out, and its answer raised a confirmation for "
-                     + "the app's only irreversible deletion over the package list")
-        XCTAssertEqual(vm.dependentsOfPending, .notAsked)
-        withExtendedLifetime(engine) {}
-    }
-
-    /// Another row: `List(selection:)`'s setter, the same door a click on any
-    /// neighbouring row goes through. The screen is describing yt-dlp and the
-    /// dialog would offer to delete openssl@3.
-    func testSelectingAnotherPackageRetiresTheAsk() async {
-        let runner = self.runner()
-        let (engine, vm) = pair(runner)
-        let ask = await askInFlight(vm, runner)
-
-        vm.select(neighbour.id)
-
-        runner.release()
-        await ask.value
-        XCTAssertNil(vm.pendingUninstall,
-                     "a confirmation for openssl@3 opened over a page describing yt-dlp")
-        XCTAssertEqual(vm.dependentsOfPending, .notAsked)
-        withExtendedLifetime(engine) {}
-    }
-
-    /// Another segment: the segmented picker writes `segment` through its own
-    /// binding and never touches `select(_:)`, so this is the gesture a fix
-    /// made at the selection setter alone does not close.
-    func testSwitchingSegmentRetiresTheAsk() async {
-        let runner = self.runner()
-        let (engine, vm) = pair(runner)
-        let ask = await askInFlight(vm, runner)
-
-        vm.segment = .updates
-
-        runner.release()
-        await ask.value
-        XCTAssertNil(vm.pendingUninstall,
-                     "a confirmation for a package in Installed opened over the Updates segment")
-        XCTAssertEqual(vm.dependentsOfPending, .notAsked)
-        withExtendedLifetime(engine) {}
+            runner.release()
+            await ask.value
+            XCTAssertNil(vm.pendingUninstall, message)
+            XCTAssertEqual(vm.dependentsOfPending, .notAsked, message)
+            withExtendedLifetime(engine) {}
+        }
     }
 
     // MARK: - What must not be retired

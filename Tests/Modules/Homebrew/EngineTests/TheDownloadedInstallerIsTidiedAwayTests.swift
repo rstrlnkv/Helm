@@ -34,68 +34,7 @@ import HelmRuntime
 /// carried past the `rm` — is run exactly as the engine composed it.
 final class TheDownloadedInstallerIsTidiedAwayTests: XCTestCase {
 
-    // MARK: - Fakes
-
-    private struct FixedLocator: BrewLocator {
-        func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-    }
-
-    /// Says yes at the dialog and records nothing else: the preparation script
-    /// is another test's subject.
-    private struct AllowingPrivileged: PrivilegedRunner {
-        func runAdmin(_ script: String) -> PrivilegedOutcome { .done }
-    }
-
-    /// Keeps what it was asked to stream and never finishes it — the engine's
-    /// busy gate stays shut, which is what the other tests here rely on and
-    /// what stops this one from racing its own teardown.
-    private final class RecordingRunner: ProcessRunner, @unchecked Sendable {
-        private let lock = NSLock()
-        private var _args: [[String]] = []
-        var args: [[String]] { lock.lock(); defer { lock.unlock() }; return _args }
-
-        func run(_ launchPath: String, _ args: [String],
-                 env: [String: String]) -> (status: Int32, stdout: String) { (0, "") }
-
-        /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-        func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-            (0, "")
-        }
-
-        func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                    onLine: @escaping @Sendable (String) -> Void,
-                    onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-            lock.lock(); _args.append(args); lock.unlock()
-            return NoProcess()
-        }
-    }
-
     // MARK: - Plumbing
-
-    /// The string the engine would have handed to `/bin/bash -c`.
-    private func composedInstaller() throws -> String {
-        let runner = RecordingRunner()
-        let engine = HomebrewEngine(locator: FixedLocator(), runner: runner,
-                                    privileged: AllowingPrivileged(), user: "tester",
-                                    news: EngineNews())
-        engine.installBrew()
-        let args = try XCTUnwrap(runner.args.first, "the engine launched nothing")
-        XCTAssertEqual(args.first, "-c", "the installer stopped being a `bash -c` string")
-        return try XCTUnwrap(args.last)
-    }
-
-    /// The engine's own string with the two fixtures in it. The URL is found by
-    /// its scheme rather than written out again, so a moved installer changes
-    /// nothing here.
-    private func rehosted(_ command: String, installer: URL, temporaries: URL) throws -> String {
-        let url = try XCTUnwrap(command.split(separator: " ")
-                                    .first { $0.hasPrefix("https://") },
-                                "the command downloads nothing over https any more")
-        return command
-            .replacingOccurrences(of: String(url), with: "file://\(installer.path)")
-            .replacingOccurrences(of: "/usr/bin/mktemp",
-                                  with: "/usr/bin/mktemp -p \(temporaries.path) -t helm")
-    }
 
     /// Runs the engine's command with `script` standing in for the downloaded
     /// installer, and answers what the shell exited with and what it left in the
@@ -116,7 +55,7 @@ final class TheDownloadedInstallerIsTidiedAwayTests: XCTestCase {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
-        process.arguments = ["-c", try rehosted(composedInstaller(), installer: installer,
+        process.arguments = ["-c", try rehosted(composedInstaller(), source: installer,
                                                 temporaries: temporaries)]
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice

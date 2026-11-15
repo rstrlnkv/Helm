@@ -23,37 +23,7 @@ import XCTest
 /// answers about the catalogue, and a stale catalogue makes «Updates: 0» a lie
 /// about the machine. The gate is "does this query need the catalogue", not
 /// "is this query slow".
-private final class EnvironmentRecorder: ProcessRunner, @unchecked Sendable {
-    private let lock = NSLock()
-    private var _calls: [(args: [String], env: [String: String])] = []
-    var calls: [(args: [String], env: [String: String])] {
-        lock.lock(); defer { lock.unlock() }; return _calls
-    }
-
-    func run(_ launchPath: String, _ args: [String],
-             env: [String: String]) -> (status: Int32, stdout: String) {
-        lock.lock(); _calls.append((args, env)); lock.unlock()
-        return (0, "")
-    }
-
-    /// Not `doctor`: no fake here needs to answer on the diagnostics stream.
-    func runCapturingDiagnostics(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, output: String) {
-        (0, "")
-    }
-
-    func stream(_ launchPath: String, _ args: [String], env: [String: String],
-                onLine: @escaping @Sendable (String) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) -> RunningProcess {
-        lock.lock(); _calls.append((args, env)); lock.unlock()
-        onExit(0)
-        return NoProcess()
-    }
-}
-
-private struct FixedLocator: BrewLocator {
-    func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-}
-
+///
 /// Kept: guards the defect fixed in 11f8f602 Stop a purely local brew query from refreshing the catalogue.
 final class ALocalQueryDoesNotAutoUpdateTests: XCTestCase {
 

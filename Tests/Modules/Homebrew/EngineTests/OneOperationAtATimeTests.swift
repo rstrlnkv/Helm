@@ -21,10 +21,6 @@ import HelmContract
 /// is what a real `brew install` looks like for the seconds that matter.
 final class OneOperationAtATimeTests: XCTestCase {
 
-    private struct FixedLocator: BrewLocator {
-        func brewPath() -> String? { "/opt/homebrew/bin/brew" }
-    }
-
     private func engine(_ runner: ProcessRunner) -> HomebrewEngine {
         HomebrewEngine(locator: FixedLocator(), runner: runner,
                        privileged: NoPrivileges(), user: "tester")
@@ -165,17 +161,7 @@ final class OneOperationAtATimeTests: XCTestCase {
     }
 
     private func drain(_ news: EngineNews<HomebrewNews>) async -> (state: OpState?, busy: Bool) {
-        // A slot of its own each time: an earlier call's sentinel is still in
-        // the replay, and only this call's ends the read.
-        let sentinel = "test.sentinel.\(UUID().uuidString)"
-        news.say(.line(sentinel), slot: sentinel)
-        var last: OpState?
-        var busy = false
-        for await item in news.stream() {
-            if case .line(sentinel) = item { break }
-            if case .busy = item { busy = true }
-            if case .state(let s) = item { last = s }
-        }
-        return (last, busy)
+        let items = await replay(news)
+        return (items.states.last, items.sawBusy)
     }
 }
