@@ -3927,8 +3927,10 @@ import HelmUI
 
     /// **The settle of a bar with a Flat search: one plan from the room Helm lays out, and the one writer of the
     /// fold of its tabs** (`checkOverflow` only asks for a settle). The room is `searchOffer`'s arithmetic over the
-    /// plate's trailing edge (assumed to be the bar's right end; not read in a window) with the tabs whole and with
-    /// them folded, the plan is `ShellBarLayout.searchPlan`, and the tabs and the plate are set to it on every pass:
+    /// card's trailing edge, `pane.leading + pane.width` as `paneMoved` is told it, with the tabs whole and with
+    /// them folded; never the plate's own edge, which AppKit moves when the plate's width is set, so a plan
+    /// would move the room it was planned from. The plan is `ShellBarLayout.searchPlan`, and the tabs and the plate
+    /// are set to it on every pass:
     /// folding the tabs first, then the width; widening the room back, the width first and the tabs in its
     /// completion, which a pass that wants the tabs unfolded sets again. Where no room can be read (no pane told, no
     /// name end) nothing is changed.
@@ -3936,7 +3938,7 @@ import HelmUI
         guard let flat = bar.flatSearch, let window, flat.plate.window != nil, let pane, let content = bar.content,
               let nameEnd = nameMaxX(bar) ?? windowTitleMaxX(window)?.maxX else { return }
         let hasTabs = !content.tabs.isEmpty
-        let barEnd = flat.plate.convert(NSPoint(x: flat.plate.bounds.width, y: 0), to: nil).x
+        let barEnd = pane.leading + pane.width
         let actions = bar.actionsItem?.view?.frame.width ?? 0
         func room(tabsWidth: CGFloat) -> CGFloat {
             let offer = hasTabs

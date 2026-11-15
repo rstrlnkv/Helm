@@ -44,7 +44,10 @@ enum ShellBarLayout {
     /// .settleFlat`), never from the field's own frame, so a plan does not depend on its own last output and
     /// needs no margin against flicker. The order is the plan's. On the shown window (build 1701) the tabs were seen folding
     /// early and staying folded, from `checkOverflow` folding them itself; under Flat that now asks for a settle
-    /// instead, and a shown window has not yet confirmed the order. `roomWholeTabs` and `roomFoldedTabs` are what is left of the bar for the
+    /// instead, and a shown window, after this fix, kept the tabs whole while the field
+    /// went from an AX frame of 285 at 1060 to 192 at 860 (the plate itself was measured only at 1060, 283, and the AX
+    /// frame was 2 over it at 1060, the only width where both were read); the field down
+    /// to 120, the magnifier and the fold are not yet seen there. `roomWholeTabs` and `roomFoldedTabs` are what is left of the bar for the
     /// search with the tabs whole and with them folded. Magnifier first: the field gives way from `searchWidth` to
     /// `searchFloor`, then collapses to the magnifier, and the tabs fold only when they still do not fit beside the
     /// magnifier.
