@@ -573,7 +573,7 @@ public struct HelmToolbarSwitcher<Value: Hashable>: NSViewRepresentable {
 
 /// **The bar's segmented cell: no bezel, a capsule of
 /// `HelmSurface.barPick` under the selected segment, the word in 13 pt
-/// medium.** It reads each segment's label, image and menu indicator from the
+/// regular.** It reads each segment's label, image and menu indicator from the
 /// control's own per-segment state, so what `fill` writes, the dot and the
 /// refill rule stay one. `cellSize` is its own, so the control's fitting size
 /// follows it.
@@ -628,14 +628,16 @@ final class HelmFlatSegmentedCell: NSSegmentedCell {
     private var generation = 0
 
     /// The pick's height; the bar's own control is `height` high.
-    static let pill: CGFloat = 32
-    /// The space between the cell's edge and the pick, and between two segments.
-    static let inset: CGFloat = HelmSpace.s1
-    /// The space either side of a segment's content.
-    static let sidePadding: CGFloat = 14
+    static let pill: CGFloat = 28
+    /// The space between the cell's edge and the pick.
+    static let inset: CGFloat = HelmSpace.s2
+    /// The space between two segments; 5 and 9 are off the ladder, literal as the Figma Kit's Segmented spec gives them.
+    static let gap: CGFloat = 5
+    /// The space either side of a segment's content (the Kit's Segmented spec: 9).
+    static let sidePadding: CGFloat = 9
     static let height: CGFloat = pill + 2 * inset
 
-    private static let font = NSFont.systemFont(ofSize: 13, weight: .medium)
+    private static let font = NSFont.systemFont(ofSize: 13, weight: .regular)
     /// The longest side a glyph is drawn at.
     private static let glyphSide: CGFloat = 16
     /// The menu indicator's width and height, and its stroke.
@@ -645,7 +647,7 @@ final class HelmFlatSegmentedCell: NSSegmentedCell {
     override var cellSize: NSSize {
         var width = 2 * Self.inset
         for index in 0..<segmentCount { width += segmentWidth(index) }
-        width += Self.inset * CGFloat(max(segmentCount - 1, 0))
+        width += Self.gap * CGFloat(max(segmentCount - 1, 0))
         return NSSize(width: width, height: Self.height)
     }
 
@@ -705,7 +707,7 @@ final class HelmFlatSegmentedCell: NSSegmentedCell {
     /// Where one segment stands in the cell's frame.
     private func segmentFrame(_ segment: Int, in cellFrame: NSRect) -> NSRect {
         var x = cellFrame.minX + Self.inset
-        for index in 0..<segment { x += segmentWidth(index) + Self.inset }
+        for index in 0..<segment { x += segmentWidth(index) + Self.gap }
         return NSRect(x: x, y: cellFrame.minY, width: segmentWidth(segment), height: cellFrame.height)
     }
 

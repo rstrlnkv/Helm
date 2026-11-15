@@ -11,7 +11,7 @@ import HelmUI
 ///
 /// **The window wears an app-owned `NSToolbar`, built by `SettingsToolbar`**: a cached bar for each page that declares toolbar content and one shared by the pages that
 /// declare none, AppKit's strip over the whole window, and the page's name as the bar's first item, held off the
-/// item's leading edge so that it starts sixteen points past the card and never left of where AppKit starts its items, told where the card is. The shell's pane starts
+/// item's leading edge so that it starts fourteen points past the card and never left of where AppKit starts its items, told where the card is. The shell's pane starts
 /// where AppKit's strip ends and the shell adds nothing to it.
 @MainActor final class SettingsWindow: NSObject, NSWindowDelegate {
     private let window: NSWindow

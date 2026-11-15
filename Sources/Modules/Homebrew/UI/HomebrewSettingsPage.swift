@@ -300,12 +300,11 @@ struct HomebrewSettingsPage: View {
         // just pressed (measured at 37 pt in one frame), which mounting it
         // disabled on every segment was written to avoid. The capsule
         // (`HelmToolbarActionsCapsule`, `HelmUI/DesignSystem/HelmToolbarActions.swift`)
-        // replaced a per-action `NSToolbarItem` with one custom-view item
-        // reserving the full width of every declared action: Refresh, always
-        // visible, stays exactly still while Upgrade All's own glass morphs
-        // in and out of it, which is what closed the smaller jump a reviewer
-        // had measured — Refresh and the search field still shifting by the
-        // hidden item's own width — that hiding a *separate* item left open.
+        // replaced a per-action `NSToolbarItem` with one custom-view item whose
+        // width follows the actions shown: Upgrade All's own glass morphs in and
+        // out of it with no item of AppKit's hiding, and the search field takes or
+        // gives back the room (2026-11-15; before, a reserve for every declared
+        // action kept Refresh still and left a dead slot beside the tabs).
         .helmWindowToolbar(HelmPageToolbarContent(
             tabs: HomebrewViewModel.Segment.allCases.map {
                 HelmToolbarTab(id: $0.rawValue, title: $0.label, symbol: $0.symbol)

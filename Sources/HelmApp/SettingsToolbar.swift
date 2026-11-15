@@ -48,9 +48,9 @@ import HelmUI
 /// (`HelmToolbarAction.isEnabled`); one that belongs to a *different* tab is
 /// simply left out of the capsule's visible set there
 /// (`HelmToolbarAction.isVisible`) rather than out of what the page declares,
-/// so the capsule's fixed reserve — and the bar's own identifier list, which
+/// so the bar's own identifier list, which
 /// carries the one `helm.actions` identifier regardless of which actions are
-/// currently shown — never has to change shape for it.
+/// currently shown, never has to change shape for it (the capsule's own width follows the shown set).
 ///
 /// A page says what it wants through `HelmWindowToolbarChannel`
 /// (`HelmWindowToolbar.swift` in `HelmUI`) — `nil` when a page has never
@@ -230,7 +230,7 @@ import HelmUI
     /// (`.sidebarSeparator`, the default), or no tracking item at all
     /// (`.spacer`).** The window the app builds constructs `.spacer` (`SettingsWindow`); `.sidebarSeparator`
     /// is for the test rigs that still mount a split view. A `.spacer` bar starts with its name, under both
-    /// page-bar styles, held off the item's leading edge by `nameInset` so that it starts sixteen points
+    /// page-bar styles, held off the item's leading edge by `nameInset` so that it starts fourteen points
     /// past the pane's edge and never left of where AppKit starts the items; a `.sidebarSeparator` bar
     /// lists its name under `.moduleName` alone and holds it at 0. A `.spacer` bar with tabs also lists
     /// `helm.tabsLead` in front of them, where a `.sidebarSeparator` bar lists a flexible space (`identifiers`).
@@ -435,24 +435,49 @@ import HelmUI
 
     /// **The view of the `helm.actions` item: `HelmToolbarActionsCapsule` in a hosting view, dressed by
     /// the look the bar was built under (`PageBar.shape`), never by a re-read of the stored value.**
-    /// `\.helmBarAppearance` is the capsule's look (glass under Liquid Glass, nothing behind the entries
-    /// under Flat) and `flatInactiveInk` the numbers a flat capsule dims by in an inactive window, the name
-    /// zone's. The root is no `AnyView`: a reader of the root walks value types.
+    /// `\.helmBarAppearance` is the capsule's look (glass under Liquid Glass, one `barPlate` capsule
+    /// behind the entries under Flat) and `flatInactiveInk` the numbers a flat capsule dims by in an inactive
+    /// window, the name zone's. The root is no `AnyView`: a reader of the root walks value types.
     ///
     /// `bar.content?.search == nil` is "the capsule is this bar's own last item" — the answer a bar
     /// whose shape has not changed keeps for its life (`ShapeSignature.hasSearch` rebuilds the whole
     /// bar, this item included, the moment that changes). See `HelmToolbarActionsCapsule.edgeMargin`'s
     /// own header for the measurement the inset closes: Leftovers, which ends its bar here,
     /// used to sit 4.0 pt from the window's trailing edge against Uninstaller's 8.0 pt for
-    /// `helm.search` at the same width.
+    /// `helm.search` at the same width. With a search the inset is `ShellBarLayout.actionsSearchPad`, aimed at
+    /// making the 4 pt AppKit leaves of the actions and the search `ShellBarLayout.itemGap` (8); read at 1060
+    /// in both looks, the actions to the search stood 7.5 (tester), the half point unexplained.
+    ///
+    /// **The host is as wide as the entries shown, and the settle is told when that moves.** Its frame is
+    /// watched (`watchActionsFrame`), and `settle(_:)` writes the search field's offer from the width the host
+    /// has then; the offer is a ceiling, so a capsule that grew before that settle leaves the field compressible,
+    /// and one that shrank is held at its old width until the leaving entry is gone, then narrowed in the pass that writes the offer (`releaseActionsWidth`). Seen on a shown window (Helm Dev, Homebrew, 1060, Flat and
+    /// Liquid Glass, Updates to Installed and to Health and back): AppKit lays the item out again when the hosting
+    /// view's intrinsic width changes, as it does for the tabs' host after `invalidateIntrinsicContentSize()`;
+    /// the capsule moved once, animated (~0.19 s), the field once, in one frame.
     private func actionsHost(_ model: HelmToolbarActionsModel, for bar: PageBar) -> NSHostingView<some View> {
-        let trailingInset = bar.content?.search == nil ? HelmToolbarActionsCapsule.edgeMargin : 0
+        let trailingInset = bar.content?.search == nil ? HelmToolbarActionsCapsule.edgeMargin : ShellBarLayout.actionsSearchPad
         let hosting = NSHostingView(rootView: HelmToolbarActionsCapsule(
             model, trailingInset: trailingInset,
             flatInactiveInk: .nameZone(titlebarIsTransparent: titlebarIsTransparent))
             .environment(\.helmBarAppearance, bar.shape.look))
         hosting.sizingOptions = [.intrinsicContentSize]
+        watchActionsFrame(bar, host: hosting)
         return hosting
+    }
+
+    /// Re-arms the settle of `bar` whenever the actions' host changes its frame (the visible set moved), so
+    /// the offer written to the search field follows the capsule's width. A rebuilt host replaces the watch.
+    private func watchActionsFrame(_ bar: PageBar, host: NSView) {
+        if let old = bar.actionsFrameWatch { NotificationCenter.default.removeObserver(old) }
+        host.postsFrameChangedNotifications = true
+        bar.actionsFrameWatch = NotificationCenter.default.addObserver(
+            forName: NSView.frameDidChangeNotification, object: host, queue: nil) { [weak self, weak bar] _ in
+            MainActor.assumeIsolated {
+                guard let self, let bar, bar === self.attachedBar else { return }
+                self.scheduleSettle(bar)
+            }
+        }
     }
 
     /// **A language, label-style, page-bar or look change** — every one of them can
@@ -620,7 +645,7 @@ import HelmUI
     /// `startOfItems(rail:)` of the placement told here and read no item's place off the toolbar (the widths of the
     /// name's host and of the tabs' view are read), which in this turn has not laid out under that placement (the name
     /// item's edge is still the other placement's); read in a window never shown, that puts the name on the card's edge
-    /// plus sixteen and the tabs within a point of the card's middle in the turn that moves the buttons.
+    /// plus fourteen and the tabs within a point of the card's middle in the turn that moves the buttons.
     ///
     /// Both numbers are normalised before the comparison, so a NaN does not
     /// differ from itself. Not-a-number, infinite or below zero means for
@@ -758,7 +783,8 @@ import HelmUI
     }
 
     /// **The spacing between the tabs' item and the actions' item: 8.** Read in a window never shown, 8.0 under both
-    /// looks, with the actions' item next to the search's.
+    /// looks, with the actions' item next to the search's. Its own reading, not `ShellBarLayout.itemGap`: the two
+    /// agree in number only, and nothing keeps this one at the Figma Kit's gap.
     nonisolated static let tabsToActions: CGFloat = 8
 
     /// **Where the whole tabs on the card's middle end, and what is left of the bar's right end beyond them,
@@ -802,7 +828,7 @@ import HelmUI
     /// 4 points over what the field's right edge leaves; not corrected. `nil` where the field is not an idle
     /// one (it is being edited, is opening, holds text or is held at rest by the cap), or where the bar has no
     /// lead item, no pane was told or the search is not in a window: the field is then charged what it claims.
-    private func searchOffer(_ bar: PageBar, tabsWidth: CGFloat) -> SearchOffer? {
+    private func searchOffer(_ bar: PageBar, tabsWidth: CGFloat, actionsWidth: CGFloat? = nil) -> SearchOffer? {
         guard bar.tabsLead != nil, let pane, let nameMaxX = nameMaxX(bar), let field = bar.searchItem?.searchField,
               bar.searchRestCap?.isActive != true, !bar.searchOpening, field.currentEditor() == nil,
               field.stringValue.isEmpty, let viewer = field.superview, viewer.window != nil else { return nil }
@@ -810,7 +836,7 @@ import HelmUI
         return Self.searchOffer(barEnd: slot.convert(NSPoint(x: slot.bounds.width, y: 0), to: nil).x,
                                 paneLeading: pane.leading, paneWidth: pane.width, tabsWidth: tabsWidth,
                                 tabsEarliest: nameMaxX + Self.tabsLeadFloor + tabsGap(of: bar),
-                                actionsWidth: bar.actionsItem?.view?.frame.width ?? 0)
+                                actionsWidth: actionsWidth ?? bar.actionsItem?.view?.frame.width ?? 0)
     }
 
     /// Writes the offer of now, for the tabs as they stand, to the cap on the field's width (`PageBar.searchOfferCap`),
@@ -819,9 +845,9 @@ import HelmUI
     /// The cap is a ceiling: it does not move AppKit's own collapse of the field to the magnifier, read in a window
     /// never shown under both looks: the field shown at a room of 160 and the magnifier at a room of 150.
     @discardableResult
-    private func writeSearchOffer(_ bar: PageBar, tabsWidth width: CGFloat? = nil) -> Bool {
+    private func writeSearchOffer(_ bar: PageBar, tabsWidth width: CGFloat? = nil, actionsWidth: CGFloat? = nil) -> Bool {
         guard let cap = bar.searchOfferCap else { return false }
-        let offer = searchOffer(bar, tabsWidth: width ?? tabsWidth(bar))
+        let offer = searchOffer(bar, tabsWidth: width ?? tabsWidth(bar), actionsWidth: actionsWidth)
         var moved = cap.isActive != (offer != nil)
         if let offer, abs(offer.width - cap.constant) > 0.01 {
             cap.constant = offer.width
@@ -1305,8 +1331,8 @@ import HelmUI
         }
         // One item for every declared action, whatever the tab currently
         // hides — `ShapeSignature.actionIDs` is what invalidates a cached bar
-        // when the *declared* set moves, since the reserved width inside the
-        // capsule (`HelmToolbarActionsCapsule`'s back layer) depends on it.
+        // when the *declared* set moves, since the capsule's model
+        // (`HelmToolbarActionsCapsule`'s `declared`) is seeded from it.
         if !content.actions.isEmpty { list.append(actionsID) }
         if content.search != nil { list.append(searchID) }
         return list
@@ -1318,8 +1344,9 @@ import HelmUI
     }
 
     /// How far past the pane's leading edge the name starts: the
-    /// distance the name keeps from it. This function's own number.
-    nonisolated private static let nameGap: CGFloat = 16
+    /// distance the name keeps from it, the Figma Kit's 14 (10 toolbar padding and 4 icon slot). The one
+    /// place that distance is kept; `NameZoneView` adds none of its own.
+    nonisolated private static let nameGap: CGFloat = 14
 
     /// **How far the name's view is held off its item's leading edge so that it starts `nameGap`
     /// past the pane's leading edge, given where the toolbar starts its items** — 0 where the items
@@ -3378,10 +3405,10 @@ import HelmUI
     /// own glass-sharing (WWDC25-310) drew them as one capsule and hiding one
     /// (`NSToolbarItem.isHidden`) collapsed its width, a relayout AppKit
     /// itself animates: Refresh visibly sliding to make room for Upgrade on
-    /// every visit to Homebrew's Updates tab. The capsule's own back layer
-    /// reserves that width for every declared action regardless of which are
-    /// shown, so the hosted item's intrinsic size — and everything beside it
-    /// in the bar — never moves at all.
+    /// every visit to Homebrew's Updates tab. The capsule is one SwiftUI subtree and its host is as wide as
+    /// the entries shown (no reserve for the hidden ones: an empty slot beside the tabs was the owner's
+    /// «Дыры быть не должно»); a change of that width reaches the settle through the host's frame
+    /// (`watchActionsFrame`), which writes the search field's offer again.
     private func makeActionsItem(_ bar: PageBar) -> NSToolbarItem {
         let item = NSToolbarItem(itemIdentifier: Self.actionsID)
         let model = HelmToolbarActionsModel()
@@ -3462,13 +3489,40 @@ import HelmUI
         let visible = content.actions.filter(\.isVisible).map(\.id)
         if visible != model.visibleIDs {
             if animated {
+                let before = model.visibleIDs.count
+                // A shrink keeps the host at its old width until the leaving entry is gone, then narrows it and
+                // offers the field the room in one pass: a host that narrows first sits against the field's old
+                // edge, and the offer written at the settle moves it back (a hop right, then left).
+                bar.actionsReleaseWork?.cancel()
+                bar.actionsReleaseWork = nil
+                if visible.count < before { model.setHeldCount(max(model.heldCount, before)) }
                 withAnimation(HelmMotion.interface) { model.setVisibleIDs(visible) }
+                if model.heldCount > 0 { releaseActionsWidth(bar, to: visible.count) }
             } else {
                 var t = Transaction(); t.disablesAnimations = true
                 withTransaction(t) { model.setVisibleIDs(visible) }
+                // A hold left by an animated patch must not outlive this one: nothing animates now, so nothing is left to wait for.
+                bar.actionsReleaseWork?.cancel()
+                bar.actionsReleaseWork = nil
+                model.setHeldCount(0)
             }
         }
         patchActionsMenu(bar)
+    }
+
+    /// After the leaving entry's animation: writes the offer for the host as it will be (`count` entries and the
+    /// inset it has now), then lets the host narrow, so the field and the capsule move in the same layout pass.
+    private func releaseActionsWidth(_ bar: PageBar, to count: Int) {
+        let work = DispatchWorkItem { [weak self, weak bar] in
+            guard let self, let bar, let model = bar.actionsModel else { return }
+            bar.actionsReleaseWork = nil
+            let side = HelmToolbarActionsCapsule.side
+            let inset = max((bar.actionsItem?.view?.frame.width ?? 0) - side * CGFloat(model.heldCount), 0)
+            self.writeSearchOffer(bar, actionsWidth: count > 0 ? side * CGFloat(count) + inset : 0)
+            model.setHeldCount(0)
+        }
+        bar.actionsReleaseWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + HelmMotion.interfaceDuration, execute: work)
     }
 
     /// **The floor for the rare case where even the capsule overflows.**
@@ -3900,8 +3954,8 @@ private extension HelmBarAppearance {
 /// The look is one of these: `AppSettings.barAppearance` is read here, and a
 /// bar built under the other look is never given back to a page.
 /// `actionIDs` stays even though there is one `NSToolbarItem` for the whole
-/// capsule now, not one per action — `HelmToolbarActionsCapsule`'s reserve is
-/// sized from the *declared* set, so a page whose declared actions change
+/// capsule now, not one per action — the capsule's model is seeded from the
+/// *declared* set, so a page whose declared actions change
 /// shape still needs a fresh item. `PageBarStyle` is a plain enumeration with
 /// no associated values, so it is `Equatable` for nothing more than declaring
 /// it here.
@@ -4105,6 +4159,8 @@ private final class PageBar {
     /// and what makes it measure again.
     var tabsWidth: (key: SettingsToolbar.TabsWidthKey, full: CGFloat)?
     nonisolated(unsafe) var fieldFrameWatch: NSObjectProtocol?
+    /// The watch on the actions' host frame (`SettingsToolbar.watchActionsFrame`).
+    nonisolated(unsafe) var actionsFrameWatch: NSObjectProtocol?
     /// **A `width <= 0` cap on the search field, below 750 — what makes
     /// AppKit rest the search as its own magnifier while room is plenty.**
     /// `NSSearchToolbarItem` has no public "collapse"; its field "layout
@@ -4129,6 +4185,8 @@ private final class PageBar {
     /// field idle, its one writer.
     var searchOfferCap: NSLayoutConstraint?
     var actionsModel: HelmToolbarActionsModel?
+    /// The pending end of a shrink's hold on the host's width (`SettingsToolbar.releaseActionsWidth`).
+    var actionsReleaseWork: DispatchWorkItem?
     var actionsItem: NSToolbarItem?
     var searchItem: NSSearchToolbarItem?
     /// **Set by `SettingsToolbar.makeActionsItem` the moment it builds this
@@ -4153,5 +4211,6 @@ private final class PageBar {
         // own header says so — which is what lets a `deinit` Swift 6 treats
         // as nonisolated remove this at all.
         if let fieldFrameWatch { NotificationCenter.default.removeObserver(fieldFrameWatch) }
+        if let actionsFrameWatch { NotificationCenter.default.removeObserver(actionsFrameWatch) }
     }
 }
