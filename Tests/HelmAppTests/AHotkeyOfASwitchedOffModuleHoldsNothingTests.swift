@@ -15,15 +15,9 @@ final class AHotkeyOfASwitchedOffModuleHoldsNothingTests: XCTestCase {
 
     private let fallback = HotkeyFallback(keyCode: 19, modifiers: cmdKey | shiftKey, label: "⇧⌘2")
 
-    private func store(_ values: [String: Any] = [:]) -> NamespacedStore {
-        let backing = InMemoryKeyValueStore()
-        for (key, value) in values { backing.set(value, forKey: "module.test.\(key)") }
-        return NamespacedStore(namespace: "test", backing: backing)
-    }
-
     func testASwitchedOffModuleHoldsNothingWhateverIsStored() {
-        let recorded = store(["hotkeyKeyCode": 21, "hotkeyModifiers": cmdKey | shiftKey])
-        for (what, store) in [("recorded", recorded), ("shipped", self.store())] {
+        let recorded = NamespacedStore.scratch(["hotkeyKeyCode": 21, "hotkeyModifiers": cmdKey | shiftKey])
+        for (what, store) in [("recorded", recorded), ("shipped", NamespacedStore.scratch())] {
             XCTAssertNil(HotkeyManager.combination(store: store, prefix: "hotkey", fallback: fallback, isLive: false),
                          "\(what): a switched-off module still held its combination")
             XCTAssertNotNil(HotkeyManager.combination(store: store, prefix: "hotkey", fallback: fallback, isLive: true),

@@ -4,24 +4,14 @@ import HelmUI
 import XCTest
 @testable import HelmApp
 
-/// **A stored shortcut Carbon cannot take is no shortcut.**
-///
-/// The preferences file is anybody's to write, and the fallback only answers
-/// for a key that is *absent*: a key that is present and nonsense — a string,
-/// a number past Carbon's byte, a code with its modifiers missing — reaches
-/// `HotkeyCombination` and is refused there.
+/// What the two classes below read from a store they cannot spell: the shortcut an absent key falls back to,
+/// and the values that are present and nonsense. No tests of its own.
 @MainActor
-final class AHotkeyTheStoreCannotSpellHoldsNothingTests: XCTestCase {
+class HotkeyGarbageFixture: XCTestCase {
 
-    private let fallback = HotkeyFallback(keyCode: 18, modifiers: cmdKey | shiftKey, label: "⇧⌘1")
+    let fallback = HotkeyFallback(keyCode: 18, modifiers: cmdKey | shiftKey, label: "⇧⌘1")
 
-    private func store(_ values: [String: Any]) -> NamespacedStore {
-        let backing = InMemoryKeyValueStore()
-        for (key, value) in values { backing.set(value, forKey: "module.test.\(key)") }
-        return NamespacedStore(namespace: "test", backing: backing)
-    }
-
-    private let garbage: [(String, [String: Any])] = [
+    let garbage: [(String, [String: Any])] = [
         ("a string for a key code", ["hotkeyKeyCode": "twenty", "hotkeyModifiers": cmdKey | shiftKey]),
         ("a key code past Carbon's byte", ["hotkeyKeyCode": 0x1_14, "hotkeyModifiers": cmdKey | shiftKey]),
         ("the largest integer", ["hotkeyKeyCode": Int.max, "hotkeyModifiers": Int.max]),
@@ -29,12 +19,22 @@ final class AHotkeyTheStoreCannotSpellHoldsNothingTests: XCTestCase {
         ("a key code with no modifiers stored", ["hotkeyKeyCode": 20]),
         ("data for a key code", ["hotkeyKeyCode": Data([20]), "hotkeyModifiers": cmdKey | shiftKey]),
     ]
+}
+
+/// **A stored shortcut Carbon cannot take is no shortcut.**
+///
+/// The preferences file is anybody's to write, and the fallback only answers
+/// for a key that is *absent*: a key that is present and nonsense — a string,
+/// a number past Carbon's byte, a code with its modifiers missing — reaches
+/// `HotkeyCombination` and is refused there.
+@MainActor
+final class AHotkeyTheStoreCannotSpellHoldsNothingTests: HotkeyGarbageFixture {
 
     /// The manager: nothing traps, nothing is registered, and the fallback does
     /// not stand in for a key that is present.
     func testNonsenseRegistersNothingAndIsNotTheDefault() {
         for (what, values) in garbage {
-            let answer = HotkeyManager.combination(store: store(values), prefix: "hotkey",
+            let answer = HotkeyManager.combination(store: NamespacedStore.scratch(values), prefix: "hotkey",
                                                    fallback: fallback, isLive: true)
             XCTAssertNil(answer, "\(what): registered \(String(describing: answer.map { ($0.code, $0.modifiers) }))")
         }
@@ -46,24 +46,7 @@ final class AHotkeyTheStoreCannotSpellHoldsNothingTests: XCTestCase {
 /// can show a combination the manager never registered, and pressing it does
 /// nothing.
 @MainActor
-final class TheHotkeyRowDrawsWhatTheManagerHoldsTests: XCTestCase {
-
-    private let fallback = HotkeyFallback(keyCode: 18, modifiers: cmdKey | shiftKey, label: "⇧⌘1")
-
-    private func store(_ values: [String: Any]) -> NamespacedStore {
-        let backing = InMemoryKeyValueStore()
-        for (key, value) in values { backing.set(value, forKey: "module.test.\(key)") }
-        return NamespacedStore(namespace: "test", backing: backing)
-    }
-
-    private let garbage: [(String, [String: Any])] = [
-        ("a string for a key code", ["hotkeyKeyCode": "twenty", "hotkeyModifiers": cmdKey | shiftKey]),
-        ("a key code past Carbon's byte", ["hotkeyKeyCode": 0x1_14, "hotkeyModifiers": cmdKey | shiftKey]),
-        ("the largest integer", ["hotkeyKeyCode": Int.max, "hotkeyModifiers": Int.max]),
-        ("a negative modifier mask", ["hotkeyKeyCode": 20, "hotkeyModifiers": -1]),
-        ("a key code with no modifiers stored", ["hotkeyKeyCode": 20]),
-        ("data for a key code", ["hotkeyKeyCode": Data([20]), "hotkeyModifiers": cmdKey | shiftKey]),
-    ]
+final class TheHotkeyRowDrawsWhatTheManagerHoldsTests: HotkeyGarbageFixture {
 
     /// The row: with a label on file beside the nonsense, the row draws a
     /// combination the manager holds nothing for.
@@ -71,7 +54,7 @@ final class TheHotkeyRowDrawsWhatTheManagerHoldsTests: XCTestCase {
         for (what, values) in garbage {
             var withLabel = values
             withLabel["hotkeyLabel"] = "⌘⇧3"
-            let store = store(withLabel)
+            let store = NamespacedStore.scratch(withLabel)
             let registered = HotkeyManager.combination(store: store, prefix: "hotkey", fallback: fallback, isLive: true)
             let row = HelmHotkeyRecorder(store: store, prefix: "hotkey", fallbackLabel: fallback.label).label
             XCTAssertEqual(row.isEmpty, registered == nil,
@@ -88,7 +71,7 @@ final class TheHotkeyRowDrawsWhatTheManagerHoldsTests: XCTestCase {
             ("a number for a label", ["hotkeyKeyCode": 20, "hotkeyModifiers": cmdKey | shiftKey, "hotkeyLabel": 7]),
         ]
         for (what, values) in held {
-            let store = store(values)
+            let store = NamespacedStore.scratch(values)
             let registered = HotkeyManager.combination(store: store, prefix: "hotkey", fallback: fallback, isLive: true)
             XCTAssertNotNil(registered, "\(what): the manager holds nothing, so there is no row to compare")
             let row = HelmHotkeyRecorder(store: store, prefix: "hotkey", fallbackLabel: fallback.label).label
@@ -102,7 +85,7 @@ final class TheHotkeyRowDrawsWhatTheManagerHoldsTests: XCTestCase {
     func testTheRowSpellsAPairWithNoLabelAndKeepsAStoredOne() {
         let pair: [String: Any] = ["hotkeyKeyCode": 20, "hotkeyModifiers": cmdKey | shiftKey]
         func row(_ extra: [String: Any]) -> String {
-            HelmHotkeyRecorder(store: store(pair.merging(extra) { $1 }), prefix: "hotkey",
+            HelmHotkeyRecorder(store: NamespacedStore.scratch(pair.merging(extra) { $1 }), prefix: "hotkey",
                                fallbackLabel: fallback.label).label
         }
         XCTAssertEqual(row([:]), "⇧⌘3")

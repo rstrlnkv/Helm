@@ -60,24 +60,13 @@ final class AFailedCopyKeepsTheInstalledAppTests: XCTestCase {
         let scriptURL = scratch.appendingPathComponent("swap.sh")
         try harness.write(to: scriptURL, atomically: true, encoding: .utf8)
 
-        let told = Pipe()
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/bin/bash")
-        proc.arguments = [scriptURL.path]
+        let result = try runChild("/bin/bash", [scriptURL.path]
             + UpdateSwap.arguments(newApp: new.path,
                                    installPath: install.path,
                                    pid: try deadPID(),
                                    workDir: work.path,
-                                   script: scriptURL.path)
-        proc.standardOutput = told
-        try proc.run()
-        // Read before the wait: the script writes one line, but a pipe nobody
-        // drains is how a test of a child process hangs for ever.
-        let opened = String(bytes: told.fileHandleForReading.readDataToEndOfFile(),
-                            encoding: .utf8) ?? ""
-        proc.waitUntilExit()
-        return Run(status: proc.terminationStatus,
-                   opened: opened.trimmingCharacters(in: .whitespacesAndNewlines))
+                                   script: scriptURL.path))
+        return Run(status: result.status, opened: result.output.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     /// `install` holding one file, so "which bundle is there now" is a question
