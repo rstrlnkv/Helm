@@ -50,7 +50,6 @@ final class AStoppedAutopilotModelReachesNoWorkTests: XCTestCase {
     }
 
     private func settle() async {
-        for _ in 0..<100 { await Task.yield() }
         await grace()
     }
 

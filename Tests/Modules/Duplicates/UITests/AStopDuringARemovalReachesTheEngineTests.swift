@@ -30,11 +30,11 @@ final class AStopDuringARemovalReachesTheEngineTests: XCTestCase {
         dvm.toggleBasket(extra)
         work.answers(.park, to: .trash)
         let removal = Task { await dvm.emptyBasket() }
-        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
+        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
         XCTAssertTrue(dvm.busy, "precondition: the removal is really in flight")
 
         dvm.stopRemoval()
-        for _ in 0..<1000 where !work.calls.contains(.stopRemoval) { await Task.yield() }
+        await waitUntil("the engine was told to stop the removal", within: .seconds(5)) { work.calls.contains(.stopRemoval) }
 
         XCTAssertTrue(work.calls.contains(.stopRemoval))
         XCTAssertFalse(work.calls.contains(.cancel),

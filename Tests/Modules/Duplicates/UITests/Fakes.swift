@@ -280,10 +280,8 @@ func searchedModel(over work: any DuplicatesWork, file: StaticString = #filePath
                    line: UInt = #line) async -> DuplicatesViewModel {
     let dvm = duplicatesModel(over: work)
     dvm.search()
-    for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
-    if dvm.phase != .result {
-        XCTFail("never reached: the search answered and the page shows its result", file: file, line: line)
-    }
+    await waitUntilWithin("the search answered and the page shows its result", .seconds(5),
+                          file: file, line: line) { dvm.phase == .result }
     return dvm
 }
 
@@ -300,7 +298,7 @@ func heldModel(_ work: HeldWork) -> DuplicatesViewModel {
 /// appear is `waitUntil`, which fails when the thing never comes.
 @MainActor
 func settle() async {
-    for _ in 0..<50 { await Task.yield() }
+    await grace()
 }
 
 /// Waits for the search tasks to actually reach the work. Yielding a fixed

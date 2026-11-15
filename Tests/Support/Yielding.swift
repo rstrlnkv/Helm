@@ -7,49 +7,29 @@ import XCTest
 /// run instead of reporting; a wait that returns quietly when the condition
 /// never held turns every assertion after it into a claim about a system that
 /// never got there.
+///
+/// **One wait.** `waitUntilWithin` below is the loop; `waitUntil` and
+/// `waitUntilReached` are the same call for a `@MainActor` case and for one
+/// that is not.
 public extension XCTestCase {
-
-    /// Yields until `condition` holds, then fails naming what never happened.
-    ///
-    /// `@MainActor` because every caller is a `@MainActor` test reading state a
-    /// view model owns: the yields have to come back to the same actor, or the
-    /// condition is read from somewhere the value does not live.
-    @MainActor
-    func waitUntil(_ what: String, file: StaticString = #filePath, line: UInt = #line,
-                   _ condition: () -> Bool) async {
-        for _ in 0..<20_000 where !condition() { await Task.yield() }
-        XCTAssertTrue(condition(), "never reached: \(what)", file: file, line: line)
-    }
 
     /// Reads `condition` every few milliseconds until it holds or `within` of
     /// wall-clock time has passed, then fails naming what never happened.
     ///
-    /// **A deadline and not a count of yields**: the yield loop above ends when
-    /// the loop does, which is however long twenty thousand turns of the
-    /// scheduler take, and a task on another thread reaching a lock is not
-    /// scheduled by yielding on this one. A sleep between reads lets it run, and
-    /// the clock decides when to stop. Same isolation as above, for the same
-    /// reason.
+    /// **A deadline and not a count of yields**: a yield loop ends when the loop
+    /// does, which is however long a number of turns of the scheduler take, and
+    /// a task on another thread reaching a lock is not scheduled by yielding on
+    /// this one. A sleep between reads lets it run, and the clock decides when to
+    /// stop.
+    ///
+    /// `@MainActor` because every caller is a `@MainActor` test reading state a
+    /// view model owns: the reads have to come back to the same actor, or the
+    /// condition is read from somewhere the value does not live.
     @MainActor
-    func waitUntil(_ what: String, within limit: Duration, file: StaticString = #filePath,
+    func waitUntil(_ what: String, within limit: Duration = .seconds(5), file: StaticString = #filePath,
                    line: UInt = #line, _ condition: () -> Bool) async {
         await waitUntilWithin(what, limit, file: file, line: line, condition)
     }
-}
-
-/// `waitUntil(_:within:)` for the helpers that are free functions and have no
-/// test case to call it on. The method above calls it, so those two are one
-/// wait; `waitUntilReached` below is the same loop again, because it must not be
-/// `@MainActor`.
-@MainActor
-public func waitUntilWithin(_ what: String, _ limit: Duration, file: StaticString = #filePath,
-                            line: UInt = #line, _ condition: () -> Bool) async {
-    let clock = ContinuousClock()
-    let deadline = clock.now + limit
-    while !condition(), clock.now < deadline {
-        try? await Task.sleep(for: .milliseconds(5))
-    }
-    XCTAssertTrue(condition(), "never reached: \(what)", file: file, line: line)
 }
 
 /// `waitUntil(_:within:)` for a test case that is **not** `@MainActor`: the
@@ -58,14 +38,22 @@ public func waitUntilWithin(_ what: String, _ limit: Duration, file: StaticStrin
 /// no isolation of its own is called from either, so this is the wait for the
 /// engine tests whose fakes are read from the test's own thread.
 ///
-/// Same deadline, same assertion naming what never happened.
+/// Same loop, same assertion naming what never happened.
 public nonisolated(nonsending) func waitUntilReached(_ what: String, within limit: Duration = .seconds(2),
                              file: StaticString = #filePath, line: UInt = #line,
                              _ condition: () -> Bool) async {
+    await waitUntilWithin(what, limit, file: file, line: line, condition)
+}
+
+/// The one loop. It takes the isolation of its caller, so the `@MainActor` method
+/// and the free function above both read `condition` where they were called.
+public nonisolated(nonsending) func waitUntilWithin(_ what: String, _ limit: Duration,
+                                                    file: StaticString = #filePath, line: UInt = #line,
+                                                    _ condition: () -> Bool) async {
     let clock = ContinuousClock()
     let deadline = clock.now + limit
     while !condition(), clock.now < deadline {
-        try? await Task.sleep(for: .milliseconds(1))
+        try? await Task.sleep(for: .milliseconds(5))
     }
     XCTAssertTrue(condition(), "never reached: \(what)", file: file, line: line)
 }

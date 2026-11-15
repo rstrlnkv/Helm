@@ -68,7 +68,7 @@ final class AStoppedHomebrewModelReachesNoWorkTests: XCTestCase {
 
         // The console has something in it, so «installBrew cleared it» is visible.
         work.say(.line("==> downloading"))
-        await eventually("a line reaches the console") { model.consoleLines == ["==> downloading"] }
+        await waitUntil("a line reaches the console") { model.consoleLines == ["==> downloading"] }
 
         model.stop()
         let before = work.calls
@@ -115,7 +115,7 @@ final class AStoppedHomebrewModelReachesNoWorkTests: XCTestCase {
         await model.askToUninstall(wget)
         model.cancelUninstall()
         model.select(wget.id)
-        await eventually("the inspector's two reads reach the work") {
+        await waitUntil("the inspector's two reads reach the work") {
             work.calls.contains("readInfo wget") && work.calls.contains("measure wget")
         }
         for call in ["readStatus", "readInstalled", "readOutdated", "readDoctor", "readConfig",
@@ -147,12 +147,12 @@ final class AStoppedHomebrewModelReachesNoWorkTests: XCTestCase {
         // and a finished operation asks the engine to be read again.
         work.say(.line("==> upgrading"))
         work.say(.state(OpState(phase: .running, label: "upgrade wget")))
-        await eventually("the news reaches the model") {
+        await waitUntil("the news reaches the model") {
             model.consoleLines == ["==> upgrading"] && model.op.phase == .running
         }
 
         model.stop()
-        await eventually("the stream is given back") { work.subscribers == 0 }
+        await waitUntil("the stream is given back") { work.subscribers == 0 }
         XCTAssertEqual(work.finishedStreams, 1)
         let before = work.calls
 
@@ -197,7 +197,7 @@ final class AStoppedHomebrewModelReachesNoWorkTests: XCTestCase {
         work.park("readDependents")
         let model = HomebrewViewModel(work: work)
         let ask = Task { await model.askToUninstall(wget) }
-        await eventually("the read is out") { work.calls.contains("readDependents wget") }
+        await waitUntil("the read is out") { work.calls.contains("readDependents wget") }
         model.stop()
         work.release("readDependents")
         await ask.value

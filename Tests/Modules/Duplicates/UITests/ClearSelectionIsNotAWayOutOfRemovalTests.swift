@@ -48,7 +48,7 @@ final class ClearSelectionIsNotAWayOutOfRemovalTests: XCTestCase {
         dvm.toggleBasket(extra)
         work.answers(.park, to: .trash)
         Task { await dvm.emptyBasket() }
-        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
+        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
         return (dvm, work)
     }
 
@@ -65,7 +65,7 @@ final class ClearSelectionIsNotAWayOutOfRemovalTests: XCTestCase {
             so the app reported success about a selection the person had just cleared
             """)
         work.releaseParked()
-        for _ in 0..<200 where dvm.busy { await Task.yield() }
+        await waitUntil("!dvm.busy", within: .seconds(5)) { !dvm.busy }
     }
 
     /// And it works again the moment the removal is over, or the guard has taken
@@ -73,7 +73,7 @@ final class ClearSelectionIsNotAWayOutOfRemovalTests: XCTestCase {
     func testClearingTheSelectionWorksOnceTheRemovalIsAnswered() async {
         let (dvm, work) = await removalInFlight()
         work.releaseParked()
-        for _ in 0..<200 where dvm.busy { await Task.yield() }
+        await waitUntil("!dvm.busy", within: .seconds(5)) { !dvm.busy }
         XCTAssertFalse(dvm.busy, "precondition: the removal came back")
         // Marking is refused while the removal runs, so it is done after.
         dvm.toggleBasket(second)

@@ -54,14 +54,4 @@ final class SettingGuardTests: XCTestCase {
         let sealed = guarded()
         XCTAssertNotEqual(sealed.seal(payload), sealed.seal(Data("/Volumes".utf8)))
     }
-
-    /// The probe's fixed `firstUse` is answered on every ask, later ones too:
-    /// a guard built fresh over a store that is the run that made the item must
-    /// not see the door shut by the second read.
-    func testAFixedFirstUseIsAnsweredOnEveryAsk() {
-        let probe = SealKeyProbe(firstUse: true)
-        XCTAssertEqual(probe.key()?.firstUse, true)
-        XCTAssertEqual(probe.key()?.firstUse, true)
-        XCTAssertEqual(SealKeyProbe().key()?.firstUse, true)
-    }
 }

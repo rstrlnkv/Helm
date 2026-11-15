@@ -36,7 +36,7 @@ final class OneSearchChainIsOutAtATimeTests: XCTestCase {
 
         model.query = "ab"
         model.searchNow()
-        await eventually("the first chain is out") { self.finds(work) == ["find ab"] }
+        await waitUntil("the first chain is out") { self.finds(work) == ["find ab"] }
 
         model.query = "abc"
         model.searchNow()
@@ -47,10 +47,10 @@ final class OneSearchChainIsOutAtATimeTests: XCTestCase {
         XCTAssertEqual(model.searchedQuery, "abc", "the section does not name the word that is next")
 
         work.release("find")
-        await eventually("the queued word is asked after the first chain") {
+        await waitUntil("the queued word is asked after the first chain") {
             self.finds(work) == ["find ab", "find abc"]
         }
-        await eventually("the second chain answers") { work.completed.contains("find abc") }
+        await waitUntil("the second chain answers") { work.completed.contains("find abc") }
         await grace()
         XCTAssertEqual(finds(work), ["find ab", "find abc"], "a third chain went out")
         XCTAssertEqual(model.searchReading, .answered)
@@ -63,14 +63,14 @@ final class OneSearchChainIsOutAtATimeTests: XCTestCase {
 
         model.query = "ab"
         model.searchNow()
-        await eventually("the first chain is out") { self.finds(work) == ["find ab"] }
+        await waitUntil("the first chain is out") { self.finds(work) == ["find ab"] }
         for word in ["abc", "abcd", "abcde"] {
             model.query = word
             model.searchNow()
         }
         work.release("find")
-        await eventually("the newest word is asked") { self.finds(work).count == 2 }
-        await eventually("it answers") { work.completed.contains("find abcde") }
+        await waitUntil("the newest word is asked") { self.finds(work).count == 2 }
+        await waitUntil("it answers") { work.completed.contains("find abcde") }
         await grace()
         XCTAssertEqual(finds(work), ["find ab", "find abcde"],
                        "an older word typed in between was asked: \(finds(work))")
@@ -83,12 +83,12 @@ final class OneSearchChainIsOutAtATimeTests: XCTestCase {
 
         model.query = "ab"
         model.searchNow()
-        await eventually("the first chain is out") { self.finds(work) == ["find ab"] }
+        await waitUntil("the first chain is out") { self.finds(work) == ["find ab"] }
         model.query = "abc"
         model.searchNow()
         model.query = ""
         work.release("find")
-        await eventually("the first chain answers") { work.completed.contains("find ab") }
+        await waitUntil("the first chain answers") { work.completed.contains("find ab") }
         await grace()
         XCTAssertEqual(finds(work), ["find ab"], "an erased word was asked: \(finds(work))")
         XCTAssertNil(model.searchedQuery)
@@ -104,14 +104,14 @@ final class OneSearchChainIsOutAtATimeTests: XCTestCase {
 
         model.query = "ab"
         model.searchNow()
-        await eventually("the first chain is out") { self.finds(work) == ["find ab"] }
+        await waitUntil("the first chain is out") { self.finds(work) == ["find ab"] }
         model.query = "abc"
         model.searchNow()
         XCTAssertEqual(model.searchReading, .waiting, "control: queuing claimed the word")
         model.query = "zz"
         work.release("find")
-        await eventually("the first chain answers") { work.completed.contains("find ab") }
-        await eventually("the claim for the queued word is taken back") {
+        await waitUntil("the first chain answers") { work.completed.contains("find ab") }
+        await waitUntil("the claim for the queued word is taken back") {
             model.searchedQuery == nil
         }
         await grace()

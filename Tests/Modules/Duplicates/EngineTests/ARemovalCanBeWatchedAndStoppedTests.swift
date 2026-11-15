@@ -50,7 +50,7 @@ final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
 
         let removal = Task { await engine.trash(plans) }
         // The subject first: the verification really began.
-        for _ in 0..<20_000 where parked.calls < 1 { await Task.yield() }
+        await waitUntilReached("parked.calls >= 1", within: .seconds(5)) { parked.calls >= 1 }
         XCTAssertEqual(parked.calls, 1, "the removal never reached its first pair")
 
         stopRemoval(of: engine)
@@ -79,7 +79,7 @@ final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
                                    keep: plans[0].keep))
 
         let removal = Task { await engine.trash(plans) }
-        for _ in 0..<20_000 where parked.calls < 1 { await Task.yield() }
+        await waitUntilReached("parked.calls >= 1", within: .seconds(5)) { parked.calls >= 1 }
         XCTAssertEqual(parked.calls, 1)
 
         stopRemoval(of: engine)
@@ -134,7 +134,7 @@ final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
                                       verifying: { { parked.check($0, $1) } })
         let plans = try plans(3)
         let removal = Task { await engine.trash(plans, progress: { stopped.add($0) }) }
-        for _ in 0..<20_000 where parked.calls < 1 { await Task.yield() }
+        await waitUntilReached("parked.calls >= 1", within: .seconds(5)) { parked.calls >= 1 }
         stopRemoval(of: engine)
         parked.release(3)
         _ = await removal.value

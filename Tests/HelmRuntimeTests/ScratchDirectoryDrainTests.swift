@@ -53,12 +53,9 @@ final class ScratchDirectoryDrainTests: XCTestCase {
         // writer has stopped. Asserting before either would pass on a drain
         // that never ran at all.
         addTeardownBlock {
-            var turns = 0
-            while late.isRunning && turns < 20_000 {
-                await Task.yield()
-                turns += 1
+            await waitUntilReached("the writer finished, so something was proven", within: .seconds(10)) {
+                !late.isRunning
             }
-            XCTAssertFalse(late.isRunning, "the writer never finished, so nothing was proven")
             guard let directory = late.directory else {
                 return XCTFail("the probe never got a scratch directory")
             }

@@ -28,11 +28,11 @@ final class AFolderChangeIsNotAWayOutOfARemovalTests: XCTestCase {
         let store = duplicatesStore(folder: "/some/folder")
         let dvm = duplicatesModel(over: work, store: store)
         dvm.search()
-        for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
+        await waitUntil("dvm.phase == .result", within: .seconds(5)) { dvm.phase == .result }
         dvm.toggleBasket(extra)
         work.answers(.park, to: .trash)
         Task { await dvm.emptyBasket() }
-        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
+        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
         XCTAssertTrue(dvm.busy, "precondition: the removal is really in flight")
         let findsBefore = work.calls.filter { $0 == .find }.count
         let folderBefore = dvm.folder
@@ -49,11 +49,11 @@ final class AFolderChangeIsNotAWayOutOfARemovalTests: XCTestCase {
 
         work.answers(.reply)
         work.releaseParked()
-        for _ in 0..<1000 where dvm.busy { await Task.yield() }
+        await waitUntil("!dvm.busy", within: .seconds(5)) { !dvm.busy }
         XCTAssertFalse(dvm.busy, "precondition: the removal answered")
 
         dvm.use(folder: chosen)
-        for _ in 0..<200 where work.calls.filter({ $0 == .find }).count == findsBefore { await Task.yield() }
+        await waitUntil("a new find was asked for", within: .seconds(5)) { work.calls.filter({ $0 == .find }).count != findsBefore }
 
         XCTAssertEqual(dvm.folder, chosen, "control: once the removal is over the folder changes")
         XCTAssertEqual(store.string("folder", default: ""), chosen.path)
@@ -71,11 +71,11 @@ final class AFolderChangeIsNotAWayOutOfARemovalTests: XCTestCase {
         var asked = 0
         let dvm = duplicatesModel(over: work, chooseFolder: { asked += 1; return nil })
         dvm.search()
-        for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
+        await waitUntil("dvm.phase == .result", within: .seconds(5)) { dvm.phase == .result }
         dvm.toggleBasket(extra)
         work.answers(.park, to: .trash)
         Task { await dvm.emptyBasket() }
-        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
+        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
         XCTAssertTrue(dvm.busy, "precondition: the removal is really in flight")
 
         dvm.chooseFolder()
@@ -84,7 +84,7 @@ final class AFolderChangeIsNotAWayOutOfARemovalTests: XCTestCase {
 
         work.answers(.reply)
         work.releaseParked()
-        for _ in 0..<1000 where dvm.busy { await Task.yield() }
+        await waitUntil("!dvm.busy", within: .seconds(5)) { !dvm.busy }
         XCTAssertFalse(dvm.busy, "precondition: the removal answered")
 
         dvm.chooseFolder()

@@ -84,11 +84,7 @@ final class TheSealKeyIsAskedOnceAndNotOnMainTests: XCTestCase {
         let guarded = SettingGuard(keys: SealKeyCache(source))
         let warming = Task { await guarded.warmKey() }
 
-        var turns = 0
-        while turns < 50 {
-            turns += 1
-            await Task.yield()
-        }
+        await grace()
         XCTAssertEqual(source.reads, 0, "the gate is shut, so the source has not answered yet")
         gate.signal()
         await warming.value

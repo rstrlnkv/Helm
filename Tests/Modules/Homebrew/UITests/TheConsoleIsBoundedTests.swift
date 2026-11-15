@@ -32,10 +32,11 @@ final class TheConsoleIsBoundedTests: XCTestCase {
     /// Draining until the count is **stable**, not until it reaches a number:
     /// the first version waited for the expected figure, which on an unbounded
     /// console stops exactly at the figure it was checking for and reports the
-    /// bound as working. A single `Task.yield()` per line is not enough either
+    /// bound as working. A single yield per line is not enough either
     /// — the model consumes on a task of its own, and that lost 30 lines of
     /// 1500 and one of 20, which reads as a bound nearly right rather than as a
-    /// harness dropping events.
+    /// harness dropping events. So the count is read on the clock, a sleep
+    /// between reads, until it has held still for fifty of them.
     private func log(_ count: Int, into work: FakeHomebrewWork,
                      model: HomebrewViewModel) async {
         for index in 0..<count {
@@ -44,7 +45,7 @@ final class TheConsoleIsBoundedTests: XCTestCase {
         var settled = 0
         var last = -1
         while settled < 50 {
-            await Task.yield()
+            try? await Task.sleep(for: .milliseconds(2))
             if model.consoleLines.count == last { settled += 1 } else { settled = 0 }
             last = model.consoleLines.count
         }

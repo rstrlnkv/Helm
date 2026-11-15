@@ -171,17 +171,3 @@ final class FakeHomebrewWork: HomebrewWork, @unchecked Sendable {
         lock.withLock { recorded.append("perform"); performed.append(act) }
     }
 }
-
-extension XCTestCase {
-
-    /// Waits for something another task will do, by the clock and not by turns
-    /// on the cooperative pool, and fails naming what never happened. For a
-    /// condition that must come true; an absence is read after one of these has
-    /// proved the subject happened, then `grace()`.
-    @MainActor
-    func eventually(_ what: String, timeout: TimeInterval = 5,
-                    file: StaticString = #filePath, line: UInt = #line,
-                    _ condition: () -> Bool) async {
-        await waitUntil(what, within: .seconds(timeout), file: file, line: line, condition)
-    }
-}

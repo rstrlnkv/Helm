@@ -52,7 +52,7 @@ final class AnOldChannelsAnswerDoesNotLandTests: XCTestCase {
 
         s.checkNow()
         await waitUntil("the Beta question is held") { s.checking }
-        for _ in 0..<50 { await Task.yield() }
+        await grace()
         s.setChannel(.dev)
         await waitUntil("the Dev offer") { s.available?.version == "v999.0.0-dev.1" }
 
@@ -72,7 +72,7 @@ final class AnOldChannelsAnswerDoesNotLandTests: XCTestCase {
 
         s.checkNow()
         await waitUntil("the manual check is held") { s.checking }
-        for _ in 0..<50 { await Task.yield() }
+        await grace()
         s.checkOnLaunch()   // automatic: no stamp, so it asks
         await grace()
 

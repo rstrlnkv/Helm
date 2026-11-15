@@ -76,11 +76,11 @@ final class PolicyChangeRearrangesTheListTests: XCTestCase {
         let dvm = model(work)
         dvm.choose(.byDate)
         dvm.search()
-        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
+        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
 
         dvm.choose(.byPlace)
         work.releaseParked()
-        for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
+        await waitUntil("dvm.phase == .result", within: .seconds(5)) { dvm.phase == .result }
 
         XCTAssertEqual(dvm.groups.first?.paths.first, filed,
                        "the list is in the order the request asked for, not the one on screen")

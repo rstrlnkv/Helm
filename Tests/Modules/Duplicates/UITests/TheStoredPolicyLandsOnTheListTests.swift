@@ -96,7 +96,7 @@ final class TheStoredPolicyLandsOnTheListTests: XCTestCase {
         XCTAssertEqual(dvm.policy, .byDate, "precondition: the stored belief arrived first")
 
         dvm.search()
-        for _ in 0..<1000 where dvm.phase != .result { await Task.yield() }
+        await waitUntil("dvm.phase == .result", within: .seconds(5)) { dvm.phase == .result }
 
         XCTAssertEqual(work.searches.map(\.keepPolicy), [.byDate],
                        "precondition: the request carried what the page was showing")
@@ -114,7 +114,7 @@ final class TheStoredPolicyLandsOnTheListTests: XCTestCase {
                        "precondition: the keychain has not answered, so the page holds the default")
 
         dvm.search()
-        for _ in 0..<1000 where dvm.phase != .result { await Task.yield() }
+        await waitUntil("dvm.phase == .result", within: .seconds(5)) { dvm.phase == .result }
         XCTAssertEqual(work.searches.map(\.keepPolicy), [.byPlace],
                        "precondition: the search ran on the default, which is what the page had")
         XCTAssertEqual(dvm.groups.first?.paths.first, filed,
@@ -143,7 +143,7 @@ final class TheStoredPolicyLandsOnTheListTests: XCTestCase {
         let dvm = pageWaitingForItsPolicy(AnsweringWork(groups: [group(orderedBy: .byPlace)]),
                                           gate: gate)
         dvm.search()
-        for _ in 0..<1000 where dvm.phase != .result { await Task.yield() }
+        await waitUntil("dvm.phase == .result", within: .seconds(5)) { dvm.phase == .result }
         gate.signal()
         await dvm.firstLoad?.value
 

@@ -31,7 +31,7 @@ final class AnOperationsNewsReachesTheModelTests: XCTestCase {
         let model = HomebrewViewModel(work: work)
         let said = (1...6).map { "line \($0)" }
         for line in said { work.say(.line(line)) }
-        await eventually("every line reaches the console") { model.consoleLines.count == said.count }
+        await waitUntil("every line reaches the console") { model.consoleLines.count == said.count }
         XCTAssertEqual(model.consoleLines, said)
         XCTAssertEqual(model.consoleSequence, said.count)
         XCTAssertEqual(work.calls, ["stream"], "a line sent the model to read the machine")
@@ -45,13 +45,13 @@ final class AnOperationsNewsReachesTheModelTests: XCTestCase {
 
             // Control: a running state is drawn and asks the engine nothing.
             work.say(.state(running()))
-            await eventually("the running state reaches the model") { model.op.phase == .running }
+            await waitUntil("the running state reaches the model") { model.op.phase == .running }
             await grace()
             XCTAssertEqual(work.calls, ["stream"],
                            "a state that is not an ending sent the model to read the machine")
 
             work.say(.state(ending))
-            await eventually("\(ending.phase) is read again: status, lists") {
+            await waitUntil("\(ending.phase) is read again: status, lists") {
                 work.completed.count >= 3
             }
             await grace()
@@ -74,7 +74,7 @@ final class AnOperationsNewsReachesTheModelTests: XCTestCase {
         XCTAssertNotNil(model.config, "control: the config reading was kept")
 
         work.say(.state(OpState(phase: .done, label: "cleanup", exitCode: 0)))
-        await eventually("the ending is read again, config last") {
+        await waitUntil("the ending is read again, config last") {
             work.completed.filter { $0 == "readConfig" }.count == 2
         }
         await grace()
@@ -92,11 +92,11 @@ final class AnOperationsNewsReachesTheModelTests: XCTestCase {
         XCTAssertNotEqual(waitingLine, arrivedLine, "control: the two sentences are one")
 
         work.say(.state(running("install Homebrew", waiting: .commandLineTools)))
-        await eventually("the wait reaches the model") { model.op.waiting == .commandLineTools }
+        await waitUntil("the wait reaches the model") { model.op.waiting == .commandLineTools }
         XCTAssertEqual(model.consoleLines, [waitingLine])
 
         work.say(.state(running("install Homebrew")))
-        await eventually("the arrival reaches the model") { model.op.waiting == nil }
+        await waitUntil("the arrival reaches the model") { model.op.waiting == nil }
         XCTAssertEqual(model.consoleLines, [waitingLine, arrivedLine])
     }
 
@@ -104,7 +104,7 @@ final class AnOperationsNewsReachesTheModelTests: XCTestCase {
         let work = FakeHomebrewWork()
         work.say(.brew(path: "/seed/bin/brew"))
         let model = HomebrewViewModel(work: work)
-        await eventually("the seed reaches the model") { model.status.installed }
+        await waitUntil("the seed reaches the model") { model.status.installed }
         XCTAssertEqual(model.status.brewPath, "/seed/bin/brew")
         XCTAssertEqual(work.calls, ["stream"], "a seed sent the model to read the machine")
     }
@@ -120,7 +120,7 @@ final class AnOperationsNewsReachesTheModelTests: XCTestCase {
         work.say(.brew(path: "/seed/bin/brew"))
         work.say(.line("after the seed"))
         // The line is behind the seed on one stream: once it is shown, the seed was handled.
-        await eventually("the line behind the seed reaches the console") {
+        await waitUntil("the line behind the seed reaches the console") {
             model.consoleLines.last == "after the seed"
         }
         XCTAssertEqual(model.status.brewPath, "/real/bin/brew")
@@ -133,7 +133,7 @@ final class AnOperationsNewsReachesTheModelTests: XCTestCase {
         work.say(.brew(path: nil))
         work.say(.line("after the seed"))
         let model = HomebrewViewModel(work: work)
-        await eventually("the line behind the seed reaches the console") {
+        await waitUntil("the line behind the seed reaches the console") {
             model.consoleLines.last == "after the seed"
         }
         XCTAssertFalse(model.status.installed)
