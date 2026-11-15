@@ -59,8 +59,7 @@ final class ASlipHasAWordBehindItTests: XCTestCase {
     /// passed `fixCapitals: true` would be testing a value the engine discards
     /// one line later.
     private static func boundStore() -> NamespacedStore {
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
-                                    backing: InMemoryKeyValueStore())
+        let store = layoutStore()
         store.set(true, for: LayoutKey.fixCapitals)
         return store
     }

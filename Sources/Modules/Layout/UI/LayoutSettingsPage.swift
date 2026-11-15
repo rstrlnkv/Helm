@@ -169,21 +169,13 @@ struct LayoutSettingsPage: View {
                     .controlSize(.small)
                 }
                 HelmSettingRow(LyStr.automatic, note: LyStr.automaticNote) {
-                    Toggle(LyStr.automatic, isOn: $automatic)
-                        .labelsHidden()
-                        .onChange(of: automatic) { _, value in write(value, LayoutKey.automatic) }
+                    switchRow(LyStr.automatic, $automatic, LayoutKey.automatic)
                 }
                 HelmSettingRow(LyStr.fixCapitals, note: LyStr.fixCapitalsNote) {
-                    Toggle(LyStr.fixCapitals, isOn: $fixCapitals)
-                        .labelsHidden()
-                        .onChange(of: fixCapitals) { _, value in
-                            write(value, LayoutKey.fixCapitals)
-                        }
+                    switchRow(LyStr.fixCapitals, $fixCapitals, LayoutKey.fixCapitals)
                 }
                 HelmSettingRow(LyStr.audible) {
-                    Toggle(LyStr.audible, isOn: $audible)
-                        .labelsHidden()
-                        .onChange(of: audible) { _, value in write(value, LayoutKey.audible) }
+                    switchRow(LyStr.audible, $audible, LayoutKey.audible)
                 }
             }
             // Outside the tour's gate: a layout macOS cannot spell-check is a fact about this Mac, not a setting.
@@ -319,9 +311,7 @@ struct LayoutSettingsPage: View {
     @ViewBuilder private var indicatorSection: some View {
         Section {
             HelmSettingRow(LyStr.indicatorShow) {
-                Toggle(LyStr.indicatorShow, isOn: $indicator)
-                    .labelsHidden()
-                    .onChange(of: indicator) { _, value in write(value, LayoutKey.indicator) }
+                switchRow(LyStr.indicatorShow, $indicator, LayoutKey.indicator)
             }
             if indicator {
                 // The note about a layout that names no country explains this choice, so it sits in the row.
@@ -393,5 +383,12 @@ struct LayoutSettingsPage: View {
     private func write(_ value: Any, _ key: String) {
         store.set(value, for: key)
         lvm.settingsChanged()
+    }
+
+    /// A switch whose every change goes through `write`, the page's one door to the store.
+    private func switchRow(_ title: String, _ on: Binding<Bool>, _ key: String) -> some View {
+        Toggle(title, isOn: on)
+            .labelsHidden()
+            .onChange(of: on.wrappedValue) { _, value in write(value, key) }
     }
 }

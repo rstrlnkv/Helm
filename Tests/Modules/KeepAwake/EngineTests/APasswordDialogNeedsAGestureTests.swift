@@ -41,15 +41,6 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
                                  clamshell: clamshell, clock: FakeClock(), lidInfo: lidInfo)
     }
 
-    /// The prompt's answer reaches the engine through `DispatchQueue.main.async`
-    /// — `osascript` calls back on a background queue, and engine state belongs
-    /// on main. A synchronous test never spins the run loop, so without this the
-    /// engine stays permanently "a prompt is on screen" and every later ask is
-    /// suppressed by the in-flight guard rather than by the code under test.
-    private func drainMain() {
-        RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
-    }
-
     /// Every settings edit asks `sudo -n` again, on the lid's own queue. This is
     /// what makes «and it did *not* ask for a password» a statement about an
     /// answered question rather than about one still in the post.
@@ -63,7 +54,6 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
         // The probe's answer lands on main after the count moves, and a probe
         // still out swallows the next ask by design, so let this one land.
         await engine.drainClamshellForTests()
-        drainMain()
     }
 
     /// Decision A. A Start press is not the lid switch: with the option stored
@@ -159,7 +149,6 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
         XCTAssertEqual(clamshell.installCalls, 1, "precondition: the first ask happened")
         // Declined: the file is still absent and the setting is still on.
         clamshell.finishInstall(granted: false)
-        drainMain()
 
         for _ in 0..<3 {
             let asked = clamshell.grantChecks
@@ -187,7 +176,6 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
 
         await waitUntil("the lid asked for the rule") { clamshell.installCalls == 1 }
         await engine.drainClamshellForTests()
-        drainMain()
         XCTAssertEqual(clamshell.installCalls, 1,
                        "the probe a rule started answered for the switch too, and the "
                        + "gesture's prompt was dropped or raised twice")
@@ -203,7 +191,6 @@ final class APasswordDialogNeedsAGestureTests: XCTestCase {
         engine.lidSwitchTurned(true)
         await waitUntil("the lid asked for the rule") { clamshell.installCalls == 1 }
         clamshell.finishInstall(granted: false)
-        drainMain()
 
         engine.lidSwitchTurned(false)
         engine.lidSwitchTurned(true)
@@ -237,10 +224,6 @@ final class TheLidSwitchAsksOutsideASessionTests: XCTestCase {
                                  clamshell: clamshell, clock: FakeClock(), lidInfo: lidInfo)
         engine.activate()
         engine.settingsChanged()
-    }
-
-    private func drainMain() {
-        RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
     }
 
     @MainActor
@@ -299,7 +282,6 @@ final class TheLidSwitchAsksOutsideASessionTests: XCTestCase {
         engine.lidSwitchTurned(true)
         await waitUntil("the lid asked for the rule") { clamshell.installCalls == 1 }
         clamshell.finishInstall(granted: false)
-        drainMain()
         XCTAssertTrue(KeepAwakeSettings(store: store).clamshellEnabled, "the switch stays on")
         XCTAssertFalse(engine.clamshellActive, "inside a session a cancel holds no lid rule either")
         XCTAssertFalse(engine.lidRefused, "inside a session a cancel is not a refusal")
@@ -315,14 +297,12 @@ final class TheLidSwitchAsksOutsideASessionTests: XCTestCase {
         engine.lidSwitchTurned(true)
         await waitUntil("the lid asked for the rule") { clamshell.installCalls == 1 }
         clamshell.finishInstall(granted: false)
-        drainMain()
         await engine.drainClamshellForTests()
         XCTAssertTrue(KeepAwakeSettings(store: store).clamshellEnabled, "precondition: the switch is already on")
         XCTAssertFalse(engine.isActive, "precondition: no session")
         XCTAssertEqual(clamshell.installCalls, 1, "precondition: one ask so far")
         engine.lidSwitchTurned(true)
         await engine.drainClamshellForTests()
-        drainMain()
         XCTAssertEqual(clamshell.installCalls, 1, "a gesture with no rising edge raised the dialog again")
     }
 }

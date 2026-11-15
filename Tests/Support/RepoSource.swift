@@ -43,6 +43,9 @@ public enum RepoSource {
 
     /// A file of the repository, by its path from the root.
     ///
+    /// Read from the tree rather than from a build product: a scan asserts
+    /// about what is written, and a stale module would answer for the wrong source.
+    ///
     /// Wrapped rather than left to throw whatever `String(contentsOf:)` throws
     /// on its own: a file that is not valid UTF-8 comes back as Cocoa error
     /// 259 with no path in it at all, so a scan over many files could not say

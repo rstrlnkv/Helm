@@ -23,8 +23,7 @@ final class TheEngineLetsGoOfItsObserversTests: XCTestCase {
 
     private func engine(bindings: [String: String] = [:]) -> LayoutEngine {
         tap = FakeTap(); sources = FakeSources(); activation = FakeActivation()
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID,
-                                    backing: InMemoryKeyValueStore())
+        let store = layoutStore()
         store.set(bindings, for: LayoutKey.appLayouts)
         return LayoutEngine(tap: tap, typing: FakeTyping(), sources: sources,
                             translation: FakeTranslation(table: [:]),

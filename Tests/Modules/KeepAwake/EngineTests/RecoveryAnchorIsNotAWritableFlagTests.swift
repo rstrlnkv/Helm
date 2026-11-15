@@ -48,11 +48,6 @@ final class RecoveryAnchorIsNotAWritableFlagTests: XCTestCase {
                         clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
         engine.activate()
         await engine.drainClamshellForTests()
-        drainMain()
-    }
-
-    private func drainMain() {
-        RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05))
     }
 
     /// Sleep is off machine-wide, Helm's own rule is on disk, and the note in the

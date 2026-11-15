@@ -119,10 +119,6 @@ final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
         }
     }
 
-    private struct DriftSpell: SpellPort {
-        func isWord(_ word: String, sourceID: String) -> Bool? { word == "привет" }
-    }
-
     private var context = DriftContext()
     private var selection = DriftSelection()
 
@@ -130,7 +126,7 @@ final class TheSelectionIsWrittenWhereItWasReadTests: XCTestCase {
         context = DriftContext(); selection = DriftSelection()
         let engine = LayoutEngine(tap: FakeTap(), typing: FakeTyping(),
                                   sources: StuckSources(), translation: DriftTranslation(),
-                                  spell: DriftSpell(), secure: context, activation: FakeActivation(), selection: selection)
+                                  spell: FakeSpell(valid: ["привет"]), secure: context, activation: FakeActivation(), selection: selection)
         engine.activate()
         return engine
     }

@@ -22,19 +22,13 @@ import HelmTestSupport
 /// is a property of the text, so the text is what is read.
 final class AStoreWriteTellsTheEngineTests: XCTestCase {
 
-    /// Read from the tree rather than from a build product: this asserts about
-    /// what is written, and a stale module would answer for the wrong source.
-    private func source(_ path: String) throws -> String {
-        try String(contentsOf: RepoSource.root.appendingPathComponent(path), encoding: .utf8)
-    }
-
     /// The scan is only worth anything while it is reading the writers, so it
     /// opens by counting them. A rename that empties this list would otherwise
     /// leave a test passing over nothing — the family (ARCHITECTURE.md § What makes a check) collects under
     /// «a check that cannot fail is not a check».
     func testEveryVerbThatWritesASettingAlsoSendsSettingsChanged() throws {
         let file = "Sources/Modules/Layout/UI/LayoutDescriptor.swift"
-        let text = SwiftSource.uncommented(try source(file))
+        let text = SwiftSource.uncommented(try RepoSource.text(of: file))
         let writers = SwiftSource.functionBodies(in: text)
             .map { body -> (String, String) in
                 let characters = Array(text)
@@ -58,13 +52,40 @@ final class AStoreWriteTellsTheEngineTests: XCTestCase {
     func testThePageAndTheListsWindowAnnounceTheirWritesToo() throws {
         for file in ["Sources/Modules/Layout/UI/LayoutSettingsPage.swift",
                      "Sources/Modules/Layout/UI/LayoutLists.swift"] {
-            let text = SwiftSource.uncommented(try source(file))
+            let text = SwiftSource.uncommented(try RepoSource.text(of: file))
             guard let write = SwiftSource.body(of: "write", in: text) else {
                 return XCTFail("\(file) has no `write` — the one door its rows go through is gone")
             }
             XCTAssertTrue(write.contains("store.set("), "\(file): `write` no longer writes")
             XCTAssertTrue(write.contains("settingsChanged") || write.contains("announce()"),
                           "\(file): `write` stores the value and never tells the engine")
+        }
+    }
+
+    /// `write` is only the one door while every row goes through it: a row that
+    /// calls `store.set` itself stores the value and leaves the engine untold.
+    func testEverySwitchRowGoesThroughWrite() throws {
+        let file = "Sources/Modules/Layout/UI/LayoutSettingsPage.swift"
+        let text = SwiftSource.uncommented(try RepoSource.text(of: file))
+        let rows = SwiftSource.bodiesNamed("switchRow", in: text)
+        XCTAssertFalse(rows.isEmpty, "\(file) has no `switchRow` — the scan is reading the wrong shape")
+        for body in rows {
+            XCTAssertTrue(body.contains("write("), "\(file): `switchRow` no longer goes through `write`")
+            XCTAssertFalse(body.contains("store.set("), "\(file): `switchRow` writes the store itself")
+        }
+    }
+
+    /// The tile's size is what makes a 1×1 and a 2×1 differ; a `Fixed` that
+    /// drew one size for both would shrink the wide tile and nothing else would notice.
+    func testTheFixedWidgetPassesItsSizeToTheTile() throws {
+        let file = "Sources/Modules/Layout/UI/LayoutWidgets.swift"
+        let text = SwiftSource.uncommented(try RepoSource.text(of: file))
+        let characters = Array(text)
+        let bodies = SwiftSource.typeBodies(in: text).filter { $0.name == "Fixed" }
+            .map { String(characters[($0.open + 1)..<$0.close]) }
+        XCTAssertFalse(bodies.isEmpty, "\(file) has no `Fixed` — the scan is reading the wrong shape")
+        for body in bodies {
+            XCTAssertTrue(body.contains("size: size"), "\(file): `Fixed` does not pass its `size` on")
         }
     }
 }

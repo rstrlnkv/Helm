@@ -20,7 +20,7 @@ final class ASlipIsNotFixedInAPasswordFieldTests: XCTestCase {
     private func rig(secureField: Bool) -> (LayoutEngine, FakeTyping, FakeTap) {
         let typing = FakeTyping(), tap = FakeTap(), secure = FieldOnly()
         secure.field = secureField
-        let store = NamespacedStore(namespace: LayoutEngine.moduleID, backing: InMemoryKeyValueStore())
+        let store = layoutStore()
         store.set(true, for: LayoutKey.fixCapitals)
         let engine = LayoutEngine(
             tap: tap, typing: typing, sources: FakeSources(),

@@ -8,12 +8,8 @@ import Module_KeepAwake_Engine
 /// few words other modules share are `HelmWord`'s, because a catalog's symbols
 /// are internal to its target.
 enum KAStr {
-    static var moduleName: String {
-        L(.keepAwake)
-    }
-    static var summary: String {
-        L(.summary)
-    }
+    static var moduleName: String { L(.keepAwake) }
+    static var summary: String { L(.summary) }
     /// Window title: no ellipsis — that belongs to the menu entry that opens it.
     static var customTimeTitle: String { L(.customDuration) }
     /// The button that opens the free-form duration field.
@@ -41,29 +37,16 @@ enum KAStr {
     /// already said two labels down — so one page carried both words. German
     /// and Brazilian Portuguese genuinely say `Timer` in the same table.
     static var timer: String { HelmWord.timer }
-    static var start: String {
-        L(.start)
-    }
-    static var stop: String {
-        HelmWord.stop
-    }
+    static var start: String { L(.start) }
+    static var stop: String { HelmWord.stop }
     /// Single-letter units for the narrow preset pills ("15 м", "1 ч").
-    static var minutesUnitShort: String {
-        L(.minutesShort)
-    }
+    static var minutesUnitShort: String { L(.minutesShort) }
     /// German abbreviates with a period — `2 Std.` — in CLDR and in ordinary
-    /// orthography, and `hoursUnit` two lines down already had one, so the same
-    /// duration was spelled two ways. Distinct from `minutesUnitShort` above,
+    /// orthography, and the long form used to be a second getter with the same
+    /// key, so the same duration was spelled two ways. Distinct from `minutesUnitShort` above,
     /// which is deliberately the full `Min.` because the pill was measured.
-    static var hoursUnitShort: String {
-        L(.hoursShort)
-    }
-    static var hoursUnit: String {
-        L(.hoursShort)
-    }
-    static var minutesUnit: String {
-        L(.minutesAbbreviated)
-    }
+    static var hoursUnitShort: String { L(.hoursShort) }
+    static var minutesUnit: String { L(.minutesAbbreviated) }
 
     /// "45 min" / "1 h" / "1 h 30 min" — minutes below an hour, hours above.
     /// `compact` uses the single-letter units, for the narrow preset pills.
@@ -76,7 +59,7 @@ enum KAStr {
     /// needs, not what a settings row wants.
     static func duration(_ minutes: Int, compact: Bool = false) -> String {
         let mUnit = compact ? minutesUnitShort : minutesUnit
-        let hUnit = compact ? hoursUnitShort : hoursUnit
+        let hUnit = hoursUnitShort
         guard minutes >= 60 else { return "\(minutes)\u{00A0}\(mUnit)" }
         let h = minutes / 60, m = minutes % 60
         return m == 0 ? "\(h)\u{00A0}\(hUnit)" : "\(h)\u{00A0}\(hUnit) \(m)\u{00A0}\(mUnit)"
@@ -223,16 +206,12 @@ enum KAStr {
     /// again — which rewrites the key and takes the banner away with it. The
     /// English was the key then and the meaning gained a verb, so it became a new
     /// key rather than eight corrections.
-    static var appRulesUnreadable: String {
-        L(.appRulesUnreadable)
-    }
+    static var appRulesUnreadable: String { L(.appRulesUnreadable) }
     /// What an app rule *is*, said where somebody would otherwise find out by
     /// trying. The section heading used to carry this job in its own tail —
     /// «Apps that keep the Mac awake» — which explained it again on every visit
     /// for ever, including to the people who already had a list.
-    static var noAppsYetNote: String {
-        L(.appRulesEmptyHint)
-    }
+    static var noAppsYetNote: String { L(.appRulesEmptyHint) }
     static var keepDisplayOn: String { L(.keepTheDisplayOn) }
     static var movePointer: String { L(.moveThePointer) }
     /// "Каждые 1 мин" is wrong, and the menu starts at 1: the Russian
@@ -282,9 +261,7 @@ enum KAStr {
     /// a session a rule is holding.
     static var heroUntilYouStop: String { L(.untilStopped) }
     /// Said beside the button that does it, rather than left for the log.
-    static var heroStopSuppresses: String {
-        L(.stopPausesRule)
-    }
+    static var heroStopSuppresses: String { L(.stopPausesRule) }
 
     /// What VoiceOver says for the countdown, once, when asked.
     ///
@@ -328,9 +305,7 @@ enum KAStr {
     /// pauses the rule too» switched on the note stopped at «Timer until
     /// 16:03» — the one state where that setting decides anything was the one
     /// state nothing on the page mentioned it.
-    static var thenRulePaused: String {
-        L(.thenRulePaused)
-    }
+    static var thenRulePaused: String { L(.thenRulePaused) }
     static var pointerNeedsAccessibility: String { L(.pointerNeedsAccessibility) }
     /// Russian was the odd one out: «хоткей» is slang, and Helm's own Layout
     /// page already says «сочетание клавиш». macOS calls it «Сочетание клавиш»
@@ -376,9 +351,7 @@ enum KAStr {
     /// translations had to pick one and half of them picked the setting. The
     /// English says which noun comes back, and `adminNote` two states over
     /// already had the verb for it.
-    static var sleepIsOffNote: String {
-        L(.sleepOffNowSwitchingBack)
-    }
+    static var sleepIsOffNote: String { L(.sleepOffNowSwitchingBack) }
     /// macOS said no.
     ///
     /// `reallyEngage` reads `setDisableSleep(true)` — `sudo -n pmset disablesleep
@@ -398,9 +371,7 @@ enum KAStr {
     /// something will close the lid and believe the Mac keeps working. It is the
     /// closed lid that is the consequence, and it belongs in the first clause
     /// rather than behind the file name.
-    static var lidRefused: String {
-        L(.lidGrantRefused)
-    }
+    static var lidRefused: String { L(.lidGrantRefused) }
     /// The option went off and the rule did not go with it.
     ///
     /// `releaseIfUnneeded` asks for the rule to be removed, which raises an
@@ -409,9 +380,7 @@ enum KAStr {
     /// something else of having written a rule Helm wrote itself. A passwordless
     /// `pmset disablesleep` for this account is not something to leave behind
     /// silently.
-    static var lidGrantRemains: String {
-        L(.lidRuleStillThere)
-    }
+    static var lidGrantRemains: String { L(.lidRuleStillThere) }
     /// What the person is about to face and what they get for it. `pmset` was
     /// the tool's name, which answers a question nobody asked: the two things
     /// worth knowing are that the password prompt is macOS's own — not this
@@ -466,9 +435,7 @@ enum KAStr {
     /// the switch goes off, so off-and-on asks again, and «the first time» is the
     /// same claim as the «once» this comment already records as wrong. Saying
     /// nothing about how often is the only version that is true at every press.
-    static var adminNote: String {
-        L(.lidGrantExplained)
-    }
+    static var adminNote: String { L(.lidGrantExplained) }
     /// A timer started while a rule is already holding the Mac ends the rule as
     /// well.
     ///
@@ -479,9 +446,7 @@ enum KAStr {
     /// And when — «too» says only that a second thing happens, not that it
     /// happens at zero. All three are in the name now, and the row's note keeps
     /// what follows from it.
-    static var timerEndsAutomation: String {
-        L(.timerPausesRules)
-    }
+    static var timerEndsAutomation: String { L(.timerPausesRules) }
     /// The Stop button's word for the press it is about to be.
     ///
     /// The switch above and this button are the two ways automation is switched
@@ -505,9 +470,7 @@ enum KAStr {
     /// and false for the other two — a display rule comes back when the display
     /// does. That defect was found once in `automationPaused` and fixed there;
     /// this line was the second copy of it, translated faithfully eight times.
-    static var timerEndsAutomationNote: String {
-        L(.timerEndPausesRule)
-    }
+    static var timerEndsAutomationNote: String { L(.timerEndPausesRule) }
     /// Shown wherever the state is shown. A Mac that slept with the rule's app
     /// still on screen is the one thing this module must not leave unexplained.
     /// «Paused until the rule fires again» — the rule, not the app.
@@ -634,9 +597,7 @@ enum KAStr {
     /// shortcut — the second of which the note never mentioned, so the one
     /// control that starts a session without any window on screen went
     /// unexplained.
-    static var defaultDurationNote: String {
-        L(.defaultDurationHint)
-    }
+    static var defaultDurationNote: String { L(.defaultDurationHint) }
     static var menuBarIcon: String { L(.menuBarIcon) }
     static var customActiveIcon: String { L(.customIconWhenActive) }
 }

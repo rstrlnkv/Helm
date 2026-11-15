@@ -52,6 +52,17 @@ final class TheModuleWordsReachEveryLanguageTests: XCTestCase {
         }
     }
 
+    /// The hour part of a duration is spelled with the hour unit, not the minute one, compact or not.
+    func testADurationSpellsItsHoursWithTheHourUnit() {
+        let nb = "\u{00A0}"
+        AppLanguage.only(.en) {
+            XCTAssertEqual(KAStr.duration(45), "45\(nb)min")
+            XCTAssertEqual(KAStr.duration(60), "1\(nb)h")
+            XCTAssertEqual(KAStr.duration(90), "1\(nb)h 30\(nb)min")
+            XCTAssertEqual(KAStr.duration(90, compact: true), "1\(nb)h 30\(nb)\(KAStr.minutesUnitShort)")
+        }
+    }
+
     /// A word other modules draw too stays in the kit and `KAStr` reads it through `L()`.
     func testASharedWordStillComesFromTheKit() {
         AppLanguage.only(.ru) { XCTAssertEqual(KAStr.timer, "Таймер") }

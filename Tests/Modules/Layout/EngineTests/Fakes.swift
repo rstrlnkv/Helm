@@ -1,10 +1,27 @@
 import Foundation
+import HelmContract
+import HelmRuntime
+import HelmTestSupport
 @testable import Module_Layout_Engine
 
 // The Layout engine's port fakes, one file: typing, secure context, translation,
 // spell, key tap, layout sources and app activation. A fake keeps the port's states
 // only, and every construction names the port it stands in for
 // (Architecture/TestsAndMeasurement.md § Fakes).
+
+/// The chord bound as «fix» in the suites that need a recorded shortcut. Only the
+/// recorded one ends a word and leaves it remembered: every other chord may have
+/// changed the text in front of the caret — ⌘V pastes, ⌥V types `√` — so the word
+/// before it is dropped. Any code will do; what matters is that the engine has one.
+let layoutShortcut: UInt16 = 9
+
+/// An in-memory store under the module's own namespace, with `layoutShortcut`
+/// recorded as the «fix» chord when `bound`.
+func layoutStore(bound: Bool = false) -> NamespacedStore {
+    let store = NamespacedStore(namespace: LayoutEngine.moduleID, backing: InMemoryKeyValueStore())
+    if bound { store.set(Int(layoutShortcut), for: "\(LayoutHotkey.storePrefix)KeyCode") }
+    return store
+}
 
 /// The port's states and nothing else: observing or not, how many times it was
 /// asked to start, and the two moments the port delivers.

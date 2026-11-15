@@ -12,22 +12,15 @@ import Module_Layout_Engine
 /// `UndoRecord.canUndo(in:)` would refuse every press.
 enum LayoutWidgets {
 
-    /// 1×1 — how many.
-    struct Compact: View {
+    /// 1×1 — how many; 2×1 — how many, and the one thing to do about it (`onNever`).
+    struct Fixed: View {
         @ObservedObject var lvm: LayoutViewModel
+        let size: PanelWidgetSize
         let period: ConversionPeriod
-
-        var body: some View { LayoutTile(state: lvm.state, size: .compact, period: period) }
-    }
-
-    /// 2×1 — how many, and the one thing to do about it.
-    struct Wide: View {
-        @ObservedObject var lvm: LayoutViewModel
-        let period: ConversionPeriod
-        var onNever: (String) -> Void
+        var onNever: (String) -> Void = { _ in }
 
         var body: some View {
-            LayoutTile(state: lvm.state, size: .wide, period: period, onNever: onNever)
+            LayoutTile(state: lvm.state, size: size, period: period, onNever: onNever)
         }
     }
 
