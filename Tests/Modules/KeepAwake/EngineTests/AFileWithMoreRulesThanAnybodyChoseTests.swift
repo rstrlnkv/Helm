@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
@@ -154,9 +155,7 @@ final class AFileWithMoreRulesThanAnybodyChoseTests: XCTestCase {
 
     /// The engine over the same store answers the same way, and says so once.
     func testTheEngineHoldsNothingForSuchAFileAndSaysSo() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
         backing.raw["module.keep-awake.autoAppRules"] = rules(50_001)
         let apps = FakeApps()
         apps.ids = ["com.example.0.aaaaaaaaaaaa"]

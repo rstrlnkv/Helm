@@ -54,20 +54,11 @@ final class ASilentToolIsNotNoExtensionsTests: XCTestCase {
 
     override func setUpWithError() throws {
         root = scratchDirectory("silent-extensions")
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
+        tailTheLog()
     }
 
     private var logged: [String] {
-        HelmLog.shared.recentEntries()
-            .filter { $0.category == UninstallerEngine.moduleID }
-            .map(\.message)
+        loggedLines(UninstallerEngine.moduleID)
     }
 
     /// A bundle whose `Info.plist` the engine can read — the id it blames a

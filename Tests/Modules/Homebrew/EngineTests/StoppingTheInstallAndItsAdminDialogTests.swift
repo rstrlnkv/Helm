@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Helm
 
 import Foundation
+import HelmTestSupport
 import XCTest
 import HelmContract
 import HelmRuntime
@@ -568,18 +569,11 @@ final class EveryStopPointEndsTheInstallOnceTests: XCTestCase {
     override func setUp() {
         super.setUp()
         _ = HelmLog.shared.recentEntries()          // seed from the file now, not later
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
+        tailTheLog()
     }
 
     private var homebrewLines: [String] {
-        HelmLog.shared.recentEntries().filter { $0.category == HomebrewEngine.moduleID }.map(\.message)
+        loggedLines(HomebrewEngine.moduleID)
     }
 
     // MARK: - Each read point

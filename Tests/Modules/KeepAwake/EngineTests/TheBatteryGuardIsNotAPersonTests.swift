@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
@@ -150,9 +151,7 @@ final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
     /// The log line is the account of an unattended stop, so its count is
     /// asserted — an absence would pass here for free otherwise.
     func testResumeCannotOutrunAFlatBattery() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         theGuardStopsTheRule()
         engine.resumeAutomation()
@@ -170,9 +169,7 @@ final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
     /// refused at once; `suppressed` stays false because no automatic condition
     /// holds, and `batteryStopped` is what tells the screens the battery is why.
     func testAHandStartedSessionAtFivePerCentIsRefusedAndTheBatteryIsSaidToBeWhy() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         settings.setAppTriggers([])
         apps.ids = []
@@ -207,9 +204,7 @@ final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
     /// out of. The house rule about the log being a product surface is the
     /// same rule.
     func testAGuardWithNoSessionToStopSaysNothing() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         settings.setAppTriggers([])
         apps.ids = []
@@ -234,9 +229,7 @@ final class TheBatteryGuardIsNotAPersonTests: XCTestCase {
     /// that has stopped working: the same battery, with a session running,
     /// still writes exactly one line.
     func testTheGuardStillSpeaksWhenThereIsASessionToStop() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         settings.setAppTriggers([])
         apps.ids = []

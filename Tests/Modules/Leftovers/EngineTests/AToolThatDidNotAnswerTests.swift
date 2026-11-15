@@ -1,5 +1,6 @@
 import Foundation
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Leftovers_Engine
 
@@ -89,16 +90,10 @@ final class AToolThatDidNotAnswerTests: XCTestCase {
     /// this is the only place it can be seen from outside, since the row it produces
     /// looks like any other unjudged row.
     func testTheRefusalsAreLoggedAndNameNothing() throws {
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-        defer {
-            HelmLog.shared.clearTail()
-            HelmLog.shared.setEnabled(false)
-        }
+        tailTheLog()
 
         _ = try agent(when: LeftoversFakeLoaded(installed: nil, disabled: nil))
-        let lines = HelmLog.shared.recentEntries()
-            .filter { $0.category == "leftovers" }.map(\.message)
+        let lines = loggedLines("leftovers")
 
         XCTAssertTrue(lines.contains { $0.contains("systemextensionsctl") }, """
             nothing said the extension list never came, so the only trace of it is rows that \

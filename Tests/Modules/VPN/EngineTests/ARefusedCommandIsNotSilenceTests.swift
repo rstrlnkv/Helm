@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Helm
 
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_VPN_Engine
@@ -113,9 +114,7 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
     /// writes goes through `Redact.vpn`, because the diagnostic file leaves the
     /// machine and the screen does not.
     func testTheLogDoesNotNameTheConfiguration() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         let runner = FakeRunner()
         runner.reply = "No service"

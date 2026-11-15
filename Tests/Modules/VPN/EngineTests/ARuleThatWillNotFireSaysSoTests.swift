@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Helm
 
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_VPN_Engine
@@ -40,8 +41,7 @@ final class ARuleThatWillNotFireSaysSoTests: XCTestCase {
     /// The note's reason is the one the launch is refused with: the same rule
     /// launched, and the log line carries the verdict the payload carries.
     func testEachRuleLevelRefusalIsPublishedWithTheReasonTheLaunchIsRefusedFor() async {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
+        tailTheLog()
         let cases: [(CodeIdentity?, VPNRuleTrust.Verdict)] = [
             (nil, .noIdentityRecorded),
             (CodeIdentity(signingID: nil, teamID: nil), .appNotSigned)]

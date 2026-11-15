@@ -1,5 +1,4 @@
 import XCTest
-import HelmRuntime
 import HelmTestSupport
 @testable import Module_Disk_Engine
 
@@ -70,11 +69,9 @@ final class ScanStoreTests: XCTestCase {
     /// A missing file is the first launch and says nothing; a file that is there
     /// and will not decode is a lost measurement and says so once, naming no path.
     func testAnUndecodableFileIsLoggedOnceAndAMissingOneNever() throws {
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-        defer { HelmLog.shared.clearTail(); HelmLog.shared.setEnabled(false) }
+        tailTheLog()
         func lines() -> [String] {
-            HelmLog.shared.recentEntries().filter { $0.category == DiskEngine.moduleID }.map(\.message)
+            loggedLines(DiskEngine.moduleID)
         }
         XCTAssertNil(store.load())
         XCTAssertEqual(lines(), [], "a missing file logged")

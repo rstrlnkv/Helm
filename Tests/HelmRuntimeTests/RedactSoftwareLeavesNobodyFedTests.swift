@@ -23,18 +23,11 @@ final class RedactSoftwareLeavesNobodyFedTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
+        tailTheLog()
     }
 
     private var logged: [String] {
-        HelmLog.shared.recentEntries().filter { $0.category == module }.map(\.message)
+        loggedLines(module)
     }
 
     /// Runs one path through the shared loop with macOS refusing it as told,

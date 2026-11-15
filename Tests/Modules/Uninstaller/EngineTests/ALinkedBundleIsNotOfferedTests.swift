@@ -43,20 +43,11 @@ final class ALinkedBundleIsNotOfferedTests: XCTestCase {
         home = scratchDirectory("linked-app").resolvingSymlinksInPath()
         apps = home.appendingPathComponent("Applications")
         try FileManager.default.createDirectory(at: apps, withIntermediateDirectories: true)
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
+        tailTheLog()
     }
 
     private var logged: [String] {
-        HelmLog.shared.recentEntries()
-            .filter { $0.category == UninstallerEngine.moduleID }
-            .map(\.message)
+        loggedLines(UninstallerEngine.moduleID)
     }
 
     /// A bundle with an `Info.plist` and enough bytes in it to weigh.

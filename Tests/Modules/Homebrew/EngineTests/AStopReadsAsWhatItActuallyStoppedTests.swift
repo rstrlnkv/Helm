@@ -1,4 +1,5 @@
 import Foundation
+import HelmTestSupport
 import XCTest
 import HelmContract
 import HelmRuntime
@@ -86,18 +87,11 @@ final class AStopReadsAsWhatItActuallyStoppedTests: XCTestCase {
     override func setUp() {
         super.setUp()
         _ = HelmLog.shared.recentEntries()
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
+        tailTheLog()
     }
 
     private var homebrewLines: [String] {
-        HelmLog.shared.recentEntries().filter { $0.category == HomebrewEngine.moduleID }.map(\.message)
+        loggedLines(HomebrewEngine.moduleID)
     }
 
     /// Stop pressed while install.sh runs, and the wrapper then answers 0 —

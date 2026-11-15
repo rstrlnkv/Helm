@@ -42,14 +42,7 @@ final class TheLogDoesNotCarryWhatYouTypeTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
+        tailTheLog()
     }
 
     private func engine(typingSucceeds: Bool = true) -> LayoutEngine {
@@ -66,7 +59,7 @@ final class TheLogDoesNotCarryWhatYouTypeTests: XCTestCase {
     }
 
     private var layoutLines: [String] {
-        HelmLog.shared.recentEntries().filter { $0.category == "layout" }.map(\.message)
+        loggedLines("layout")
     }
 
     func testAConversionDoesNotWriteTheWordOrItsReplacement() {

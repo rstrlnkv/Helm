@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Helm
 
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_VPN_Engine
@@ -96,9 +97,7 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
     // MARK: - Through the engine, which is what writes the file
 
     func testTheLogLineAboutARefusalNamesNothing() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         let runner = FakeRunner()
         runner.reply = "cannot start \(service): resource busy"

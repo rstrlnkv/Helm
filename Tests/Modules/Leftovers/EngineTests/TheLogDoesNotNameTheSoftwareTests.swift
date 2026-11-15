@@ -33,18 +33,11 @@ final class TheLogDoesNotNameTheSoftwareTests: XCTestCase {
 
     override func setUpWithError() throws {
         home = scratchDirectory("leftovers-log")
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
+        tailTheLog()
     }
 
     private var lines: [String] {
-        HelmLog.shared.recentEntries().filter { $0.category == "leftovers" }.map(\.message)
+        loggedLines("leftovers")
     }
 
     /// Both refusals a removal can write, in one batch: one path the gate turns away

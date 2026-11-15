@@ -68,9 +68,7 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
     /// to report the whole thing done.
     @MainActor
     func testARemovalThatLeavesTheGrantBehindIsSaidOutLoud() async {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         clamshell.sudoersInstalled = true
         clamshell.passwordlessGrantExists = true
@@ -91,9 +89,7 @@ final class AGrantIsNotAFilenameTests: XCTestCase {
     /// warn about — otherwise the line above is wallpaper.
     @MainActor
     func testAnOrdinaryRemovalSaysNothing() async {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         clamshell.sudoersInstalled = true
         clamshell.passwordlessGrantExists = false

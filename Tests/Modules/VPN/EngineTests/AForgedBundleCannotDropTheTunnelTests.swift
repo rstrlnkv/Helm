@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Helm
 
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_VPN_Engine
@@ -122,9 +123,7 @@ final class AForgedBundleCannotDropTheTunnelTests: XCTestCase {
     /// a rule that has quietly stopped firing is the failure (ARCHITECTURE.md §
     /// VPN) is about.
     func testARuleWithNoRecordedIdentityRefusesAndSaysSo() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         let apps = FakeApps()
         let runner = FakeRunner()

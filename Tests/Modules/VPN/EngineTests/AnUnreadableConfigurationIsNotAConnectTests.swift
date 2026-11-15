@@ -25,14 +25,7 @@ final class AnUnreadableConfigurationIsNotAConnectTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.setEnabled(false)
-        HelmLog.shared.clearTail()
-        super.tearDown()
+        tailTheLog()
     }
 
     // MARK: - The port: KeychainCredentials

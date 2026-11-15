@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
@@ -111,9 +112,7 @@ final class AChargeNobodyCanReadIsNotZeroTests: XCTestCase {
     // MARK: - What the log says about a number it has not got
 
     func testTheLogDoesNotInventAChargeItCouldNotRead() throws {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         engine.activate()
         engine.startSession(minutes: 0)
@@ -137,9 +136,7 @@ final class AChargeNobodyCanReadIsNotZeroTests: XCTestCase {
     /// The control for the line: a charge that *was* read is still in it, so the
     /// check above cannot be satisfied by a line that stopped carrying figures.
     func testTheLogStillNamesAChargeItDidRead() throws {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         engine.activate()
         engine.startSession(minutes: 0)

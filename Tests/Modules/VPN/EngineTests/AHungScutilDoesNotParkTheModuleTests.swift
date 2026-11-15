@@ -97,14 +97,11 @@ final class AHungScutilDoesNotParkTheModuleTests: XCTestCase {
     override func setUp() {
         super.setUp()
         runner = Runner()
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
+        tailTheLog()
     }
 
     override func tearDown() {
         runner.releaseAll()
-        HelmLog.shared.setEnabled(false)
-        HelmLog.shared.clearTail()
         super.tearDown()
     }
 

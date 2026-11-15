@@ -22,14 +22,7 @@ final class ARefusalLineIsNotRewrittenByTheAppsNameTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
+        tailTheLog()
     }
 
     /// Refuses `<scratch>/Library/Preferences/<stem>.plist` as a software leaf

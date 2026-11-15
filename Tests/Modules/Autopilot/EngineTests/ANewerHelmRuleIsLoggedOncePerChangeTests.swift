@@ -11,13 +11,7 @@ final class ANewerHelmRuleIsLoggedOncePerChangeTests: XCTestCase {
     private let future = #"{"id":"b","name":"nb","enabled":true,"match":"all","conditions":[{"futureCase":{"_0":1}}],"action":{"trash":{}}}"#
 
     override func setUp() {
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
+        tailTheLog()
     }
 
     func testManyReadsSayItOnce() {

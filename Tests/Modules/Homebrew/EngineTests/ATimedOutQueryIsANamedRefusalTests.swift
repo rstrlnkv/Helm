@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_Homebrew_Engine
@@ -75,13 +76,11 @@ final class ATimedOutQueryIsANamedRefusalTests: XCTestCase {
     /// answer" is true of the installed list, and false of a search, which
     /// keeps nothing.
     func testTheLogSaysWhatWasKeptOnlyForTheQueriesThatKeepOne() {
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-        defer { HelmLog.shared.clearTail(); HelmLog.shared.setEnabled(false) }
+        tailTheLog()
         let e = engine(TimedOutRunner())
         _ = e.search("wget")
         _ = e.listInstalled()
-        let lines = HelmLog.shared.recentEntries().filter { $0.category == "homebrew" }.map(\.message)
+        let lines = loggedLines("homebrew")
         XCTAssertTrue(lines.contains { $0.hasPrefix("search formulae timed out") && $0.hasSuffix("no answer") },
                       "a search that keeps nothing was logged otherwise: \(lines)")
         XCTAssertTrue(lines.contains { $0.hasPrefix("list formulae timed out") && $0.hasSuffix("keeping the last answer") },
@@ -92,14 +91,12 @@ final class ATimedOutQueryIsANamedRefusalTests: XCTestCase {
     /// each of `outdated`, `config` and `descriptions` is named here, so taking
     /// one out of `HomebrewEngine.outcome(of:)` turns this red.
     func testOutdatedConfigAndDescriptionsAreLoggedAsKept() {
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-        defer { HelmLog.shared.clearTail(); HelmLog.shared.setEnabled(false) }
+        tailTheLog()
         let e = engine(TimedOutRunner())
         _ = e.outdated()
         _ = e.config()
         _ = e.descriptions(names: ["a"], isCask: false)
-        let lines = HelmLog.shared.recentEntries().filter { $0.category == "homebrew" }.map(\.message)
+        let lines = loggedLines("homebrew")
         for query in ["outdated", "config", "descriptions"] {
             XCTAssertTrue(lines.contains { $0.hasPrefix("\(query) timed out") && $0.hasSuffix("keeping the last answer") },
                           "\(query) was not logged as keeping the last answer: \(lines)")

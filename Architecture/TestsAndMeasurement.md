@@ -98,6 +98,9 @@ otherwise swept before it is made readable again.
 `Tests/Support/EachLanguage.swift` runs an assertion about a visible string across the
 eight languages; its doc comment says why, and states the rule a new test follows for the
 language it asks in.
+`Tests/Support/LogCapture.swift` is the log for one test: `tailTheLog()` enables it, clears the
+tail and registers the clearing and disabling as a teardown block, so call it where the old
+code enabled the log, and `loggedLines(_:)` reads one category back; `TailTheLogPutsTheLogBackTests` runs a probe case and checks the log is off and the tail empty after it, that `loggedLines(_:)` keeps only the asked category, and that a stale line is gone once the log is switched on.
 `Tests/Support/Yielding.swift` holds the waits, and they are one loop: `waitUntilWithin(_:_:)`
 reads the condition every few milliseconds until a wall-clock deadline and then fails
 naming what never happened. `waitUntil(_:within:)` is that call for a `@MainActor` case,

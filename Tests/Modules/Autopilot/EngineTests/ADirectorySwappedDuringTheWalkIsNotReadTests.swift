@@ -88,9 +88,7 @@ final class ADirectorySwappedDuringTheWalkIsNotReadTests: XCTestCase {
     }
 
     func testASubfolderSwappedToALinkIsNeverEntered() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
         let engine = engine(swapping: true)
         let folder = folder()
         engine.folders = [folder]

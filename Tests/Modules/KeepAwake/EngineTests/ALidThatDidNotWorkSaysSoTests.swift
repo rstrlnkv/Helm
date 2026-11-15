@@ -43,12 +43,6 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
                                  clamshell: clamshell, clock: FakeClock(), lidInfo: FakeLidInfo())
     }
 
-    override func tearDown() {
-        HelmLog.shared.setEnabled(false)
-        HelmLog.shared.clearTail()
-        super.tearDown()
-    }
-
     // MARK: - macOS refused
 
     func testARefusalIsPublishedRatherThanLookingLikeNothingHappened() async throws {
@@ -135,8 +129,7 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
     /// «a rule survives that Helm did not write», which sends whoever reads the
     /// log looking for a second file that does not exist.
     func testADeclinedRemovalIsNotReportedAsSomebodyElsesRule() async {
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
+        tailTheLog()
         clamshell.withdrawalIsGranted = false
         clamshell.removalSucceeds = false
         settings.setClamshellEnabled(false)
@@ -154,8 +147,7 @@ final class ALidThatDidNotWorkSaysSoTests: XCTestCase {
     /// The other half, which the fix must not cost: a removal that really does
     /// leave a foreign grant behind is still named as one.
     func testAForeignGrantThatSurvivesIsStillNamedAsForeign() async {
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
+        tailTheLog()
         // Our file goes; the capability stays, because something else grants it.
         clamshell.removalSucceeds = true
         clamshell.passwordlessGrantExists = true

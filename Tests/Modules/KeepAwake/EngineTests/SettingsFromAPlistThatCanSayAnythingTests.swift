@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
@@ -213,8 +214,7 @@ final class SettingsFromAPlistThatCanSayAnythingTests: XCTestCase {
     /// the empty list, must produce no line at all — otherwise the warning is
     /// wallpaper and says nothing about anybody's file.
     func testARulesStringThatCouldNotBeReadIsSaidSoInTheLog() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
+        tailTheLog()
 
         // The readable pair is spelled by the encoder rather than by hand: every
         // field of a rule is required, so a plausible-looking `{"bundleID": …}`

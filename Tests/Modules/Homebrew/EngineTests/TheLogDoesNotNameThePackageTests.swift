@@ -1,5 +1,4 @@
 import Foundation
-import HelmRuntime
 import HelmTestSupport
 import XCTest
 @testable import Module_Homebrew_Engine
@@ -25,18 +24,11 @@ final class TheLogDoesNotNameThePackageTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
+        tailTheLog()
     }
 
     private var lines: [String] {
-        HelmLog.shared.recentEntries().filter { $0.category == "homebrew" }.map(\.message)
+        loggedLines("homebrew")
     }
 
     private struct FixedLocator: BrewLocator {

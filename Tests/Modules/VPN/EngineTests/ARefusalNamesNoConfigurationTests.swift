@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Helm
 
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_VPN_Engine
@@ -76,9 +77,7 @@ final class ARefusalNamesNoConfigurationTests: XCTestCase {
     /// Through the engine, which is what fills the list of names and writes the
     /// file. Without this the sweep could be perfect and wired to nothing.
     func testTheEngineHandsOverEveryNameItKnows() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         let runner = FakeRunner()
         runner.listOutput = ["Available network connection services:",

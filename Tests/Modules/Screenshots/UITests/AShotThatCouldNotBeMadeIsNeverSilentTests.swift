@@ -42,16 +42,13 @@ final class AShotThatCouldNotBeMadeIsNeverSilentTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
+        tailTheLog()
     }
 
     override func tearDown() {
         for controller in controllers { controller.teardown() }
         controllers = []
         clock.finish()
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
         super.tearDown()
     }
 

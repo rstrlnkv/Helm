@@ -1,5 +1,6 @@
 import Foundation
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Uninstaller_Engine
 
@@ -13,20 +14,11 @@ final class TheLogDoesNotNameTheAppTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
+        tailTheLog()
     }
 
     private var logged: [String] {
-        HelmLog.shared.recentEntries()
-            .filter { $0.category == UninstallerEngine.moduleID }
-            .map(\.message)
+        loggedLines(UninstallerEngine.moduleID)
     }
 
     func testARefusedAppIsLoggedWithoutItsName() async {

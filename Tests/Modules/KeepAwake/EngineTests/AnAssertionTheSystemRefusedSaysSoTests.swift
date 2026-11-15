@@ -29,13 +29,10 @@ final class AnAssertionTheSystemRefusedSaysSoTests: XCTestCase {
         super.setUp()
         store = NamespacedStore(namespace: "keep-awake", backing: InMemoryKeyValueStore())
         assertions = FakeAssertions()
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
+        tailTheLog()
     }
 
     override func tearDown() {
-        HelmLog.shared.setEnabled(false)
-        HelmLog.shared.clearTail()
         store = nil
         assertions = nil
         super.tearDown()

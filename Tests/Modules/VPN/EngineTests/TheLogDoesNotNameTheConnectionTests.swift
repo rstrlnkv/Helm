@@ -1,5 +1,6 @@
 import Foundation
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_VPN_Engine
 
@@ -30,14 +31,7 @@ final class TheLogDoesNotNameTheConnectionTests: XCTestCase {
     /// length of each test and off again, which is where it began.
     override func setUp() {
         super.setUp()
-        HelmLog.shared.setEnabled(true)
-        HelmLog.shared.clearTail()
-    }
-
-    override func tearDown() {
-        HelmLog.shared.clearTail()
-        HelmLog.shared.setEnabled(false)
-        super.tearDown()
+        tailTheLog()
     }
 
     private func makeSettings() -> VPNSettings {
@@ -51,7 +45,7 @@ final class TheLogDoesNotNameTheConnectionTests: XCTestCase {
     }
 
     private var vpnLines: [String] {
-        HelmLog.shared.recentEntries().filter { $0.category == "vpn" }.map(\.message)
+        loggedLines("vpn")
     }
 
     func testConnectingDoesNotWriteTheName() {

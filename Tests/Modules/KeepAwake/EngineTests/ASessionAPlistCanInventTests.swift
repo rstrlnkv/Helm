@@ -1,3 +1,4 @@
+import HelmTestSupport
 import XCTest
 import HelmRuntime
 @testable import Module_KeepAwake_Engine
@@ -46,9 +47,7 @@ final class ASessionAPlistCanInventTests: XCTestCase {
     /// log is the only account, which is the same reason `restoreSession`
     /// writes one for a session that had already ended.
     func testAPlistThatSaysOnlySessionOnHoldsTheMacAndSaysSoInTheLog() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         store.set(true, for: KeepAwakeEngine.SessionKey.on)
 
@@ -67,9 +66,7 @@ final class ASessionAPlistCanInventTests: XCTestCase {
     /// The control for the line above — an ordinary launch with nothing stored
     /// says nothing, so «the log mentions it» is not wallpaper.
     func testALaunchWithNoStoredSessionSaysNothingAboutRestoring() {
-        HelmLog.shared.setEnabled(true)
-        defer { HelmLog.shared.setEnabled(false); HelmLog.shared.clearTail() }
-        HelmLog.shared.clearTail()
+        tailTheLog()
 
         let module = engine()
         module.activate()
