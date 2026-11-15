@@ -13,7 +13,7 @@ import AppKit
 /// **A pop-up, not a row of swatches.** Two of these in one card — the active
 /// colour and the countdown colour — were two rainbows 270 pt wide, and a
 /// settings card is a list of rows with a control at the end of each. The
-/// control is a 12 pt dot now — `PaletteColor.swatchImage` and `swatch(of:)`
+/// control is a 12 pt dot now — `PaletteColor.swatchImage` and `swatchImage(of:)`
 /// both draw that side, and nothing here draws any other — and the palette
 /// lives behind it, which is what Calendar and Reminders do with exactly this
 /// choice.
@@ -89,7 +89,7 @@ public struct HelmPaletteSwatches: View {
             Label {
                 Text(HelmA11y.otherColour)
             } icon: {
-                Image(nsImage: PaletteTint.custom(selection).map(swatch(of:))
+                Image(nsImage: PaletteTint.custom(selection).map(PaletteColor.swatchImage(of:))
                       ?? PaletteColor.white.swatchImage)
             }
             .tag(Choice.custom)
@@ -136,21 +136,6 @@ public struct HelmPaletteSwatches: View {
         // showing — which, shared app-wide as it is, could be anything.
         panel.color = PaletteTint.custom(selection) ?? NSColor(current.color)
         panel.makeKeyAndOrderFront(nil)
-    }
-
-    /// A disc in an arbitrary colour, drawn the same way the palette's own are.
-    private func swatch(of colour: NSColor) -> NSImage {
-        let image = NSImage(size: NSSize(width: 12, height: 12), flipped: false) { rect in
-            let disc = NSBezierPath(ovalIn: rect.insetBy(dx: 0.5, dy: 0.5))
-            colour.setFill()
-            disc.fill()
-            NSColor.labelColor.withAlphaComponent(0.20).setStroke()
-            disc.lineWidth = 1
-            disc.stroke()
-            return true
-        }
-        image.isTemplate = false
-        return image
     }
 
     /// Read aloud: the palette's name, or the word for a colour that has none.

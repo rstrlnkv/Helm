@@ -19,9 +19,7 @@ public enum WelcomeStr {
     /// the whole app, and by the time anyone read it there were also a panel,
     /// a settings window and a sidebar. What is true of every surface is that
     /// Helm is made of modules, which is also what the tour goes on to show.
-    static var introBody: String {
-        L(.introBody)
-    }
+    static var introBody: String { L(.introBody) }
     public static var back: String { L(.back) }
     public static var next: String { L(.next) }
     static var skip: String { L(.skip) }

@@ -18,9 +18,7 @@ public enum AppStr {
     /// in», which was true of the first attempt and is not true now: both the
     /// settings window and the panel take a new identity and are rebuilt. A
     /// note describing a limitation that has been removed is worse than none.
-    public static var interfaceLanguageNote: String {
-        L(.interfaceLanguageNote)
-    }
+    public static var interfaceLanguageNote: String { L(.interfaceLanguageNote) }
     /// The names of `HelmBarAppearance`'s two cases; "Liquid Glass" is
     /// macOS's own name for its material, spelled as System Settings spells it.
     public static var barAppearanceFlat: String { L(.barAppearanceFlat) }
@@ -48,9 +46,7 @@ public enum AppStr {
     /// "Helm Settings", the shape macOS uses for an app's own settings window,
     /// with each language's word for the pane taken from `settingsPane` so the
     /// title and the sidebar cannot disagree.
-    public static var settingsWindowTitle: String {
-        L(.settingsWindowTitle)
-    }
+    public static var settingsWindowTitle: String { L(.settingsWindowTitle) }
     /// Sidebar entry for the app-level pane (login item, panel layout, menu-bar icon).
     public static var settingsPane: String { L(.settingsPane) }
     /// The first of the Settings page's three tabs. Not "General": that word is
@@ -78,9 +74,7 @@ public enum AppStr {
     /// Not `updateFailed`. A download that does not match what the release
     /// published is not a network hiccup, and Retry is the wrong offer: the
     /// honest next step is to look at the release itself.
-    public static var updateDigestMismatch: String {
-        L(.updateDigestMismatch)
-    }
+    public static var updateDigestMismatch: String { L(.updateDigestMismatch) }
     public static var updateFailed: String { L(.updateFailed) }
 
     /// The banner for a release the daily check found with nobody watching.
@@ -109,7 +103,6 @@ public enum AppStr {
     public static var later: String { L(.later) }
     public static var permissions: String { L(.permissions) }
     static var fullDiskAccess: String { L(.fullDiskAccess) }
-    static var fullDiskAccessWhy: String { L(.fullDiskAccessWhy) }
     public static var fullDiskAccessAdHoc: String { L(.fullDiskAccessAdHoc) }
     public static var grant: String { HelmWord.grant }
     public static var permissionGranted: String { L(.permissionGranted) }
@@ -130,14 +123,7 @@ public enum AppStr {
     /// standing choice; this is «Показать», perfective, done once. One English
     /// key means one thing, so the filter is `Filter` now — which is also what
     /// it is, beside a filter glyph.
-    ///
-    /// Takes a language, so a test can ask about the seven this machine is not
-    /// set to. The suite runs in whatever language this Mac is in, and a check
-    /// gated on `.current` never exercises the language it was written for.
-    public static func showPermissions(language: AppLanguage = AppLanguage.current) -> String {
-        HelmWord.show(language: language)
-    }
-    public static var showPermissions: String { showPermissions() }
+    public static var showPermissions: String { HelmWord.show }
 
     /// The one thing on the settings page that is wrong right now, said above
     /// everything else. Counted from `permissions` rather than `inertWithout`:
@@ -210,8 +196,12 @@ public enum AppStr {
     }
     public static func permissionWhy(_ need: PermissionNeed) -> String {
         switch need {
-        case .fullDiskAccess: return fullDiskAccessWhy
-        case .accessibility: return accessibilityWhy
+        case .fullDiskAccess: return L(.fullDiskAccessWhy)
+        // Names both things the grant buys, because one of them is that Helm can
+        // see every keystroke in every application. The lapsed-grant alert
+        // (`permissionReason`) already said so; this is the caption a person reads
+        // *while deciding*, and it described a mouse jiggle.
+        case .accessibility: return L(.accessibilityWhy)
         case .screenRecording: return screenRecordingWhy
         }
     }
@@ -222,14 +212,7 @@ public enum AppStr {
     static var screenRecording: String { L(.screenRecording) }
     /// Says what the grant is *for*, and that Helm records nothing: the name is
     /// macOS's and it reads as a camera, which is what a person weighs the ask by.
-    static var screenRecordingWhy: String {
-        L(.screenRecordingWhy)
-    }
-    /// Names both things the grant buys, because one of them is that Helm can
-    /// see every keystroke in every application. The lapsed-grant alert
-    /// (`permissionReason`) already said so; this is the caption a person reads
-    /// *while deciding*, and it described a mouse jiggle.
-    static var accessibilityWhy: String { L(.accessibilityWhy) }
+    static var screenRecordingWhy: String { L(.screenRecordingWhy) }
     public static var writeLog: String { L(.writeLog) }
     public static func logNoteStableAt(_ folder: String) -> String { L(.logNoteStableAt(folder)) }
     public static var revealLog: String { HelmWord.showInFinder }
@@ -238,9 +221,7 @@ public enum AppStr {
     /// `HelmLog` tags app and VPN names through `Redact` before writing; paths
     /// keep their folder and file names, and the home folder is written as `~`
     /// (`Redact.path`). That is a reason to press the button rather than a footnote.
-    public static var logRedactionNote: String {
-        L(.logRedactionNote)
-    }
+    public static var logRedactionNote: String { L(.logRedactionNote) }
     public static var clearLog: String { HelmWord.clear }
 
     public static func loginItemNeedsApproval(language: AppLanguage = AppLanguage.current) -> String {
@@ -253,10 +234,7 @@ public enum AppStr {
     /// Named the way macOS names the row, so the row Helm points at is the row
     /// that is found: on macOS 27 it is «Login Items & Extensions»
     /// (`LoginItems.appex`), and each language's spelling is that bundle's.
-    public static func openLoginItems(language: AppLanguage = AppLanguage.current) -> String {
-        L(.openLoginItems, language: language)
-    }
-    public static var openLoginItems: String { openLoginItems() }
+    public static var openLoginItems: String { L(.openLoginItems) }
 
     public static var modulesSection: String { L(.modulesSection) }
     /// The section that says Helm reads the disk with nobody at the desk.
@@ -267,17 +245,16 @@ public enum AppStr {
     /// rather than the setting, because the setting is not what the person is
     /// being asked about.
     ///
-    /// Each takes a language, for the reason `showPermissions` does: the suite
-    /// runs in this Mac's own, so a check gated on `.current` never reads the
-    /// other seven.
+    /// Each takes a language, so a test can ask about the seven this machine is
+    /// not set to: the suite runs in whatever language this Mac is in, and a
+    /// check gated on `.current` never exercises the language it was written for.
     public static func backgroundScansSection(language: AppLanguage = AppLanguage.current) -> String {
         L(.backgroundScansSection, language: language)
     }
     public static var backgroundScansSection: String { backgroundScansSection() }
 
     public static func backgroundScansNote(language: AppLanguage = AppLanguage.current) -> String {
-        L(.backgroundScansNote,
-          language: language)
+        L(.backgroundScansNote, language: language)
     }
     public static var backgroundScansNote: String { backgroundScansNote() }
 
@@ -354,19 +331,15 @@ public enum AppStr {
 
     public static func openPane(_ need: PermissionNeed) -> String {
         switch need {
-        case .fullDiskAccess: return openDiskAccessPane
-        case .accessibility: return openAccessibilityPane
-        case .screenRecording: return openScreenRecordingPane
+        // The Uninstaller's button and this one open the same pane and said two
+        // different things — and the seven translations of both were identical,
+        // which is the proof they were one concept with two English spellings.
+        // One key each, naming the pane the way System Settings does.
+        case .fullDiskAccess: return HelmWord.openFullDiskAccess
+        case .accessibility: return L(.openAccessibilityPane)
+        case .screenRecording: return L(.openScreenRecordingPane)
         }
     }
-
-    /// The Uninstaller's button and this one open the same pane and said two
-    /// different things — and the seven translations of both were identical,
-    /// which is the proof they were one concept with two English spellings.
-    /// One key each, naming the pane the way System Settings does.
-    static var openDiskAccessPane: String { HelmWord.openFullDiskAccess }
-    static var openAccessibilityPane: String { L(.openAccessibilityPane) }
-    static var openScreenRecordingPane: String { L(.openScreenRecordingPane) }
     public static var retry: String { L(.retry) }
     /// Shown when a release publishes no digest for its asset: the updater
     /// refuses to swap a bundle it cannot check, and hands the user the page.
@@ -378,43 +351,35 @@ public enum AppStr {
     public static func lastChecked(_ when: String) -> String { L(.lastChecked(when)) }
     public static var neverChecked: String { L(.neverChecked) }
     public static var updateChannel: String { L(.updateChannel) }
-    static var channelBeta: String { L(.channelBeta) }
-    static var channelDev: String { L(.channelDev) }
-    static var channelBetaNote: String { L(.channelBetaNote) }
     /// Set in capitals like `betaBadge`: they sit side by side and a pair
     /// where one shouts and the other does not reads as two kinds of thing.
     public static var devBadge: String { L(.devBadge) }
     public static var betaBadge: String { L(.betaBadge) }
-    static var channelDevNote: String { L(.channelDevNote) }
 
-    /// The two above, chosen by the channel rather than by a ternary at the
+    /// The channel names, chosen by the channel rather than by a ternary at the
     /// call site — the same shape `openPane(_:)` takes for a permission. The
     /// About page asked for each of these three times over: the pill's label,
     /// the pill's tooltip, the note under the row, and the badge's tooltip.
     public static func channelName(_ channel: UpdateCheck.Channel) -> String {
         switch channel {
-        case .beta: return channelBeta
-        case .dev: return channelDev
+        case .beta: return L(.channelBeta)
+        case .dev: return L(.channelDev)
         }
     }
 
     public static func channelNote(_ channel: UpdateCheck.Channel) -> String {
         switch channel {
-        case .beta: return channelBetaNote
-        case .dev: return channelDevNote
+        case .beta: return L(.channelBetaNote)
+        case .dev: return L(.channelDevNote)
         }
     }
 
     /// The sidebar's warning next to a module macOS is currently blocking.
-    public static var moduleBlockedByPermission: String {
-        L(.moduleBlockedByPermission)
-    }
+    public static var moduleBlockedByPermission: String { L(.moduleBlockedByPermission) }
 
     /// The value a blocked module's row carries after its name, so it names no
     /// subject of its own.
-    public static var moduleRowBlockedByPermission: String {
-        L(.moduleRowBlockedByPermission)
-    }
+    public static var moduleRowBlockedByPermission: String { L(.moduleRowBlockedByPermission) }
 
     /// The chevron beside the sidebar's foot row, and the row that takes its
     /// place when the sidebar is narrowed to its glyphs.
@@ -507,9 +472,7 @@ public enum AppStr {
     /// this forwarding to it — with nothing but the sheet calling either. A
     /// rename that stopped halfway leaves the old name reachable, and the next
     /// person has to work out which of the two is the one to change.
-    public static var sidebarComposerNote: String {
-        L(.sidebarComposerNote)
-    }
+    public static var sidebarComposerNote: String { L(.sidebarComposerNote) }
 
     /// What is arranged, without opening anything. Counted from the
     /// arrangement rather than from the registry: a section somebody emptied
@@ -561,9 +524,7 @@ public enum AppStr {
     /// teaches the right-click menu, and Helm is `LSUIElement` — no Dock icon,
     /// no application menu — so those two places are the whole set of doors
     /// somebody can be told about.
-    public static var panelFooterNote: String {
-        L(.panelFooterNote)
-    }
+    public static var panelFooterNote: String { L(.panelFooterNote) }
     public static var panelSetup: String { L(.panelSetup) }
     public static var removeWidget: String { L(.removeWidget) }
     public static var widgetSize: String { L(.widgetSize) }
@@ -573,9 +534,6 @@ public enum AppStr {
     public static var newTab: String { L(.newTab) }
     public static var closeTab: String { L(.closeTab) }
     public static var tabLabel: String { L(.tabLabel) }
-    /// The name of the tab Helm seeds, read in the reader's language rather
-    /// than stored in whichever language it was created in.
-    static var mainTab: String { L(.mainTab) }
     /// An unnamed tab is numbered.
     ///
     /// Every unnamed tab used to answer «Вкладка», so a strip of three read
@@ -584,7 +542,9 @@ public enum AppStr {
     /// text.
     public static func tabTitle(_ tab: PanelLayout.Tab, number: Int? = nil) -> String {
         if let name = tab.name { return name }
-        if tab.seed == "main" { return mainTab }
+        // The seeded tab's name is read in the reader's language rather than
+        // stored in whichever language it was created in.
+        if tab.seed == "main" { return L(.mainTab) }
         guard let number else { return tabLabel }
         return tabLabel + " " + "\(number)"
     }
@@ -595,9 +555,7 @@ public enum AppStr {
     /// pointed at the button either way, so with the button hidden the hint
     /// named a control that was not on screen — and the door it did not
     /// mention is the one that cannot be closed.
-    public static var nothingOnThisTabHintNoButton: String {
-        L(.nothingOnThisTabHintNoButton)
-    }
+    public static var nothingOnThisTabHintNoButton: String { L(.nothingOnThisTabHintNoButton) }
 
     public static var noModules: String { L(.noModules) }
     public static var noModulesHint: String { L(.noModulesHint) }
@@ -617,9 +575,7 @@ public enum AppStr {
     public static var quit: String { L(.quit) }
     /// Explains the tint rule without naming a specific module (the icon is no
     /// longer ring-only, and module names are themselves localized).
-    public static var menuBarNote: String {
-        L(.menuBarNote)
-    }
+    public static var menuBarNote: String { L(.menuBarNote) }
 
     /// A section's heading: the name somebody typed, or its seed translated.
     ///
@@ -648,22 +604,10 @@ public enum AppStr {
 
     public static var turnOn: String { HelmWord.turnOn }
     public static var cancel: String { HelmWord.cancel }
-    public static var resetSection: String {
-        L(.resetSection)
-    }
-    public static var resetAll: String {
-        L(.resetAll)
-    }
-    public static var resetNote: String {
-        L(.resetNote)
-    }
-    public static var resetConfirmTitle: String {
-        L(.resetConfirmTitle)
-    }
-    public static var resetConfirmBody: String {
-        L(.resetConfirmBody)
-    }
-    public static var resetConfirmAction: String {
-        L(.resetConfirmAction)
-    }
+    public static var resetSection: String { L(.resetSection) }
+    public static var resetAll: String { L(.resetAll) }
+    public static var resetNote: String { L(.resetNote) }
+    public static var resetConfirmTitle: String { L(.resetConfirmTitle) }
+    public static var resetConfirmBody: String { L(.resetConfirmBody) }
+    public static var resetConfirmAction: String { L(.resetConfirmAction) }
 }

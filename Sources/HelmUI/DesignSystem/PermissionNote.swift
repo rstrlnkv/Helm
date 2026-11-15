@@ -45,9 +45,7 @@ public struct HelmPermissionNote: View {
     /// The verb, where an empty state can read it too: a page whose whole
     /// content is «this needs a permission» draws the same word on a prominent
     /// button rather than inventing a second one for the same act.
-    public static var grantLabel: String {
-        L(.grant)
-    }
+    public static var grantLabel: String { L(.grant) }
 }
 
 extension View {

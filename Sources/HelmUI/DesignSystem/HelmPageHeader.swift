@@ -560,11 +560,7 @@ private struct PageHeaderOverContent: ViewModifier {
             .onPreferenceChange(HelmPageStandsOnStillContentKey.self) { now in
                 standsOnStillContent = now
             }
-            .onScrollGeometryChange(for: Bool.self) { geometry in
-                geometry.contentOffset.y + geometry.contentInsets.top > 0.5
-            } action: { _, now in
-                scrolled = now
-            }
+            .onScrolledUnder { scrolled = $0 }
             // `spacing: 0` — the gap under the header is the page's own top
             // padding, which every page already draws.
             .safeAreaInset(edge: .top, spacing: 0) {
@@ -671,15 +667,10 @@ extension EnvironmentValues {
 
 /// What the page asks the window to call it. The window, not the page, owns its title: the settings window
 /// reads this and sets it on the `NSWindow` itself.
-public struct HelmPageTitle: Equatable, Sendable {
-    public let title: String
-    init(title: String) { self.title = title }
-}
-
 public struct HelmPageTitleKey: PreferenceKey {
-    public static let defaultValue: HelmPageTitle? = nil
+    public static let defaultValue: String? = nil
     /// The innermost page that says anything wins; views that say nothing contribute nil and must not erase it.
-    public static func reduce(value: inout HelmPageTitle?, nextValue: () -> HelmPageTitle?) {
+    public static func reduce(value: inout String?, nextValue: () -> String?) {
         value = nextValue() ?? value
     }
 }
@@ -722,10 +713,17 @@ struct PageBarContent: ViewModifier {
     func body(content: Content) -> some View {
         if inCard {
             content.modifier(ReportsScrolledUnderBar())
-                .preference(key: HelmPageTitleKey.self, value: HelmPageTitle(title: title))
+                .preference(key: HelmPageTitleKey.self, value: title)
         } else {
             content
         }
+    }
+}
+
+private extension View {
+    /// Says whether the content has scrolled past the bar laid over its top.
+    func onScrolledUnder(_ set: @escaping (Bool) -> Void) -> some View {
+        onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 0.5 } action: { _, now in set(now) }
     }
 }
 
@@ -734,11 +732,7 @@ private struct ReportsScrolledUnderBar: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .onScrollGeometryChange(for: Bool.self) { geometry in
-                geometry.contentOffset.y + geometry.contentInsets.top > 0.5
-            } action: { _, now in
-                scrolled = now
-            }
+            .onScrolledUnder { scrolled = $0 }
             .preference(key: HelmPageScrolledKey.self, value: scrolled)
     }
 }

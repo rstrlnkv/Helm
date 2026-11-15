@@ -178,9 +178,7 @@ public struct HelmRemovalOutcome: View {
         L(.andMore(String(n)))
     }
 
-    private static var grant: String {
-        L(.grant)
-    }
+    private static var grant: String { L(.grant) }
 
     /// The sentence this row says quietly: what is known, with nothing to act on.
     private func quiet(_ text: String) -> some View {

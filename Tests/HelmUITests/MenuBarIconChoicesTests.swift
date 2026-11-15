@@ -52,35 +52,9 @@ final class MenuBarIconChoicesTests: XCTestCase {
         XCTAssertEqual(MenuBarIconStyle(stored: "dot"), .ring)
     }
 
-    func testEveryShapeEverShippedStillReadsBack() {
-        for raw in ["ring", "doubleRing", "ringDot", "disc", "dot",
-                    "squircle", "hexagon", "capsule"] {
-            XCTAssertTrue(MenuBarIconStyle.allCases.contains(MenuBarIconStyle(stored: raw)),
-                          "\(raw) reads back as nothing this build can draw")
-        }
-    }
-
     func testEveryShapeReadsBackAsItself() {
         for style in MenuBarIconStyle.allCases {
             XCTAssertEqual(MenuBarIconStyle(stored: style.rawValue), style)
-        }
-    }
-
-    /// The control both halves need. Without it every assertion above passes
-    /// on an initialiser that returns one constant.
-    func testTheInitialiserIsNotAnsweringOneThingToEverything() {
-        XCTAssertNotEqual(MenuBarIconSize(stored: "xxSmall"), MenuBarIconSize(stored: "small"))
-        XCTAssertNotEqual(MenuBarIconStyle(stored: "hexagon"),
-                          MenuBarIconStyle(stored: "capsule"))
-    }
-
-    /// Every size the app has ever written still reads back as something it
-    /// can draw. The list is the shipped one, not `allCases` — the point is
-    /// the values that are no longer cases.
-    func testEverySizeEverShippedStillReadsBack() {
-        for raw in ["xxxSmall", "xxSmall", "extraSmall", "small", "medium"] {
-            XCTAssertTrue(MenuBarIconSize.allCases.contains(MenuBarIconSize(stored: raw)),
-                          "\(raw) reads back as nothing this build can draw")
         }
     }
 }

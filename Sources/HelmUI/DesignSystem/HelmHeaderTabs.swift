@@ -4,7 +4,7 @@ import SwiftUI
 ///
 /// Under `.flat` a plate of `HelmSurface.barPlate` holds the tabs and the pick is `HelmSurface.barPick`;
 /// under `.liquidGlass` the group is one glass container and the pick is a clear capsule with an outline. The pick slides to
-/// a pressed tab, inside `HelmMotion.interface` and only where `HelmMotion.travels` says so; a tab the page
+/// a pressed tab, inside `HelmMotion.interface` and only where `HelmMotion.moves` says so; a tab the page
 /// itself selects (a page switch, an Uninstaller step) moves it without travel. The selection the page
 /// owns is written outside the animation, so the page below is not swapped inside it.
 struct HelmHeaderTabs: View {
@@ -82,7 +82,7 @@ struct HelmHeaderTabs: View {
     }
 
     private func press(_ tab: HelmToolbarTab) {
-        if HelmMotion.travels(reduceMotion: traits.reducedMotion) {
+        if HelmMotion.moves(reduceMotion: traits.reducedMotion) {
             withAnimation(HelmMotion.interface) { shown = tab.id }
         } else {
             shown = tab.id

@@ -119,24 +119,20 @@ public struct HelmToolbarAction {
     /// state is what its glyph already reports, and a menu has no one glyph
     /// whose state a spin would report on either, so both initializers below
     /// leave it `false` and there is no way to write a spinning toggle or
-    /// menu down at all.
+    /// menu down at all outside this target.
     let isBusy: Bool
     let kind: Kind
     /// Set only by the toggle initializer that takes one; nil for every other
     /// action, which draws exactly as it did before there was a face.
     let toggleFace: HelmToolbarToggleFace?
+}
 
+extension HelmToolbarAction {
     /// A plain button: a `perform` and nothing else. A toggle and a menu take the initializers below.
     public init(id: String, title: String, symbol: String, isEnabled: Bool = true,
                 isVisible: Bool = true, isBusy: Bool = false, perform: @escaping () -> Void) {
-        self.id = id
-        self.title = title
-        self.symbol = symbol
-        self.isEnabled = isEnabled
-        self.isVisible = isVisible
-        self.isBusy = isBusy
-        self.kind = .button(perform)
-        self.toggleFace = nil
+        self.init(id: id, title: title, symbol: symbol, isEnabled: isEnabled, isVisible: isVisible,
+                  isBusy: isBusy, kind: .button(perform), toggleFace: nil)
     }
 
     /// A toggle: `isOn` decides the glyph's tint — or, given a `face`, which of
@@ -146,28 +142,16 @@ public struct HelmToolbarAction {
     public init(id: String, title: String, symbol: String, isEnabled: Bool = true,
                 isVisible: Bool = true, isOn: Bool, face: HelmToolbarToggleFace? = nil,
                 perform: @escaping () -> Void) {
-        self.id = id
-        self.title = title
-        self.symbol = symbol
-        self.isEnabled = isEnabled
-        self.isVisible = isVisible
-        self.isBusy = false
-        self.kind = .toggle(isOn: isOn, perform)
-        self.toggleFace = face
+        self.init(id: id, title: title, symbol: symbol, isEnabled: isEnabled, isVisible: isVisible,
+                  isBusy: false, kind: .toggle(isOn: isOn, perform), toggleFace: face)
     }
 
     /// A menu of checkmarked items — no `perform` of the action's own; each
     /// item carries its own.
     public init(id: String, title: String, symbol: String, isEnabled: Bool = true,
                 isVisible: Bool = true, menu: [HelmToolbarMenuItem]) {
-        self.id = id
-        self.title = title
-        self.symbol = symbol
-        self.isEnabled = isEnabled
-        self.isVisible = isVisible
-        self.isBusy = false
-        self.kind = .menu(menu)
-        self.toggleFace = nil
+        self.init(id: id, title: title, symbol: symbol, isEnabled: isEnabled, isVisible: isVisible,
+                  isBusy: false, kind: .menu(menu), toggleFace: nil)
     }
 }
 

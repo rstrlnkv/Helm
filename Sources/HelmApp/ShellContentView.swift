@@ -254,7 +254,7 @@ final class ShellContentView: NSView {
     func fold(to width: CGFloat, animated: Bool) -> Bool {
         guard width.isFinite else { return false }
         guard animated, sidebarWidth.isFinite, sidebarWidth != width,
-              HelmMotion.travels(reduceMotion: HelmMotion.reduceMotion) else {
+              HelmMotion.moves(reduceMotion: HelmMotion.reduceMotion) else {
             endTravel()
             sidebarWidth = width
             return false
