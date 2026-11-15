@@ -1,23 +1,6 @@
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-/// A real Mac's two answers, which differ. `topLevel` is what
-/// `contentsOfDirectory` finds; `nested` is installed and running and lives one
-/// folder down, so only LaunchServices knows about it.
-private struct PartlyVisible: AppLister {
-    let topLevel: Set<String>
-    let nested: Set<String>
-    func installedApps() -> [InstalledApp] {
-        topLevel.map { InstalledApp(name: $0, bundleID: $0,
-                                    path: "/Applications/\($0).app", sizeBytes: 0) }
-    }
-    func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
-    func installedBundleIDs() -> Set<String> { topLevel }
-    func isKnownToSystem(bundleID: String) -> Bool {
-        topLevel.contains(bundleID) || nested.contains(bundleID)
-    }
-}
-
 /// The sibling test again, for the sibling the *directory listing* cannot see.
 ///
 /// `SiblingPrefixTests` pins the rule: uninstalling `com.acme.tool` must not
@@ -55,7 +38,7 @@ final class NestedSiblingTests: XCTestCase {
     private func scan(_ id: String, topLevel: Set<String>, nested: Set<String>,
                       entries: [String: Int]) async throws -> ScanResult {
         let engine = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
-                                       apps: PartlyVisible(topLevel: topLevel, nested: nested),
+                                       apps: FakeApps.installed(topLevel, nested: nested),
                                        fs: GlobbingFS(entries: entries),
                                        trash: NoTrash(), running: NoRunning())
         return await engine.scan(bundleID: id, appName: "Acrobat")

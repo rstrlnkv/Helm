@@ -35,99 +35,54 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
     /// The count is asserted at 1 first, for the reason given above, and the
     /// task is given its turn to park on the stream before it is cancelled.
     func testKeepAwakeGivesItsSubscriberBackWhenTheHostStopsItsModel() async throws {
-        let descriptor = KeepAwakeDescriptor()
-        let parts = descriptor.makeModule(store: NamespacedStore(
-            namespace: "test.keepawake.subscriber", backing: InMemoryKeyValueStore()))
-        let live = parts.engine
-        await settle(live, until: 1)
-        XCTAssertEqual(live.subscriberCount, 1,
-                       "the model never subscribed, so the count below would pass on nothing")
-        await letTheLoopStart()
-
-        descriptor.stop(parts.model)
-        await settle(live, until: 0)
-
-        XCTAssertEqual(live.subscriberCount, 0,
-                       "`stop(_:)` left the engine's subscriber behind: the model's task was not cancelled")
+        await assertStopGivesItsSubscriberBack(KeepAwakeDescriptor())
     }
 
     /// Layout is built like Keep Awake: the host holds the model, `stop(_:)` ends
     /// its one event task. The engine is built, never activated, so nothing here
     /// reaches the keyboard.
     func testLayoutGivesItsSubscriberBackWhenTheHostStopsItsModel() async throws {
-        let descriptor = LayoutDescriptor()
-        let parts = descriptor.makeModule(store: NamespacedStore(
-            namespace: "test.layout.subscriber", backing: InMemoryKeyValueStore()))
-        let live = parts.engine
-        await settle(live, until: 1)
-        XCTAssertEqual(live.subscriberCount, 1,
-                       "the model never subscribed, so the count below would pass on nothing")
-        await letTheLoopStart()
-
-        descriptor.stop(parts.model)
-        await settle(live, until: 0)
-
-        XCTAssertEqual(live.subscriberCount, 0,
-                       "`stop(_:)` left the engine's subscriber behind: the model's task was not cancelled")
+        await assertStopGivesItsSubscriberBack(LayoutDescriptor())
     }
 
     /// Screenshots is built like Layout: the host holds the model, `stop(_:)` ends its one event task. The engine is
     /// built, never activated, so nothing here reads a preference or the disk and no capture is made.
     func testScreenshotsGivesItsSubscriberBackWhenTheHostStopsItsModel() async throws {
-        let descriptor = ScreenshotsDescriptor()
-        let parts = descriptor.makeModule(store: NamespacedStore(
-            namespace: "test.screenshots.subscriber", backing: InMemoryKeyValueStore()))
-        let live = parts.engine
-        await settle(live, until: 1)
-        XCTAssertEqual(live.subscriberCount, 1,
-                       "the model never subscribed, so the count below would pass on nothing")
-        await letTheLoopStart()
-
-        descriptor.stop(parts.model)
-        await settle(live, until: 0)
-
-        XCTAssertEqual(live.subscriberCount, 0,
-                       "`stop(_:)` left the engine's subscriber behind: the model's task was not cancelled")
+        await assertStopGivesItsSubscriberBack(ScreenshotsDescriptor())
     }
 
     /// Homebrew is built like Keep Awake: the host holds the model, `stop(_:)`
     /// ends its one event task. The engine is built, never activated, so nothing
     /// here reaches `brew` or the network.
     func testHomebrewGivesItsSubscriberBackWhenTheHostStopsItsModel() async throws {
-        let descriptor = HomebrewDescriptor()
-        let parts = descriptor.makeModule(store: NamespacedStore(
-            namespace: "test.homebrew.subscriber", backing: InMemoryKeyValueStore()))
-        let live = parts.engine
-        await settle(live, until: 1)
-        XCTAssertEqual(live.subscriberCount, 1,
-                       "the model never subscribed, so the count below would pass on nothing")
-        await letTheLoopStart()
-
-        descriptor.stop(parts.model)
-        await settle(live, until: 0)
-
-        XCTAssertEqual(live.subscriberCount, 0,
-                       "`stop(_:)` left the engine's subscriber behind: the model's task was not cancelled")
+        await assertStopGivesItsSubscriberBack(HomebrewDescriptor())
     }
 
     /// VPN is built like Keep Awake: the host holds the model, `stop(_:)` ends
     /// its one event task. The engine is built, never activated, so nothing here
     /// reaches the network.
     func testVPNGivesItsSubscriberBackWhenTheHostStopsItsModel() async throws {
-        let descriptor = VPNDescriptor()
+        await assertStopGivesItsSubscriberBack(VPNDescriptor())
+    }
+
+    /// The body of every module's test: the count is asserted at 1 first, for the reason in the class comment,
+    /// and the task is given its turn to park on the stream before it is cancelled.
+    private func assertStopGivesItsSubscriberBack<D: ModuleDescriptor>(
+        _ descriptor: D, file: StaticString = #filePath, line: UInt = #line) async {
         let parts = descriptor.makeModule(store: NamespacedStore(
-            namespace: "test.vpn.subscriber", backing: InMemoryKeyValueStore()))
+            namespace: "test.\(D.id.rawValue).subscriber", backing: InMemoryKeyValueStore()))
         let live = parts.engine
         await settle(live, until: 1)
         XCTAssertEqual(live.subscriberCount, 1,
-                       "the model never subscribed, so the count below would pass on nothing")
+                       "the model never subscribed, so the count below would pass on nothing", file: file, line: line)
         await letTheLoopStart()
 
         descriptor.stop(parts.model)
         await settle(live, until: 0)
 
         XCTAssertEqual(live.subscriberCount, 0,
-                       "`stop(_:)` left the engine's subscriber behind: the model's task was not cancelled")
+                       "`stop(_:)` left the engine's subscriber behind: the model's task was not cancelled",
+                       file: file, line: line)
     }
 
     // MARK: - Waiting

@@ -22,25 +22,7 @@ import XCTest
 /// «somebody rewrote your settings» — the page already draws it as «not read»,
 /// which is the state it was given a `Set<String>?` for.
 @MainActor
-final class TheSettingsPageNeverWaitsForTheKeychainTests: XCTestCase {
-
-    private let key = "disabledScans"
-    private var macKey: String { SettingGuard.macKey(for: key) }
-    private var savedValue: Any?
-    private var savedMac: String?
-    private var savedGuard: SettingGuard!
-
-    override func setUp() async throws {
-        savedValue = AppSettings.store.object(key)
-        savedMac = AppSettings.store.object(macKey) as? String
-        savedGuard = AppSettings.scanGuard
-    }
-
-    override func tearDown() async throws {
-        AppSettings.store.set(savedValue, for: key)
-        AppSettings.store.set(savedMac, for: macKey)
-        AppSettings.scanGuard = savedGuard
-    }
+final class TheSettingsPageNeverWaitsForTheKeychainTests: DisabledScansTestCase {
 
     // MARK: - Cold
 

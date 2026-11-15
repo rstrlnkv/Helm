@@ -19,15 +19,6 @@ private struct SilentFS: FileSystemPort {
     }
 }
 
-private struct StubApps: AppLister {
-    var installed: Set<String> = []
-    var known: Set<String> = []
-    func installedBundleIDs() -> Set<String> { installed }
-    func isKnownToSystem(bundleID: String) -> Bool { known.contains(bundleID) }
-    func installedApps() -> [InstalledApp] { [] }
-    func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
-}
-
 /// The grant's three answers, named at every construction that cares.
 private struct FakeAccess: FullDiskAccessPort {
     var answer: PermissionState?
@@ -65,7 +56,7 @@ final class UninstallerBackgroundScanHonestyTests: XCTestCase {
 
     private let home = URL(fileURLWithPath: "/Users/x")
 
-    private func engine(_ fs: SilentFS, apps: StubApps = StubApps()) -> UninstallerEngine {
+    private func engine(_ fs: SilentFS, apps: FakeApps = FakeApps()) -> UninstallerEngine {
         UninstallerEngine(home: home, apps: apps, fs: fs, trash: NoTrash(),
                           running: NoRunning())
     }
@@ -102,7 +93,7 @@ final class UninstallerBackgroundScanHonestyTests: XCTestCase {
             "/Users/x/Library/Preferences": ["com.acme.tool.plist", "com.other.app.plist"],
         ]
         // The reading failed: no apps, and LaunchServices answers for none either.
-        let report = await engine(fs, apps: StubApps(installed: [], known: [])).backgroundScan()
+        let report = await engine(fs, apps: FakeApps()).backgroundScan()
         XCTAssertNil(report,
                           "an empty installed-apps set turned every entry in ~/Library "
                           + "into a removal candidate")
@@ -111,7 +102,8 @@ final class UninstallerBackgroundScanHonestyTests: XCTestCase {
     // MARK: Full Disk Access gate (Q10b)
 
     private func gated(_ fs: FileSystemPort, _ answer: PermissionState?) -> UninstallerEngine {
-        UninstallerEngine(home: home, apps: StubApps(installed: ["com.acme.tool"]), fs: fs,
+        UninstallerEngine(home: home, apps: FakeApps(apps: [InstalledApp(name: "Tool", bundleID: "com.acme.tool",
+                                                      path: "/Applications/Tool.app", sizeBytes: 0)]), fs: fs,
                           trash: NoTrash(), running: NoRunning(),
                           fullDiskAccess: FakeAccess(answer: answer))
     }

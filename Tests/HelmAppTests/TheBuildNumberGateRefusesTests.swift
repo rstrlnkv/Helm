@@ -25,11 +25,6 @@ import HelmTestSupport
 /// Past defect: commit 6aa086ba, «Pin the build-number gate's git calls and refuse what they can miss».
 final class TheBuildNumberGateRefusesTests: XCTestCase {
 
-    private struct Run {
-        let status: Int32
-        let output: String
-    }
-
     private struct SetupFailure: Error, CustomStringConvertible {
         let description: String
     }
@@ -51,10 +46,6 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
     /// pointing the global config at a file with nothing in it and refusing
     /// the system one outright.
     private func git(_ args: [String], in dir: URL, env extra: [String: String] = [:]) throws -> String {
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        proc.arguments = args
-        proc.currentDirectoryURL = dir
         var environment = [
             "PATH": "/usr/bin:/bin",
             "HOME": NSHomeDirectory(),
@@ -64,18 +55,12 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
             "GIT_COMMITTER_NAME": "Helm Test", "GIT_COMMITTER_EMAIL": "test@helm.invalid",
         ]
         for (key, value) in extra { environment[key] = value }
-        proc.environment = environment
-        let pipe = Pipe()
-        proc.standardOutput = pipe
-        proc.standardError = pipe
-        try proc.run()
-        let output = String(bytes: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-        proc.waitUntilExit()
-        guard proc.terminationStatus == 0 else {
+        let result = try runChild("/usr/bin/git", args, environment: environment, directory: dir, mergeStderr: true)
+        guard result.status == 0 else {
             throw SetupFailure(description: "git \(args.joined(separator: " ")) failed "
-                               + "(\(proc.terminationStatus)): \(output)")
+                               + "(\(result.status)): \(result.output)")
         }
-        return output
+        return result.output
     }
 
     /// A repository with `count` commits on its only branch, one byte of
@@ -98,7 +83,7 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
     /// `swift` that refuses instantly and a `TMPDIR` inside scratch — so a
     /// gate that wrongly passes fails fast rather than building or deleting
     /// anything real.
-    private func run(in repo: URL, extraEnv: [String: String] = [:]) throws -> Run {
+    private func run(in repo: URL, extraEnv: [String: String] = [:]) throws -> ChildResult {
         let scriptsDir = repo.appendingPathComponent("Scripts")
         try FileManager.default.createDirectory(at: scriptsDir, withIntermediateDirectories: true)
         let copy = scriptsDir.appendingPathComponent("package-app.sh")
@@ -115,9 +100,6 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
 
         let tmp = scratchDirectory("gate-tmpdir")
 
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/bin/bash")
-        proc.arguments = [copy.path]
         // GIT_CONFIG_GLOBAL/GIT_CONFIG_NOSYSTEM here for the same reason as
         // in `git(_:in:env:)` above: the script under test makes five git
         // calls of its own, and without these a real ~/.gitconfig on the
@@ -130,16 +112,7 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
             "GIT_CONFIG_NOSYSTEM": "1",
         ]
         for (key, value) in extraEnv { environment[key] = value }
-        proc.environment = environment
-        let pipe = Pipe()
-        proc.standardOutput = pipe
-        proc.standardError = pipe
-        try proc.run()
-        // Read before the wait: the refusal messages are short, but a pipe
-        // nobody drains is how a test of a child process hangs for ever.
-        let output = String(bytes: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-        proc.waitUntilExit()
-        return Run(status: proc.terminationStatus, output: output)
+        return try runChild("/bin/bash", [copy.path], environment: environment, mergeStderr: true)
     }
 
     private func lineCount(_ needle: String, in text: String) -> Int {
@@ -149,7 +122,7 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
     /// The two facts every case below asserts: the gate refused (a status
     /// and a refusal line are both the subject having happened, not only its
     /// absence), and the compile it guards never started.
-    private func assertRefused(_ result: Run, because why: String,
+    private func assertRefused(_ result: ChildResult, because why: String,
                                file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertNotEqual(result.status, 0, "\(why), but the gate exited 0: \(result.output)",
                           file: file, line: line)
@@ -165,7 +138,7 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
     /// the compile started, the stub that stands in for `swift` is the thing
     /// that actually stopped it (never a refusal line), and the number
     /// printed before the compile is the repository's true count.
-    private func assertBuilt(_ result: Run, trueCount: String, because why: String,
+    private func assertBuilt(_ result: ChildResult, trueCount: String, because why: String,
                              file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertEqual(lineCount("!! Build number:", in: result.output), 0,
                        "\(why), but the gate refused: \(result.output)", file: file, line: line)
@@ -423,7 +396,7 @@ final class TheBuildNumberGateRefusesTests: XCTestCase {
     /// empty or not (the same comment), so removing `${GIT_DIR+x}` for
     /// `${GIT_DIR:-}` lets it build straight through, which `assertRefused`
     /// alone already catches.
-    private func assertRefusedByTheEnvironmentGuard(_ result: Run, because why: String,
+    private func assertRefusedByTheEnvironmentGuard(_ result: ChildResult, because why: String,
                                                      file: StaticString = #filePath, line: UInt = #line) {
         assertRefused(result, because: why, file: file, line: line)
         XCTAssertTrue(result.output.contains("is set in the environment, which would steer every git call below"),

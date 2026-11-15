@@ -75,6 +75,14 @@ final class LeftoverActionsTests: XCTestCase {
         XCTAssertEqual(LeftoverActions.available(for: ext), [.systemSettings])
     }
 
+    /// The reason is macOS's, not an administrator's, even for a third-party
+    /// extension the scan did not mark protected: SIP refuses everyone else.
+    func testAThirdPartySystemExtensionIsWithheldByMacOS() {
+        let ext = item(.systemExtension, .orphaned, id: "com.acme.app.network",
+                       path: "com.acme.app.network", writable: false)
+        XCTAssertEqual(LeftoverActions.whyDeleteIsWithheld(from: ext), .protectedByMacOS)
+    }
+
     /// Deleting something that is in use is a different promise from clearing
     /// a leftover — the caller has to say so out loud.
     func testDeletingSomethingInUseNeedsConfirmation() {

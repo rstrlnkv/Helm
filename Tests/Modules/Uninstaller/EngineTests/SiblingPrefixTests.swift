@@ -1,16 +1,6 @@
 import XCTest
 @testable import Module_Uninstaller_Engine
 
-private struct Installed: AppLister {
-    let ids: Set<String>
-    func installedApps() -> [InstalledApp] {
-        ids.map { InstalledApp(name: $0, bundleID: $0, path: "/Applications/\($0).app", sizeBytes: 0) }
-    }
-    func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
-    func installedBundleIDs() -> Set<String> { ids }
-    func isKnownToSystem(bundleID: String) -> Bool { ids.contains(bundleID) }
-}
-
 /// Uninstalling one app must not offer another installed app's data.
 ///
 /// Every id-derived glob is `"<id>*"` or `"*<id>*"`, and a bundle id is a prefix
@@ -27,7 +17,7 @@ final class SiblingPrefixTests: XCTestCase {
 
     private func scan(_ id: String, installed: Set<String>, entries: [String: Int]) async throws -> ScanResult {
         let engine = UninstallerEngine(home: URL(fileURLWithPath: "/Users/x"),
-                                       apps: Installed(ids: installed),
+                                       apps: FakeApps.installed(installed),
                                        fs: GlobbingFS(entries: entries),
                                        trash: NoTrash(), running: NoRunning())
         return await engine.scan(bundleID: id, appName: "Tool")

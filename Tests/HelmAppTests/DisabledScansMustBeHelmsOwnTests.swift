@@ -11,27 +11,7 @@ import XCTest
 /// running as this user can write that file with no permission of its own, which
 /// is the same door Autopilot's rules were sealed against.
 @MainActor
-final class DisabledScansMustBeHelmsOwnTests: XCTestCase {
-
-    private let key = "disabledScans"
-    private var macKey: String { SettingGuard.macKey(for: key) }
-    private var savedValue: Any?
-    private var savedMac: String?
-    private var savedGuard: SettingGuard!
-
-    override func setUp() async throws {
-        // The test process has its own defaults domain, and this puts back
-        // whatever was in it either way: a harness leaves nothing behind.
-        savedValue = AppSettings.store.object(key)
-        savedMac = AppSettings.store.object(macKey) as? String
-        savedGuard = AppSettings.scanGuard
-    }
-
-    override func tearDown() async throws {
-        AppSettings.store.set(savedValue, for: key)
-        AppSettings.store.set(savedMac, for: macKey)
-        AppSettings.scanGuard = savedGuard
-    }
+final class DisabledScansMustBeHelmsOwnTests: DisabledScansTestCase {
 
     private func use(firstUse: Bool = false) {
         AppSettings.scanGuard = SettingGuard(keys: SealKeyProbe(firstUse: firstUse))

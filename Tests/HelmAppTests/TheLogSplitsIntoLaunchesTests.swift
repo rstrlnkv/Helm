@@ -255,9 +255,9 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     }
 
     private func build(_ lines: [LogEntry], level: LogLevel = .info, categories: Set<String> = [],
-                       query: String = "") -> LogPresentation {
+                       query: String = "", language: AppLanguage = .en) -> LogPresentation {
         LogPresentation.build(lines, minimumLevel: level, categories: categories, query: query,
-                              language: "en", calendar: utc)
+                              language: language.rawValue, calendar: utc)
     }
 
     func testWithNoFilterEveryLaunchIsACardAndTheLinesAreTheTail() {
@@ -457,14 +457,10 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     // a repeat across midnight names its day in its tooltip.
 
     private func networkLine(_ seconds: Double, _ level: LogLevel = .info, _ category: String = "vpn",
-                             _ message: String = "network state changed; re-reading") -> LogEntry {
+                             _ message: String = "network state changed; re-reading",
+                             site: LogSite? = nil) -> LogEntry {
         LogEntry(date: base.addingTimeInterval(seconds), level: level, category: category,
-                 message: message)
-    }
-
-    private func buildAtDefaults(_ lines: [LogEntry]) -> LogPresentation {
-        LogPresentation.build(lines, minimumLevel: .info, categories: [], query: "",
-                              language: "en", calendar: utc)
+                 message: message, site: site)
     }
 
     /// A full tail that is one long launch: each tick the oldest line goes and
@@ -473,7 +469,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     func testTheHeadOfARollingTailIsOneCard() {
         let all = (0..<300).map { networkLine(Double($0)) }
         let ids = (0..<50).map { dropped in
-            buildAtDefaults(Array(all[dropped..<(dropped + 200)])).cards.map(\.id)
+            build(Array(all[dropped..<(dropped + 200)])).cards.map(\.id)
         }
         XCTAssertEqual(Set(ids.map { $0.count }), [1])
         XCTAssertEqual(Set(ids.flatMap { $0 }).count, 1, "the head card changed identity as the tail rolled")
@@ -483,7 +479,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// start line keeps its own first line's identity, so two cards never share.
     func testOnlyTheHeadSharesTheFixedIdentity() {
         let lines = [networkLine(0), networkLine(1, .info, "app", "terminating"), networkLine(2), networkLine(3)]
-        let cards = buildAtDefaults(lines).cards
+        let cards = build(lines).cards
         XCTAssertEqual(cards.count, 2)
         guard cards.count == 2 else { return }
         XCTAssertEqual(Set(cards.map(\.id)).count, 2)
@@ -520,7 +516,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     func testTheFooterCountsEveryLineWhenNothingIsFiltered() {
         let lines = [networkLine(0, .info, "app", "Helm 0.11.0 started"), networkLine(1), networkLine(2, .warn),
                      networkLine(100, .info, "app", "Helm 0.11.1 started"), networkLine(101)]
-        let page = buildAtDefaults(lines)
+        let page = build(lines)
         XCTAssertEqual(page.shown, lines.count)
         XCTAssertEqual(page.lines.count, lines.count)
     }
@@ -540,15 +536,6 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     //
     // Each case holds a rule, and its assertion message says what a person would
     // see if the rule broke.
-
-    private func networkStart(_ seconds: Double, _ version: String) -> LogEntry {
-        networkLine(seconds, .info, "app", "Helm \(version) started")
-    }
-
-    private func buildInLanguage(_ lines: [LogEntry], query: String, language: AppLanguage) -> LogPresentation {
-        LogPresentation.build(lines, minimumLevel: .info, categories: [], query: query,
-                              language: language.rawValue, calendar: utc)
-    }
 
     /// What a keyboard produces for a drawn string: every blank a plain space.
     /// Foundation's short time style puts a narrow no-break space (U+202F)
@@ -574,7 +561,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// no version to search by), so the fixture's card is the run after
     /// «terminating». The control: the drawn string itself finds the card.
     func testTheDayAndMinuteAsAKeyboardTypesThemFindTheirCardInEveryLanguage() {
-        let lines = [networkStart(0, "0.11.1-dev.13"), networkLine(10),
+        let lines = [start(0, "0.11.1-dev.13"), networkLine(10),
                      networkLine(20, .info, "app", "terminating"),
                      networkLine(7_200, .info, "memory", "sample: 88 MB (+65 MB) — no phases running")]
         let split = LogSessions.split(lines)
@@ -585,10 +572,10 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
         var unreachable: [String] = []
         AppLanguage.each { language in
             let drawn = HelmDates.dayAndMinute(headless.lines[0].date)
-            XCTAssertEqual(buildInLanguage(lines, query: drawn, language: language).cards.map(\.id), [headless.id],
+            XCTAssertEqual(build(lines, query: drawn, language: language).cards.map(\.id), [headless.id],
                            "\(language.rawValue): the control — the drawn «\(drawn)» did not find its card")
             let keyboard = typed(drawn)
-            let found = buildInLanguage(lines, query: keyboard, language: language).cards.map(\.id)
+            let found = build(lines, query: keyboard, language: language).cards.map(\.id)
             if found != [headless.id] {
                 let odd = drawn.unicodeScalars.filter { $0.properties.isWhitespace && $0 != " " }
                     .map { String(format: "U+%04X", $0.value) }
@@ -607,22 +594,22 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// with a space or a tab around it — each is the whole header and finds the
     /// one card; a doubled space inside is not the drawn words and finds none.
     func testAWholeHeaderInAnotherCaseOrWithBlanksAroundItFindsItsCardInEveryLanguage() {
-        let lines = [networkStart(0, "0.11.1-dev.13"), networkLine(10),
-                     networkStart(100, "0.11.1-dev.14"), networkLine(110)]
+        let lines = [start(0, "0.11.1-dev.13"), networkLine(10),
+                     start(100, "0.11.1-dev.14"), networkLine(110)]
         AppLanguage.each { language in
             let lang = language.rawValue
             for query in ["0.11.1-DEV.14", "helm 0.11.1-dev.14", "HELM 0.11.1-Dev.14",
                           "  Helm 0.11.1-dev.14 ", "\tHelm 0.11.1-dev.14\n"] {
-                XCTAssertEqual(buildInLanguage(lines, query: query, language: language).cards.map(\.session.version),
+                XCTAssertEqual(build(lines, query: query, language: language).cards.map(\.session.version),
                                ["0.11.1-dev.14"], "\(lang): «\(query)» did not find the one card it names")
             }
             let drawn = HelmDates.dayAndMinute(lines[0].date)
             for query in [drawn.uppercased(), drawn.lowercased(), " \(drawn)  "] {
-                XCTAssertEqual(buildInLanguage(lines, query: query, language: language).cards.map(\.session.version),
+                XCTAssertEqual(build(lines, query: query, language: language).cards.map(\.session.version),
                                ["0.11.1-dev.13"], "\(lang): «\(query)» did not find the card drawn «\(drawn)»")
             }
             // Not the drawn words: nothing is found, and nothing header-only is drawn.
-            let page = buildInLanguage(lines, query: "Helm  0.11.1-dev.14", language: language)
+            let page = build(lines, query: "Helm  0.11.1-dev.14", language: language)
             XCTAssertTrue(page.cards.isEmpty, "\(lang): a doubled space inside matched \(page.cards.count) card(s)")
         }
     }
@@ -634,13 +621,13 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// carries both start lines and the one line; the footer counts the first
     /// card's start line (it says «0.11.0» itself) and the line — two.
     func testAQueryThatIsOneCardsHeaderAndAnotherCardsLineDrawsBoth() {
-        let lines = [networkStart(0, "0.11.0"), networkLine(10),
-                     networkStart(100, "0.12.0"), networkLine(110),
+        let lines = [start(0, "0.11.0"), networkLine(10),
+                     start(100, "0.12.0"), networkLine(110),
                      networkLine(120, .warn, "updates", "skipped 0.11.0: already installed"),
                      networkLine(130)]
         AppLanguage.each { language in
             let lang = language.rawValue
-            let page = buildInLanguage(lines, query: "0.11.0", language: language)
+            let page = build(lines, query: "0.11.0", language: language)
             XCTAssertEqual(page.cards.map(\.session.version), ["0.11.0", "0.12.0"],
                            "\(lang): the header match and the line match did not both draw")
             guard page.cards.count == 2 else { return }
@@ -662,7 +649,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     ///
     /// Past defect: backlog #27, no query found the head-of-tail card by its word.
     func testTheEarlierLaunchCardIsFoundByItsWord() {
-        let lines = [networkLine(0), networkLine(10), networkStart(100, "0.11.1-dev.14"), networkLine(110)]
+        let lines = [networkLine(0), networkLine(10), start(100, "0.11.1-dev.14"), networkLine(110)]
         let split = LogSessions.split(lines)
         guard split.count == 2, split[0].title == .earlierLaunch else {
             return XCTFail("the fixture's first card is not the head of the tail")
@@ -672,7 +659,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
             let queries = [word, word.lowercased(), "  \(word) ", language == .en ? "earlier" : nil,
                            language == .ru ? "ранн" : nil].compactMap { $0 }
             for query in queries {
-                XCTAssertEqual(buildInLanguage(lines, query: query, language: language).cards.map(\.id),
+                XCTAssertEqual(build(lines, query: query, language: language).cards.map(\.id),
                                [split[0].id], "\(language.rawValue): «\(query)» did not find the earlier-launch card")
             }
         }
@@ -685,18 +672,18 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// that follows some other line is not a pair and stays where it is.
     func testThreeTerminatingLinesInARowStayWithTheLaunchTheyEnd() {
         let quit = { (at: Double) in self.networkLine(at, .info, "app", "terminating") }
-        let three = [networkStart(0, "0.11.1-dev.14"), networkLine(0.1), quit(600), quit(600.049), quit(600.1),
-                     networkStart(900, "0.11.1-dev.15"), networkLine(900.1)]
+        let three = [start(0, "0.11.1-dev.14"), networkLine(0.1), quit(600), quit(600.049), quit(600.1),
+                     start(900, "0.11.1-dev.15"), networkLine(900.1)]
         XCTAssertEqual(LogSessions.split(three).map(\.lines.count), [5, 2],
                        "three «terminating» lines drew a card of their own")
-        let orphan = [networkStart(0, "0.11.1-dev.14"), quit(600), quit(600.049), quit(600.1),
+        let orphan = [start(0, "0.11.1-dev.14"), quit(600), quit(600.049), quit(600.1),
                       networkLine(601, .info, "memory", "sample")]
         XCTAssertEqual(LogSessions.split(orphan).map(\.lines.count), [4, 1])
-        let apart = [networkStart(0, "0.11.1-dev.14"), quit(600), networkLine(601, .info, "memory", "sample"), quit(700)]
+        let apart = [start(0, "0.11.1-dev.14"), quit(600), networkLine(601, .info, "memory", "sample"), quit(700)]
         XCTAssertEqual(LogSessions.split(apart).map(\.lines.count), [2, 2],
                        "a «terminating» after another run's line left that run")
         // A tail that begins on the pair: its head card holds all three.
-        let head = [quit(600), quit(600.049), quit(600.1), networkStart(900, "0.11.1-dev.15")]
+        let head = [quit(600), quit(600.049), quit(600.1), start(900, "0.11.1-dev.15")]
         XCTAssertEqual(LogSessions.split(head).map(\.lines.count), [3, 1])
     }
 
@@ -711,7 +698,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// the shape of one file that straddles the update on a stable Mac that had
     /// logging switched on by hand: the old build's run, then today's.
     func testARunABareLoggingEnabledOpenedIsNotJoinedByAVersionedOne() {
-        let lines = [networkStart(0, "0.10.0"), networkLine(10), networkLine(20, .info, "app", "terminating"),
+        let lines = [start(0, "0.10.0"), networkLine(10), networkLine(20, .info, "app", "terminating"),
                      networkLine(3_600, .info, "app", "logging enabled"),
                      networkLine(3_610, .warn, "vpn", "yesterday's warning"),
                      networkLine(3_620, .info, "app", "logging disabled"),
@@ -739,7 +726,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// The subject is asserted first: at least one pair of languages spells the
     /// same moment differently, or the negative half proves nothing.
     func testTheDayAndMinuteAsAnotherLanguageDrawsThemFindNoCard() {
-        let lines = [networkStart(0, "0.11.1-dev.13"), networkLine(10),
+        let lines = [start(0, "0.11.1-dev.13"), networkLine(10),
                      networkLine(20, .info, "app", "terminating"),
                      networkLine(7_200, .info, "memory", "sample: 88 MB (+65 MB) — no phases running")]
         let split = LogSessions.split(lines)
@@ -784,20 +771,20 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
         let versions = ["0.11.1", "0.11.1-dev.1", "0.11.1-dev.14", "0.11.1-dev.140"]
         var lines: [LogEntry] = []
         for (index, version) in versions.enumerated() {
-            lines += [networkStart(Double(index) * 100, version), networkLine(Double(index) * 100 + 10)]
+            lines += [start(Double(index) * 100, version), networkLine(Double(index) * 100 + 10)]
         }
         XCTAssertEqual(LogSessions.split(lines).map(\.version), versions, "the fixture's split changed")
         AppLanguage.each { language in
             let lang = language.rawValue
             for version in versions {
                 for query in [version, "Helm \(version)", version.uppercased()] {
-                    XCTAssertEqual(buildInLanguage(lines, query: query, language: language).cards.map(\.session.version),
+                    XCTAssertEqual(build(lines, query: query, language: language).cards.map(\.session.version),
                                    [version], "\(lang): «\(query)»")
                 }
             }
             for query in ["0.11.1-dev", "-dev.14", "dev.14", "0.11.1-dev.14.", "Helm0.11.1-dev.14",
                           "v0.11.1-dev.14"] {
-                let page = buildInLanguage(lines, query: query, language: language)
+                let page = build(lines, query: query, language: language)
                 XCTAssertTrue(page.cards.isEmpty, """
                     \(lang): «\(query)» drew \(page.cards.map { $0.session.version ?? "nil" }) — no card's \
                     header says it whole and no line holds it as a row
@@ -829,7 +816,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     func testAWarningWithNoSiteGluedToOrQuotingAStartLineIsStillDrawn() {
         let zone = TimeZone(identifier: "UTC")!
         let quoted = "2026-09-21 14:25:00.000 [info] [app] Helm 9.9.9 started"
-        let older = [networkStart(0, "0.9.0"), networkLine(10),
+        let older = [start(0, "0.9.0"), networkLine(10),
                      networkLine(60, .warn, "autopilot", "refused a file named \(quoted)"),
                      networkLine(120)]
         let torn = "2026-09-21 14:13:20.000 [info] [app] Helm 0.11.1-dev.13 started\n"
@@ -845,7 +832,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
             let warnings = lines.filter { $0.level == .warn }
             XCTAssertEqual(warnings.count, 1, "\(shape): the fixture holds \(warnings.count) warnings")
             XCTAssertTrue(warnings.allSatisfy { $0.site == nil }, "\(shape): the warning has a site")
-            let page = buildInLanguage(lines, query: "", language: .en)
+            let page = build(lines, query: "", language: .en)
             for card in page.cards {
                 let drawn = (card.startup + card.rows).flatMap(\.lines).filter { $0.level == .warn }.count
                 if card.warnings != drawn {
@@ -882,17 +869,6 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     // `helm.previous.log` line 961 is «[app] logging enabled» two minutes after
     // «[app] terminating», with no start line between them, and the owner's two
     // files hold 24 places where lines follow «terminating» before the next start.
-
-    private func launchLine(_ seconds: Double, _ level: LogLevel = .info, _ category: String = "vpn",
-                            _ message: String = "network state changed; re-reading",
-                            site: LogSite? = nil) -> LogEntry {
-        LogEntry(date: base.addingTimeInterval(seconds), level: level, category: category,
-                 message: message, site: site)
-    }
-
-    private func launchStart(_ seconds: Double, _ version: String) -> LogEntry {
-        launchLine(seconds, .info, "app", "Helm \(version) started")
-    }
 
     /// The card a line is drawn in, by the line's id.
     private func card(holding entry: LogEntry, in page: LogPresentation) -> LogPresentation.Card? {
@@ -1030,10 +1006,10 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// The owner's log has 24 of these, e.g. `helm.log` at 2026-09-30
     /// 16:25:50 «terminating» followed ten seconds later by a memory sample.
     func testLinesAfterALaunchSaidItWasTerminatingAreNotThatLaunchs() throws {
-        let stranger = launchLine(700, .warn, "layout", "no accessibility grant — not watching", site: grant)
-        let lines = [launchStart(0, "0.11.1-dev.14"), launchLine(0.1, .info, "host", "enable vpn"),
-                     launchLine(300), launchLine(600, .info, "app", "terminating"),
-                     launchLine(610, .info, "memory", "sample: 88 MB (+65 MB) — no phases running"),
+        let stranger = networkLine(700, .warn, "layout", "no accessibility grant — not watching", site: grant)
+        let lines = [start(0, "0.11.1-dev.14"), networkLine(0.1, .info, "host", "enable vpn"),
+                     networkLine(300), networkLine(600, .info, "app", "terminating"),
+                     networkLine(610, .info, "memory", "sample: 88 MB (+65 MB) — no phases running"),
                      stranger]
 
         let page = build(lines)
@@ -1121,9 +1097,9 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     func testAnUnreadableLineEndsTheBurstLikeAWarningDoes() throws {
         let stray = LogEntry(date: base.addingTimeInterval(0.2), level: .info, category: "",
                              message: "Helm-OLD-FORMAT half-written line without a stamp or level")
-        let lines = [launchStart(0, "0.11.1-dev.14"), launchLine(0.1, .info, "host", "enable vpn"),
-                     launchLine(0.2, .info, "memory", "module.vpn.enable: +336 KB"), stray,
-                     launchLine(0.3, .info, "host", "enable keep-awake"), launchLine(30)]
+        let lines = [start(0, "0.11.1-dev.14"), networkLine(0.1, .info, "host", "enable vpn"),
+                     networkLine(0.2, .info, "memory", "module.vpn.enable: +336 KB"), stray,
+                     networkLine(0.3, .info, "host", "enable keep-awake"), networkLine(30)]
 
         let card = try XCTUnwrap(build(lines).cards.first)
 
@@ -1139,10 +1115,10 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// Open fold, then the tail rolls over: the fold stays open while the start
     /// line is in the tail, because the card is its start line's id.
     func testARollingTailKeepsAnOpenFoldOpenUntilItsStartLineLeaves() {
-        let head = (0..<5).map { launchLine(Double($0) - 100, .info, "memory", "sample \($0)") }
-        let launch = [launchStart(0, "0.11.1-dev.14")]
-            + (1...6).map { launchLine(Double($0) * 0.1, .info, "host", "enable \($0)") }
-            + (0..<5).map { launchLine(Double(60 + $0), .info, "vpn", "tick \($0)") }
+        let head = (0..<5).map { networkLine(Double($0) - 100, .info, "memory", "sample \($0)") }
+        let launch = [start(0, "0.11.1-dev.14")]
+            + (1...6).map { networkLine(Double($0) * 0.1, .info, "host", "enable \($0)") }
+            + (0..<5).map { networkLine(Double(60 + $0), .info, "vpn", "tick \($0)") }
         let all = head + launch
         let opened: Set<LogEntry.ID> = [launch[0].id]
 
@@ -1175,14 +1151,14 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// step every card on the page has a name of its own, because two cards
     /// under one identity are one view to `ForEach`.
     func testTheHeadCardChangesIdentityOnceAsTheTailRollsPastItsStart() {
-        var all = [launchStart(0, "0.11.0")]
-        all += (1..<40).map { launchLine(Double($0), .info, "host", "line \($0)") }
-        all.append(launchLine(40, .info, "app", "terminating"))
-        all += (41..<50).map { launchLine(Double($0), .info, "memory", "foreign \($0)") }
-        all.append(launchLine(50, .info, "app", "logging enabled"))
-        all += (51..<60).map { launchLine(Double($0), .warn, "layout", "declined \($0)") }
-        all.append(launchStart(60, "0.11.1"))
-        all += (61..<120).map { launchLine(Double($0), .info, "vpn", "tick \($0)") }
+        var all = [start(0, "0.11.0")]
+        all += (1..<40).map { networkLine(Double($0), .info, "host", "line \($0)") }
+        all.append(networkLine(40, .info, "app", "terminating"))
+        all += (41..<50).map { networkLine(Double($0), .info, "memory", "foreign \($0)") }
+        all.append(networkLine(50, .info, "app", "logging enabled"))
+        all += (51..<60).map { networkLine(Double($0), .warn, "layout", "declined \($0)") }
+        all.append(start(60, "0.11.1"))
+        all += (61..<120).map { networkLine(Double($0), .info, "vpn", "tick \($0)") }
         let width = 30
 
         var names: [LogEntry.ID: [LogEntry.ID]] = [:]   // line → the card ids it was drawn under
@@ -1218,11 +1194,11 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// the new day, none would, and the rows below would read as the day before.
     func testARepeatAcrossMidnightStillNamesTheNewDay() {
         // 1_790_000_000 is 14:13:20 UTC; +35 000 s is 23:56:40, +35 300 is 00:01:40.
-        let lines = [launchStart(0, "0.11.1-dev.14"), launchLine(60),
-                     launchLine(35_000, .warn, "layout", "no accessibility grant — not watching", site: grant),
-                     launchLine(35_100, .warn, "layout", "no accessibility grant — not watching", site: grant),
-                     launchLine(35_300, .warn, "layout", "no accessibility grant — not watching", site: grant),
-                     launchLine(35_400, .info, "memory", "sample: 123 MB (-20 MB) — no phases running")]
+        let lines = [start(0, "0.11.1-dev.14"), networkLine(60),
+                     networkLine(35_000, .warn, "layout", "no accessibility grant — not watching", site: grant),
+                     networkLine(35_100, .warn, "layout", "no accessibility grant — not watching", site: grant),
+                     networkLine(35_300, .warn, "layout", "no accessibility grant — not watching", site: grant),
+                     networkLine(35_400, .info, "memory", "sample: 123 MB (-20 MB) — no phases running")]
         XCTAssertFalse(utc.isDate(lines[3].date, inSameDayAs: lines[4].date),
                        "the fixture does not cross midnight")
 
@@ -1242,10 +1218,10 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// rows, never one ×2 — under «All» and under «Warnings», where the fold
     /// runs over what is shown.
     func testARepeatNeverFoldsAcrossALaunch() {
-        let lines = [launchStart(0, "0.11.1-dev.13"),
-                     launchLine(60, .warn, "layout", "no accessibility grant — not watching", site: grant),
-                     launchStart(120, "0.11.1-dev.14"),
-                     launchLine(180, .warn, "layout", "no accessibility grant — not watching", site: grant)]
+        let lines = [start(0, "0.11.1-dev.13"),
+                     networkLine(60, .warn, "layout", "no accessibility grant — not watching", site: grant),
+                     start(120, "0.11.1-dev.14"),
+                     networkLine(180, .warn, "layout", "no accessibility grant — not watching", site: grant)]
         for level in [LogLevel.info, .warn] {
             let page = build(lines, level: level)
             XCTAssertEqual(page.cards.count, 2, "\(level)")
@@ -1259,7 +1235,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// Two starts in one millisecond — a launch that failed at once and was
     /// relaunched, or two builds started together — are two cards, each its own.
     func testTwoStartsInOneMillisecondAreTwoLaunches() {
-        let lines = [launchStart(0, "0.11.1-dev.13"), launchStart(0, "0.11.1-dev.14"), launchLine(0), launchLine(0.001)]
+        let lines = [start(0, "0.11.1-dev.13"), start(0, "0.11.1-dev.14"), networkLine(0), networkLine(0.001)]
 
         let sessions = LogSessions.split(lines)
 
@@ -1277,7 +1253,7 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     func testAStartLineInAnyVersionFormIsAStart() {
         for version in ["0.9.0", "0.9.0-dev.11", "0", "1.0 (beta)", "0.11.1-dev.14+local",
                         "０.１１"] {
-            XCTAssertEqual(LogSeed.version(of: launchStart(0, version)), version, version)
+            XCTAssertEqual(LogSeed.version(of: start(0, version)), version, version)
         }
     }
 
@@ -1288,13 +1264,13 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// one launch with thirteen warnings would read «13 warnings» on its card
     /// and «14 of … lines» under it, and nothing on the page is the fourteenth.
     func testUnderWarningsTheFooterCountsWhatTheBadgesCount() {
-        var lines = [launchStart(0, "0.11.1-dev.14"), launchLine(0.1, .info, "host", "enable vpn")]
+        var lines = [start(0, "0.11.1-dev.14"), networkLine(0.1, .info, "host", "enable vpn")]
         for index in 0..<12 {
-            lines.append(launchLine(60 + Double(index), .warn, "layout",
+            lines.append(networkLine(60 + Double(index), .warn, "layout",
                               "no accessibility grant — not watching", site: grant))
         }
-        lines.append(launchLine(90, .warn, "vpn", "never connected"))
-        lines.append(launchLine(95))
+        lines.append(networkLine(90, .warn, "vpn", "never connected"))
+        lines.append(networkLine(95))
         let page = build(lines, level: .warn)
         let badged = page.cards.reduce(0) { $0 + $1.warnings + $1.errors }
         XCTAssertEqual(badged, 13)
@@ -1334,8 +1310,8 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// row, so a search that matched only lines would say nothing matches while
     /// the words are on screen.
     func testSearchingForTheVersionOnACardFindsThatCard() {
-        let lines = [launchStart(0, "0.11.1-dev.13"), launchLine(10),
-                     launchStart(100, "0.11.1-dev.14"), launchLine(110)]
+        let lines = [start(0, "0.11.1-dev.13"), networkLine(10),
+                     start(100, "0.11.1-dev.14"), networkLine(110)]
 
         let page = build(lines, query: "0.11.1-dev.14")
 
@@ -1352,9 +1328,9 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// unanswered «logging enabled») draws the day and minute of its first line
     /// too, and a search for exactly those words finds it.
     func testSearchingForTheTimeOnACardWithNoVersionFindsThatCard() {
-        let lines = [launchStart(0, "0.11.1-dev.13"), launchLine(10),
-                     launchLine(20, .info, "app", "terminating"),
-                     launchLine(7_200, .info, "memory", "sample: 88 MB (+65 MB) — no phases running")]
+        let lines = [start(0, "0.11.1-dev.13"), networkLine(10),
+                     networkLine(20, .info, "app", "terminating"),
+                     networkLine(7_200, .info, "memory", "sample: 88 MB (+65 MB) — no phases running")]
         guard let headless = build(lines).cards.last else { return XCTFail("the fixture drew no card") }
         XCTAssertNil(headless.session.version, "the fixture's split changed")
         AppLanguage.only(.en) {
@@ -1380,9 +1356,9 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// drawn for its lines, whatever the word.
     func testAPartOfAHeaderDoesNotDrawAHeaderOnlyCardForEveryLaunch() {
         AppLanguage.only(.en) {
-            let lines = [launchStart(0, "0.11.1-dev.13"), launchLine(10),
-                         launchStart(100, "0.11.1-dev.14"), launchLine(110),
-                         launchStart(200, "0.11.1-dev.15"), launchLine(210, .info, "vpn", "a Helm-shaped word")]
+            let lines = [start(0, "0.11.1-dev.13"), networkLine(10),
+                         start(100, "0.11.1-dev.14"), networkLine(110),
+                         start(200, "0.11.1-dev.15"), networkLine(210, .info, "vpn", "a Helm-shaped word")]
             let time = HelmDates.dayAndMinute(lines[0].date)
             for part in ["Helm", "0.11", "dev", String(time.suffix(2)), "0.11.1-dev.1"] {
                 let page = build(lines, query: part)
@@ -1411,16 +1387,16 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// A «terminating» that follows a «terminating» stays with the launch it
     /// ends; the first line after them still opens a run of its own.
     func testASecondTerminatingLineStaysWithTheLaunchItEnds() {
-        let lines = [launchStart(0, "0.11.1-dev.14"), launchLine(0.1), launchLine(600, .info, "app", "terminating"),
-                     launchLine(600.049, .info, "app", "terminating"),
-                     launchStart(900, "0.11.1-dev.15"), launchLine(900.1)]
+        let lines = [start(0, "0.11.1-dev.14"), networkLine(0.1), networkLine(600, .info, "app", "terminating"),
+                     networkLine(600.049, .info, "app", "terminating"),
+                     start(900, "0.11.1-dev.15"), networkLine(900.1)]
         let split = LogSessions.split(lines)
         XCTAssertEqual(split.map(\.lines.count), [4, 2], """
             two «terminating» lines in a row drew \(split.map(\.lines.count)) lines per card — a \
             card of one line, with no version, between two launches
             """)
-        let orphan = [launchStart(0, "0.11.1-dev.14"), launchLine(600, .info, "app", "terminating"),
-                      launchLine(600.049, .info, "app", "terminating"), launchLine(601, .info, "memory", "sample")]
+        let orphan = [start(0, "0.11.1-dev.14"), networkLine(600, .info, "app", "terminating"),
+                      networkLine(600.049, .info, "app", "terminating"), networkLine(601, .info, "memory", "sample")]
         let orphanSplit = LogSessions.split(orphan)
         XCTAssertEqual(orphanSplit.map(\.lines.count), [3, 1],
                        "a line after the pair is no longer that launch's")
@@ -1439,11 +1415,11 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     /// this test is the one to change, deliberately.
     func testTheRowAfterARepeatAcrossMidnightOpensWithItsOwnDay() {
         // +35 000 s is 23:56:40 UTC, +35 300 is 00:01:40, +35 400 is 00:03:20.
-        let lines = [launchStart(0, "0.11.1-dev.14"), launchLine(60),
-                     launchLine(35_000, .warn, "layout", "no accessibility grant — not watching", site: grant),
-                     launchLine(35_100, .warn, "layout", "no accessibility grant — not watching", site: grant),
-                     launchLine(35_300, .warn, "layout", "no accessibility grant — not watching", site: grant),
-                     launchLine(35_400, .info, "memory", "sample: 123 MB (-20 MB) — no phases running")]
+        let lines = [start(0, "0.11.1-dev.14"), networkLine(60),
+                     networkLine(35_000, .warn, "layout", "no accessibility grant — not watching", site: grant),
+                     networkLine(35_100, .warn, "layout", "no accessibility grant — not watching", site: grant),
+                     networkLine(35_300, .warn, "layout", "no accessibility grant — not watching", site: grant),
+                     networkLine(35_400, .info, "memory", "sample: 123 MB (-20 MB) — no phases running")]
         XCTAssertTrue(utc.isDate(lines[4].date, inSameDayAs: lines[5].date)
                       && !utc.isDate(lines[2].date, inSameDayAs: lines[5].date),
                       "the fixture's row after the span is not on the span's last day")
@@ -1514,10 +1490,10 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
     func testALineThatQuotesAStartLineIsNotALaunch() {
         let zone = TimeZone(identifier: "UTC")!
         let quoted = "2026-09-21 14:25:00.000 [info] [app] Helm 9.9.9 started"
-        let lines = [launchStart(0, "0.11.0"), launchLine(0.1, .info, "host", "enable vpn"),
-                     launchLine(60, .warn, "autopilot", "refused a file named \(quoted)",
+        let lines = [start(0, "0.11.0"), networkLine(0.1, .info, "host", "enable vpn"),
+                     networkLine(60, .warn, "autopilot", "refused a file named \(quoted)",
                           site: LogSite(file: "AutopilotEngine.swift", line: 88, function: "run()")),
-                     launchLine(120, .warn, "layout", "no accessibility grant — not watching", site: grant)]
+                     networkLine(120, .warn, "layout", "no accessibility grant — not watching", site: grant)]
         let seeded = LogSeed.entries(from: LogLine.lines(lines, timeZone: zone) + "\n", startedMidFile: false,
                                      dated: base, using: LogSeed.Stamps(timeZone: zone))
         XCTAssertEqual(seeded.map(\.message), lines.map(\.message), "the parse itself changed")
@@ -1544,8 +1520,8 @@ final class TheLogSplitsIntoLaunchesTests: XCTestCase {
         for message in ["copied: [info] [app] Helm 9.9.9 started",
                         "x 2026-09-21 14:25 [info] [app] Helm 9.9.9 started",
                         "[info] [app] Helm 9.9.9 started"] {
-            let lines = [launchStart(0, "0.11.0"), launchLine(60, .info, "host", message),
-                         launchLine(120, .warn, "layout", "no accessibility grant — not watching", site: grant)]
+            let lines = [start(0, "0.11.0"), networkLine(60, .info, "host", message),
+                         networkLine(120, .warn, "layout", "no accessibility grant — not watching", site: grant)]
             let versions = LogSessions.split(lines).map { $0.version ?? "nil" }
             XCTAssertEqual(versions, ["0.11.0"], """
                 «\(message)», a line with no stamp before the start words, opens a card: \(versions)

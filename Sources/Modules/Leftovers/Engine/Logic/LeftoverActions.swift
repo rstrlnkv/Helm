@@ -110,10 +110,7 @@ public enum LeftoverActions {
         // installed it and SIP refuses everyone else. The row draws the button
         // that opens the pane instead of this menu, and the answer is still the
         // honest one.
-        if item.kind == .systemExtension { return .protectedByMacOS }
-        if isApplesOrProtected(item) {
-            return .protectedByMacOS
-        }
+        if item.kind == .systemExtension || isApplesOrProtected(item) { return .protectedByMacOS }
         // What is left is a folder Helm cannot write in, or a daemon whose
         // unloading needs root: both are things an administrator really can do.
         return .needsAdministrator

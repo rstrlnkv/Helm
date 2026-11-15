@@ -39,6 +39,21 @@ struct FakeApps: AppLister {
         if lookupDelay > 0 { Thread.sleep(forTimeInterval: lookupDelay) }
         return opened[path]
     }
+    /// Optional, the way the port is: `nil` is a Trash this process was not allowed
+    /// to read, which is a different fact from an empty one and has its own tests in
+    /// `TheOfferSwitchSaysWhatItIsDoingTests`. A non-optional here would satisfy
+    /// nothing and hand every test the protocol's default of `[]` — with no error
+    /// anywhere.
+    var trashed: [TrashedApp]? = []
+    func trashedApps() -> [TrashedApp]? { trashed }
+    /// A real Mac's two answers, which differ. `ids` is what `contentsOfDirectory`
+    /// finds; `nested` is installed and running and lives one folder down, so only
+    /// LaunchServices knows about it.
+    static func installed(_ ids: Set<String>, nested: Set<String> = []) -> FakeApps {
+        FakeApps(known: ids.union(nested), apps: ids.map {
+            InstalledApp(name: $0, bundleID: $0, path: "/Applications/\($0).app", sizeBytes: 0)
+        })
+    }
 }
 /// A Mac with none of the files a test asks about: nothing exists, nothing weighs
 /// anything, no glob and no listing finds a thing.
@@ -220,4 +235,15 @@ struct NoRunning: RunningAppsPort {
     func quit(bundleID: String, force: Bool) {
         XCTFail("no test here quits anything — this test wants FakeRunning")
     }
+}
+
+/// A bundle at `app` whose `Info.plist` carries `id`: the engine reads the id from
+/// there, and it is what ties a refusal to the app owning a system extension.
+@discardableResult
+func writeAppBundle(_ app: URL, id: String) throws -> String {
+    let contents = app.appendingPathComponent("Contents")
+    try FileManager.default.createDirectory(at: contents, withIntermediateDirectories: true)
+    try (["CFBundleIdentifier": id] as NSDictionary)
+        .write(to: contents.appendingPathComponent("Info.plist"))
+    return app.path
 }

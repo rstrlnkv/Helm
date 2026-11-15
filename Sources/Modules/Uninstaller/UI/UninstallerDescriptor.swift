@@ -45,11 +45,11 @@ import Module_Uninstaller_Engine
     private func productionEngine(store: NamespacedStore,
                                   trashChanged: @escaping @Sendable () -> Void) -> UninstallerEngine {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        let ports = UninstallerSystemPorts(home: home)
         // The store the host hands every module was unused here until the Trash
         // offer needed somewhere to remember a "no" across launches.
-        return UninstallerEngine(home: home, apps: ports.apps, fs: ports.fs,
-                                 trash: ports.trash, running: ports.running,
+        return UninstallerEngine(home: home, apps: WorkspaceAppLister(home: home, fs: FMFileSystem()),
+                                 fs: FMFileSystem(), trash: FMTrash(),
+                                 running: WorkspaceRunningApps(),
                                  extensions: SystemExtensionLister(),
                                  fullDiskAccess: FullDiskAccessProbe(),
                                  store: store, trashChanged: trashChanged)

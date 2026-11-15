@@ -13,34 +13,7 @@ import XCTest
 /// sealed as Helm's own. `defaults write com.helm.app module.app.disabledScans -array`
 /// is the whole attack: a full-volume walk under Helm's Full Disk Access, blessed.
 @MainActor
-final class TheFirstReadClosesTheSealsDoorTests: XCTestCase {
-
-    private let key = "disabledScans"
-    private var macKey: String { SettingGuard.macKey(for: key) }
-    private var savedValue: Any?
-    private var savedMac: Any?
-    private var savedGuard: SettingGuard!
-
-    override func setUp() async throws {
-        savedValue = AppSettings.store.object(key)
-        savedMac = AppSettings.store.object(macKey)
-        savedGuard = AppSettings.scanGuard
-    }
-
-    override func tearDown() async throws {
-        AppSettings.store.set(savedValue, for: key)
-        AppSettings.store.set(savedMac, for: macKey)
-        AppSettings.scanGuard = savedGuard
-    }
-
-    /// A Mac nobody has configured: no stored value, no MAC, no keychain item.
-    private func freshMac() -> SealKeyProbe {
-        AppSettings.store.set(nil, for: key)
-        AppSettings.store.set(nil, for: macKey)
-        let keychain = SealKeyProbe()
-        AppSettings.scanGuard = SettingGuard(keys: keychain)
-        return keychain
-    }
+final class TheFirstReadClosesTheSealsDoorTests: DisabledScansTestCase {
 
     func testReadingTheDefaultCreatesThisInstallationsKey() {
         let keychain = freshMac()

@@ -30,10 +30,7 @@ final class ALabelTheFileWouldNotRegisterTests: XCTestCase {
         files.listing["/Users/x/Library/LaunchAgents"] = [file]
         files.plists["/Users/x/Library/LaunchAgents/\(file)"] =
             PlistData(["Label": label, "Program": "/Applications/Gone.app/Contents/MacOS/x"])
-        let items = LeftoversScanner(home: home, files: files, apps: LeftoversFakeApps(),
-                                     extensions: LeftoversFakeLoaded()).scan()
-        return try XCTUnwrap(items.first { $0.kind == .launchAgent },
-                            "precondition: the agent is listed at all")
+        return try firstAgent(home: home, files: files)
     }
 
     /// **The finding.** A file wearing somebody else's label is offered the switch.

@@ -21,14 +21,6 @@ import XCTest
 /// target to check.
 final class TheOfferSwitchTakesEffectNowTests: XCTestCase {
 
-    private struct NoApps: AppLister {
-        func installedApps() -> [InstalledApp] { [] }
-        func appSizes(_ apps: [InstalledApp]) -> [String: Int] { [:] }
-        func installedBundleIDs() -> Set<String> { [] }
-        func isKnownToSystem(bundleID: String) -> Bool { false }
-        func trashedApps() -> [TrashedApp]? { [] }
-    }
-
     /// How many times the engine said "look again".
     private final class Told: @unchecked Sendable {
         private let lock = NSLock()
@@ -41,7 +33,7 @@ final class TheOfferSwitchTakesEffectNowTests: XCTestCase {
         let store = NamespacedStore(namespace: "uninstaller", backing: InMemoryKeyValueStore())
         store.set(watching, for: "watchTrash")
         let engine = UninstallerEngine(home: URL(fileURLWithPath: "/Users/ann"),
-                                       apps: NoApps(), fs: NoFiles(), trash: NoTrash(),
+                                       apps: FakeApps(), fs: NoFiles(), trash: NoTrash(),
                                        running: NoRunning(), store: store,
                                        trashChanged: { told.tell() })
         return (engine, store)
