@@ -33,14 +33,11 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
     final class JournalledFolder: ShotWriting, @unchecked Sendable {
         let moves: ShotMoves
         private let lock = NSLock()
-        private var _afterWrite: ((URL) -> Void)?
+        private let _afterWrite = Locked<((URL) -> Void)?>(nil)
         private var _written: [WrittenShot] = []
         init(moves: ShotMoves) { self.moves = moves }
 
-        var afterWrite: ((URL) -> Void)? {
-            get { lock.withLock { _afterWrite } }
-            set { lock.withLock { _afterWrite = newValue } }
-        }
+        var afterWrite: ((URL) -> Void)? { get { _afterWrite.value } set { _afterWrite.value = newValue } }
         var written: [WrittenShot] { lock.withLock { _written } }
 
         func write(_ data: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
@@ -59,11 +56,8 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
             return claimed
         }
         /// Run with the name right after a successful claim, before the session goes on.
-        var afterClaim: ((URL) -> Void)? {
-            get { lock.withLock { _afterClaim } }
-            set { lock.withLock { _afterClaim = newValue } }
-        }
-        private var _afterClaim: ((URL) -> Void)?
+        var afterClaim: ((URL) -> Void)? { get { _afterClaim.value } set { _afterClaim.value = newValue } }
+        private let _afterClaim = Locked<((URL) -> Void)?>(nil)
     }
 
     /// The Trash as a folder: the file is really moved into it under a name of its own, or the move throws.
@@ -71,24 +65,15 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
         let folder: URL
         let moves: ShotMoves
         private let lock = NSLock()
-        private var _failure: NSError?
+        private let _failure = Locked<NSError?>(nil)
         private var _asked: [URL] = []
-        private var _before: ((URL) -> Void)?
-        private var _after: ((URL) -> Void)?
+        private let _before = Locked<((URL) -> Void)?>(nil)
+        private let _after = Locked<((URL) -> Void)?>(nil)
         init(folder: URL, moves: ShotMoves) { self.folder = folder; self.moves = moves }
 
-        var failure: NSError? {
-            get { lock.withLock { _failure } }
-            set { lock.withLock { _failure = newValue } }
-        }
-        var before: ((URL) -> Void)? {
-            get { lock.withLock { _before } }
-            set { lock.withLock { _before = newValue } }
-        }
-        var after: ((URL) -> Void)? {
-            get { lock.withLock { _after } }
-            set { lock.withLock { _after = newValue } }
-        }
+        var failure: NSError? { get { _failure.value } set { _failure.value = newValue } }
+        var before: ((URL) -> Void)? { get { _before.value } set { _before.value = newValue } }
+        var after: ((URL) -> Void)? { get { _after.value } set { _after.value = newValue } }
         var asked: [URL] { lock.withLock { _asked } }
 
         func trash(_ url: URL) throws {
@@ -533,12 +518,8 @@ final class TheEditReplacesOnlyTheFileItWroteTests: XCTestCase {
     // MARK: 11. The task is cancelled
 
     private final class TaskBox: @unchecked Sendable {
-        private let lock = NSLock()
-        private var _task: Task<Delivery, Never>?
-        var task: Task<Delivery, Never>? {
-            get { lock.withLock { _task } }
-            set { lock.withLock { _task = newValue } }
-        }
+        private let _task = Locked<Task<Delivery, Never>?>(nil)
+        var task: Task<Delivery, Never>? { get { _task.value } set { _task.value = newValue } }
         func cancelWhenThere() {
             while task == nil { usleep(1000) }
             task?.cancel()

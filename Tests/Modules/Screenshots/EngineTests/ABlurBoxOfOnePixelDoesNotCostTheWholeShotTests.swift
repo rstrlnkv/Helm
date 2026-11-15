@@ -23,12 +23,7 @@ final class ABlurBoxOfOnePixelDoesNotCostTheWholeShotTests: XCTestCase {
         return try XCTUnwrap(context.makeImage())
     }
 
-    private func bytes(_ image: CGImage) -> [UInt8] {
-        let context = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: image.width * 4,
-                                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
-        return Array(UnsafeBufferPointer(start: context.data!.assumingMemoryBound(to: UInt8.self), count: image.width * image.height * 4))
-    }
+    private func bytes(_ image: CGImage) -> [UInt8] { rgbaBytes(image, space: CGColorSpace(name: CGColorSpace.sRGB)!) }
 
     private func blur(_ rect: CGRect) -> Annotation {
         Annotation(tool: .blur, start: rect.origin, end: CGPoint(x: rect.maxX, y: rect.maxY), style: AnnotationStyle())

@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import HelmRuntime
+import HelmTestSupport
 import XCTest
 @testable import Module_Screenshots_Engine
 
@@ -41,6 +42,13 @@ func makeSplitImage(width: Int, height: Int) -> CGImage {
     return context.makeImage()!
 }
 
+/// The Screenshots settings over `backing`, seeded with `raw` values written the way the plist holds them, at their full
+/// key, so a value no setter would write still lands.
+func screenshotsStore(_ raw: [String: Any] = [:], backing: InMemoryKeyValueStore = InMemoryKeyValueStore()) -> NamespacedStore {
+    for (key, value) in raw { backing.set(value, forKey: "module.screenshots.\(key)") }
+    return NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: backing)
+}
+
 /// The first pixel of a picture as red, green, blue.
 func firstPixel(_ image: CGImage) -> (UInt8, UInt8, UInt8) {
     let context = CGContext(data: nil, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
@@ -52,18 +60,29 @@ func firstPixel(_ image: CGImage) -> (UInt8, UInt8, UInt8) {
     return (bytes[0], bytes[1], bytes[2])
 }
 
+/// The bytes of a picture drawn into an RGBA8 premultiplied context in `space`, which a test reads in place of the picture.
+func rgbaBytes(_ image: CGImage, space: CGColorSpace = CGColorSpaceCreateDeviceRGB()) -> [UInt8] {
+    let context = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: image.width * 4,
+                            space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+    return Array(UnsafeBufferPointer(start: context.data!.assumingMemoryBound(to: UInt8.self), count: image.width * image.height * 4))
+}
+
+/// The same pixels packed as 0xRRGGBB, one to a pixel.
+func packedRGB(_ image: CGImage, space: CGColorSpace = CGColorSpaceCreateDeviceRGB()) -> [UInt32] {
+    let bytes = rgbaBytes(image, space: space)
+    return (0..<(image.width * image.height)).map { UInt32(bytes[$0 * 4]) << 16 | UInt32(bytes[$0 * 4 + 1]) << 8 | UInt32(bytes[$0 * 4 + 2]) }
+}
+
 final class FakeCapture: ScreenCapturing, @unchecked Sendable {
     private let lock = NSLock()
-    private var _access: CaptureAccess = .granted
+    private let _access = Locked<CaptureAccess>(.granted)
     private var _freeze: FreezeOutcome = .failed
     private var _windows: [UInt32: WindowShot] = [:]
     private var _freezeCalls = 0, _requestCalls = 0, _windowCalls = 0
     private var _freezeCursors: [Bool] = [], _windowCursors: [Bool] = [], _windowShadows: [Bool] = []
 
-    var grant: CaptureAccess {
-        get { lock.withLock { _access } }
-        set { lock.withLock { _access = newValue } }
-    }
+    var grant: CaptureAccess { get { _access.value } set { _access.value = newValue } }
     var outcome: FreezeOutcome {
         get { lock.withLock { _freeze } }
         set { lock.withLock { _freeze = newValue } }
@@ -82,7 +101,7 @@ final class FakeCapture: ScreenCapturing, @unchecked Sendable {
     /// Whether each window call asked for the shadow, in order.
     var windowShadows: [Bool] { lock.withLock { _windowShadows } }
 
-    func access() -> CaptureAccess { lock.withLock { _access } }
+    func access() -> CaptureAccess { _access.value }
     func requestAccess() { lock.withLock { _requestCalls += 1 } }
     func freeze(cursor: Bool) async -> FreezeOutcome {
         lock.withLock { _freezeCalls += 1; _freezeCursors.append(cursor); return _freeze }
@@ -248,15 +267,12 @@ final class FakePasteboard: ShotPasteboard, @unchecked Sendable {
 /// editor goes away.
 final class FakeTextReader: ScreenTextReading, @unchecked Sendable {
     private let lock = NSLock()
-    private var _reading: TextReading = .read([])
+    private let _reading = Locked<TextReading>(.read([]))
     private var _calls = 0
     private var _held = false
     private var _waiting: [CheckedContinuation<Void, Never>] = []
 
-    var reading: TextReading {
-        get { lock.withLock { _reading } }
-        set { lock.withLock { _reading = newValue } }
-    }
+    var reading: TextReading { get { _reading.value } set { _reading.value = newValue } }
     var held: Bool {
         get { lock.withLock { _held } }
         set { lock.withLock { _held = newValue } }
@@ -274,7 +290,7 @@ final class FakeTextReader: ScreenTextReading, @unchecked Sendable {
             }
             if answersNow { continuation.resume() }
         }
-        return lock.withLock { _reading }
+        return _reading.value
     }
 
     /// Lets every call that is waiting answer.
@@ -291,16 +307,13 @@ final class FakeTextReader: ScreenTextReading, @unchecked Sendable {
 final class FakePreferences: CapturePreferences, @unchecked Sendable {
     private let lock = NSLock()
     private var _location: RawSetting = RawSetting(nil)
-    private var _hotkeys: SymbolicHotkeysReading = .absent
+    private let _hotkeys = Locked<SymbolicHotkeysReading>(.absent)
     private var _uiSounds: RawSetting = RawSetting(nil)
     var savedLocation: Any? {
         get { lock.withLock { _location.value } }
         set { lock.withLock { _location = RawSetting(newValue) } }
     }
-    var hotkeys: SymbolicHotkeysReading {
-        get { lock.withLock { _hotkeys } }
-        set { lock.withLock { _hotkeys = newValue } }
-    }
+    var hotkeys: SymbolicHotkeysReading { get { _hotkeys.value } set { _hotkeys.value = newValue } }
     /// `com.apple.sound.uiaudio.enabled`: absent, 0, 1 or anything a file can hold.
     var uiAudio: Any? {
         get { lock.withLock { _uiSounds.value } }
@@ -308,7 +321,7 @@ final class FakePreferences: CapturePreferences, @unchecked Sendable {
     }
     func uiSounds() -> RawSetting { lock.withLock { _uiSounds } }
     func location() -> RawSetting { lock.withLock { _location } }
-    func symbolicHotkeys() -> SymbolicHotkeysReading { lock.withLock { _hotkeys } }
+    func symbolicHotkeys() -> SymbolicHotkeysReading { _hotkeys.value }
 }
 
 /// Counts the shutters it was asked to play, and plays nothing.

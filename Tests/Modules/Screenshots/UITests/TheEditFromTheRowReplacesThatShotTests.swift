@@ -20,20 +20,6 @@ import XCTest
 @MainActor
 final class TheEditFromTheRowReplacesThatShotTests: XCTestCase {
 
-    private var scenes: [PileScene] = []
-
-    override func tearDown() {
-        for scene in scenes { scene.teardown() }
-        scenes = []
-        super.tearDown()
-    }
-
-    private func scene() throws -> PileScene {
-        let scene = try PileScene(self, name: "edit-row")
-        scenes.append(scene)
-        return scene
-    }
-
     private func bytes(_ url: URL) throws -> Data { try Data(contentsOf: url) }
     private func names(_ folder: URL) -> [String] { ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).sorted() }
     private func files(_ s: PileScene) -> [URL?] { s.toast.model.shots.map(\.file) }
@@ -66,7 +52,7 @@ final class TheEditFromTheRowReplacesThatShotTests: XCTestCase {
     // MARK: The middle one
 
     func testEditingTheMiddleShotReplacesItsFileAndTheOtherTwoAreByteForByteWhatTheyWere() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "edit-row")
         let shots = try await three(s)
         let (first, middle, last) = (try XCTUnwrap(shots[0].file), try XCTUnwrap(shots[1].file), try XCTUnwrap(shots[2].file))
         let before = (try bytes(first), try bytes(middle), try bytes(last))
@@ -116,7 +102,7 @@ final class TheEditFromTheRowReplacesThatShotTests: XCTestCase {
     /// The press is about the shot the pointer was on when it was pressed; by the time the screen is frozen the pointer
     /// may be on another, and the editor still opens on the one that was pressed.
     func testTheEditorTakesTheShotThatWasPressedNotTheOneThePointerIsOnWhenItOpens() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "edit-row")
         let shots = try await three(s)
         let (first, middle, last) = (try XCTUnwrap(shots[0].file), try XCTUnwrap(shots[1].file), try XCTUnwrap(shots[2].file))
         let before = (try bytes(first), try bytes(last))
@@ -137,7 +123,7 @@ final class TheEditFromTheRowReplacesThatShotTests: XCTestCase {
 
     /// The person closes the shot that is being opened in the editor, between the press and the editor's coming up.
     func testAShotClosedWhileTheEditorIsOpeningTakesNoOtherShotAndLeavesNoHold() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "edit-row")
         let shots = try await three(s)
         let (first, last) = (try XCTUnwrap(shots[0].file), try XCTUnwrap(shots[2].file))
         s.capture.hold()
@@ -157,7 +143,7 @@ final class TheEditFromTheRowReplacesThatShotTests: XCTestCase {
     // MARK: The edge of the row
 
     func testEditingTheOnlyShotLeftEndsTheWindowAndTheEditComesBackAsTheWindow() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "edit-row")
         let shot = try await s.take(width: 400)
         let url = try XCTUnwrap(shot.file)
         try await edit(s, shot, opened: 1)
@@ -171,7 +157,7 @@ final class TheEditFromTheRowReplacesThatShotTests: XCTestCase {
     }
 
     func testACancelledEditLeavesEveryFileAsItWasTheShotOutOfTheWindowAndTheLifeRunning() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "edit-row")
         let shots = try await three(s)
         let urls = try shots.map { try XCTUnwrap($0.file) }
         let before = try urls.map { try bytes($0) }
@@ -191,7 +177,7 @@ final class TheEditFromTheRowReplacesThatShotTests: XCTestCase {
     // MARK: A stranger under the name
 
     func testAStrangerUnderTheEditedShotsNameIsNeverTrashedAndTheEditIsKept() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "edit-row")
         let shots = try await three(s)
         let (first, middle, last) = (try XCTUnwrap(shots[0].file), try XCTUnwrap(shots[1].file), try XCTUnwrap(shots[2].file))
         let before = (try bytes(first), try bytes(last))
@@ -215,7 +201,7 @@ final class TheEditFromTheRowReplacesThatShotTests: XCTestCase {
     // MARK: A shot that is not written yet
 
     func testEditOnAShotStillBeingWrittenOpensNothingAndTakesNoShot() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "edit-row")
         _ = try await three(s)
         s.toast.showWorking(try ShotToastRig.picture())
         let working = try XCTUnwrap(s.toast.model.shots.last)

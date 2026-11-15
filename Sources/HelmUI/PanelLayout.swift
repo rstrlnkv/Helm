@@ -37,17 +37,6 @@ public struct PanelLayout: Equatable, Codable, Sendable {
             self.id = id; self.seed = seed; self.name = name
             self.widgets = widgets; self.glyph = glyph
         }
-
-        /// A tab written before glyphs existed decodes with none, rather than
-        /// taking the whole layout down with it.
-        public init(from decoder: Decoder) throws {
-            let c = try decoder.container(keyedBy: CodingKeys.self)
-            id = try c.decode(String.self, forKey: .id)
-            seed = try c.decodeIfPresent(String.self, forKey: .seed)
-            name = try c.decodeIfPresent(String.self, forKey: .name)
-            widgets = try c.decode([Slot].self, forKey: .widgets)
-            glyph = try c.decodeIfPresent(String.self, forKey: .glyph)
-        }
     }
 
     /// One widget in one tab.

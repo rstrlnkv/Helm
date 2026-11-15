@@ -293,7 +293,7 @@ struct EditorTextTools {
     /// of that window alone), so nothing the overlay draws in the meantime is in it.
     func close(after result: OverlayResult) {
         guard isOpen, let shot = flashShapes(of: result), !shot.rects.isEmpty,
-              HelmMotion.flashes(reduceMotion: reducesMotion()) else { close(); return }
+              HelmMotion.moves(reduceMotion: reducesMotion()) else { close(); return }
         for (display, rect) in shot.rects { panels[display]?.view.flash(over: rect, window: shot.window) }
         leaving = true
         // Held by the timer on purpose: the panels must outlive the flash whoever else lets go of the overlay. A

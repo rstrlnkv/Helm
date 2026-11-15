@@ -330,12 +330,11 @@ public enum MenuBarIcon {
         let end = CGFloat(to) * total
         // Twice round, so a segment that wraps past the start is one stroke
         // rather than two that meet at a seam.
-        for lap in 0..<2 {
+        for _ in 0..<2 {
             for (index, segment) in lengths.enumerated() {
                 let a = points[index], b = points[(index + 1) % points.count]
                 let segmentStart = walked, segmentEnd = walked + segment
                 walked = segmentEnd
-                _ = lap
                 guard segmentEnd > begin, segmentStart < end, segment > 0 else { continue }
                 let t0 = max(0, (begin - segmentStart) / segment)
                 let t1 = min(1, (end - segmentStart) / segment)

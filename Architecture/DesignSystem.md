@@ -145,8 +145,8 @@ command grep -c 'public static let'          Sources/HelmUI/DesignSystem/HelmMot
 is the list, and the second line prints zero. Springs rather than ease curves, because an
 eased move reads as "smoothed" and a spring reads as physical; a spring also cannot be
 handed to a `CAMediaTimingFunction`, and the eased tokens are named exceptions;
-`panelEntrance`'s doc comment says why it is eased. The header tabs slide their pick on `HelmMotion.interface`, and only where `HelmMotion.travels` says so;
-`interfaceCurve` with `interfaceDuration` is taken by the window buttons' morph (`ShellWindowButtons.swift`, behind `HelmMotion.morphs`) and by `OverlayFlash.swift`. The sidebar's fold reads `interfaceCurve` at a fraction (`interfaceProgress(at:)`) from the timestamps of a display link of its own, for `sidebarFoldDuration`, and its rows run through `sidebarFold`, one length for both. `disclosure` is for anything whose height is
+`panelEntrance`'s doc comment says why it is eased. The header tabs slide their pick on `HelmMotion.interface`, and only where `HelmMotion.moves` says so;
+`interfaceCurve` with `interfaceDuration` is taken by the window buttons' morph (`ShellWindowButtons.swift`, behind `HelmMotion.moves`) and by `OverlayFlash.swift`. The sidebar's fold reads `interfaceCurve` at a fraction (`interfaceProgress(at:)`) from the timestamps of a display link of its own, for `sidebarFoldDuration`, and its rows run through `sidebarFold`, one length for both. `disclosure` is for anything whose height is
 measured and clipped, and it has zero bounce, because an overshooting height clips its own
 content for a frame. There is no token for turning forever, and that is the finding: a
 `repeatForever` linear rotation leaves the model at its end value while the dial is

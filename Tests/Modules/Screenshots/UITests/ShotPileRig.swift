@@ -44,20 +44,16 @@ final class AsideTrash: ShotTrashing, @unchecked Sendable {
     let folder: URL
     private let lock = NSLock()
     private var _moved: [URL] = [], _asked: [URL] = []
-    private var _holding = false, _failure: NSError?, _after: ((URL) -> Void)?
+    private var _holding = false
+    private let _failure = Locked<NSError?>(nil)
+    private let _after = Locked<((URL) -> Void)?>(nil)
     private let gate = DispatchSemaphore(value: 0)
     init(_ folder: URL) { self.folder = folder }
     /// Run in the moment between the Trash and the claim, with the path that was moved.
-    var after: ((URL) -> Void)? {
-        get { lock.withLock { _after } }
-        set { lock.withLock { _after = newValue } }
-    }
+    var after: ((URL) -> Void)? { get { _after.value } set { _after.value = newValue } }
     var moved: [URL] { lock.withLock { _moved } }
     var asked: [URL] { lock.withLock { _asked } }
-    var failure: NSError? {
-        get { lock.withLock { _failure } }
-        set { lock.withLock { _failure = newValue } }
-    }
+    var failure: NSError? { get { _failure.value } set { _failure.value = newValue } }
     func hold() { lock.withLock { _holding = true } }
     func release() { lock.withLock { _holding = false }; gate.signal() }
     func trash(_ url: URL) throws {
@@ -70,14 +66,14 @@ final class AsideTrash: ShotTrashing, @unchecked Sendable {
     }
 }
 
-private final class PileShutter: ShutterPlaying, @unchecked Sendable { func play() {} }
-
 /// The freeze, which can be held open: the editor is then still being opened.
 final class PileFrames: ScreenCapturing, @unchecked Sendable {
     let freeze: Freeze
     private let lock = NSLock()
+    private var count = 0
     private var holding = false
     private var waiting: CheckedContinuation<Void, Never>?
+    var freezes: Int { lock.withLock { count } }
     var isHeld: Bool { lock.withLock { waiting != nil } }
     init(_ freeze: Freeze) { self.freeze = freeze }
     func hold() { lock.withLock { holding = true } }
@@ -88,6 +84,7 @@ final class PileFrames: ScreenCapturing, @unchecked Sendable {
     func access() -> CaptureAccess { .granted }
     func requestAccess() {}
     func freeze(cursor: Bool) async -> FreezeOutcome {
+        lock.withLock { count += 1 }
         if lock.withLock({ holding }) {
             await withCheckedContinuation { continuation in lock.withLock { waiting = continuation } }
         }
@@ -114,17 +111,7 @@ final class PileScene {
     var overlay: CaptureOverlay? { box.overlay }
 
     init(_ test: XCTestCase, name: String) throws {
-        var frames: [FrozenDisplay] = []
-        for (index, screen) in NSScreen.screens.enumerated() {
-            let number = try XCTUnwrap(screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32)
-            let context = try XCTUnwrap(CGContext(data: nil, width: 1000, height: 800, bitsPerComponent: 8, bytesPerRow: 0,
-                                                  space: CGColorSpaceCreateDeviceRGB(),
-                                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-            context.setFillColor(CGColor(red: 1, green: 0, blue: 0, alpha: 1))
-            context.fill(CGRect(x: 0, y: 0, width: 1000, height: 800))
-            frames.append(FrozenDisplay(id: DisplayID(number), frame: CGRect(x: 100_000 * CGFloat(index), y: 0, width: 1000, height: 800),
-                                        scale: 1, image: try XCTUnwrap(context.makeImage())))
-        }
+        let frames = try OverlayRig.frames(ground: CGColor(red: 1, green: 0, blue: 0, alpha: 1))
         self.frames = frames
         let home = test.scratchDirectory(name)
         desktop = home.appendingPathComponent("Desktop", isDirectory: true)
@@ -137,7 +124,7 @@ final class PileScene {
         store.set(true, for: ScreenshotsSettings.Key.thumbnail)
         store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let session = CaptureSession(capture: capture, writer: FileShotWriter(), trash: trash, pasteboard: board,
-                                     preferences: NoPreferences(), shutter: PileShutter(), textReader: NoTextReader(),
+                                     preferences: NoPreferences(), shutter: NoShutter(), textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: desktop))
         toast = ShotToast(tick: { _ in try await Task.sleep(for: .seconds(1_000_000)) }, windowed: false)
@@ -145,9 +132,10 @@ final class PileScene {
         controller = CaptureController(store: store, session: session,
                                        presentOverlay: { overlay in box.count += 1; box.overlay = overlay; return overlay.build() },
                                        toast: toast)
+        test.addTeardownBlock { @MainActor [self] in teardown() }
     }
 
-    func teardown() {
+    private func teardown() {
         controller.teardown()
         toast.dismiss()
     }

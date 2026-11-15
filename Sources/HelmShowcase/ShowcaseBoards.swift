@@ -554,17 +554,17 @@ private struct PaletteBoard: View {
             """) {
             VStack(alignment: .leading, spacing: HelmSpace.s6) {
                 HStack(spacing: HelmSpace.s5) {
-                    fill("cardFill", HelmSurface.cardFill)
-                    fill("wellFill", HelmSurface.wellFill)
-                    fill("onPanelFill", HelmSurface.onPanelFill)
-                    fill("panelCardFill", HelmSurface.panelCardFill)
-                    fill("hairline", HelmSurface.hairline)
-                    fill("panelSelection", HelmSurface.panelSelection)
-                    fill("barPick", HelmSurface.barPick)
-                    fill("rowSelection", HelmSurface.rowSelection)
-                    fill("rowHover", HelmSurface.rowHover)
-                    fill("barPlate", HelmSurface.barPlate)
-                    fill("chosenWash", HelmSurface.chosenWash(.accentColor))
+                    swatch("cardFill", HelmSurface.cardFill)
+                    swatch("wellFill", HelmSurface.wellFill)
+                    swatch("onPanelFill", HelmSurface.onPanelFill)
+                    swatch("panelCardFill", HelmSurface.panelCardFill)
+                    swatch("hairline", HelmSurface.hairline)
+                    swatch("panelSelection", HelmSurface.panelSelection)
+                    swatch("barPick", HelmSurface.barPick)
+                    swatch("rowSelection", HelmSurface.rowSelection)
+                    swatch("rowHover", HelmSurface.rowHover)
+                    swatch("barPlate", HelmSurface.barPlate)
+                    swatch("chosenWash", HelmSurface.chosenWash(.accentColor))
                 }
                 VStack(alignment: .leading, spacing: HelmSpace.s2) {
                     Text(verbatim: "primary \(Sample.note)")
@@ -573,10 +573,10 @@ private struct PaletteBoard: View {
                     Text(verbatim: "separator").foregroundStyle(HelmText.separator)
                 }
                 HStack(spacing: HelmSpace.s5) {
-                    ink("warning", HelmSignal.warning(increased: traits.increasedContrast))
-                    ink("success", HelmSignal.success(increased: traits.increasedContrast))
-                    ink("danger", HelmSignal.danger(increased: traits.increasedContrast))
-                    ink("module tint", Sample.tint(traits))
+                    swatch("warning", HelmSignal.warning(increased: traits.increasedContrast), inked: true)
+                    swatch("success", HelmSignal.success(increased: traits.increasedContrast), inked: true)
+                    swatch("danger", HelmSignal.danger(increased: traits.increasedContrast), inked: true)
+                    swatch("module tint", Sample.tint(traits), inked: true)
                     VStack(spacing: HelmSpace.s2) {
                         RoundedRectangle(cornerRadius: HelmRadius.ctl).fill(Color.accentColor).frame(width: 80, height: 56)
                             .overlay { Text(verbatim: Sample.short).foregroundStyle(HelmText.onFill) }
@@ -592,17 +592,12 @@ private struct PaletteBoard: View {
         }
     }
 
-    private func fill(_ name: String, _ colour: Color) -> some View {
+    /// A swatch and its name; `inked` sets the name in the colour itself, larger.
+    private func swatch(_ name: String, _ colour: Color, inked: Bool = false) -> some View {
         VStack(spacing: HelmSpace.s2) {
             RoundedRectangle(cornerRadius: HelmRadius.ctl).fill(colour).frame(width: 80, height: 56)
-            Text(verbatim: name).font(.caption2).foregroundStyle(.secondary)
-        }
-    }
-
-    private func ink(_ name: String, _ colour: Color) -> some View {
-        VStack(spacing: HelmSpace.s2) {
-            RoundedRectangle(cornerRadius: HelmRadius.ctl).fill(colour).frame(width: 80, height: 56)
-            Text(verbatim: name).font(.caption).foregroundStyle(colour)
+            Text(verbatim: name).font(inked ? .caption : .caption2)
+                .foregroundStyle(inked ? AnyShapeStyle(colour) : AnyShapeStyle(.secondary))
         }
     }
 }

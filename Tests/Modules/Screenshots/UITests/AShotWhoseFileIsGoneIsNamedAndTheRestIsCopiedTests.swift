@@ -22,20 +22,6 @@ import Module_Screenshots_Engine
 @MainActor
 final class AShotWhoseFileIsGoneIsNamedAndTheRestIsCopiedTests: XCTestCase {
 
-    private var scenes: [PileScene] = []
-
-    override func tearDown() {
-        for scene in scenes { scene.teardown() }
-        scenes = []
-        super.tearDown()
-    }
-
-    private func scene() throws -> PileScene {
-        let scene = try PileScene(self, name: "copy-all-gone")
-        scenes.append(scene)
-        return scene
-    }
-
     private func width(of png: Data) throws -> Int {
         let source = try XCTUnwrap(CGImageSourceCreateWithData(png as CFData, nil), "a write that is no picture")
         return try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil)).width
@@ -48,7 +34,7 @@ final class AShotWhoseFileIsGoneIsNamedAndTheRestIsCopiedTests: XCTestCase {
     /// Whichever way the file is gone, and whichever of the three it is, the other two are on the board in the list's order.
     func testAShotWhoseFileWasRemovedOrMovedIsLeftOutNamedAndTheOthersAreCopiedInOneWrite() async throws {
         for (gone, move) in [(1, false), (1, true), (0, false), (2, true)] {
-            let s = try scene()
+            let s = try PileScene(self, name: "copy-all-gone")
             let widths = [400, 420, 440]
             var shots: [ShotToastModel.Shot] = []
             for width in widths { shots.append(try await s.take(width: width)) }
@@ -80,7 +66,7 @@ final class AShotWhoseFileIsGoneIsNamedAndTheRestIsCopiedTests: XCTestCase {
 
     /// Every file gone: nothing to put on the board, and the person is told which ones; no empty write.
     func testAPileWhoseEveryFileIsGoneWritesNothingAndNamesEveryShot() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "copy-all-gone")
         var shots: [ShotToastModel.Shot] = []
         for width in [400, 420] { shots.append(try await s.take(width: width)) }
         let singles = s.board.singles

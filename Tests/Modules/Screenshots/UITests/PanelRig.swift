@@ -37,18 +37,7 @@ enum PanelRig {
         func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
     }
 
-    final class Disk: ShotWriting, @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        var written: Int { lock.withLock { count } }
-        // A disk that keeps no file: nothing is read at any path and no name is claimed.
-        func reading(of url: URL) -> ShotReading? { nil }
-        func claim(_ written: URL, as name: URL) -> Bool { false }
-        func write(_ data: Data, into folder: URL, base: String, pathExtension: String) -> ShotWrite {
-            lock.withLock { count += 1 }
-            return .written(WrittenShot(url: folder.appendingPathComponent(base + "." + pathExtension), reading: NoFile.reading))
-        }
-    }
+    typealias Disk = FakeWorkDisk
     struct Board: ShotPasteboard {
         func copy(png: Data) -> PasteOutcome { .accepted }
         func copy(pngs: [Data]) -> PasteOutcome { .accepted }

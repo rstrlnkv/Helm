@@ -14,28 +14,16 @@ import SwiftUI
 /// a nicer costume. No count here: it was "four controls in four modules" when
 /// it was written and is neither now, which is what a number in a comment does.
 public enum HelmA11y {
-    public static var moveUp: String {
-        L(.moveUp)
-    }
-    public static var moveDown: String {
-        L(.moveDown)
-    }
-    public static var remove: String {
-        L(.remove)
-    }
-    public static var moreActions: String {
-        L(.moreActions)
-    }
-    public static var showInFinder: String {
-        L(.showInFinder)
-    }
+    public static var moveUp: String { L(.moveUp) }
+    public static var moveDown: String { L(.moveDown) }
+    public static var remove: String { L(.remove) }
+    public static var moreActions: String { L(.moreActions) }
+    public static var showInFinder: String { L(.showInFinder) }
     /// The ⓘ beside a settings row's name (`HelmExplainer`). macOS's own word
     /// for this control, read out of its tables rather than translated: «More
     /// Info» is «Подробнее», «Weitere Infos», «En savoir plus», «Más
     /// información», «Mais informações», 「詳しい情報」, 「更多信息」.
-    static var moreInfo: String {
-        L(.moreInfo)
-    }
+    static var moreInfo: String { L(.moreInfo) }
 
     /// The search field, which had no name at all. The header row's field (`HelmHeaderSearch`) sets this word.
     ///
@@ -52,9 +40,7 @@ public enum HelmA11y {
     /// refused: `testOneEnglishTextIsOneWordAcrossEveryCatalog` fails on
     /// one English text under two symbols, and the eight translations of that
     /// one word are the word macOS itself uses for this control in each of them.
-    static var searchField: String {
-        L(.search)
-    }
+    static var searchField: String { L(.search) }
 
     /// Where a row stands in a column of buttons, which VoiceOver does not say by itself ("1 of 5"). The
     /// sidebar's rows read it as their value. `language` is explicit for the reason `HelmBasket` gives.
@@ -101,9 +87,7 @@ public enum HelmA11y {
     /// term. The table's own phrases for an opened row — `row %lu expanded` and
     /// `expanded. %@` — say 表示されました, so that is what Japanese keeps.
     public static func expanded(_ isExpanded: Bool) -> String {
-        isExpanded
-            ? L(.expanded)
-            : L(.collapsed)
+        isExpanded ? L(.expanded) : L(.collapsed)
     }
 
     /// Calendar's own last item in this menu. The seven translations are its

@@ -20,22 +20,8 @@ private func copied(_ s: PileScene, width: Int) throws {
 @MainActor
 final class TheGroupIsCopiedInOneWriteFromThePileTests: XCTestCase {
 
-    private var scenes: [PileScene] = []
-
-    override func tearDown() {
-        for scene in scenes { scene.teardown() }
-        scenes = []
-        super.tearDown()
-    }
-
-    private func scene() throws -> PileScene {
-        let scene = try PileScene(self, name: "copy-all")
-        scenes.append(scene)
-        return scene
-    }
-
     func testAGroupCopyInFlightWhenTheModuleGoesOffReachesNoBoardAndSaysNothing() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "copy-all")
         for i in 0..<3 { try copied(s, width: 200 + i) }
         s.toast.model.copyAll()
         s.controller.cancel()
@@ -46,7 +32,7 @@ final class TheGroupIsCopiedInOneWriteFromThePileTests: XCTestCase {
         XCTAssertTrue(s.toast.model.shots.isEmpty)
         XCTAssertFalse(s.toast.model.shown)
         // The control: the same press with the module on writes.
-        let on = try scene()
+        let on = try PileScene(self, name: "copy-all")
         for i in 0..<3 { try copied(on, width: 200 + i) }
         on.toast.model.copyAll()
         await waitUntil("the control group was written") { on.board.lists.count >= 1 }
@@ -66,20 +52,6 @@ final class TheGroupIsCopiedInOneWriteFromThePileTests: XCTestCase {
 @MainActor
 final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
 
-    private var scenes: [PileScene] = []
-
-    override func tearDown() {
-        for scene in scenes { scene.teardown() }
-        scenes = []
-        super.tearDown()
-    }
-
-    private func scene() throws -> PileScene {
-        let scene = try PileScene(self, name: "copy-all")
-        scenes.append(scene)
-        return scene
-    }
-
     private func width(of png: Data) throws -> Int {
         let source = try XCTUnwrap(CGImageSourceCreateWithData(png as CFData, nil), "a write that is no picture")
         return try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil)).width
@@ -93,7 +65,7 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
 
     func testCopyAllIsOneWriteWhateverTheNumberOfShotsInTheListsOrderWithFilesAndHeldPicturesMixed() async throws {
         for n in [1, 3, 20] {
-            let s = try scene()
+            let s = try PileScene(self, name: "copy-all")
             var expected: [Int] = []
             for i in 0..<n {
                 let width = 300 + 7 * i
@@ -115,7 +87,7 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
     }
 
     func testTwentyFiveShotsInIsTwentyOnTheBoardAndTheOldestFiveAreNotThere() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "copy-all")
         for i in 0..<25 { try copied(s, width: 100 + i) }
         s.toast.model.copyAll()
         await waitUntil("the group was written") { s.board.lists.count >= 1 }
@@ -125,7 +97,7 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
     }
 
     func testAShotStillBeingWrittenIsNotInTheGroupAndAGroupOfNothingFinishedIsNotWrittenOrTold() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "copy-all")
         s.toast.showWorking(try ShotToastRig.picture())
         s.toast.model.copyAll()
         await grace(0.2)
@@ -146,7 +118,7 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
     // A file that is gone is left out and named, and the rest is on the board in one write, not refused: `AShotWhoseFileIsGoneIsNamedAndTheRestIsCopiedTests`.
 
     func testABoardThatRefusesIsToldAndANewTryAfterItWritesTheWholeGroup() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "copy-all")
         for i in 0..<3 { try copied(s, width: 200 + i) }
         s.board.accepts = false
         s.toast.model.copyAll()
@@ -162,7 +134,7 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(s.board.lists.first).count, 3)
     }
     func testAnOpenRowCopiesTheSameGroupWhateverShotThePointerIsOn() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "copy-all")
         for i in 0..<4 { try copied(s, width: 210 + i) }
         s.toast.unfold()
         s.toast.model.focus = s.toast.model.shot(1)?.id ?? -1
@@ -175,7 +147,7 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
     // MARK: The pile leaves as one
 
     func testADragOfThePileCarriesEveryFinishedShotButTheOneItBeganOnInTheListsOrder() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "copy-all")
         let first = try await s.take(width: 400)
         try copied(s, width: 410)
         let third = try await s.take(width: 420)
@@ -202,7 +174,7 @@ final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
     }
 
     func testASingleShotsDragCarriesNothingBesideIt() async throws {
-        let s = try scene()
+        let s = try PileScene(self, name: "copy-all")
         let only = try await s.take(width: 400)
         XCTAssertTrue(s.toast.model.othersDragged(with: only.id).isEmpty)
         XCTAssertNotNil(s.toast.model.current.flatMap { s.toast.model.drag(of: $0) })

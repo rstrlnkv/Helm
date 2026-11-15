@@ -37,17 +37,6 @@ final class TheEditExportBlursAndMagnifiesThePictureNotAPartOfItTests: XCTestCas
         return try XCTUnwrap(PictureOnScreen.place(picture, over: Freeze(displays: [.image(display)], windows: []), on: nil))
     }
 
-    private func bytes(_ image: CGImage) -> [UInt8] {
-        var out = [UInt8](repeating: 0, count: image.width * image.height * 4)
-        out.withUnsafeMutableBytes { raw in
-            let context = CGContext(data: raw.baseAddress, width: image.width, height: image.height, bitsPerComponent: 8,
-                                    bytesPerRow: image.width * 4, space: CGColorSpaceCreateDeviceRGB(),
-                                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-            context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
-        }
-        return out
-    }
-
     /// The share of the pixels in `region` (picture pixels) that differ between two pictures of one size.
     private func differing(_ a: [UInt8], _ b: [UInt8], width: Int, in region: CGRect) -> Double {
         var different = 0, total = 0
@@ -82,7 +71,7 @@ final class TheEditExportBlursAndMagnifiesThePictureNotAPartOfItTests: XCTestCas
             let picture = gradient(w, h)
             let shown = try placed(picture)
             let r = shown.rect
-            let source = bytes(picture)
+            let source = rgbaBytes(picture)
             // The pixels of a rectangle of the display's points on the picture.
             func pixels(_ rect: CGRect) -> CGRect {
                 CGRect(x: ((rect.minX - r.minX) / r.width * CGFloat(w)).rounded(), y: ((rect.minY - r.minY) / r.height * CGFloat(h)).rounded(),
@@ -98,7 +87,7 @@ final class TheEditExportBlursAndMagnifiesThePictureNotAPartOfItTests: XCTestCas
                 let out = try XCTUnwrap(exported(rig.session, shown, local: r, layer: layer), "\(w)×\(h) \(name)")
                 XCTAssertEqual(out.width, w)
                 XCTAssertEqual(out.height, h)
-                let file = bytes(out)
+                let file = rgbaBytes(out)
                 XCTAssertGreaterThan(region.width * region.height, 400, "the control: the region has pixels")
                 let under = differing(file, source, width: w, in: region)
                 XCTAssertGreaterThan(under, 0.5, "\(w)×\(h): the pixels under the \(name) are the picture's own (\(under)): it was not drawn from the picture")
@@ -124,7 +113,7 @@ final class TheEditExportBlursAndMagnifiesThePictureNotAPartOfItTests: XCTestCas
         let (offsetX, offsetY) = (w / 2, h / 2)
         XCTAssertEqual(out.width, w - offsetX)
         XCTAssertEqual(out.height, h - offsetY)
-        let file = bytes(out), source = bytes(picture)
+        let file = rgbaBytes(out), source = rgbaBytes(picture)
         // The box in the cut's own pixels: 0.6 to 0.9 of the picture is 0.2 to 0.8 of the half that is cut.
         let region = CGRect(x: 0.2 * Double(out.width), y: 0.2 * Double(out.height),
                             width: 0.6 * Double(out.width), height: 0.6 * Double(out.height)).integral
@@ -151,7 +140,7 @@ final class TheEditExportBlursAndMagnifiesThePictureNotAPartOfItTests: XCTestCas
         XCTAssertTrue(layer.isUsable, "the control: the magnifier is usable")
         let rig = Rig(home: scratchDirectory("shots-export-lens"))
         let out = try XCTUnwrap(exported(rig.session, shown, local: r, layer: layer))
-        let file = bytes(out), source = bytes(picture)
+        let file = rgbaBytes(out), source = rgbaBytes(picture)
         let k = CGFloat(w) / r.width
         let inner = CGRect(x: (box.midX - r.minX) * k - side * k * 0.25, y: (box.midY - r.minY) * k - side * k * 0.25,
                            width: side * k * 0.5, height: side * k * 0.5).integral
@@ -173,7 +162,7 @@ final class TheEditExportBlursAndMagnifiesThePictureNotAPartOfItTests: XCTestCas
         XCTAssertTrue(layer.isUsable, "the control: the spotlight is usable")
         let rig = Rig(home: scratchDirectory("shots-export-spotlight"))
         let out = try XCTUnwrap(exported(rig.session, shown, local: r, layer: layer))
-        let file = bytes(out), source = bytes(picture)
+        let file = rgbaBytes(out), source = rgbaBytes(picture)
         let k = CGFloat(w) / r.width
         let inner = CGRect(x: (box.minX - r.minX) * k, y: (box.minY - r.minY) * k, width: box.width * k, height: box.height * k)
             .insetBy(dx: 50, dy: 50).integral

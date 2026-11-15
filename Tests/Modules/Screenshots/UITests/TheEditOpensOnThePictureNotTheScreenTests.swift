@@ -27,41 +27,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
 
     private typealias Board = CountingBoard
 
-    private final class Shutter: ShutterPlaying, @unchecked Sendable {
-        private let lock = NSLock()
-        private var count = 0
-        var plays: Int { lock.withLock { count } }
-        func play() { lock.withLock { count += 1 } }
-    }
-
-    /// The freeze, which can be held open: the editor is then still being opened.
-    private final class Frames: ScreenCapturing, @unchecked Sendable {
-        let freeze: Freeze
-        private let lock = NSLock()
-        private var count = 0
-        private var holding = false
-        private var waiting: CheckedContinuation<Void, Never>?
-        var freezes: Int { lock.withLock { count } }
-        var isHeld: Bool { lock.withLock { waiting != nil } }
-        init(_ freeze: Freeze) { self.freeze = freeze }
-        func hold() { lock.withLock { holding = true } }
-        func release() {
-            let next: CheckedContinuation<Void, Never>? = lock.withLock { holding = false; defer { waiting = nil }; return waiting }
-            next?.resume()
-        }
-        func access() -> CaptureAccess { .granted }
-        func requestAccess() {}
-        func freeze(cursor: Bool) async -> FreezeOutcome {
-            lock.withLock { count += 1 }
-            if lock.withLock({ holding }) {
-                await withCheckedContinuation { continuation in
-                    lock.withLock { waiting = continuation }
-                }
-            }
-            return .frozen(freeze)
-        }
-        func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
-    }
+    private typealias Shutter = CountingShutter
 
     private final class Box { var overlay: CaptureOverlay?; var count = 0 }
 
@@ -71,7 +37,7 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         let board: Board
         let trash: AsideTrash
         let shutter: Shutter
-        let capture: Frames
+        let capture: PileFrames
         let box: Box
         let store: NamespacedStore
         let desktop: URL
@@ -94,31 +60,15 @@ final class TheEditOpensOnThePictureNotTheScreenTests: XCTestCase {
         super.tearDown()
     }
 
-    /// One 1000×800-point frame at 1× per real screen, with a red ground.
-    private func groundFrames() throws -> [FrozenDisplay] {
-        var frames: [FrozenDisplay] = []
-        for (index, screen) in NSScreen.screens.enumerated() {
-            let number = try XCTUnwrap(screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32)
-            let context = try XCTUnwrap(CGContext(data: nil, width: 1000, height: 800, bitsPerComponent: 8, bytesPerRow: 0,
-                                                  space: CGColorSpaceCreateDeviceRGB(),
-                                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-            context.setFillColor(CGColor(red: 1, green: 0, blue: 0, alpha: 1))
-            context.fill(CGRect(x: 0, y: 0, width: 1000, height: 800))
-            frames.append(FrozenDisplay(id: DisplayID(number), frame: CGRect(x: 100_000 * CGFloat(index), y: 0, width: 1000, height: 800),
-                                        scale: 1, image: try XCTUnwrap(context.makeImage())))
-        }
-        return frames
-    }
-
     private func scene(target: SaveTarget = .desktop, thumbnail: Bool = true) throws -> Scene {
-        let frames = try groundFrames()
+        let frames = try OverlayRig.frames(ground: CGColor(red: 1, green: 0, blue: 0, alpha: 1))
         let home = scratchDirectory("edit-ui")
         let desktop = home.appendingPathComponent("Desktop", isDirectory: true)
         let aside = home.appendingPathComponent("Trash", isDirectory: true)
         try FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: aside, withIntermediateDirectories: true)
         let trash = AsideTrash(aside), board = Board(), shutter = Shutter()
-        let capture = Frames(Freeze(displays: frames.map { .image($0) }, windows: []))
+        let capture = PileFrames(Freeze(displays: frames.map { .image($0) }, windows: []))
         let store = NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore())
         store.set(thumbnail, for: ScreenshotsSettings.Key.thumbnail)
         store.set(target.rawValue, for: ScreenshotsSettings.Key.saveTarget)

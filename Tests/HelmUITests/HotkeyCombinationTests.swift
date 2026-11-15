@@ -37,49 +37,39 @@ final class HotkeyCombinationTests: XCTestCase {
         XCTAssertNotNil(HotkeyCombination(keyCode: kVK_ANSI_A, modifiers: cmdKey))
     }
 
-    // MARK: - What "no shortcut" looks like
+    // MARK: - What "no shortcut" looks like, and what a plist can hold
 
-    /// `HelmHotkeyRecorder.clear()` writes -1 and 0, and that pair is the one
-    /// `reload()` sees for every module nobody has assigned a shortcut in.
-    func testTheClearedSentinelIsNoCombination() {
-        XCTAssertNil(HotkeyCombination(keyCode: -1, modifiers: 0))
-    }
-
-    /// A key with no modifier swallows an ordinary letter everywhere in the
-    /// system, which is why the recorder refuses to write one.
-    func testAKeyWithNoModifierIsNoCombination() {
-        XCTAssertNil(HotkeyCombination(keyCode: kVK_ANSI_B, modifiers: 0))
-    }
-
-    // MARK: - What a plist can hold
-
-    /// The crash the guard admitted: `UInt32(-1)` traps, and a negative is
-    /// what a stored `Int` can most easily be.
-    func testNegativeModifiersAreNoCombination() {
-        XCTAssertNil(HotkeyCombination(keyCode: kVK_ANSI_B, modifiers: -1))
-    }
-
-    /// The other side of it. -1 is the sentinel; every other negative is a
-    /// number nobody wrote, and it traps identically.
-    func testANegativeKeyCodeIsNoCombination() {
-        XCTAssertNil(HotkeyCombination(keyCode: -2, modifiers: cmdKey))
-        XCTAssertNil(HotkeyCombination(keyCode: Int.min, modifiers: cmdKey))
-    }
-
-    func testAKeyCodePastWhatCarbonCanHoldIsNoCombination() {
-        XCTAssertNil(HotkeyCombination(keyCode: 0x100, modifiers: cmdKey))
-        XCTAssertNil(HotkeyCombination(keyCode: Int.max, modifiers: cmdKey))
-    }
-
-    func testModifiersPastWhatCarbonCanHoldAreNoCombination() {
-        XCTAssertNil(HotkeyCombination(keyCode: kVK_ANSI_B, modifiers: 0x1_0000))
-        XCTAssertNil(HotkeyCombination(keyCode: kVK_ANSI_B, modifiers: Int.max))
+    func testWhatIsNoCombination() {
+        let rows: [(why: String, key: Int, mods: Int)] = [
+            // `HelmHotkeyRecorder.clear()` writes -1 and 0, and that pair is the
+            // one `reload()` sees for every module nobody has assigned a
+            // shortcut in.
+            ("the cleared sentinel", -1, 0),
+            // A key with no modifier swallows an ordinary letter everywhere in
+            // the system, which is why the recorder refuses to write one.
+            ("a key with no modifier", kVK_ANSI_B, 0),
+            // The crash the guard admitted: `UInt32(-1)` traps, and a negative
+            // is what a stored `Int` can most easily be.
+            ("negative modifiers", kVK_ANSI_B, -1),
+            // The other side of it. -1 is the sentinel; every other negative is
+            // a number nobody wrote, and it traps identically.
+            ("the sentinel key code with a modifier", -1, cmdKey),
+            ("a negative key code", -2, cmdKey),
+            ("the least key code", Int.min, cmdKey),
+            ("a key code past what Carbon can hold", 0x100, cmdKey),
+            ("the greatest key code", Int.max, cmdKey),
+            ("modifiers past what Carbon can hold", kVK_ANSI_B, 0x1_0000),
+            ("the greatest modifiers", kVK_ANSI_B, Int.max),
+        ]
+        for row in rows {
+            XCTAssertNil(HotkeyCombination(keyCode: row.key, modifiers: row.mods), row.why)
+        }
     }
 
     /// The upper bound on a stored modifier mask, proved on a mask that carries one
     /// of the four.
     ///
-    /// `testModifiersPastWhatCarbonCanHoldAreNoCombination` feeds `0x1_0000`, which
+    /// `testWhatIsNoCombination` feeds `0x1_0000`, which
     /// holds none of ⌃⌥⇧⌘: since `carriesAModifier` asks for one of the four, that
     /// value is refused by the four-bit test whatever the ceiling says, and widening
     /// the ceiling left the whole family green. A bit past `EventModifiers`

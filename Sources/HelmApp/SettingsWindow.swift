@@ -93,8 +93,8 @@ import HelmAppStrings
     /// Writes what the page published as the window's title. `titleVisibility` is `.hidden`, written once by the
     /// initialiser: the card's header row draws the name, and the title stays the window's (the Window menu and
     /// Mission Control name the window by it).
-    private func applyTitle(_ title: HelmPageTitle?) {
-        window.title = title?.title ?? AppStr.settingsWindowTitle
+    private func applyTitle(_ title: String?) {
+        window.title = title ?? AppStr.settingsWindowTitle
     }
 
     /// `selecting` opens the window on that module's page (used by panel utility rows).
@@ -204,7 +204,7 @@ enum SettingsSelection: Hashable {
     let host: ModuleHost
     @Published var selection: SettingsSelection? = .general
     /// What the page on screen calls itself, for the window's title bar.
-    @Published var pageTitle: HelmPageTitle?
+    @Published var pageTitle: String?
     /// `SettingsWindow.updateWindowAppearsActive()`'s reading, for the header row's and the sidebar rows' dimming
     /// (`\.helmWindowAppearsActive`). True until the window is first brought forward, which reads it
     /// (`SettingsWindow.bringForward()`); the window is built to be shown.

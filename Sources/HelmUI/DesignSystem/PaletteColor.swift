@@ -96,11 +96,13 @@ public enum PaletteColor: String, CaseIterable, Sendable {
     ///
     /// `isTemplate` stays false for the same reason — a template image is
     /// recoloured by the menu, which is exactly what has to not happen.
-    public var swatchImage: NSImage {
-        // `self.color` is read out here rather than inside the drawing block:
-        // the block is `@Sendable` and capturing the case itself makes the
-        // compiler ask questions about a type it has no reason to.
-        let fill = NSColor(color)
+    public var swatchImage: NSImage { Self.swatchImage(of: NSColor(color)) }
+
+    /// A disc in an arbitrary colour, drawn as the palette's own are
+    /// (`swatchImage`). The colour is taken as an `NSColor` rather than the
+    /// case: the drawing block is `@Sendable` and capturing the case itself
+    /// makes the compiler ask questions about a type it has no reason to.
+    public static func swatchImage(of fill: NSColor) -> NSImage {
         let side: CGFloat = 12
         let image = NSImage(size: NSSize(width: side, height: side), flipped: false) { rect in
             let disc = NSBezierPath(ovalIn: rect.insetBy(dx: 0.5, dy: 0.5))

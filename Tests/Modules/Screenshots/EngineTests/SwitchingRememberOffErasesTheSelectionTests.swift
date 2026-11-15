@@ -11,10 +11,6 @@ import XCTest
 /// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/ScreenshotsSettings.swift`: `if !on { RememberedSelection.erase(from: store) }` -> `(line removed)`.
 final class SwitchingRememberOffErasesTheSelectionTests: XCTestCase {
 
-    private func store() -> NamespacedStore {
-        NamespacedStore(namespace: ScreenshotsEngine.moduleID, backing: InMemoryKeyValueStore())
-    }
-
     private func remember(in store: NamespacedStore) throws {
         let record = try XCTUnwrap(RememberedSelection(display: "AAAA-1111", rect: CGRect(x: 10, y: 20, width: 300, height: 200)))
         record.write(to: store)
@@ -22,7 +18,7 @@ final class SwitchingRememberOffErasesTheSelectionTests: XCTestCase {
     }
 
     func testSwitchingItOffErasesTheRecord() throws {
-        let kept = store()
+        let kept = screenshotsStore()
         ScreenshotsSettings.setRememberSelection(true, in: kept)
         try remember(in: kept)
         ScreenshotsSettings.setRememberSelection(false, in: kept)
@@ -35,7 +31,7 @@ final class SwitchingRememberOffErasesTheSelectionTests: XCTestCase {
     }
 
     func testSwitchingItOnKeepsTheRecord() throws {
-        let kept = store()
+        let kept = screenshotsStore()
         try remember(in: kept)
         ScreenshotsSettings.setRememberSelection(true, in: kept)
         XCTAssertNotNil(RememberedSelection.read(kept))
@@ -50,7 +46,7 @@ final class SwitchingRememberOffErasesTheSelectionTests: XCTestCase {
     /// not-a-number — is no record to `read`, and the switch going off must
     /// still take every one of its keys, not only the ones that parse.
     func testSwitchingItOffErasesARecordWhoseKeysAreGarbage() {
-        let kept = store()
+        let kept = screenshotsStore()
         ScreenshotsSettings.setRememberSelection(true, in: kept)
         kept.set(42, for: RememberedSelection.Key.display)
         kept.set("wide", for: RememberedSelection.Key.x)
@@ -65,7 +61,7 @@ final class SwitchingRememberOffErasesTheSelectionTests: XCTestCase {
     /// Off and then on again: the record stays gone — on keeps what there is,
     /// it does not bring back what off took.
     func testSwitchingItOffThenOnLeavesItErased() throws {
-        let kept = store()
+        let kept = screenshotsStore()
         ScreenshotsSettings.setRememberSelection(true, in: kept)
         try remember(in: kept)
         ScreenshotsSettings.setRememberSelection(false, in: kept)

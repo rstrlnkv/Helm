@@ -18,14 +18,6 @@ import XCTest
 @MainActor
 final class AShotThatCouldNotBeMadeIsNeverSilentTests: XCTestCase {
 
-    private struct Frames: ScreenCapturing {
-        let freeze: Freeze
-        func access() -> CaptureAccess { .granted }
-        func requestAccess() {}
-        func freeze(cursor: Bool) async -> FreezeOutcome { .frozen(freeze) }
-        func window(_ id: UInt32, cursor: Bool, shadow: Bool) async -> WindowShot { .gone }
-    }
-    private struct Quiet: ShutterPlaying { func play() {} }
     @MainActor private final class Opened { var overlays: [CaptureOverlay] = [] }
 
     private struct Scene {
@@ -59,9 +51,9 @@ final class AShotThatCouldNotBeMadeIsNeverSilentTests: XCTestCase {
         store.set(false, for: ScreenshotsSettings.Key.thumbnail)
         store.set(SaveTarget.desktop.rawValue, for: ScreenshotsSettings.Key.saveTarget)
         let home = scratchDirectory("silent-shot")
-        let session = CaptureSession(capture: Frames(freeze: Freeze(displays: frames.map { .image($0) }, windows: [])),
+        let session = CaptureSession(capture: FakeScreen(outcome: .frozen(Freeze(displays: frames.map { .image($0) }, windows: []))),
                                      writer: disk, trash: NoTrash(), pasteboard: board, preferences: NoPreferences(),
-                                     shutter: Quiet(), textReader: NoTextReader(),
+                                     shutter: NoShutter(), textReader: NoTextReader(),
                                      settings: { ScreenshotsSettings.read(store) }, naming: { .english },
                                      locations: ScreenshotsLocations(home: home, desktop: home))
         let toast = ShotToastRig.toast(clock)

@@ -15,7 +15,7 @@ import Module_Screenshots_Engine
 /// 16 %: the 8 % was set from the designer's photograph.
 ///
 /// The chosen object stands `lift` higher; the palette cuts what hangs below it. The lift is
-/// `HelmMotion.interface` unless `HelmMotion.travels` says the person asked for stillness, and then it is a cut. The
+/// `HelmMotion.interface` unless `HelmMotion.moves` says the person asked for stillness, and then it is a cut. The
 /// cell is the palette's height and the object hangs from it by the offset its artwork needs, set by eye, a pt or two either way.
 struct PaletteObject: View {
     /// What the object is: a drawing tool's, or the eraser's or the ruler's, which are no `AnnotationTool`: the first is a mode of the
@@ -72,7 +72,7 @@ struct PaletteObject: View {
 
     /// Read fresh on each draw, as `HelmMotion` does.
     private var travel: Animation? {
-        HelmMotion.travels(reduceMotion: HelmMotion.reduceMotion) ? HelmMotion.interface : nil
+        HelmMotion.moves(reduceMotion: HelmMotion.reduceMotion) ? HelmMotion.interface : nil
     }
 
     var body: some View {

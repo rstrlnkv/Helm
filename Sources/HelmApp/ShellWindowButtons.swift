@@ -313,7 +313,7 @@ final class ShellWindowButtons {
         applied = target
         view.plate.cornerRadius = rect.height / 2
         let real = watched.map(\.button)
-        guard animated, HelmMotion.morphs(reduceMotion: HelmMotion.reduceMotion) else {
+        guard animated, HelmMotion.moves(reduceMotion: HelmMotion.reduceMotion) else {
             view.plate.frame = rect
             for dot in view.dots { dot.alphaValue = target.dots }
             for button in real { button.alphaValue = target.buttons }
