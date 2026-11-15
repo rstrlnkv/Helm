@@ -36,6 +36,43 @@ final class ParkedVerify: @unchecked Sendable {
     }
 }
 
+/// A fixed instant: `n` days after the epoch, so a test names its dates by
+/// order rather than by clock.
+func day(_ n: Int) -> Date { Date(timeIntervalSince1970: TimeInterval(n) * 86_400) }
+
+/// The facts of one file for the keep-ladder tests, its identity taken from the
+/// path so two paths are two files.
+func facts(_ path: String, added: Date? = nil, bytes: Int = 4_096) -> FileFacts {
+    FileFacts(path: path, bytes: bytes, fileID: UInt64(abs(path.hashValue)), added: added)
+}
+
+/// A rule with no transit tier and no `.system` read: every rung above `.date` is
+/// silent, so nothing depends on where this Mac keeps Downloads.
+func rule(_ policy: KeepPolicy, transit: TransitFolders = TransitFolders(roots: [])) -> KeepRule {
+    KeepRule(policy, transit: transit)
+}
+
+/// Every order of `items`.
+func permutations<T>(_ items: [T]) -> [[T]] {
+    guard items.count > 1 else { return [items] }
+    return items.indices.flatMap { index -> [[T]] in
+        var rest = items
+        let head = rest.remove(at: index)
+        return permutations(rest).map { [head] + $0 }
+    }
+}
+
+extension XCTestCase {
+    /// A text file for a test that cares what the file says; the byte filler in
+    /// `HelmTestSupport` is for the ones that only need its size.
+    @discardableResult
+    func writeText(_ name: String, _ contents: String, in directory: URL) throws -> String {
+        let url = directory.appendingPathComponent(name)
+        try Data(contents.utf8).write(to: url)
+        return url.path
+    }
+}
+
 /// What the engine was told to trash. Every construction in this target passes a
 /// fake to `trashing:` — this recorder, `neverTrashes` or a closure — so no test
 /// here can reach the person's Trash.

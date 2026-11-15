@@ -16,18 +16,11 @@ import HelmTestSupport
 /// timing a fast disk could fake.
 final class SurvivorReadOncePerBatchTests: XCTestCase {
 
-    private var directory: URL!
-
-    override func setUpWithError() throws {
-        try super.setUpWithError()
-        directory = scratchDirectory("survivor-once")
-    }
+    private lazy var directory = scratchDirectory("survivor-once")
 
     @discardableResult
     private func write(_ name: String, _ contents: String) throws -> String {
-        let url = directory.appendingPathComponent(name)
-        try Data(contents.utf8).write(to: url)
-        return url.path
+        try writeText(name, contents, in: directory)
     }
 
     /// A hash that counts, and still answers what the real one would: the

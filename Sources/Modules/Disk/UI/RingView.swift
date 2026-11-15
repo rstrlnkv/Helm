@@ -238,8 +238,7 @@ struct RingView: View {
                     .font(HelmText.rowDetail)
                     .lineLimit(1)
             } else {
-                Text(segment.isOther ? DkStr.otherItems
-                                     : (DiskViewModel.folderName(for: segment.path) ?? segment.name))
+                Text(segment.isOther ? DkStr.otherItems : displayName(segment))
                     .font(HelmText.rowDetail)
                     .lineLimit(1)
                 Text(Bytes(segment.bytes))

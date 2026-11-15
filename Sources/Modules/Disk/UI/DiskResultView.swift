@@ -214,6 +214,7 @@ private struct BreadcrumbBar: View {
                 // `DiskLayout.statement`, because two of the three are warnings
                 // and a warning is not a thing to drop when the window is small.
                 scanStatement
+                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
             }
 
             if let advice = dvm.result?.advice, !advice.isEmpty, !dvm.live {
@@ -258,7 +259,6 @@ private struct BreadcrumbBar: View {
         case .stopped:
             if let result = dvm.result {
                 Text(DkStr.stopped)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
                     // The hint carries the count and the consequence, and it rode
                     // on a `Text` that was not drawn below 800 pt of pane — so the
                     // screen reader lost it exactly where the sighted reader did.
@@ -271,13 +271,11 @@ private struct BreadcrumbBar: View {
             // «Измерено » with the sentence stopping where the age should be.
             if let savedAt = dvm.completedAt, let age = HelmDates.age(savedAt) {
                 Text(DkStr.measured(age))
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
             }
         case .scanned:
             if let result = dvm.result {
                 Text(DkStr.scannedIn(result.filesScanned,
                                      Fractional(result.seconds)))
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.faint).lineLimit(1)
             }
         case .none:
             EmptyView()

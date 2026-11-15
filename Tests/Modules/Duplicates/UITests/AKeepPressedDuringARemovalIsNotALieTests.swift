@@ -41,19 +41,10 @@ final class AKeepPressedDuringARemovalIsNotALieTests: XCTestCase {
                                                             freedBytes: 9_000_000))
         let dvm = await searchedModel(over: work)
         XCTAssertEqual(dvm.groups.first?.paths.first, survivor, "precondition: this copy stays")
-        dvm.toggleBasket(extra)
+        await parkRemoval(marking: extra, in: dvm, over: work)
         XCTAssertEqual(dvm.basket, [extra], "precondition: the extra is marked")
-        work.answers(.park, to: .trash)
-        Task { await dvm.emptyBasket() }
-        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
         XCTAssertEqual(work.parkedCount, 1, "precondition: the removal is in flight")
-        XCTAssertTrue(dvm.busy, "precondition: the model knows")
         return (dvm, work)
-    }
-
-    private func finish(_ dvm: DuplicatesViewModel, _ work: AnsweringWork) async {
-        work.releaseParked()
-        await waitUntil("!dvm.busy", within: .seconds(5)) { !dvm.busy }
     }
 
     /// The page and the engine agree: if the extra was sent, the page must still
@@ -75,7 +66,7 @@ final class AKeepPressedDuringARemovalIsNotALieTests: XCTestCase {
         assertAgrees(dvm, "keep")
         XCTAssertNotEqual(dvm.grounds(of: try XCTUnwrap(dvm.groups.first)), .byHand,
                           "the header says the person chose the copy the engine is trashing")
-        await finish(dvm, work)
+        await releaseRemoval(dvm, work)
     }
 
     func testUntickingACopyTheBatchHoldsIsRefused() async throws {
@@ -84,7 +75,7 @@ final class AKeepPressedDuringARemovalIsNotALieTests: XCTestCase {
         dvm.toggleBasket(extra)
 
         assertAgrees(dvm, "toggleBasket")
-        await finish(dvm, work)
+        await releaseRemoval(dvm, work)
     }
 
     /// A group where the two policies disagree, so one of them would put the
@@ -104,12 +95,8 @@ final class AKeepPressedDuringARemovalIsNotALieTests: XCTestCase {
             dvm.choose(start)
             let stays = try XCTUnwrap(dvm.groups.first?.paths.first)
             XCTAssertNotEqual(stays, held, "precondition: \(start) keeps the other copy")
-            dvm.toggleBasket(held)
+            await parkRemoval(marking: held, in: dvm, over: work)
             XCTAssertEqual(dvm.basket, [held], "precondition: marked")
-            work.answers(.park, to: .trash)
-            Task { await dvm.emptyBasket() }
-            await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
-            XCTAssertTrue(dvm.busy, "precondition: in flight")
 
             dvm.choose(policy)
 
@@ -117,7 +104,7 @@ final class AKeepPressedDuringARemovalIsNotALieTests: XCTestCase {
                            "\(policy): the page now says the copy in the batch stays")
             XCTAssertEqual(dvm.basket, [held],
                            "\(policy): the mark on the copy the engine is trashing came off")
-            await finish(dvm, work)
+            await releaseRemoval(dvm, work)
         }
     }
 
@@ -156,12 +143,8 @@ final class AKeepPressedDuringARemovalIsNotALieTests: XCTestCase {
         XCTAssertEqual(dvm.groups.first?.paths.first, filed, "precondition: the rule keeps the filed copy")
         dvm.keep(drop, in: try XCTUnwrap(dvm.groups.first))
         XCTAssertEqual(dvm.groups.first?.paths.first, drop, "precondition: the person pinned the drop copy")
-        dvm.toggleBasket(filed)
+        await parkRemoval(marking: filed, in: dvm, over: work)
         XCTAssertEqual(dvm.basket, [filed], "precondition: the filed copy is marked")
-        work.answers(.park, to: .trash)
-        Task { await dvm.emptyBasket() }
-        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
-        XCTAssertTrue(dvm.busy, "precondition: in flight")
         return (dvm, work, drop, filed)
     }
 
@@ -176,12 +159,12 @@ final class AKeepPressedDuringARemovalIsNotALieTests: XCTestCase {
                        "the page now says the copy in the batch (\(held)) stays")
         XCTAssertEqual(dvm.grounds(of: try XCTUnwrap(dvm.groups.first)), .byHand,
                        "the pin was released while the removal runs")
-        await finish(dvm, work)
+        await releaseRemoval(dvm, work)
     }
 
     func testRestoringTheRecommendationWorksOnceTheRemovalIsAnswered() async throws {
         let (dvm, work, _, _) = try await pinnedGroupWithFiledCopyInTheBatch(answer: false)
-        await finish(dvm, work)
+        await releaseRemoval(dvm, work)
         XCTAssertFalse(dvm.busy, "precondition: the removal came back")
         guard let group = dvm.groups.first else { return XCTFail("group gone") }
 

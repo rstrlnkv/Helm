@@ -13,20 +13,13 @@ import XCTest
 /// "while it runs" would pass with the guard deleted.
 final class ARemovalCanBeWatchedAndStoppedTests: XCTestCase {
 
-    private var directory: URL!
-
-    override func setUpWithError() throws {
-        try super.setUpWithError()
-        // Under the home, because `UserFileScope` refuses everything else and
-        // the scope gate runs before the verification.
-        directory = scratchDirectory("watched-removal")
-    }
+    // Under the home, because `UserFileScope` refuses everything else and
+    // the scope gate runs before the verification.
+    private lazy var directory = scratchDirectory("watched-removal")
 
     @discardableResult
     private func write(_ name: String, _ contents: String) throws -> String {
-        let url = directory.appendingPathComponent(name)
-        try Data(contents.utf8).write(to: url)
-        return url.path
+        try writeText(name, contents, in: directory)
     }
 
     private func plans(_ count: Int) throws -> [DuplicatePlan] {

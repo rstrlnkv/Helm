@@ -5,18 +5,11 @@ import HelmTestSupport
 /// The last thing standing between a stale offer and a deleted file.
 final class DuplicateVerificationTests: XCTestCase {
 
-    private var directory: URL!
-
-    override func setUpWithError() throws {
-        try super.setUpWithError()
-        directory = scratchDirectory("verify")
-    }
+    private lazy var directory = scratchDirectory("verify")
 
     @discardableResult
     private func write(_ name: String, _ contents: String) throws -> String {
-        let url = directory.appendingPathComponent(name)
-        try Data(contents.utf8).write(to: url)
-        return url.path
+        try writeText(name, contents, in: directory)
     }
 
     func testTwoIdenticalFilesVerify() throws {

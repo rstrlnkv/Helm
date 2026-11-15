@@ -33,37 +33,6 @@ import Module_Duplicates_Engine
 @MainActor
 final class ASearchIsNotAWayOutOfARemovalTests: XCTestCase {
 
-    private var survivor: String { "\(home)/Downloads/keep.bin" }
-    private var extra: String { "\(home)/Downloads/extra.bin" }
-    private var second: String { "\(home)/Downloads/second.bin" }
-
-    private var group: DuplicateGroup {
-        DuplicateGroup(copies: [.init(path: survivor, bytes: 9_000_000),
-                                .init(path: extra, bytes: 9_000_000),
-                                .init(path: second, bytes: 9_000_000)])
-    }
-
-    /// A page whose removal is out in the work and cannot come back until this
-    /// test lets it.
-    private func removalInFlight() async -> (DuplicatesViewModel, AnsweringWork) {
-        let work = AnsweringWork(groups: [group],
-                                  removal: DuplicateRemoval(removed: [extra], refused: [],
-                                                            freedBytes: 9_000_000))
-        let dvm = await searchedModel(over: work)
-        dvm.toggleBasket(extra)
-        work.answers(.park, to: .trash)
-        Task { await dvm.emptyBasket() }
-        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
-        return (dvm, work)
-    }
-
-    /// The window closed, so the suite does not carry a parked task out of the
-    /// test that made it.
-    private func finish(_ dvm: DuplicatesViewModel, _ work: AnsweringWork) async {
-        work.answers(.reply)
-        work.releaseParked()
-        await waitUntil("!dvm.busy", within: .seconds(5)) { !dvm.busy }
-    }
 
     /// The same claim `clearBasket` makes, in the control beside it: the request
     /// is out with those paths in it, so nothing on screen may say they are no
@@ -72,16 +41,16 @@ final class ASearchIsNotAWayOutOfARemovalTests: XCTestCase {
         let (dvm, work) = await removalInFlight()
         XCTAssertEqual(work.parkedCount, 1, "precondition: the removal is really in flight")
         XCTAssertTrue(dvm.busy, "precondition: the model knows a removal is running")
-        XCTAssertEqual(dvm.basket, [extra], "precondition: the selection is what was sent")
+        XCTAssertEqual(dvm.basket, [extraCopy], "precondition: the selection is what was sent")
 
         dvm.search()
 
-        XCTAssertEqual(dvm.basket, [extra], """
+        XCTAssertEqual(dvm.basket, [extraCopy], """
             «Search again» emptied the basket while the removal was still out with those paths \
             in it — the same press `clearBasket` grew a `guard !busy` for, in the control next \
             to it
             """)
-        await finish(dvm, work)
+        await releaseRemoval(dvm, work)
     }
 
     /// `DuplicatesSettingsPage`'s own condition for drawing `basketBar` — the
@@ -117,6 +86,6 @@ final class ASearchIsNotAWayOutOfARemovalTests: XCTestCase {
         XCTAssertTrue(dvm.busy, "precondition: still running once the search has answered")
         XCTAssertTrue(pageDrawsTheBasketBar(dvm),
                       "and the search answering does not bring the Stop control back either")
-        await finish(dvm, work)
+        await releaseRemoval(dvm, work)
     }
 }

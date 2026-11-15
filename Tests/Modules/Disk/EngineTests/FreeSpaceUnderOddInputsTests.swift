@@ -227,10 +227,10 @@ final class FreeSpaceUnderOddInputsTests: XCTestCase {
         let dir = scratchDirectory("disk-exfat-image")
         let image = dir.appendingPathComponent("q.dmg").path
         let mount = dir.appendingPathComponent("mnt").path
-        XCTAssertEqual(try Self.hdiutil(["create", "-quiet", "-size", "64m", "-fs", "ExFAT",
-                                    "-volname", "HelmQ", image]), 0)
-        XCTAssertEqual(try Self.hdiutil(["attach", "-quiet", "-nobrowse", "-mountpoint", mount, image]), 0)
-        addTeardownBlock { _ = try? FreeSpaceUnderOddInputsTests.hdiutil(["detach", "-quiet", "-force", mount]) }
+        XCTAssertEqual(try hdiutil(["create", "-quiet", "-size", "64m", "-fs", "ExFAT",
+                                "-volname", "HelmQ", image]), 0)
+        XCTAssertEqual(try hdiutil(["attach", "-quiet", "-nobrowse", "-mountpoint", mount, image]), 0)
+        addTeardownBlock { _ = try? hdiutil(["detach", "-quiet", "-force", mount]) }
 
         let readout = try XCTUnwrap(SystemVolumeCapacity().readout(at: mount))
         let plain = try XCTUnwrap(readout.plainFree)
@@ -240,17 +240,19 @@ final class FreeSpaceUnderOddInputsTests: XCTestCase {
             free (important-usage \(readout.importantFree ?? -1), plain \(plain)).
             """)
     }
+}
 
-    private static func hdiutil(_ arguments: [String]) throws -> Int32 {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/hdiutil")
-        process.arguments = arguments
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
-        try process.run()
-        process.waitUntilExit()
-        return process.terminationStatus
-    }
+/// `hdiutil` run with its output discarded, for the tests that need a real disk
+/// image of their own file system.
+func hdiutil(_ arguments: [String]) throws -> Int32 {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/hdiutil")
+    process.arguments = arguments
+    process.standardOutput = FileHandle.nullDevice
+    process.standardError = FileHandle.nullDevice
+    try process.run()
+    process.waitUntilExit()
+    return process.terminationStatus
 }
 
 /// The move of a volume-only test: it must never be reached.

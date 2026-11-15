@@ -13,7 +13,6 @@ import XCTest
 /// Guards a past defect: 6dec5f2f fix: eight defects a second agent pass turned up.
 final class DuplicatesOrderTests: XCTestCase {
 
-    private func day(_ n: Int) -> Date { Date(timeIntervalSince1970: TimeInterval(n) * 86_400) }
     private func file(_ path: String, id: UInt64, added: Int) -> FileFacts {
         FileFacts(path: path, bytes: 5_000_000, fileID: id, added: day(added))
     }

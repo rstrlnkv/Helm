@@ -26,10 +26,7 @@ final class TheBusyDoorsOfTheBarHoldTests: XCTestCase {
     private func scanned(_ work: HeldWork) async -> DiskViewModel {
         let dvm = DiskViewModel(work: work,
                                 store: ScanStore(directory: scratchDirectory("disk-doors")))
-        Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(work, count: 1)
-        work.release(0, with: tree())
-        await waitUntil("the result is shown") { dvm.phase == .result }
+        await Module_Disk_UITests.scanned(dvm, over: work, answering: tree())
         return dvm
     }
 

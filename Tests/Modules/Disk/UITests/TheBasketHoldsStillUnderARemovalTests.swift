@@ -41,10 +41,7 @@ final class TheBasketHoldsStillUnderARemovalTests: XCTestCase {
         work.answerTrash(with: DiskRemoval(removed: [sub], refused: [], freedBytes: 600))
         let dvm = DiskViewModel(work: work,
                                 store: ScanStore(directory: scratchDirectory("disk-busy")))
-        Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(work, count: 1)
-        work.release(0, with: tree())
-        await waitUntil("the walk answered") { !dvm.live }
+        await scanned(dvm, over: work, answering: tree())
         dvm.toggleBasket(folder(sub, bytes: 600))
         XCTAssertEqual(dvm.basket.map(\.path), [sub], "precondition: one folder is ticked")
 

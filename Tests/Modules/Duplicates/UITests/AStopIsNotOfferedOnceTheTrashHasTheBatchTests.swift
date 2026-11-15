@@ -9,22 +9,11 @@ import Module_Duplicates_Engine
 @MainActor
 final class AStopIsNotOfferedOnceTheTrashHasTheBatchTests: XCTestCase {
 
-    private var survivor: String { "\(home)/Downloads/keep.bin" }
-    private var extra: String { "\(home)/Downloads/extra.bin" }
-
-    private var group: DuplicateGroup {
-        DuplicateGroup(copies: [.init(path: survivor, bytes: 9_000_000),
-                                .init(path: extra, bytes: 9_000_000)])
-    }
 
     private func parkedRemoval(moving: Bool) async -> (AnsweringWork, DuplicatesViewModel, Task<Void, Never>) {
-        let work = AnsweringWork(groups: [group], movingWhileParked: moving)
+        let work = AnsweringWork(groups: [keepAndExtra()], movingWhileParked: moving)
         let dvm = await searchedModel(over: work)
-        dvm.toggleBasket(extra)
-        work.answers(.park, to: .trash)
-        let removal = Task { await dvm.emptyBasket() }
-        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
-        XCTAssertTrue(dvm.busy, "precondition: the removal is really in flight")
+        let removal = await parkRemoval(marking: extraCopy, in: dvm, over: work)
         return (work, dvm, removal)
     }
 

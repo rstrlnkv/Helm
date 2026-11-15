@@ -43,39 +43,11 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
 
     // MARK: - Fixtures
 
-    /// A snapshot of a walk in progress: `Sub` is charged with what has been
-    /// counted so far and has no children, because the walk has not been inside
-    /// it yet.
-    private func partOfBig() -> ScanResult {
-        ScanResult(root: folder("/Volumes/Big", bytes: 900,
-                                children: [folder("/Volumes/Big/Sub", bytes: 600)]),
-                   freeBytes: 100, filesScanned: 1_200, seconds: 0)
-    }
-
     /// What measuring `Sub` on demand comes back with.
     private func measuredSub() -> ScanResult {
         ScanResult(root: folder("/Volumes/Big/Sub", bytes: 600,
                                 children: [folder("/Volumes/Big/Sub/Inner", bytes: 600)]),
                    freeBytes: 100, filesScanned: 40, seconds: 0)
-    }
-
-    private func model(_ work: HeldWork) -> (DiskViewModel, ScanStore) {
-        // A store of its own: the module's real one is the person's own last
-        // scan, and `scratchDirectory`'s teardown drains, which is what a save
-        // arriving from the view model's own fire-and-forget task needs.
-        let store = ScanStore(directory: scratchDirectory("disk-unfinished"))
-        return (DiskViewModel(work: work, store: store), store)
-    }
-
-    /// A walk in flight with one snapshot drawn — the state the ring is live in.
-    private func walkingWithASnapshot(_ work: HeldWork,
-                                      _ dvm: DiskViewModel) async {
-        Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(work, count: 1)
-        work.emitPartial(0, result: partOfBig())
-        await waitUntil("the snapshot is drawn") { dvm.phase == .result }
-        XCTAssertEqual(dvm.phase, .result, "precondition: the ring is drawn from the snapshot")
-        XCTAssertTrue(dvm.live, "precondition: the walk is still running")
     }
 
     /// Room for a detached save to land. A save that is expected is waited for
@@ -94,7 +66,7 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
         let work = HeldWork()
         work.answerTrash(with: DiskRemoval(removed: ["/Volumes/Big/Sub"],
                                                 refused: [], freedBytes: 600))
-        let (dvm, store) = model(work)
+        let (dvm, store) = heldModel(work)
         await walkingWithASnapshot(work, dvm)
         dvm.toggleBasket(folder("/Volumes/Big/Sub", bytes: 600))
 
@@ -117,11 +89,8 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
         let work = HeldWork()
         work.answerTrash(with: DiskRemoval(removed: ["/Volumes/Big/Sub"],
                                                 refused: [], freedBytes: 600))
-        let (dvm, store) = model(work)
-        Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(work, count: 1)
-        work.release(0, with: partOfBig())
-        await waitUntil("the walk answered") { !dvm.live }
+        let (dvm, store) = heldModel(work)
+        await scanned(dvm, over: work, answering: partOfBig())
         XCTAssertFalse(dvm.live, "precondition: the walk answered")
         dvm.toggleBasket(folder("/Volumes/Big/Sub", bytes: 600))
 
@@ -136,7 +105,7 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
 
     func testMeasuringAFolderOnAStoppedTreeDoesNotWriteItDown() async {
         let work = HeldWork()
-        let (dvm, store) = model(work)
+        let (dvm, store) = heldModel(work)
         await walkingWithASnapshot(work, dvm)
 
         dvm.cancel()                                  // the Stop button
@@ -165,11 +134,8 @@ final class AnUnfinishedTreeIsNeverWrittenDownTests: XCTestCase {
     /// and not the wait.
     func testMeasuringAFolderOnAFinishedTreeWritesTheGraftDown() async {
         let work = HeldWork()
-        let (dvm, store) = model(work)
-        Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(work, count: 1)
-        work.release(0, with: partOfBig())
-        await waitUntil("the walk answered") { !dvm.live }
+        let (dvm, store) = heldModel(work)
+        await scanned(dvm, over: work, answering: partOfBig())
         XCTAssertFalse(dvm.stopped, "precondition: a finished measurement")
 
         // The volume walk's own request was released above and is no longer

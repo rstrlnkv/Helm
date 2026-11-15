@@ -30,10 +30,7 @@ final class ADayOldTreeIsAGuessTests: XCTestCase {
         let work = HeldWork()
         let store = ScanStore(directory: scratchDirectory("disk-stale"))
         let dvm = DiskViewModel(work: work, store: store)
-        Task { await dvm.scan(path: "/Volumes/Big") }
-        await untilParked(work, count: 1)
-        work.release(0, with: result())
-        await waitUntil("the result is shown") { dvm.phase == .result }
+        await scanned(dvm, over: work, answering: result())
         XCTAssertEqual(dvm.phase, .result, "precondition: a tree is on screen")
         XCTAssertNotNil(dvm.completedAt, "precondition: it is dated")
         return (dvm, store)

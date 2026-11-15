@@ -33,10 +33,7 @@ final class StaleRemovalIsRefusedTests: XCTestCase {
     /// A unique name, so two cases never share a file.
     @discardableResult
     private func write(_ name: String, _ contents: String) throws -> String {
-        let unique = "\(name)-\(UUID().uuidString)"
-        let url = directory.appendingPathComponent(unique)
-        try Data(contents.utf8).write(to: url)
-        return url.path
+        try writeText("\(name)-\(UUID().uuidString)", contents, in: directory)
     }
 
     /// The case this whole path exists for: the search said identical, the file

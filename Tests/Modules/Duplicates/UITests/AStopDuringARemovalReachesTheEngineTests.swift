@@ -13,25 +13,14 @@ import Module_Duplicates_Engine
 @MainActor
 final class AStopDuringARemovalReachesTheEngineTests: XCTestCase {
 
-    private var survivor: String { "\(home)/Downloads/keep.bin" }
-    private var extra: String { "\(home)/Downloads/extra.bin" }
-
-    private var group: DuplicateGroup {
-        DuplicateGroup(copies: [.init(path: survivor, bytes: 9_000_000),
-                                .init(path: extra, bytes: 9_000_000)])
-    }
 
     /// Stop during a removal reaches the engine as its own entry — not `cancel`,
     /// which reaches the search — and takes nothing off the screen: the reply
     /// decides what happened, not the press.
     func testStopReachesItsOwnEntryAndClaimsNothing() async {
-        let work = AnsweringWork(groups: [group])
+        let work = AnsweringWork(groups: [keepAndExtra()])
         let dvm = await searchedModel(over: work)
-        dvm.toggleBasket(extra)
-        work.answers(.park, to: .trash)
-        let removal = Task { await dvm.emptyBasket() }
-        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
-        XCTAssertTrue(dvm.busy, "precondition: the removal is really in flight")
+        let removal = await parkRemoval(marking: extraCopy, in: dvm, over: work)
 
         dvm.stopRemoval()
         await waitUntil("the engine was told to stop the removal", within: .seconds(5)) { work.calls.contains(.stopRemoval) }
@@ -40,7 +29,7 @@ final class AStopDuringARemovalReachesTheEngineTests: XCTestCase {
         XCTAssertFalse(work.calls.contains(.cancel),
                        "stopping a removal silently cancelled the search too")
         XCTAssertTrue(dvm.busy, "the press claimed the removal was over before the reply said so")
-        XCTAssertEqual(dvm.basket, [extra])
+        XCTAssertEqual(dvm.basket, [extraCopy])
 
         work.releaseParked()
         await removal.value

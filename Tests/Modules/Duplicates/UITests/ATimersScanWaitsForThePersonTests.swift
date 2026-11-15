@@ -11,13 +11,8 @@ import Module_Duplicates_Engine
 @MainActor
 final class ATimersScanWaitsForThePersonTests: XCTestCase {
 
-    private var group: DuplicateGroup {
-        DuplicateGroup(copies: [.init(path: "\(home)/Downloads/keep.bin", bytes: 9_000_000),
-                                .init(path: "\(home)/Downloads/extra.bin", bytes: 9_000_000)])
-    }
-
     func testARunningSearchIsNotStoppedByTheTimersScan() async {
-        let work = AnsweringWork(groups: [group])
+        let work = AnsweringWork(groups: [keepAndExtra()])
         work.answers(.park, to: .find)
         let dvm = duplicatesModel(over: work)
         dvm.search()
@@ -36,27 +31,21 @@ final class ATimersScanWaitsForThePersonTests: XCTestCase {
     }
 
     func testARunningRemovalMakesTheTimersScanWait() async {
-        let work = AnsweringWork(groups: [group],
-                                 removal: DuplicateRemoval(removed: ["\(home)/Downloads/extra.bin"],
+        let work = AnsweringWork(groups: [keepAndExtra()],
+                                 removal: DuplicateRemoval(removed: [extraCopy],
                                                            refused: [], freedBytes: 9_000_000))
         let dvm = await searchedModel(over: work)
-        dvm.toggleBasket("\(home)/Downloads/extra.bin")
-        work.answers(.park, to: .trash)
-        Task { await dvm.emptyBasket() }
-        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
-        XCTAssertTrue(dvm.busy, "precondition: a removal is running")
+        await parkRemoval(marking: extraCopy, in: dvm, over: work)
 
         let report = await dvm.backgroundScan()
 
         XCTAssertNil(report)
         XCTAssertFalse(work.calls.contains(.backgroundScan))
-        work.answers(.reply)
-        work.releaseParked()
-        await waitUntil("!dvm.busy", within: .seconds(5)) { !dvm.busy }
+        await releaseRemoval(dvm, work)
     }
 
     func testWhenThePersonIsDoneTheScanReachesTheWork() async {
-        let work = AnsweringWork(groups: [group])
+        let work = AnsweringWork(groups: [keepAndExtra()])
         let dvm = await searchedModel(over: work)
 
         let report = await dvm.backgroundScan()

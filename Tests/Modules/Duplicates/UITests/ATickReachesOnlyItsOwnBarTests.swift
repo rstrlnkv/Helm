@@ -15,13 +15,6 @@ import Module_Duplicates_Engine
 @MainActor
 final class ATickReachesOnlyItsOwnBarTests: XCTestCase {
 
-    private var survivor: String { "\(home)/Downloads/keep.bin" }
-    private var extra: String { "\(home)/Downloads/extra.bin" }
-
-    private var group: DuplicateGroup {
-        DuplicateGroup(copies: [.init(path: survivor, bytes: 9_000_000),
-                                .init(path: extra, bytes: 9_000_000)])
-    }
 
     /// Parks `find`, then reports one tick and answers nil (a cancelled search).
     private final class LateTickWork: DuplicatesWork, @unchecked Sendable {
@@ -57,14 +50,11 @@ final class ATickReachesOnlyItsOwnBarTests: XCTestCase {
     func testTheRemovalsTicksReachTheBarAndLeaveWithIt() async {
         let searchTick = DuplicateProgress(candidates: 100, hashed: 50)
         let removalTick = DuplicateProgress(candidates: 7, hashed: 3)
-        let work = AnsweringWork(groups: [group], ticks: [searchTick], removalTicks: [removalTick])
+        let work = AnsweringWork(groups: [keepAndExtra()], ticks: [searchTick], removalTicks: [removalTick])
         let dvm = await searchedModel(over: work)
         XCTAssertEqual(dvm.progress?.candidates, 100,
                        "precondition: the search's own tick is what the bar last held")
-        dvm.toggleBasket(extra)
-        work.answers(.park, to: .trash)
-        let removal = Task { await dvm.emptyBasket() }
-        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
+        let removal = await parkRemoval(marking: extraCopy, in: dvm, over: work)
         await waitUntil("dvm.progress != nil", within: .seconds(5)) { dvm.progress != nil }
 
         XCTAssertTrue(dvm.busy, "precondition: the removal is really in flight")
@@ -82,7 +72,7 @@ final class ATickReachesOnlyItsOwnBarTests: XCTestCase {
     /// removal clear it), and the page draws it only while searching or busy.
     func testTheSearchsTicksReachTheBar() async {
         let searchTick = DuplicateProgress(candidates: 100, hashed: 50)
-        let work = AnsweringWork(groups: [group], ticks: [searchTick], answering: .park)
+        let work = AnsweringWork(groups: [keepAndExtra()], ticks: [searchTick], answering: .park)
         let dvm = duplicatesModel(over: work)
         dvm.search()
         await waitUntil("dvm.progress != nil", within: .seconds(5)) { dvm.progress != nil }

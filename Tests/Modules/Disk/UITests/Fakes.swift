@@ -62,18 +62,18 @@ final class AnsweringWork: DiskWork, @unchecked Sendable {
     }
 
     func answer(_ path: String, with result: ScanResult) {
-        lock.lock(); results[path] = result; lock.unlock()
+        lock.withLock { results[path] = result }
     }
 
     func answerTrash(with removal: DiskRemoval) {
-        lock.lock(); self.removal = removal; lock.unlock()
+        lock.withLock { self.removal = removal }
     }
 
     /// What the engine was actually asked to trash. A basket row and a removal
     /// are not one to one — a cache row stands for its contents — so a test of
     /// that has to be able to read the request rather than the basket.
     var trashRequests: [[String]] {
-        lock.lock(); defer { lock.unlock() }; return requestedTrash
+        lock.withLock { requestedTrash }
     }
     private var requestedTrash: [[String]] = []
 
@@ -84,25 +84,16 @@ final class AnsweringWork: DiskWork, @unchecked Sendable {
 
     func scan(path: String, unattended: Bool,
               updates: (@Sendable (DiskScanUpdate) -> Void)?) async -> ScanResult? {
-        result(for: path)
+        lock.withLock { results[path] }
     }
 
     func cancel() {}
 
     func trash(_ paths: [String]) async -> DiskRemoval {
-        noteTrash(paths)
-    }
-
-    // Locking lives in non-async helpers: taking an NSLock across a suspension
-    // point is what the compiler objects to, and it is right to.
-    private func result(for path: String) -> ScanResult? {
-        lock.lock(); defer { lock.unlock() }; return results[path]
-    }
-
-    private func noteTrash(_ paths: [String]) -> DiskRemoval {
-        lock.lock(); defer { lock.unlock() }
-        requestedTrash.append(paths)
-        return removal
+        lock.withLock {
+            requestedTrash.append(paths)
+            return removal
+        }
     }
 
     func backgroundScan() async -> ScanReport? { nil }
@@ -139,23 +130,9 @@ final class HeldWork: DiskWork, @unchecked Sendable {
     func backgroundScan() async -> ScanReport? { nil }
 
     func trash(_ paths: [String]) async -> DiskRemoval {
-        noteTrash(paths)
-        guard isHoldingTrash else { return currentRemoval }
-        return await withCheckedContinuation { parkTrash($0) }
-    }
-
-    // Locking lives in non-async helpers: taking an NSLock across a suspension
-    // point is what the compiler objects to, and it is right to.
-    private func noteTrash(_ paths: [String]) {
-        lock.lock(); trashBatches.append(paths); lock.unlock()
-    }
-
-    private func parkTrash(_ continuation: CheckedContinuation<DiskRemoval, Never>) {
-        lock.lock(); heldTrash.append(continuation); lock.unlock()
-    }
-
-    private var isHoldingTrash: Bool {
-        lock.lock(); defer { lock.unlock() }; return holdsTrash
+        lock.withLock { trashBatches.append(paths) }
+        guard lock.withLock({ holdsTrash }) else { return lock.withLock { removal } }
+        return await withCheckedContinuation { c in lock.withLock { heldTrash.append(c) } }
     }
 
     /// Hold the removal open until `releaseTrash()`.
@@ -168,62 +145,54 @@ final class HeldWork: DiskWork, @unchecked Sendable {
     /// and a batch that never comes back would hang those instead of failing
     /// them.
     func holdTrash() {
-        lock.lock(); holdsTrash = true; lock.unlock()
+        lock.withLock { holdsTrash = true }
     }
 
     /// Every batch the engine was really handed, in order. A basket row and a
     /// removal are not one to one, and a second press sends a second batch:
     /// counting them is how a refusal is told from a silence.
     var trashRequests: [[String]] {
-        lock.lock(); defer { lock.unlock() }; return trashBatches
+        lock.withLock { trashBatches }
     }
 
     func releaseTrash() {
-        lock.lock()
-        let waiting = heldTrash
-        heldTrash = []
-        let answer = removal
-        lock.unlock()
+        let (waiting, answer) = lock.withLock { () -> ([CheckedContinuation<DiskRemoval, Never>], DiskRemoval) in
+            defer { heldTrash = [] }
+            return (heldTrash, removal)
+        }
         waiting.forEach { $0.resume(returning: answer) }
     }
 
     private func park(_ continuation: CheckedContinuation<ScanResult?, Never>,
                       _ updates: (@Sendable (DiskScanUpdate) -> Void)?) {
-        lock.lock(); parked.append(continuation); sinks.append(updates); lock.unlock()
-    }
-
-    private var currentRemoval: DiskRemoval {
-        lock.lock(); defer { lock.unlock() }; return removal
+        lock.withLock { parked.append(continuation); sinks.append(updates) }
     }
 
     func answerTrash(with removal: DiskRemoval) {
-        lock.lock(); self.removal = removal; lock.unlock()
+        lock.withLock { self.removal = removal }
     }
 
-    var parkedCount: Int { lock.lock(); defer { lock.unlock() }; return parked.count }
+    var parkedCount: Int { lock.withLock { parked.count } }
 
     /// Whether the scan at `index` was started with a sink for its updates. The
     /// volume walk draws a ring and asks for them; the measurement of one folder
     /// wants only its final tree and asks for none.
     func asksForUpdates(_ index: Int) -> Bool {
-        lock.lock(); defer { lock.unlock() }
-        return sinks.indices.contains(index) && sinks[index] != nil
+        lock.withLock { sinks.indices.contains(index) && sinks[index] != nil }
     }
 
     func release(_ index: Int, with result: ScanResult?) {
-        lock.lock()
-        guard parked.indices.contains(index) else { lock.unlock(); return }
-        let continuation = parked.remove(at: index)
-        sinks.remove(at: index)
-        lock.unlock()
-        continuation.resume(returning: result)
+        let continuation: CheckedContinuation<ScanResult?, Never>? = lock.withLock {
+            guard parked.indices.contains(index) else { return nil }
+            sinks.remove(at: index)
+            return parked.remove(at: index)
+        }
+        continuation?.resume(returning: result)
     }
 
     /// A snapshot from the scan at `index`, through the sink that scan was given.
     func emitPartial(_ index: Int, result: ScanResult) {
-        lock.lock()
-        let sink = sinks.indices.contains(index) ? sinks[index] : nil
-        lock.unlock()
+        let sink = lock.withLock { sinks.indices.contains(index) ? sinks[index] : nil }
         sink?(.partial(result))
     }
 }
@@ -258,5 +227,52 @@ func untilTrashing(_ work: HeldWork, count: Int = 1, file: StaticString = #fileP
     await waitUntilWithin("\(count) removal(s) reached HeldWork.trash", .seconds(5),
                           file: file, line: line) {
         work.trashRequests.count >= count
+    }
+}
+
+/// A walk to a finished tree: the scan parks in `HeldWork`, the test releases it
+/// with `result`, and the wait is for the walk to be over (a released scan sets
+/// `live` and `phase` in one synchronous stretch, so either reads the same).
+@MainActor
+func scanned(_ dvm: DiskViewModel, over work: HeldWork, answering result: ScanResult,
+             file: StaticString = #filePath, line: UInt = #line) async {
+    Task { await dvm.scan(path: "/Volumes/Big") }
+    await untilParked(work, count: 1, file: file, line: line)
+    work.release(0, with: result)
+    await waitUntilWithin("the walk answered", .seconds(5), file: file, line: line) { !dvm.live }
+}
+
+/// The unfinished-walk fixtures of the files about what Stop and a snapshot keep.
+@MainActor
+extension XCTestCase {
+
+    /// A snapshot of a walk in progress: the folder is charged with what has been
+    /// counted so far, which is the point — 600 of an unknown total. `Sub` has no
+    /// children, because the walk has not been inside it yet.
+    func partOfBig(files: Int = 1_200) -> ScanResult {
+        ScanResult(root: folder("/Volumes/Big", bytes: 900,
+                                children: [folder("/Volumes/Big/Sub", bytes: 600)]),
+                   freeBytes: 100, filesScanned: files, seconds: 0)
+    }
+
+    func heldModel(_ work: HeldWork) -> (DiskViewModel, ScanStore) {
+        // A store of its own: the module's real one is the person's last scan,
+        // and a harness must leave nothing behind. `scratchDirectory` owns the
+        // teardown, and it *drains* — a one-shot `removeItem` beside it was the
+        // very race that helper exists to close, and a save arriving from the view
+        // model's own fire-and-forget task is what needs it.
+        let store = ScanStore(directory: scratchDirectory("disk-held"))
+        return (DiskViewModel(work: work, store: store), store)
+    }
+
+    /// A walk in flight with one snapshot drawn — the state the Stop button is
+    /// visible in and the ring is live in.
+    func walkingWithASnapshot(_ work: HeldWork, _ dvm: DiskViewModel) async {
+        Task { await dvm.scan(path: "/Volumes/Big") }
+        await untilParked(work, count: 1)
+        work.emitPartial(0, result: partOfBig())
+        await waitUntil("the snapshot is drawn") { dvm.phase == .result }
+        XCTAssertEqual(dvm.phase, .result, "precondition: the ring is drawn from the snapshot")
+        XCTAssertTrue(dvm.live, "precondition: the walk is still running")
     }
 }

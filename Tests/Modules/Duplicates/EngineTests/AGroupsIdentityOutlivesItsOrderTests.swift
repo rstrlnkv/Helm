@@ -42,8 +42,8 @@ final class AGroupsIdentityOutlivesItsOrderTests: XCTestCase {
     /// Every permutation, not the one that was thought of: the rule is about the
     /// set, so nothing in the arrangement may reach the id.
     func testEveryArrangementOfTheSameCopiesHasOneId() {
-        let ids = Set(permutations(of: three).map { group($0).id })
-        XCTAssertEqual(permutations(of: three).count, 6)
+        let ids = Set(permutations(three).map { group($0).id })
+        XCTAssertEqual(permutations(three).count, 6)
         XCTAssertEqual(ids.count, 1, "the same three copies answered with \(ids.count) ids")
     }
 
@@ -71,15 +71,6 @@ final class AGroupsIdentityOutlivesItsOrderTests: XCTestCase {
             XCTAssertFalse(id.contains(path), "the id quotes \(path)")
             XCTAssertFalse(id.contains((path as NSString).lastPathComponent),
                            "the id quotes a file name")
-        }
-    }
-
-    private func permutations(of items: [String]) -> [[String]] {
-        guard items.count > 1 else { return [items] }
-        return items.indices.flatMap { index -> [[String]] in
-            var rest = items
-            let head = rest.remove(at: index)
-            return permutations(of: rest).map { [head] + $0 }
         }
     }
 }

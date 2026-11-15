@@ -19,13 +19,6 @@ import Module_Duplicates_Engine
 @MainActor
 final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
 
-    private var survivor: String { "\(home)/Downloads/keep.bin" }
-    private var extra: String { "\(home)/Downloads/extra.bin" }
-
-    private var group: DuplicateGroup {
-        DuplicateGroup(copies: [.init(path: survivor, bytes: 9_000_000),
-                                .init(path: extra, bytes: 9_000_000)])
-    }
 
     private func count(_ call: Call, in work: AnsweringWork) -> Int {
         work.calls.filter { $0 == call }.count
@@ -47,16 +40,16 @@ final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
     private final class NoEngine: ModuleEngine { func activate() {}; func deactivate() {} }
 
     func testAPressAfterStopReachesNoWork() async {
-        let work = AnsweringWork(groups: [group])
+        let work = AnsweringWork(groups: [keepAndExtra()])
         let dvm = await searchedModel(over: work)
-        dvm.toggleBasket(extra)
-        XCTAssertEqual(dvm.basket, [extra], "precondition: the extra is in the basket")
+        dvm.toggleBasket(extraCopy)
+        XCTAssertEqual(dvm.basket, [extraCopy], "precondition: the extra is in the basket")
         await dvm.emptyBasket()
         _ = await dvm.backgroundScan()
         dvm.cancel()
         // A removal parked, so that Stop has something to stop.
         // The fake removes nothing, so the extra is still marked.
-        XCTAssertEqual(dvm.basket, [extra], "precondition: the extra is still marked")
+        XCTAssertEqual(dvm.basket, [extraCopy], "precondition: the extra is still marked")
         work.answers(.park, to: .trash)
         let removal = Task { await dvm.emptyBasket() }
         await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
@@ -77,7 +70,7 @@ final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
         dvm.cancel()
         work.releaseParked()
         await removal.value
-        XCTAssertEqual(dvm.basket, [extra], "precondition: something is marked to send")
+        XCTAssertEqual(dvm.basket, [extraCopy], "precondition: something is marked to send")
         await dvm.emptyBasket()
         let report = await dvm.backgroundScan()
         await settle()
@@ -89,7 +82,7 @@ final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
     /// A search that was in flight when the module was switched off does not land
     /// on the page afterwards.
     func testAnAnswerAfterStopIsNotShown() async {
-        let work = AnsweringWork(groups: [group], answering: .park)
+        let work = AnsweringWork(groups: [keepAndExtra()], answering: .park)
         let dvm = duplicatesModel(over: work)
         dvm.search()
         await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
@@ -109,7 +102,7 @@ final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
     /// model but not a new page) drew a search nobody was running. Nothing
     /// visible changes today, because a stopped model is never drawn.
     func testAStoppedModelIsNotLeftSearching() async {
-        let work = AnsweringWork(groups: [group], answering: .park)
+        let work = AnsweringWork(groups: [keepAndExtra()], answering: .park)
         let dvm = duplicatesModel(over: work)
         dvm.search()
         await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
@@ -152,7 +145,7 @@ final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
     func testAStoppedModelIsReleasedWithItsParts() async {
         weak var released: DuplicatesViewModel?
         do {
-            let dvm = await searchedModel(over: AnsweringWork(groups: [group]))
+            let dvm = await searchedModel(over: AnsweringWork(groups: [keepAndExtra()]))
             released = dvm
             dvm.stop()
         }

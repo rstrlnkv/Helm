@@ -37,18 +37,18 @@ final class TheRealPortOnEveryFileSystemTests: XCTestCase {
         let dir = scratchDirectory("disk-fs-\(fs.filter(\.isLetter))-\(browsable)")
         let image = dir.appendingPathComponent("q.dmg").path
         let mount = dir.appendingPathComponent("mnt").path
-        let created = try Self.hdiutil(["create", "-quiet", "-size", "64m", "-fs", fs,
-                                        "-volname", "HQ", image])
+        let created = try hdiutil(["create", "-quiet", "-size", "64m", "-fs", fs,
+                                "-volname", "HQ", image])
         XCTAssertEqual(created, 0, "precondition: hdiutil made a \(fs) image")
         var attach = ["attach", "-quiet", "-mountpoint", mount, image]
         if !browsable { attach.insert("-nobrowse", at: 2) }
-        XCTAssertEqual(try Self.hdiutil(attach), 0, "precondition: the \(fs) image mounted")
-        addTeardownBlock { _ = try? Self.hdiutil(["detach", "-quiet", "-force", mount]) }
+        XCTAssertEqual(try hdiutil(attach), 0, "precondition: the \(fs) image mounted")
+        addTeardownBlock { _ = try? hdiutil(["detach", "-quiet", "-force", mount]) }
         return mount
     }
 
     private func detach(_ mount: String) {
-        XCTAssertEqual(try Self.hdiutil(["detach", "-quiet", mount]), 0, "the image would not detach")
+        XCTAssertEqual(try hdiutil(["detach", "-quiet", mount]), 0, "the image would not detach")
     }
 
     /// An empty disk of every file system, both ways: the free figure is the
@@ -131,16 +131,5 @@ final class TheRealPortOnEveryFileSystemTests: XCTestCase {
             try? handle.close()
         }
         sync()
-    }
-
-    private static func hdiutil(_ arguments: [String]) throws -> Int32 {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/hdiutil")
-        process.arguments = arguments
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
-        try process.run()
-        process.waitUntilExit()
-        return process.terminationStatus
     }
 }

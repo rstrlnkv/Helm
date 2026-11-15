@@ -15,14 +15,6 @@ import XCTest
 /// what gets sent; the count, the size and the names now come from the same
 /// computation, which is what makes them unable to drift apart.
 final class TheQuestionIsAboutWhatIsSentTests: XCTestCase {
-    private let caches = "/Users/test/Library/Caches"
-
-    private func cacheAdvice(_ children: [(String, Int)]) -> DiskAdvice {
-        DiskAdvice(name: "Caches", path: caches, kind: .cache,
-                   targets: children.map { DiskAdvice.Target(path: caches + "/" + $0.0,
-                                                             bytes: $0.1) })
-    }
-
     private func entry(_ path: String, bytes: Int) -> DiskEntry {
         DiskEntry(name: (path as NSString).lastPathComponent, path: path, bytes: bytes,
                   isDirectory: true, noAccess: false, children: [])

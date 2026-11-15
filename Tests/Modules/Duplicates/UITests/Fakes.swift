@@ -216,6 +216,16 @@ final class HeldWork: DuplicatesWork, @unchecked Sendable {
 /// real path, and one in `/tmp` would be refused for the wrong reason.
 var home: String { NSHomeDirectory() }
 
+var keptCopy: String { "\(home)/Downloads/keep.bin" }
+var extraCopy: String { "\(home)/Downloads/extra.bin" }
+var secondCopy: String { "\(home)/Downloads/second.bin" }
+
+/// The two-copy fixture most of the page tests search over, 9 MB each, with
+/// `more` as further copies: the one that stays, the extra, and a third.
+func keepAndExtra(_ more: String...) -> DuplicateGroup {
+    DuplicateGroup(bytes: 9_000_000, paths: [keptCopy, extraCopy] + more)
+}
+
 /// **In memory, never `UserDefaults.standard`.** The real store is the person's
 /// remembered folder; the runner's domain is `com.apple.dt.xctest.tool`, shared
 /// with every package tested on this machine, and 3028 keys had accumulated
@@ -310,4 +320,41 @@ func untilParked(_ work: HeldWork, count: Int, file: StaticString = #filePath,
     await waitUntilWithin("\(count) search(es) parked on the work", .seconds(5), file: file, line: line) {
         work.parkedCount >= count
     }
+}
+
+/// A removal of `path` held open by a parked trash, which is the only way to be
+/// inside the window at all: a work that answers on the spot is over before
+/// anything can be pressed, and a test written against one would pass with the
+/// guard deleted. Returns the task so a test can wait for the removal's end.
+@MainActor @discardableResult
+func parkRemoval(marking path: String, in dvm: DuplicatesViewModel, over work: AnsweringWork,
+                 file: StaticString = #filePath, line: UInt = #line) async -> Task<Void, Never> {
+    dvm.toggleBasket(path)
+    work.answers(.park, to: .trash)
+    let removal = Task { await dvm.emptyBasket() }
+    await waitUntilWithin("work.parkedCount >= 1", .seconds(5), file: file, line: line) { work.parkedCount >= 1 }
+    XCTAssertTrue(dvm.busy, "precondition: the removal is really in flight", file: file, line: line)
+    return removal
+}
+
+/// The window closed, so the suite does not carry a parked task out of the test
+/// that made it.
+@MainActor
+func releaseRemoval(_ dvm: DuplicatesViewModel, _ work: AnsweringWork, file: StaticString = #filePath,
+                    line: UInt = #line) async {
+    work.answers(.reply)
+    work.releaseParked()
+    await waitUntilWithin("!dvm.busy", .seconds(5), file: file, line: line) { !dvm.busy }
+}
+
+/// A page whose removal of `extraCopy` out of the three-copy group is out in the
+/// work and cannot come back until the test lets it.
+@MainActor
+func removalInFlight() async -> (DuplicatesViewModel, AnsweringWork) {
+    let work = AnsweringWork(groups: [keepAndExtra(secondCopy)],
+                             removal: DuplicateRemoval(removed: [extraCopy], refused: [],
+                                                       freedBytes: 9_000_000))
+    let dvm = await searchedModel(over: work)
+    await parkRemoval(marking: extraCopy, in: dvm, over: work)
+    return (dvm, work)
 }

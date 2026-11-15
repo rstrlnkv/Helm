@@ -26,57 +26,30 @@ import Module_Duplicates_Engine
 @MainActor
 final class ClearSelectionIsNotAWayOutOfRemovalTests: XCTestCase {
 
-    private var survivor: String { "\(home)/Downloads/keep.bin" }
-    private var extra: String { "\(home)/Downloads/extra.bin" }
-    private var second: String { "\(home)/Downloads/second.bin" }
-
-    private var group: DuplicateGroup {
-        DuplicateGroup(copies: [.init(path: survivor, bytes: 9_000_000),
-                                .init(path: extra, bytes: 9_000_000),
-                                .init(path: second, bytes: 9_000_000)])
-    }
-
-    /// A removal held open by a parked reply, which is the only way to be inside
-    /// the window at all: a work that answers on the spot is over before
-    /// anything can be pressed, and a test written against one would pass with the
-    /// guard deleted.
-    private func removalInFlight() async -> (DuplicatesViewModel, AnsweringWork) {
-        let work = AnsweringWork(groups: [group],
-                                  removal: DuplicateRemoval(removed: [extra], refused: [],
-                                                            freedBytes: 9_000_000))
-        let dvm = await searchedModel(over: work)
-        dvm.toggleBasket(extra)
-        work.answers(.park, to: .trash)
-        Task { await dvm.emptyBasket() }
-        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
-        return (dvm, work)
-    }
 
     func testClearingTheSelectionIsRefusedWhileTheFilesAreGoing() async {
         let (dvm, work) = await removalInFlight()
         XCTAssertEqual(work.parkedCount, 1, "precondition: the removal is really in flight")
         XCTAssertTrue(dvm.busy, "precondition: the model knows a removal is running")
-        XCTAssertEqual(dvm.basket, [extra], "precondition: the selection is what was sent")
+        XCTAssertEqual(dvm.basket, [extraCopy], "precondition: the selection is what was sent")
 
         dvm.clearBasket()
 
-        XCTAssertEqual(dvm.basket, [extra], """
+        XCTAssertEqual(dvm.basket, [extraCopy], """
             the basket emptied on screen while the request was still out with those paths in it, \
             so the app reported success about a selection the person had just cleared
             """)
-        work.releaseParked()
-        await waitUntil("!dvm.busy", within: .seconds(5)) { !dvm.busy }
+        await releaseRemoval(dvm, work)
     }
 
     /// And it works again the moment the removal is over, or the guard has taken
     /// the control away rather than deferred it.
     func testClearingTheSelectionWorksOnceTheRemovalIsAnswered() async {
         let (dvm, work) = await removalInFlight()
-        work.releaseParked()
-        await waitUntil("!dvm.busy", within: .seconds(5)) { !dvm.busy }
+        await releaseRemoval(dvm, work)
         XCTAssertFalse(dvm.busy, "precondition: the removal came back")
         // Marking is refused while the removal runs, so it is done after.
-        dvm.toggleBasket(second)
+        dvm.toggleBasket(secondCopy)
         XCTAssertFalse(dvm.basket.isEmpty, "precondition: something is marked")
 
         dvm.clearBasket()

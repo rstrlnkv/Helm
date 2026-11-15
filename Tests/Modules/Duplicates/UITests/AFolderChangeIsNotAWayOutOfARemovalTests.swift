@@ -14,26 +14,16 @@ import Module_Duplicates_Engine
 @MainActor
 final class AFolderChangeIsNotAWayOutOfARemovalTests: XCTestCase {
 
-    private var extra: String { "\(home)/Downloads/extra.bin" }
-
-    private var group: DuplicateGroup {
-        DuplicateGroup(copies: [.init(path: "\(home)/Downloads/keep.bin", bytes: 9_000_000),
-                                .init(path: extra, bytes: 9_000_000)])
-    }
 
     func testAFolderChosenWhileTheFilesAreGoingChangesNothing() async {
-        let work = AnsweringWork(groups: [group],
-                                  removal: DuplicateRemoval(removed: [extra], refused: [],
+        let work = AnsweringWork(groups: [keepAndExtra()],
+                                  removal: DuplicateRemoval(removed: [extraCopy], refused: [],
                                                             freedBytes: 9_000_000))
         let store = duplicatesStore(folder: "/some/folder")
         let dvm = duplicatesModel(over: work, store: store)
         dvm.search()
         await waitUntil("dvm.phase == .result", within: .seconds(5)) { dvm.phase == .result }
-        dvm.toggleBasket(extra)
-        work.answers(.park, to: .trash)
-        Task { await dvm.emptyBasket() }
-        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
-        XCTAssertTrue(dvm.busy, "precondition: the removal is really in flight")
+        await parkRemoval(marking: extraCopy, in: dvm, over: work)
         let findsBefore = work.calls.filter { $0 == .find }.count
         let folderBefore = dvm.folder
         let macBefore = store.string("folderMAC", default: "")
@@ -47,9 +37,7 @@ final class AFolderChangeIsNotAWayOutOfARemovalTests: XCTestCase {
         XCTAssertEqual(work.calls.filter { $0 == .find }.count, findsBefore,
                        "a search was started during a removal")
 
-        work.answers(.reply)
-        work.releaseParked()
-        await waitUntil("!dvm.busy", within: .seconds(5)) { !dvm.busy }
+        await releaseRemoval(dvm, work)
         XCTAssertFalse(dvm.busy, "precondition: the removal answered")
 
         dvm.use(folder: chosen)
@@ -65,26 +53,20 @@ final class AFolderChangeIsNotAWayOutOfARemovalTests: XCTestCase {
     /// (a panel answered after the removal began is a folder the guard in
     /// `use(folder:)` then refuses, after the person has been asked).
     func testTheFolderPanelIsNotOpenedDuringARemoval() async {
-        let work = AnsweringWork(groups: [group],
-                                  removal: DuplicateRemoval(removed: [extra], refused: [],
+        let work = AnsweringWork(groups: [keepAndExtra()],
+                                  removal: DuplicateRemoval(removed: [extraCopy], refused: [],
                                                             freedBytes: 9_000_000))
         var asked = 0
         let dvm = duplicatesModel(over: work, chooseFolder: { asked += 1; return nil })
         dvm.search()
         await waitUntil("dvm.phase == .result", within: .seconds(5)) { dvm.phase == .result }
-        dvm.toggleBasket(extra)
-        work.answers(.park, to: .trash)
-        Task { await dvm.emptyBasket() }
-        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
-        XCTAssertTrue(dvm.busy, "precondition: the removal is really in flight")
+        await parkRemoval(marking: extraCopy, in: dvm, over: work)
 
         dvm.chooseFolder()
 
         XCTAssertEqual(asked, 0, "the folder panel was put up during a removal")
 
-        work.answers(.reply)
-        work.releaseParked()
-        await waitUntil("!dvm.busy", within: .seconds(5)) { !dvm.busy }
+        await releaseRemoval(dvm, work)
         XCTAssertFalse(dvm.busy, "precondition: the removal answered")
 
         dvm.chooseFolder()

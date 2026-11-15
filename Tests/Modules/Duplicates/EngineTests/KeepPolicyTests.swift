@@ -99,10 +99,7 @@ final class KeepPolicyTests: XCTestCase {
 
     // MARK: - The two ladders
 
-    private func file(_ path: String, added: Date? = nil) -> FileFacts {
-        FileFacts(path: path, bytes: 1_000, fileID: UInt64(abs(path.hashValue)), added: added)
-    }
-    private func day(_ n: Int) -> Date { Date(timeIntervalSince1970: TimeInterval(n) * 86_400) }
+    private func file(_ path: String, added: Date? = nil) -> FileFacts { facts(path, added: added, bytes: 1_000) }
 
     private func rule(_ policy: KeepPolicy) -> KeepRule {
         KeepRule(policy, transit: transit)
@@ -243,7 +240,7 @@ final class KeepPolicyTests: XCTestCase {
     // answer does not depend on the order the walk found them in.
 
     private func sizedFile(_ path: String, added: Date? = nil, bytes: Int = 1_000) -> FileFacts {
-        FileFacts(path: path, bytes: bytes, fileID: UInt64(abs(path.hashValue)), added: added)
+        facts(path, added: added, bytes: bytes)
     }
     private let standardRule = KeepRule(.standard)
 
