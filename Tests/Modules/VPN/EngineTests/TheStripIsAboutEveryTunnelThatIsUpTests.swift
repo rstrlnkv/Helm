@@ -29,10 +29,6 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
 
     private let at = Date(timeIntervalSince1970: 1_700_000_000)
 
-    private func makeSettings() -> VPNSettings {
-        VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
-    }
-
     /// Two configurations, in the order `scutil --nc list` hands them over.
     private func list(_ first: String, _ second: String) -> String {
         """
@@ -41,23 +37,11 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         """
     }
 
-    private func statusNaming(_ interface: String) -> String {
-        """
-        Connected
-        Extended Status <dictionary> {
-          IPv4 : <dictionary> {
-            InterfaceName : \(interface)
-          }
-        }
-        """
-    }
-
     /// Both tunnels up, each on its own `utunN`, with the default route on
     /// whichever is named.
     private func bothUp(routed: String?) -> (FakeRunner, FakeInterfaces) {
-        let runner = FakeRunner()
-        runner.listOutput = list("Connected", "Connected")
-        runner.statusOutput = ["work": statusNaming("utun4"), "home": statusNaming("utun7")]
+        let runner = FakeRunner(list: list("Connected", "Connected"))
+        runner.statusOutput = ["work": scutilStatus("utun4"), "home": scutilStatus("utun7")]
         let interfaces = FakeInterfaces()
         interfaces.primary = routed
         interfaces.counters = ["utun4": (in: 4_000, out: 2_000),
@@ -68,7 +52,7 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
     private func makeEngine(_ runner: FakeRunner, news: EngineNews<VPNEngine.StatePayload>,
                             interfaces: FakeInterfaces, speed: FakeSpeed = FakeSpeed(),
                             exit: FakeExit = FakeExit()) -> VPNEngine {
-        VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
+        VPNEngine(settings: VPNSettings.inMemory(), runner: runner, apps: FakeApps(),
                   news: news, interfaces: interfaces, exit: exit, speed: speed,
                   work: .inline)
     }
@@ -112,7 +96,7 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
     /// with none is a segment leading to an empty card.
     func test_a_tunnel_with_no_interface_reading_yet_is_not_offered() async {
         let (runner, interfaces) = bothUp(routed: "utun4")
-        runner.statusOutput = ["work": statusNaming("utun4")]   // «home» is still coming up
+        runner.statusOutput = ["work": scutilStatus("utun4")]   // «home» is still coming up
         let news = EngineNews<VPNEngine.StatePayload>()
         let engine = makeEngine(runner, news: news, interfaces: interfaces)
 
@@ -225,7 +209,7 @@ final class TheStripIsAboutEveryTunnelThatIsUpTests: XCTestCase {
         speed.answer = VPNSpeedReading(down: 240, up: 40, rpm: 300, at: at)
         speed.blocksUntilReleased = true
         defer { speed.release() }
-        let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
+        let engine = VPNEngine(settings: VPNSettings.inMemory(), runner: runner, apps: FakeApps(),
                                news: news, interfaces: interfaces,
                                exit: FakeExit(), speed: speed, work: .background)
 

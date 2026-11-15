@@ -14,12 +14,8 @@ import HelmTestSupport
 @MainActor
 final class TheModelIsTheOnlyWriterOfStoredVPNKeysTests: XCTestCase {
 
-    private func settings() -> VPNSettings {
-        VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
-    }
-
     func testSavedRulesReachTheStoreAndTheEngine() {
-        let s = settings()
+        let s = VPNSettings.inMemory()
         let work = FakeVPNWork()
         let model = VPNViewModel(work: work, settings: s)
         let rules = ["com.example.app": VPNAppRule(vpnName: "Office", connectOnLaunch: false)]
@@ -32,7 +28,7 @@ final class TheModelIsTheOnlyWriterOfStoredVPNKeysTests: XCTestCase {
     /// The write is not the model's to withhold once it is stopped: a page still
     /// on screen saved the rule before; only the engine is left alone.
     func testRulesSavedAfterStopAreStoredButTheEngineIsLeftAlone() {
-        let s = settings()
+        let s = VPNSettings.inMemory()
         let work = FakeVPNWork()
         let model = VPNViewModel(work: work, settings: s)
         model.stop()
@@ -45,7 +41,7 @@ final class TheModelIsTheOnlyWriterOfStoredVPNKeysTests: XCTestCase {
     /// Two writes, the second made after the store changed under the first: the
     /// second reads the book as it is now.
     func testTheBookIsReadFreshAndOtherEntriesSurvive() {
-        let s = settings()
+        let s = VPNSettings.inMemory()
         let model = VPNViewModel(work: FakeVPNWork(), settings: s)
         model.updateNoticeBook { $0.setting("id-A", drop: .silent) }
         // Somebody else wrote an entry after the page took its copy.

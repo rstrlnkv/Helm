@@ -24,24 +24,13 @@ import XCTest
 /// Past defect: commit 428f240b, «feat(0.11): the tunnel comes first, hosts leaves the panel, a launch stops killing the app».
 final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
 
-    private func makeSettings() -> VPNSettings {
-        VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
-    }
-
     /// One configuration, already `Connected` at the very first read — which is
     /// what `--nc list` says on a Mac whose tunnel was raised before Helm was.
     private func alreadyUp() -> FakeRunner {
         let runner = FakeRunner()
         runner.listOutput =
             "* (Connected) 11111111-1111-1111-1111-111111111111 VPN (com.x.work) \"work\" [VPN:com.x.work]"
-        runner.statusOutput = ["work": """
-        Connected
-        Extended Status <dictionary> {
-          IPv4 : <dictionary> {
-            InterfaceName : utun4
-          }
-        }
-        """]
+        runner.statusOutput = ["work": scutilStatus()]
         return runner
     }
 
@@ -55,7 +44,7 @@ final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
     private func makeEngine(_ runner: FakeRunner, news: EngineNews<VPNEngine.StatePayload>,
                             interfaces: FakeInterfaces, exit: FakeExit,
                             now: @escaping @Sendable () -> Date = Date.init) -> VPNEngine {
-        VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
+        VPNEngine(settings: VPNSettings.inMemory(), runner: runner, apps: FakeApps(),
                   news: news, interfaces: interfaces, exit: exit,
                   speed: FakeSpeed(), now: now, work: .inline)
     }
@@ -215,14 +204,7 @@ final class ATunnelUpBeforeHelmStillNamesItsCountryTests: XCTestCase {
         let runner = FakeRunner()
         runner.listOutput =
             "* (Disconnected) 11111111-1111-1111-1111-111111111111 VPN (com.x.work) \"work\" [VPN:com.x.work]"
-        runner.statusOutput = ["work": """
-        Connected
-        Extended Status <dictionary> {
-          IPv4 : <dictionary> {
-            InterfaceName : utun4
-          }
-        }
-        """]
+        runner.statusOutput = ["work": scutilStatus()]
         let interfaces = routed("en0")
         let engine = makeEngine(runner, news: news, interfaces: interfaces, exit: exit)
 

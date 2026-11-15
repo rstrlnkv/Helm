@@ -101,8 +101,7 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
 
         let runner = FakeRunner()
         runner.reply = "cannot start \(service): resource busy"
-        let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
-                                    namespace: "vpn", backing: InMemoryKeyValueStore())),
+        let engine = VPNEngine(settings: VPNSettings.inMemory(),
                                runner: runner, credentials: nil, apps: FakeApps(),
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                work: .inline)
@@ -125,8 +124,7 @@ final class ARefusalMustNotCarryTheNameTests: XCTestCase {
     func testTheScreenStillKnowsWhichConfigurationItWas() {
         let runner = FakeRunner()
         runner.reply = "cannot start \(service): resource busy"
-        let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
-                                    namespace: "vpn", backing: InMemoryKeyValueStore())),
+        let engine = VPNEngine(settings: VPNSettings.inMemory(),
                                runner: runner, credentials: nil, apps: FakeApps(),
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                work: .inline)

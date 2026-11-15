@@ -43,22 +43,6 @@ final class ARefusedMeasurementIsNotSilenceTests: XCTestCase {
         }).joined(separator: "\n")
     }
 
-    /// `scutil --nc status "<name>"` shaped as the real tool writes it — the
-    /// tunnel's own `InterfaceName` inside the `IPv4` dictionary, the routing
-    /// flag one level out.
-    private func status(interface: String, primary: Bool) -> String {
-        """
-        Connected
-        Extended Status <dictionary> {
-          IPv4 : <dictionary> {
-            InterfaceName : \(interface)
-          }
-          IsPrimaryInterface : \(primary ? 1 : 0)
-          Status : 2
-        }
-        """
-    }
-
     /// Two tunnels up, the route on `routed`. Every port named — three of the
     /// defaults reach the network or run a tool for fifteen seconds
     /// (`NoTestTakesAProductionPortTests`).
@@ -67,8 +51,8 @@ final class ARefusedMeasurementIsNotSilenceTests: XCTestCase {
         let runner = FakeRunner()
         runner.listOutput = list([(id: "AAAAAAAA-0000-0000-0000-000000000001", name: "routed"),
                                   (id: "BBBBBBBB-0000-0000-0000-000000000002", name: "beside")])
-        runner.statusOutput["routed"] = status(interface: "utun4", primary: true)
-        runner.statusOutput["beside"] = status(interface: "utun9", primary: false)
+        runner.statusOutput["routed"] = scutilStatus("utun4", primary: true, extra: ["Status : 2"])
+        runner.statusOutput["beside"] = scutilStatus("utun9", primary: false, extra: ["Status : 2"])
         let interfaces = FakeInterfaces()
         interfaces.primary = "utun4"
         // **A quiet tunnel, which is the case the dedup bites on.** `carriesPerRead`
@@ -89,8 +73,7 @@ final class ARefusedMeasurementIsNotSilenceTests: XCTestCase {
         let exit = FakeExit()
         exit.hangs = true
         let news = EngineNews<VPNEngine.StatePayload>()
-        let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
-                                    namespace: "vpn", backing: InMemoryKeyValueStore())),
+        let engine = VPNEngine(settings: VPNSettings.inMemory(),
                                runner: runner, apps: FakeApps(), news: news,
                                interfaces: interfaces, exit: exit, speed: speed,
                                work: .inline)

@@ -22,16 +22,11 @@ import HelmRuntime
 /// Past defect: commit 7851a0c2, «fix(vpn): the tool is asked before the app announces, and a name stops standing in for an identity».
 final class ATunnelThatHangsIsNotPolledForEverTests: XCTestCase {
 
-    private let uuid = "11111111-1111-1111-1111-111111111111"
-
-    private func list(_ status: String) -> String { "(\(status)) \(uuid) IPSec \"A\"" }
-
     /// `.inline`, like every other engine test here: the work queue runs the
     /// poll's body straight through instead of after 0.7 s, so the whole poll
     /// happens inside `connect` and its length is a number this test can read.
     private func engine(_ runner: FakeRunner) -> VPNEngine {
-        VPNEngine(settings: VPNSettings(store: NamespacedStore(
-                    namespace: "vpn", backing: InMemoryKeyValueStore())),
+        VPNEngine(settings: VPNSettings.inMemory(),
                   runner: runner, apps: FakeApps(),
                   interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                   work: .inline)
@@ -46,7 +41,7 @@ final class ATunnelThatHangsIsNotPolledForEverTests: XCTestCase {
     /// poll with no ceiling runs a subprocess until the app quits.
     func testAConnectingTunnelIsPolledAndThenGivenUpOn() {
         let runner = FakeRunner()
-        runner.listScript = [list("Connecting")]
+        runner.listScript = [scutilListRow("Connecting")]
         let e = engine(runner)
 
         e.connect("A", auto: false)
@@ -65,7 +60,7 @@ final class ATunnelThatHangsIsNotPolledForEverTests: XCTestCase {
     /// there rather than using up its ceiling.
     func testAPollThatHasStartedFollowsATunnelUpAndThenStops() {
         let runner = FakeRunner()
-        runner.listScript = [list("Connecting"), list("Connecting"), list("Connected")]
+        runner.listScript = [scutilListRow("Connecting"), scutilListRow("Connecting"), scutilListRow("Connected")]
         let e = engine(runner)
 
         e.connect("A", auto: false)
@@ -97,9 +92,9 @@ final class ATunnelThatHangsIsNotPolledForEverTests: XCTestCase {
     /// into what was asked for», not «is something moving right now».
     func testAConnectIsFollowedUpEvenWhenTheToolHasNotCaughtUpYet() {
         let runner = FakeRunner()
-        runner.listScript = [list("Disconnected"),   // the tool has not caught up yet
-                             list("Connecting"),
-                             list("Connected")]
+        runner.listScript = [scutilListRow("Disconnected"),   // the tool has not caught up yet
+                             scutilListRow("Connecting"),
+                             scutilListRow("Connected")]
         let e = engine(runner)
 
         e.connect("A", auto: false)
@@ -125,7 +120,7 @@ final class ATunnelThatHangsIsNotPolledForEverTests: XCTestCase {
     /// passing on a module that has stopped reading refusals at all.
     func testARefusedConnectIsNotPolledAsIfItHadStarted() {
         let runner = FakeRunner()
-        runner.listScript = [list("Disconnected")]
+        runner.listScript = [scutilListRow("Disconnected")]
         runner.replies["Old office"] = "No service"
         let e = engine(runner)
 

@@ -58,8 +58,7 @@ final class ARefusedCommandIsNotSilenceTests: XCTestCase {
     // MARK: - What the engine does with it
 
     private func engine(_ runner: FakeRunner) -> VPNEngine {
-        VPNEngine(settings: VPNSettings(store: NamespacedStore(namespace: "vpn",
-                                                               backing: InMemoryKeyValueStore())),
+        VPNEngine(settings: VPNSettings.inMemory(),
                   runner: runner, credentials: nil, apps: FakeApps(),
                   interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                   work: .inline)

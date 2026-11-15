@@ -40,20 +40,6 @@ extension VPNEngine {
         /// Empty when nothing is up — the strip is absent then, rather than
         /// empty.
         public var tunnels: [VPNTunnelState] = []
-
-        init(connections: [VPNConnection], autoConnected: [String],
-             lastAutomation: VPNAutomation?, lastFailure: VPNFailure? = nil,
-             secretsBehindAPrompt: [String] = [],
-             ruleRefusals: [String: VPNRuleTrust.Verdict] = [:], tunnels: [VPNTunnelState] = []) {
-            self.connections = connections
-            self.autoConnected = autoConnected
-            self.lastAutomation = lastAutomation
-            self.lastFailure = lastFailure
-            self.secretsBehindAPrompt = secretsBehindAPrompt
-            self.ruleRefusals = ruleRefusals
-            self.tunnels = tunnels
-        }
-
     }
 }
 

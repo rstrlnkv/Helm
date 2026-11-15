@@ -72,16 +72,7 @@ final class ANetworkBlipIsNotSevenSubprocessesTests: XCTestCase {
         * (Connected) AAAAAAAA-0000-0000-0000-000000000001 VPN (com.x.work) "work" [VPN:com.x.work]
         """
 
-    private let status = """
-        Connected
-        Extended Status <dictionary> {
-          IPv4 : <dictionary> {
-            InterfaceName : utun4
-          }
-          IsPrimaryInterface : 1
-          Status : 2
-        }
-        """
+    private let status = scutilStatus(primary: true, extra: ["Status : 2"])
 
     /// Waits until `tally` has not moved for `still`, or gives up at `deadline`.
     ///
@@ -107,8 +98,7 @@ final class ANetworkBlipIsNotSevenSubprocessesTests: XCTestCase {
     }
 
     func testABurstFromTheStoreIsNotOneScutilRunEach() {
-        let runner = FakeRunner()
-        runner.listOutput = list
+        let runner = FakeRunner(list: list)
         runner.statusOutput["work"] = status
         let listReads = LockedCount()
         // Counted through the fake's own locked hook, on the thread that issued
@@ -120,8 +110,7 @@ final class ANetworkBlipIsNotSevenSubprocessesTests: XCTestCase {
         let interfaces = FakeInterfaces()
         interfaces.primary = "utun4"
         interfaces.counters = ["utun4": (in: 1_000, out: 2_000)]
-        let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
-                                    namespace: "vpn", backing: InMemoryKeyValueStore())),
+        let engine = VPNEngine(settings: VPNSettings.inMemory(),
                                runner: runner, apps: FakeApps(), network: network,
                                interfaces: interfaces, exit: FakeExit(), speed: FakeSpeed(),
                                work: .background)

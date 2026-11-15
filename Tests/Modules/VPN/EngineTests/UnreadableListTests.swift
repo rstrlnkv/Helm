@@ -36,8 +36,7 @@ final class UnreadableListTests: XCTestCase {
     }
 
     private func makeEngine(_ runner: FakeRunner) -> VPNEngine {
-        VPNEngine(settings: VPNSettings(store: NamespacedStore(namespace: "vpn",
-                                                               backing: InMemoryKeyValueStore())),
+        VPNEngine(settings: VPNSettings.inMemory(),
                   runner: runner,
                   apps: FakeApps(),
                   interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
@@ -70,8 +69,7 @@ final class UnreadableListTests: XCTestCase {
     // MARK: - What the engine does with a silence
 
     func testAnUnreadableRefreshKeepsTheConnectionsItAlreadyHad() {
-        let runner = FakeRunner()
-        runner.listOutput = row("Connected", "work")
+        let runner = FakeRunner(list: row("Connected", "work"))
         let engine = makeEngine(runner)
         engine.refresh()
         XCTAssertEqual(engine.connections.map(\.name), ["work"])
@@ -85,8 +83,7 @@ final class UnreadableListTests: XCTestCase {
     }
 
     func testAnAnswerSayingNothingIsConfiguredIsStillObeyed() {
-        let runner = FakeRunner()
-        runner.listOutput = row("Connected", "work")
+        let runner = FakeRunner(list: row("Connected", "work"))
         let engine = makeEngine(runner)
         engine.refresh()
 
@@ -101,8 +98,7 @@ final class UnreadableListTests: XCTestCase {
     /// The dangerous half: a read that failed must not look like every tunnel
     /// dropping at once.
     func testAnUnreadableRefreshDoesNotAnnounceADisconnection() {
-        let runner = FakeRunner()
-        runner.listOutput = row("Connected", "work")
+        let runner = FakeRunner(list: row("Connected", "work"))
         let engine = makeEngine(runner)
         engine.connect("work", auto: true)
         engine.refresh()                    // it came up because of us

@@ -22,36 +22,27 @@ import HelmRuntime
 /// Past defect: commit 51247cad, «fix: eight more, three of them mine from earlier today».
 final class VPNAutoConnectMemoryTests: XCTestCase {
 
-    private func makeSettings() -> VPNSettings {
-        VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
-    }
-
-    private let uuid = "11111111-1111-1111-1111-111111111111"
-    private func list(_ status: String) -> String {
-        "(\(status)) \(uuid) IPSec \"A\""
-    }
-
     /// The second session with the same app. Launch → connect → up → quit →
     /// disconnect → launch again. At the end Helm has just issued `--nc start`
     /// itself, so it must still know the connection is its own.
     func test_a_vpn_raised_a_second_time_is_still_its_own() {
         let runner = FakeRunner()
-        let engine = VPNEngine(settings: makeSettings(), runner: runner,
+        let engine = VPNEngine(settings: VPNSettings.inMemory(), runner: runner,
                                apps: FakeApps(),
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                work: .inline)
 
         // First session: Helm raises it, and a later refresh sees it up.
-        runner.listOutput = list("Disconnected")
+        runner.listOutput = scutilListRow("Disconnected")
         engine.connect("A", auto: true)
         XCTAssertTrue(engine.autoConnected.contains("A"),
                       "a connect Helm has just issued is Helm's, whatever scutil still says")
-        runner.listOutput = list("Connected")
+        runner.listOutput = scutilListRow("Connected")
         engine.refresh()
         XCTAssertTrue(engine.autoConnected.contains("A"))
 
         // The app quits: Helm takes its own connection down.
-        runner.listOutput = list("Disconnected")
+        runner.listOutput = scutilListRow("Disconnected")
         engine.disconnect("A", auto: false)
         XCTAssertFalse(engine.autoConnected.contains("A"),
                        "a connection Helm dropped is no longer Helm's")
@@ -81,19 +72,19 @@ final class VPNAutoConnectMemoryTests: XCTestCase {
     func test_a_vpn_that_came_up_and_then_went_is_forgotten() {
         let runner = FakeRunner()
         let clock = TestClock()
-        let engine = VPNEngine(settings: makeSettings(), runner: runner,
+        let engine = VPNEngine(settings: VPNSettings.inMemory(), runner: runner,
                                apps: FakeApps(),
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                now: { clock.now }, work: .inline)
 
-        runner.listOutput = list("Disconnected")
+        runner.listOutput = scutilListRow("Disconnected")
         engine.connect("A", auto: true)
-        runner.listOutput = list("Connected")
+        runner.listOutput = scutilListRow("Connected")
         engine.refresh()
         XCTAssertTrue(engine.autoConnected.contains("A"))
 
         // The network went, or somebody stopped it in System Settings.
-        runner.listOutput = list("Disconnected")
+        runner.listOutput = scutilListRow("Disconnected")
         engine.refresh()
         XCTAssertTrue(engine.autoConnected.contains("A"),
                       "a fall inside the settle window was taken for a loss, which is the "
@@ -110,12 +101,12 @@ final class VPNAutoConnectMemoryTests: XCTestCase {
     /// caught up yet must survive any number of refreshes before it does.
     func test_a_vpn_that_has_not_come_up_yet_is_not_forgotten() {
         let runner = FakeRunner()
-        let engine = VPNEngine(settings: makeSettings(), runner: runner,
+        let engine = VPNEngine(settings: VPNSettings.inMemory(), runner: runner,
                                apps: FakeApps(),
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                work: .inline)
 
-        runner.listOutput = list("Disconnected")
+        runner.listOutput = scutilListRow("Disconnected")
         engine.connect("A", auto: true)
         engine.refresh()
         engine.refresh()
@@ -131,16 +122,16 @@ final class VPNAutoConnectMemoryTests: XCTestCase {
     func test_a_second_session_is_not_forgotten_for_the_first_ones_fall() {
         let runner = FakeRunner()
         let clock = TestClock()
-        let engine = VPNEngine(settings: makeSettings(), runner: runner,
+        let engine = VPNEngine(settings: VPNSettings.inMemory(), runner: runner,
                                apps: FakeApps(),
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                now: { clock.now }, work: .inline)
 
-        runner.listOutput = list("Disconnected")
+        runner.listOutput = scutilListRow("Disconnected")
         engine.connect("A", auto: true)
-        runner.listOutput = list("Connected")
+        runner.listOutput = scutilListRow("Connected")
         engine.refresh()
-        runner.listOutput = list("Disconnected")
+        runner.listOutput = scutilListRow("Disconnected")
         engine.disconnect("A", auto: false)
         engine.connect("A", auto: true)
 

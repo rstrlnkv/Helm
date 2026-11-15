@@ -27,13 +27,6 @@ public struct VPNConnection: Identifiable, Equatable, Sendable {
     public let name: String     // user-visible service name
     public var status: VPNStatus
     public let kind: String?    // e.g. "IKEv2", "IPSec"
-
-    init(id: String, name: String, status: VPNStatus, kind: String?) {
-        self.id = id
-        self.name = name
-        self.status = status
-        self.kind = kind
-    }
 }
 
 /// A command the tool refused, named so a screen can say which one.
@@ -64,10 +57,4 @@ public struct VPNFailure: Equatable, Sendable {
     /// tunnel they wanted closed was still carrying their traffic. The reason and
     /// the verb are two different facts and the sentence needs both.
     public let verb: VPNVerb
-
-    init(name: String, reason: Reason, verb: VPNVerb) {
-        self.name = name
-        self.reason = reason
-        self.verb = verb
-    }
 }

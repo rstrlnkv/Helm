@@ -48,8 +48,7 @@ final class AnUnreachableSecretIsNotSilenceTests: XCTestCase {
         if runner.listScript.isEmpty, runner.listOutput.isEmpty {
             runner.listOutput = list(status)
         }
-        let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
-                                    namespace: "vpn", backing: InMemoryKeyValueStore())),
+        let engine = VPNEngine(settings: VPNSettings.inMemory(),
                                runner: runner, credentials: creds, apps: FakeApps(),
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                work: .inline)

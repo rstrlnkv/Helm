@@ -479,9 +479,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
             // Only the person's press is answered on screen; a rule has no one
             // pressing, and the log line is its record.
             if !auto {
-                lock.lock()
-                _lastFailure = VPNFailure(name: name, reason: .secretUnreadable, verb: .connect)
-                lock.unlock()
+                lock.withLock { _lastFailure = VPNFailure(name: name, reason: .secretUnreadable, verb: .connect) }
             }
             emitState()
             return
@@ -635,18 +633,14 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
     private func report(_ reply: VPNCommandReply, verb: VPNVerb, name: String) {
         switch reply {
         case .accepted:
-            lock.lock(); _lastFailure = nil; lock.unlock()
+            lock.withLock { _lastFailure = nil }
         case .noSuchService:
             HelmLog.shared.warn(Self.moduleID, "\(verb.rawValue) \(Redact.vpn(name)): "
                 + "no such configuration")
-            lock.lock()
-            _lastFailure = VPNFailure(name: name, reason: .noSuchService, verb: verb)
-            lock.unlock()
+            lock.withLock { _lastFailure = VPNFailure(name: name, reason: .noSuchService, verb: verb) }
         case .refused(let text):
             HelmLog.shared.warn(Self.moduleID, "\(verb.rawValue) \(Redact.vpn(name)) refused: \(text)")
-            lock.lock()
-            _lastFailure = VPNFailure(name: name, reason: .refused, verb: verb)
-            lock.unlock()
+            lock.withLock { _lastFailure = VPNFailure(name: name, reason: .refused, verb: verb) }
         }
     }
 

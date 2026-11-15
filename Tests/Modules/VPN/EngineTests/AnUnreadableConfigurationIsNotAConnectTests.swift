@@ -85,8 +85,7 @@ final class AnUnreadableConfigurationIsNotAConnectTests: XCTestCase {
     private func engine(_ runner: FakeRunner, _ creds: FakeCreds) -> VPNEngine {
         runner.listOutput = [header, "* (Disconnected) \(id) IPSec \"Office\" [IPSec:1]"]
             .joined(separator: "\n")
-        let engine = VPNEngine(settings: VPNSettings(store: NamespacedStore(
-                                    namespace: "vpn", backing: InMemoryKeyValueStore())),
+        let engine = VPNEngine(settings: VPNSettings.inMemory(),
                                runner: runner, credentials: creds, apps: FakeApps(),
                                interfaces: FakeInterfaces(), exit: FakeExit(), speed: FakeSpeed(),
                                work: .inline)

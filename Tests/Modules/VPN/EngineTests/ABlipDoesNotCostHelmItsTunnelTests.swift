@@ -34,50 +34,6 @@ import XCTest
 /// Past defect: commit c0fdd318, «fix(vpn): six repairs, from a blip that cost the tunnel to a decoy interface».
 final class ABlipDoesNotCostHelmItsTunnelTests: XCTestCase {
 
-    private let bundleID = "com.example.app"
-    private let identity = CodeIdentity(signingID: "com.example.app", teamID: "ABCDE12345")
-    private let header = "Available network connection services:"
-
-    private func row(_ status: String) -> String {
-        "* (\(status)) 11111111-1111-1111-1111-111111111111 VPN (com.x.work) \"work\" [VPN:com.x.work]"
-    }
-
-    private func list(_ status: String) -> String {
-        [header, row(status)].joined(separator: "\n")
-    }
-
-    /// A tunnel Helm itself raised, because that is what a drop is about:
-    /// `_autoConnected` is written by an automatic connect — a rule firing for an
-    /// app that launched — and not by a command somebody sent.
-    ///
-    /// The fixture is spelled here rather than shared with
-    /// `ADropThatHealedIsNotAnnouncedTests`: its builder is `private`, and a
-    /// helper that reaches across two files in this target would have to move to
-    /// `HelmTestSupport`, which cannot import a module engine.
-    private func engineHoldingTheTunnel(_ runner: FakeRunner, _ clock: TestClock) -> VPNEngine {
-        let apps = FakeApps()
-        apps.identities[bundleID] = identity
-        apps.bundleIDs = [bundleID]
-        let settings = VPNSettings(store: NamespacedStore(namespace: "vpn",
-                                                          backing: InMemoryKeyValueStore()))
-        settings.setRulesJSON(VPNRules.encode(
-            [bundleID: VPNAppRule(vpnName: "work", identity: identity)]))
-        runner.listOutput = list("Disconnected")
-        // Every port named, none defaulted: three of the defaults reach the
-        // network or run a tool for fifteen seconds
-        // (`NoTestTakesAProductionPortTests`).
-        let engine = VPNEngine(settings: settings, runner: runner, apps: apps,
-                               interfaces: FakeInterfaces(), exit: FakeExit(),
-                               speed: FakeSpeed(), now: { clock.now }, work: .inline)
-        engine.activate()
-        runner.listOutput = list("Connected")
-        engine.refresh()
-        XCTAssertTrue(engine.autoConnected.contains("work"),
-                      "precondition: Helm is not holding the tunnel, so nothing here is a drop")
-        engine.clearLastAutomationForTesting()
-        return engine
-    }
-
     /// Down for three seconds, up again — the measured blip — and Helm still
     /// holds the tunnel afterwards.
     ///
@@ -86,12 +42,12 @@ final class ABlipDoesNotCostHelmItsTunnelTests: XCTestCase {
     func testAHealedBlipLeavesHelmStillHoldingTheTunnel() {
         let runner = FakeRunner()
         let clock = TestClock()
-        let engine = engineHoldingTheTunnel(runner, clock)
+        let engine = blipEngineHoldingTheTunnel(runner, clock)
 
-        runner.listOutput = list("Disconnected")
+        runner.listOutput = blipList("Disconnected")
         engine.refresh()
         clock.advance(3)
-        runner.listOutput = list("Connected")
+        runner.listOutput = blipList("Connected")
         engine.refresh()
 
         XCTAssertNil(engine.lastAutomation,
@@ -114,19 +70,19 @@ final class ABlipDoesNotCostHelmItsTunnelTests: XCTestCase {
     func testTheRealDropAfterAHealedBlipIsStillAnnounced() throws {
         let runner = FakeRunner()
         let clock = TestClock()
-        let engine = engineHoldingTheTunnel(runner, clock)
+        let engine = blipEngineHoldingTheTunnel(runner, clock)
 
         // The blip: down, and back three seconds later.
-        runner.listOutput = list("Disconnected")
+        runner.listOutput = blipList("Disconnected")
         engine.refresh()
         clock.advance(3)
-        runner.listOutput = list("Connected")
+        runner.listOutput = blipList("Connected")
         engine.refresh()
         XCTAssertNil(engine.lastAutomation, "precondition: the blip itself was announced")
 
         // A minute of ordinary life, then the tunnel really goes.
         clock.advance(60)
-        runner.listOutput = list("Disconnected")
+        runner.listOutput = blipList("Disconnected")
         engine.refresh()
         clock.advance(VPNDropSettle.window)
         engine.refresh()
@@ -153,12 +109,12 @@ final class ABlipDoesNotCostHelmItsTunnelTests: XCTestCase {
     func testATunnelBackAtTheDeadlineIsHealedRatherThanAnnounced() {
         let runner = FakeRunner()
         let clock = TestClock()
-        let engine = engineHoldingTheTunnel(runner, clock)
+        let engine = blipEngineHoldingTheTunnel(runner, clock)
 
-        runner.listOutput = list("Disconnected")
+        runner.listOutput = blipList("Disconnected")
         engine.refresh()
         clock.advance(VPNDropSettle.window)
-        runner.listOutput = list("Connected")
+        runner.listOutput = blipList("Connected")
         engine.refresh()
 
         XCTAssertNil(engine.lastAutomation, """

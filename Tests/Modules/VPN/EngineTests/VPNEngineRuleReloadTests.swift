@@ -31,16 +31,11 @@ import HelmRuntime
 ///
 /// Past defect: commit 6dec5f2f, «fix: eight defects a second agent pass turned up».
 final class VPNEngineRuleReloadTests: XCTestCase {
-    private func settings() -> VPNSettings {
-        VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
-    }
-
     /// Off and on again. The rule is present, the VPN is present, the app
     /// launches — and the second launch issues nothing.
     func test_rule_removed_and_restored_still_connects_on_the_next_launch() {
-        let runner = FakeRunner()
-        runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
-        let store = settings()
+        let runner = FakeRunner(list: "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\"")
+        let store = VPNSettings.inMemory()
         store.setRulesJSON(ruleJSONForA)
         let apps = FakeApps.trustingA()
         let engine = VPNEngine(settings: store, runner: runner, apps: apps,
@@ -78,9 +73,8 @@ final class VPNEngineRuleReloadTests: XCTestCase {
     /// the failure on the `where core.rules[id] != nil` filter rather than on
     /// the reload or on the fake.
     func test_control_a_quit_while_the_rule_is_live_reconnects_on_relaunch() {
-        let runner = FakeRunner()
-        runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
-        let store = settings()
+        let runner = FakeRunner(list: "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\"")
+        let store = VPNSettings.inMemory()
         store.setRulesJSON(ruleJSONForA)
         let apps = FakeApps.trustingA()
         let engine = VPNEngine(settings: store, runner: runner, apps: apps,
@@ -107,9 +101,8 @@ final class VPNEngineRuleReloadTests: XCTestCase {
     /// next reload, and renamed back afterwards. `VPNTenants.orphaned` exists
     /// precisely because this happens.
     func test_vpn_renamed_away_and_back_still_connects_on_the_next_launch() {
-        let runner = FakeRunner()
-        runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
-        let store = settings()
+        let runner = FakeRunner(list: "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\"")
+        let store = VPNSettings.inMemory()
         store.setRulesJSON(ruleJSONForA)
         let apps = FakeApps.trustingA()
         let engine = VPNEngine(settings: store, runner: runner, apps: apps,
@@ -144,7 +137,7 @@ extension VPNEngineRuleReloadTests {
         let runner = FakeRunner()
         runner.failingListReads = 1
         runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
-        let store = VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
+        let store = VPNSettings.inMemory()
         store.setRulesJSON(ruleJSONForA)
         let apps = FakeApps.trustingA()
         apps.bundleIDs = ["com.a"]
@@ -167,7 +160,7 @@ extension VPNEngineRuleReloadTests {
         let runner = FakeRunner()
         runner.failingListReads = 1
         runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
-        let store = VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
+        let store = VPNSettings.inMemory()
         store.setRulesJSON(ruleJSONForA)
         let apps = FakeApps()
         apps.bundleIDs = ["com.a"]
@@ -188,7 +181,7 @@ extension VPNEngineRuleReloadTests {
         let runner = FakeRunner()
         runner.failingListReads = 1
         runner.listOutput = "(Disconnected) 11111111-1111-1111-1111-111111111111 IPSec \"A\""
-        let store = VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
+        let store = VPNSettings.inMemory()
         store.setRulesJSON(ruleJSONForA)
         let apps = FakeApps.trustingA()
         apps.bundleIDs = ["com.a"]

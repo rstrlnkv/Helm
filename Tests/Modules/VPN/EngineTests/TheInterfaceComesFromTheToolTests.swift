@@ -151,10 +151,6 @@ final class TheInterfaceComesFromTheToolTests: XCTestCase {
 
     // MARK: - The engine, driven by what the tool really printed
 
-    private func makeSettings() -> VPNSettings {
-        VPNSettings(store: NamespacedStore(namespace: "vpn", backing: InMemoryKeyValueStore()))
-    }
-
     /// **The whole defect, end to end.** A connected NetworkExtension tunnel,
     /// the tool answering exactly what it answers on this machine, and a strip
     /// that has to appear. With the old join — the dynamic store asked for the
@@ -168,7 +164,7 @@ final class TheInterfaceComesFromTheToolTests: XCTestCase {
         let interfaces = FakeInterfaces()
         interfaces.primary = "utun8"
         interfaces.counters = ["utun8": (in: 4_000, out: 2_000)]
-        let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
+        let engine = VPNEngine(settings: VPNSettings.inMemory(), runner: runner, apps: FakeApps(),
                                news: news, interfaces: interfaces,
                                exit: FakeExit(), speed: FakeSpeed(), work: .inline)
 
@@ -193,7 +189,7 @@ final class TheInterfaceComesFromTheToolTests: XCTestCase {
         runner.statusOutput = ["incy": Self.connected]
         let interfaces = FakeInterfaces()
         interfaces.primary = "utun8"
-        let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
+        let engine = VPNEngine(settings: VPNSettings.inMemory(), runner: runner, apps: FakeApps(),
                                interfaces: interfaces, exit: FakeExit(), speed: FakeSpeed(),
                                work: .inline)
 
@@ -218,7 +214,7 @@ final class TheInterfaceComesFromTheToolTests: XCTestCase {
         let news = EngineNews<VPNEngine.StatePayload>()
         let interfaces = FakeInterfaces()
         interfaces.primary = "utun9"
-        let engine = VPNEngine(settings: makeSettings(), runner: runner, apps: FakeApps(),
+        let engine = VPNEngine(settings: VPNSettings.inMemory(), runner: runner, apps: FakeApps(),
                                news: news, interfaces: interfaces,
                                exit: FakeExit(), speed: FakeSpeed(), work: .inline)
         engine.refresh()
