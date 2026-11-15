@@ -26,10 +26,10 @@ import SwiftUI
 /// verifiable at all — an offscreen `cacheDisplay` composites a plain fill
 /// exactly and never composites glass.
 ///
-/// Dark: pane 30.0 → 37.8, which one constant pair predicts over four different
-/// backdrops — near-white at α ≈ 0.038. `Color.primary` **is** that white in
-/// dark and black in light, so the token says the measurement rather than
-/// restating it per appearance. The light values were not measured: the Mac
+/// Dark: pane 30.0 → 37.8, which one constant pair predicted over four different
+/// backdrops — near-white at α ≈ 0.038 (`fill`); that was before the window's backdrop
+/// became the sidebar's material, and Dark now draws `darkFill`. `Color.primary` is that
+/// white in dark and black in light. The light values were not measured: the Mac
 /// switches appearance by the sun and making System Settings draw light is a
 /// system setting, which a read-only measurement may not touch.
 ///
@@ -124,9 +124,21 @@ struct HeaderEdgeLight: ViewModifier {
     /// thing that sets it, and setting it is how a page says its content
     /// scrolls under.
     let overContent: Bool
+    /// Whether the page's content has gone beneath the strip: only then is the Dark shade drawn.
+    var scrolled = false
 
-    /// Near-white at 3.7%, from the composite over four backdrops.
+    /// Near-white at 3.8%, from the composite over four backdrops.
     static let fill = 0.038
+    /// **In Dark the fill is 1%**, not 3.8%: white at 3.8% over the card's 40 read 49, which is the
+    /// window backdrop's own level (Finder's sidebar material, `ShellContentView.makeBackdrop()`), and
+    /// a band at the backdrop's level takes the card's top edge and rounded corners away. At 1% the band
+    /// read 43 on the card's 40, 6 under the backdrop's 49 (key; 5 non-key), Dark, at rest. Light keeps 3.8%.
+    static let darkFill = 0.01
+    /// **In Dark, with the content scrolled under the strip, the material is shaded by 20% black.** Over
+    /// the card, scrolled, `Material.bar` read 45 to 51 in Dark, the backdrop's level, so the band lost the
+    /// card's edge the way the 3.8% fill did. At rest nothing is shaded (the shade at rest read 35 for 43),
+    /// and Light is never shaded.
+    static let darkShade = 0.2
     /// The bottom edge, at the same moment as the fill.
     static let rule = 0.071
     /// The scroll edge's surface. Named so there is something to check.
@@ -148,6 +160,7 @@ struct HeaderEdgeLight: ViewModifier {
     /// offscreen render — where `displayScale` reads 1.0 while the bitmap is still
     /// backed at 2× — sees a point. Nothing offscreen can prove the rule's thickness.
     @Environment(\.displayScale) private var displayScale
+    @Environment(\.colorScheme) private var colorScheme
 
     func body(content: Content) -> some View {
         content
@@ -156,7 +169,8 @@ struct HeaderEdgeLight: ViewModifier {
                     // Only where something passes behind it. A blur over an
                     // opaque band is a backdrop filter with nothing to filter.
                     if overContent { Rectangle().fill(Self.material) }
-                    Color.primary.opacity(lit ? Self.fill : 0)
+                    if overContent && scrolled && colorScheme == .dark { Color.black.opacity(Self.darkShade) }
+                    Color.primary.opacity(lit ? (colorScheme == .dark ? Self.darkFill : Self.fill) : 0)
                 }
             }
             .overlay(alignment: .bottom) {
@@ -371,7 +385,7 @@ public struct HelmPageHeader<Trailing: View>: View {
                                                          standsOnStillContent: standsOnStillContent),
                                          live: Self.isLive(hovering: hovering, active: activeState,
                                                            scrolled: scrolled),
-                                         overContent: overContent))
+                                         overContent: overContent, scrolled: scrolled))
         } else {
             row
         }

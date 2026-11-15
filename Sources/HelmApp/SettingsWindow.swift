@@ -4,7 +4,7 @@ import SwiftUI
 import HelmRuntime
 import HelmUI
 
-/// The settings window: glass with a column of module rows on it, and an opaque
+/// The settings window: the sidebar material with a column of module rows on it, and an opaque
 /// card holding the page, built by `SettingsShellViewController` from
 /// `ShellContentView`. Each of the two hosts a SwiftUI view; a shared
 /// `SettingsModel` carries the selection between them.

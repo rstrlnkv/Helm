@@ -2,14 +2,15 @@ import AppKit
 import HelmRuntime
 import HelmUI
 
-/// **The shell's content view: glass at the bottom, the sidebar on it, and the
+/// **The shell's content view: the sidebar's material at the bottom, the sidebar on it, and the
 /// opaque card inset from the window's edge, with the pane clipped inside the
 /// card to the card's corners.** Every frame comes from `ShellGeometry`; the
 /// view holds no radius of its own, it cuts the card from the corner
 /// `WindowCorner` read and applies it to the card and to the clip in one place,
 /// `apply(_:)`.
 ///
-/// Subviews, bottom to top: the glass (regular, full bleed, no content view);
+/// Subviews, bottom to top: the backdrop (full bleed, no content view; the material Finder's
+/// sidebar wears, see `makeBackdrop()`, the same under both bar looks);
 /// on macOS 27 a full-bleed probe whose only job is to report the window's
 /// corner; the sidebar, as wide as the card's x so the two cannot part; the card,
 /// and inside it the clip, and inside that the pane; last, the window buttons' capsule
@@ -108,7 +109,7 @@ final class ShellContentView: NSView {
     }
 
     private var lastTold: Told?
-    private let glass = NSGlassEffectView()
+    private let backdrop = ShellContentView.makeBackdrop()
     private let buttons = ShellWindowButtons()
     private var applied: WindowCorner?
     private var journal = WindowCorner.Journal()
@@ -140,8 +141,7 @@ final class ShellContentView: NSView {
         self.cardMoved = cardMoved
         super.init(frame: .zero)
 
-        glass.style = .regular
-        addSubview(glass)
+        addSubview(backdrop)
         if #available(macOS 27.0, *) {
             let probe = CornerProbe()
             self.probe = probe
@@ -314,12 +314,30 @@ final class ShellContentView: NSView {
         sidebarWidth = fold.from + (fold.to - fold.from) * CGFloat(HelmMotion.interfaceProgress(at: fraction))
     }
 
+    /// **The window's backdrop is the material AppKit gives a split view's sidebar, one source for
+    /// both bar looks.** `NSSplitViewItem(sidebarWithViewController:)` builds an `NSGlassEffectView`,
+    /// style `.regular`, `cornerRadius` 0, private `_variant` 18, in an opaque window (read on macOS
+    /// 27.3); this is that view. It matched Finder's sidebar in every key, appearance and look cell
+    /// (tester, 2026-11-15); the public `NSVisualEffectView(.sidebar, .behindWindow)` did not in Dark.
+    /// A system without the `_variant` selector keeps the plain regular glass, and the log says so.
+    private static func makeBackdrop() -> NSGlassEffectView {
+        let glass = NSGlassEffectView()
+        glass.style = .regular
+        glass.cornerRadius = 0
+        if glass.responds(to: NSSelectorFromString("set_variant:")) {
+            glass.setValue(18, forKey: "_variant")
+        } else {
+            HelmLog.shared.info("app", "window backdrop: no sidebar variant on this system, plain regular glass")
+        }
+        return glass
+    }
+
     // MARK: - layout
 
     override func layout() {
         super.layout()
 
-        glass.frame = bounds
+        backdrop.frame = bounds
         probe?.frame = bounds
 
         let frame = ShellGeometry.cardFrame(in: bounds.size, sidebarWidth: sidebarWidth)

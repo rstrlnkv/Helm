@@ -351,7 +351,7 @@ private struct ToolbarBackdrop: ViewModifier {
                             // `HeaderEdgeLight.live`.
                             live: HelmPageHeader<EmptyView>.isLive(
                                 hovering: false, active: .key, scrolled: scrolled),
-                            overContent: true))
+                            overContent: true, scrolled: scrolled))
                         .offset(y: -proxy.safeAreaInsets.top)
                 }
                 .allowsHitTesting(false)

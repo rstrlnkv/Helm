@@ -2,8 +2,10 @@
 
 `Sources/HelmApp/SettingsWindow.swift` builds a window whose content is
 `SettingsShellViewController`, a plain view controller that shows a
-`ShellContentView` (`Sources/HelmApp/ShellContentView.swift`): glass at the bottom, the
-sidebar on it, and an opaque card inset from the window's edge that holds the page. Every
+`ShellContentView` (`Sources/HelmApp/ShellContentView.swift`): the sidebar's
+material at the bottom (the one AppKit builds for a split view's sidebar, an `NSGlassEffectView` of private variant 18,
+the same under Flat and Liquid Glass), the sidebar on it, and an opaque card inset from the window's edge that holds
+the page. Every
 frame comes from `ShellGeometry`. The sidebar and the page are each an `NSHostingController` with
 `sizingOptions = []`, so a pane fills what the window gives it and never sizes the
 window; the comment above `sidebar.sizingOptions` says why.
