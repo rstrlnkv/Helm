@@ -66,7 +66,7 @@ enum FreeSpace: Equatable, Sendable {
     case important(Int)
     case fallback(Int)
 
-    public var bytes: Int {
+    var bytes: Int {
         switch self {
         case .important(let bytes), .fallback(let bytes): return bytes
         }

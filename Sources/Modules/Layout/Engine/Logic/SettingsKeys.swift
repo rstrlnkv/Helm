@@ -36,11 +36,11 @@ public enum LayoutKey {
 
 /// What each stored setting holds before anyone has chosen, spelled once for
 /// the engine and the pages that read the same keys.
-public enum LayoutDefault {
-    public static let automatic = true
-    public static let audible = false
-    public static let fixCapitals = true
-    public static let tapKey = TapKey.rightCommand
+enum LayoutDefault {
+    static let automatic = true
+    static let audible = false
+    static let fixCapitals = true
+    static let tapKey = TapKey.rightCommand
 }
 
 extension NamespacedStore {
