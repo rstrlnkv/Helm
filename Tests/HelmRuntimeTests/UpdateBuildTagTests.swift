@@ -6,14 +6,13 @@ import XCTest
 /// comparison must read the number against the RUNNING build.
 ///
 /// `currentBuild: Int?`, nil = unknown: an old-form prerelease is then offered
-/// the tag and a bare X.Y.Z is not; with a known build the build decides.
+/// the tag and a bare X.Y.Z is not; with a known build the build decides on an equal X.Y.Z.
 /// Callers pass `AppBuild.buildNumber.flatMap { Int($0) }`.
 final class UpdateBuildTagVersionTests: XCTestCase {
     private func newer(_ tag: String, _ version: String, _ build: Int?) -> Bool {
         UpdateVersion.isNewer(tag, than: version, currentBuild: build)
     }
 
-    // 1-3: the tag the running app was built from, and the builds around it.
     func testTheTagOfTheRunningBuildIsNotNewer() {
         XCTAssertFalse(newer("v0.11.1.BETA.1620", "0.11.1", 1620))
     }
@@ -27,7 +26,6 @@ final class UpdateBuildTagVersionTests: XCTestCase {
         XCTAssertTrue(newer("v0.11.1.BETA.1621", "0.11.1", 1620))
     }
 
-    // 4: the version decides first, the build only inside one version.
     func testADevTagWithAHigherBuildIsNewer() {
         XCTAssertTrue(newer("v0.11.1.DEV.1700", "0.11.1", 1620))
         XCTAssertFalse(newer("v0.11.1.DEV.1500", "0.11.1", 1620))
@@ -43,7 +41,6 @@ final class UpdateBuildTagVersionTests: XCTestCase {
         XCTAssertTrue(newer("v0.12.0", "0.11.1", 9999))
     }
 
-    // 5: old-form tags and unknown build compare exactly as before.
     func testOldFormTagsIgnoreTheBuild() {
         XCTAssertTrue(newer("v0.7.0-dev.2", "0.7.0-dev.1", 5))
         XCTAssertFalse(newer("v0.7.0-dev.1", "0.7.0-dev.2", 9999))

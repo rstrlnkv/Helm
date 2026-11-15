@@ -5,11 +5,11 @@ import Foundation
 /// release but above every earlier version. The build-tag form
 /// ("v0.11.1.BETA.1620", versioning.md rule 6) names a build: on an equal
 /// X.Y.Z it is read against the running build number.
-enum UpdateVersion {
+public enum UpdateVersion {
     /// "v1.2.3" / "1.2" → [1, 2, 3]; anything from a "-" suffix on is dropped.
     static func parse(_ s: String) -> [Int] {
         let trimmed = s.hasPrefix("v") || s.hasPrefix("V") ? String(s.dropFirst()) : s
-        // "", "v" and "-" split into nothing: no core, which no version is newer than.
+        // "", "v" and "-" split into nothing: an empty core, which is not newer than any version that has one.
         let core = trimmed.split(separator: "-", maxSplits: 1).first ?? ""
         return core.split(separator: ".").map { Int($0.prefix(while: \.isNumber)) ?? 0 }
     }
@@ -27,7 +27,7 @@ enum UpdateVersion {
     /// a signed number ("-5", "+5") included: `Int` reads both.
     /// The tag form of versioning.md rule 6: the number after DEV / BETA is a
     /// build number, not a fifth version part, which `parse` would make it.
-    static func buildTag(_ s: String) -> (core: [Int], build: Int)? {
+    public static func buildTag(_ s: String) -> (core: [Int], build: Int)? {
         let parts = (s.hasPrefix("v") || s.hasPrefix("V") ? String(s.dropFirst()) : s)
             .split(separator: ".", omittingEmptySubsequences: false)
         guard parts.count == 5, ["DEV", "BETA"].contains(parts[3]), let build = unsigned(parts[4])
@@ -88,8 +88,9 @@ enum UpdateVersion {
     }
 
     /// A total order for the list picker: `isNewer`, and where it says neither
-    /// is newer, a build tag above an old-form tag (bare or `-dev.N`) of the same
-    /// core, so the pick does not depend on the order of the list.
+    /// is newer, a build tag above a bare tag of the same core (`isNewer`
+    /// already ranks it above `-dev.N`), so the pick does not depend on the
+    /// order of the list.
     static func ranksAbove(_ a: String, _ b: String) -> Bool {
         if isNewer(a, than: b) { return true }
         if isNewer(b, than: a) { return false }

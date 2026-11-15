@@ -63,16 +63,21 @@ There are two channels, `beta` and `dev`, and `UpdateCheck.Channel` is where the
 the reason for the name `beta` live. In the app the switch is About → Update channel,
 and switching re-checks at once.
 
-Everything reaches the dev channel first, as a `vX.Y.Z-dev.N` prerelease, and the same
-code goes out as the beta `vX.Y.Z` release once the count of known problems is zero. A dev
-build writes its log itself and a beta build does not (ARCHITECTURE.md § Diagnostics log),
-so the dev round is the only round with evidence in it to triage against `helm.log`. A
-`-dev.N` prerelease leaves the beta numbering alone: the eventual `vX.Y.Z` supersedes
-every `-dev.N` before it. Two consequences of that arrangement look like faults and are
+Everything reaches the dev channel first, as a prerelease tagged `vX.Y.Z.DEV.<build>`, and
+the same code goes out as the beta, `vX.Y.Z.BETA.<build>`, once the count of known problems
+is zero; the bare `vX.Y.Z` is the STABLE release (versioning.md rule 6). A dev build writes
+its log itself and a beta build does not (ARCHITECTURE.md § Diagnostics log), so the dev
+round is the only round with evidence in it to triage against `helm.log`. A bare `vX.Y.Z`
+does not supersede a `vX.Y.Z.DEV.<build>` or `vX.Y.Z.BETA.<build>` of the same `X.Y.Z`:
+`UpdateVersion.isNewer` finds the two cores equal and answers false, and
+`UpdateVersion.ranksAbove` puts a build tag above a bare tag of one core. Only a higher
+`X.Y.Z` is offered over a running build tag. (For tags cut before 2026-11-14 the old
+arrangement holds: a `-dev.N` prerelease sorts below its own `vX.Y.Z`, which supersedes
+every `-dev.N` before it.) Two consequences of that arrangement look like faults and are
 not. A release published with `--prerelease` is invisible to the Beta channel, because
 `releases/latest` skips every prerelease — so the flag, or its absence, is what decides
 reachability rather than presentation. And in the window between a beta shipping and the
-next `-dev` build being cut, the newest entry in the whole releases list *is* the beta, so
+next dev build being cut, the newest entry in the whole releases list *is* the beta, so
 the Dev channel answers "up to date" and is right.
 
 One release is one `CHANGELOG.md` section, one git tag, and both a `.dmg` and a `.zip`
