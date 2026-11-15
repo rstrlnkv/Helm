@@ -70,10 +70,10 @@ struct DiskSettingsPage: View {
         // dialog would start asking about `app#3f9a`.
         .confirmationDialog(DkStr.confirmTrash(question),
                             isPresented: $confirming, titleVisibility: .visible) {
-            Button(DkStr.moveToTrash, role: .destructive) {
+            Button(HelmWord.moveToTrash, role: .destructive) {
                 Task { await dvm.emptyBasket() }
             }
-            Button(DkStr.cancel, role: .cancel) {}
+            Button(HelmWord.cancel, role: .cancel) {}
         } message: {
             Text(question.named())
         }
@@ -128,7 +128,7 @@ struct DiskSettingsPage: View {
                 }
                 CapacityBar(volume: volume, height: 6)
                 Text(DkStr.freeAmount(volume.freeBytes))
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                    .helmQuietDetail()
             }
             .helmCard()
         }
@@ -143,7 +143,7 @@ struct DiskSettingsPage: View {
     /// nowhere to put Stop; it has a slot for it now.
     private var scanningState: some View {
         HelmBusyState(DkStr.scanning) {
-            Button(DkStr.stop) { dvm.cancel() }
+            Button(HelmWord.stopScan) { dvm.cancel() }
         }
     }
 
@@ -206,9 +206,11 @@ struct DiskSettingsPage: View {
                 // reply in flight is about — so this is the third door the same
                 // guard covers, dimmed beside the button it sits next to.
                 .disabled(dvm.busy)
-                .help(DkStr.basketContents)
+                // "Basket" was the only place the English UI used the word: no visible
+                // label says it — the bar itself is headed "To remove".
+                .help(HelmWord.showWhatIsMarkedForRemoval)
                 Spacer()
-                Button(DkStr.moveToTrash) { confirming = true }
+                Button(HelmWord.moveToTrash) { confirming = true }
                     .disabled(dvm.busy)
                     .buttonStyle(.borderedProminent)
             }

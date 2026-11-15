@@ -96,8 +96,7 @@ struct VPNSettingsPage: View {
             Text(VPNStr.connectionsHint)
             Text(VPNStr.perAppScopeNote)
         }
-        .font(HelmText.rowDetail)
-        .foregroundStyle(HelmText.quiet)
+        .helmQuietDetail()
         .fixedSize(horizontal: false, vertical: true)
     }
 

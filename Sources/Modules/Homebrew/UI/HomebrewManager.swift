@@ -109,7 +109,7 @@ struct HomebrewManager: View {
             Divider()
             HStack {
                 Text(statusLine)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                    .helmQuietDetail()
                 Spacer()
             }
             // A caption is shorter than a button: without this the bar was

@@ -24,7 +24,7 @@ struct LeftoversSettingsPage: View {
     /// dialog follows the row says exactly what the bar below it says, because
     /// it is the same act.
     private static func deleteLabel(for item: StaleItem) -> String {
-        LeftoverActions.needsConfirmation(item) ? LfStr.deleteItem : LfStr.removeSelected
+        LeftoverActions.needsConfirmation(item) ? LfStr.deleteItem : HelmWord.moveToTrash
     }
 
     /// What «Found: N» is about: the rows the list under it draws.
@@ -69,9 +69,7 @@ struct LeftoversSettingsPage: View {
             // whatever the list holds — the menu that hid the rows has to remain
             // reachable, or the page is a dead end.
             if lvm.nothingToShow == nil {
-                Text(LfStr.reviewNote)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
+                HelmSettingsNote(LfStr.reviewNote)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, HelmLayout.formInset).padding(.top, HelmSpace.s5)
             }
@@ -104,11 +102,11 @@ struct LeftoversSettingsPage: View {
                             isPresented: Binding(get: { pendingDeletion != nil },
                                                  set: { if !$0 { pendingDeletion = nil } }),
                             titleVisibility: .visible) {
-            Button(LfStr.removeSelected, role: .destructive) {
+            Button(HelmWord.moveToTrash, role: .destructive) {
                 if let item = pendingDeletion { Task { await lvm.remove(item) } }
                 pendingDeletion = nil
             }
-            Button(LfStr.cancelAction, role: .cancel) { pendingDeletion = nil }
+            Button(HelmWord.cancel, role: .cancel) { pendingDeletion = nil }
         }
         // The page's controls, in the header row of the window's card, through the contract every module page
         // shares (`HelmWindowToolbar.swift` in `HelmUI`) — see `toolbarContent` below for what each carries.
@@ -161,7 +159,7 @@ struct LeftoversSettingsPage: View {
     private var toolbarContent: HelmPageToolbarContent {
         let hasList = !lvm.items.isEmpty
         return HelmPageToolbarContent(
-            tabs: hasList ? [HelmToolbarTab(id: "onlyLeftovers", title: LfStr.filterLeftovers),
+            tabs: hasList ? [HelmToolbarTab(id: "onlyLeftovers", title: HelmWord.leftovers),
                             HelmToolbarTab(id: "all", title: LfStr.filterAll)] : [],
             selectedTab: hasList ? Binding(get: { lvm.showAll ? "all" : "onlyLeftovers" },
                                            set: { lvm.showAll = ($0 == "all") }) : nil,
@@ -197,7 +195,7 @@ struct LeftoversSettingsPage: View {
     /// derivation, so the toolbar and the invitation cannot say two
     /// different things about the same scan.
     private var scanTitle: String {
-        lvm.scanning ? LfStr.scanning : (lvm.scanned ? LfStr.rescan : LfStr.scan)
+        lvm.scanning ? HelmWord.scanning : (lvm.scanned ? HelmWord.scanAgain : LfStr.scan)
     }
 
     /// What the scan found, and what it could not judge — one caption or two,
@@ -243,7 +241,7 @@ struct LeftoversSettingsPage: View {
     /// and never cut — the count is the whole of what it carries.
     private func caption(_ text: String) -> some View {
         Text(text)
-            .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+            .helmQuietDetail()
             .lineLimit(1).fixedSize()
     }
 
@@ -383,7 +381,7 @@ struct LeftoversSettingsPage: View {
                 // and the floor it reads are `LeftoverDetailLine`'s.
                 if let detail = LfStr.detail(for: item) {
                     LeftoverDetailLine(detail: detail)
-                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                        .helmQuietDetail()
                 }
             }
             // A name, up to two badges and a line saying where the file is and
@@ -588,7 +586,7 @@ struct LeftoversSettingsPage: View {
     /// `outcomeRow` established and the buttons get the width they ask for.
     private var selectionLine: some View {
         statement(Text(LfStr.selectedLine(lvm.selectedCount, Bytes(lvm.selectedBytes)))
-            .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet))
+            .helmQuietDetail())
     }
 
     /// **Drawn only where there is something to act on**, which is the guard the
@@ -599,16 +597,16 @@ struct LeftoversSettingsPage: View {
     /// filter menu: what emptied the list is then a menu on screen, not the Mac.
     private var actionBar: some View {
         HStack(spacing: HelmSpace.s5) {
-            Button(LfStr.selectAll) { lvm.tickAll() }
+            Button(HelmWord.selectAll) { lvm.tickAll() }
             // `busy` for the same reason as its neighbour: five controls on this
             // page can start or change an act, and two of them dimmed during a
             // removal. Ticking rows mid-request changes what the report that comes
             // back is about.
             .disabled(lvm.leftoverCount == 0 || lvm.busy)
-            Button(LfStr.deselectAll) { lvm.untickAll() }
+            Button(HelmWord.clearSelection) { lvm.untickAll() }
                 .disabled(lvm.selected.isEmpty || lvm.busy)
             Spacer()
-            Button(LfStr.removeSelected) { confirmingBatch = true }
+            Button(HelmWord.moveToTrash) { confirmingBatch = true }
                 .buttonStyle(.borderedProminent)
                 .disabled(lvm.selected.isEmpty || lvm.busy)
                 // `selectedCount`, not `selected.count`: the bar above this button
@@ -618,10 +616,10 @@ struct LeftoversSettingsPage: View {
                 .confirmationDialog(LfStr.confirmSelected(lvm.selectedCount,
                                                           Bytes(lvm.selectedBytes)),
                                     isPresented: $confirmingBatch, titleVisibility: .visible) {
-                    Button(LfStr.removeSelected, role: .destructive) {
+                    Button(HelmWord.moveToTrash, role: .destructive) {
                         Task { await lvm.removeSelected() }
                     }
-                    Button(LfStr.cancelAction, role: .cancel) { }
+                    Button(HelmWord.cancel, role: .cancel) { }
                 }
         }
         .helmPageStrip()

@@ -63,8 +63,7 @@ public struct HelmSettingsNote: View {
 
     public var body: some View {
         Text(text)
-            .font(HelmText.rowDetail)
-            .foregroundStyle(HelmText.quiet)
+            .helmQuietDetail()
             .fixedSize(horizontal: false, vertical: true)
     }
 }

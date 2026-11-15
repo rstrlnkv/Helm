@@ -31,7 +31,7 @@ extension KeepAwakeSettingsPage {
                            tint: KeepAwakeDescriptor.tint.colour,
                            title: explained ? KAStr.noAppsYet : nil,
                            message: explained ? KAStr.noAppsYetNote : nil) {
-                Button(KAStr.addApp) { pickApp() }
+                Button(HelmWord.addApp) { pickApp() }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
             }
@@ -73,7 +73,7 @@ extension KeepAwakeSettingsPage {
                     Image(systemName: "plus")
                         .frame(width: HelmAppRuleGeometry.iconSide,
                                height: HelmAppRuleGeometry.iconSide)
-                    Text(KAStr.addApp)
+                    Text(HelmWord.addApp)
                 }
                 .foregroundStyle(Color.accentColor)
                 // The row is one target and one announcement, not a glyph and

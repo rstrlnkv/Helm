@@ -63,7 +63,7 @@ struct HomebrewPackageList: View {
     @ViewBuilder
     private func availableRows(_ section: AvailableSection, hits: [SearchHit], marksUpdates: Bool) -> some View {
         switch section {
-        case .searching: noteRow(HbStr.searching, busy: true)
+        case .searching: noteRow(HelmWord.searching, busy: true)
         case .nothingFound: noteRow(HbStr.noResults)
         case .unanswerable: noteRow(HbStr.couldNotSearch)
         case .found:

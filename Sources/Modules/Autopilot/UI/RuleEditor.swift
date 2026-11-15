@@ -90,7 +90,7 @@ struct RuleEditor: View {
                     .lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: HelmSpace.s5)
                 if preset != nil {
-                    Button(ApStr.chooseDestination) { chooseFolder() }
+                    Button(HelmWord.choose) { chooseFolder() }
                         .controlSize(.small)
                 }
             }
@@ -117,7 +117,7 @@ struct RuleEditor: View {
     /// The panel is the only way another folder gets in, as everywhere in this
     /// module. A cancelled panel changes nothing and says nothing.
     private func chooseFolder() {
-        guard let url = FolderPicker.choose(prompt: ApStr.chooseDestination,
+        guard let url = FolderPicker.choose(prompt: HelmWord.choose,
                                             startingAt: URL(fileURLWithPath: folder.path),
                                             canCreate: false, activate: false) else { return }
         let next = Self.pointing(rule, at: url.path, from: folder, preset: preset, rvm: rvm)
@@ -244,9 +244,7 @@ struct RuleEditor: View {
             // it decides how much of somebody's tree the rule below reaches.
             // Beside the dry run, which is where the consequence is being read.
             if folder.depth > 1 {
-                Text(ApStr.folderIncludesSubfolders)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
+                HelmSettingsNote(ApStr.folderIncludesSubfolders)
             }
             if rvm.previewByThisRule.isEmpty {
                 Text(ApStr.nothingWouldHappen)
@@ -351,9 +349,9 @@ struct RuleEditor: View {
             // the sheet a keyboard has furthest to travel across: conditions,
             // pickers, fields, the dry run. Nothing here claims Return — none of `ConditionRow`'s fields calls
             // `.onSubmit` — so the default button is free to take it.
-            Button(ApStr.cancel) { dismiss() }
+            Button(HelmWord.cancel) { dismiss() }
                 .keyboardShortcut(.cancelAction)
-            Button(ApStr.done) {
+            Button(HelmWord.done) {
                 // The task outlives the sheet on purpose. A preset's folder is
                 // written and then swept, and the report belongs on the page
                 // this is dismissing back to — not to a window that is waiting

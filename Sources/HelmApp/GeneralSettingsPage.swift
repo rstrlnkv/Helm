@@ -190,7 +190,7 @@ struct MenuBarSettingsView: View {
                     // Several do not, and a button that picks one of them
                     // for you is a button that lies about what it opened.
                     if withheldPermissions.count == 1, let only = withheldPermissions.first {
-                        Button(AppStr.grant) { only.openSettings() }
+                        Button(HelmWord.grant) { only.openSettings() }
                             .controlSize(.small)
                     } else {
                         Button(AppStr.showPermissions) {
@@ -216,7 +216,7 @@ struct MenuBarSettingsView: View {
                 // what macOS says afterwards: `register()` can throw, and the
                 // person can take the registration away in System Settings
                 // while this window is open. Both used to leave the switch on.
-                Toggle(AppStr.launchAtLogin,
+                Toggle(HelmWord.openHelmAtLogin,
                        isOn: Binding(get: { launchAtLogin.isOn },
                                      set: { launchAtLogin = LoginItem.setEnabled($0) }))
                 if let note = AppStr.loginItemNote(launchAtLogin) {
@@ -373,7 +373,7 @@ struct MenuBarSettingsView: View {
                                        // Not granted is spoken by the Grant button beside it.
                                        markSpoken: granted ? AppStr.permissionGranted : nil) {
                             if !granted {
-                                Button(AppStr.grant) { need.openSettings() }
+                                Button(HelmWord.grant) { need.openSettings() }
                                     .controlSize(.small)
                             }
                         }
@@ -432,7 +432,7 @@ struct MenuBarSettingsView: View {
         .confirmationDialog(AppStr.resetConfirmTitle, isPresented: $confirmingReset,
                             titleVisibility: .visible) {
             Button(AppStr.resetConfirmAction, role: .destructive) { ResetEverything.run() }
-            Button(AppStr.cancel, role: .cancel) {}
+            Button(HelmWord.cancel, role: .cancel) {}
         } message: {
             Text(AppStr.resetConfirmBody)
         }

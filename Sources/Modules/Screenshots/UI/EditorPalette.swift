@@ -299,7 +299,7 @@ struct EditorPalette: View {
                     Image(systemName: "checkmark").fontWeight(.bold).foregroundStyle(HelmText.onFill)
                 }
                 Rectangle().fill(HelmSurface.hairline).frame(width: 1, height: HelmSpace.s6)
-                GlassCell(symbol: "xmark", name: ScStr.closeEditor, ink: GlassCell<Image>.paletteInk) { model.perform(.close) }
+                GlassCell(symbol: "xmark", name: HelmWord.close, ink: GlassCell<Image>.paletteInk) { model.perform(.close) }
             }
         }
         .padding(.horizontal, HelmSpace.s6)

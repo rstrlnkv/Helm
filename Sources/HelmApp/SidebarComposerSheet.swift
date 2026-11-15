@@ -158,7 +158,7 @@ struct SidebarComposerSheet: View {
                     // ratchet did not read the app shell.
                     .font(HelmText.plateTitle)
                 Spacer()
-                Button(AppStr.done) { dismiss() }
+                Button(HelmWord.done) { dismiss() }
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
             }
@@ -227,16 +227,16 @@ struct SidebarComposerSheet: View {
         // every edit here is applied as it is made, so leaving loses nothing and
         // Escape means the same thing «Done» does.
         .onExitCommand { dismiss() }
-        .alert(AppStr.renameSection, isPresented: Binding(
+        .alert(HelmWord.rename, isPresented: Binding(
             get: { renaming != nil },
             set: { if !$0 { renaming = nil } }
         )) {
-            TextField(AppStr.renameSection, text: $draftName)
-            Button(AppStr.done) {
+            TextField(HelmWord.rename, text: $draftName)
+            Button(HelmWord.done) {
                 if let section = renaming { apply(layout.renaming(section.id, to: draftName)) }
                 renaming = nil
             }
-            Button(AppStr.cancel, role: .cancel) { renaming = nil }
+            Button(HelmWord.cancel, role: .cancel) { renaming = nil }
         }
     }
 }
@@ -251,7 +251,7 @@ struct SidebarComposerRow: View {
 
     var body: some View {
         HelmSettingRow(AppStr.sidebarSections, note: summary) {
-            Button(AppStr.edit) { composing = true }
+            Button(HelmWord.edit) { composing = true }
         }
         .onReceive(NotificationCenter.default.publisher(for: .helmModuleOrderChanged)) { _ in
             revision &+= 1

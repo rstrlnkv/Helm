@@ -47,7 +47,7 @@ enum ApStr {
     static func discardVerb(_ what: AutopilotViewModel.Discard) -> String {
         switch what {
         case .rules: discardRules
-        case .history: historyClear
+        case .history: HelmWord.clear
         case .refusedHistory: discardHistory
         }
     }
@@ -259,19 +259,13 @@ enum ApStr {
 
     static var actionMove: String { L(.moveToFolder) }
     static var actionSort: String { L(.sortIntoSubfolder) }
-    static var actionRename: String { HelmWord.rename }
     static var actionTag: String { L(.addTag) }
-    static var actionTrash: String { HelmWord.moveToTrash }
     static var schemeKind: String { L(.byKind) }
     static var schemeMonth: String { L(.byMonth) }
     static var patternHint: String { L(.nameDateAndCounterAreReplaced) }
-    static var chooseDestination: String { HelmWord.choose }
 
     // MARK: - Common
 
-    static var cancel: String { HelmWord.cancel }
-    static var done: String { HelmWord.done }
-    static var edit: String { HelmWord.edit }
     static var delete: String { L(.delete) }
 
     // MARK: - Names for controls that carry none on screen
@@ -297,7 +291,6 @@ enum ApStr {
     // MARK: - What it did
 
     static var historyTitle: String { L(.last30Days) }
-    static var historyClear: String { HelmWord.clear }
 
     /// **Why the record is empty: three states with three different next steps**
     /// — no watched folder, every rule switched off, a running rule that has

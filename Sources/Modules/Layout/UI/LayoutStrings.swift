@@ -22,7 +22,6 @@ enum LyStr {
     static var exceptionsHint: String {
         L(.theseAreLeftExactlyAsYou)
     }
-    static var addApp: String { HelmWord.addApp }
     static var ruleOn: String { L(.fix) }
     static var ruleOff: String { L(.dontFix) }
     /// The layout picker's «leave it alone» value, and the first one offered.
@@ -112,11 +111,8 @@ enum LyStr {
     static var showTour: String { HelmWord.show }
 
     /// The lists window's way out: the kit's word, which every module that draws a «Done» reads.
-    static var listsDone: String { HelmWord.done }
 
     static var tourTitle: String { L(.howItWorks) }
-    static var tourBack: String { HelmWord.back }
-    static var tourNext: String { HelmWord.next }
     /// «2 of 4». Its own catalog key, because Japanese and Chinese do not say it as a fraction: `%@ / %@` and `第%@步，共%@步`.
     static func tourStep(_ index: Int, of total: Int,
                          language: AppLanguage = AppLanguage.current) -> String {

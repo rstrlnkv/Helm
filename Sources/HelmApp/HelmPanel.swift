@@ -786,7 +786,7 @@ struct HelmPanelContent: View {
                 .foregroundStyle(HelmText.quiet)
             Text(title).font(HelmText.sectionHeading)
             Text(hint)
-                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                .helmQuietDetail()
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -934,15 +934,15 @@ struct HelmPanelContent: View {
         // one thing allowed to give way, and `availableForGrid` is what the
         // strip has left after the pinned bars. Everything else is its own
         // size, so the card is the sum of its parts.
-        .alert(AppStr.renameSection, isPresented: Binding(
+        .alert(HelmWord.rename, isPresented: Binding(
             get: { renaming != nil }, set: { if !$0 { renaming = nil } }
         )) {
             TextField(AppStr.tabLabel, text: $draftName)
-            Button(AppStr.done) {
+            Button(HelmWord.done) {
                 if let id = renaming { apply(layout.renamingTab(id, to: draftName)) }
                 renaming = nil
             }
-            Button(AppStr.cancel, role: .cancel) { renaming = nil }
+            Button(HelmWord.cancel, role: .cancel) { renaming = nil }
         }
         .onAppear { reload() }
         // `alsoOn` because the panel has a moment neither of the tracker's own

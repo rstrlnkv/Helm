@@ -7,7 +7,6 @@ enum UnStr {
     static var moduleName: String { L(.uninstaller) }
     static var summary: String { L(.removeAnAppWithAllOfItsFiles) }
     static var searchApps: String { L(.searchApps) }
-    static var scanning: String { HelmWord.scanning }
     /// The same note when the Trash switch is on, because then the missing
     /// grant costs two things rather than one — and one grant deserves one
     /// notice, not a second row with its own Grant button saying the same.
@@ -15,11 +14,9 @@ enum UnStr {
         L(.withoutFullDiskAccessOrTheTrash)
     }
     static var removalNeedsAccess: String { L(.withoutFullDiskAccess) }
-    static var moveToTrash: String { HelmWord.moveToTrash }
     static func confirmTrash(_ count: Int, _ size: String) -> String {
         HelmConfirm.trash(Plural.items(count, language: AppLanguage.current.rawValue), size)
     }
-    static var cancel: String { HelmWord.cancel }
 
     /// A leftover's kind and its size, as one caption.
     ///
@@ -87,19 +84,12 @@ enum UnStr {
     static var watchTrashNote: String {
         L(.helmShowsWhatItLeftBehind)
     }
-    static var tabApps: String { HelmWord.apps }
-    static var tabOrphans: String { HelmWord.leftovers }
     static var orphansIntro: String { L(.filesLeftByAppsNoLongerHere) }
     static var scanOrphans: String { L(.scanForLeftovers) }
-    static var scanningOrphans: String { HelmWord.searching }
-    static var noOrphans: String { HelmWord.noLeftoversFound }
-    static var selectAll: String { HelmWord.selectAll }
-    static var rescan: String { HelmWord.scanAgain }
     static func selectedSummary(_ n: Int, _ size: String,
                                 language: AppLanguage = AppLanguage.current) -> String {
         L(.selectedSummary(String(n), size), language: language)
     }
-    static var selectNone: String { HelmWord.clearSelection }
     /// At zero the button says only its verb: it is disabled with nothing
     /// checked, and a dimmed «Review 0» is a control naming a count of nothing.
     /// The count returns with the first tick.
@@ -108,7 +98,6 @@ enum UnStr {
         guard n > 0 else { return L(.review, language: language) }
         return L(.reviewCount(String(n)), language: language)
     }
-    static var back: String { HelmWord.back }
     static var removing: String { L(.removing) }
     /// The caption under the first row of every review group. The last screen
     /// before deletion has no dialog after it, and it said nothing at all about
@@ -128,7 +117,6 @@ enum UnStr {
         L(.toTrash(size))
     }
     /// `HelmBasket.movedToTrash`: Disk, Duplicates and the Uninstaller end a removal on one sentence.
-    static func movedToTrash(_ size: String) -> String { HelmBasket.movedToTrash(size) }
     static func movedWithFailures(_ size: String, _ n: Int) -> String {
         let items = Plural.items(n, language: AppLanguage.current.rawValue)
         return L(.movedWithFailures(size, items))
@@ -171,12 +159,9 @@ enum UnStr {
         case .searchHidesAll: return L(.noApplicationsMatchThisSearch, language: language)
         }
     }
-    static var openDiskAccess: String { HelmWord.openFullDiskAccess }
     /// `HelmUI`'s, because Leftovers' extension row draws the same label over the
     /// same call — it said «Manage…» there until the two were made one.
     static var openExtensions: String { HelmControlName.openExtensions }
-    static var done: String { HelmWord.done }
-    static var refreshList: String { HelmWord.refreshList }
     /// The toolbar action's tooltip and VoiceOver name. Finder's own words for
     /// the same menu.
     static var sortBy: String { L(.sortBy) }

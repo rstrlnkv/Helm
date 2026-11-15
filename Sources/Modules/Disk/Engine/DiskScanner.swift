@@ -43,10 +43,7 @@ final class DiskScanner: @unchecked Sendable {
         lock.lock(); cancelled = true; lock.unlock()
     }
 
-    private var isCancelled: Bool {
-        lock.lock(); defer { lock.unlock() }
-        return cancelled
-    }
+    private var isCancelled: Bool { lock.withLock { cancelled } }
 
     /// Synchronous; run it via `offTheCooperativePool`.
     ///

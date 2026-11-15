@@ -472,7 +472,7 @@ struct KeepAwakePanelTile: View {
                 // `.stopSessionOnly`, and «Стоп» is the word for both. The page
                 // spells its button from `KAStr.stopWord` because its Stop
                 // outlives the countdown; this one does not.
-                Button(KAStr.stop) { vm.stopSession() }
+                Button(HelmWord.stop) { vm.stopSession() }
                     .controlSize(.small)
                     .fixedSize()
                 // The automation controls must stay reachable while a timer runs.

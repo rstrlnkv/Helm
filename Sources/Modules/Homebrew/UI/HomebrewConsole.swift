@@ -20,7 +20,7 @@ struct HomebrewConsole: View {
                     // module is dead until an app restart.
                     Button(HomebrewSettingsPage.stopTitle(for: hb.op)) { hb.stopOperation() }.controlSize(.small)
                 }
-                Button(HbStr.clear) { hb.clearConsole() }.controlSize(.small).disabled(hb.running)
+                Button(HelmWord.clear) { hb.clearConsole() }.controlSize(.small).disabled(hb.running)
             }
             // A view that is always there: a `Group` with nothing in it takes the padding,
             // the height and the well's fill with it, so the block would measure short and
@@ -134,26 +134,24 @@ struct HomebrewConsole: View {
             HelmBusyLabel(HomebrewSettingsPage.pillTitle(for: hb.op), busy: true)
                 .font(HelmText.rowDetail)
         case .done:
-            Label(HbStr.done, systemImage: "checkmark.circle.fill").foregroundStyle(HelmSignal.success(increased: traits.increasedContrast)).font(HelmText.rowDetail)
+            Label(HelmWord.done, systemImage: "checkmark.circle.fill").foregroundStyle(HelmSignal.success(increased: traits.increasedContrast)).font(HelmText.rowDetail)
         case .failed where hb.op.reason == .stopped:
             // The person asked for this end; a red octagon would call their own
             // press a defect.
-            Label(HbStr.stopped, systemImage: "stop.circle.fill").foregroundStyle(HelmText.quiet).font(HelmText.rowDetail)
+            Label(HelmWord.stopped, systemImage: "stop.circle.fill").foregroundStyle(HelmText.quiet).font(HelmText.rowDetail)
         case .failed where hb.op.reason == .authorizationDeclined:
             // A question answered no: neutral, with the sentence beside it.
             HStack(spacing: HelmSpace.s3) {
                 Label(HbStr.cancelled, systemImage: "stop.circle.fill").foregroundStyle(HelmText.quiet).font(HelmText.rowDetail)
                 if let note = HomebrewSettingsPage.failureNote(hb.op) {
-                    Text(note).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                        .fixedSize(horizontal: false, vertical: true)
+                    HelmSettingsNote(note)
                 }
             }
         case .failed:
             HStack(spacing: HelmSpace.s3) {
                 Label(HbStr.failed, systemImage: "xmark.octagon.fill").foregroundStyle(HelmSignal.danger(increased: traits.increasedContrast)).font(HelmText.rowDetail)
                 if let note = HomebrewSettingsPage.failureNote(hb.op) {
-                    Text(note).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                        .fixedSize(horizontal: false, vertical: true)
+                    HelmSettingsNote(note)
                 }
             }
         case .idle:

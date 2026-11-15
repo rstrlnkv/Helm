@@ -374,7 +374,7 @@ struct PermissionsWidget: View {
                 // do not, and a button that picks one of them silently is a
                 // button that lies about what it opened.
                 if withheld.count == 1, let only = withheld.first {
-                    Button(AppStr.grant) { only.openSettings() }
+                    Button(HelmWord.grant) { only.openSettings() }
                         .controlSize(.small)
                         .fixedSize()
                 } else {
@@ -409,9 +409,8 @@ struct DisabledModuleWidget: View {
                 Spacer(minLength: 4)
             }
             Text(AppStr.moduleIsOff)
-                .font(HelmText.rowDetail)
-                .foregroundStyle(HelmText.quiet)
-            Button(AppStr.turnOn) {
+                .helmQuietDetail()
+            Button(HelmWord.turnOn) {
                 ModuleHost.shared.setEnabled(descriptor, true)
                 NotificationCenter.default.post(name: .helmModuleOrderChanged, object: nil)
             }

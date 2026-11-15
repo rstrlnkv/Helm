@@ -66,7 +66,7 @@ struct LayoutTour: View {
                         .controlSize(.small)
                 }
                 if step > 0 {
-                    Button(LyStr.tourBack) {
+                    Button(HelmWord.back) {
                         withAnimation(HelmMotion.disclosure) { step -= 1 }
                     }
                 }
@@ -75,7 +75,7 @@ struct LayoutTour: View {
                     .font(HelmText.rowDetail)
                     .foregroundStyle(HelmText.faint)
                     .monospacedDigit()
-                Button(step == lastStep ? LyStr.introStart : LyStr.tourNext) {
+                Button(step == lastStep ? LyStr.introStart : HelmWord.next) {
                     if step == lastStep { onDone() }
                     else { withAnimation(HelmMotion.disclosure) { step += 1 } }
                 }

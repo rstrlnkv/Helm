@@ -178,8 +178,7 @@ struct VPNConnectionCard: View {
         HStack(spacing: HelmSpace.s3) {
             if let kind = prettyKind(connection.kind) { HelmBadge(kind).fixedSize() }
             Text(heldByHelm ? VPNStr.groupHeldByRules : VPNStr.status(connection.status))
-                .font(HelmText.rowDetail)
-                .foregroundStyle(HelmText.quiet)
+                .helmQuietDetail()
                 .lineLimit(1)
         }
     }
@@ -211,8 +210,7 @@ struct VPNConnectionCard: View {
                             .accessibilityHidden(true)
                     }
                     if strip.overflow > 0 {
-                        Text("+\(strip.overflow)").font(HelmText.rowDetail)
-                            .foregroundStyle(HelmText.quiet)
+                        Text("+\(strip.overflow)").helmQuietDetail()
                             .frame(width: Self.appIcon, height: Self.appIcon)
                             .background(Circle().fill(HelmSurface.onPanelFill))
                     }
@@ -322,8 +320,7 @@ struct VPNConnectionCard: View {
                     Image(systemName: "exclamationmark.triangle.fill").font(HelmText.rowDetail)
                         .foregroundStyle(HelmSignal.warning(increased: traits.increasedContrast))
                         .accessibilityHidden(true)
-                    Text(note).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                        .fixedSize(horizontal: false, vertical: true)
+                    HelmSettingsNote(note)
                 }
                 .padding(.leading, Self.appIcon + HelmSpace.s4)
                 .accessibilityHidden(true)

@@ -810,10 +810,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
 
     /// Whether the exit that just landed was asked for. Read at the exit, not
     /// when Stop is pressed: the answer belongs to the operation that ends.
-    private var wasStopped: Bool {
-        lock.lock(); defer { lock.unlock() }
-        return stopRequested
-    }
+    private var wasStopped: Bool { lock.withLock { stopRequested } }
 
     /// The one way every long operation ends, whatever started it: the stop
     /// answer is read while it is still this operation's, the marker cleared

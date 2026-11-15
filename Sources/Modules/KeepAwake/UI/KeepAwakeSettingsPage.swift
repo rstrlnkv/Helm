@@ -406,7 +406,7 @@ struct KeepAwakeSettingsPage: View {
     }
 
     @ViewBuilder private var appsSection: some View {
-        HelmSettingsSection(KAStr.appsSection) {
+        HelmSettingsSection(HelmWord.apps) {
             // A rules string nothing can read answers as «no rules» — safe, the
             // Mac sleeps — and is indistinguishable from having chosen none, so
             // the page says it.

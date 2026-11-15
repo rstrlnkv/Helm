@@ -76,7 +76,6 @@ enum HbStr {
     /// Said instead of that list when the query did not answer: a refusal is
     /// not «nothing depends on it», and the dialog says so.
     static var dependentsUnread: String { L(.dependentsUnread) }
-    static var cancel: String { HelmWord.cancel }
     static var uninstall: String { L(.uninstall) }
     /// **The Uninstall button, as opposed to the dialog's own Uninstall.**
     ///
@@ -133,14 +132,11 @@ enum HbStr {
         L(.couldNotSearch)
     }
 
-    static var done: String { HelmWord.done }
     static var failed: String { L(.failed) }
-    static var clear: String { HelmWord.clear }
     /// Ends the running operation — the only way out of a brew that will not
     /// finish. "Stop"/"Stopped" are the app's existing pair; Keep Awake and
     /// Disk already draw them with the same meaning.
     static var stop: String { HelmWord.stop }
-    static var stopped: String { HelmWord.stopped }
     /// Beside Stop, for the operation that is waiting on Apple's window: it
     /// ends the *waiting* and leaves Apple's installer alone, which a bare
     /// «Stop» would promise to end.
@@ -293,7 +289,6 @@ enum HbStr {
     /// along. `brew outdated` and `brew search` both go to the network, so this
     /// is the longest wait in the module and the one with least to look at.
     static var checkingForUpdates: String { L(.checkingForUpdates) }
-    static var searching: String { HelmWord.searching }
     /// Counted as labels rather than as sentences: one outdated package read as
     /// "1 updates" in five of the eight languages, and a strip of three figures
     /// is the one place where a label carries the meaning as well as a noun does.

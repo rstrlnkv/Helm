@@ -186,6 +186,11 @@ public enum HelmText {
 }
 
 extension View {
+    /// The quiet detail line: `HelmText.rowDetail` in `HelmText.quiet`.
+    public func helmQuietDetail() -> some View {
+        font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+    }
+
     /// A figure, in the one face figures are set in. See `HelmText.figureFont`.
     public func helmFigure() -> some View {
         font(HelmText.figureFont)

@@ -160,7 +160,7 @@ struct ScreenshotsSettingsPage: View {
                           taken: HotkeyStatus.isTaken(ScreenshotsHotkey.panel.slot),
                           note: conflictNote(.panel))
         } header: {
-            HelmSectionTitle(ScStr.shortcuts)
+            HelmSectionTitle(HelmWord.keyboardShortcuts)
         }
     }
 
@@ -378,8 +378,7 @@ struct ScreenshotsSettingsPage: View {
                 HStack(spacing: HelmSpace.s4) {
                     let choices = paletteChoices
                     Text(ScStr.toolsShown(choices.filter { shownItems.contains($0.item) }.count, of: choices.count))
-                        .font(HelmText.rowDetail)
-                        .foregroundStyle(HelmText.quiet)
+                        .helmQuietDetail()
                     Button(ScStr.choose) { choosing = true }
                         .controlSize(.small)
                         .popover(isPresented: $choosing) { toolList }
@@ -546,8 +545,7 @@ struct ScreenshotsSettingsPage: View {
                 HelmSettingRow(ScStr.folder, note: folderNote(folder)) {
                     HStack(spacing: HelmSpace.s4) {
                         Text(Self.shown(folder.url.path))
-                            .font(HelmText.rowDetail)
-                            .foregroundStyle(HelmText.quiet)
+                            .helmQuietDetail()
                             .lineLimit(1)
                             .truncationMode(.middle)
                         if target == .other {

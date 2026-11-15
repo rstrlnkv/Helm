@@ -91,10 +91,7 @@ public final class VPNEngine: ModuleEngine, @unchecked Sendable {
         lock.lock(); _lastAutomation = nil; lock.unlock()
     }
 
-    public var lastFailure: VPNFailure? {
-        lock.lock(); defer { lock.unlock() }
-        return _lastFailure
-    }
+    public var lastFailure: VPNFailure? { lock.withLock { _lastFailure } }
 
     /// The configurations a rule cannot raise, because their secret is in the
     /// System keychain and only a person's own gesture may open it. Published and

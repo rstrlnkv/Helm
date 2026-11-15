@@ -89,8 +89,8 @@ struct UninstallerSettingsPage: View {
     private var toolbarContent: HelmPageToolbarContent {
         HelmPageToolbarContent(
             tabs: [
-                HelmToolbarTab(id: Tab.apps.rawValue, title: UnStr.tabApps),
-                HelmToolbarTab(id: Tab.orphans.rawValue, title: UnStr.tabOrphans),
+                HelmToolbarTab(id: Tab.apps.rawValue, title: HelmWord.apps),
+                HelmToolbarTab(id: Tab.orphans.rawValue, title: HelmWord.leftovers),
             ],
             selectedTab: Binding(get: { tab.rawValue }, set: { tab = Tab(rawValue: $0) ?? tab }),
             tabsEnabled: step != .review,
@@ -108,7 +108,7 @@ struct UninstallerSettingsPage: View {
                         Task { await uvm.setSortOrder(order) }
                     }
                 }),
-                HelmToolbarAction(id: "refresh", title: UnStr.refreshList, symbol: "arrow.clockwise",
+                HelmToolbarAction(id: "refresh", title: HelmWord.refreshList, symbol: "arrow.clockwise",
                                   isEnabled: !loading, isVisible: tab == .apps, isBusy: loading) {
                     Task { await refreshApps() }
                 },
@@ -248,15 +248,15 @@ struct UninstallerSettingsPage: View {
             // stayed behind.
             report
             HStack(spacing: HelmSpace.s5) {
-                Button(UnStr.selectNone) { uvm.clearChecked() }
+                Button(HelmWord.clearSelection) { uvm.clearChecked() }
                     .disabled(checked.isEmpty)
                 Text(statusLine)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                    .helmQuietDetail()
                 Spacer()
                 Button {
                     Task { await uvm.prepareReview() }
                 } label: {
-                    HelmBusyLabel(uvm.scanning ? UnStr.scanning : UnStr.reviewCount(checked.count),
+                    HelmBusyLabel(uvm.scanning ? HelmWord.scanning : UnStr.reviewCount(checked.count),
                                   busy: uvm.scanning)
                 }
                 .buttonStyle(.borderedProminent)
@@ -304,7 +304,7 @@ struct UninstallerSettingsPage: View {
                     if system { HelmBadge(UnStr.systemApp) }
                 }
                 Text(app.path)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet).lineLimit(1)
+                    .helmQuietDetail().lineLimit(1)
                     .truncationMode(.middle)
             }
             // A name, a path and the System caption are one thing to read, in
@@ -349,7 +349,7 @@ struct UninstallerSettingsPage: View {
     /// size above it does not move when the date arrives.
     @ViewBuilder private func openedLine(_ app: InstalledApp) -> some View {
         if let line = openedText(app) {
-            Text(line).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+            Text(line).helmQuietDetail()
         } else {
             Text(verbatim: "—").font(HelmText.rowDetail).hidden()
         }
@@ -379,7 +379,7 @@ struct UninstallerSettingsPage: View {
                         .listRowSeparator(.hidden)
                         if group.leftovers.isEmpty {
                             Text(UnStr.noLeftoversForApp)
-                                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                                .helmQuietDetail()
                                 .listRowSeparator(.hidden)
                         }
                     } header: {
@@ -414,18 +414,18 @@ struct UninstallerSettingsPage: View {
             report
 
             HStack(spacing: HelmSpace.s5) {
-                Button(UnStr.back) { uvm.backToPick() }
+                Button(HelmWord.back) { uvm.backToPick() }
                 Spacer()
                 // A total that is not known is not drawn: the sizes are still
                 // being measured, or a bundle measured as nothing promises none.
                 if let bytes = uvm.reviewBytes, bytes > 0 {
-                    Text(UnStr.toTrash(Bytes(bytes))).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                    Text(UnStr.toTrash(Bytes(bytes))).helmQuietDetail()
                 }
                 let ready = UninstallPlan.readiness(groups, forceQuit: uvm.forceQuit) == .ready
                 Button {
                     Task { await uvm.removeSelection() }
                 } label: {
-                    HelmBusyLabel(uvm.busy ? UnStr.removing : UnStr.moveToTrash, busy: uvm.busy)
+                    HelmBusyLabel(uvm.busy ? UnStr.removing : HelmWord.moveToTrash, busy: uvm.busy)
                 }
                 .buttonStyle(.borderedProminent)
                 // **Not `!ready`.** That reads `group.running`, which is what the
@@ -455,9 +455,7 @@ struct UninstallerSettingsPage: View {
     /// the same way.
     @ViewBuilder private var report: some View {
         if let banner = uvm.resultBanner {
-            Text(banner)
-                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
+            HelmSettingsNote(banner)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, HelmLayout.formInset)
                 .padding(.top, HelmSpace.s5)
@@ -474,7 +472,7 @@ struct UninstallerSettingsPage: View {
                 Text(app.path)
                     .lineLimit(1).truncationMode(.middle)
                 Text(UnStr.theAppItself)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                    .helmQuietDetail()
             }
             .accessibilityElement(children: .combine)
             Spacer()
@@ -500,7 +498,7 @@ struct UninstallerSettingsPage: View {
                                         .lineLimit(1)
                                 }
                                 Text(failure.path)
-                                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                                    .helmQuietDetail()
                                     .lineLimit(1).truncationMode(.middle)
                                 Text(UnStr.failureReason(failure.reason))
                                     .font(HelmText.rowDetail).foregroundStyle(HelmSignal.warning)
@@ -531,13 +529,13 @@ struct UninstallerSettingsPage: View {
             Divider()
             HStack(spacing: HelmSpace.s5) {
                 if failures.contains(where: { $0.reason == .needsFullDiskAccess }) {
-                    Button(UnStr.openDiskAccess) { PermissionCheck.openFullDiskAccessSettings() }
+                    Button(HelmWord.openFullDiskAccess) { PermissionCheck.openFullDiskAccessSettings() }
                 }
                 if failures.contains(where: { $0.reason == .activeSystemExtension }) {
                     Button(UnStr.openExtensions) { PermissionCheck.openExtensionSettings() }
                 }
                 Spacer()
-                Button(UnStr.done) { uvm.dismissFailures() }
+                Button(HelmWord.done) { uvm.dismissFailures() }
                     .buttonStyle(.borderedProminent)
             }
             .helmPageStrip()
@@ -592,7 +590,7 @@ struct UninstallerSettingsPage: View {
                     }
                 }
                 Text(leftover.path)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                    .helmQuietDetail()
                     .lineLimit(1).truncationMode(.middle)
             }
             // The name, the badge that qualifies it and the path are one thing

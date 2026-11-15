@@ -55,8 +55,7 @@ public struct HelmAppHero<Badge: View>: View {
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel(spoken)
                 Text(tagline)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
+                    .helmQuietDetail()
             }
         }
     }

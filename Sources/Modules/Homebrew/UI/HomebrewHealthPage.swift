@@ -147,9 +147,7 @@ struct HomebrewHealthPage: View {
                     .font(HelmText.plateTitle)
                     .fixedSize(horizontal: false, vertical: true)
                 if let detail = Self.verdictDetail(verdict) {
-                    Text(detail)
-                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                        .fixedSize(horizontal: false, vertical: true)
+                    HelmSettingsNote(detail)
                 }
             }
             .padding(.top, HelmSpace.s1)
@@ -257,7 +255,7 @@ private struct FindingRow: View {
     private var title: some View {
         HStack(alignment: .firstTextBaseline, spacing: HelmSpace.s3) {
             Image(systemName: open ? "chevron.down" : "chevron.right")
-                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                .helmQuietDetail()
                 .frame(width: HomebrewHealthPage.chevronSlot)
                 // Nothing to open: the slot stays, the mark does not.
                 .opacity(toggle == nil ? 0 : 1)
@@ -346,11 +344,9 @@ private struct HealthFixBlock: View {
                         .padding(.leading, HelmSpace.s5 - HelmSpace.s3)
                 }
             }
-            Text(HbStr.brewNamedNoCommand).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
+            HelmSettingsNote(HbStr.brewNamedNoCommand)
             if fix.kind == .copyOnly {
-                Text(HbStr.helmDoesNotRunThis).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
+                HelmSettingsNote(HbStr.helmDoesNotRunThis)
             }
         }
     }
@@ -397,7 +393,7 @@ private struct ConfigurationCard: View {
                             ForEach(group.lines) { line in
                                 GridRow {
                                     Text(line.key)
-                                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                                        .helmQuietDetail()
                                     Text(line.value)
                                         .font(HelmText.code)
                                         .textSelection(.enabled)
@@ -421,14 +417,14 @@ private struct ConfigurationCard: View {
             Button(action: toggle) {
                 HStack(alignment: .center, spacing: HelmSpace.s3) {
                     Image(systemName: open ? "chevron.down" : "chevron.right")
-                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                        .helmQuietDetail()
                         .frame(width: HomebrewHealthPage.chevronSlot)
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: HelmSpace.s1) {
                         Text(HbStr.headingConfiguration)
                         if let summary = ConfigSummary.of(hb.config?.lines ?? []) {
                             Text(summary)
-                                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                                .helmQuietDetail()
                                 .lineLimit(1)
                         }
                     }

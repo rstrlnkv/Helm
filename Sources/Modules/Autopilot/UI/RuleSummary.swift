@@ -66,7 +66,7 @@ enum RuleSummary {
         case let .addTag(tag):
             L(.ruleActionTag(tag))
         case .trash:
-            ApStr.actionTrash
+            HelmWord.moveToTrash
         }
     }
 

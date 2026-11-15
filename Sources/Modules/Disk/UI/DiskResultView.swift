@@ -173,8 +173,8 @@ private struct BreadcrumbBar: View {
                 Image(systemName: "chevron.backward")
             }
             .disabled(dvm.focusPath.count <= 1)
-            .help(DkStr.back)
-            .accessibilityLabel(DkStr.back)
+            .help(HelmWord.back)
+            .accessibilityLabel(HelmWord.back)
 
             // `fixedSize` on the group, not on each crumb: a `frame(maxWidth:)`
             // is a range, and in an HStack with room to spare every crumb took
@@ -204,7 +204,7 @@ private struct BreadcrumbBar: View {
                             .helmFigure()
                             .foregroundStyle(HelmText.quiet)
                     }
-                    Button(DkStr.stop) { dvm.cancel() }
+                    Button(HelmWord.stopScan) { dvm.cancel() }
                         .controlSize(.small)
                 }
             } else {
@@ -233,7 +233,7 @@ private struct BreadcrumbBar: View {
             }
 
             HStack(spacing: HelmSpace.s4) {
-                Button(DkStr.scanAgain) { Task { await dvm.rescan() } }
+                Button(HelmWord.scanAgain) { Task { await dvm.rescan() } }
                     .disabled(dvm.walking || dvm.busy)
                 // The way out. "Scan again" measures the same place forever, so
                 // a scan of the wrong thing — or of a folder that was only ever
@@ -490,8 +490,7 @@ private struct ChildRow: View {
                 }
             }
             .buttonStyle(.borderless)
-            .font(HelmText.rowDetail)
-            .foregroundStyle(HelmText.quiet)
+            .helmQuietDetail()
             .frame(width: 13)
             if removable {
                 BasketButton(name: drawnName, basketed: basketed, removing: removing,

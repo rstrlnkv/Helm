@@ -42,13 +42,9 @@ struct DuplicatesSettingsPage: View {
             // results is told that files under a megabyte were never compared.
             if dvm.phase == .result, !dvm.groups.isEmpty {
                 VStack(alignment: .leading, spacing: HelmSpace.s3) {
-                    Text(DupStr.floorNote)
-                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                        .fixedSize(horizontal: false, vertical: true)
+                    HelmSettingsNote(DupStr.floorNote)
                     // The one clone-corrected total on the page, at every width.
-                    Text(DupStr.found(dvm.groups.count, Bytes(dvm.wastedBytes)))
-                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                        .fixedSize(horizontal: false, vertical: true)
+                    HelmSettingsNote(DupStr.found(dvm.groups.count, Bytes(dvm.wastedBytes)))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, HelmLayout.formInset).padding(.vertical, HelmSpace.s4)
@@ -81,12 +77,12 @@ struct DuplicatesSettingsPage: View {
         .animation(HelmMotion.interface, value: dvm.busy)
         .confirmationDialog(DupStr.confirmTrash(dvm.basket.count, Bytes(dvm.basketBytes)),
                             isPresented: $confirming, titleVisibility: .visible) {
-            Button(DupStr.moveToTrash, role: .destructive) {
+            Button(HelmWord.moveToTrash, role: .destructive) {
                 Task { await dvm.emptyBasket() }
             }
             // Without an explicit cancel SwiftUI supplies its own, in English
             // whatever language the rest of the dialog is in.
-            Button(DupStr.cancel, role: .cancel) {}
+            Button(HelmWord.cancel, role: .cancel) {}
         } message: {
             Text(Self.confirmationMessage(dvm.basket))
         }
@@ -123,7 +119,7 @@ struct DuplicatesSettingsPage: View {
 
             if dvm.phase == .searching {
                 ProgressView().controlSize(.small)
-                Button(DupStr.stop) { dvm.cancel() }
+                Button(HelmWord.stopScan) { dvm.cancel() }
                     .controlSize(.small)
             } else {
                 // Every control keeps its label at every width: the path is the
@@ -247,7 +243,7 @@ struct DuplicatesSettingsPage: View {
                 HStack(spacing: HelmSpace.s5) {
                     ProgressView().controlSize(.small)
                     Text(DupStr.busyLine(dvm.progress))
-                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                        .helmQuietDetail()
                         .contentTransition(.numericText())
                         .animation(HelmMotion.interface, value: dvm.progress?.hashed)
                     Spacer(minLength: HelmSpace.s4)
@@ -261,9 +257,7 @@ struct DuplicatesSettingsPage: View {
             // What the last press did to the marks, above the count it changed:
             // «unmarked: 2» is only worth reading beside the figure it explains.
             if let note = dvm.marksNote {
-                Text(note)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
+                HelmSettingsNote(note)
             }
             if !dvm.basket.isEmpty {
                 basketRow
@@ -291,7 +285,7 @@ struct DuplicatesSettingsPage: View {
                 // the Close button.
                 .frame(maxWidth: DuplicatesLayout.outcomeWidth, alignment: .leading)
             Spacer(minLength: HelmSpace.s4)
-            Button(DupStr.close) { dvm.dismissBanner() }
+            Button(HelmWord.close) { dvm.dismissBanner() }
                 .controlSize(.small)
         }
     }
@@ -308,8 +302,7 @@ struct DuplicatesSettingsPage: View {
             // draws it.
             if dvm.removalStopped {
                 Text(DupStr.removalStopped())
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
+                    .helmQuietDetail()
             }
             HelmRemovalOutcome(
                 succeededText: dvm.banner ?? "",
@@ -346,7 +339,9 @@ struct DuplicatesSettingsPage: View {
             }
             .menuStyle(.borderlessButton)
             .fixedSize()
-            .help(DupStr.basketContents)
+            // "Basket" appears nowhere on screen in any language — the bar above these
+            // controls is headed "To remove".
+            .help(HelmWord.showWhatIsMarkedForRemoval)
             Spacer()
             // Dimmed while a removal runs: the paths are already in the call to
             // the engine, so emptying the basket here clears the screen and not
@@ -355,7 +350,7 @@ struct DuplicatesSettingsPage: View {
                 .controlSize(.small)
                 .fixedSize()
                 .disabled(dvm.busy)
-            Button(DupStr.moveToTrash) { confirming = true }
+            Button(HelmWord.moveToTrash) { confirming = true }
                 .disabled(dvm.busy)
                 .buttonStyle(.borderedProminent)
                 // Never truncated: this is the one control on the page whose

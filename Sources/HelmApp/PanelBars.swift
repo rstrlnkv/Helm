@@ -150,7 +150,7 @@ struct PanelTabStrip: View {
         .help(title)
         .accessibilityLabel(title)
         .contextMenu {
-            Button(AppStr.renameSection) { rename(tab.id, title) }
+            Button(HelmWord.rename) { rename(tab.id, title) }
             Button(AppStr.tabIcon) { pickingGlyph = tab.id }
             Button(AppStr.closeTab, role: .destructive) {
                 // The token the tab buttons use. Bare, the content cut while
@@ -184,7 +184,7 @@ struct PanelEditBar: View {
         HStack(spacing: HelmSpace.s4) {
             Text(AppStr.panelSetup).font(.subheadline.weight(.semibold))
             Spacer(minLength: HelmSpace.s4)
-            Button(AppStr.done, action: done)
+            Button(HelmWord.done, action: done)
                 .controlSize(.small)
                 .buttonStyle(.borderedProminent)
         }
@@ -207,8 +207,7 @@ struct PanelGallery: View {
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpace.s3) {
             Text(AppStr.addWidget)
-                .font(HelmText.rowDetail)
-                .foregroundStyle(HelmText.quiet)
+                .helmQuietDetail()
             let columns = PanelGrid.columns(for: helmPanelWidth)
             ForEach(Array(stride(from: 0, to: ids.count, by: columns)), id: \.self) { start in
                 HStack(spacing: PanelGrid.gap) {

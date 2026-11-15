@@ -450,8 +450,7 @@ struct VPNTunnelHero: View {
                         HelmExpectedWait(started: measureStarted,
                                          expected: strip.expectedWait)
                         Text(word)
-                            .font(HelmText.rowDetail)
-                            .foregroundStyle(HelmText.quiet)
+                            .helmQuietDetail()
                     }
                     .frame(height: Self.verbHeight)
                 case .notOffered:
@@ -461,8 +460,7 @@ struct VPNTunnelHero: View {
             .helmCapsuleButtons()
             if case .notOffered(let sentence) = strip.action {
                 Text(sentence)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
+                    .helmQuietDetail()
                     .helmHeroSentence()
             }
         }

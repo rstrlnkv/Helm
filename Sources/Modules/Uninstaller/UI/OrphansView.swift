@@ -47,7 +47,7 @@ struct OrphansView: View {
 
     @ViewBuilder private var content: some View {
         if model.scanning {
-            HelmBusyState(UnStr.scanningOrphans)
+            HelmBusyState(HelmWord.searching)
         } else if !model.scanned {
             // The module's own tint, not a colour chosen per state: orange and
             // green here read as a warning and a success on a screen that is
@@ -60,10 +60,10 @@ struct OrphansView: View {
             }
         } else if model.groups.isEmpty {
             HelmEmptyState(symbol: "checkmark.circle", tint: UninstallerDescriptor.tint.colour,
-                           message: UnStr.noOrphans) {
+                           message: HelmWord.noLeftoversFound) {
                 // Not prominent: looking again for something that was not there
                 // is available, not recommended.
-                Button(UnStr.rescan) { Task { await model.scan() } }
+                Button(HelmWord.scanAgain) { Task { await model.scan() } }
             }
         } else {
             List {
@@ -117,9 +117,7 @@ struct OrphansView: View {
             // row, between the sentence and its own footnote.
             VStack(alignment: .leading, spacing: HelmSpace.s1) {
                 Text(UnStr.watchTrash).font(HelmText.rowTitle)
-                Text(UnStr.watchTrashNote)
-                    .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
+                HelmSettingsNote(UnStr.watchTrashNote)
             }
             Spacer(minLength: 0)
             // The switch's position comes from the engine, which is also the only
@@ -138,21 +136,21 @@ struct OrphansView: View {
 
     private var footer: some View {
         HStack {
-            Button(UnStr.rescan) { Task { await model.scan() } }.disabled(model.busy)
-            Button(model.allSelected ? UnStr.selectNone : UnStr.selectAll) { model.toggleAll() }
+            Button(HelmWord.scanAgain) { Task { await model.scan() } }.disabled(model.busy)
+            Button(model.allSelected ? HelmWord.clearSelection : HelmWord.selectAll) { model.toggleAll() }
             .disabled(model.busy)
             Spacer()
             Text(UnStr.selectedSummary(model.selected.count, Bytes(model.selectedBytes)))
-                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-            Button(UnStr.moveToTrash) { confirming = true }
+                .helmQuietDetail()
+            Button(HelmWord.moveToTrash) { confirming = true }
                 .buttonStyle(.borderedProminent)
                 .disabled(model.selected.isEmpty || model.busy)
         }
         .helmPageStrip()
         .confirmationDialog(UnStr.confirmTrash(model.selected.count, Bytes(model.selectedBytes)),
                             isPresented: $confirming, titleVisibility: .visible) {
-            Button(UnStr.moveToTrash, role: .destructive) { Task { await model.trashSelected() } }
-            Button(UnStr.cancel, role: .cancel) {}
+            Button(HelmWord.moveToTrash, role: .destructive) { Task { await model.trashSelected() } }
+            Button(HelmWord.cancel, role: .cancel) {}
         }
     }
 }

@@ -140,8 +140,7 @@ public struct HelmBusyState<Actions: View>: View {
             ProgressView().controlSize(.small)
             if let message {
                 Text(message)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
+                    .helmQuietDetail()
                     .multilineTextAlignment(.center)
             }
             actions

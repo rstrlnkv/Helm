@@ -72,7 +72,7 @@ struct HomebrewSettingsPage: View {
                                                  set: { if !$0 { hb.cancelFix() } }),
                             titleVisibility: .visible) {
             Button(HbStr.runTheFix, role: .destructive) { hb.confirmFix() }
-            Button(HbStr.cancel, role: .cancel) { hb.cancelFix() }
+            Button(HelmWord.cancel, role: .cancel) { hb.cancelFix() }
         } message: {
             if let note = hb.pendingFix.flatMap({ Self.fixQuestionNote($0, dependents: hb.dependentsOfPending) }) { Text(note) }
         }
@@ -82,7 +82,7 @@ struct HomebrewSettingsPage: View {
                                                  set: { if !$0 { hb.cancelUninstall() } }),
                             titleVisibility: .visible) {
             Button(HbStr.uninstall, role: .destructive) { hb.confirmUninstall() }
-            Button(HbStr.cancel, role: .cancel) { hb.cancelUninstall() }
+            Button(HelmWord.cancel, role: .cancel) { hb.cancelUninstall() }
         } message: {
             Text(Self.uninstallNote(dependents: hb.dependentsOfPending))
         }

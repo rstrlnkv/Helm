@@ -247,10 +247,10 @@ struct LogView: View {
                         AppSettings.loggingOverride = on
                         HelmLog.shared.setEnabled(on)
                     },
-                    HelmToolbarMenuItem(id: "reveal", title: AppStr.revealLog, isOn: false) {
+                    HelmToolbarMenuItem(id: "reveal", title: HelmWord.showInFinder, isOn: false) {
                         HelmReveal.inFinder(HelmLog.fileURL.path)
                     },
-                    HelmToolbarMenuItem(id: "clear", title: AppStr.clearLog, isOn: false,
+                    HelmToolbarMenuItem(id: "clear", title: HelmWord.clear, isOn: false,
                                         isEnabled: Self.canClear(entries: entries,
                                                                  storedLog: hasStoredLog)) {
                         // Both, because there is one Clear now and a person
@@ -560,7 +560,7 @@ struct LogView: View {
             Text(words.heading).font(HelmText.sectionHeading)
                 .accessibilityAddTraits(.isHeader)
             if let detail = words.detail {
-                Text(detail).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                Text(detail).helmQuietDetail()
             }
         }
         let badges = HStack(spacing: HelmSpace.s3) {
@@ -676,8 +676,7 @@ struct LogView: View {
         VStack(alignment: .leading, spacing: HelmSpace.s1) {
             let counts = Self.footerCounts(page, entries: entries, storedLog: hasStoredLog)
             if !counts.isEmpty {
-                Text(counts).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
+                HelmSettingsNote(counts)
             }
             Text(AppStr.logRedactionNote)
                 .font(HelmText.rowDetail).foregroundStyle(HelmText.faint)

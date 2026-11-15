@@ -83,10 +83,7 @@ public final class CGKeyTap: KeyTapPort, @unchecked Sendable {
     /// rest of the suite — or the person's own typing through a live engine —
     /// happens to create inside the measurement window, which made the count
     /// flake at ~1 in 3 full runs while the taps were tearing down correctly.
-    var portName: mach_port_name_t? {
-        lock.lock(); defer { lock.unlock() }
-        return tap.map { CFMachPortGetPort($0) }
-    }
+    var portName: mach_port_name_t? { lock.withLock { tap.map { CFMachPortGetPort($0) } } }
 
     /// The backstop, and after this the only guaranteed teardown. `deactivate()`
     /// is still the ordinary route; this covers every other way the port can be

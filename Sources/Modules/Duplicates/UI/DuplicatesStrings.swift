@@ -14,10 +14,6 @@ enum DupStr {
     /// the sentence does not ask for one again.
     static var startHintWithFolder: String { L(.helmWillReadThisFolder) }
     static var needsAccess: String { L(.withoutFullDiskAccess) }
-    static var stop: String { HelmWord.stopScan }
-    /// "Basket" appears nowhere on screen in any language — the bar above these
-    /// controls is headed "To remove".
-    static var basketContents: String { HelmWord.showWhatIsMarkedForRemoval }
     /// `HelmBasket` in HelmUI: Disk draws the same bar, so its two lines are
     /// built in one place.
     static func basketLine(_ count: Int, _ size: String) -> String {
@@ -26,9 +22,7 @@ enum DupStr {
     static func basketItem(_ name: String, _ size: String) -> String {
         HelmBasket.item(name: name, size: size)
     }
-    static var moveToTrash: String { HelmWord.moveToTrash }
     static var systemFile: String { L(.systemFile) }
-    static var reveal: String { HelmWord.showInFinder }
     static var quickLook: String { L(.quickLook) }
     /// `HelmBasket.movedToTrash`: Disk, Duplicates and the Uninstaller end a removal on one sentence; Leftovers counts the rows as well (`LfStr.movedToTrash`).
     static func movedToTrash(_ size: String) -> String {
@@ -279,6 +273,4 @@ enum DupStr {
         let files = Plural.files(count, language: language.rawValue)
         return L(.skippedNotRemovable(files), language: language)
     }
-    static var cancel: String { HelmWord.cancel }
-    static var close: String { HelmWord.close }
 }

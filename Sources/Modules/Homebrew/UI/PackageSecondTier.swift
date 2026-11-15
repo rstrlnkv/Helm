@@ -119,7 +119,7 @@ struct PackageSecondTier: View {
                         .lineLimit(1).truncationMode(.middle)
                     } else {
                         Label(homepage, systemImage: "globe")
-                            .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                            .helmQuietDetail()
                             .lineLimit(1).truncationMode(.middle)
                     }
                 }

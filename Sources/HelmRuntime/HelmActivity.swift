@@ -73,10 +73,7 @@ public enum HelmActivity {
         live[label] = Running(label: label, started: Date())
     }
 
-    public static func end(_ label: String) {
-        lock.lock(); defer { lock.unlock() }
-        live[label] = nil
-    }
+    public static func end(_ label: String) { lock.withLock { live[label] = nil } }
 
     /// Everything a module had open, dropped with the module. `ModuleHost` owns
     /// the lifecycle, so it is the only place with standing to do this: a scan
@@ -88,16 +85,10 @@ public enum HelmActivity {
         }
     }
 
-    public static var running: [Running] {
-        lock.lock(); defer { lock.unlock() }
-        return Array(live.values)
-    }
+    public static var running: [Running] { lock.withLock { Array(live.values) } }
 
     /// For tests, which must not inherit another test's phases.
-    static func reset() {
-        lock.lock(); defer { lock.unlock() }
-        live.removeAll()
-    }
+    static func reset() { lock.withLock { live.removeAll() } }
 
     /// The phrase that goes after a memory reading.
     ///

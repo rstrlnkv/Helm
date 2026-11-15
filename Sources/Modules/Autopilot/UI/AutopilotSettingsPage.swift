@@ -136,7 +136,7 @@ struct AutopilotSettingsPage: View {
                         }
                         .controlSize(.small)
                     }
-                    Button(ApStr.done) { rvm.dismissBanner() }.controlSize(.small)
+                    Button(HelmWord.done) { rvm.dismissBanner() }.controlSize(.small)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -292,7 +292,7 @@ struct AutopilotSettingsPage: View {
                 .controlSize(.mini)
                 .labelsHidden()
                 // The verb first, then which folder — the same shape as the
-                // rule rows' "\(ApStr.edit), \(rule.name)". The bare path would
+                // rule rows' "\(HelmWord.edit), \(rule.name)". The bare path would
                 // read as the Text beside it said twice, never as a switch that
                 // does something.
                 .accessibilityLabel("\(ApStr.watchFolder), \(Redact.path(folder.path))")
@@ -384,7 +384,7 @@ struct AutopilotSettingsPage: View {
                 Image(systemName: "slider.horizontal.3")
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel("\(ApStr.edit), \(rule.name)")
+            .accessibilityLabel("\(HelmWord.edit), \(rule.name)")
             // The order is the rule: the arrows are how it is set, and they are
             // reachable from the keyboard, which a drag is not.
             Button { rvm.move(rule, in: folder, by: -1) } label: {
@@ -410,7 +410,7 @@ struct AutopilotSettingsPage: View {
     }
 
     @ViewBuilder private func ruleActions(_ rule: Rule, in folder: WatchedFolder) -> some View {
-        Button(ApStr.edit) { editing = EditingRule(folder: folder, rule: rule) }
+        Button(HelmWord.edit) { editing = EditingRule(folder: folder, rule: rule) }
         Button(ApStr.delete, role: .destructive) { rvm.remove(rule, from: folder) }
     }
 }

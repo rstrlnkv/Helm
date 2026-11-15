@@ -242,10 +242,7 @@ struct AboutHelmView: View {
                     channelPills
                         .onChange(of: channel) { _, newValue in updater.setChannel(newValue) }
                 }
-                Text(AppStr.channelNote(channel))
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
-                    .fixedSize(horizontal: false, vertical: true)
+                HelmSettingsNote(AppStr.channelNote(channel))
             }
             .padding(.horizontal, HelmSpace.s5)
             .padding(.vertical, HelmSpace.s5)
@@ -464,7 +461,7 @@ private struct WhatsNewView: View {
                 // Escape closes it, like every sheet on the machine.
                 // `HelmHotkeyRecorder` special-cases Escape during capture and
                 // explains why; that care never reached the sheets.
-                Button(AppStr.close, action: onClose)
+                Button(HelmWord.close, action: onClose)
                     .keyboardShortcut(.cancelAction)
             }
             Divider()

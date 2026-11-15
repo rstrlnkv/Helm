@@ -89,7 +89,7 @@ import Module_Uninstaller_Engine
         guard let result else { return }
         failures = result.failures
         removedCount = result.trashed.count
-        banner = UnStr.movedToTrash(Bytes(result.freedBytes))
+        banner = HelmBasket.movedToTrash(Bytes(result.freedBytes))
     }
 
     func binding(for path: String) -> Binding<Bool> {

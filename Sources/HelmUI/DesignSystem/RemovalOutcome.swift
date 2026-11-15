@@ -108,8 +108,7 @@ public struct HelmRemovalOutcome: View {
                         .foregroundStyle(HelmSignal.warning(increased: traits.increasedContrast))
                     Text(Self.heading(succeeded: removed > 0 ? succeededText : nil,
                                       failed: failures.count))
-                        .font(HelmText.rowDetail)
-                        .foregroundStyle(HelmText.quiet)
+                        .helmQuietDetail()
                     Spacer(minLength: 8)
                     if needsFullDiskAccess {
                         Button(Self.grant) { PermissionNeed.fullDiskAccess.openSettings() }
@@ -183,7 +182,6 @@ public struct HelmRemovalOutcome: View {
     /// The sentence this row says quietly: what is known, with nothing to act on.
     private func quiet(_ text: String) -> some View {
         Text(text)
-            .font(HelmText.rowDetail)
-            .foregroundStyle(HelmText.quiet)
+            .helmQuietDetail()
     }
 }

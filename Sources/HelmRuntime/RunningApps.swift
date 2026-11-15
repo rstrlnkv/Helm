@@ -83,10 +83,7 @@ public final class RunningApps: @unchecked Sendable {
     /// Where the bundle of the instance running under that identifier is, as of
     /// the last snapshot. Nil when nothing of that identifier is running, or when
     /// macOS did not say where it came from.
-    public func bundleURL(of bundleID: String) -> URL? {
-        lock.lock(); defer { lock.unlock() }
-        return bundleURLs[bundleID]
-    }
+    public func bundleURL(of bundleID: String) -> URL? { lock.withLock { bundleURLs[bundleID] } }
 
     /// Refreshes on the main thread, then runs the block there. For an
     /// observer that may or may not already be on it.
@@ -105,10 +102,7 @@ public final class RunningApps: @unchecked Sendable {
     /// Whether the snapshot has ever been filled. A background caller reading
     /// before the first refresh gets an empty set, which reads as "nothing is
     /// running" — worth being able to tell apart in a test.
-    var hasSnapshot: Bool {
-        lock.lock(); defer { lock.unlock() }
-        return seeded
-    }
+    var hasSnapshot: Bool { lock.withLock { seeded } }
 
     /// Test seam: fills the snapshot without AppKit. The bundle locations come
     /// with it, because a snapshot that knows who is running and not where they

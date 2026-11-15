@@ -47,7 +47,7 @@ onto the block, is right for a grid the page draws itself and wrong for a filled
 which is a row that has not been written yet.
 
 A page that is not a grouped `Form` groups its rows with `HelmSettingsSection` (heading, one
-`helmCard`, a hairline between rows) and `HelmSettingsNote` (`HelmSettingsSection.swift`); its gaps are
+`helmCard`, a hairline between rows) and `HelmSettingsNote` (`HelmSettingsSection.swift`, the wrapping quiet line; a detail line that is not a note takes `.helmQuietDetail()` from `HelmText.swift`); its gaps are
 `HelmLayout.groupedHeaderGap` and `groupedHeaderOutset`, the form's own, so a kit page and a `Form` page
 keep one rhythm. Outside a `Form` a `Picker`, a segmented control and a `LabeledContent` no longer lay out
 "label left, control right" by themselves — that was the form's layout, not the controls': the section

@@ -84,7 +84,7 @@ enum DependentsReading: Equatable {
     /// about nine seconds, and for those nine seconds the results pane said
     /// «Ничего не найдено.»: the answer to the question, drawn while it was
     /// still being asked and pixel-identical to a true zero and to a refusal.
-    /// `HbStr.searching` was translated into all eight languages and drawn
+    /// `HelmWord.searching` was translated into all eight languages and drawn
     /// nowhere, because the branch that would have drawn it was unreachable by
     /// construction.
     @Published private(set) var searchReading: ListReading = .notAsked

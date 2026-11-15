@@ -497,10 +497,7 @@ public final class FilePopularityStore: PopularityReading, @unchecked Sendable {
         self.transfer = transfer
     }
 
-    public func readings() -> PopularityReadings {
-        lock.lock(); defer { lock.unlock() }
-        return loadedUnderTheLock()
-    }
+    public func readings() -> PopularityReadings { lock.withLock { loadedUnderTheLock() } }
 
     public func refreshIfDue() async {
         if let counts = await fetchIfDue(Self.formulae) {

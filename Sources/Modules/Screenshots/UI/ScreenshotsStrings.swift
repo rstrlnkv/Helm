@@ -12,7 +12,6 @@ enum ScStr {
     static var needsAccess: String { L(.needsAccess) }
 
     /// The system's own term, the kit's `HelmWord`, which Keyboard's page reads too.
-    static var shortcuts: String { HelmWord.keyboardShortcuts }
     static var captureArea: String { L(.captureArea) }
     static var captureScreen: String { L(.captureScreen) }
     static var openPanel: String { L(.openPanel) }
@@ -57,7 +56,6 @@ enum ScStr {
     static var panelArea: String { L(.panelArea) }
     static var captureButton: String { L(.captureButton) }
     static var options: String { L(.options) }
-    static var timer: String { HelmWord.timer }
     static func timer(_ timer: CaptureTimer) -> String {
         switch timer {
         case .none: L(.timerNone)
@@ -72,7 +70,6 @@ enum ScStr {
     static var putPanelBack: String { L(.putPanelBack) }
     static var floatingThumbnail: String { L(.floatingThumbnail) }
     static var rememberSelection: String { L(.rememberSelection) }
-    static var closePanel: String { HelmWord.close }
 
     /// macOS's own words — Save to, Desktop, Documents, Clipboard, Other… — read
     /// out of `screencaptureui`'s `Localizable.loctable`, where the same menu is drawn.
@@ -214,7 +211,7 @@ enum ScStr {
         }
     }
 
-    /// Fill and Save are items of the ⋯ menu (Fill inside Shapes); Copy is the capsule's cell, read in `ScStr.copy`.
+    /// Fill and Save are items of the ⋯ menu (Fill inside Shapes); Copy is the capsule's cell, read in `HelmWord.copy`.
     static var fill: String { L(.fill) }
     /// The submenu of the ⋯ menu that holds the shapes, and the pointer's item: Preview's own words: the
     /// selection tool is the noun «Выбор», key `Selection` of Preview's `DFR-BBBAA77A32-C4EBFEA440.loctable`, and the
@@ -229,7 +226,6 @@ enum ScStr {
     static var redo: String { L(.redo) }
     /// Preview's «Save».
     static var save: String { L(.save) }
-    static var closeEditor: String { HelmWord.close }
     /// The editor's checkmark: what Return does.
     static var done: String { HelmWord.done }
     /// Copy Text: the word of `VisionKitCore.framework`'s `Localizable.loctable`, key `VK_COPY_TEXT_MENU_ITEM_TITLE`, which is Live Text's menu item
@@ -256,8 +252,6 @@ enum ScStr {
     static var thumbnailLabel: String { L(.thumbnailLabel) }
     /// The capsule over a thumbnail: the clipboard's own word, and Finder's.
     static var edit: String { HelmWord.edit }
-    static var copy: String { HelmWord.copy }
-    static var showInFinder: String { HelmWord.showInFinder }
     /// The pile's capsule, the label on the row's farthest whole shot, and what a screen reader calls the pile. The
     /// count is interpolated; the verb is the kit's
     /// (`Copy`) and the noun the catalog's (`moduleName`). A pile is two shots or more; «N more» counts one as well, so
@@ -281,7 +275,6 @@ enum ScStr {
     static var replaced: String { L(.replaced) }
     /// The plate over an edited picture after a first Esc.
     static var confirmClose: String { L(.confirmClose) }
-    static var dismissToast: String { HelmWord.close }
     static var openSettings: String { L(.openSettings) }
     static var noPermissionTitle: String { L(.noPermissionTitle) }
     static var failedTitle: String { L(.failedTitle) }

@@ -38,7 +38,6 @@ enum KAStr {
     /// and Brazilian Portuguese genuinely say `Timer` in the same table.
     static var timer: String { HelmWord.timer }
     static var start: String { L(.start) }
-    static var stop: String { HelmWord.stop }
     /// Single-letter units for the narrow preset pills ("15 м", "1 ч").
     static var minutesUnitShort: String { L(.minutesShort) }
     /// German abbreviates with a period — `2 Std.` — in CLDR and in ordinary
@@ -181,7 +180,6 @@ enum KAStr {
         .sorted()
         .joined(separator: " · ")
     }
-    static var appsSection: String { HelmWord.apps }
     static func triggerCondition(_ condition: AppTrigger.Condition) -> String {
         switch condition {
         case .always: return L(.always)
@@ -457,7 +455,7 @@ enum KAStr {
     /// something else.
     static func stopWord(_ press: StopPress) -> String {
         switch press {
-        case .stopEverything, .stopSessionOnly: return stop
+        case .stopEverything, .stopSessionOnly: return HelmWord.stop
         case .turnAutomationOff: return switchOff
         }
     }
@@ -583,7 +581,6 @@ enum KAStr {
     }
     static var activeIconColor: String { L(.activeIconColour) }
     static var ringColorNote: String { L(.activeIconColourHint) }
-    static var addApp: String { HelmWord.addApp }
     static var ringTimer: String { L(.countdownRing) }
     static var ringTimerNote: String { L(.countdownRingHint) }
     static var showTimerText: String { L(.showRemainingTime) }

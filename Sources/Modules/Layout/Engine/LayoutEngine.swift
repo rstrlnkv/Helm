@@ -713,10 +713,7 @@ public final class LayoutEngine: ModuleEngine, @unchecked Sendable {
     }
 
     /// The key the gesture is bound to. Read at start and on every change.
-    var boundTapKey: TapKey {
-        lock.lock(); defer { lock.unlock() }
-        return tapKey.key
-    }
+    var boundTapKey: TapKey { lock.withLock { tapKey.key } }
 
     /// One key, pressed and released on its own, does both jobs in turn.
     ///

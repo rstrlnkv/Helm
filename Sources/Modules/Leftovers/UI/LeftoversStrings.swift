@@ -13,7 +13,6 @@ enum LfStr {
     static var moduleNameShort: String { L(.loginItems) }
     static var summary: String { L(.summary) }
     static var filterAll: String { L(.all) }
-    static var filterLeftovers: String { HelmWord.leftovers }
     static var statusInUse: String { L(.inUse) }
     static var statusProtected: String { L(.systemEntry) }
     static var statusOrphaned: String { L(.leftover) }
@@ -28,8 +27,6 @@ enum LfStr {
     /// «Unreadable» — that word is about this file, and this file was fine.
     static var statusUndetermined: String { L(.notChecked) }
     static var scan: String { L(.scan) }
-    static var scanning: String { HelmWord.scanning }
-    static var rescan: String { HelmWord.scanAgain }
     /// Under the invitation on the first screen, so it is read once and then not
     /// again: what is in the list, and what may leave it.
     static var intro: String { L(.whatTheListHolds) }
@@ -75,7 +72,6 @@ enum LfStr {
     /// («Показать»), so a shared key would put the wrong aspect on one of them in
     /// every Slavic language.
     static var filter: String { L(.filter) }
-    static var cancelAction: String { HelmWord.cancel }
     /// **The row's menu names the same act as the bar's button**, plus the
     /// ellipsis that says a question follows: the dialog's destructive button says
     /// «Move to Trash» and the report afterwards «Moved to the Trash», so the
@@ -149,7 +145,6 @@ enum LfStr {
 
     /// Says what the act is, which is moving a file to the Trash.
     static var needsAdmin: String { L(.onlyAnAdministratorCanMoveThis) }
-    static var nothingFound: String { HelmWord.noLeftoversFound }
     /// The message over the empty list, one per reason there is no list.
     ///
     /// Over the enum and exhaustive, for the reason `kindName` records: a
@@ -159,7 +154,7 @@ enum LfStr {
     static func emptyMessage(_ nothing: LeftoversEmpty.Reason) -> String {
         switch nothing {
         case .notScanned: return notScannedYet
-        case .nothingFound: return nothingFound
+        case .nothingFound: return HelmWord.noLeftoversFound
         // A claim about the filter, not about the Mac — and the filter menu is on
         // screen above this line, which is what makes it worth its own sentence.
         case .hiddenByFilter: return L(.everythingHiddenByFilter)
@@ -200,9 +195,6 @@ enum LfStr {
     static func confirmSelected(_ count: Int, _ size: String) -> String {
         HelmConfirm.trash(Plural.items(count, language: AppLanguage.current.rawValue), size)
     }
-    static var removeSelected: String { HelmWord.moveToTrash }
-    static var selectAll: String { HelmWord.selectAll }
-    static var deselectAll: String { HelmWord.clearSelection }
     /// **A badge is a mark, not a predicate.** «Runs at login» measured 137 pt of
     /// pill in German, and against the fourteen real launch-agent labels on this
     /// Mac ten of the fourteen then truncated — seven of fourteen in Russian. What

@@ -88,14 +88,13 @@ struct HistorySection: View {
             let problems = summary.refused + summary.failed
             if problems > 0 {
                 Text(ApStr.historyProblems(problems))
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
+                    .helmQuietDetail()
             }
             Spacer(minLength: HelmSpace.s4)
             // Not while the card below is showing, which carries the same
             // gesture under a label that says what it does.
             if !history.isEmpty, !refused {
-                Button(ApStr.historyClear) { clear(.history) }
+                Button(HelmWord.clear) { clear(.history) }
                     .controlSize(.small)
             }
         }
@@ -116,8 +115,7 @@ struct HistorySection: View {
         VStack(alignment: .leading, spacing: HelmSpace.s3) {
             HStack(spacing: HelmSpace.s4) {
                 Text(ApStr.passHeader(at: run.at, folder: run.folder, files: run.records.count))
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
+                    .helmQuietDetail()
                     .lineLimit(1)
                 Spacer(minLength: HelmSpace.s4)
                 if canPutBackRun(run) {
@@ -157,8 +155,7 @@ struct HistorySection: View {
                 // writing it chose it: "Invoices" explains more than any sentence
                 // this screen could compose.
                 Text(record.rule)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
+                    .helmQuietDetail()
                     .lineLimit(1)
             }
             // What the last return came to for this file, on its own row. Aligned
@@ -168,10 +165,7 @@ struct HistorySection: View {
             if let note = note(record) {
                 HStack(spacing: HelmSpace.s4) {
                     Spacer().frame(width: HelmSpace.s4)
-                    Text(note)
-                        .font(HelmText.rowDetail)
-                        .foregroundStyle(HelmText.quiet)
-                        .fixedSize(horizontal: false, vertical: true)
+                    HelmSettingsNote(note)
                     Spacer(minLength: HelmSpace.s4)
                 }
             }

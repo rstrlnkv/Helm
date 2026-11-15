@@ -254,8 +254,7 @@ struct RingView: View {
     private var centerLabel: some View {
         VStack(spacing: HelmSpace.s1) {
             Text(focusName)
-                .font(HelmText.rowDetail)
-                .foregroundStyle(HelmText.quiet)
+                .helmQuietDetail()
                 .lineLimit(1).truncationMode(.middle)
             Text(Bytes(focusBytes))
                 .font(RingView.figureFont)
@@ -273,7 +272,7 @@ struct RingView: View {
                                                 ? foldingBackLevels : 1),
                            value: focusBytes)
             if growing {
-                Text(DkStr.scanningNow)
+                Text(HelmWord.scanning)
                     .font(HelmText.smallPrint)
                     .foregroundStyle(HelmText.faint)
             }

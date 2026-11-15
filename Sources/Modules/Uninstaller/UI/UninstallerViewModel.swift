@@ -385,7 +385,7 @@ extension UninstallerEngine: UninstallerWork {}
             // path already has its reason.
             failures = result.failures
         } else {
-            resultBanner = UnStr.movedToTrash(moved)
+            resultBanner = HelmBasket.movedToTrash(moved)
             failures = []
         }
 

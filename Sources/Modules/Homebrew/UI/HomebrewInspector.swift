@@ -85,7 +85,7 @@ struct HomebrewInspector: View {
                     Text(subject.name).font(HelmText.sectionHeading)
                     if subject.isCask { HelmBadge(HbStr.cask, tint: HomebrewPackageRow.caskTint) }
                     if !subject.version.isEmpty {
-                        Text(subject.version).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                        Text(subject.version).helmQuietDetail()
                     }
                     inspectorAction(subject)
                     Spacer(minLength: 0)
@@ -127,7 +127,7 @@ struct HomebrewInspector: View {
                     }
                 }
                 if let desc = subject.desc {
-                    Text(desc).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                    Text(desc).helmQuietDetail()
                 }
                 // **The second tier, and only when there is an answer.**
                 // Everything above this line is a function of the lists the

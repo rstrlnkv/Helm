@@ -253,12 +253,12 @@ struct ShotToastView: View {
                 ForEach(cells.filter { $0 != .close }, id: \.self) { cell in
                     switch cell {
                     case .edit: GlassCell(symbol: "pencil", name: ScStr.edit) { model.edit() }
-                    case .copy: GlassCell(symbol: "doc.on.doc", name: ScStr.copy) { model.copy() }
+                    case .copy: GlassCell(symbol: "doc.on.doc", name: HelmWord.copy) { model.copy() }
                     case .copyAll:
                         GlassCell(symbol: "doc.on.doc", name: ScStr.copyAll(model.shots.count { $0.caption != nil })) {
                             model.copyAll()
                         }
-                    case .reveal: GlassCell(symbol: "folder", name: ScStr.showInFinder) { reveal(shot) }
+                    case .reveal: GlassCell(symbol: "folder", name: HelmWord.showInFinder) { reveal(shot) }
                     case .close: EmptyView()
                     }
                 }
@@ -291,16 +291,14 @@ struct ShotToastView: View {
     /// alone, `ShotToast.close`), and the refusal's, which stays up `ShotToast.refusalLife` in the corner where the next click
     /// goes. A thumbnail still being written has none.
     private var closeCell: some View {
-        GlassCell(symbol: "xmark", name: ScStr.dismissToast) { model.dismiss() }
+        GlassCell(symbol: "xmark", name: HelmWord.close) { model.dismiss() }
     }
 
     private func refusal(title: String, body: String, offersSettings: Bool) -> some View {
         VStack(alignment: .leading, spacing: HelmSpace.s3) {
             // Clear of the close control in the corner.
             Text(title).font(HelmText.rowTitle).padding(.trailing, HelmSpace.s7)
-            Text(body)
-                .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
-                .fixedSize(horizontal: false, vertical: true)
+            HelmSettingsNote(body)
             if offersSettings {
                 Button(ScStr.openSettings) { PermissionNeed.screenRecording.openSettings() }
                     .controlSize(.small)

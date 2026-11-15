@@ -95,8 +95,7 @@ struct LayoutTile: View {
                 if size == .tall, let saved = savedLabel(state, period) {
                     // The page's second figure; quiet, because it is an estimate.
                     Text(saved)
-                        .font(HelmText.rowDetail)
-                        .foregroundStyle(HelmText.quiet)
+                        .helmQuietDetail()
                         .lineLimit(1)
                         .minimumScaleFactor(0.8) // a long estimate shrinks before it truncates
                 }

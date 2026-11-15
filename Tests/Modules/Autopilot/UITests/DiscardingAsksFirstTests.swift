@@ -108,7 +108,7 @@ final class DiscardingAsksFirstTests: XCTestCase {
         let history = try source("HistorySection.swift")
         XCTAssertTrue(page.contains("Button(ApStr.discardRules, role: .destructive) {\n                        rvm.ask(.rules)"),
                       "the banner button no longer only asks")
-        XCTAssertTrue(history.contains("Button(ApStr.historyClear) { clear(.history) }"))
+        XCTAssertTrue(history.contains("Button(HelmWord.clear) { clear(.history) }"))
         XCTAssertTrue(history.contains("Button(ApStr.discardHistory) { clear(.refusedHistory) }"))
         XCTAssertTrue(page.contains("clear: { rvm.ask($0) }"), "the history section's clear no longer only asks")
         // The confirm button hands over what the dialog showed, read before the dialog clears it.

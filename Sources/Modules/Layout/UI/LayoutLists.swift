@@ -48,7 +48,7 @@ struct LayoutLists: View {
             Divider()
             HStack {
                 Spacer()
-                Button(LyStr.listsDone) { close() }
+                Button(HelmWord.done) { close() }
                     .keyboardShortcut(.cancelAction)
             }
             .padding(.horizontal, HelmLayout.formInset)
@@ -121,7 +121,7 @@ struct LayoutLists: View {
                     id: \.self) { bundleID in
                 appRow(bundleID, layoutSources: layoutSources)
             }
-            Button { pickApps() } label: { Label(LyStr.addApp, systemImage: "plus") }
+            Button { pickApps() } label: { Label(HelmWord.addApp, systemImage: "plus") }
         } header: {
             HelmSectionTitle(LyStr.apps)
         } footer: {

@@ -68,10 +68,7 @@ public final class EngineNews<Value: Sendable>: @unchecked Sendable {
     /// An observability seam, not a feature: a subscriber that outlives the page
     /// that made it is invisible from the outside, and the only regression guard
     /// that works for it is a count that must not grow.
-    public var subscriberCount: Int {
-        lock.lock(); defer { lock.unlock() }
-        return subscribers.count
-    }
+    public var subscriberCount: Int { lock.withLock { subscribers.count } }
 
     public func say(_ value: Value, slot: String = "state") {
         lock.lock()

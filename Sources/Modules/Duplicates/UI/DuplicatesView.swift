@@ -76,11 +76,10 @@ struct DuplicatesView: View {
                     Divider()
                     HStack {
                         Text((path as NSString).lastPathComponent)
-                            .font(HelmText.rowDetail)
-                            .foregroundStyle(HelmText.quiet)
+                            .helmQuietDetail()
                             .lineLimit(1).truncationMode(.middle)
                         Spacer()
-                        Button(DupStr.close) { previewPath = nil }
+                        Button(HelmWord.close) { previewPath = nil }
                             .keyboardShortcut(.cancelAction)
                     }
                     .padding(HelmSpace.s5)
@@ -202,7 +201,7 @@ struct DuplicatesView: View {
                     .disabled(dvm.busy)
             }
             Button(DupStr.quickLook) { preview(path) }
-            Button(DupStr.reveal) { reveal(path) }
+            Button(HelmWord.showInFinder) { reveal(path) }
         }
         // The same actions where VoiceOver can reach them, since the menu
         // above needs a right-click.
@@ -213,7 +212,7 @@ struct DuplicatesView: View {
                 Button(DupStr.keepThisCopy) { keep() }
             }
             Button(DupStr.quickLook) { preview(path) }
-            Button(DupStr.reveal) { reveal(path) }
+            Button(HelmWord.showInFinder) { reveal(path) }
         }
     }
 

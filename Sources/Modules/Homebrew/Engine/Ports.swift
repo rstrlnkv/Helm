@@ -332,13 +332,7 @@ public final class OperationGate: @unchecked Sendable {
 
     /// Takes the marker only while nobody holds the gate, in one step: an
     /// operation that starts after the check cannot lose its marker to it.
-    func takeMarkerIfFree(_ marker: OpMarker) -> String? {
-        lock.lock(); defer { lock.unlock() }
-        return holder == nil ? marker.take() : nil
-    }
+    func takeMarkerIfFree(_ marker: OpMarker) -> String? { lock.withLock { holder == nil ? marker.take() : nil } }
 
-    var isHeld: Bool {
-        lock.lock(); defer { lock.unlock() }
-        return holder != nil
-    }
+    var isHeld: Bool { lock.withLock { holder != nil } }
 }

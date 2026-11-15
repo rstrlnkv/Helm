@@ -211,7 +211,7 @@ struct SidebarComposerListRow: View {
 
     private func menu(_ section: SidebarLayout.Section) -> some View {
         Menu {
-            Button(AppStr.renameSection) { rename(section) }
+            Button(HelmWord.rename) { rename(section) }
             if section.seed != nil, section.name != nil {
                 Button(AppStr.useDefaultSectionName) {
                     apply(layout.renaming(section.id, to: nil))

@@ -216,6 +216,7 @@ final class HeldWork: DuplicatesWork, @unchecked Sendable {
 /// real path, and one in `/tmp` would be refused for the wrong reason.
 var home: String { NSHomeDirectory() }
 
+/// The three files of the fixtures: the copy that stays, the extra, and a third.
 var keptCopy: String { "\(home)/Downloads/keep.bin" }
 var extraCopy: String { "\(home)/Downloads/extra.bin" }
 var secondCopy: String { "\(home)/Downloads/second.bin" }

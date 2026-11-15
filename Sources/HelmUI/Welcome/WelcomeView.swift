@@ -157,8 +157,7 @@ public struct WelcomeView: View {
                     .toggleStyle(.switch)
                     .onChange(of: switchOn) { _, on in actions.setModuleEnabled(moduleID, on) }
                 Text(WelcomeStr.switchHint)
-                    .font(HelmText.rowDetail)
-                    .foregroundStyle(HelmText.quiet)
+                    .helmQuietDetail()
                 // **The one thing a step can do besides keeping its module.**
                 // A tour that only describes leaves everybody at the end of it
                 // with the descriptions and nothing set up; a module with

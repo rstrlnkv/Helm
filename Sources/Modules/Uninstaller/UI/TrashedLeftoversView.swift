@@ -202,7 +202,7 @@ extension TrashedAppLeftovers: Identifiable { public var id: String { appPath } 
         guard !result.failures.isEmpty else { return true }
         failures = result.failures
         removedCount = result.trashed.count
-        outcome = UnStr.movedToTrash(Bytes(result.freedBytes))
+        outcome = HelmBasket.movedToTrash(Bytes(result.freedBytes))
         return false
     }
 
@@ -396,7 +396,7 @@ struct TrashedLeftoversView: View {
             Spacer()
             if model.busy {
                 ProgressView().controlSize(.small)
-                Text(UnStr.removing).font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                Text(UnStr.removing).helmQuietDetail()
             }
             // The report replaces the list, whichever report it is: a window that
             // has said something has nothing left to offer, and a second press
@@ -404,10 +404,10 @@ struct TrashedLeftoversView: View {
             if removalReport == nil {
                 if !model.busy {
                     Text(UnStr.selectedSummary(model.selected.count, Bytes(model.totalBytes)))
-                        .font(HelmText.rowDetail).foregroundStyle(HelmText.quiet)
+                        .helmQuietDetail()
                         .lineLimit(1)
                 }
-                Button(UnStr.moveToTrash) {
+                Button(HelmWord.moveToTrash) {
                     Task {
                         if await model.removeSelection() { onClose() }
                     }
@@ -420,7 +420,7 @@ struct TrashedLeftoversView: View {
                 // their files. Escape still cancels, which is the safe direction.
                 .disabled(model.selected.isEmpty || model.busy)
             } else {
-                Button(UnStr.done) { onClose() }
+                Button(HelmWord.done) { onClose() }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
             }

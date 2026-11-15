@@ -48,9 +48,9 @@ struct ActionRow: View {
             switch self {
             case .move: ApStr.actionMove
             case .sort: ApStr.actionSort
-            case .rename: ApStr.actionRename
+            case .rename: HelmWord.rename
             case .tag: ApStr.actionTag
-            case .trash: ApStr.actionTrash
+            case .trash: HelmWord.moveToTrash
             }
         }
 
@@ -95,8 +95,8 @@ struct ActionRow: View {
                 .lineLimit(1).truncationMode(.middle)
             // The panel is the only way a destination gets in, so a rule cannot
             // name a folder nobody looked at.
-            Button(ApStr.chooseDestination) {
-                guard let url = FolderPicker.choose(prompt: ApStr.chooseDestination, startingAt: nil,
+            Button(HelmWord.choose) {
+                guard let url = FolderPicker.choose(prompt: HelmWord.choose, startingAt: nil,
                                                     canCreate: false, activate: false) else { return }
                 action = .move(to: url.path)
             }

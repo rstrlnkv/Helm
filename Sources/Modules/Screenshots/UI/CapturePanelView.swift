@@ -47,7 +47,7 @@ struct CapturePanelView: View {
 
     var body: some View {
         HStack(spacing: HelmSpace.s2) {
-            GlassCell(symbol: "xmark", name: ScStr.closePanel, look: .greyCircle) { model.cancel() }
+            GlassCell(symbol: "xmark", name: HelmWord.close, look: .greyCircle) { model.cancel() }
                 .padding(.trailing, HelmSpace.s1)
             HStack(spacing: HelmSpace.s2) {
                 modeControl(.screen, symbol: "dock.rectangle", name: ScStr.panelScreen)
@@ -103,7 +103,7 @@ struct CapturePanelView: View {
     /// «No timer» in them switches it off.
     private var timerCell: some View {
         let on = model.timerOn
-        return GlassCell(name: on ? ScStr.timerOn(model.settings.timer) : ScStr.timer, selected: on,
+        return GlassCell(name: on ? ScStr.timerOn(model.settings.timer) : HelmWord.timer, selected: on,
                          width: Self.timerWidth, height: Self.cellHeight) {
             if on {
                 popUp(PanelMenus.timer(model.settings.timer) { model.choose($0) }, under: timerFrame)
@@ -178,7 +178,7 @@ struct CapturePanelView: View {
         }
         .frame(width: HelmSpace.s7, height: HelmSpace.s7)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(ScStr.timer)
+        .accessibilityLabel(HelmWord.timer)
         .accessibilityValue(String(seconds))
     }
 }

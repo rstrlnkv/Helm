@@ -12,14 +12,10 @@ enum DkStr {
     static var scanning: String { L(.scanning) }
     /// The ring's line under the figure while the walk runs: the kit's «Scanning…»,
     /// which the other scanning pages read.
-    static var scanningNow: String { HelmWord.scanning }
-    static var stop: String { HelmWord.stopScan }
-    static var cancel: String { HelmWord.cancel }
     /// Drops the scan from the screen and goes back to the picker — and forgets the
     /// saved one, which is the only way out of a scan that should not have been
     /// there: without it the module reopens on its last scan at every launch.
     static var chooseAnother: String { L(.chooseAnother) }
-    static var scanAgain: String { HelmWord.scanAgain }
     /// The tile's own door into the page. A verb and the module's name, because
     /// VoiceOver reads it out of context: «Open» alone answers nothing in a
     /// panel holding ten tiles.
@@ -31,10 +27,6 @@ enum DkStr {
     static func usedOfTotal(_ volume: VolumeInfo) -> String {
         Bytes(volume.usedBytes) + " / " + Bytes(volume.totalBytes)
     }
-    static var moveToTrash: String { HelmWord.moveToTrash }
-    /// "Basket" was the only place the English UI used the word: no visible
-    /// label says it — the bar itself is headed "To remove".
-    static var basketContents: String { HelmWord.showWhatIsMarkedForRemoval }
     /// `HelmBasket` in HelmUI — the same bar Duplicates draws, and both had
     /// these two lines built inside the view with a Latin middle dot and an
     /// ASCII colon whatever the language.
@@ -159,7 +151,6 @@ enum DkStr {
     static func ringShare(_ name: String, _ size: String, _ percent: Int) -> String {
         L(.ringShare(name, size, "\(percent)"))
     }
-    static var back: String { HelmWord.back }
     static func liveCount(_ files: Int,
                           language: AppLanguage = AppLanguage.current) -> String {
         let n = Count(files, language: language)

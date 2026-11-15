@@ -52,9 +52,7 @@ public enum VPNWorkQueue: Sendable {
     /// What a recursive lock still refuses is the case that was wrong: a
     /// *second* thread entering while the first is inside.
     private static func inlineSerially(_ block: @escaping @Sendable () -> Void) {
-        inlineLock.lock()
-        defer { inlineLock.unlock() }
-        block()
+        inlineLock.withLock { block() }
     }
 
     private static let inlineLock = NSRecursiveLock()

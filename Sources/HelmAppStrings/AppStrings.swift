@@ -57,7 +57,6 @@ public enum AppStr {
     /// identically is how a person stops seeing the heading at all, so the row
     /// says what it chooses between.
     public static var lightOrDark: String { L(.lightOrDark) }
-    public static var launchAtLogin: String { HelmWord.openHelmAtLogin }
     public static var checking: String { L(.checking) }
     public static var upToDate: String { L(.upToDate) }
     /// Said to somebody running a build the channel has not published yet —
@@ -97,14 +96,11 @@ public enum AppStr {
                                 language: AppLanguage = AppLanguage.current) -> String {
         L(.updateFoundBody(version), language: language)
     }
-    public static var edit: String { HelmWord.edit }
-    public static var done: String { HelmWord.done }
     public static var permissionsChanged: String { L(.permissionsChanged) }
     public static var later: String { L(.later) }
     public static var permissions: String { L(.permissions) }
     static var fullDiskAccess: String { L(.fullDiskAccess) }
     public static var fullDiskAccessAdHoc: String { L(.fullDiskAccessAdHoc) }
-    public static var grant: String { HelmWord.grant }
     public static var permissionGranted: String { L(.permissionGranted) }
     /// Beside `grant`, and never a bare "Show": Login Items already labels its
     /// filter menu that way, where the word is a standing choice rather than an
@@ -215,14 +211,12 @@ public enum AppStr {
     static var screenRecordingWhy: String { L(.screenRecordingWhy) }
     public static var writeLog: String { L(.writeLog) }
     public static func logNoteStableAt(_ folder: String) -> String { L(.logNoteStableAt(folder)) }
-    public static var revealLog: String { HelmWord.showInFinder }
     public static var copyLog: String { L(.copyLog) }
     /// Next to the button whose whole purpose is pasting this into a bug report.
     /// `HelmLog` tags app and VPN names through `Redact` before writing; paths
     /// keep their folder and file names, and the home folder is written as `~`
     /// (`Redact.path`). That is a reason to press the button rather than a footnote.
     public static var logRedactionNote: String { L(.logRedactionNote) }
-    public static var clearLog: String { HelmWord.clear }
 
     public static func loginItemNeedsApproval(language: AppLanguage = AppLanguage.current) -> String {
         L(.loginItemNeedsApproval, language: language)
@@ -452,7 +446,6 @@ public enum AppStr {
     /// about dragging and sections; the column of switches carried none.
     public static var moduleSwitchNote: String { L(.moduleSwitchNote) }
     public static var newSection: String { L(.newSection) }
-    public static var renameSection: String { HelmWord.rename }
     public static var removeSection: String { L(.removeSection) }
     public static var useDefaultSectionName: String { L(.useDefaultSectionName) }
     /// The empty section's own row. A section somebody just made has no modules
@@ -571,7 +564,6 @@ public enum AppStr {
     /// guards — the exact shape the changelog's twenty tables had when one of
     /// them shipped English to six languages.
     public static var authorName: String { L(.authorName) }
-    public static var close: String { HelmWord.close }
     public static var quit: String { L(.quit) }
     /// Explains the tint rule without naming a specific module (the icon is no
     /// longer ring-only, and module names are themselves localized).
@@ -602,8 +594,6 @@ public enum AppStr {
         }
     }
 
-    public static var turnOn: String { HelmWord.turnOn }
-    public static var cancel: String { HelmWord.cancel }
     public static var resetSection: String { L(.resetSection) }
     public static var resetAll: String { L(.resetAll) }
     public static var resetNote: String { L(.resetNote) }
