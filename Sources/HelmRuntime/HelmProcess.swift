@@ -111,7 +111,7 @@ public enum HelmProcess {
     /// already here, became a String on return, and were copied straight back
     /// into `Data` at the call site. Measured on `outdated()` at 13 MB of
     /// payload: 79–80 MB held at peak through the String round-trip, 50–51 MB
-    /// handing the bytes through (`OutdatedQueryAllocationBenchmark`).
+    /// handing the bytes through (measured once; the benchmark is gone).
     ///
     /// `standardError: .merged` points stderr at the same pipe as stdout, in
     /// write order; the deadline, TERM, grace and KILL are the same.

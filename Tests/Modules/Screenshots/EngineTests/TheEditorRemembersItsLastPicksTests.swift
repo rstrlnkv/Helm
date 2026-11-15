@@ -7,6 +7,7 @@ import XCTest
 /// anything gets the nearest thing the editor has.** The store is a file any process running
 /// as the user can write: a stored number is clamped to the steps there are, and a name that
 /// is none of the cases is the default, never a crash and never a stranger's value.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/EditorMemory.swift`: `clamped(to: 0...(AnnotationThickness.allCases.count - 1))` -> `clamped(to: 0...(AnnotationThickness.allCases.count))`.
 final class TheEditorRemembersItsLastPicksTests: XCTestCase {
 
     private func store(_ raw: [String: Any] = [:]) -> NamespacedStore {

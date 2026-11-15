@@ -440,8 +440,7 @@ public final class HomebrewEngine: ModuleEngine, @unchecked Sendable {
         guard let brew = locator.brewPath() else { return nil }
         let parsed = HelmActivity.phase("homebrew.outdated") { () -> [OutdatedPackage]? in
             // `runData`, because the parser wants bytes: routing them through a
-            // String held a second copy of the whole payload for the parse
-            // (`OutdatedQueryAllocationBenchmark`).
+            // String held a second copy of the whole payload for the parse.
             let result = runner.runData(brew, ["outdated", "--json=v2"],
                                            env: updateBeforeChecking.isOn ? [:] : Self.queryEnvironment)
             guard !refused(result.status, query: "outdated") else { return nil }

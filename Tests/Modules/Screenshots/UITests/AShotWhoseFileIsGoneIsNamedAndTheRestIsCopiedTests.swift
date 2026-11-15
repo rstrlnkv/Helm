@@ -18,6 +18,7 @@ import Module_Screenshots_Engine
 ///
 /// Total failure of the subject prints: a board with nothing on it (the whole-copy refusal of today), a board with all
 /// three (a gone file read from nowhere), the missing shot named as another place, nothing told.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/CaptureSession.swift`: `delivery.refusals.append(.filesGone(encoded.gone))` -> `_ = encoded.gone`.
 @MainActor
 final class AShotWhoseFileIsGoneIsNamedAndTheRestIsCopiedTests: XCTestCase {
 

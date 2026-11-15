@@ -6,6 +6,7 @@ import XCTest
 /// upper-left. They differ by a flip of y, and a display above or left of the
 /// primary is where an unflipped crop becomes a picture of a different part of
 /// the desk.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/ScreenSpace.swift`: `global.offsetBy(dx: -display.minX, dy: -display.minY)` -> `global.offsetBy(dx: -display.minX, dy: display.minY)`.
 final class ScreenSpaceTests: XCTestCase {
 
     /// The primary is 1920×1080; a second display sits left of it and one row up,

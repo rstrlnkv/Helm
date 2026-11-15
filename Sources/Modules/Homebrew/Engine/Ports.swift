@@ -50,8 +50,7 @@ public protocol ProcessRunner: Sendable {
     func run(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, stdout: String)
     /// The same run, bytes untouched — for a parser that wants `Data`. Routing
     /// a JSON payload through `run` pays a String nobody reads plus a copy
-    /// straight back to `Data` (`OutdatedQueryAllocationBenchmark` has the
-    /// figures). A protocol requirement, not only an extension: the engine
+    /// straight back to `Data`. A protocol requirement, not only an extension: the engine
     /// holds the runner as an existential, and an extension-only method would
     /// dispatch every real call to the copying default below.
     func runData(_ launchPath: String, _ args: [String], env: [String: String]) -> (status: Int32, stdout: Data)

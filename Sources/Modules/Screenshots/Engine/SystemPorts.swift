@@ -470,9 +470,8 @@ struct SystemShotPasteboard: ShotPasteboard {
 
 /// Vision's text request for the lines of a picture, and `NSDataDetector` over each line for what is in it.
 ///
-/// **Which of two ways, and why — measured, and asked again by `ScreenshotsTextReadingBenchmark`** (set
-/// `HELM_BENCH=1` and run `bash Scripts/test.sh --filter ScreenshotsTextReadingBenchmark`; it renders one picture of
-/// known text in a light and a dark theme at 1×, 2× and as a 5K frame, reads it each way and prints the time,
+/// **Which of two ways, and why — measured** (a benchmark rendered one picture of
+/// known text in a light and a dark theme at 1×, 2× and as a 5K frame, read it each way and printed the time,
 /// what each found and what it missed). The other way is `RecognizeDocumentsRequest` with its own data detector.
 /// On the window pictures (1× and 2×) the detector over the plain request found every place the documents request
 /// found and one more, a phone number spelled the Japanese way, and the two took about the same time; on the 5K
@@ -483,7 +482,7 @@ struct SystemShotPasteboard: ShotPasteboard {
 /// that one, so they are not on the list (`PrivateKind`). The first read of a process loads the system's models
 /// and takes longer than the next.
 ///
-/// **`minimumTextHeightFraction` is left at the request's default.** The benchmark reads each picture a third way
+/// **`minimumTextHeightFraction` is left at the request's default.** The measure read each picture a third way
 /// with it set to 0 (the default is a fraction of the picture's height, a likely reason for the poor read of 5K light).
 /// On the Mac where it was tried, 0 found none of the 16 known places on the 5K light picture where the default
 /// found 3, 12 against 14 on the 5K dark one, and 15 against 16 on the 2× dark window; it was the same on the

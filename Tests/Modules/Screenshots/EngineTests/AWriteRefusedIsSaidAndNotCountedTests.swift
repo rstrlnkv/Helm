@@ -8,6 +8,7 @@ import XCTest
 /// never counted as a file.** The clipboard is a separate fact: a save that was
 /// refused while the copy landed is one thing done and one not, and the answer
 /// says both.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/CaptureSession.swift`: `guard original != nil else { delivery.refusals.append(.write(reason)); return }` -> `guard original != nil else { return }`. Stays optional: its log test builds on the real NSHomeDirectory() (R1b repair 2); moves when it takes a scratch home.
 final class AWriteRefusedIsSaidAndNotCountedTests: XCTestCase {
     override func setUp() { super.setUp(); ScreenshotsLog.begin() }
     override func tearDown() { ScreenshotsLog.end(); super.tearDown() }

@@ -8,6 +8,7 @@ import XCTest
 /// erased with the switch, through the one function both the bar and any page
 /// go through; left behind it would reappear, stale, the day the option is
 /// switched on again.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/ScreenshotsSettings.swift`: `if !on { RememberedSelection.erase(from: store) }` -> `(line removed)`.
 final class SwitchingRememberOffErasesTheSelectionTests: XCTestCase {
 
     private func store() -> NamespacedStore {

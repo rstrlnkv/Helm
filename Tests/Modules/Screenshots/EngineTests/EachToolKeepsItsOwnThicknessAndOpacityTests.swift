@@ -7,6 +7,7 @@ import XCTest
 /// **Each tool keeps its own thickness and opacity; the fill stays everybody's, and the colour has a test of its own.**
 /// What is remembered is three tables in the store (the colour's is read in `EachToolKeepsItsOwnColourTests`), read by walking the tools
 /// there are, never by walking the table.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/EditorMemory.swift`: `steps[tool.rawValue] = style.thickness.rawValue` -> `for t in known { steps[t] = style.thickness.rawValue }`.
 final class EachToolKeepsItsOwnThicknessAndOpacityTests: XCTestCase {
 
     private typealias Key = ScreenshotsSettings.Key

@@ -9,6 +9,7 @@ import XCTest
 /// only the strip (measured: `visibleFrame` gives up 74 points at the bottom) is
 /// drawn. A rule of "layer 0 and above" picked the Dock at every point; a rule of
 /// "never" refused what macOS offers. The ports file lists the Dock at the strip.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/WindowPick.swift`: `|| window.layer == dockLevel` -> `|| window.layer == dockLevel + 1`.
 final class TheDockAndTheMenuBarArePickedOnlyWhereTheyAreDrawnTests: XCTestCase {
     override func setUp() { super.setUp(); ScreenshotsLog.begin() }
     override func tearDown() { ScreenshotsLog.end(); super.tearDown() }

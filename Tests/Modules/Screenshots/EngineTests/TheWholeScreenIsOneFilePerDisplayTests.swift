@@ -7,6 +7,7 @@ import XCTest
 /// display that was listed and gone by the time it was captured is a refusal
 /// and not a file: "saved 2" over a display that is not there tells a person
 /// they have a picture of a screen they do not.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/CaptureSession.swift`: `delivery.refusals.append(.displayGone)` -> `delivery.refusals.append(.captureFailed)`.
 final class TheWholeScreenIsOneFilePerDisplayTests: XCTestCase {
     override func setUp() { super.setUp(); ScreenshotsLog.begin() }
     override func tearDown() { ScreenshotsLog.end(); super.tearDown() }

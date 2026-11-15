@@ -62,6 +62,7 @@ final class TheGroupIsCopiedInOneWriteFromThePileTests: XCTestCase {
 /// Total failure of the subject prints: a write a shot, a shot still being written that is copied as nothing, a copy
 /// that did not happen and was not told, a refusal that takes the group with it, a group of twenty-five that copies
 /// twenty-five.
+/// Mutant, red here: `Sources/Modules/Screenshots/UI/ScreenshotsCapture.swift`: `let shots = toast.sources() guard !shots.isEmpty else { return }` -> `let shots = toast.sources()`.
 @MainActor
 final class CopyAllFromThePileTakesTheFinishedShotsTests: XCTestCase {
 

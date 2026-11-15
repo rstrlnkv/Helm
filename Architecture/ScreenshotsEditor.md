@@ -211,7 +211,7 @@ Two items of the ⋯ menu read the text of the area, after a separator behind Sh
 The reader is a port, `ScreenTextReading` in `Sources/Modules/Screenshots/Engine/Ports.swift`, answering `.read(lines)` or `.failed`, and `VisionTextReader` is its system
 side: Vision's text request for the lines and `NSDataDetector` over each line for what is in it. The registry's phase `screenshots.recognize` wraps the request's `perform`; the parsing of its answer
 is the hop off the cooperative pool and is not inside the phase, and the registry keeps one entry per label, so two readings alive at once are one entry.
-Why that way and not the documents request, and why `minimumTextHeightFraction` stays at its default, is the header of `VisionTextReader` and what `ScreenshotsTextReadingBenchmark` measures again on request. `.read([])` has several causes the engine
+Why that way and not the documents request, and why `minimumTextHeightFraction` stays at its default, is the header of `VisionTextReader` and what it measured. `.read([])` has several causes the engine
 cannot tell apart (no text, text too small, a script the recogniser does not read), and none of them is "there is nothing there": no caller says the second. What is read is
 `CaptureSession.readText`: the pixels of the area cut from the frozen frame the file is cut from (`FrozenDisplay.shot`), at their own resolution and with none of the layers on them, so a find and the blur over it land
 on one picture. The strings of a reading are somebody's words and are never logged; the clipboard they go to carries the same two markers a picture's does (`SystemShotPasteboard`).

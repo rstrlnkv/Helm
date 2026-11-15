@@ -19,6 +19,7 @@ import XCTest
 ///
 /// Synchronous on purpose: the answer arrives on a task of the overlay's, awaited by spinning the run loop to a deadline, so every
 /// assertion runs in one frame of the test and none after a suspension.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/AnnotationEditing.swift`: `let layer = Annotation(tool: .blur, start: CGPoint(x: rect.minX, y: rect.minY),` -> `let layer = Annotation(tool: .blur, start: CGPoint(x: rect.minX + 1, y: rect.minY),`.
 @MainActor
 final class TheBlurByReadingLandsWhereTheTextIsTests: XCTestCase {
 

@@ -14,6 +14,7 @@ import XCTest
 /// A tool with no record starts with `editorInk`, else with `editorColor` (the Settings row's own value, written by the row
 /// and read live): nobody's colour changes on update, and a pick on one tool never touches either (else the next read would
 /// hand the pick to every tool that had no record yet).
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/EditorMemory.swift`: `AnnotationStyle(color: colors[tool] ?? color,` -> `AnnotationStyle(color: color ?? colors[tool],`.
 final class EachToolKeepsItsOwnColourTests: XCTestCase {
 
     private typealias Key = ScreenshotsSettings.Key

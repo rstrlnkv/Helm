@@ -129,6 +129,7 @@ final class ARecognitionThatOutlivesTheEditorIsDroppedTests: XCTestCase {
 }
 
 /// An answer for an area that moved, was cropped, or a second choice while one reading runs, is dropped.
+/// Mutant, red here: `Sources/Modules/Screenshots/UI/CaptureOverlayEditing.swift`: `guard let held = reading, held.serial == serial,` -> `guard let held = reading,`.
 @MainActor
 final class ARecognitionForAnAreaThatChangedIsDroppedTests: XCTestCase {
 

@@ -19,6 +19,7 @@ import XCTest
 ///
 /// Total failure of the subject prints: two writes, the earlier pass's pictures on the board, a refusal naming the
 /// encoding for a pass that was only displaced, a second pass that does not wait for the first (two alive at once).
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/CaptureSession.swift`: `latestPass?.stop()` -> `(line removed)`.
 final class TheGroupCopyRunsOnePassAtATimeTests: XCTestCase {
 
     private func noise(_ side: Int) -> CGImage {

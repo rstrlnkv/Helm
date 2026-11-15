@@ -6,6 +6,7 @@ import XCTest
 /// `timer` is the seconds the next shot waits and 0 is off; it was never re-keyed. The length the timer cell switches on
 /// with is its own key, `timerLength`, so that switching the timer off does not forget what it was. A store from before
 /// that key holds only `timer`, and **only a missing key says so**.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/ScreenshotsSettings.swift`: `else { return timer == .none ? .five : timer }` -> `else { return .five }`.
 final class TheTimerRemembersItsLengthWhileOffTests: XCTestCase {
 
     private typealias Key = ScreenshotsSettings.Key

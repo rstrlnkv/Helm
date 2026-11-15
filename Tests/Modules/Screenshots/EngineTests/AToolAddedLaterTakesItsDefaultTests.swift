@@ -13,6 +13,7 @@ import XCTest
 /// The family: the read walks the cases and asks the table, never the other way; a name the table holds that is no case
 /// (a later release's item read by an older one, or `"colours"`) is neither read nor kept; and a write keeps the picks
 /// of the others and bounds the record by the cases.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/PaletteItems.swift`: `picks[$0] ?? $0.shownByDefault` -> `picks[$0] ?? !$0.shownByDefault`.
 final class AToolAddedLaterTakesItsDefaultTests: XCTestCase {
 
     private func store(_ table: Any? = nil) -> NamespacedStore {

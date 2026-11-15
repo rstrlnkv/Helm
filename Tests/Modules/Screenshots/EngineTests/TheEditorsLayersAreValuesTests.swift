@@ -4,6 +4,7 @@ import XCTest
 
 /// **The editor's layers are a value, and every rule of it is a function of what was
 /// done.** No keyboard, no timer, no clock.
+/// Mutant, red here: `Sources/Modules/Screenshots/Engine/Logic/AnnotationEditing.swift`: `Self.keep(before, in: &past) future.removeAll()` -> `Self.keep(before, in: &past)`.
 final class TheEditorsLayersAreValuesTests: XCTestCase {
 
     private let area = CGRect(x: 100, y: 100, width: 400, height: 300)
