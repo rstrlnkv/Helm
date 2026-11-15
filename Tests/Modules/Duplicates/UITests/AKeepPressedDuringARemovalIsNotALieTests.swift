@@ -45,7 +45,7 @@ final class AKeepPressedDuringARemovalIsNotALieTests: XCTestCase {
         XCTAssertEqual(dvm.basket, [extra], "precondition: the extra is marked")
         work.answers(.park, to: .trash)
         Task { await dvm.emptyBasket() }
-        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
+        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
         XCTAssertEqual(work.parkedCount, 1, "precondition: the removal is in flight")
         XCTAssertTrue(dvm.busy, "precondition: the model knows")
         return (dvm, work)
@@ -53,7 +53,7 @@ final class AKeepPressedDuringARemovalIsNotALieTests: XCTestCase {
 
     private func finish(_ dvm: DuplicatesViewModel, _ work: AnsweringWork) async {
         work.releaseParked()
-        for _ in 0..<200 where dvm.busy { await Task.yield() }
+        await waitUntil("!dvm.busy", within: .seconds(5)) { !dvm.busy }
     }
 
     /// The page and the engine agree: if the extra was sent, the page must still
@@ -108,7 +108,7 @@ final class AKeepPressedDuringARemovalIsNotALieTests: XCTestCase {
             XCTAssertEqual(dvm.basket, [held], "precondition: marked")
             work.answers(.park, to: .trash)
             Task { await dvm.emptyBasket() }
-            for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
+            await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
             XCTAssertTrue(dvm.busy, "precondition: in flight")
 
             dvm.choose(policy)
@@ -160,7 +160,7 @@ final class AKeepPressedDuringARemovalIsNotALieTests: XCTestCase {
         XCTAssertEqual(dvm.basket, [filed], "precondition: the filed copy is marked")
         work.answers(.park, to: .trash)
         Task { await dvm.emptyBasket() }
-        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
+        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
         XCTAssertTrue(dvm.busy, "precondition: in flight")
         return (dvm, work, drop, filed)
     }

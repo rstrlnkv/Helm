@@ -64,8 +64,8 @@ final class ATickReachesOnlyItsOwnBarTests: XCTestCase {
         dvm.toggleBasket(extra)
         work.answers(.park, to: .trash)
         let removal = Task { await dvm.emptyBasket() }
-        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
-        for _ in 0..<1000 where dvm.progress == nil { await Task.yield() }
+        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
+        await waitUntil("dvm.progress != nil", within: .seconds(5)) { dvm.progress != nil }
 
         XCTAssertTrue(dvm.busy, "precondition: the removal is really in flight")
         XCTAssertEqual(dvm.progress?.candidates, 7, "the bar shows nothing of the removal's own progress")
@@ -85,14 +85,14 @@ final class ATickReachesOnlyItsOwnBarTests: XCTestCase {
         let work = AnsweringWork(groups: [group], ticks: [searchTick], answering: .park)
         let dvm = duplicatesModel(over: work)
         dvm.search()
-        for _ in 0..<1000 where dvm.progress == nil { await Task.yield() }
+        await waitUntil("dvm.progress != nil", within: .seconds(5)) { dvm.progress != nil }
 
         XCTAssertEqual(dvm.phase, .searching, "precondition: the search is in flight")
         XCTAssertEqual(dvm.progress?.candidates, 100)
         XCTAssertEqual(dvm.progress?.hashed, 50)
 
         work.releaseParked()
-        for _ in 0..<1000 where dvm.phase != .result { await Task.yield() }
+        await waitUntil("dvm.phase == .result", within: .seconds(5)) { dvm.phase == .result }
         XCTAssertEqual(dvm.phase, .result)
     }
 
@@ -100,7 +100,7 @@ final class ATickReachesOnlyItsOwnBarTests: XCTestCase {
         let work = LateTickWork()
         let dvm = duplicatesModel(over: work)
         dvm.search()
-        for _ in 0..<1000 where !work.parked { await Task.yield() }
+        await waitUntil("work.parked", within: .seconds(5)) { work.parked }
         XCTAssertTrue(work.parked, "precondition: the search is in flight")
 
         dvm.cancel()
@@ -115,7 +115,7 @@ final class ATickReachesOnlyItsOwnBarTests: XCTestCase {
         let work = LateTickWork()
         let dvm = duplicatesModel(over: work)
         dvm.search()
-        for _ in 0..<1000 where !work.parked { await Task.yield() }
+        await waitUntil("work.parked", within: .seconds(5)) { work.parked }
         dvm.cancel()
         dvm.search()
         work.release()

@@ -59,7 +59,7 @@ final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
         XCTAssertEqual(dvm.basket, [extra], "precondition: the extra is still marked")
         work.answers(.park, to: .trash)
         let removal = Task { await dvm.emptyBasket() }
-        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
+        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
         dvm.stopRemoval()
         XCTAssertEqual(count(.find, in: work), 1, "control: the search reaches the work before stop()")
         XCTAssertEqual(count(.trash, in: work), 2, "control: the removal reaches the work before stop()")
@@ -92,7 +92,7 @@ final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
         let work = AnsweringWork(groups: [group], answering: .park)
         let dvm = duplicatesModel(over: work)
         dvm.search()
-        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
+        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
         XCTAssertEqual(work.parkedCount, 1, "precondition: the search is really in flight")
 
         dvm.stop()
@@ -112,7 +112,7 @@ final class AStoppedDuplicatesModelReachesNoWorkTests: XCTestCase {
         let work = AnsweringWork(groups: [group], answering: .park)
         let dvm = duplicatesModel(over: work)
         dvm.search()
-        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
+        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
         XCTAssertEqual(dvm.phase, .searching, "precondition: the search is really in flight")
 
         dvm.stop()

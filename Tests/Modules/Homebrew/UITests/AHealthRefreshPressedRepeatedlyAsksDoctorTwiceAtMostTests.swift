@@ -24,7 +24,7 @@ final class AHealthRefreshPressedRepeatedlyAsksDoctorTwiceAtMostTests: XCTestCas
         let model = HomebrewViewModel(work: work)
 
         let presses = (0..<10).map { _ in Task { await model.refreshDoctor() } }
-        await eventually("the first reading is out") { self.doctors(work) == 1 }
+        await waitUntil("the first reading is out") { self.doctors(work) == 1 }
         await grace()
         XCTAssertEqual(doctors(work), 1, "a second reading started beside the first")
 
@@ -42,7 +42,7 @@ final class AHealthRefreshPressedRepeatedlyAsksDoctorTwiceAtMostTests: XCTestCas
         let model = HomebrewViewModel(work: work)
 
         let presses = (0..<2).map { _ in Task { await model.refreshDoctor() } }
-        await eventually("the first reading is out") { self.doctors(work) == 1 }
+        await waitUntil("the first reading is out") { self.doctors(work) == 1 }
         await grace()
         model.stop()
         work.release("readDoctor")

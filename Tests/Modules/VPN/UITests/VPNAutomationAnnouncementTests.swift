@@ -137,7 +137,7 @@ final class VPNAutomationAnnouncementTests: XCTestCase {
         emit(fired, on: work)
         await settle(model)
         emit(fired, on: work)
-        for _ in 0..<200 { await Task.yield() }
+        await grace()
         await model.announcement?.value
         XCTAssertEqual(port.posted.count, 1, "the same firing was announced twice")
     }

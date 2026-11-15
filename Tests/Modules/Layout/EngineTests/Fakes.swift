@@ -130,9 +130,9 @@ final class FakeTap: KeyTapPort, @unchecked Sendable {
 /// the second one always started from where the first one had. No test could
 /// have covered the sequence, whatever anybody wrote.
 ///
-/// Shared rather than private because it was written out in several test files
-/// — the arrangement where one copy gets fixed. KeepAwake and VPN keep theirs
-/// in a `Fakes.swift` for the same reason.
+/// Shared rather than private: every Layout test that needs a keyboard takes this
+/// one, so a fix to it reaches all of them. KeepAwake and VPN keep theirs in a
+/// `Fakes.swift` the same way.
 final class FakeSources: LayoutSourcePort, @unchecked Sendable {
     var selected: [String] = []
     private var live: String

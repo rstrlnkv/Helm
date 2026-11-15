@@ -43,7 +43,7 @@ final class ADropIsAnnouncedOnItsOwnSettingTests: XCTestCase {
                                         kind: "IKEv2")],
             autoConnected: [], lastAutomation: firing)
         work.say(payload)
-        for _ in 0..<500 where model.lastAutomation == nil { await Task.yield() }
+        await waitUntil("model.lastAutomation != nil", within: .seconds(5)) { model.lastAutomation != nil }
         await model.announcement?.value
         return (port.posted, model.effectiveNotice(for: kind, on: firing.name).showsMenuBarName
                 ? model.lastAutomation?.name : nil)

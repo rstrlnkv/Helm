@@ -154,33 +154,33 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
     /// The control: an ordinary file in the watched folder is acted on, so the
     /// two assertions below are about a leg that ran rather than one that never
     /// started.
-    func testAnOrdinaryFileIsActedOn() throws {
+    func testAnOrdinaryFileIsActedOn() async throws {
         engine.folders = [folder()]
 
         engine.handle([path("plain.pdf")])
 
-        try waitForTheWatcherToFinish()
+        await waitForTheWatcherToFinish()
         XCTAssertFalse(exists("plain.pdf"), "the watcher did nothing at all")
         XCTAssertTrue(exists("Documents/plain.pdf"), tree().description)
     }
 
-    func testAResourceInsideAnApplicationBundleIsLeftAlone() throws {
+    func testAResourceInsideAnApplicationBundleIsLeftAlone() async throws {
         engine.folders = [folder()]
 
         engine.handle([path("Reader.app/Contents/Resources/manual.pdf"), path("plain.pdf")])
 
-        try waitForTheWatcherToFinish()
+        await waitForTheWatcherToFinish()
         XCTAssertTrue(exists("Reader.app/Contents/Resources/manual.pdf"),
                       "a rule took a resource out of an application bundle: \(tree())")
         XCTAssertFalse(exists("Reader.app/Contents/Resources/Documents/manual.pdf"))
     }
 
-    func testAHiddenFileIsLeftAlone() throws {
+    func testAHiddenFileIsLeftAlone() async throws {
         engine.folders = [folder(depth: 1)]
 
         engine.handle([path(".quiet.pdf"), path("plain.pdf")])
 
-        try waitForTheWatcherToFinish()
+        await waitForTheWatcherToFinish()
         XCTAssertTrue(exists(".quiet.pdf"),
                       "a rule acted on a file the sweep can never see: \(tree())")
     }
@@ -189,12 +189,9 @@ final class TheWatcherAndTheSweepAskOneQuestionTests: XCTestCase {
     /// The history is written after the whole batch, so a record for the control
     /// file is the batch having finished — not a sleep, which would be a guess
     /// about a machine.
-    private func waitForTheWatcherToFinish() throws {
-        let deadline = Date().addingTimeInterval(5)
-        while Date() < deadline {
-            if engine.history.contains(where: { $0.file == "plain.pdf" }) { return }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+    private func waitForTheWatcherToFinish() async {
+        await waitUntilReached("the watcher finished its batch", within: .seconds(5)) {
+            engine.history.contains(where: { $0.file == "plain.pdf" })
         }
-        XCTFail("the watcher never finished its batch")
     }
 }

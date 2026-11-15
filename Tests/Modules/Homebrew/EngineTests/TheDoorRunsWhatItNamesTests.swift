@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Helm
 
 import XCTest
+import HelmTestSupport
 import HelmContract
 import HelmRuntime
 @testable import Module_Homebrew_Engine
@@ -76,15 +77,7 @@ final class TheDoorRunsWhatItNamesTests: XCTestCase {
                        tools: ToolsAlreadyInstalled(), ticker: NoWaitTicker())
     }
 
-    private func until(_ what: String, timeout: TimeInterval = 5,
-                       file: StaticString = #filePath, line: UInt = #line,
-                       _ condition: () -> Bool) {
-        let deadline = Date().addingTimeInterval(timeout)
-        while !condition(), Date() < deadline { Thread.sleep(forTimeInterval: 0.01) }
-        XCTAssertTrue(condition(), "never reached: \(what)", file: file, line: line)
-    }
-
-    func testEachActStartsItsOwnCommand() {
+    func testEachActStartsItsOwnCommand() async {
         let wget = PackageRef(name: "wget", isCask: false)
         let iterm = PackageRef(name: "iterm2", isCask: true)
         let table: [(HomebrewAct, [String])] = [
@@ -101,7 +94,7 @@ final class TheDoorRunsWhatItNamesTests: XCTestCase {
             let runner = DoorRunner()
             let engine = self.engine(runner)
             engine.perform(act)
-            until("\(act) launches") { !runner.streams.isEmpty }
+            await waitUntilReached("\(act) launches") { !runner.streams.isEmpty }
             XCTAssertEqual(runner.streams, [argv], "\(act) started another command")
         }
     }
@@ -110,7 +103,7 @@ final class TheDoorRunsWhatItNamesTests: XCTestCase {
         // Control: a fix the Cellar admits launches through the door.
         let admitted = DoorRunner()
         self.engine(admitted).perform(.doctorFix(argv: ["uninstall", "wget"]))
-        until("the admitted fix launches") { !admitted.streams.isEmpty }
+        await waitUntilReached("the admitted fix launches") { !admitted.streams.isEmpty }
         XCTAssertEqual(admitted.streams, [["uninstall", "--", "wget"]])
 
         // A name the Cellar does not hold: refused with its reason, nothing launched.
@@ -142,12 +135,12 @@ final class TheDoorRunsWhatItNamesTests: XCTestCase {
         let pressed = DoorRunner()
         let engine = self.engine(pressed)
         engine.perform(.install(PackageRef(name: "wget", isCask: false)))
-        until("the press launches") { !pressed.streams.isEmpty }
+        await waitUntilReached("the press launches") { !pressed.streams.isEmpty }
 
         let fixed = DoorRunner()
         let fixEngine = self.engine(fixed)
         fixEngine.perform(.doctorFix(argv: ["cleanup"]))
-        until("the fix launches") { !fixed.streams.isEmpty }
+        await waitUntilReached("the fix launches") { !fixed.streams.isEmpty }
 
         let read = DoorRunner()
         let readEngine = self.engine(read)

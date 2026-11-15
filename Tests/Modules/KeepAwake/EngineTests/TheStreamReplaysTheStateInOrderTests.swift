@@ -114,6 +114,9 @@ final class TheStreamReplaysTheStateInOrderTests: KeepAwakeEngineRig {
         }
         // Not before the emitter is under way, or every subscription lands ahead
         // of the first emit and the window is never entered.
+        // A yield and not `waitUntil`: the spin is the point. A sleep between reads
+        // lets the emitter finish before the first subscription, and the window is
+        // never entered (measured: a 5 ms sleep left no subscription in the middle).
         let patience = Date().addingTimeInterval(2)
         while emitted.value == 0, Date() < patience { await Task.yield() }
         var seens: [Seen] = []

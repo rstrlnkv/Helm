@@ -21,7 +21,7 @@ final class ATimersScanWaitsForThePersonTests: XCTestCase {
         work.answers(.park, to: .find)
         let dvm = duplicatesModel(over: work)
         dvm.search()
-        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
+        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
         XCTAssertEqual(work.parkedCount, 1, "precondition: the search is in flight")
         XCTAssertEqual(dvm.phase, .searching, "precondition: the model is searching")
 
@@ -31,7 +31,7 @@ final class ATimersScanWaitsForThePersonTests: XCTestCase {
         XCTAssertFalse(work.calls.contains(.backgroundScan))
         work.answers(.reply)
         work.releaseParked()
-        for _ in 0..<1000 where dvm.phase == .searching { await Task.yield() }
+        await waitUntil("dvm.phase != .searching", within: .seconds(5)) { dvm.phase != .searching }
         XCTAssertEqual(dvm.phase, .result, "the search the person started landed")
     }
 
@@ -43,7 +43,7 @@ final class ATimersScanWaitsForThePersonTests: XCTestCase {
         dvm.toggleBasket("\(home)/Downloads/extra.bin")
         work.answers(.park, to: .trash)
         Task { await dvm.emptyBasket() }
-        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
+        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
         XCTAssertTrue(dvm.busy, "precondition: a removal is running")
 
         let report = await dvm.backgroundScan()
@@ -52,7 +52,7 @@ final class ATimersScanWaitsForThePersonTests: XCTestCase {
         XCTAssertFalse(work.calls.contains(.backgroundScan))
         work.answers(.reply)
         work.releaseParked()
-        for _ in 0..<1000 where dvm.busy { await Task.yield() }
+        await waitUntil("!dvm.busy", within: .seconds(5)) { !dvm.busy }
     }
 
     func testWhenThePersonIsDoneTheScanReachesTheWork() async {

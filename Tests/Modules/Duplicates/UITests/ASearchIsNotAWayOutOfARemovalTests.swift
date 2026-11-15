@@ -53,7 +53,7 @@ final class ASearchIsNotAWayOutOfARemovalTests: XCTestCase {
         dvm.toggleBasket(extra)
         work.answers(.park, to: .trash)
         Task { await dvm.emptyBasket() }
-        for _ in 0..<1000 where work.parkedCount < 1 { await Task.yield() }
+        await waitUntil("work.parkedCount >= 1", within: .seconds(5)) { work.parkedCount >= 1 }
         return (dvm, work)
     }
 
@@ -62,7 +62,7 @@ final class ASearchIsNotAWayOutOfARemovalTests: XCTestCase {
     private func finish(_ dvm: DuplicatesViewModel, _ work: AnsweringWork) async {
         work.answers(.reply)
         work.releaseParked()
-        for _ in 0..<1000 where dvm.busy { await Task.yield() }
+        await waitUntil("!dvm.busy", within: .seconds(5)) { !dvm.busy }
     }
 
     /// The same claim `clearBasket` makes, in the control beside it: the request

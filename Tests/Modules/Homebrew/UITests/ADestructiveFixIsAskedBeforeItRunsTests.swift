@@ -186,7 +186,7 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
         work.park("readDependents")
         let model = HomebrewViewModel(work: work)
         let ask = Task { await model.askToRunFix(DoctorFix(argv: ["uninstall", "openssl@3"], kind: .runnable)) }
-        await eventually("the read is out") { work.calls.contains("readDependents openssl@3") }
+        await waitUntil("the read is out") { work.calls.contains("readDependents openssl@3") }
         model.cancelFix()
         work.release("readDependents")
         await ask.value
@@ -225,7 +225,7 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
         let model = HomebrewViewModel(work: work)
         let fix = DoctorFix(argv: ["uninstall", "openssl@3"], kind: .runnable)
         let ask = Task { await model.askToRunFix(fix) }
-        await eventually("the read is out") { work.calls.contains("readDependents openssl@3") }
+        await waitUntil("the read is out") { work.calls.contains("readDependents openssl@3") }
         XCTAssertEqual(work.dependentsAsked, [PackageRef(name: "openssl@3", isCask: false)],
                        "control: the read is not out")
         XCTAssertNil(model.pendingFix, "the fix's dialog was raised before the dependents came back")
@@ -246,7 +246,7 @@ final class ADestructiveFixIsAskedBeforeItRunsTests: XCTestCase {
         let model = HomebrewViewModel(work: work)
         let wget = BrewPackage(name: "wget", version: "1.25", isCask: false)
         let ask = Task { await model.askToUninstall(wget) }
-        await eventually("the read is out") { work.calls.contains("readDependents wget") }
+        await waitUntil("the read is out") { work.calls.contains("readDependents wget") }
         XCTAssertEqual(work.dependentsAsked, [PackageRef(name: "wget", isCask: false)],
                        "control: the read is not out")
         XCTAssertNil(model.pendingUninstall, "the uninstall dialog was raised before the dependents came back")

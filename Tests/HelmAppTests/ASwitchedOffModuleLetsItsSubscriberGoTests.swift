@@ -147,27 +147,17 @@ final class ASwitchedOffModuleLetsItsSubscriberGoTests: XCTestCase {
     /// retain only exists once the loop is inside the call, which is the state a
     /// page open for a moment is always in.
     ///
-    /// Sleeping rather than yielding: the loop starts on the concurrency pool,
+    /// A sleep rather than a yield: the loop starts on the concurrency pool,
     /// and yielding from the main actor hands the turn to main-actor work.
     private func letTheLoopStart() async {
-        for _ in 0..<20 {
-            await Task.yield()
-            try? await Task.sleep(nanoseconds: 2_000_000)
-        }
+        await grace()
     }
 
-    /// Waits for the count, rather than yielding a fixed number of times.
-    ///
-    /// `Task.sleep` and not `Task.yield`: the drop closure is registered on
+    /// Waits for the count, on the clock; the drop closure is registered on
     /// `OperationQueue.main`, so the notification is delivered by the main queue
-    /// rather than by the concurrency pool, and a loop that only yields to other
-    /// tasks can spin without the main queue ever getting a turn. Returning
-    /// early is safe — the assertion is at the call site, so a wait that gives
-    /// up reports the count it actually saw.
+    /// rather than by the concurrency pool, and a sleep between reads is what
+    /// gives that queue its turn.
     private func settle(_ engine: any ModuleEngine, until count: Int) async {
-        for _ in 0..<400 {
-            if engine.subscriberCount == count { return }
-            try? await Task.sleep(nanoseconds: 5_000_000)
-        }
+        await waitUntil("\(count) subscriber(s)", within: .seconds(2)) { engine.subscriberCount == count }
     }
 }

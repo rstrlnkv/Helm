@@ -146,7 +146,7 @@ final class ChoosingTheCopyThatStaysTests: XCTestCase {
         dvm.keep(archived, in: try XCTUnwrap(dvm.groups.first))
 
         dvm.search()
-        for _ in 0..<200 where dvm.phase != .result { await Task.yield() }
+        await waitUntil("dvm.phase == .result", within: .seconds(5)) { dvm.phase == .result }
         dvm.choose(.byPlace)
 
         // The rung, whichever it is, rather than `.byHand`: both filed copies

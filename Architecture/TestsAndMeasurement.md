@@ -98,12 +98,14 @@ otherwise swept before it is made readable again.
 `Tests/Support/EachLanguage.swift` runs an assertion about a visible string across the
 eight languages; its doc comment says why, and states the rule a new test follows for the
 language it asks in.
-`Tests/Support/Yielding.swift` holds the waits. `waitUntil(_:within:)` reads the
-condition every few milliseconds until a wall-clock deadline and then fails naming what
-never happened, and `waitUntilWithin(_:_:)` is the same wait for a helper that is a free
-function; `waitUntilReached(_:within:)` is the same wait for an engine test whose case is
-not `@MainActor`, so it carries no isolation of its own; the older `waitUntil(_:)` is a yield loop, kept until its last caller
-moves to the bounded one, and then deleted. `grace()` is the wait before asserting an
+`Tests/Support/Yielding.swift` holds the waits, and they are one loop: `waitUntilWithin(_:_:)`
+reads the condition every few milliseconds until a wall-clock deadline and then fails
+naming what never happened. `waitUntil(_:within:)` is that call for a `@MainActor` case,
+and `waitUntilReached(_:within:)` for an engine test whose case is not, so it carries no
+isolation of its own. A cooperative yield is never a wait, and no local `eventually` or
+`until` is written beside them; the one exception is the sync `eventually` poll in two
+Homebrew engine test files, whose `DispatchSemaphore.wait` is unavailable from async code.
+`grace()` is the wait before asserting an
 absence, paired with a control that proves the same path still speaks.
 
 ## Harnesses
