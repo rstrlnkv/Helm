@@ -17,11 +17,14 @@ the compile it guards, and `Scripts/package-app.sh:298` writes the same number i
 plist *of the assembled bundle*, so the tree's copy and a shipped bundle's copy disagree
 by design.
 
-A release tag is `vMAJOR.MINOR.PATCH`; a prerelease tag is `vMAJOR.MINOR.PATCH-dev.N`.
+A release tag is `vMAJOR.MINOR.PATCH`; a prerelease tag cut before 2026-11-14 is
+`vMAJOR.MINOR.PATCH-dev.N`. Since 2026-11-14 (versioning standard, rule 6) a build is tagged `vX.Y.Z.DEV.<build>` or
+`vX.Y.Z.BETA.<build>`; the `-dev.N` form stays on every tag cut before that date.
 `git tag --list 'v*' --sort=v:refname` is the list and `git tag --list 'v*' | wc -l` the
-count. `-dev` is the only suffix the scheme has: `UpdateVersion.prereleaseOrdinal`
-reads the trailing number of the suffix and nothing else, so `-dev.2` and `-beta.2` are
-indistinguishable to it.
+count. In the old form (a tag after a `-`) `-dev` is the only suffix the scheme has:
+`UpdateVersion.prereleaseOrdinal` reads the trailing number of the suffix and nothing
+else, so `-dev.2` and `-beta.2` are indistinguishable to it. The new form names its
+channel (`DEV`/`BETA`) and `UpdateVersion.buildTag` reads it.
 
 MAJOR marks a milestone — a new architecture, a breaking redesign. MINOR is a new
 capability or a reworking of an existing one. PATCH is a fix, and it is also the step of
@@ -43,7 +46,18 @@ set: "1.0" is the claim that the program is ready for other people.
 Two releases carrying one version are invisible to the updater: `UpdateVersion.isNewer`
 requires a strictly greater version, so a release without a bump reaches nobody, and
 nothing published can pull a user back to an earlier build — there is no rollback, and
-that is the shape of the comparison rather than a missing feature.
+that is the shape of the comparison rather than a missing feature. The one exception is
+a tag of the form `vX.Y.Z.DEV.<build>` / `vX.Y.Z.BETA.<build>` (versioning.md rule 6,
+from 2026-11-14; tags before that keep `-dev.N`): on an equal `X.Y.Z`, with the running
+build known, the tag is newer only when its `<build>` is greater than that build,
+whatever suffix the running version has. The running build is `CFBundleVersion`, which
+`Scripts/package-app.sh` writes as `git rev-list --count HEAD` in this tree; a tag's
+`<build>` must be that same number for the build it was cut from to go unoffered. So the
+tag's `<build>` is the number the packaged app carries (read it from the built bundle's
+`CFBundleVersion`), not the three-branch count `git rev-list --count origin/dev
+origin/beta origin/main HEAD` of versioning.md rule 2: that count can be larger, and a
+tag cut with it is newer than the app built from it, which then offers its own tag. With
+the build unknown, a running `-dev.N` is offered the tag and a bare `X.Y.Z` is not.
 
 There are two channels, `beta` and `dev`, and `UpdateCheck.Channel` is where they and
 the reason for the name `beta` live. In the app the switch is About → Update channel,

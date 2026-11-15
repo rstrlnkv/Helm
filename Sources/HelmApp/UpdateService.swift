@@ -302,11 +302,13 @@ import HelmRuntime
             guard let http = resp as? HTTPURLResponse else { return }
             // What the response MEANS is decided by the unit-tested core.
             // Beta reads a single release; dev reads the list of releases.
+            let build = AppBuild.buildNumber.flatMap { Int($0) }
             let outcome = channel == .beta
                 ? UpdateCheck.evaluate(statusCode: http.statusCode, data: data,
-                                       currentVersion: currentVersion)
+                                       currentVersion: currentVersion, currentBuild: build)
                 : UpdateCheck.evaluateList(statusCode: http.statusCode, data: data,
-                                           currentVersion: currentVersion, channel: channel)
+                                           currentVersion: currentVersion, currentBuild: build,
+                                           channel: channel)
             // An answer, of either kind, is what "last checked" means.
             if case .error = outcome {} else {
                 store.set(Int(Date().timeIntervalSince1970), for: Self.lastCheckKey)
